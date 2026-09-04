@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/teacher-attendance",
-      "schedule": "0 * * * *"
+      "schedule": "* * * 7 *"
     },
     {
       "path": "/api/cron/fee-reminder",
