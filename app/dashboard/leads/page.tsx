@@ -146,13 +146,6 @@ export default function LeadsPage() {
       count: counts?.admissions ?? 0,
       statuses: ['ALL', 'PENDING', 'APPROVED', 'DECLINED'],
     },
-    {
-      id: 'staff' as Tab,
-      label: 'Staff Apps',
-      icon: Briefcase,
-      count: counts?.staffApplications ?? 0,
-      statuses: ['ALL', 'PENDING', 'UNDER_REVIEW', 'INTERVIEW_SCHEDULED', 'APPROVED', 'DECLINED', 'ON_HOLD'],
-    },
   ]
 
   const currentTab = tabs.find(t => t.id === activeTab)!

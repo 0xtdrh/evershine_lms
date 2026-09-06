@@ -933,9 +933,6 @@ export default function AcademicEnginePage() {
               <TabsTrigger value="sections" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
                 <Layers className="w-4 h-4" />Groups
               </TabsTrigger>
-              <TabsTrigger value="elective-groups" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
-                <Layout className="w-4 h-4" />Elective Groups
-              </TabsTrigger>
             </div>
             <div className="space-y-2 pt-3 border-t border-slate-100">
               <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Enrollments & subjects</p>
@@ -944,9 +941,6 @@ export default function AcademicEnginePage() {
               </TabsTrigger>
               <TabsTrigger value="offerings" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
                 <BookOpen className="w-4 h-4" />Offerings
-              </TabsTrigger>
-              <TabsTrigger value="electives" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
-                <CheckSquare className="w-4 h-4" />Approvals
               </TabsTrigger>
             </div>
             <div className="space-y-2 pt-3 border-t border-slate-100">
@@ -1731,6 +1725,7 @@ export default function AcademicEnginePage() {
                 </ol>
               </div>
 
+              {false && (
               <Card className="border-t-4 border-t-violet-500 shadow-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2"><Zap className="w-4 h-4 text-violet-600" />Automated weekly timetable</CardTitle>
@@ -1794,7 +1789,7 @@ export default function AcademicEnginePage() {
                   {!slotFilterSection && <p className="text-xs text-amber-700">Choose a group below before generating the timetable.</p>}
                 </CardContent>
               </Card>
-
+              )}
 
               <div className="grid lg:grid-cols-2 gap-6">
               <Card className="border-t-4 border-t-blue-500 shadow-sm hover:shadow-md transition-shadow">

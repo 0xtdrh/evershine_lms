@@ -655,11 +655,6 @@ export default function ExamsPage() {
           <p className="text-sm text-slate-500 mt-1 font-medium ml-11">Schedule and manage academic examinations across all campuses.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/dashboard/exams/date-sheets">
-            <Button variant="outline" className="gap-2">
-              <Calendar className="w-4 h-4" /> Date Sheets
-            </Button>
-          </Link>
           {canCreate && (
             <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-sm" onClick={() => setCreateOpen(true)}>
               <Plus className="w-4 h-4" /> Schedule Exam
