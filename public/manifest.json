@@ -1,7 +1,7 @@
 {
-  "name": "EverShine Academy LMS",
-  "short_name": "EverShine LMS",
-  "description": "Professional Learning Management System for EverShine Academy",
+  "name": "TechNova Management",
+  "short_name": "TechNova",
+  "description": "Integrated management platform for TechNova's branches, courses, students, and instructors",
   "categories": [
     "education",
     "productivity"

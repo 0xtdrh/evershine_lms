@@ -27,7 +27,7 @@ interface AcademyLogoProps {
 // not present. public/brand/bglogo.png is copied by Next.js static serving and is
 // therefore reliable in both local and hosted production environments.
 const LOGO_SRC = '/brand/bglogo.png'
-const LOGO_ALT = 'EverShine Academy'
+const LOGO_ALT = 'TechNova Management'
 
 export const AcademyLogo = ({
   className,
@@ -69,10 +69,10 @@ export const AcademyLogo = ({
         <div className="flex flex-col justify-center leading-none">
           <span className={`text-sm font-black tracking-widest uppercase whitespace-nowrap ${isWhiteText ? 'text-white' : 'text-blue-950'}`}
                 style={{ letterSpacing: '0.1em' }}>
-            EVERSHINE
+            TECHNOVA
           </span>
           <span className={`text-[10px] font-semibold uppercase tracking-[0.2em] whitespace-nowrap mt-0.5 ${isWhiteText ? 'text-blue-200' : 'text-slate-500'}`}>
-            ACADEMY
+            MANAGEMENT
           </span>
         </div>
       </div>

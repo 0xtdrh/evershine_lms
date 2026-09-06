@@ -14,30 +14,30 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Evershine Academy | Modern Digital Learning and LMS",
-    template: "%s | Evershine Academy",
+    default: "TechNova Management | STEM, Robotics & Programming Academy",
+    template: "%s | TechNova Management",
   },
-  description: "Evershine Academy provides quality education, online courses, an LMS, student and teacher portals, assignments, quizzes, examinations, and modern digital learning.",
+  description: "TechNova Management is the integrated platform for TechNova's branches, courses, students, and instructors across STEM education, programming, robotics, and smart technology.",
   keywords: [
-    "Evershine Academy",
-    "Ever Shine Academy",
-    "Evershine LMS",
-    "Ever Shine LMS",
-    "Best Academy",
+    "TechNova",
+    "TechNova Management",
+    "TechNova Academy",
+    "STEM Education",
+    "Robotics Training",
+    "Programming Courses",
     "Learning Management System",
-    "School Management System",
+    "Academy Management System",
     "Student Portal",
     "Teacher Portal",
     "Online Classes",
-    "Pakistan Academy",
-    "Education",
+    "Hurghada Academy",
+    "Egypt STEM",
     "Digital Learning",
-    "Gujranwala Academy",
     "Online Courses",
   ],
-  authors: [{ name: "Evershine Academy" }],
-  creator: "Evershine Academy",
-  publisher: "Evershine Academy",
+  authors: [{ name: "TechNova" }],
+  creator: "TechNova",
+  publisher: "TechNova",
   robots: {
     index: true,
     follow: true,
@@ -50,35 +50,35 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://www.evershineacadmey.com/",
+    canonical: "https://evershine-lms-technova.vercel.app/",
   },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://www.evershineacadmey.com/",
-    siteName: "Evershine Academy",
-    title: "Evershine Academy | Modern Digital Learning and LMS",
-    description: "Quality education, online courses, LMS, student and teacher portals, assignments, quizzes, examinations, and modern digital learning.",
+    url: "https://evershine-lms-technova.vercel.app/",
+    siteName: "TechNova Management",
+    title: "TechNova Management | STEM, Robotics & Programming Academy",
+    description: "The integrated platform for TechNova's branches, courses, students, and instructors across STEM education, programming, robotics, and smart technology.",
     images: [
       {
-        url: "https://www.evershineacadmey.com/assets/images/evershine-social-share.jpg",
-        width: 1200,
-        height: 630,
-        alt: "Evershine Academy",
+        url: "/brand/pwa-icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "TechNova Management",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Evershine Academy | Modern Digital Learning and LMS",
-    description: "Quality education, online courses, LMS, student and teacher portals, assignments, quizzes, examinations, and modern digital learning.",
-    images: ["https://www.evershineacadmey.com/assets/images/evershine-social-share.jpg"],
+    title: "TechNova Management | STEM, Robotics & Programming Academy",
+    description: "The integrated platform for TechNova's branches, courses, students, and instructors across STEM education, programming, robotics, and smart technology.",
+    images: ["/brand/pwa-icon-512.png"],
   },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "EverShine LMS",
+    title: "TechNova Management",
   },
   icons: {
     icon: [
@@ -95,7 +95,7 @@ export const metadata: Metadata = {
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "EverShine LMS",
+    "apple-mobile-web-app-title": "TechNova Management",
     "msapplication-TileColor": "#0f172a",
     "msapplication-TileImage": "/brand/pwa-icon-192.png",
   },
@@ -120,22 +120,21 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "EducationalOrganization",
-              "@id": "https://www.evershineacadmey.com/#organization",
-              "name": "Evershine Academy",
-              "url": "https://www.evershineacadmey.com/",
+              "@id": "https://evershine-lms-technova.vercel.app/#organization",
+              "name": "TechNova",
+              "url": "https://evershine-lms-technova.vercel.app/",
               "logo": {
                 "@type": "ImageObject",
-                "url": "https://www.evershineacadmey.com/images/logo.png"
+                "url": "https://evershine-lms-technova.vercel.app/brand/bglogo.png"
               },
-              "description": "Evershine Academy provides quality education, online courses, an LMS, student and teacher portals, assignments, quizzes, examinations, and modern digital learning.",
+              "description": "TechNova is a technology company specializing in STEM education, programming, robotics, and smart technology solutions, with branches across Hurghada, Al-Qusair, and Safaga.",
               "address": {
                 "@type": "PostalAddress",
-                "streetAddress": "Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony",
-                "addressLocality": "Gujranwala",
-                "addressRegion": "Punjab",
-                "addressCountry": "PK"
+                "addressLocality": "Hurghada",
+                "addressRegion": "Red Sea",
+                "addressCountry": "EG"
               },
-              "telephone": "+92-328-4010522"
+              "telephone": "+20-123-3344758"
             })
           }}
         />
