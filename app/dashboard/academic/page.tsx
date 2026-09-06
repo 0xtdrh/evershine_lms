@@ -936,9 +936,6 @@ export default function AcademicEnginePage() {
             </div>
             <div className="space-y-2 pt-3 border-t border-slate-100">
               <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Enrollments & subjects</p>
-              <TabsTrigger value="enrollments" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
-                <Users className="w-4 h-4" />Houses
-              </TabsTrigger>
               <TabsTrigger value="offerings" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
                 <BookOpen className="w-4 h-4" />Offerings
               </TabsTrigger>
