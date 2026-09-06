@@ -475,7 +475,7 @@ function TeacherResultEntryInner() {
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
-            <Label>Class Section</Label>
+            <Label>Group</Label>
             <Select value={classSectionId} onValueChange={handleSectionChange}>
               <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
               <SelectContent>
@@ -599,7 +599,7 @@ function TeacherResultEntryInner() {
             )}
             {/* Subject Entries Header (Desktop) */}
             <div className="hidden sm:grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500 px-1">
-              <span className="col-span-3">Subject</span>
+              <span className="col-span-3">Course</span>
               <span className="col-span-2 text-center">Total</span>
               <span className="col-span-2 text-center">Obtained</span>
               <span className="col-span-1 text-center">Absent</span>

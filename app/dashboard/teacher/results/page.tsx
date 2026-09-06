@@ -183,7 +183,7 @@ export default function TeacherResultsListPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Student</TableHead>
-                  <TableHead>Section</TableHead>
+                  <TableHead>Group</TableHead>
                   <TableHead className="text-center">%</TableHead>
                   <TableHead className="text-center">Grade</TableHead>
                   <TableHead>Batch</TableHead>

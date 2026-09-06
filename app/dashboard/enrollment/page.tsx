@@ -655,7 +655,7 @@ function ResultsTabContent({
                           <table className="w-full text-left border-collapse">
                             <thead>
                               <tr className="bg-[#173B7A] text-white text-[10px] font-bold uppercase tracking-wider">
-                                <th className="px-4 py-2 text-left font-semibold">Subject</th>
+                                <th className="px-4 py-2 text-left font-semibold">Course</th>
                                 <th className="px-4 py-2 text-center font-semibold">Obtained Marks</th>
                                 <th className="px-4 py-2 text-center font-semibold">Total Marks</th>
                                 <th className="px-4 py-2 text-center font-semibold">Percentage</th>
@@ -1129,7 +1129,7 @@ function StudentEnrollmentPageInner() {
                       <tr className="border-b text-left text-gray-500">
                         <th className="py-2 pr-4">Day</th>
                         <th className="py-2 pr-4">Time</th>
-                        <th className="py-2 pr-4">Subject</th>
+                        <th className="py-2 pr-4">Course</th>
                         <th className="py-2 pr-4">Teacher</th>
                         <th className="py-2">Room</th>
                       </tr>

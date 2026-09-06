@@ -504,7 +504,7 @@ export default function AcademicEnginePage() {
         body: JSON.stringify({ name: newSubject.name, code: newSubject.code.toUpperCase() }),
       }),
     onSuccess: () => {
-      notify.success('Subject added')
+      notify.success('Course added')
       qc.invalidateQueries({ queryKey: ['academic-subjects'] })
       setNewSubject({ name: '', code: '' })
     },
@@ -525,7 +525,7 @@ export default function AcademicEnginePage() {
         }),
       }),
     onSuccess: () => {
-      notify.success('Subject offering created')
+      notify.success('Course offering created')
       qc.invalidateQueries({ queryKey: ['subject-offerings'] })
     },
     onError: (e: Error) => notify.error(e.message),
@@ -770,7 +770,7 @@ export default function AcademicEnginePage() {
     mutationFn: ({ id, data }: { id: string; data: typeof editingSectionForm }) =>
       fetchApi(`/api/class-sections/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     onSuccess: () => {
-      notify.success('Section updated')
+      notify.success('Group updated')
       qc.invalidateQueries({ queryKey: ['class-sections'] })
       setEditingSectionId(null)
     },
@@ -780,7 +780,7 @@ export default function AcademicEnginePage() {
   const deleteOffering = useMutation({
     mutationFn: (id: string) => fetchApi(`/api/subject-offerings/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
-      notify.success('Subject offering removed')
+      notify.success('Course offering removed')
       qc.invalidateQueries({ queryKey: ['subject-offerings'] })
     },
     onError: (e: Error) => notify.error(e.message || 'Failed to delete offering'),
@@ -909,8 +909,8 @@ export default function AcademicEnginePage() {
             </div>
             <div className="mt-4 space-y-2 text-sm text-slate-600">
               <p><span className="font-semibold text-slate-900">Foundation</span> starts with Academic Years, Shifts and Rooms.</p>
-              <p><span className="font-semibold text-slate-900">Class Management</span> organizes Sections and Elective Groups.</p>
-              <p><span className="font-semibold text-slate-900">Enrollments & Subjects</span> links students, houses and offerings.</p>
+              <p><span className="font-semibold text-slate-900">Class Management</span> organizes Groups and Elective Groups.</p>
+              <p><span className="font-semibold text-slate-900">Enrollments & Courses</span> links students, houses and offerings.</p>
               <p><span className="font-semibold text-slate-900">Operations</span> includes Timetable building and Grading.</p>
             </div>
           </div>
@@ -931,7 +931,7 @@ export default function AcademicEnginePage() {
             <div className="space-y-2 pt-3 border-t border-slate-100">
               <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Class management</p>
               <TabsTrigger value="sections" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
-                <Layers className="w-4 h-4" />Sections
+                <Layers className="w-4 h-4" />Groups
               </TabsTrigger>
               <TabsTrigger value="elective-groups" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
                 <Layout className="w-4 h-4" />Elective Groups
@@ -1224,7 +1224,7 @@ export default function AcademicEnginePage() {
           <div className="grid lg:grid-cols-2 gap-6">
             <Card className="border-t-4 border-t-violet-500 shadow-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Layers className="w-4 h-4 text-violet-500" />New Class Section</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Layers className="w-4 h-4 text-violet-500" />New Group</CardTitle>
                 <CardDescription>Combine campuses, batches, and shifts to define section rules.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1274,7 +1274,7 @@ export default function AcademicEnginePage() {
                     <Input placeholder="e.g. 9" value={sectionForm.className} onChange={(e) => setSectionForm({ ...sectionForm, className: e.target.value })} className="border-gray-200" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Section Name</Label>
+                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Group Name</Label>
                     <Input placeholder="e.g. A" value={sectionForm.sectionName} onChange={(e) => setSectionForm({ ...sectionForm, sectionName: e.target.value })} className="border-gray-200" />
                   </div>
                 </div>
@@ -1319,7 +1319,7 @@ export default function AcademicEnginePage() {
             </Card>
 
             <Card className="border-t-4 border-t-slate-300 shadow-sm">
-              <CardHeader><CardTitle className="flex items-center gap-2"><Info className="w-4 h-4 text-slate-400" />Configured Sections</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2"><Info className="w-4 h-4 text-slate-400" />Configured Groups</CardTitle></CardHeader>
               <CardContent className="max-h-[520px] overflow-y-auto space-y-4 pr-2 scrollbar-thin scrollbar-thumb-gray-200">
                 {(sections ?? []).length === 0 && (
                   <p className="text-gray-400 text-sm py-4 text-center">No sections created yet.</p>
@@ -1385,7 +1385,7 @@ export default function AcademicEnginePage() {
                               <p className="text-xs font-semibold text-violet-800">Edit section</p>
                               <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1"><Label className="text-[10px]">Class</Label><Input className="h-8 text-xs" value={editingSectionForm.className} onChange={(e) => setEditingSectionForm((f) => ({ ...f, className: e.target.value }))} /></div>
-                                <div className="space-y-1"><Label className="text-[10px]">Section</Label><Input className="h-8 text-xs" value={editingSectionForm.sectionName} onChange={(e) => setEditingSectionForm((f) => ({ ...f, sectionName: e.target.value }))} /></div>
+                                <div className="space-y-1"><Label className="text-[10px]">Group</Label><Input className="h-8 text-xs" value={editingSectionForm.sectionName} onChange={(e) => setEditingSectionForm((f) => ({ ...f, sectionName: e.target.value }))} /></div>
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
@@ -1445,7 +1445,7 @@ export default function AcademicEnginePage() {
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Select Class Section</Label>
+                  <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Select Group</Label>
                   <Select value={enrollSectionId} onValueChange={setEnrollSectionId}>
                     <SelectTrigger className="max-w-md border-gray-200 focus:ring-emerald-100 focus:border-emerald-400">
                       <SelectValue placeholder="Choose a section..." />
@@ -1547,15 +1547,15 @@ export default function AcademicEnginePage() {
             <div className="grid lg:grid-cols-2 gap-6">
               <Card className="border-t-4 border-t-pink-500 shadow-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-pink-500" />Assign Subjects</CardTitle>
+                  <CardTitle className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-pink-500" />Assign Courses</CardTitle>
                   <CardDescription>Link subjects and teachers to class sections for the active year.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Class Section</Label>
+                      <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Group</Label>
                       <Select value={offeringForm.classSectionId} onValueChange={(v) => setOfferingForm({ ...offeringForm, classSectionId: v })}>
-                        <SelectTrigger className="border-gray-200"><SelectValue placeholder="Select Section" /></SelectTrigger>
+                        <SelectTrigger className="border-gray-200"><SelectValue placeholder="Select Group" /></SelectTrigger>
                         <SelectContent>
                           {groupByShift(sections ?? []).map((group) => (
                             <SelectGroup key={group.shiftCode}>
@@ -1569,9 +1569,9 @@ export default function AcademicEnginePage() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Subject</Label>
+                      <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Course</Label>
                       <Select value={offeringForm.subjectId} onValueChange={(v) => setOfferingForm({ ...offeringForm, subjectId: v })}>
-                        <SelectTrigger className="border-gray-200"><SelectValue placeholder="Select Subject" /></SelectTrigger>
+                        <SelectTrigger className="border-gray-200"><SelectValue placeholder="Select Course" /></SelectTrigger>
                         <SelectContent>
                           {(subjects ?? []).map((s: { id: string; name: string; code: string }) => (
                             <SelectItem key={s.id} value={s.id}>{s.name} ({s.code})</SelectItem>
@@ -1582,13 +1582,13 @@ export default function AcademicEnginePage() {
                   </div>
 
                   <div className="border border-gray-100 bg-gray-50/50 p-4 rounded-xl space-y-3 mt-2">
-                    <p className="text-xs font-semibold text-gray-700">Can&apos;t find the subject? Create a new one:</p>
+                    <p className="text-xs font-semibold text-gray-700">Can&apos;t find the course? Create a new one:</p>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5"><Label className="text-[10px] uppercase text-gray-500">Name</Label><Input placeholder="e.g. Physics" value={newSubject.name} onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })} className="h-8 text-xs bg-white" /></div>
-                      <div className="space-y-1.5"><Label className="text-[10px] uppercase text-gray-500">Code</Label><Input placeholder="e.g. PHY101" value={newSubject.code} onChange={(e) => setNewSubject({ ...newSubject, code: e.target.value })} className="h-8 text-xs bg-white" /></div>
+                      <div className="space-y-1.5"><Label className="text-[10px] uppercase text-gray-500">Name</Label><Input placeholder="e.g. Robotics" value={newSubject.name} onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })} className="h-8 text-xs bg-white" /></div>
+                      <div className="space-y-1.5"><Label className="text-[10px] uppercase text-gray-500">Code</Label><Input placeholder="e.g. ROB101" value={newSubject.code} onChange={(e) => setNewSubject({ ...newSubject, code: e.target.value })} className="h-8 text-xs bg-white" /></div>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => createSubject.mutate()} disabled={!newSubject.name || !newSubject.code || createSubject.isPending} className="w-full h-8 text-xs text-pink-600 border-pink-200 hover:bg-pink-50">
-                      {createSubject.isPending ? 'Adding...' : 'Add Subject to Catalog'}
+                      {createSubject.isPending ? 'Adding...' : 'Add Course to Catalog'}
                     </Button>
                   </div>
 
@@ -1722,8 +1722,8 @@ export default function AcademicEnginePage() {
                 <p className="font-semibold mb-1">📋 How to build a timetable</p>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li><strong>Step 1 — Rooms:</strong> Go to the <em>Rooms</em> tab first and create at least one room (e.g. &quot;Room 101&quot;).</li>
-                  <li><strong>Step 2 — Select Section:</strong> Choose the Class Section you want to schedule.</li>
-                  <li><strong>Step 3 — Pick Subject:</strong> Select the subject offering (subject + teacher pair).</li>
+                  <li><strong>Step 2 — Select Group:</strong> Choose the Group you want to schedule.</li>
+                  <li><strong>Step 3 — Pick Course:</strong> Select the course offering (course + teacher pair).</li>
                   <li><strong>Step 4 — Set Day &amp; Time:</strong> Enter the day (1=Mon … 7=Sun) and start/end times (24-hr format, e.g. 09:00).</li>
                   <li><strong>Step 5 — Assign Room (optional):</strong> Select a room. The system prevents double-booking conflicts automatically.</li>
                   <li><strong>Step 6 — Add Slot:</strong> Click <em>Add slot</em>. Repeat for all periods.</li>
@@ -1753,7 +1753,7 @@ export default function AcademicEnginePage() {
                         <Select value={block.slotType} onValueChange={(value) => setTemplateBlocks((prev) => prev.map((item, i) => i === index ? { ...item, slotType: value as AutomationSlotType, subjectCode: value === 'SUBJECT' ? item.subjectCode : '' } : item))}>
                           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="SUBJECT">Subject</SelectItem>
+                            <SelectItem value="SUBJECT">Course</SelectItem>
                             <SelectItem value="BREAK">Break</SelectItem>
                             <SelectItem value="PRAYER">Prayer</SelectItem>
                             <SelectItem value="LUNCH">Lunch</SelectItem>
@@ -1763,7 +1763,7 @@ export default function AcademicEnginePage() {
                         </Select>
                         {block.slotType === 'SUBJECT' ? (
                           <Select value={block.subjectCode} onValueChange={(value) => setTemplateBlocks((prev) => prev.map((item, i) => i === index ? { ...item, subjectCode: value } : item))}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Subject offering" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Course offering" /></SelectTrigger>
                             <SelectContent>
                               {(slotOfferings ?? []).filter((offering) => !offering.subject.code?.startsWith('__')).map((offering) => (
                                 <SelectItem key={offering.id} value={offering.subject.code ?? offering.id}>{offering.subject.name}{offering.teacher ? ` · ${offering.teacher.firstName} ${offering.teacher.lastName}` : ' · no teacher'}</SelectItem>
@@ -1791,7 +1791,7 @@ export default function AcademicEnginePage() {
                       {generateTimetable.isPending ? 'Generating…' : 'Generate timetable'}
                     </Button>
                   </div>
-                  {!slotFilterSection && <p className="text-xs text-amber-700">Choose a class section below before generating the timetable.</p>}
+                  {!slotFilterSection && <p className="text-xs text-amber-700">Choose a group below before generating the timetable.</p>}
                 </CardContent>
               </Card>
 
@@ -1847,11 +1847,11 @@ export default function AcademicEnginePage() {
                     {!slotFilterSection ? (
                       <p className="text-xs text-slate-400 mt-1 border border-dashed rounded-lg p-3 text-center">Choose a section first to load subject offerings.</p>
                     ) : (slotOfferings ?? []).filter((o: { id: string; subject: { name: string; code?: string } }) => !o.subject.code?.startsWith('__')).length === 0 ? (
-                      <p className="text-xs text-amber-600 mt-1">No subject offerings for this section. Create offerings in the Subjects tab first.</p>
+                      <p className="text-xs text-amber-600 mt-1">No course offerings for this group. Create offerings in the Courses tab first.</p>
                     ) : (
                       <div className="mt-1.5 border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-48 overflow-y-auto">
                         <div className="flex items-center justify-between px-3 py-1.5 bg-slate-50">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subject · Teacher</span>
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Course · Teacher</span>
                           <button
                             type="button"
                             className="text-[10px] text-indigo-600 font-semibold hover:underline"
@@ -2367,7 +2367,7 @@ export default function AcademicEnginePage() {
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                 <p className="font-semibold mb-1">📊 How to set up Grading &amp; publish Results</p>
                 <ol className="list-decimal pl-5 space-y-1">
-                  <li><strong>Step 1 — Create a Scheme:</strong> Select a Class Section and Subject, give it a name (e.g. &quot;Standard Assessment Plan&quot;), then click <em>Create scheme</em>. The system auto-creates 5 weighted components: Quiz 10%, Assignment 10%, Activity 10%, Midterm 30%, Final 40%.</li>
+                  <li><strong>Step 1 — Create a Scheme:</strong> Select a Group and Course, give it a name (e.g. &quot;Standard Assessment Plan&quot;), then click <em>Create scheme</em>. The system auto-creates 5 weighted components: Quiz 10%, Assignment 10%, Activity 10%, Midterm 30%, Final 40%.</li>
                   <li><strong>Step 2 — Add Assessments:</strong> Under &quot;Add assessment to component&quot;, select your new scheme, pick the component (e.g. Quiz), enter a title (e.g. &quot;Quiz 1&quot;) and due date, then click <em>Add assessment</em>. Repeat for each exam or quiz.</li>
                   <li><strong>Step 3 — Teachers Enter Marks:</strong> Teachers use the Teacher Portal to enter marks against each assessment you have defined here.</li>
                   <li><strong>Step 4 — Publish Results:</strong> On the right panel, find the scheme and click <em>Publish</em>. This releases the final results so students and parents can view their report cards. <strong>This action is irreversible while the year is active.</strong></li>

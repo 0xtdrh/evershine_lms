@@ -1423,7 +1423,7 @@ export default function DocumentsPage() {
                              <div className="text-[#0f172a] font-black text-[15px] leading-[1.2] w-[280px] break-words">{selectedStudentClassSection}</div>
                           </div>
                           <div className="flex items-start">
-                             <div className="w-[90px] text-[#6b7280] uppercase tracking-wider text-[11px] font-bold leading-[1.2] pt-[2px]">Section</div>
+                             <div className="w-[90px] text-[#6b7280] uppercase tracking-wider text-[11px] font-bold leading-[1.2] pt-[2px]">Group</div>
                              <div className="text-[#93c5fd] font-normal mr-3 leading-[1.2] pt-[2px]">:</div>
                              <div className="text-[#0f172a] font-black text-[15px] leading-[1.2] w-[280px] break-words">{selectedStudent.shift ? sessionShiftFormalLabel(selectedStudent.shift) : 'N/A'}</div>
                           </div>
@@ -1729,7 +1729,7 @@ export default function DocumentsPage() {
                             <span className="font-black text-gray-900 text-[14px] block">{selectedStudent.fatherName}</span>
                           </div>
                           <div className="block w-[45%]">
-                            <span className="font-bold text-gray-400 uppercase text-[9px] tracking-wider mb-1 block">Class Section</span>
+                            <span className="font-bold text-gray-400 uppercase text-[9px] tracking-wider mb-1 block">Group</span>
                             <span className="font-black text-gray-900 text-[13px] block">{selectedStudentClassSection}</span>
                           </div>
                           <div className="block w-[45%]">
@@ -1859,7 +1859,7 @@ export default function DocumentsPage() {
                       <table className="w-full text-[9px]" style={{ borderCollapse: 'collapse', border: '1px solid black' }}>
                         <thead>
                           <tr style={{ background: '#1e3a8a', color: 'white' }}>
-                            {activeResultCardConfig.showSubjectNames && <th style={{ border: '1px solid #1e3a8a', padding: '4px 6px', textAlign: 'left', width: '38%' }}>Subject</th>}
+                            {activeResultCardConfig.showSubjectNames && <th style={{ border: '1px solid #1e3a8a', padding: '4px 6px', textAlign: 'left', width: '38%' }}>Course</th>}
                             {activeResultCardConfig.showTotalMarks && <th style={{ border: '1px solid #1e3a8a', padding: '4px 6px', textAlign: 'center' }}>Total Marks</th>}
                             {activeResultCardConfig.showObtainedMarks && <th style={{ border: '1px solid #1e3a8a', padding: '4px 6px', textAlign: 'center' }}>Obtained Marks</th>}
                             {activeResultCardConfig.showPercentage && <th style={{ border: '1px solid #1e3a8a', padding: '4px 6px', textAlign: 'center' }}>%</th>}
@@ -2047,7 +2047,7 @@ export default function DocumentsPage() {
                               <span className="font-bold text-gray-900 text-[13px] block">{selectedStudentRollNumber} / <span className="font-mono text-[#1e3a8a]">{selectedStudent.registrationNumber}</span></span>
                             </div>
                             <div className="block w-[45%]">
-                              <span className="font-bold text-gray-400 uppercase text-[9px] tracking-wider mb-1 block">Class Section</span>
+                              <span className="font-bold text-gray-400 uppercase text-[9px] tracking-wider mb-1 block">Group</span>
                               <span className="font-bold text-gray-900 text-[13px] block">{selectedStudentClassSection}</span>
                             </div>
                             <div className="block w-[45%]">
@@ -2207,7 +2207,7 @@ export default function DocumentsPage() {
                                 <thead>
                                   <tr className="bg-[#1e3a8a] text-white border-b border-gray-300 text-[8px] uppercase font-black tracking-widest">
                                     <th className="px-3 py-2 border-r border-gray-300">Student Name</th>
-                                    <th className="px-3 py-2 border-r border-gray-300">Class Section</th>
+                                    <th className="px-3 py-2 border-r border-gray-300">Group</th>
                                     <th className="px-3 py-2 border-r border-gray-300">Roll / Registration</th>
                                     <th className="px-3 py-2 border-r border-gray-300 text-right">Deficit Amount</th>
                                     <th className="px-3 py-2 text-right">Status</th>
@@ -2281,7 +2281,7 @@ export default function DocumentsPage() {
                               <table className="w-full text-left border-collapse border border-gray-300" style={{ borderCollapse: 'collapse' }}>
                                 <thead>
                                   <tr className="bg-[#1e3a8a] text-white border-b border-gray-300 text-[8px] uppercase font-black tracking-widest">
-                                    <th className="px-3 py-2 border-r border-gray-300">Class Section</th>
+                                    <th className="px-3 py-2 border-r border-gray-300">Group</th>
                                     <th className="px-3 py-2 border-r border-gray-300 text-center">Total Students</th>
                                     <th className="px-3 py-2 border-r border-gray-300 text-center">Present Today</th>
                                     <th className="px-3 py-2 border-r border-gray-300 text-center">Absent Today</th>
@@ -2348,7 +2348,7 @@ export default function DocumentsPage() {
                               <table className="w-full text-left border-collapse border border-gray-300" style={{ borderCollapse: 'collapse' }}>
                                 <thead>
                                   <tr className="bg-[#1e3a8a] text-white border-b border-gray-300 text-[8px] uppercase font-black tracking-widest">
-                                    <th className="px-3 py-2 border-r border-gray-300">Class Section</th>
+                                    <th className="px-3 py-2 border-r border-gray-300">Group</th>
                                     <th className="px-3 py-2 border-r border-gray-300 text-center">Run Exams</th>
                                     <th className="px-3 py-2 border-r border-gray-300 text-center">Highest Score</th>
                                     <th className="px-3 py-2 border-r border-gray-300 text-center">Class Average</th>

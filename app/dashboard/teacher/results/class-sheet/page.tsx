@@ -237,7 +237,7 @@ function ClassResultSheetInner() {
             {resultSessions.length === 0 && <p className="text-xs text-amber-600">No active academic year is available for result entry.</p>}
           </div>
           <div className="space-y-1.5">
-            <Label>Class Section</Label>
+            <Label>Group</Label>
             <Select value={classSectionId} onValueChange={(value) => { setClassSectionId(value); initializedKey.current = '' }} disabled={!resultSessionId}>
               <SelectTrigger><SelectValue placeholder="Select assigned section" /></SelectTrigger>
               <SelectContent>

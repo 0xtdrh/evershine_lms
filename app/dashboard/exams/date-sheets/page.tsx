@@ -413,7 +413,7 @@ export default function ExamDateSheetsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50">
-                          <TableHead>Subject</TableHead>
+                          <TableHead>Course</TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Time</TableHead>
                           <TableHead>Room</TableHead>
@@ -510,7 +510,7 @@ export default function ExamDateSheetsPage() {
                           className="grid gap-3 grid-cols-1 lg:grid-cols-[2fr_1fr_1fr_1fr_auto] items-end p-3 rounded-xl border border-slate-200 bg-slate-50/50"
                         >
                           <div>
-                            <Label htmlFor={`subject-${index}`} className="text-xs text-slate-600">Subject</Label>
+                            <Label htmlFor={`subject-${index}`} className="text-xs text-slate-600">Course</Label>
                             <Select
                               value={slot.subjectOfferingId}
                               onValueChange={(v) => updateSlot(index, 'subjectOfferingId', v)}

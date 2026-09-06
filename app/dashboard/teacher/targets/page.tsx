@@ -298,7 +298,7 @@ export default function TeacherTargetsPage() {
             </Card>
             <Card className="bg-amber-50/50 border-amber-100">
               <CardContent className="p-4">
-                <p className="text-xs font-medium text-amber-700">Subjects</p>
+                <p className="text-xs font-medium text-amber-700">Courses</p>
                 <p className="text-xl font-bold text-amber-900 mt-1">
                   {targetsData.offerings.length}
                 </p>

@@ -886,7 +886,7 @@ export default function EditTeacherPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs">Class Section</Label>
+                  <Label className="text-xs">Group</Label>
                   <Select
                     value={assignClassId || undefined}
                     disabled={!placementReady || availableClasses.length === 0}
