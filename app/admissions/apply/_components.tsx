@@ -66,32 +66,19 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
 /* ── Step Metadata ────────────────────────────────────────────── */
 
 export const STEP_META = [
-  { label: 'Program',   desc: 'Share class, course group & campus preferences if known',      icon: BookOpen },
+  { label: 'Program',   desc: 'Share campus & delivery mode preferences if known',      icon: BookOpen },
   { label: 'Student',   desc: 'Personal identity, contact & residential address',       icon: User },
-  { label: 'Academics', desc: 'Optional academic history & required photo upload',             icon: GraduationCap },
-  { label: 'Interview', desc: 'Optional prior result details for evaluation',                  icon: ClipboardList },
-  { label: 'Guardian',  desc: 'Parent or guardian contact & employment details',         icon: Users },
+  { label: 'Background', desc: 'Current school, grade & any prior programming experience', icon: GraduationCap },
+  { label: 'Guardian',  desc: 'Parent or guardian contact details',         icon: Users },
   { label: 'Review',    desc: 'Confirm your details, accept terms & submit',            icon: Send },
 ]
 
 /* ── Static Data Constants ────────────────────────────────────── */
 
-export const PAKISTAN_PROVINCES = [
-  'Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan',
-  'Gilgit-Baltistan', 'Azad Jammu & Kashmir', 'Islamabad Capital Territory',
-]
-
-export const FATHER_QUALIFICATIONS = [
-  'Below Primary', 'Primary (Class 5)', 'Middle (Class 8)',
-  'Matriculation (Class 10)', 'Intermediate (Class 12)',
-  'Bachelor\'s Degree', 'Master\'s Degree', 'PhD / Doctorate', 'Professional Degree',
-]
-
 export const FATHER_OCCUPATIONS = [
   'Government Service', 'Private Service', 'Business / Self-Employed',
-  'Farming / Agriculture', 'Teaching', 'Doctor / Medical',
-  'Engineer', 'Lawyer', 'Army / Police / Paramilitary',
-  'Labour / Daily Wage', 'Retired', 'Deceased', 'Other',
+  'Teaching', 'Doctor / Medical', 'Engineer', 'Lawyer',
+  'Military / Police', 'Retired', 'Other',
 ]
 
 export const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
@@ -101,39 +88,12 @@ export const RELATIONSHIPS = [
   'Grandmother', 'Legal Guardian', 'Other',
 ]
 
-export const ACADEMIC_LEVELS = [
-  { value: 'PG_TO_5TH',  label: 'Play Group to 5th' },
-  { value: '6_TO_PRE_9TH', label: '6th to Pre 9th' },
-  { value: '9TH',        label: '9th (Matric Part-I)' },
-  { value: '10TH',       label: '10th (Matric Part-II)' },
-  { value: '11TH',       label: '11th (Inter Part-I)' },
-  { value: '12TH',       label: '12th (Inter Part-II)' },
-  { value: 'O_LEVEL',    label: 'O Level' },
-  { value: 'A_LEVEL',    label: 'A Level' },
-  { value: 'ADP',        label: 'ADP' },
-  { value: 'BS',         label: 'BS' },
-  { value: 'OTHER',      label: 'Other' },
-]
-
-export const REPEATER_SUBJECTS = [
-  'Physics', 'Chemistry', 'Bio/Math', 'Urdu', 'English', 'Islamiat / Pak Study', 'Other'
-]
-
-export const GUARDIAN_EMPLOYMENT_STATUSES = [
-  { value: 'GOVT',    label: 'Government Employed' },
-  { value: 'PRIVATE', label: 'Private Sector' },
-  { value: 'BUSINESS',label: 'Business Owner' },
-  { value: 'NONE',    label: 'Unemployed / Retired / N/A' },
-]
-
-export const ACADEMIC_GROUPS = [
-  'Basics', 'Computer Group', 'Biology Group', 'Arts',
-  'Pre Medical', 'Pre Engineering', 'I.C.S',
-  'F.A', 'F.A (IT)', 'F.Sc', 'I.Com', 'G.Science',
-  'O Level', 'A Level', 'ADP', 'Diploma',
-  // Quranic & Islamic programs
-  'Hifz-ul-Quran', 'Nazra Quran', 'Quranic Studies',
-  'Other'
+export const PARENT_STATUSES = [
+  { value: 'BOTH_ALIVE', label: 'Both parents present' },
+  { value: 'FATHER_DECEASED', label: 'Father deceased' },
+  { value: 'MOTHER_DECEASED', label: 'Mother deceased' },
+  { value: 'BOTH_DECEASED', label: 'Both deceased' },
+  { value: 'DIVORCED', label: 'Parents divorced' },
 ]
 
 // WHY no COURSE_FEE_ESTIMATE_MAP: Fee structures are managed by the Super Admin
@@ -153,26 +113,21 @@ export const DELIVERY_MODES = [
 ] as const
 
 export const MARKETING_SOURCES = [
-  'Newspaper', 'Banners', 'Outdoor Hoardings', 'Streamers (Pent)',
-  'Brochure/Leaflet', 'SMS', 'ESA Website', 'Facebook/Google',
-  'Family/Friends', 'TV', 'Cable', 'FM Radio', 'Seminar',
-  'Letter', 'Telemarketing', 'Box Board', 'Others'
+  'Facebook/Instagram', 'TikTok', 'TechNova Website', 'WhatsApp',
+  'Family/Friends', 'School', 'Nursery', 'Event/Competition', 'Other'
 ]
 
-/* ── Admission Rules (from physical form page 2) ──────────────── */
+/* ── Admission Rules ───────────────────────────────────────────── */
 
 export const ADMISSION_RULES = [
   'Fee once deposited is neither refundable nor adjustable in any case.',
-  'Session timings are subject to the availability of the teachers and can be amended if required.',
-  'Parents must attend the office regularly within mentioned time to discuss the progress of the student.',
-  'AWC will be applied to late and absentees. Moreover pay your academy dues within mentioned dates.',
-  'Misconduct of any type will be culpable.',
-  'Any damage caused by the student will be charged accordingly.',
-  'Institution is relieved of responsibility (legal, etc.) in case of any injury, damage or loss, which is beyond its control.',
-  'Use of mobile phones and wearing jewelry is strictly prohibited in the campus premises.',
-  'Institution will not, in any case, be responsible for any loss suffered by a student.',
-  'It is mandatory for every student to attend the ESA EVENTS.',
+  'Session timings are subject to the availability of the trainers and can be amended if required.',
+  'Parents are welcome to contact the branch regularly to discuss the student\'s progress.',
+  'Please pay your monthly dues within the mentioned dates.',
+  'Any damage caused by the student to TechNova equipment will be charged accordingly.',
+  'TechNova is relieved of responsibility (legal, etc.) in case of any injury, damage, or loss which is beyond its control.',
+  'TechNova will not, in any case, be responsible for any loss suffered by a student.',
   'Registration is mandatory for every student every year.',
   'Decisions of the administration will be final, in any case.',
-  'I acknowledge that my enrollment will remain active for the complete academic session unless an official withdrawal application is submitted and approved. If I wish to leave the institute, I must submit the application at least 14 calendar days before the end of the intended final month and clear all outstanding dues.',
+  'I acknowledge that my enrollment will remain active for the complete session unless an official withdrawal application is submitted and approved. If I wish to leave, I must submit the application at least 14 calendar days before the end of the intended final month and clear all outstanding dues.',
 ]

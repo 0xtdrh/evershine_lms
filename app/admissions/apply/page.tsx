@@ -17,7 +17,7 @@ import { notify } from '@/lib/notify'
 // single notification façade. Mixing two toast libraries causes ID type mismatches
 // and duplicate toast rendering. See lib/notify.ts for the unified API.
 import imageCompression from 'browser-image-compression'
-import { FL, FRow, FGroup, FieldError, SectionTitle, STEP_META, ADMISSION_RULES, PAKISTAN_PROVINCES, FATHER_QUALIFICATIONS, FATHER_OCCUPATIONS, RELATIONSHIPS, ACADEMIC_LEVELS, REPEATER_SUBJECTS, BLOOD_GROUPS, GUARDIAN_EMPLOYMENT_STATUSES, ACADEMIC_GROUPS, MARKETING_SOURCES, DELIVERY_MODES } from './_components'
+import { FL, FRow, FGroup, FieldError, SectionTitle, STEP_META, ADMISSION_RULES, FATHER_OCCUPATIONS, RELATIONSHIPS, BLOOD_GROUPS, PARENT_STATUSES, MARKETING_SOURCES, DELIVERY_MODES } from './_components'
 import { SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
 import Link from 'next/link'
 
@@ -25,18 +25,14 @@ type ApiFieldError = { field: string; message: string }
 
 const INITIAL_ADMISSION_FORM_DATA = {
   preferredCampusId: '', preferredBatchId: '', preferredShift: '', deliveryMode: 'PHYSICAL',
-  requestedLevel: '', requestedClass: '', requestedGroup: '', requestedGroupOther: '', requestedCourses: [] as string[], requestedCoursesOther: '', repeaterSubjects: '',
-  firstName: '', lastName: '', fatherName: '', motherName: '', cnicBForm: '', dateOfBirth: '', placeOfBirth: '',
-  gender: '', bloodGroup: '', religion: '', nationality: 'Pakistani', domicile: '',
-  address: '', city: '', province: '', tehsil: '', district: '', permanentAddress: '', postalCode: '', phoneNumber: '', emergencyContact: '', email: '',
-  previousSchool: '', lastClassPassed: '', lastPercentage: '', previousTotalMarks: '', previousMarksObtained: '', previousGroup: '', boardName: '', yearOfPassing: '',
-  interviewInstitute: '', interviewMarksObtained: '', interviewPercentage: '', interviewYear: '', interviewGroup: '',
-  interviewDate: '', interviewerName: '', interviewOutcome: '', interviewNotes: '',
-  guardianFirstName: '', guardianLastName: '', guardianCnic: '', guardianPhoneNumber: '', guardianEmail: '', guardianRelationship: '',
-  guardianEmploymentStatus: '', guardianDesignation: '', guardianOrganization: '', guardianBusinessName: '', guardianBusinessDealsIn: '',
-  fatherOccupation: '', fatherQualification: '', fatherCnic: '',
-  passportPhotoBase64: '', bFormDocBase64: '', previousResultBase64: '',
-  medicalConditions: '', hasDisability: false, disabilityDetails: '', hasSiblingAtAcademy: false, siblingName: '', siblingClass: '',
+  firstName: '', lastName: '', fullNameAr: '', fullNameEn: '', fatherName: '', motherName: '', dateOfBirth: '',
+  gender: '', bloodGroup: '', nationality: 'Egyptian',
+  address: '', city: '', phoneNumber: '', emergencyContact: '', email: '',
+  schoolName: '', regularSchoolGrade: '', priorProgrammingExperience: '',
+  guardianFirstName: '', guardianLastName: '', guardianPhoneNumber: '', guardianEmail: '', guardianRelationship: '',
+  fatherPhoneNumber: '', fatherOccupation: '', motherPhoneNumber: '', motherOccupation: '', parentStatus: 'BOTH_ALIVE',
+  passportPhotoBase64: '',
+  medicalNotes: '', hasSiblingAtAcademy: false, siblingName: '', siblingClass: '',
   sourceOfInfo: '', termsAccepted: false,
 }
 
@@ -48,7 +44,6 @@ export default function AdmissionFormPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<AdmissionFormData>(INITIAL_ADMISSION_FORM_DATA)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [repeaterOtherText, setRepeaterOtherText] = useState('')
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type, checked } = e.target as HTMLInputElement
@@ -61,63 +56,6 @@ export default function AdmissionFormPage() {
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }))
   }
 
-  const handleClassSelect = (value: string) => {
-    setFormData(prev => ({ ...prev, requestedLevel: value, requestedClass: value }))
-    if (errors.requestedLevel) setErrors(prev => ({ ...prev, requestedLevel: '' }))
-    if (errors.requestedClass) setErrors(prev => ({ ...prev, requestedClass: '' }))
-  }
-
-  const handleCheckboxList = (name: string, value: string) => {
-    setFormData(prev => {
-      const current = Array.isArray(prev[name]) ? prev[name] : []
-      const next = current.includes(value)
-        ? current.filter((item: string) => item !== value)
-        : [...current, value]
-      return { ...prev, [name]: next }
-    })
-    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }))
-  }
-
-  const parseRepeaterSubjects = (value: string) =>
-    value
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean)
-
-  const isRepeaterSubjectSelected = (subject: string) => {
-    const selection = parseRepeaterSubjects(formData.repeaterSubjects)
-    if (subject === 'Other') {
-      return selection.some((item) => item.startsWith('Other'))
-    }
-    return selection.includes(subject)
-  }
-
-  const handleRepeaterSubjectToggle = (subject: string) => {
-    setFormData((prev) => {
-      const current = parseRepeaterSubjects(prev.repeaterSubjects).filter(
-        (item) => !item.startsWith('Other') || subject === 'Other'
-      )
-      const hasSubject = current.some((item) => item === subject || (subject === 'Other' && item.startsWith('Other')))
-      const next = hasSubject
-        ? current.filter((item) => item !== subject && !item.startsWith('Other'))
-        : [...current.filter((item) => !item.startsWith('Other')), subject === 'Other' ? 'Other' : subject]
-      return { ...prev, repeaterSubjects: next.join(', ') }
-    })
-    if (errors.repeaterSubjects) setErrors((prev) => ({ ...prev, repeaterSubjects: '' }))
-  }
-
-  const handleRepeaterOtherText = (value: string) => {
-    setRepeaterOtherText(value)
-    setFormData((prev) => {
-      const current = parseRepeaterSubjects(prev.repeaterSubjects).filter((item) => !item.startsWith('Other'))
-      if (value.trim()) {
-        current.push(`Other: ${value.trim()}`)
-      }
-      return { ...prev, repeaterSubjects: current.join(', ') }
-    })
-  }
-
-  const requestedCourses = formData.requestedCourses
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -146,24 +84,22 @@ export default function AdmissionFormPage() {
     if (currentStep === 2) {
       if (!formData.firstName || formData.firstName.length < 2) newErrors.firstName = 'First name required (min 2)'
       if (!formData.lastName || formData.lastName.length < 2) newErrors.lastName = 'Last name required (min 2)'
+      if (!formData.fullNameAr || formData.fullNameAr.length < 5) newErrors.fullNameAr = 'Full Arabic name required'
       if (!formData.fatherName || formData.fatherName.length < 2) newErrors.fatherName = 'Father name required'
-      if (!formData.cnicBForm || !/^[\d\-]{13,15}$/.test(formData.cnicBForm)) newErrors.cnicBForm = 'Valid B-Form/CNIC required'
       if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth required'
       if (!formData.gender) newErrors.gender = 'Gender required'
       if (!formData.address || formData.address.length < 5) newErrors.address = 'Full address required'
       if (!formData.city) newErrors.city = 'City required'
-      if (!formData.province) newErrors.province = 'Province required'
       if (!formData.phoneNumber || formData.phoneNumber.length < 10) newErrors.phoneNumber = 'Valid phone required'
       if (!formData.emergencyContact || formData.emergencyContact.length < 10) newErrors.emergencyContact = 'Valid emergency contact required'
     } else if (currentStep === 3) {
       if (!formData.passportPhotoBase64) newErrors.passportPhotoBase64 = 'Passport photo is required'
-    } else if (currentStep === 5) {
+    } else if (currentStep === 4) {
       if (!formData.guardianFirstName) newErrors.guardianFirstName = 'Guardian first name required'
       if (!formData.guardianLastName) newErrors.guardianLastName = 'Guardian last name required'
-      if (!formData.guardianCnic || !/^[\d\-]{13,15}$/.test(formData.guardianCnic)) newErrors.guardianCnic = 'Valid Guardian CNIC required'
       if (!formData.guardianPhoneNumber) newErrors.guardianPhoneNumber = 'Guardian phone required'
       if (!formData.guardianRelationship) newErrors.guardianRelationship = 'Relationship required'
-    } else if (currentStep === 6) {
+    } else if (currentStep === 5) {
       if (!formData.termsAccepted) newErrors.termsAccepted = 'You must accept the terms and conditions'
     }
     setErrors(newErrors)
@@ -217,28 +153,17 @@ export default function AdmissionFormPage() {
           // Jump to first step with error
           const stepMap: Record<string, number> = {
             preferredCampusId: 1,
-            requestedLevel: 1,
-            requestedClass: 1,
-            requestedGroup: 1,
-            requestedGroupOther: 1,
-            requestedCourses: 1,
-            previousSchool: 3,
-            lastClassPassed: 3,
-            previousTotalMarks: 3,
-            previousMarksObtained: 3,
-            yearOfPassing: 3,
+            fullNameAr: 2,
+            fatherName: 2,
+            schoolName: 3,
+            regularSchoolGrade: 3,
+            priorProgrammingExperience: 3,
             passportPhotoBase64: 3,
-            interviewInstitute: 4,
-            interviewGroup: 4,
-            interviewMarksObtained: 4,
-            interviewPercentage: 4,
-            interviewYear: 4,
-            guardianFirstName: 5,
-            guardianLastName: 5,
-            guardianCnic: 5,
-            guardianPhoneNumber: 5,
-            guardianRelationship: 5,
-            termsAccepted: 6,
+            guardianFirstName: 4,
+            guardianLastName: 4,
+            guardianPhoneNumber: 4,
+            guardianRelationship: 4,
+            termsAccepted: 5,
           }
           const firstErrField = Object.keys(apiErrs)[0]
           const firstErrBase = firstErrField?.split('.')[0]
@@ -367,43 +292,6 @@ export default function AdmissionFormPage() {
                 {step === 1 && (
                   <div className="space-y-6">
                     <SectionTitle>Program Preferences</SectionTitle>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <FGroup>
-                        <FL>Class / Grade</FL>
-                        <Select value={formData.requestedLevel} onValueChange={handleClassSelect}>
-                          <SelectTrigger><SelectValue placeholder="Select class or grade" /></SelectTrigger>
-                          <SelectContent>
-                            {ACADEMIC_LEVELS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FieldError message={errors.requestedLevel} />
-                      </FGroup>
-
-                      <FGroup>
-                        <FL>Primary Group / Program</FL>
-                        <Select value={formData.requestedGroup} onValueChange={(val) => handleSelect('requestedGroup', val)}>
-                          <SelectTrigger><SelectValue placeholder="Select primary program" /></SelectTrigger>
-                          <SelectContent>
-                            {ACADEMIC_GROUPS.map((group) => (
-                              <SelectItem key={group} value={group}>{group}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FGroup>
-                    </div>
-                    {formData.requestedGroup === 'Other' && (
-                      <FGroup full>
-                        <FL>Other primary program</FL>
-                        <Input
-                          name="requestedGroupOther"
-                          value={formData.requestedGroupOther}
-                          onChange={handleChange}
-                          placeholder="Describe the program you want to apply for"
-                        />
-                      </FGroup>
-                    )}
 
                     {/* Delivery Mode & Preferred Shift */}
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -432,67 +320,9 @@ export default function AdmissionFormPage() {
                       </FGroup>
                     </div>
 
-                    <div className="grid gap-4">
-                      <div className="flex flex-col gap-2">
-                        <div className="text-sm font-medium text-slate-700">Group / Courses</div>
-                        <p className="text-sm text-slate-500">Optionally select the course groups or streams that apply to this applicant. Multiple selections are allowed.</p>
-                      </div>
-
-                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        {ACADEMIC_GROUPS.map((group) => (
-                          <motion.button
-                            key={group}
-                            type="button"
-                            onClick={() => handleCheckboxList('requestedCourses', group)}
-                            whileHover={{ y: -2 }}
-                            whileTap={{ scale: 0.98 }}
-                            className={`group rounded-3xl border p-4 text-left transition-all duration-200 shadow-sm ${requestedCourses.includes(group) ? 'border-blue-600 bg-blue-600 text-white shadow-blue-200' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md'}`}>
-                            <span className="font-semibold transition-colors duration-200 group-hover:text-blue-800">{group}</span>
-                          </motion.button>
-                        ))}
-                      </div>
-                      <FieldError message={errors.requestedCourses} />
-
-                      {requestedCourses.includes('Other') && (
-                        <FGroup full>
-                          <FL>Other desired courses</FL>
-                          <Input
-                            name="requestedCoursesOther"
-                            value={formData.requestedCoursesOther}
-                            placeholder="Describe the course or program you want to apply for"
-                            onChange={handleChange}
-                          />
-                        </FGroup>
-                      )}
-                    </div>
-
                     <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 shadow-sm">
                       <div className="font-semibold text-slate-900">Program preferences will be verified by the admissions office</div>
-                      <p className="mt-1 text-slate-500">Share preferred course streams if known. Final placement and fees are confirmed by the admissions team after review.</p>
-                    </div>
-
-                    <div className="grid gap-4">
-                      <div className="text-sm font-medium text-slate-700">Repeater Subjects</div>
-                      <p className="text-sm text-slate-500">If the student is repeating subjects, choose the subjects below.</p>
-                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        {REPEATER_SUBJECTS.map((subject) => (
-                          <motion.button
-                            key={subject}
-                            type="button"
-                            onClick={() => handleRepeaterSubjectToggle(subject)}
-                            whileHover={{ y: -2 }}
-                            whileTap={{ scale: 0.98 }}
-                            className={`rounded-2xl border px-4 py-3 text-left transition-all duration-200 shadow-sm ${isRepeaterSubjectSelected(subject) ? 'border-blue-600 bg-blue-600 text-white shadow-blue-200' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50'}`}>
-                            {subject}
-                          </motion.button>
-                        ))}
-                      </div>
-                      {isRepeaterSubjectSelected('Other') && (
-                        <FGroup full>
-                          <FL>Please specify other repeat subjects</FL>
-                          <Input value={repeaterOtherText} onChange={(event) => handleRepeaterOtherText(event.target.value)} placeholder="Describe other repeated subjects" />
-                        </FGroup>
-                      )}
+                      <p className="mt-1 text-slate-500">The exact course, level, and group will be confirmed by the admissions team after review.</p>
                     </div>
                   </div>
                 )}
@@ -502,14 +332,23 @@ export default function AdmissionFormPage() {
                     <SectionTitle>Student Details & Contact</SectionTitle>
                     <FRow>
                       <FGroup>
-                        <FL required>First Name</FL>
+                        <FL required>First Name (English)</FL>
                         <Input name="firstName" value={formData.firstName} onChange={handleChange} />
                         <FieldError message={errors.firstName} />
                       </FGroup>
                       <FGroup>
-                        <FL required>Last Name</FL>
+                        <FL required>Last Name (English)</FL>
                         <Input name="lastName" value={formData.lastName} onChange={handleChange} />
                         <FieldError message={errors.lastName} />
+                      </FGroup>
+                      <FGroup full>
+                        <FL required>Full Name (Arabic)</FL>
+                        <Input name="fullNameAr" value={formData.fullNameAr} onChange={handleChange} placeholder="أحمد محمد علي حسن" />
+                        <FieldError message={errors.fullNameAr} />
+                      </FGroup>
+                      <FGroup full>
+                        <FL>Full Name (English, for certificates)</FL>
+                        <Input name="fullNameEn" value={formData.fullNameEn} onChange={handleChange} placeholder="Ahmed Mohamed Ali Hassan" />
                       </FGroup>
                       <FGroup>
                         <FL required>Father&apos;s Name</FL>
@@ -517,22 +356,43 @@ export default function AdmissionFormPage() {
                         <FieldError message={errors.fatherName} />
                       </FGroup>
                       <FGroup>
+                        <FL>Father&apos;s Phone</FL>
+                        <Input name="fatherPhoneNumber" value={formData.fatherPhoneNumber} onChange={handleChange} placeholder="+201234567890" />
+                      </FGroup>
+                      <FGroup>
+                        <FL>Father&apos;s Occupation</FL>
+                        <Select value={formData.fatherOccupation} onValueChange={(val) => handleSelect('fatherOccupation', val)}>
+                          <SelectTrigger><SelectValue placeholder="Select occupation" /></SelectTrigger>
+                          <SelectContent>
+                            {FATHER_OCCUPATIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </FGroup>
+                      <FGroup>
                         <FL>Mother&apos;s Name</FL>
                         <Input name="motherName" value={formData.motherName} onChange={handleChange} />
                       </FGroup>
                       <FGroup>
-                        <FL required>CNIC / B-Form</FL>
-                        <Input name="cnicBForm" value={formData.cnicBForm} onChange={handleChange} placeholder="e.g. 3530123456789" />
-                        <FieldError message={errors.cnicBForm} />
+                        <FL>Mother&apos;s Phone</FL>
+                        <Input name="motherPhoneNumber" value={formData.motherPhoneNumber} onChange={handleChange} placeholder="+201234567890" />
+                      </FGroup>
+                      <FGroup>
+                        <FL>Mother&apos;s Occupation</FL>
+                        <Input name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} placeholder="e.g. Doctor, Housewife" />
+                      </FGroup>
+                      <FGroup>
+                        <FL>Parent Status</FL>
+                        <Select value={formData.parentStatus} onValueChange={(val) => handleSelect('parentStatus', val)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {PARENT_STATUSES.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </FGroup>
                       <FGroup>
                         <FL required>Date of Birth</FL>
                         <Input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} />
                         <FieldError message={errors.dateOfBirth} />
-                      </FGroup>
-                      <FGroup>
-                        <FL>Place of Birth</FL>
-                        <Input name="placeOfBirth" value={formData.placeOfBirth} onChange={handleChange} placeholder="City / town" />
                       </FGroup>
                       <FGroup>
                         <FL required>Gender</FL>
@@ -555,16 +415,8 @@ export default function AdmissionFormPage() {
                         </Select>
                       </FGroup>
                       <FGroup>
-                        <FL>Religion</FL>
-                        <Input name="religion" value={formData.religion} onChange={handleChange} placeholder="e.g. Islam" />
-                      </FGroup>
-                      <FGroup>
                         <FL>Nationality</FL>
                         <Input name="nationality" value={formData.nationality} onChange={handleChange} />
-                      </FGroup>
-                      <FGroup>
-                        <FL>Domicile</FL>
-                        <Input name="domicile" value={formData.domicile} onChange={handleChange} placeholder="District domicile" />
                       </FGroup>
                     </FRow>
 
@@ -572,40 +424,14 @@ export default function AdmissionFormPage() {
                       <SectionTitle>Contact Information</SectionTitle>
                       <FGroup full>
                         <FL required>Complete Residential Address</FL>
-                        <Textarea name="address" value={formData.address} onChange={handleChange} placeholder="House, Street, Area..." rows={3} />
+                        <Textarea name="address" value={formData.address} onChange={handleChange} placeholder="Street, area, landmark..." rows={3} />
                         <FieldError message={errors.address} />
                       </FGroup>
                       <FRow>
                         <FGroup>
-                          <FL required>City / District</FL>
-                          <Input name="city" value={formData.city} onChange={handleChange} />
+                          <FL required>City</FL>
+                          <Input name="city" value={formData.city} onChange={handleChange} placeholder="e.g. Hurghada" />
                           <FieldError message={errors.city} />
-                        </FGroup>
-                        <FGroup>
-                          <FL required>Province</FL>
-                          <Select value={formData.province} onValueChange={(val) => handleSelect('province', val)}>
-                            <SelectTrigger><SelectValue placeholder="Select Province" /></SelectTrigger>
-                            <SelectContent>
-                              {PAKISTAN_PROVINCES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                          <FieldError message={errors.province} />
-                        </FGroup>
-                        <FGroup>
-                          <FL>Tehsil</FL>
-                          <Input name="tehsil" value={formData.tehsil} onChange={handleChange} placeholder="e.g. City / Saddar" />
-                        </FGroup>
-                        <FGroup>
-                          <FL>District</FL>
-                          <Input name="district" value={formData.district} onChange={handleChange} placeholder="e.g. Faisalabad" />
-                        </FGroup>
-                        <FGroup full>
-                          <FL>Permanent Address (If different)</FL>
-                          <Textarea name="permanentAddress" value={formData.permanentAddress} onChange={handleChange} placeholder="Enter permanent address" rows={2} />
-                        </FGroup>
-                        <FGroup>
-                          <FL>Postal Code</FL>
-                          <Input name="postalCode" value={formData.postalCode} onChange={handleChange} placeholder="e.g. 38000" />
                         </FGroup>
                         <FGroup>
                           <FL>Email Address (Optional)</FL>
@@ -614,12 +440,12 @@ export default function AdmissionFormPage() {
                         </FGroup>
                         <FGroup>
                           <FL required>Primary Phone Number</FL>
-                          <Input name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} placeholder="03XXXXXXXXX" />
+                          <Input name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} placeholder="+201234567890" />
                           <FieldError message={errors.phoneNumber} />
                         </FGroup>
                         <FGroup>
                           <FL required>Emergency Contact (Different from Primary)</FL>
-                          <Input name="emergencyContact" value={formData.emergencyContact} onChange={handleChange} placeholder="03XXXXXXXXX" />
+                          <Input name="emergencyContact" value={formData.emergencyContact} onChange={handleChange} placeholder="+201234567890" />
                           <FieldError message={errors.emergencyContact} />
                         </FGroup>
                       </FRow>
@@ -629,60 +455,29 @@ export default function AdmissionFormPage() {
 
                 {step === 3 && (
                   <div className="space-y-6">
-                    <SectionTitle>Previous Academic History (Optional)</SectionTitle>
+                    <SectionTitle>School Background (Optional)</SectionTitle>
                     <FRow>
                       <FGroup>
-                        <FL>Previous School / Institution</FL>
-                        <Input name="previousSchool" value={formData.previousSchool} onChange={handleChange} placeholder="Last school attended" />
-                        <FieldError message={errors.previousSchool} />
+                        <FL>Current School</FL>
+                        <Input name="schoolName" value={formData.schoolName} onChange={handleChange} placeholder="e.g. Al-Ahyaa Language School" />
                       </FGroup>
                       <FGroup>
-                        <FL>Last Class Passed</FL>
-                        <Select value={formData.lastClassPassed} onValueChange={(val) => handleSelect('lastClassPassed', val)}>
-                          <SelectTrigger><SelectValue placeholder="Select class passed" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">Below Class 1</SelectItem>
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(c => (
-                              <SelectItem key={c} value={c.toString()}>Class {c}</SelectItem>
-                            ))}
-                            <SelectItem value="13">Above Class 12</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-slate-500 mt-1">Choose the last completed grade. 0 means below Class 1 and 13 means above Class 12.</p>
-                        <FieldError message={errors.lastClassPassed} />
+                        <FL>School Grade</FL>
+                        <Input name="regularSchoolGrade" value={formData.regularSchoolGrade} onChange={handleChange} placeholder="e.g. الصف الرابع الابتدائي" />
                       </FGroup>
-                      <FGroup>
-                        <FL>Total Marks</FL>
-                        <Input type="number" name="previousTotalMarks" value={formData.previousTotalMarks} onChange={handleChange} placeholder="e.g. 1100" />
-                        <FieldError message={errors.previousTotalMarks} />
-                      </FGroup>
-                      <FGroup>
-                        <FL>Marks Obtained</FL>
-                        <Input type="number" name="previousMarksObtained" value={formData.previousMarksObtained} onChange={handleChange} placeholder="e.g. 750" />
-                        <FieldError message={errors.previousMarksObtained} />
-                      </FGroup>
-                      <FGroup>
-                        <FL>Previous Group</FL>
-                        <Input name="previousGroup" value={formData.previousGroup} onChange={handleChange} placeholder="e.g. Science" />
-                      </FGroup>
-                      <FGroup>
-                        <FL>Examining Board</FL>
-                        <Input name="boardName" value={formData.boardName} onChange={handleChange} placeholder="e.g. BISE Faisalabad" />
-                      </FGroup>
-                      <FGroup>
-                        <FL>Year of Passing</FL>
-                        <Input type="number" name="yearOfPassing" value={formData.yearOfPassing} onChange={handleChange} placeholder="e.g. 2024" />
-                        <FieldError message={errors.yearOfPassing} />
+                      <FGroup full>
+                        <FL>Prior Programming / Robotics Experience</FL>
+                        <Input name="priorProgrammingExperience" value={formData.priorProgrammingExperience} onChange={handleChange} placeholder="e.g. Took a Scratch course before" />
                       </FGroup>
                     </FRow>
 
                     <div className="mt-6 border-t border-slate-200 pt-6">
-                      <SectionTitle>Document Uploads</SectionTitle>
+                      <SectionTitle>Document Upload</SectionTitle>
                       <div className={`p-4 border rounded-xl ${errors.passportPhotoBase64 ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}>
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <FL required>Passport Size Photograph</FL>
-                            <p className="text-xs text-slate-500 mt-1">Recent photo, blue or white background. Max 5MB.</p>
+                            <p className="text-xs text-slate-500 mt-1">Recent photo, plain background. Max 5MB.</p>
                           </div>
                           {formData.passportPhotoBase64 && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
                         </div>
@@ -698,70 +493,11 @@ export default function AdmissionFormPage() {
                         </div>
                         <FieldError message={errors.passportPhotoBase64} />
                       </div>
-
-                      <div className="p-4 border border-slate-200 rounded-xl mt-4">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <FL>Student B-Form Scan (Optional)</FL>
-                            <p className="text-xs text-slate-500 mt-1">Clear picture of NADRA B-Form. Max 5MB.</p>
-                          </div>
-                          {formData.bFormDocBase64 && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
-                        </div>
-                        <Input type="file" accept="image/jpeg, image/png, image/webp" onChange={(e) => handleFileUpload(e, 'bFormDocBase64')} />
-                      </div>
-
-                      <div className="p-4 border border-slate-200 rounded-xl mt-4">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <FL>Previous Result Card (Optional)</FL>
-                            <p className="text-xs text-slate-500 mt-1">Upload last examination marksheet or result card. Max 5MB.</p>
-                          </div>
-                          {formData.previousResultBase64 && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
-                        </div>
-                        <Input type="file" accept="image/jpeg, image/png, image/webp" onChange={(e) => handleFileUpload(e, 'previousResultBase64')} />
-                      </div>
                     </div>
                   </div>
                 )}
 
                 {step === 4 && (
-                  <div className="space-y-6">
-                    <SectionTitle>Interview Details (Optional)</SectionTitle>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <FGroup>
-                        <FL>Institute</FL>
-                        <Input name="interviewInstitute" value={formData.interviewInstitute} onChange={handleChange} placeholder="Name of school or college" />
-                        <FieldError message={errors.interviewInstitute} />
-                      </FGroup>
-                      <FGroup>
-                        <FL>Group</FL>
-                        <Input name="interviewGroup" value={formData.interviewGroup} onChange={handleChange} placeholder="e.g. Science, Arts" />
-                        <FieldError message={errors.interviewGroup} />
-                      </FGroup>
-                      <FGroup>
-                        <FL>Marks Obtained</FL>
-                        <Input type="number" name="interviewMarksObtained" value={formData.interviewMarksObtained} onChange={handleChange} placeholder="e.g. 850" />
-                        <FieldError message={errors.interviewMarksObtained} />
-                      </FGroup>
-                      <FGroup>
-                        <FL>%age</FL>
-                        <Input type="text" name="interviewPercentage" value={formData.interviewPercentage} onChange={handleChange} placeholder="e.g. 76.5%" />
-                        <FieldError message={errors.interviewPercentage} />
-                      </FGroup>
-                      <FGroup>
-                        <FL>Year</FL>
-                        <Input type="number" name="interviewYear" value={formData.interviewYear} onChange={handleChange} placeholder="e.g. 2025" />
-                        <FieldError message={errors.interviewYear} />
-                      </FGroup>
-                    </div>
-                    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600 shadow-sm">
-                      <p className="font-semibold text-slate-900 mb-2">Prior academic result</p>
-                      <p>Record the applicant’s last academic result when available. Admissions can continue if these details are not available at submission time.</p>
-                    </div>
-                  </div>
-                )}
-
-                {step === 5 && (
                   <div className="space-y-6">
                     <SectionTitle>Guardian Information</SectionTitle>
                     <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 mb-6">
@@ -778,11 +514,6 @@ export default function AdmissionFormPage() {
                       <FGroup>
                         <FL required>Guardian Last Name</FL>
                         <Input name="guardianLastName" value={formData.guardianLastName} onChange={handleChange} />
-                      </FGroup>
-                      <FGroup>
-                        <FL required>Guardian CNIC</FL>
-                        <Input name="guardianCnic" value={formData.guardianCnic} onChange={handleChange} placeholder="Without dashes" />
-                        <FieldError message={errors.guardianCnic} />
                       </FGroup>
                       <FGroup>
                         <FL required>Relationship to Student</FL>
@@ -803,75 +534,43 @@ export default function AdmissionFormPage() {
                         <FL>Guardian Email</FL>
                         <Input type="email" name="guardianEmail" value={formData.guardianEmail} onChange={handleChange} />
                       </FGroup>
-                      <FGroup>
-                        <FL>Employment Status</FL>
-                        <Select value={formData.guardianEmploymentStatus} onValueChange={(val) => handleSelect('guardianEmploymentStatus', val)}>
-                          <SelectTrigger><SelectValue placeholder="Select Employment" /></SelectTrigger>
-                          <SelectContent>
-                            {GUARDIAN_EMPLOYMENT_STATUSES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </FGroup>
                     </FRow>
 
-                    <AnimatePresence>
-                      {(formData.guardianEmploymentStatus === 'GOVT' || formData.guardianEmploymentStatus === 'PRIVATE') && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                          <FRow>
-                            <FGroup>
-                              <FL>Designation</FL>
-                              <Input name="guardianDesignation" value={formData.guardianDesignation} onChange={handleChange} placeholder="e.g. Manager" />
-                            </FGroup>
-                            <FGroup>
-                              <FL>Organization</FL>
-                              <Input name="guardianOrganization" value={formData.guardianOrganization} onChange={handleChange} placeholder="e.g. WAPDA, PTCL" />
-                            </FGroup>
-                          </FRow>
-                        </motion.div>
+                    <div className="mt-6 border-t border-slate-200 pt-6">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="hasSiblingAtAcademy"
+                          checked={formData.hasSiblingAtAcademy}
+                          onChange={(e) => setFormData(prev => ({ ...prev, hasSiblingAtAcademy: e.target.checked }))}
+                          className="w-4 h-4"
+                        />
+                        <label htmlFor="hasSiblingAtAcademy" className="text-sm text-slate-700 cursor-pointer">Has a sibling currently studying at TechNova?</label>
+                      </div>
+                      {formData.hasSiblingAtAcademy && (
+                        <FRow>
+                          <FGroup>
+                            <FL>Sibling Name</FL>
+                            <Input name="siblingName" value={formData.siblingName} onChange={handleChange} />
+                          </FGroup>
+                          <FGroup>
+                            <FL>Sibling Class/Group</FL>
+                            <Input name="siblingClass" value={formData.siblingClass} onChange={handleChange} />
+                          </FGroup>
+                        </FRow>
                       )}
-                      {formData.guardianEmploymentStatus === 'BUSINESS' && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                          <FRow>
-                            <FGroup>
-                              <FL>Business Name</FL>
-                              <Input name="guardianBusinessName" value={formData.guardianBusinessName} onChange={handleChange} placeholder="Name of business" />
-                            </FGroup>
-                            <FGroup>
-                              <FL>Deals In</FL>
-                              <Input name="guardianBusinessDealsIn" value={formData.guardianBusinessDealsIn} onChange={handleChange} placeholder="Type of business (e.g. Textiles)" />
-                            </FGroup>
-                          </FRow>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <div className="mt-8 mb-4 border-t border-slate-200 pt-6">
-                      <SectionTitle>Father&apos;s Details</SectionTitle>
                     </div>
-                    <FRow>
-                      <FGroup>
-                        <FL>Father Occupation</FL>
-                        <Select value={formData.fatherOccupation} onValueChange={(val) => handleSelect('fatherOccupation', val)}>
-                          <SelectTrigger><SelectValue placeholder="Select Occupation" /></SelectTrigger>
-                          <SelectContent>
-                            {FATHER_OCCUPATIONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+
+                    <div className="mt-6 border-t border-slate-200 pt-6">
+                      <FGroup full>
+                        <FL>Medical Notes <span className="text-slate-400 font-normal">(optional — allergies, conditions staff should know about)</span></FL>
+                        <Input name="medicalNotes" value={formData.medicalNotes} onChange={handleChange} placeholder="Leave blank if none" />
                       </FGroup>
-                      <FGroup>
-                        <FL>Father Qualification</FL>
-                        <Select value={formData.fatherQualification} onValueChange={(val) => handleSelect('fatherQualification', val)}>
-                          <SelectTrigger><SelectValue placeholder="Select Qualification" /></SelectTrigger>
-                          <SelectContent>
-                            {FATHER_QUALIFICATIONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </FGroup>
-                    </FRow>
+                    </div>
                   </div>
                 )}
 
-                {step === 6 && (
+                {step === 5 && (
                   <div className="space-y-6">
                     <SectionTitle>Review &amp; Submit</SectionTitle>
 
@@ -887,7 +586,6 @@ export default function AdmissionFormPage() {
                         <dl className="p-5 space-y-3 text-sm">
                           <div className="flex justify-between"><dt className="text-slate-500">Name</dt><dd className="font-semibold text-slate-900">{formData.firstName} {formData.lastName}</dd></div>
                           <div className="flex justify-between"><dt className="text-slate-500">Father</dt><dd className="font-medium text-slate-800">{formData.fatherName}</dd></div>
-                          <div className="flex justify-between"><dt className="text-slate-500">B-Form/CNIC</dt><dd className="font-mono text-slate-800">{formData.cnicBForm || '—'}</dd></div>
                           <div className="flex justify-between"><dt className="text-slate-500">DOB</dt><dd className="font-medium text-slate-800">{formData.dateOfBirth || '—'}</dd></div>
                           <div className="flex justify-between"><dt className="text-slate-500">Phone</dt><dd className="font-medium text-slate-800">{formData.phoneNumber || '—'}</dd></div>
                           <div className="flex justify-between"><dt className="text-slate-500">City</dt><dd className="font-medium text-slate-800">{formData.city || '—'}</dd></div>
@@ -903,8 +601,8 @@ export default function AdmissionFormPage() {
                             </h4>
                           </div>
                           <dl className="p-5 space-y-3 text-sm">
-                            <div className="flex justify-between"><dt className="text-slate-500">Class</dt><dd className="font-bold text-blue-700">{formData.requestedLevel}{formData.requestedClass ? ` (${formData.requestedClass})` : ''}</dd></div>
-                            <div className="flex justify-between"><dt className="text-slate-500">Group</dt><dd className="font-medium text-slate-800">{formData.requestedGroup || formData.requestedCourses?.join(', ') || '—'}</dd></div>
+                            <div className="flex justify-between"><dt className="text-slate-500">Delivery Mode</dt><dd className="font-bold text-blue-700">{formData.deliveryMode || '—'}</dd></div>
+                            <div className="flex justify-between"><dt className="text-slate-500">Preferred Shift</dt><dd className="font-medium text-slate-800">{formData.preferredShift ? SESSION_SHIFT_LABELS[formData.preferredShift as SessionShift] : '—'}</dd></div>
                           </dl>
                         </div>
                         <div className="rounded-xl border border-slate-200 overflow-hidden">
@@ -948,7 +646,6 @@ export default function AdmissionFormPage() {
                             {rule}
                           </p>
                         ))}
-                        <p className="font-bold text-red-600 pt-2 border-t border-slate-200">Note: ESA Campuses are a non-smoking zone.</p>
                       </div>
                       <div className={`mx-5 mb-5 p-4 rounded-xl flex items-start gap-3 border transition-colors ${errors.termsAccepted ? 'bg-red-50 border-red-200' : 'border-blue-200 bg-blue-50/50'}`}>
                         <Checkbox
