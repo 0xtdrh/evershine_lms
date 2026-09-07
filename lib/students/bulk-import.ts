@@ -90,17 +90,16 @@ export async function importStudentsBulk(
         continue
       }
 
-      const cnic = row.cnicBForm.replace(/\D/g, '')
-      const dup = await prisma.student.findUnique({ where: { cnicBForm: cnic }, select: { id: true } })
+      const dup = await prisma.student.findFirst({ where: { phoneNumber: row.phoneNumber }, select: { id: true } })
       if (dup) {
-        results.push({ row: rowNum, success: false, error: 'CNIC/B-Form already registered' })
+        results.push({ row: rowNum, success: false, error: 'A student with this phone number already exists' })
         failed++
         continue
       }
 
       const count = await prisma.student.count({ where: { campusId } })
       const campus = await prisma.campus.findUnique({ where: { id: campusId }, select: { code: true } })
-      const registrationNumber = `${campus?.code || 'ESA'}/${year}/${String(count + 1).padStart(3, '0')}`
+      const registrationNumber = `${campus?.code || 'TN'}/${year}/${String(count + 1).padStart(3, '0')}`
 
       const shift = (row.shift ?? 'MORNING') as SessionShift
       let classSectionId: string | null = null
@@ -124,10 +123,10 @@ export async function importStudentsBulk(
       }
 
       const student = await prisma.$transaction(async (tx) => {
-        const passwordHash = await hash(cnic.slice(-4) || 'ESA1234', ARGON2_OPTIONS)
+        const passwordHash = await hash(registrationNumber.replace(/\//g, ''), ARGON2_OPTIONS)
         const email =
           row.email?.trim() ||
-          `${registrationNumber.replace(/\//g, '.').toLowerCase()}@students.evershaheen.edu.pk`
+          `${registrationNumber.replace(/\//g, '.').toLowerCase()}@students.technova.local`
 
         const user = await tx.user.create({
           data: { email, passwordHash, role: 'STUDENT', isActive: true },
@@ -139,17 +138,14 @@ export async function importStudentsBulk(
             registrationNumber,
             firstName: row.firstName,
             lastName: row.lastName,
+            fullNameAr: row.fullNameAr,
             fatherName: row.fatherName,
-            cnicBForm: cnic,
             dateOfBirth: new Date(row.dateOfBirth),
             gender: row.gender,
             bloodGroup: row.bloodGroup,
-            religion: row.religion,
-            nationality: row.nationality ?? 'Pakistani',
+            nationality: row.nationality ?? 'Egyptian',
             address: row.address,
             city: row.city,
-            province: row.province,
-            postalCode: row.postalCode,
             phoneNumber: row.phoneNumber,
             emergencyContact: row.emergencyContact,
             email: row.email || null,
@@ -161,15 +157,14 @@ export async function importStudentsBulk(
             academicYear: row.academicYear ?? `${year}-${year + 1}`,
             totalFeeAmount: row.totalFeeAmount ?? 0,
             dueAmount: row.totalFeeAmount ?? 0,
-            idCardQRCode: `ESA-QR-${registrationNumber.replace(/\//g, '-')}`,
+            idCardQRCode: `TN-QR-${registrationNumber.replace(/\//g, '-')}`,
           },
         })
 
-        if (row.guardianCnic && row.guardianFirstName) {
+        if (row.guardianPhone && row.guardianFirstName) {
           await linkGuardianToStudent(tx, newStudent.id, {
             firstName: row.guardianFirstName,
             lastName: row.guardianLastName,
-            cnic: row.guardianCnic.replace(/\D/g, ''),
             phoneNumber: row.guardianPhone ?? row.emergencyContact,
             email: row.guardianEmail,
             relationship: row.guardianRelationship,

@@ -22,7 +22,6 @@ export async function GET(
       id: true,
       firstName: true,
       lastName: true,
-      cnic: true,
       phoneNumber: true,
       email: true,
       relationship: true,
@@ -54,12 +53,12 @@ export async function POST(
   const parsed = linkGuardianSchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
 
-  const cnic = parsed.data.cnic.replace(/\D/g, '')
+  const phoneNumber = parsed.data.phoneNumber.replace(/[\s\-]/g, '')
 
   const alreadyLinked = await prisma.student.findFirst({
     where: {
       id: studentId,
-      guardians: { some: { cnic } },
+      guardians: { some: { phoneNumber } },
     },
     select: { id: true },
   })
@@ -69,8 +68,7 @@ export async function POST(
     const gid = await linkGuardianToStudent(tx, studentId, {
       firstName: parsed.data.firstName,
       lastName: parsed.data.lastName,
-      cnic,
-      phoneNumber: parsed.data.phoneNumber,
+      phoneNumber,
       email: parsed.data.email || undefined,
       relationship: parsed.data.relationship,
     })
@@ -81,7 +79,7 @@ export async function POST(
         action: 'UPDATE',
         entityType: 'Student',
         entityId: studentId,
-        changes: { guardianLinked: cnic },
+        changes: { guardianLinked: phoneNumber },
       },
     })
 
@@ -94,7 +92,6 @@ export async function POST(
       id: true,
       firstName: true,
       lastName: true,
-      cnic: true,
       phoneNumber: true,
       email: true,
       relationship: true,

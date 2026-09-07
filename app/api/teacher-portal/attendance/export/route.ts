@@ -63,7 +63,6 @@ export async function GET(req: NextRequest) {
       firstName: true,
       lastName: true,
       registrationNumber: true,
-      cnicBForm: true,
     },
     orderBy: { rollNumber: 'asc' },
   })
@@ -202,7 +201,6 @@ export async function GET(req: NextRequest) {
         'Roll Number': student.rollNumber || 'N/A',
         'Student Name': `${student.firstName} ${student.lastName}`,
         'Registration No': student.registrationNumber,
-        'CNIC / B-Form': student.cnicBForm,
         'Class / Section': classDetails.name,
         'Campus': classDetails.campus.name,
         'Date': formattedDate,

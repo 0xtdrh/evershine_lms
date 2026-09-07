@@ -23,22 +23,22 @@ interface StudentDetail {
   id: string
   firstName: string
   lastName: string
+  fullNameAr: string
+  fullNameEn?: string
   fatherName: string
   registrationNumber: string
   admissionNumber?: string
-  cnicBForm: string
   dateOfBirth: string
   gender: string
   bloodGroup?: string
-  religion?: string
   nationality: string
   address: string
   city: string
-  province: string
-  postalCode?: string
   phoneNumber: string
   emergencyContact: string
   email?: string
+  schoolName?: string
+  regularSchoolGrade?: string
   section?: string
   rollNumber?: string
   academicYear: string
@@ -331,14 +331,16 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             </CardHeader>
             <CardContent>
               <dl className="space-y-3">
-                <InfoRow label="Full Name" value={`${student.firstName} ${student.lastName}`} />
+                <InfoRow label="Full Name (English)" value={`${student.firstName} ${student.lastName}`} />
+                <InfoRow label="Full Name (Arabic)" value={student.fullNameAr} />
                 <InfoRow label="Father's Name" value={student.fatherName} />
-                <InfoRow label="Date of Birth" value={new Date(student.dateOfBirth).toLocaleDateString('en-PK', { day: 'numeric', month: 'long', year: 'numeric' })} />
+                <InfoRow label="Date of Birth" value={new Date(student.dateOfBirth).toLocaleDateString('en-EG', { day: 'numeric', month: 'long', year: 'numeric' })} />
+                <InfoRow label="Age" value={`${Math.floor((Date.now() - new Date(student.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years`} />
                 <InfoRow label="Gender" value={student.gender} />
-                <InfoRow label="B-Form / CNIC" value={student.cnicBForm} />
                 <InfoRow label="Blood Group" value={student.bloodGroup} />
-                <InfoRow label="Religion" value={student.religion} />
                 <InfoRow label="Nationality" value={student.nationality} />
+                <InfoRow label="School" value={student.schoolName} />
+                <InfoRow label="School Grade" value={student.regularSchoolGrade} />
               </dl>
             </CardContent>
           </Card>
@@ -354,7 +356,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                 <InfoRow label="Emergency" value={student.emergencyContact} />
                 <InfoRow label="Email" value={student.email} />
                 <InfoRow label="Address" value={student.address} />
-                <InfoRow label="City" value={`${student.city}, ${student.province} ${student.postalCode ?? ''}`} />
+                <InfoRow label="City" value={student.city} />
               </dl>
             </CardContent>
           </Card>

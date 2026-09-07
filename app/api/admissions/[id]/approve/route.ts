@@ -131,21 +131,21 @@ export async function POST(
     }
 
     // PRE-CALCULATE SLOW HASHES OUTSIDE TRANSACTION
-    // Default password for students is their CNIC without hyphens
-    const rawPassword = request.cnicBForm.replace(/-/g, '')
-    const passwordHash = await hash(rawPassword, ARGON2_OPTIONS)
-
+    // Default password for students is derived from their registration number,
+    // finalized after regNumber is generated below.
     let guardianPasswordHash = ''
-    if (request.guardianCnic && !await prisma.guardian.findUnique({ where: { cnic: request.guardianCnic } })) {
-      guardianPasswordHash = await hash(request.guardianCnic.replace(/-/g, ''), ARGON2_OPTIONS)
+    const guardianPhone = request.guardianPhoneNumber?.replace(/[\s\-]/g, '')
+    if (guardianPhone && !await prisma.guardian.findUnique({ where: { phoneNumber: guardianPhone } })) {
+      guardianPasswordHash = await hash(guardianPhone, ARGON2_OPTIONS)
     }
 
-    // Generate Registration Number (e.g., EA/2026/001)
+    // Generate Registration Number (e.g., TN/2026/001)
     const year = new Date().getFullYear()
     const count = await prisma.student.count({ where: { campusId } })
     const seq = String(count + 1).padStart(3, '0')
     const selectedCampus = await prisma.campus.findUnique({ where: { id: campusId } })
-    const regNumber = `${selectedCampus?.code || 'EA'}/${year}/${seq}`
+    const regNumber = `${selectedCampus?.code || 'TN'}/${year}/${seq}`
+    const passwordHash = await hash(regNumber.replace(/\//g, ''), ARGON2_OPTIONS)
 
     // Use Prisma Transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -162,11 +162,11 @@ export async function POST(
       })
 
       // 2. Create User
-      let studentEmailToUse = request.email || `${regNumber.replace(/\//g, '').toLowerCase()}@evershineacademy.edu.pk`
+      let studentEmailToUse = request.email || `${regNumber.replace(/\//g, '').toLowerCase()}@students.technova.local`
       const existingStudentUser = await tx.user.findUnique({ where: { email: studentEmailToUse } })
       
       if (existingStudentUser) {
-        studentEmailToUse = `${regNumber.replace(/\//g, '').toLowerCase()}@evershineacademy.edu.pk`
+        studentEmailToUse = `${regNumber.replace(/\//g, '').toLowerCase()}.${Date.now()}@students.technova.local`
       }
 
       const user = await tx.user.create({
@@ -180,15 +180,15 @@ export async function POST(
 
       // 3. Handle Guardian mapping
       let guardianId = null
-      if (request.guardianCnic && request.guardianFirstName) {
+      if (guardianPhone && request.guardianFirstName) {
         const existingGuardian = await tx.guardian.findUnique({
-          where: { cnic: request.guardianCnic }
+          where: { phoneNumber: guardianPhone }
         })
         
         if (existingGuardian) {
           guardianId = existingGuardian.id
         } else {
-          const targetEmail = request.guardianEmail || `guardian_${request.guardianCnic.replace(/-/g, '')}@evershineacademy.edu.pk`
+          const targetEmail = request.guardianEmail || `guardian_${guardianPhone}@technova.local`
           let guardianUser = await tx.user.findUnique({ where: { email: targetEmail } })
 
           if (!guardianUser) {
@@ -207,8 +207,7 @@ export async function POST(
               userId: guardianUser.id,
               firstName: request.guardianFirstName,
               lastName: request.guardianLastName || '',
-              cnic: request.guardianCnic,
-              phoneNumber: request.guardianPhoneNumber || request.emergencyContact,
+              phoneNumber: guardianPhone,
               email: request.guardianEmail,
               relationship: request.guardianRelationship || 'Guardian'
             }
@@ -227,62 +226,36 @@ export async function POST(
           // ── Identity ────────────────────────────────────────────────────
           firstName:    request.firstName,
           lastName:     request.lastName,
+          fullNameAr:   request.fullNameAr,
+          fullNameEn:   request.fullNameEn ?? null,
           fatherName:   request.fatherName,
           motherName:   request.motherName ?? null,
-          cnicBForm:    request.cnicBForm,
           dateOfBirth:  request.dateOfBirth,
-          placeOfBirth: request.placeOfBirth ?? null,
           gender:       request.gender,
           bloodGroup:   request.bloodGroup ?? null,
-          religion:     request.religion ?? null,
           nationality:  request.nationality,
-          domicile:     request.domicile ?? null,
 
           // ── Contact ─────────────────────────────────────────────────────
           address:          request.address,
           city:             request.city,
-          province:         request.province,
-          tehsil:           request.tehsil ?? null,
-          district:         request.district ?? null,
-          permanentAddress: request.permanentAddress ?? null,
-          postalCode:       request.postalCode ?? null,
           phoneNumber:      request.phoneNumber,
           emergencyContact: request.emergencyContact,
           email:            request.email ?? null,
 
           // ── Parent / family extended ─────────────────────────────────────
-          fatherOccupation:    request.fatherOccupation ?? null,
-          fatherQualification: request.fatherQualification ?? null,
-          fatherCnic:          request.fatherCnic ?? null,
+          fatherPhoneNumber: request.fatherPhoneNumber ?? null,
+          fatherOccupation:  request.fatherOccupation ?? null,
+          motherPhoneNumber: request.motherPhoneNumber ?? null,
+          motherOccupation:  request.motherOccupation ?? null,
+          parentStatus:      request.parentStatus ?? 'BOTH_ALIVE',
 
-          // ── Academic background ──────────────────────────────────────────
-          lastClassPassed:       request.lastClassPassed ?? null,
-          lastPercentage:        request.lastPercentage ?? null,
-          previousMarksObtained: request.previousMarksObtained ?? null,
-          previousGroup:         request.previousGroup ?? null,
-          boardName:             request.boardName ?? null,
-          yearOfPassing:         request.yearOfPassing ?? null,
-          interviewDate:         request.interviewDate ?? null,
-          interviewerName:       request.interviewerName ?? null,
-          interviewOutcome:      request.interviewOutcome ?? null,
-          interviewNotes:        request.interviewNotes ?? null,
-          interviewInstitute:    request.interviewInstitute ?? null,
-          interviewMarksObtained: request.interviewMarksObtained ?? null,
-          interviewPercentage:   request.interviewPercentage ?? null,
-          interviewYear:         request.interviewYear ?? null,
-          interviewGroup:        request.interviewGroup ?? null,
+          // ── School & prior background ─────────────────────────────────────
+          schoolName:                 request.schoolName ?? null,
+          regularSchoolGrade:         request.regularSchoolGrade ?? null,
+          priorProgrammingExperience: request.priorProgrammingExperience ?? null,
 
-          // ── Parent / Guardian Employment ─────────────────────────────────
-          guardianEmploymentStatus: request.guardianEmploymentStatus ?? null,
-          guardianDesignation:      request.guardianDesignation ?? null,
-          guardianOrganization:     request.guardianOrganization ?? null,
-          guardianBusinessName:     request.guardianBusinessName ?? null,
-          guardianBusinessDealsIn:  request.guardianBusinessDealsIn ?? null,
-
-          // ── Medical / special needs ──────────────────────────────────────
-          medicalConditions:   request.medicalConditions ?? null,
-          hasDisability:       request.hasDisability,
-          disabilityDetails:   request.disabilityDetails ?? null,
+          // ── Medical note (optional) ────────────────────────────────────────
+          medicalNotes: request.medicalNotes ?? null,
 
           // ── Sibling ──────────────────────────────────────────────────────
           hasSiblingAtAcademy: request.hasSiblingAtAcademy,
@@ -295,11 +268,6 @@ export async function POST(
           classId:          classId ?? undefined,
           section:          section ?? undefined,
           houseId:          (batch.academicLevel === 'Secondary' || batch.academicLevel === 'HigherSecondary') ? (houseId ?? undefined) : undefined,
-          requestedGroup:   request.requestedGroup ?? null,
-          requestedGroupOther: request.requestedGroupOther ?? null,
-          requestedCourses: request.requestedCourses ?? null,
-          requestedCoursesOther: request.requestedCoursesOther ?? null,
-          repeaterSubjects: request.repeaterSubjects ?? null,
           rollNumber,
           shift,
           deliveryMode,
@@ -312,9 +280,7 @@ export async function POST(
 
           // ── Documents ────────────────────────────────────────────────────
           profilePicture:    request.passportPhotoUrl ?? null,
-          bFormDocUrl:       request.bFormDocUrl ?? null,
-          previousResultUrl: request.previousResultUrl ?? null,
-          idCardQRCode:      `ESA-QR-${regNumber.replace(/\//g, '-')}`,
+          idCardQRCode:      `TN-QR-${regNumber.replace(/\//g, '-')}`,
 
           // ── Relationships ────────────────────────────────────────────────
           guardians: guardianId ? { connect: { id: guardianId } } : undefined,

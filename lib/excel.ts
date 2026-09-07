@@ -133,13 +133,10 @@ interface StudentMasterRecord {
   fatherName: string
   gender: string
   dateOfBirth: string
-  cnicBForm: string
   bloodGroup?: string | null
-  religion?: string | null
   nationality?: string | null
   address?: string | null
   city?: string | null
-  province?: string | null
   phoneNumber?: string | null
   emergencyContact?: string | null
   email?: string | null
@@ -601,11 +598,9 @@ export function downloadStudentsMasterExcel(students: StudentMasterRecord[]): vo
     s.lastName,
     s.fatherName,
     s.gender,
-    s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString('en-PK') : 'N/A',
-    s.cnicBForm,
+    s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString('en-EG') : 'N/A',
     s.bloodGroup || 'N/A',
-    s.religion || 'N/A',
-    s.nationality || 'Pakistani',
+    s.nationality || 'Egyptian',
     s.phoneNumber || 'N/A',
     s.emergencyContact || 'N/A',
     s.email || 'N/A',
@@ -934,15 +929,14 @@ function formatDateForFilename(): string {
 const STUDENT_IMPORT_HEADERS = [
   'firstName',
   'lastName',
+  'fullNameAr',
   'fatherName',
-  'cnicBForm',
   'dateOfBirth',
   'gender',
   'phoneNumber',
   'emergencyContact',
   'address',
   'city',
-  'province',
   'campusCode',
   'batchCode',
   'className',
@@ -952,7 +946,6 @@ const STUDENT_IMPORT_HEADERS = [
   'totalFeeAmount',
   'guardianFirstName',
   'guardianLastName',
-  'guardianCnic',
   'guardianPhone',
   'guardianRelationship',
 ] as const
@@ -1029,12 +1022,6 @@ export function parseStudentImportFile(file: ArrayBuffer): Record<string, string
         const k = key.trim()
         normalized[k] = row[key]
       }
-      if (normalized.cnicBForm) {
-        normalized.cnicBForm = String(normalized.cnicBForm).replace(/\D/g, '')
-      }
-      if (normalized.guardianCnic) {
-        normalized.guardianCnic = String(normalized.guardianCnic).replace(/\D/g, '')
-      }
       if (normalized.gender) {
         normalized.gender = String(normalized.gender).toUpperCase()
       }
@@ -1046,7 +1033,7 @@ export function parseStudentImportFile(file: ArrayBuffer): Record<string, string
       }
       return normalized
     })
-    .filter((r) => r.firstName && r.lastName && r.cnicBForm)
+    .filter((r) => r.firstName && r.lastName && r.fullNameAr)
 }
 
 export function downloadStudentImportFailuresExcel(

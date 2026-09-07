@@ -32,66 +32,36 @@ const createStudentSchemaBase = z.object({
   // ── Personal identity ──────────────────────────────────────────────────────
   firstName:    z.string().min(2, 'First name must be at least 2 characters').trim(),
   lastName:     z.string().min(2, 'Last name must be at least 2 characters').trim(),
+  fullNameAr:   z.string().min(5, 'Full Arabic name is required').trim(),  // Full four-part Arabic legal name
+  fullNameEn:   z.string().optional(),                              // Full four-part English legal name (for certificates)
   fatherName:   z.string().min(2, 'Father name is required').trim(),
-  motherName:   z.string().optional(),                             // Mother's full name
-  cnicBForm:    z.string().regex(/^\d{13}$/, 'B-Form/CNIC must be exactly 13 digits').trim(),
+  fatherPhoneNumber: z.string().optional(),
+  fatherOccupation:  z.string().optional(),
+  motherName:        z.string().optional(),
+  motherPhoneNumber: z.string().optional(),
+  motherOccupation:  z.string().optional(),
+  parentStatus: z.enum(['BOTH_ALIVE', 'FATHER_DECEASED', 'MOTHER_DECEASED', 'BOTH_DECEASED', 'DIVORCED']).default('BOTH_ALIVE'),
   dateOfBirth:  dateOrDateTimeString,
-  placeOfBirth: z.string().optional(),                             // City / district of birth
   gender:       genderEnum,
   bloodGroup:   z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
-  religion:     z.string().optional(),
-  nationality:  z.string().default('Pakistani'),
-  domicile:     z.string().optional(),                             // District domicile
+  nationality:  z.string().default('Egyptian'),
 
   // ── Address ───────────────────────────────────────────────────────────────
-  address:          z.string().min(5, 'Address is required').trim(),
-  city:             z.string().min(2).trim(),
-  province:         z.string().min(2).trim(),
-  tehsil:           z.string().optional(),
-  district:         z.string().optional(),
-  permanentAddress: z.string().optional(),
-  postalCode:       z.string().optional(),
+  address: z.string().min(5, 'Address is required').trim(),
+  city:    z.string().min(2).trim(),
 
   // ── Contact ───────────────────────────────────────────────────────────────
   phoneNumber:      z.string().regex(/^\+?[\d\s\-]{10,15}$/, 'Invalid phone number'),
   emergencyContact: z.string().regex(/^\+?[\d\s\-]{10,15}$/, 'Invalid emergency contact'),
   email:            z.string().email().optional().or(z.literal('')),
 
-  // ── Extended parent / family ──────────────────────────────────────────────
-  fatherOccupation:    z.string().optional(),  // e.g. "Teacher", "Farmer", "Business"
-  fatherQualification: z.string().optional(),  // e.g. "Graduate", "Matric", "Primary"
-  fatherCnic:          z.string().optional(),  // Father's own 13-digit CNIC
+  // ── School & prior background ───────────────────────────────────────────────
+  schoolName:                 z.string().optional(),  // Current regular school
+  regularSchoolGrade:         z.string().optional(),  // Grade/year in their regular school
+  priorProgrammingExperience: z.string().optional(),  // Free-text prior experience note
 
-  // ── Academic background (from previous institution) ────────────────────────
-  previousSchool:        z.string().optional(),      // Last school / institution attended
-  lastClassPassed:       z.preprocess(blankOptionalNumber, z.number().int().min(1).max(12).optional()),
-  lastPercentage:        z.string().optional(),      // e.g. "72.5%" or "710/1100"
-  previousMarksObtained: z.preprocess(blankOptionalNumber, z.number().int().min(0).optional()),
-  boardName:             z.string().optional(),      // e.g. "BISE Faisalabad", "FBISE"
-  previousGroup:         z.string().optional(),      // e.g. "Science", "Arts"
-  yearOfPassing:         z.preprocess(blankOptionalNumber, z.number().int().min(1990).max(new Date().getFullYear()).optional()),
-  
-  requestedLevel:        z.string().optional(),
-  requestedClass: z.preprocess(blankOptionalNumber, z.number().int().min(1, 'Requested class must be a positive integer').max(12, 'Requested class must be 12 or lower').optional()),
-  requestedGroup:        z.string().optional(),      // e.g. "Computer Group", "Biology Group", "F.Sc"
-  requestedGroupOther:   z.string().optional(),      // Free-text detail when primary group is Other
-  requestedCourses:      z.array(z.string()).optional(),
-  requestedCoursesOther: z.string().optional(),
-  interviewInstitute:     z.string().optional(),
-  interviewMarksObtained: z.preprocess(blankOptionalNumber, z.number().int().min(0, 'Marks must be a positive number').optional()),
-  interviewPercentage:    z.string().optional(),
-  interviewYear: z.preprocess(blankOptionalNumber, z.number().int().min(1900, 'Year must be valid').max(new Date().getFullYear(), 'Year cannot be in the future').optional()),
-  interviewGroup:         z.string().optional(),
-  interviewDate:         z.string().optional(),
-  interviewerName:       z.string().optional(),
-  interviewOutcome:      z.string().optional(),
-  interviewNotes:        z.string().optional(),
-  repeaterSubjects:      z.string().optional(),      // e.g. "Physics, Chemistry"
-
-  // ── Medical / special needs ────────────────────────────────────────────────
-  medicalConditions: z.string().optional(),   // Chronic illness, allergies
-  hasDisability:     z.boolean().default(false),
-  disabilityDetails: z.string().optional(),   // Description if hasDisability = true
+  // ── Optional medical note (never required) ─────────────────────────────────
+  medicalNotes: z.string().optional(),
 
   // ── Sibling linkage at the same academy ────────────────────────────────────
   hasSiblingAtAcademy: z.boolean().default(false),
@@ -108,42 +78,35 @@ const createStudentSchemaBase = z.object({
   shift:          sessionShiftSchema.optional(),
   deliveryMode:   deliveryModeSchema.optional(),
   houseId:        optionalCuid,
+  nearestBranchId: optionalCuid,
   academicYear:   z.string().regex(/^\d{4}-\d{4}$/, 'Academic year must be in format YYYY-YYYY'),
 
   // ── Financial ──────────────────────────────────────────────────────────────
   totalFeeAmount: z.number().min(0).default(0),
 
   // ── Documents ──────────────────────────────────────────────────────────────
-  profilePicture:    z.string().optional(),  // Base64 or URL
-  bFormDocUrl:       z.string().optional(),  // B-Form scan URL
-  previousResultUrl: z.string().optional(),  // Previous marksheet URL
+  profilePicture: z.string().optional(),  // Base64 or URL
+
+  // ── Marketing / referral (also used standalone below) ───────────────────────
+  sourceOfInfo: z.string().optional(),
 
   // Parent/Guardian details (for new admission; creates Guardian account)
   parentEmail: z.string().email().optional(),
 })
 
 const guardianFieldsSchema = z.object({
-  guardianFirstName:        z.string().min(2).trim().optional(),
-  guardianLastName:         z.string().trim().optional(),
-  guardianCnic:             z.string().regex(/^\d{13}$/, 'Guardian CNIC must be 13 digits').optional(),
-  guardianPhone:            z.string().optional(),
-  guardianEmail:            z.string().email().optional().or(z.literal('')),
-  guardianRelationship:     z.string().max(50).optional(),
-  guardianEmploymentStatus: z.enum(['GOVT', 'PRIVATE', 'BUSINESS', 'NONE']).optional(),
-  guardianDesignation:      z.string().optional(),
-  guardianOrganization:     z.string().optional(),
-  guardianBusinessName:     z.string().optional(),
-  guardianBusinessDealsIn:  z.string().optional(),
+  guardianFirstName:    z.string().min(2).trim().optional(),
+  guardianLastName:     z.string().trim().optional(),
+  guardianPhone:        z.string().optional(),
+  guardianEmail:        z.string().email().optional().or(z.literal('')),
+  guardianRelationship: z.string().max(50).optional(),
 })
 
-const marketingFieldsSchema = z.object({
-  sourceOfInfo: z.string().optional(),
-})
+// sourceOfInfo now lives directly on createStudentSchemaBase
 
 // Validation for public form where terms MUST be checked
 export const publicAdmissionSchema = createStudentSchemaBase
   .merge(guardianFieldsSchema)
-  .merge(marketingFieldsSchema)
   .extend({
     termsAccepted: z.literal(true, {
       errorMap: () => ({ message: 'You must agree to the Rules and Regulations to proceed' }),
@@ -154,7 +117,6 @@ export const publicAdmissionSchema = createStudentSchemaBase
 // Merge schemas first (without refinements yet)
 const mergedStudentSchema = createStudentSchemaBase
   .merge(guardianFieldsSchema)
-  .merge(marketingFieldsSchema)
 
 // Apply refinements to the merged schema
 export const createStudentSchema = mergedStudentSchema
@@ -163,8 +125,8 @@ export const createStudentSchema = mergedStudentSchema
     { message: 'Roll number is required when a class section is selected', path: ['rollNumber'] }
   )
   .refine(
-    (d) => !d.guardianCnic || (d.guardianFirstName && d.guardianFirstName.length >= 2),
-    { message: 'Guardian first name is required when CNIC is provided', path: ['guardianFirstName'] }
+    (d) => !d.guardianPhone || (d.guardianFirstName && d.guardianFirstName.length >= 2),
+    { message: 'Guardian first name is required when guardian phone is provided', path: ['guardianFirstName'] }
   )
 
 // Update schema: use partial on the base merged schema, then extend
@@ -209,7 +171,6 @@ export const addStudentEnrollmentSchema = z.object({
 export const linkGuardianSchema = z.object({
   firstName: z.string().min(2).trim(),
   lastName: z.string().trim().optional(),
-  cnic: z.string().regex(/^\d{13}$/, 'CNIC must be 13 digits'),
   phoneNumber: z.string().min(10),
   email: z.string().email().optional().or(z.literal('')),
   relationship: z.string().max(50).default('Guardian'),
@@ -218,16 +179,14 @@ export const linkGuardianSchema = z.object({
 export const studentImportRowSchema = z.object({
   firstName: z.string().min(2).trim(),
   lastName: z.string().min(2).trim(),
+  fullNameAr: z.string().min(5).trim(),
   fatherName: z.string().min(2).trim(),
-  cnicBForm: z.string().regex(/^\d{13}$/),
   dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   gender: genderEnum,
   phoneNumber: z.string().min(10),
   emergencyContact: z.string().min(10),
   address: z.string().min(5),
   city: z.string().min(2),
-  province: z.string().min(2),
-  postalCode: z.string().optional(),
   email: z.string().email().optional(),
   campusCode: z.string().min(1),
   batchCode: z.string().min(1),
@@ -239,11 +198,9 @@ export const studentImportRowSchema = z.object({
   academicYear: z.string().regex(/^\d{4}-\d{4}$/).optional(),
   totalFeeAmount: z.number().min(0).optional(),
   bloodGroup: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
-  religion: z.string().optional(),
   nationality: z.string().optional(),
   guardianFirstName: z.string().optional(),
   guardianLastName: z.string().optional(),
-  guardianCnic: z.string().regex(/^\d{13}$/).optional(),
   guardianPhone: z.string().optional(),
   guardianEmail: z.string().email().optional(),
   guardianRelationship: z.string().optional(),

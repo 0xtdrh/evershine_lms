@@ -39,19 +39,16 @@ interface Student {
   bloodGroup: string | null
   profilePicture: string | null
   idCardQRCode: string | null
-  cnicBForm: string
+  fullNameAr?: string
   section?: string | null
   address?: string | null
-  permanentAddress?: string | null
   fatherOccupation?: string | null
-  religion?: string | null
   guardians?: Array<{
     firstName: string
     lastName: string
     phoneNumber: string
     email: string | null
     relationship: string
-    cnic: string | null
   }>
   shift?: 'MORNING' | 'EVENING'
   campus?: { name: string }
@@ -1743,8 +1740,8 @@ export default function DocumentsPage() {
                       <div className="w-full text-[13px] text-gray-800 space-y-4 leading-relaxed text-left mt-6 relative z-10 font-medium">
                         <p>
                           This is to certify that <strong className="font-black text-[#1e3a8a] text-[14px] underline decoration-2 underline-offset-4 decoration-[#1e3a8a]">{selectedStudent.firstName} {selectedStudent.lastName}</strong>,{' '}
-                          son / daughter of Mr. <strong className="font-black text-[#1e3a8a] text-[14px] underline decoration-2 underline-offset-4 decoration-[#1e3a8a]">{selectedStudent.fatherName || '__________________'}</strong>, bearing B-Form / CNIC number{' '}
-                          <strong className="font-black text-gray-900">{selectedStudent.cnicBForm || 'on file'}</strong>, is a bonafide student of EverShine Academy, Madina Town Campus.
+                          son / daughter of Mr. <strong className="font-black text-[#1e3a8a] text-[14px] underline decoration-2 underline-offset-4 decoration-[#1e3a8a]">{selectedStudent.fatherName || '__________________'}</strong>, registration number{' '}
+                          <strong className="font-black text-gray-900">{selectedStudent.registrationNumber}</strong>, is a bonafide student of TechNova.
                         </p>
                         <p>
                           The student is currently active in <strong className="font-black text-gray-900">{selectedStudentClassSection}</strong>
@@ -2836,18 +2833,14 @@ export default function DocumentsPage() {
                               <td className="w-[22%] px-3 py-2 font-bold">{selectedStudent.bloodGroup || '—'}</td>
                             </tr>
                             <tr className="border-b border-gray-300">
-                              <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">CNIC / Form-B:</td>
-                              <td className="w-[22%] border-r border-gray-300 px-3 py-2 font-mono font-bold">{selectedStudent.cnicBForm}</td>
-                              <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">Religion:</td>
-                              <td className="w-[22%] px-3 py-2 font-bold">{selectedStudent.religion || 'Islam'}</td>
+                              <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">Registration No:</td>
+                              <td className="w-[22%] border-r border-gray-300 px-3 py-2 font-mono font-bold">{selectedStudent.registrationNumber}</td>
+                              <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">Nationality:</td>
+                              <td className="w-[22%] px-3 py-2 font-bold">{selectedStudent.nationality || 'Egyptian'}</td>
                             </tr>
                             <tr className="border-b border-gray-300">
                               <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">Present Address:</td>
                               <td colSpan={3} className="px-3 py-2 font-bold">{selectedStudent.address || '—'}</td>
-                            </tr>
-                            <tr>
-                              <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">Permanent Address:</td>
-                              <td colSpan={3} className="px-3 py-2 font-bold">{selectedStudent.permanentAddress || '—'}</td>
                             </tr>
                           </tbody>
                         </table>
@@ -2869,10 +2862,8 @@ export default function DocumentsPage() {
                                   <td className="w-[22%] px-3 py-2.5 font-bold">{selectedStudent.guardians[0].relationship}</td>
                                 </tr>
                                 <tr className="border-b border-gray-400">
-                                  <td className="w-[28%] border-r border-gray-400 px-3 py-2.5 font-bold uppercase">Guardian CNIC:</td>
-                                  <td className="w-[22%] border-r border-gray-400 px-3 py-2.5 font-mono font-bold">{selectedStudent.guardians[0].cnic || '—'}</td>
                                   <td className="w-[28%] border-r border-gray-400 px-3 py-2.5 font-bold uppercase">Contact No:</td>
-                                  <td className="w-[22%] px-3 py-2.5 font-bold font-mono">{selectedStudent.guardians[0].phoneNumber}</td>
+                                  <td colSpan={3} className="w-[22%] px-3 py-2.5 font-bold font-mono">{selectedStudent.guardians[0].phoneNumber}</td>
                                 </tr>
                                 <tr>
                                   <td className="w-[28%] border-r border-gray-400 px-3 py-2.5 font-bold uppercase">Father Occupation:</td>

@@ -16,23 +16,31 @@ import { notify } from '@/lib/notify'
 interface StudentEditSource {
   firstName: string
   lastName: string
+  fullNameAr: string
+  fullNameEn?: string
   fatherName: string
-  cnicBForm: string
+  fatherPhoneNumber?: string
+  fatherOccupation?: string
+  motherName?: string
+  motherPhoneNumber?: string
+  motherOccupation?: string
+  parentStatus?: string
   dateOfBirth: string
   gender: string
   bloodGroup?: string
-  religion?: string
   nationality?: string
   address: string
   city: string
-  province: string
-  postalCode?: string
   phoneNumber: string
   emergencyContact: string
   // WHY: student.email is the contact/profile email. student.user.email is
   // the actual authentication credential used for login. These are DISTINCT
   // fields. The credential reset section must operate on user.email only.
   email?: string
+  schoolName?: string
+  regularSchoolGrade?: string
+  priorProgrammingExperience?: string
+  medicalNotes?: string
   rollNumber?: string
   section?: string
   academicYear: string
@@ -67,20 +75,28 @@ export default function EditStudentPage() {
       setFormData({
         firstName: student.firstName,
         lastName: student.lastName,
+        fullNameAr: student.fullNameAr,
+        fullNameEn: student.fullNameEn || '',
         fatherName: student.fatherName,
-        cnicBForm: student.cnicBForm,
+        fatherPhoneNumber: student.fatherPhoneNumber || '',
+        fatherOccupation: student.fatherOccupation || '',
+        motherName: student.motherName || '',
+        motherPhoneNumber: student.motherPhoneNumber || '',
+        motherOccupation: student.motherOccupation || '',
+        parentStatus: student.parentStatus || 'BOTH_ALIVE',
         dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : '',
         gender: student.gender,
         bloodGroup: student.bloodGroup || '',
-        religion: student.religion || '',
         nationality: student.nationality || '',
         address: student.address,
         city: student.city,
-        province: student.province,
-        postalCode: student.postalCode || '',
         phoneNumber: student.phoneNumber,
         emergencyContact: student.emergencyContact,
         email: student.email || '',
+        schoolName: student.schoolName || '',
+        regularSchoolGrade: student.regularSchoolGrade || '',
+        priorProgrammingExperience: student.priorProgrammingExperience || '',
+        medicalNotes: student.medicalNotes || '',
         rollNumber: student.rollNumber || '',
         section: student.section || '',
         academicYear: student.academicYear,
@@ -89,7 +105,7 @@ export default function EditStudentPage() {
       // student.email is the contact/profile field (e.g. abdulrauf@gmail.com).
       // student.user.email is the actual auth credential stored in the User table.
       // When a student is admitted without an email, the system auto-generates a
-      // synthetic login email (e.g. ESA.2026.0085@students.evershineacademy.edu.pk).
+      // synthetic login email (e.g. TN.2026.0085@students.technova.local).
       // Pre-populating with the contact email caused the newEmail gate to send
       // undefined (contact email === contact email), leaving the synthetic auth
       // email in place — which is why the student could not log in after reset.
@@ -290,17 +306,43 @@ export default function EditStudentPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>First Name</Label>
+                  <Label>First Name (English)</Label>
                   <Input name="firstName" value={formData.firstName} onChange={handleChange} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Last Name</Label>
+                  <Label>Last Name (English)</Label>
                   <Input name="lastName" value={formData.lastName} onChange={handleChange} required />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Father's Name</Label>
-                <Input name="fatherName" value={formData.fatherName} onChange={handleChange} required />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Full Name (Arabic)</Label>
+                  <Input name="fullNameAr" value={formData.fullNameAr} onChange={handleChange} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Full Name (English, for certificates)</Label>
+                  <Input name="fullNameEn" value={formData.fullNameEn} onChange={handleChange} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Father's Name</Label>
+                  <Input name="fatherName" value={formData.fatherName} onChange={handleChange} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Father's Phone</Label>
+                  <Input name="fatherPhoneNumber" value={formData.fatherPhoneNumber} onChange={handleChange} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Mother's Name</Label>
+                  <Input name="motherName" value={formData.motherName} onChange={handleChange} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Mother's Phone</Label>
+                  <Input name="motherPhoneNumber" value={formData.motherPhoneNumber} onChange={handleChange} />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -320,8 +362,17 @@ export default function EditStudentPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>CNIC / B-Form</Label>
-                  <Input name="cnicBForm" value={formData.cnicBForm} onChange={handleChange} required />
+                  <Label>Parent Status</Label>
+                  <Select value={formData.parentStatus} onValueChange={(val) => handleSelectChange('parentStatus', val)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BOTH_ALIVE">Both parents present</SelectItem>
+                      <SelectItem value="FATHER_DECEASED">Father deceased</SelectItem>
+                      <SelectItem value="MOTHER_DECEASED">Mother deceased</SelectItem>
+                      <SelectItem value="BOTH_DECEASED">Both deceased</SelectItem>
+                      <SelectItem value="DIVORCED">Parents divorced</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Blood Group</Label>
@@ -334,6 +385,24 @@ export default function EditStudentPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>School</Label>
+                  <Input name="schoolName" value={formData.schoolName} onChange={handleChange} />
+                </div>
+                <div className="space-y-2">
+                  <Label>School Grade</Label>
+                  <Input name="regularSchoolGrade" value={formData.regularSchoolGrade} onChange={handleChange} placeholder="e.g. الصف الرابع الابتدائي" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Prior Programming Experience</Label>
+                <Input name="priorProgrammingExperience" value={formData.priorProgrammingExperience} onChange={handleChange} />
+              </div>
+              <div className="space-y-2">
+                <Label>Medical Notes (optional)</Label>
+                <Input name="medicalNotes" value={formData.medicalNotes} onChange={handleChange} />
               </div>
             </CardContent>
           </Card>
@@ -395,18 +464,10 @@ export default function EditStudentPage() {
                   <Label>Address</Label>
                   <Input name="address" value={formData.address} onChange={handleChange} required />
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   <div className="space-y-2">
                     <Label>City</Label>
                     <Input name="city" value={formData.city} onChange={handleChange} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Province</Label>
-                    <Input name="province" value={formData.province} onChange={handleChange} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Postal Code</Label>
-                    <Input name="postalCode" value={formData.postalCode} onChange={handleChange} />
                   </div>
                 </div>
               </div>

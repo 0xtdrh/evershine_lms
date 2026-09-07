@@ -20,7 +20,6 @@ const ARGON2_OPTIONS = { memoryCost: 65536, timeCost: 3, parallelism: 4, outputL
 export interface GuardianLinkInput {
   firstName: string
   lastName?: string
-  cnic: string
   phoneNumber: string
   email?: string
   relationship?: string
@@ -28,18 +27,22 @@ export interface GuardianLinkInput {
 
 // ─── Internal: resolve or create guardian using any DB client ────────────────
 
+function normalizePhone(phone: string): string {
+  return phone.replace(/[\s\-]/g, '')
+}
+
 async function _resolveGuardianId(
   db: Prisma.TransactionClient | typeof globalPrisma,
   input: GuardianLinkInput,
   precomputedHash: string
 ): Promise<string> {
-  const cnic = input.cnic.replace(/\D/g, '')
+  const phoneNumber = normalizePhone(input.phoneNumber)
 
-  // Reuse existing guardian for this CNIC
-  const existing = await db.guardian.findUnique({ where: { cnic } })
+  // Reuse existing guardian for this phone number (e.g. same parent, another child)
+  const existing = await db.guardian.findUnique({ where: { phoneNumber } })
   if (existing) return existing.id
 
-  const targetEmail = input.email?.trim() || `guardian_${cnic}@evershaheen.edu`
+  const targetEmail = input.email?.trim() || `guardian_${phoneNumber}@technova.local`
 
   let guardianUser = await db.user.findUnique({ where: { email: targetEmail } })
   if (!guardianUser) {
@@ -58,8 +61,7 @@ async function _resolveGuardianId(
       userId: guardianUser.id,
       firstName: input.firstName,
       lastName: input.lastName ?? '',
-      cnic,
-      phoneNumber: input.phoneNumber,
+      phoneNumber,
       email: input.email || null,
       relationship: input.relationship ?? 'Guardian',
     },
@@ -78,8 +80,8 @@ export async function resolveGuardianId(
   input: GuardianLinkInput,
   passwordSeed?: string
 ): Promise<string> {
-  const cnic = input.cnic.replace(/\D/g, '')
-  const rawPassword = passwordSeed ?? cnic
+  const phoneNumber = normalizePhone(input.phoneNumber)
+  const rawPassword = passwordSeed ?? phoneNumber
   const passwordHash = await hash(rawPassword, ARGON2_OPTIONS)
   return _resolveGuardianId(tx, input, passwordHash)
 }
@@ -115,11 +117,11 @@ export async function linkGuardianToStudentDirect(
   studentId: string,
   input: GuardianLinkInput
 ): Promise<{ guardianId: string }> {
-  const cnic = input.cnic.replace(/\D/g, '')
+  const phoneNumber = normalizePhone(input.phoneNumber)
 
   // WHY hash before DB: compute the expensive hash before opening any DB
   // connection so the argon2 CPU time does not block a connection slot.
-  const passwordHash = await hash(cnic, ARGON2_OPTIONS)
+  const passwordHash = await hash(phoneNumber, ARGON2_OPTIONS)
 
   const guardianId = await _resolveGuardianId(globalPrisma, input, passwordHash)
 

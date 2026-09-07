@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
       campusId: true,
       batchId: true,
       section: true,
-      lastClassPassed: true,
     },
   })
 
@@ -86,8 +85,7 @@ export async function POST(request: NextRequest) {
         (cs) =>
           cs.campusId === st.campusId &&
           cs.batchId === st.batchId &&
-          (st.section ? cs.sectionName === st.section : true) &&
-          (st.lastClassPassed ? cs.grade === st.lastClassPassed : true)
+          (st.section ? cs.sectionName === st.section : true)
       )
       if (matchedByScope) targetSectionId = matchedByScope.id
     }

@@ -38,7 +38,7 @@ export async function DELETE(
         changes: {
           firstName: request.firstName,
           lastName: request.lastName,
-          cnic: request.cnicBForm,
+          phoneNumber: request.phoneNumber,
           reason: 'Manual deletion by admin'
         }
       }

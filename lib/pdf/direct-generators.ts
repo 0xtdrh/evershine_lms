@@ -533,7 +533,6 @@ export async function generateBonafideCertificateDirect(data: {
   className: string
   rollNo: string
   registrationNumber: string
-  cnicBForm: string
   shift?: 'MORNING' | 'EVENING' | 'NIGHT'
   issueDate: string
   validUntil?: string
@@ -577,7 +576,7 @@ export async function generateBonafideCertificateDirect(data: {
       : 'Night Session')
     : null
   const sessionClause = sessionLabel ? ` (${sessionLabel} coaching)` : ''
-  const paragraph1 = `This is to certify that ${sName}, son / daughter of Mr. ${fName}, bearing B-Form / CNIC number ${data.cnicBForm}, is a bonafide student of Evershine Academy, Madina Town Campus, currently enrolled in ${data.className}${sessionClause} under Registration Number ${data.registrationNumber} and Roll Number ${data.rollNo}.`
+  const paragraph1 = `This is to certify that ${sName}, son / daughter of Mr. ${fName}, is a bonafide student of TechNova, currently enrolled in ${data.className}${sessionClause} under Registration Number ${data.registrationNumber} and Roll Number ${data.rollNo}.`
   const paragraph2 = `The student is active in the ${sessionLabel ?? 'academic'} session ${new Date().getFullYear()}–${new Date().getFullYear() + 1} and is issued this certificate for official verification and record purposes.`
 
   pdf.setFontSize(10)
@@ -587,7 +586,7 @@ export async function generateBonafideCertificateDirect(data: {
 
   pdf.setFontSize(9)
   setTextColorC(pdf, 75, 85, 99, data.colorMode)
-  pdf.text(`Reference: ESA/BON/${data.registrationNumber.slice(-5)}/${new Date().getFullYear()}`, 20, 150)
+  pdf.text(`Reference: TN/BON/${data.registrationNumber.slice(-5)}/${new Date().getFullYear()}`, 20, 150)
   pdf.text(`Issued on: ${formatDateString(data.issueDate)}`, 20, 156)
   if (data.validUntil) {
     pdf.text(`Valid Until: ${formatDateString(data.validUntil)}`, 20, 162)
@@ -597,7 +596,7 @@ export async function generateBonafideCertificateDirect(data: {
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(9)
   setTextColorC(pdf, 0, 0, 0, data.colorMode)
-  pdf.text('Evershine Academy Administration', 120, 272, { align: 'center' })
+  pdf.text('TechNova Administration', 120, 272, { align: 'center' })
 
   return pdf
 }

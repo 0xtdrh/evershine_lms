@@ -119,7 +119,6 @@ export async function GET(request: NextRequest) {
         ? [
             { rollNumber: { contains: search } },
             { registrationNumber: { contains: search } },
-            { cnicBForm: { contains: search } },
           ]
         : [
             { firstName: { contains: search } },
@@ -146,6 +145,7 @@ export async function GET(request: NextRequest) {
         fatherName: true,
         gender: true,
         dateOfBirth: true,
+        phoneNumber: true,
         profilePicture: true,
         section: true,
         rollNumber: true,
@@ -216,17 +216,10 @@ export async function POST(request: NextRequest) {
 
   const data = parsed.data
 
-  // Check for CNIC duplicate before starting transaction (avoids a wasted tx roundtrip)
-  const existingCnic = await prisma.student.findUnique({
-    where: { cnicBForm: data.cnicBForm },
-    select: { id: true },
-  })
-  if (existingCnic) return errors.conflict('A student with this B-Form/CNIC already exists')
-
-  // Generate registration number: ESA/YYYY/NNNN
+  // Generate registration number: TN/YYYY/NNNN
   const year = new Date().getFullYear()
   const count = await prisma.student.count()
-  const registrationNumber = `ESA/${year}/${String(count + 1).padStart(4, '0')}`
+  const registrationNumber = `TN/${year}/${String(count + 1).padStart(4, '0')}`
 
   let profilePictureUrl = data.profilePicture || null
   if (isProfileImageDataUrl(profilePictureUrl)) {
@@ -254,7 +247,7 @@ export async function POST(request: NextRequest) {
   // Running it inside $transaction consumes most of Prisma's 5-second interactive tx timeout,
   // leaving almost no budget for actual DB writes. Compute it here, outside any tx.
   const studentPasswordHash = await hash(
-    data.parentEmail ? `ESA${data.cnicBForm.slice(-4)}` : `Student@${year}!`,
+    data.parentEmail ? `TN${registrationNumber.slice(-4)}` : `Student@${year}!`,
     ARGON2_OPTIONS
   )
 
@@ -266,7 +259,7 @@ export async function POST(request: NextRequest) {
     student = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          email: data.email ?? `${registrationNumber.replace(/\//g, '.')}@students.evershineacademy.edu.pk`,
+          email: data.email ?? `${registrationNumber.replace(/\//g, '.')}@students.technova.local`,
           passwordHash: studentPasswordHash,
           role: 'STUDENT',
           isActive: true,
@@ -279,61 +272,30 @@ export async function POST(request: NextRequest) {
           registrationNumber,
           firstName: data.firstName,
           lastName: data.lastName,
+          fullNameAr: data.fullNameAr,
+          fullNameEn: data.fullNameEn || null,
           fatherName: data.fatherName,
+          fatherPhoneNumber: data.fatherPhoneNumber || null,
+          fatherOccupation: data.fatherOccupation || null,
           motherName: data.motherName || null,
-          cnicBForm: data.cnicBForm,
+          motherPhoneNumber: data.motherPhoneNumber || null,
+          motherOccupation: data.motherOccupation || null,
+          parentStatus: data.parentStatus || 'BOTH_ALIVE',
           dateOfBirth: new Date(data.dateOfBirth),
-          placeOfBirth: data.placeOfBirth || null,
           gender: data.gender,
           bloodGroup: data.bloodGroup,
-          religion: data.religion,
-          nationality: data.nationality,
-          domicile: data.domicile || null,
-          requestedLevel: data.requestedLevel,
-          requestedClass: data.requestedClass ?? null,
-          requestedGroup: data.requestedGroup || null,
-          requestedGroupOther: data.requestedGroupOther || null,
-          requestedCourses: data.requestedCourses || [],
-          requestedCoursesOther: data.requestedCoursesOther || null,
-          repeaterSubjects: data.repeaterSubjects || null,
-          interviewInstitute: data.interviewInstitute || null,
-          interviewMarksObtained: data.interviewMarksObtained ?? null,
-          interviewPercentage: data.interviewPercentage || null,
-          interviewYear: data.interviewYear ?? null,
-          interviewGroup: data.interviewGroup || null,
-          interviewDate: data.interviewDate ? new Date(data.interviewDate) : null,
-          interviewerName: data.interviewerName || null,
-          interviewOutcome: data.interviewOutcome || null,
-          interviewNotes: data.interviewNotes || null,
+          nationality: data.nationality || 'Egyptian',
           address: data.address,
           city: data.city,
-          province: data.province,
-          tehsil: data.tehsil || null,
-          district: data.district || null,
-          permanentAddress: data.permanentAddress || null,
-          postalCode: data.postalCode,
           phoneNumber: data.phoneNumber,
           emergencyContact: data.emergencyContact,
           email: data.email || null,
-          fatherOccupation: data.fatherOccupation || null,
-          fatherQualification: data.fatherQualification || null,
-          fatherCnic: data.fatherCnic || null,
-          guardianEmploymentStatus: data.guardianEmploymentStatus || null,
-          guardianDesignation: data.guardianDesignation || null,
-          guardianOrganization: data.guardianOrganization || null,
-          guardianBusinessName: data.guardianBusinessName || null,
-          guardianBusinessDealsIn: data.guardianBusinessDealsIn || null,
-          previousSchool: data.previousSchool || null,
-          lastClassPassed: data.lastClassPassed ?? null,
-          lastPercentage: data.lastPercentage || null,
-          previousMarksObtained: data.previousMarksObtained ?? null,
-          boardName: data.boardName || null,
-          previousGroup: data.previousGroup || null,
-          yearOfPassing: data.yearOfPassing ?? null,
+          schoolName: data.schoolName || null,
+          regularSchoolGrade: data.regularSchoolGrade || null,
+          priorProgrammingExperience: data.priorProgrammingExperience || null,
+          medicalNotes: data.medicalNotes || null,
           sourceOfInfo: data.sourceOfInfo || null,
-          medicalConditions: data.medicalConditions || null,
-          hasDisability: data.hasDisability ?? false,
-          disabilityDetails: data.disabilityDetails || null,
+          nearestBranchId: data.nearestBranchId || null,
           hasSiblingAtAcademy: data.hasSiblingAtAcademy ?? false,
           siblingName: data.siblingName || null,
           siblingClass: data.siblingClass || null,
@@ -349,9 +311,7 @@ export async function POST(request: NextRequest) {
           totalFeeAmount: data.totalFeeAmount,
           dueAmount: data.totalFeeAmount,
           profilePicture: profilePictureUrl,
-          bFormDocUrl: data.bFormDocUrl || null,
-          previousResultUrl: data.previousResultUrl || null,
-          idCardQRCode: `ESA-QR-${registrationNumber.replace(/\//g, '-')}`,
+          idCardQRCode: `TN-QR-${registrationNumber.replace(/\//g, '-')}`,
         },
       })
 
@@ -379,7 +339,7 @@ export async function POST(request: NextRequest) {
     const err = getPrismaError(txErr)
     if (err.code === 'P2002') {
       const target = Array.isArray(err.meta?.target) ? err.meta.target.join(', ') : 'field'
-      return errors.conflict(`Duplicate value for ${target}. Please check the email or CNIC.`)
+      return errors.conflict(`Duplicate value for ${target}. Please check the email or registration number.`)
     }
     if (err.code === 'P2021' || err.code === 'P2022') {
       logStudentCreateFailure('transaction.schema', txErr)
@@ -406,12 +366,11 @@ export async function POST(request: NextRequest) {
   let guardianId: string | null = null
   let guardianNote: string | null = null
 
-  if (data.guardianCnic && data.guardianFirstName) {
+  if (data.guardianPhone && data.guardianFirstName) {
     try {
       const result = await linkGuardianToStudentDirect(student.id, {
         firstName: data.guardianFirstName,
         lastName: data.guardianLastName,
-        cnic: data.guardianCnic.replace(/\D/g, ''),
         phoneNumber: data.guardianPhone ?? data.emergencyContact,
         email: data.guardianEmail || undefined,
         relationship: data.guardianRelationship,

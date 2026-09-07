@@ -100,7 +100,6 @@ export async function PATCH(
     shift: _sh,
     deliveryMode: _dm,
     totalFeeAmount: _fee,
-    cnicBForm: _cnic,
     isActive: _active,
     ...rest
   } = parsed.data

@@ -59,27 +59,18 @@ const applySchema = z.object({
   // ── Section 1: Student Identity ──────────────────────────────────────────
   firstName:    z.string().min(2, 'First name must be at least 2 characters'),
   lastName:     z.string().min(2, 'Last name must be at least 2 characters'),
+  fullNameAr:   z.string().min(5, 'Full Arabic name is required'),
+  fullNameEn:   z.string().optional(),
   fatherName:   z.string().min(2, "Father's name is required"),
   motherName:   z.string().optional(),
-  cnicBForm:    z.string()
-    .min(13, 'CNIC/B-Form must be at least 13 characters')
-    .regex(/^[\d\-]+$/, 'CNIC/B-Form may only contain digits and hyphens'),
   dateOfBirth:  z.string().min(1, 'Date of birth is required'),
-  placeOfBirth: z.string().optional(),
   gender:       z.nativeEnum(Gender),
   bloodGroup:   z.string().optional(),
-  religion:     z.string().optional(),
-  nationality:  z.string().default('Pakistani'),
-  domicile:     z.string().optional(),
+  nationality:  z.string().default('Egyptian'),
 
   // ── Section 2: Contact & Address ─────────────────────────────────────────
   address:          z.string().min(5, 'Full address is required'),
   city:             z.string().min(2, 'City is required'),
-  province:         z.string().min(2, 'Province is required'),
-  tehsil:           z.string().optional(),
-  district:         z.string().optional(),
-  permanentAddress: z.string().optional(),
-  postalCode:       z.string().optional(),                       // BUG FIX: was absent from schema
   phoneNumber:      z.string().min(10, 'Valid phone number is required'),
   emergencyContact: z.string().min(10, 'Emergency contact is required'),
   email:            z.string().email('Invalid email').optional().or(z.literal('')),
@@ -88,82 +79,24 @@ const applySchema = z.object({
   passportPhotoBase64:  z.string().min(10, 'Passport photo is required'),
   guardianFirstName:    z.string().min(2, 'Guardian first name is required'),
   guardianLastName:     z.string().min(1, 'Guardian last name is required'),
-  guardianCnic:         z.string().min(13, 'Guardian CNIC must be 13 digits'),
   guardianPhoneNumber:  z.string().min(10, 'Guardian phone is required'),
   guardianEmail:        z.string().email().optional().or(z.literal('')),
   guardianRelationship: z.string().min(2, 'Relationship is required'),
-  guardianEmploymentStatus: z.enum(['GOVT', 'PRIVATE', 'BUSINESS', 'NONE']).optional().or(z.literal('')),
-  guardianDesignation:      z.string().optional(),
-  guardianOrganization:     z.string().optional(),
-  guardianBusinessName:     z.string().optional(),
-  guardianBusinessDealsIn:  z.string().optional(),
+  fatherPhoneNumber:    z.string().optional(),
   fatherOccupation:     z.string().optional(),
-  fatherQualification:  z.string().optional(),
-  fatherCnic:           z.string().optional(),
+  motherPhoneNumber:    z.string().optional(),
+  motherOccupation:     z.string().optional(),
+  parentStatus: z.enum(['BOTH_ALIVE', 'FATHER_DECEASED', 'MOTHER_DECEASED', 'BOTH_DECEASED', 'DIVORCED']).default('BOTH_ALIVE'),
 
-  // ── Section 4: Academic Background ───────────────────────────────────────
+  // ── Section 4: School & Prior Background ──────────────────────────────────
   preferredCampusId: z.string().optional(),
   preferredBatchId: z.string().optional(),
-  requestedLevel:    z.string().optional().or(z.literal('')),
-  requestedClass:    z.string().optional().or(z.literal('')).transform((value) => {
-    const parsed = parseInt(String(value), 10)
-    return Number.isFinite(parsed) ? parsed : undefined
-  }).optional(),
-  requestedGroup:    z.string().optional(),
-  requestedGroupOther: z.string().optional(),
-  requestedCourses:  z.array(z.string()).optional().default([]),
-  requestedCoursesOther: z.string().optional(),
-  repeaterSubjects:  z.string().optional(),
-  previousSchool:    z.string().optional(),
-  lastClassPassed: z.union([
-    z.literal(''),
-    z.number().int().min(0).max(13),
-    z.string().regex(/^(0|[1-9]|1[0-3])$/, 'Invalid class selection'),
-  ]).transform((value) => {
-    if (value === '') return undefined
-    if (typeof value === 'number') return value
-    return Number(value)
-  }),
-  lastClassPassedDetail: z.string().optional().or(z.literal('')),
-  lastPercentage:    z.string().optional(),
-  previousTotalMarks: z.preprocess((value) => {
-    if (typeof value === 'string') return value.trim() === '' ? undefined : Number(value)
-    return value
-  }, z.number().int().min(0).optional().or(z.literal('')).transform(v => v === '' ? undefined : v ? Number(v) : undefined)),
-  previousMarksObtained: z.preprocess((value) => {
-    if (typeof value === 'string') return value.trim() === '' ? undefined : Number(value)
-    return value
-  }, z.number().int().min(0).optional().or(z.literal('')).transform(v => v === '' ? undefined : v ? Number(v) : undefined)),
-  boardName:         z.string().optional(),
-  previousGroup:     z.string().optional(),
-  yearOfPassing:     z.preprocess((value) => {
-    if (typeof value === 'string') return value.trim() === '' ? undefined : Number(value)
-    return value
-  }, z.number().int().min(1990).max(new Date().getFullYear()).optional().or(z.literal('')).transform(v => v === '' ? undefined : v ? Number(v) : undefined)),
-
-  // ── Section 4B: Interview Details ───────────────────────────────────────
-  interviewDate:   z.string().optional(),
-  interviewerName: z.string().optional(),
-  interviewOutcome: z.string().optional(),
-  interviewNotes:  z.string().optional(),
-  interviewInstitute: z.string().optional(),
-  interviewMarksObtained: z.preprocess((value) => {
-    if (typeof value === 'string') return value.trim() === '' ? undefined : Number(value)
-    return value
-  }, z.number().int().min(0).optional()),
-  interviewPercentage: z.string().optional(),
-  interviewYear: z.preprocess((value) => {
-    if (typeof value === 'string') return value.trim() === '' ? undefined : Number(value)
-    return value
-  }, z.number().int().min(1900).max(new Date().getFullYear()).optional()),
-  interviewGroup: z.string().optional(),
+  schoolName:                 z.string().optional(),
+  regularSchoolGrade:         z.string().optional(),
+  priorProgrammingExperience: z.string().optional(),
 
   // ── Section 5: Documents & Medical ───────────────────────────────────────
-  bFormDocBase64:      z.string().optional().or(z.literal('')),
-  previousResultBase64: z.string().optional().or(z.literal('')),
-  medicalConditions:   z.string().optional(),
-  hasDisability:       z.boolean().default(false),
-  disabilityDetails:   z.string().optional(),
+  medicalNotes:        z.string().optional(),  // Optional, never required
   hasSiblingAtAcademy: z.boolean().default(false),
   siblingName:         z.string().optional(),
   siblingClass:        z.string().optional(),
@@ -190,22 +123,22 @@ export async function POST(req: Request) {
     const validated = applySchema.parse(body)
 
     // ── Duplicate guard ─────────────────────────────────────────────────────
-    const existingRequest = await prisma.admissionRequest.findUnique({
-      where: { cnicBForm: validated.cnicBForm },
+    const existingRequest = await prisma.admissionRequest.findFirst({
+      where: { phoneNumber: validated.phoneNumber, status: 'PENDING' },
     })
     if (existingRequest) {
       return NextResponse.json(
-        { success: false, error: 'An application with this CNIC/B-Form already exists. Please contact the administration.' },
+        { success: false, error: 'A pending application with this phone number already exists. Please contact the administration.' },
         { status: 400 }
       )
     }
 
-    const existingStudent = await prisma.student.findUnique({
-      where: { cnicBForm: validated.cnicBForm },
+    const existingStudent = await prisma.student.findFirst({
+      where: { phoneNumber: validated.phoneNumber },
     })
     if (existingStudent) {
       return NextResponse.json(
-        { success: false, error: 'A student with this CNIC/B-Form is already enrolled at Evershaheen Academy.' },
+        { success: false, error: 'A student with this phone number is already enrolled at TechNova.' },
         { status: 400 }
       )
     }
@@ -213,7 +146,7 @@ export async function POST(req: Request) {
     // ── Save passport photo ─────────────────────────────────────────────────
     let passportPhotoUrl: string | null = null
     try {
-      const slug = validated.cnicBForm.replace(/-/g, '')
+      const slug = `${validated.phoneNumber.replace(/\D/g, '')}-${Date.now()}`
       passportPhotoUrl = await uploadProfileImageToCloudinary(
         validated.passportPhotoBase64,
         'students',
@@ -234,44 +167,6 @@ export async function POST(req: Request) {
       )
     }
 
-    // ── Save B-Form document (optional) ────────────────────────────────────
-    let bFormDocUrl: string | null = null
-    if (validated.bFormDocBase64) {
-      try {
-        const slug = validated.cnicBForm.replace(/-/g, '')
-        bFormDocUrl = await saveDocumentToDisk(
-          validated.bFormDocBase64,
-          'admissions/documents',
-          `${slug}-bform`
-        )
-      } catch (docErr: unknown) {
-        const message = docErr instanceof Error ? docErr.message : 'Unknown document processing error.'
-        return NextResponse.json(
-          { success: false, error: `B-Form document error: ${message}` },
-          { status: 400 }
-        )
-      }
-    }
-
-    // ── Save previous result (optional) ───────────────────────────────────
-    let previousResultUrl: string | null = null
-    if (validated.previousResultBase64) {
-      try {
-        const slug = validated.cnicBForm.replace(/-/g, '')
-        previousResultUrl = await saveDocumentToDisk(
-          validated.previousResultBase64,
-          'admissions/documents',
-          `${slug}-result`
-        )
-      } catch (docErr: unknown) {
-        const message = docErr instanceof Error ? docErr.message : 'Unknown result document error.'
-        return NextResponse.json(
-          { success: false, error: `Previous result document error: ${message}` },
-          { status: 400 }
-        )
-      }
-    }
-
     // ── Create AdmissionRequest ────────────────────────────────────────────
 
     const request = await prisma.admissionRequest.create({
@@ -279,25 +174,18 @@ export async function POST(req: Request) {
         // Identity
         firstName:    validated.firstName,
         lastName:     validated.lastName,
+        fullNameAr:   validated.fullNameAr,
+        fullNameEn:   validated.fullNameEn || null,
         fatherName:   validated.fatherName,
         motherName:   validated.motherName || null,
-        cnicBForm:    validated.cnicBForm,
         dateOfBirth:  new Date(validated.dateOfBirth),
-        placeOfBirth: validated.placeOfBirth || null,
         gender:       validated.gender,
         bloodGroup:   validated.bloodGroup || null,
-        religion:     validated.religion || null,
         nationality:  validated.nationality,
-        domicile:     validated.domicile || null,
 
         // Contact
         address:          validated.address,
         city:             validated.city,
-        province:         validated.province,
-        tehsil:           validated.tehsil || null,
-        district:         validated.district || null,
-        permanentAddress: validated.permanentAddress || null,
-        postalCode:       validated.postalCode || null,
         phoneNumber:      validated.phoneNumber,
         emergencyContact: validated.emergencyContact,
         email:            validated.email || null,
@@ -306,52 +194,22 @@ export async function POST(req: Request) {
         passportPhotoUrl,
         guardianFirstName:    validated.guardianFirstName,
         guardianLastName:     validated.guardianLastName,
-        guardianCnic:         validated.guardianCnic,
         guardianPhoneNumber:  validated.guardianPhoneNumber,
         guardianEmail:        validated.guardianEmail || null,
         guardianRelationship: validated.guardianRelationship,
-        guardianEmploymentStatus: validated.guardianEmploymentStatus || null,
-        guardianDesignation:      validated.guardianDesignation || null,
-        guardianOrganization:     validated.guardianOrganization || null,
-        guardianBusinessName:     validated.guardianBusinessName || null,
-        guardianBusinessDealsIn:  validated.guardianBusinessDealsIn || null,
+        fatherPhoneNumber:    validated.fatherPhoneNumber || null,
         fatherOccupation:     validated.fatherOccupation || null,
-        fatherQualification:  validated.fatherQualification || null,
-        fatherCnic:           validated.fatherCnic || null,
+        motherPhoneNumber:    validated.motherPhoneNumber || null,
+        motherOccupation:     validated.motherOccupation || null,
+        parentStatus:         validated.parentStatus,
 
-        // Academic background
-        requestedLevel:  validated.requestedLevel || 'Unspecified',
-        requestedClass:  validated.requestedClass,
-        requestedGroup:  validated.requestedGroup || null,
-        requestedGroupOther: validated.requestedGroupOther || null,
-        requestedCourses: validated.requestedCourses ?? [],
-        requestedCoursesOther: validated.requestedCoursesOther || null,
-        repeaterSubjects: validated.repeaterSubjects || null,
-        previousSchool:  validated.previousSchool || null,
-        lastClassPassed: typeof validated.lastClassPassed === 'number' ? validated.lastClassPassed : null,
-        lastPercentage:  validated.lastPercentage || null,
-        previousMarksObtained: validated.previousMarksObtained as number | undefined,
-        boardName:       validated.boardName || null,
-        previousGroup:   validated.previousGroup || null,
-        yearOfPassing:   validated.yearOfPassing as number | undefined,
-
-        // Interview details
-        interviewDate:   validated.interviewDate ? new Date(validated.interviewDate) : null,
-        interviewerName: validated.interviewerName || null,
-        interviewOutcome: validated.interviewOutcome || null,
-        interviewNotes:  validated.interviewNotes || null,
-        interviewInstitute: validated.interviewInstitute || null,
-        interviewMarksObtained: validated.interviewMarksObtained ?? null,
-        interviewPercentage: validated.interviewPercentage || null,
-        interviewYear: validated.interviewYear ?? null,
-        interviewGroup: validated.interviewGroup || null,
+        // School & prior background
+        schoolName:                 validated.schoolName || null,
+        regularSchoolGrade:         validated.regularSchoolGrade || null,
+        priorProgrammingExperience: validated.priorProgrammingExperience || null,
 
         // Documents & medical
-        bFormDocUrl,
-        previousResultUrl,
-        medicalConditions:   validated.medicalConditions || null,
-        hasDisability:       validated.hasDisability,
-        disabilityDetails:   validated.disabilityDetails || null,
+        medicalNotes:        validated.medicalNotes || null,
         hasSiblingAtAcademy: validated.hasSiblingAtAcademy,
         siblingName:         validated.siblingName || null,
         siblingClass:        validated.siblingClass || null,
@@ -383,7 +241,7 @@ export async function POST(req: Request) {
       // Alert admin about new admission application
       await sendAdminAdmissionAlert(
         `${request.firstName} ${request.lastName}`,
-        request.requestedLevel || 'Unspecified',
+        request.schoolName || 'Unspecified',
         request.id
       )
     } catch (_notifErr) {
@@ -394,7 +252,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       data: { id: request.id, createdAt: request.createdAt },
-      message: 'Your application has been submitted successfully. Evershaheen Academy will contact you shortly.',
+      message: 'Your application has been submitted successfully. TechNova will contact you shortly.',
     })
 
   } catch (error) {

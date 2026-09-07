@@ -442,81 +442,43 @@ model House {
 model Student {
   id                 String   @id @default(cuid())
   userId             String   @unique
-  // ESA/2024/0825 — format enforced in application layer
   registrationNumber String   @unique
   admissionNumber    String?  @unique
   firstName          String
   lastName           String
+  fullNameAr         String // Full four-part Arabic legal name, e.g. "أحمد محمد علي حسن"
+  fullNameEn         String? // Full four-part English legal name, printed on certificates
   fatherName         String
-  motherName         String? // WHY: Mandatory on NADRA B-Form; required for institutional records
-  cnicBForm          String   @unique
+  fatherPhoneNumber  String?
+  fatherOccupation   String?
+  motherName         String?
+  motherPhoneNumber  String?
+  motherOccupation   String?
+  // BOTH_ALIVE | FATHER_DECEASED | MOTHER_DECEASED | BOTH_DECEASED | DIVORCED
+  parentStatus       String?  @default("BOTH_ALIVE")
   dateOfBirth        DateTime
-  placeOfBirth       String? // City/District of birth
   gender             Gender
   bloodGroup         String?
-  religion           String?
-  nationality        String   @default("Pakistani")
-  domicile           String? // District of domicile for official records
+  nationality        String   @default("Egyptian")
   address            String
   city               String
-  province           String
-  tehsil             String?
-  district           String?
-  permanentAddress   String?
-  postalCode         String?
 
   // Contact
   phoneNumber      String
   emergencyContact String
   email            String?
 
-  // Extended parent / family details
-  // WHY: Institutional records require father occupation for socioeconomic classification
-  fatherOccupation    String?
-  fatherQualification String? // e.g. "Graduate", "Matric"
-  fatherCnic          String? // Father's own CNIC (separate from guardian CNIC)
+  // School & prior background
+  schoolName                  String? // Current regular school the student attends
+  regularSchoolGrade          String? // Grade/year in their regular school, e.g. "الصف الرابع الابتدائي"
+  priorProgrammingExperience  String? // Free-text note on any programming/robotics experience before TechNova
 
-  guardianEmploymentStatus String? // GOVT | PRIVATE | BUSINESS | NONE
-  guardianDesignation      String?
-  guardianOrganization     String?
-  guardianBusinessName     String?
-  guardianBusinessDealsIn  String?
-
-  // Academic background (from previous institution)
-  previousSchool        String? // Last school / institution attended
-  lastClassPassed       Int? // e.g. 8 = completed Class 8
-  lastPercentage        String? // e.g. "72.5%"
-  previousMarksObtained Int?
-  boardName             String? // e.g. "BISE Faisalabad", "FBISE"
-  previousGroup         String? // e.g. "Science", "Arts"
-  yearOfPassing         Int? // e.g. 2024
-
-  requestedLevel        String? // e.g. "Matric", "Intermediate", "Middle", "Primary"
-  requestedClass        Int? // Grade 1-12 requested by admin during direct admission
-  requestedGroup        String? // Computer Group, Biology Group, F.Sc, etc.
-  requestedGroupOther   String? // Free-text detail when primary group is Other
-  requestedCourses      Json? // Selected course groups/streams
-  requestedCoursesOther String? // Free-text details when requestedCourses includes Other
-  repeaterSubjects      String? // Physics, Chemistry, etc. (comma separated)
-
-  // Interview & evaluation
-  interviewDate          DateTime?
-  interviewerName        String?
-  interviewOutcome       String?
-  interviewNotes         String?
-  interviewInstitute     String?
-  interviewMarksObtained Int?
-  interviewPercentage    String?
-  interviewYear          Int?
-  interviewGroup         String?
+  // Optional medical note — never required
+  medicalNotes String? // Optional: allergies, conditions staff should be aware of
 
   // Marketing / Referral
-  sourceOfInfo String? // Newspaper, Facebook, SMS, etc.
-
-  // Medical & special needs
-  medicalConditions String? // Chronic illness, allergies, special dietary needs
-  hasDisability     Boolean @default(false)
-  disabilityDetails String? // Description if hasDisability = true
+  sourceOfInfo String? // Facebook, Instagram, School, Referral, etc.
+  nearestBranchId String? // Campus nearest to the student's home, may differ from enrolled campus
 
   // Sibling linkage at same academy
   hasSiblingAtAcademy Boolean @default(false)
@@ -531,6 +493,7 @@ model Student {
   rollNumber    String?
   houseId       String?
   admissionDate DateTime          @default(now())
+  firstSessionDate DateTime? // Set automatically the first time attendance is recorded for this student
   academicYear  String // "2024-2025"
   // WHY shift: Student is enrolled in Morning, Evening, or Night coaching session
   shift         SessionShift      @default(MORNING)
@@ -546,9 +509,7 @@ model Student {
   dueAmount      Decimal   @default(0) @db.Decimal(10, 2)
 
   // Documents
-  profilePicture    String? // Cloudinary URL
-  bFormDocUrl       String? // B-Form / CNIC scan
-  previousResultUrl String? // Previous marksheet scan
+  profilePicture    String? // Student photo — Cloudinary URL
   idCardQRCode      String? // QR code data string
   idCardIssueDate   DateTime?
   idCardExpiryDate  DateTime?
@@ -606,82 +567,45 @@ model AdmissionRequest {
   id String @id @default(cuid())
 
   // ── Section 1: Student Identity ──────────────────────────────────────────
-  firstName    String
-  lastName     String
-  fatherName   String
-  motherName   String? // Mother's full name
-  cnicBForm    String   @unique
-  dateOfBirth  DateTime
-  placeOfBirth String? // City / District of birth
-  gender       Gender
-  bloodGroup   String?
-  religion     String?
-  nationality  String   @default("Pakistani")
-  domicile     String? // District domicile
+  firstName  String
+  lastName   String
+  fullNameAr String // Full four-part Arabic legal name
+  fullNameEn String? // Full four-part English legal name (for certificates)
+  fatherName String
+  motherName String? // Mother's full name
+  dateOfBirth DateTime
+  gender      Gender
+  bloodGroup  String?
+  nationality String   @default("Egyptian")
 
   // ── Section 2: Contact & Address ─────────────────────────────────────────
   address          String
   city             String
-  province         String
-  tehsil           String?
-  district         String?
-  permanentAddress String?
-  postalCode       String?
   phoneNumber      String
   emergencyContact String
   email            String?
 
   // ── Section 3: Guardian / Parent Details ─────────────────────────────────
-  passportPhotoUrl         String?
-  guardianFirstName        String?
-  guardianLastName         String?
-  guardianCnic             String? // Guardian CNIC for portal creation
-  guardianPhoneNumber      String?
-  guardianEmail            String?
-  guardianRelationship     String? // Father | Mother | Brother | Uncle | Other
-  guardianEmploymentStatus String? // GOVT | PRIVATE | BUSINESS | NONE
-  guardianDesignation      String?
-  guardianOrganization     String?
-  guardianBusinessName     String?
-  guardianBusinessDealsIn  String?
-  fatherOccupation         String? // Employment / profession of father
-  fatherQualification      String? // Academic qualification of father
-  fatherCnic               String? // Father's own CNIC (may differ from guardian)
+  passportPhotoUrl     String?
+  guardianFirstName    String?
+  guardianLastName     String?
+  guardianPhoneNumber  String?
+  guardianEmail        String?
+  guardianRelationship String? // Father | Mother | Brother | Uncle | Other
+  fatherPhoneNumber    String?
+  fatherOccupation     String? // Employment / profession of father
+  motherPhoneNumber    String?
+  motherOccupation     String?
+  // BOTH_ALIVE | FATHER_DECEASED | MOTHER_DECEASED | BOTH_DECEASED | DIVORCED
+  parentStatus         String? @default("BOTH_ALIVE")
 
-  // ── Section 4: Academic Background ──────────────────────────────────────
-  requestedLevel        String // e.g. "Matric", "Intermediate", "Middle", "Primary"
-  requestedClass        Int? // Grade 1-12 requested (admin assigns batch on approval)
-  requestedGroup        String? // Computer Group, Biology Group, F.Sc, etc.
-  requestedGroupOther   String? // Free-text detail when primary group is Other
-  requestedCourses      Json? // Selected course groups / streams
-  requestedCoursesOther String? // Free-text details when requestedCourses includes Other
-  repeaterSubjects      String? // Physics, Chemistry, etc. (comma separated)
-
-  previousSchool        String? // Last school / institution attended
-  lastClassPassed       Int? // Last class successfully completed
-  lastPercentage        String? // e.g. "72.5%" or "710/1100"
-  previousMarksObtained Int?
-  boardName             String? // Examining board for matric/inter applicants
-  previousGroup         String? // Science, Arts, etc.
-  yearOfPassing         Int? // Year of last exam/class completion
-
-  // ── Section 4B: Interview Details ─────────────────────────────────────────
-  interviewDate          DateTime?
-  interviewerName        String?
-  interviewOutcome       String?
-  interviewNotes         String?
-  interviewInstitute     String?
-  interviewMarksObtained Int?
-  interviewPercentage    String?
-  interviewYear          Int?
-  interviewGroup         String?
+  // ── Section 4: School & Prior Background ──────────────────────────────────
+  schoolName                 String? // Current regular school the student attends
+  regularSchoolGrade         String? // Grade/year in their regular school
+  priorProgrammingExperience String? // Free-text note on prior programming/robotics experience
 
   // ── Section 5: Documents & Medical ───────────────────────────────────────
-  bFormDocUrl       String? // Uploaded B-Form / CNIC scan
-  previousResultUrl String? // Uploaded previous result card / marksheet
-  medicalConditions String? // Chronic conditions, allergies, special needs
-  hasDisability     Boolean @default(false)
-  disabilityDetails String? // Description if hasDisability = true
+  medicalNotes String? // Optional: allergies, conditions staff should be aware of — never required
 
   // Sibling already enrolled at this academy
   hasSiblingAtAcademy Boolean @default(false)
@@ -823,8 +747,7 @@ model Guardian {
   userId       String   @unique
   firstName    String
   lastName     String
-  cnic         String   @unique
-  phoneNumber  String
+  phoneNumber  String   @unique
   email        String?
   relationship String
   isActive     Boolean  @default(true)

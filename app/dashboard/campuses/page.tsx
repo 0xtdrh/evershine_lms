@@ -614,7 +614,7 @@ export default function CampusesPage() {
                         <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Name</TableHead>
                         <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Reg #</TableHead>
                         <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Grade & Sec</TableHead>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">B-Form / CNIC</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Phone</TableHead>
                         <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Fee</TableHead>
                         <TableHead className="text-xs font-black text-gray-500 uppercase h-10 text-right">Action</TableHead>
                       </TableRow>
@@ -632,7 +632,7 @@ export default function CampusesPage() {
                             {student.class?.name || 'Unassigned'} — {student.section || 'N/A'}
                           </TableCell>
                           <TableCell className="py-2.5 text-gray-500 text-[11px] font-mono font-semibold">
-                            {student.cnicBForm}
+                            {student.phoneNumber}
                           </TableCell>
                           <TableCell className="py-2.5">
                             <span

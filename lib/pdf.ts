@@ -709,7 +709,6 @@ export async function generateBonafideCertificate(options: {
   className: string
   rollNo: string
   registrationNumber: string
-  cnicBForm: string
   shift?: 'MORNING' | 'EVENING'
   issueDate: string
   validUntil?: string
