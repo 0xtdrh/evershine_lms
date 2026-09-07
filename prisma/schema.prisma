@@ -641,7 +641,6 @@ model AdmissionRequest {
   updatedAt DateTime @updatedAt
 
   @@index([status])
-  @@index([requestedLevel])
   @@index([createdAt])
 }
 
