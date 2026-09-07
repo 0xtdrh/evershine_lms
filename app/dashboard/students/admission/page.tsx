@@ -11,7 +11,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { createStudentSchema, CreateStudentInput } from '@/lib/validation/student'
 import type { z } from 'zod'
 import { SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
-import { GUARDIAN_EMPLOYMENT_STATUSES, ACADEMIC_GROUPS, MARKETING_SOURCES, ACADEMIC_LEVELS } from '@/app/admissions/apply/_components'
+import { MARKETING_SOURCES } from '@/app/admissions/apply/_components'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -80,31 +80,17 @@ export default function AdmissionPage() {
   } = useForm<CreateStudentFormValues, unknown, CreateStudentInput>({
     resolver: zodResolver(createStudentSchema),
     defaultValues: {
-      nationality: 'Pakistani',
+      nationality: 'Egyptian',
       academicYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
       totalFeeAmount: 0, // WHY 0: Fees are set by the Super Admin — no hardcoded defaults
-      requestedCourses: [],
-      requestedLevel: '',
-      requestedClass: undefined,
-      requestedGroup: '',
-      requestedGroupOther: '',
-      requestedCoursesOther: '',
-      interviewInstitute: '',
-      interviewMarksObtained: undefined,
-      interviewPercentage: '',
-      interviewYear: undefined,
-      interviewGroup: '',
+      parentStatus: 'BOTH_ALIVE',
     },
   })
 
   const selectedCampusId = useWatch({ control, name: 'campusId' })
   const selectedBatchId = useWatch({ control, name: 'batchId' })
   const selectedSectionId = useWatch({ control, name: 'classSectionId' })
-  const requestedCourses = useWatch({ control, name: 'requestedCourses' }) ?? []
-  const requestedGroup = useWatch({ control, name: 'requestedGroup' })
-  const hasDisability = useWatch({ control, name: 'hasDisability' })
   const hasSiblingAtAcademy = useWatch({ control, name: 'hasSiblingAtAcademy' })
-  const guardianEmploymentStatus = useWatch({ control, name: 'guardianEmploymentStatus' })
 
   // ── Data Fetching ────────────────────────────────────────────────────────
   const { data: campusesRaw } = useQuery<QueryResult<Campus[]>>({
@@ -235,12 +221,11 @@ export default function AdmissionPage() {
           err.fieldErrors.forEach(({ field, message }) => {
             // react-hook-form only accepts known field paths
             const knownFields: (keyof CreateStudentFormValues)[] = [
-              'firstName', 'lastName', 'fatherName', 'cnicBForm', 'dateOfBirth', 'gender',
-              'address', 'city', 'province', 'phoneNumber', 'emergencyContact', 'email',
+              'firstName', 'lastName', 'fullNameAr', 'fatherName', 'dateOfBirth', 'gender',
+              'address', 'city', 'phoneNumber', 'emergencyContact', 'email',
               'campusId', 'batchId', 'classSectionId', 'rollNumber', 'academicYear',
-              'totalFeeAmount', 'requestedLevel', 'requestedClass', 'requestedGroup', 'requestedGroupOther', 'requestedCourses', 'requestedCoursesOther',
-              'interviewInstitute', 'interviewGroup', 'interviewMarksObtained', 'interviewPercentage', 'interviewYear', 'interviewDate', 'interviewerName', 'interviewOutcome', 'interviewNotes',
-              'guardianFirstName', 'guardianCnic', 'guardianPhone',
+              'totalFeeAmount',
+              'guardianFirstName', 'guardianPhone',
               'guardianEmail', 'guardianRelationship',
             ]
 
@@ -257,8 +242,8 @@ export default function AdmissionPage() {
             description: `${err.fieldErrors.length} validation error${err.fieldErrors.length > 1 ? 's' : ''} found`,
           })
         } else if (err.status === 409) {
-          // Duplicate CNIC — map to the field
-          setError('cnicBForm', { type: 'server', message: err.message })
+          // Duplicate phone number — map to the field
+          setError('phoneNumber', { type: 'server', message: err.message })
           notify.error('Duplicate record', { description: err.message })
         } else {
           notify.error('Admission failed', { description: err.message })
@@ -277,13 +262,12 @@ export default function AdmissionPage() {
   const FIELD_LABELS: Partial<Record<keyof CreateStudentFormValues, string>> = {
     firstName: 'First Name',
     lastName: 'Last Name',
+    fullNameAr: 'Full Name (Arabic)',
     fatherName: "Father's Name",
-    cnicBForm: 'Student B-Form / CNIC',
     dateOfBirth: 'Date of Birth',
     gender: 'Gender',
     address: 'Full Address',
     city: 'City',
-    province: 'Province',
     phoneNumber: 'Phone Number',
     emergencyContact: 'Emergency Contact',
     campusId: 'Campus',
@@ -420,28 +404,54 @@ export default function AdmissionPage() {
                 <FieldError message={errors.fatherName?.message} />
               </div>
               <div className="space-y-1.5">
-                <Label>Mother&apos;s Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Input {...register('motherName')} placeholder="Mother&apos;s full name" />
+                <RequiredLabel>Full Name (Arabic)</RequiredLabel>
+                <Input {...register('fullNameAr')} className={errors.fullNameAr ? 'border-destructive focus-visible:ring-destructive' : ''} placeholder="أحمد محمد علي حسن" />
+                <FieldError message={errors.fullNameAr?.message} />
               </div>
               <div className="space-y-1.5">
-                <Label>Father&apos;s CNIC (13 digits)</Label>
-                <Input {...register('fatherCnic')} placeholder="3520123456789" maxLength={13} className="font-mono" />
+                <Label>Full Name (English) <span className="text-muted-foreground text-xs">(for certificates)</span></Label>
+                <Input {...register('fullNameEn')} placeholder="Ahmed Mohamed Ali Hassan" />
+              </div>
+              <div className="space-y-1.5">
+                <RequiredLabel>Father&apos;s Name</RequiredLabel>
+                <Input {...register('fatherName')} className={errors.fatherName ? 'border-destructive focus-visible:ring-destructive' : ''} placeholder="Father&apos;s full name" />
+                <FieldError message={errors.fatherName?.message} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Father&apos;s Phone</Label>
+                <Input {...register('fatherPhoneNumber')} placeholder="+201234567890" />
               </div>
               <div className="space-y-1.5">
                 <Label>Father&apos;s Occupation</Label>
                 <Input {...register('fatherOccupation')} placeholder="e.g. Teacher, Business" />
               </div>
               <div className="space-y-1.5">
-                <Label>Father&apos;s Qualification</Label>
-                <Input {...register('fatherQualification')} placeholder="e.g. Graduate, Matric" />
+                <Label>Mother&apos;s Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Input {...register('motherName')} placeholder="Mother&apos;s full name" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Mother&apos;s Phone</Label>
+                <Input {...register('motherPhoneNumber')} placeholder="+201234567890" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Mother&apos;s Occupation</Label>
+                <Input {...register('motherOccupation')} placeholder="e.g. Doctor, Housewife" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Parent Status</Label>
+                <Select onValueChange={(val) => setValue('parentStatus', val as CreateStudentInput['parentStatus'])} defaultValue="BOTH_ALIVE">
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BOTH_ALIVE">Both parents present</SelectItem>
+                    <SelectItem value="FATHER_DECEASED">Father deceased</SelectItem>
+                    <SelectItem value="MOTHER_DECEASED">Mother deceased</SelectItem>
+                    <SelectItem value="BOTH_DECEASED">Both deceased</SelectItem>
+                    <SelectItem value="DIVORCED">Parents divorced</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5 md:col-span-2 border-t pt-4 mt-2">
                 <h4 className="font-semibold text-sm mb-2 text-slate-700">Identity & Demographic Info</h4>
-              </div>
-              <div className="space-y-1.5">
-                <RequiredLabel>Student B-Form / CNIC (13 digits, no dashes)</RequiredLabel>
-                <Input {...register('cnicBForm')} placeholder="3520123456789" maxLength={13} className={errors.cnicBForm ? 'border-destructive focus-visible:ring-destructive font-mono' : 'font-mono'} />
-                <FieldError message={errors.cnicBForm?.message} />
               </div>
               <div className="space-y-1.5">
                 <RequiredLabel>Date of Birth</RequiredLabel>
@@ -472,10 +482,6 @@ export default function AdmissionPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Religion <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Input {...register('religion')} placeholder="e.g. Islam" />
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -489,195 +495,42 @@ export default function AdmissionPage() {
               <Input {...register('address')} placeholder="Street, area, locality" className={errors.address ? 'border-destructive focus-visible:ring-destructive' : ''} />
               <FieldError message={errors.address?.message} />
             </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <Label>Permanent Address <span className="text-muted-foreground text-xs">(If different)</span></Label>
-              <Input {...register('permanentAddress')} placeholder="Enter permanent address" />
-            </div>
             <div className="space-y-1.5">
               <RequiredLabel>City</RequiredLabel>
-              <Input {...register('city')} placeholder="e.g. Faisalabad" className={errors.city ? 'border-destructive focus-visible:ring-destructive' : ''} />
+              <Input {...register('city')} placeholder="e.g. Hurghada" className={errors.city ? 'border-destructive focus-visible:ring-destructive' : ''} />
               <FieldError message={errors.city?.message} />
             </div>
             <div className="space-y-1.5">
-              <Label>Tehsil</Label>
-              <Input {...register('tehsil')} placeholder="e.g. City / Saddar" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>District</Label>
-              <Input {...register('district')} placeholder="e.g. Faisalabad" />
-            </div>
-            <div className="space-y-1.5">
-              <RequiredLabel>Province</RequiredLabel>
-              <Input {...register('province')} placeholder="e.g. Punjab" className={errors.province ? 'border-destructive focus-visible:ring-destructive' : ''} />
-              <FieldError message={errors.province?.message} />
-            </div>
-            <div className="space-y-1.5">
               <RequiredLabel>Phone Number</RequiredLabel>
-              <Input {...register('phoneNumber')} placeholder="+923001234567" className={errors.phoneNumber ? 'border-destructive focus-visible:ring-destructive' : ''} />
+              <Input {...register('phoneNumber')} placeholder="+201234567890" className={errors.phoneNumber ? 'border-destructive focus-visible:ring-destructive' : ''} />
               <FieldError message={errors.phoneNumber?.message} />
             </div>
             <div className="space-y-1.5">
               <RequiredLabel>Emergency Contact</RequiredLabel>
-              <Input {...register('emergencyContact')} placeholder="+923001234567" className={errors.emergencyContact ? 'border-destructive focus-visible:ring-destructive' : ''} />
+              <Input {...register('emergencyContact')} placeholder="+201234567890" className={errors.emergencyContact ? 'border-destructive focus-visible:ring-destructive' : ''} />
               <FieldError message={errors.emergencyContact?.message} />
             </div>
           </CardContent>
         </Card>
 
-        {/* ── Previous Academic Record ── */}
+        {/* ── School Background ── */}
         <Card>
           <CardHeader>
-            <CardTitle>Previous Academic Record <span className="text-sm font-medium text-muted-foreground">(Optional)</span></CardTitle>
-            <CardDescription>Previous academic and requested placement details can be added now or completed later.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5 md:col-span-2">
-              <Label>Previous School Name</Label>
-              <Input {...register('previousSchool')} placeholder="e.g. Allied School" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Last Class Passed</Label>
-              <Input type="number" min={1} max={12} {...register('lastClassPassed', { valueAsNumber: true })} placeholder="e.g. 8" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Percentage / Grade</Label>
-              <Input {...register('lastPercentage')} placeholder="e.g. 85%" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Marks Obtained</Label>
-              <Input type="number" min={0} {...register('previousMarksObtained', { valueAsNumber: true })} placeholder="e.g. 750" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Previous Group</Label>
-              <Input {...register('previousGroup')} placeholder="e.g. Science" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Board / University</Label>
-              <Input {...register('boardName')} placeholder="e.g. BISE Faisalabad" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Year of Passing</Label>
-              <Input type="number" min={1990} max={new Date().getFullYear()} {...register('yearOfPassing', { valueAsNumber: true })} placeholder={new Date().getFullYear().toString()} />
-            </div>
-            <div className="space-y-1.5 md:col-span-2 border-t pt-4 mt-2">
-              <h4 className="font-semibold text-sm mb-2 text-slate-700">Requested Placement</h4>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Requested Academic Level</Label>
-              <Select onValueChange={(val) => setValue('requestedLevel', val)}>
-                <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
-                <SelectContent>
-                  {ACADEMIC_LEVELS.map((level) => (
-                    <SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldError message={errors.requestedLevel?.message} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Requested Class</Label>
-              <Input type="number" min={1} max={12} {...register('requestedClass', { valueAsNumber: true })} placeholder="e.g. 9" />
-              <FieldError message={errors.requestedClass?.message} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Group / Courses</Label>
-              <Select onValueChange={(val) => setValue('requestedGroup', val)}>
-                <SelectTrigger><SelectValue placeholder="Select Group" /></SelectTrigger>
-                <SelectContent>
-                  {ACADEMIC_GROUPS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FieldError message={errors.requestedGroup?.message} />
-            </div>
-            {requestedGroup === 'Other' && (
-              <div className="space-y-1.5 md:col-span-2">
-                <Label>Other Group</Label>
-                <Input {...register('requestedGroupOther')} placeholder="Describe the requested group" />
-                <FieldError message={errors.requestedGroupOther?.message} />
-              </div>
-            )}
-            <div className="space-y-1.5 md:col-span-2">
-              <Label>Course Interests</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {ACADEMIC_GROUPS.map((course) => {
-                  const selected = requestedCourses.includes(course)
-                  return (
-                    <label key={course} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer select-none hover:border-slate-400">
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => {
-                          const next = selected
-                            ? requestedCourses.filter((item: string) => item !== course)
-                            : [...requestedCourses, course]
-                          setValue('requestedCourses', next)
-                        }}
-                        className="h-4 w-4"
-                      />
-                      <span>{course}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-            {requestedCourses.includes('Other') && (
-              <div className="space-y-1.5 md:col-span-2">
-                <Label>Other Course Interests</Label>
-                <Input {...register('requestedCoursesOther')} placeholder="Describe additional course interests" />
-                <FieldError message={errors.requestedCoursesOther?.message} />
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <Label>Repeater Subjects</Label>
-              <Input {...register('repeaterSubjects')} placeholder="e.g. Physics, Chemistry" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ── Interview & Assessment ── */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Interview & Assessment <span className="text-sm font-medium text-muted-foreground">(Optional)</span></CardTitle>
-            <CardDescription>
-              Capture interview details, assessment outcome, and internal notes when available.
-            </CardDescription>
+            <CardTitle>School Background <span className="text-sm font-medium text-muted-foreground">(Optional)</span></CardTitle>
+            <CardDescription>Details about the student's regular school and any prior programming experience.</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Interview Institute</Label>
-              <Input {...register('interviewInstitute')} placeholder="Name of school or college" />
+              <Label>Current School</Label>
+              <Input {...register('schoolName')} placeholder="e.g. Al-Ahyaa Language School" />
             </div>
             <div className="space-y-1.5">
-              <Label>Interview Group</Label>
-              <Input {...register('interviewGroup')} placeholder="e.g. Science, Arts" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Marks Obtained</Label>
-              <Input type="number" min={0} {...register('interviewMarksObtained', { valueAsNumber: true })} placeholder="e.g. 850" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Percentage</Label>
-              <Input {...register('interviewPercentage')} placeholder="e.g. 76.5%" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Interview Year</Label>
-              <Input type="number" min={1900} max={new Date().getFullYear()} {...register('interviewYear', { valueAsNumber: true })} placeholder="e.g. 2025" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Interview Date</Label>
-              <Input type="date" {...register('interviewDate')} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Interviewer Name</Label>
-              <Input {...register('interviewerName')} placeholder="e.g. Admissions Officer" />
+              <Label>School Grade</Label>
+              <Input {...register('regularSchoolGrade')} placeholder="e.g. الصف الرابع الابتدائي" />
             </div>
             <div className="space-y-1.5 md:col-span-2">
-              <Label>Interview Outcome</Label>
-              <Input {...register('interviewOutcome')} placeholder="e.g. Pass, Follow-up, Reject" />
-            </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <Label>Interview Notes</Label>
-              <textarea {...register('interviewNotes')} rows={4} className="w-full rounded-md border border-border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="Add internal assessment notes or next-step recommendations" />
+              <Label>Prior Programming / Robotics Experience</Label>
+              <Input {...register('priorProgrammingExperience')} placeholder="e.g. Took a Scratch course before" />
             </div>
           </CardContent>
         </Card>
@@ -687,18 +540,8 @@ export default function AdmissionPage() {
           <CardHeader><CardTitle>Medical & Additional Info</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5 md:col-span-2">
-              <Label>Medical Conditions / Allergies</Label>
-              <Input {...register('medicalConditions')} placeholder="List any chronic conditions or allergies (if any)" />
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 mt-8">
-                <input type="checkbox" id="hasDisability" className="w-4 h-4" {...register('hasDisability')} />
-                <Label htmlFor="hasDisability" className="cursor-pointer">Has any physical or learning disability?</Label>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Disability Details <span className="text-muted-foreground text-xs">(if applicable)</span></Label>
-              <Input {...register('disabilityDetails')} placeholder="Provide details if yes" disabled={!hasDisability} />
+              <Label>Medical Notes <span className="text-muted-foreground text-xs">(optional — allergies, conditions staff should know about)</span></Label>
+              <Input {...register('medicalNotes')} placeholder="Optional — leave blank if none" />
             </div>
             <div className="space-y-1.5 border-t pt-4 mt-2">
               <div className="flex items-center gap-2 mt-4">
@@ -980,13 +823,13 @@ export default function AdmissionPage() {
           <CardHeader>
             <CardTitle>Guardian / Parent</CardTitle>
             <CardDescription>
-              Optional. Creates a guardian portal account with default password = CNIC digits. CNIC requires First Name.
+              Optional. Creates a guardian portal account with default password based on the guardian's phone number.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Guardian First Name</Label>
-              <Input {...register('guardianFirstName')} placeholder="e.g. Muhammad" />
+              <Input {...register('guardianFirstName')} placeholder="e.g. Mohamed" />
               <FieldError message={errors.guardianFirstName?.message} />
             </div>
             <div className="space-y-1.5">
@@ -994,13 +837,8 @@ export default function AdmissionPage() {
               <Input {...register('guardianLastName')} placeholder="e.g. Amer" />
             </div>
             <div className="space-y-1.5">
-              <Label>Guardian CNIC (13 digits, no dashes)</Label>
-              <Input {...register('guardianCnic')} placeholder="3530123456789" maxLength={13} className={errors.guardianCnic ? 'border-destructive focus-visible:ring-destructive font-mono' : 'font-mono'} />
-              <FieldError message={errors.guardianCnic?.message} />
-            </div>
-            <div className="space-y-1.5">
               <Label>Guardian Phone</Label>
-              <Input {...register('guardianPhone')} placeholder="+923001234567" />
+              <Input {...register('guardianPhone')} placeholder="+201234567890" />
             </div>
             <div className="space-y-1.5">
               <Label>Guardian Email <span className="text-muted-foreground text-xs">(for portal login)</span></Label>
@@ -1010,41 +848,6 @@ export default function AdmissionPage() {
               <Label>Relationship</Label>
               <Input {...register('guardianRelationship')} placeholder="Father / Mother / Guardian" />
             </div>
-            <div className="space-y-1.5 border-t pt-4 mt-2 md:col-span-2">
-              <h4 className="font-semibold text-sm mb-2 text-slate-700">Employment Information</h4>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Employment Status</Label>
-              <Select onValueChange={(val) => setValue('guardianEmploymentStatus', val as 'GOVT' | 'PRIVATE' | 'BUSINESS' | 'NONE')}>
-                <SelectTrigger><SelectValue placeholder="Select Employment" /></SelectTrigger>
-                <SelectContent>
-                  {GUARDIAN_EMPLOYMENT_STATUSES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            {guardianEmploymentStatus === 'GOVT' || guardianEmploymentStatus === 'PRIVATE' ? (
-              <>
-                <div className="space-y-1.5">
-                  <Label>Designation</Label>
-                  <Input {...register('guardianDesignation')} placeholder="e.g. Manager" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Organization</Label>
-                  <Input {...register('guardianOrganization')} placeholder="e.g. WAPDA, PTCL" />
-                </div>
-              </>
-            ) : guardianEmploymentStatus === 'BUSINESS' ? (
-              <>
-                <div className="space-y-1.5">
-                  <Label>Business Name</Label>
-                  <Input {...register('guardianBusinessName')} placeholder="Name of business" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Deals In</Label>
-                  <Input {...register('guardianBusinessDealsIn')} placeholder="Type of business (e.g. Textiles)" />
-                </div>
-              </>
-            ) : null}
           </CardContent>
         </Card>
 
