@@ -124,6 +124,7 @@ export default function AdmissionFormPage() {
       if (!validateStep(currentStep)) {
         setStep(currentStep)
         window.scrollTo({ top: 0, behavior: 'smooth' })
+        notify.error(`Please complete step ${currentStep} (${STEP_META[currentStep - 1]?.label}) before submitting.`)
         return false
       }
     }
@@ -585,6 +586,7 @@ export default function AdmissionFormPage() {
                         </div>
                         <dl className="p-5 space-y-3 text-sm">
                           <div className="flex justify-between"><dt className="text-slate-500">Name</dt><dd className="font-semibold text-slate-900">{formData.firstName} {formData.lastName}</dd></div>
+                          <div className="flex justify-between"><dt className="text-slate-500">Name (Arabic)</dt><dd className={`font-semibold ${formData.fullNameAr ? 'text-slate-900' : 'text-red-600'}`}>{formData.fullNameAr || 'Missing — go back to Step 2'}</dd></div>
                           <div className="flex justify-between"><dt className="text-slate-500">Father</dt><dd className="font-medium text-slate-800">{formData.fatherName}</dd></div>
                           <div className="flex justify-between"><dt className="text-slate-500">DOB</dt><dd className="font-medium text-slate-800">{formData.dateOfBirth || '—'}</dd></div>
                           <div className="flex justify-between"><dt className="text-slate-500">Phone</dt><dd className="font-medium text-slate-800">{formData.phoneNumber || '—'}</dd></div>
