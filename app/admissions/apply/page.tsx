@@ -193,7 +193,7 @@ export default function AdmissionFormPage() {
               <AcademyLogo variant="primary" className="h-8 w-8 text-white" />
             </div>
             <div className="text-right">
-              <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">Evershine Academy</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">TechNova</h1>
               <p className="text-[11px] text-blue-200 font-medium tracking-widest uppercase">Admission Application</p>
             </div>
           </div>
@@ -662,7 +662,7 @@ export default function AdmissionFormPage() {
                             I accept the Rules and Regulations
                           </label>
                           <p className="text-xs text-slate-500">
-                            By ticking this box, you digitally sign this admission request and bind yourself to the institutional policies of Evershine Academy.
+                            By ticking this box, you digitally sign this admission request and bind yourself to the institutional policies of TechNova.
                           </p>
                           <FieldError message={errors.termsAccepted} />
                         </div>
@@ -705,7 +705,7 @@ export default function AdmissionFormPage() {
 
         {/* Footer note */}
         <div className="text-center mt-6 mb-4">
-          <p className="text-xs text-slate-400">© {new Date().getFullYear()} Evershine Academy · All information is confidential and secured</p>
+          <p className="text-xs text-slate-400">© {new Date().getFullYear()} TechNova · All information is confidential and secured</p>
         </div>
       </div>
     </div>

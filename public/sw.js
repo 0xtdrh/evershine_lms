@@ -119,7 +119,13 @@ self.addEventListener('fetch', (event) => {
   //    Never serve a cached HTML page; ensures the latest build is shown.
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request, { cache: 'no-store' }).catch(() => caches.match('/offline'))
+      fetch(event.request, { cache: 'no-store' }).catch(async () => {
+        const cachedOffline = await caches.match('/offline');
+        return cachedOffline || new Response(
+          '<!DOCTYPE html><html><body><h1>You are offline</h1><p>Please check your internet connection and try again.</p></body></html>',
+          { status: 503, headers: { 'Content-Type': 'text/html' } }
+        );
+      })
     );
     return;
   }
@@ -194,6 +200,9 @@ self.addEventListener('fetch', (event) => {
 
   // 5. Default: Network-First fallback for everything else
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request).catch(async () => {
+      const cached = await caches.match(event.request);
+      return cached || new Response(null, { status: 503, statusText: 'Offline' });
+    })
   );
 });
