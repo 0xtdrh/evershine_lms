@@ -76,7 +76,7 @@ const applySchema = z.object({
   email:            z.string().email('Invalid email').optional().or(z.literal('')),
 
   // ── Section 3: Guardian / Parent Details ─────────────────────────────────
-  passportPhotoBase64:  z.string().min(10, 'Passport photo is required'),
+  passportPhotoBase64:  z.string().min(10, 'Personal photo is required'),
   guardianFirstName:    z.string().min(2, 'Guardian first name is required'),
   guardianLastName:     z.string().min(1, 'Guardian last name is required'),
   guardianPhoneNumber:  z.string().min(10, 'Guardian phone is required'),
@@ -143,7 +143,7 @@ export async function POST(req: Request) {
       )
     }
 
-    // ── Save passport photo ─────────────────────────────────────────────────
+    // ── Save personal photo ─────────────────────────────────────────────────
     let passportPhotoUrl: string | null = null
     try {
       const slug = `${validated.phoneNumber.replace(/\D/g, '')}-${Date.now()}`
@@ -155,14 +155,14 @@ export async function POST(req: Request) {
     } catch (imgErr: unknown) {
       const message = imgErr instanceof Error ? imgErr.message : 'Unknown image processing error.'
       if (!message.startsWith('Invalid image') && !message.startsWith('Image too large')) {
-        console.error('[admissions.apply] Passport photo upload failed', imgErr)
+        console.error('[admissions.apply] Personal photo upload failed', imgErr)
         return NextResponse.json(
-          { success: false, error: 'Passport photo upload failed. Please try again or contact administration.' },
+          { success: false, error: 'Photo upload failed. Please try again or contact administration.' },
           { status: 500 }
         )
       }
       return NextResponse.json(
-        { success: false, error: `Passport photo error: ${message}` },
+        { success: false, error: `Photo error: ${message}` },
         { status: 400 }
       )
     }
