@@ -26,56 +26,37 @@ interface AdmissionRequest {
   id: string
   firstName: string
   lastName: string
+  fullNameAr: string
+  fullNameEn?: string
   fatherName: string
   motherName?: string
-  cnicBForm: string
   dateOfBirth: string
-  placeOfBirth?: string
   gender: string
   bloodGroup?: string
-  religion?: string
   nationality: string
-  domicile?: string
   address: string
   city: string
-  province: string
-  postalCode?: string
   phoneNumber: string
   emergencyContact: string
   email?: string
 
   guardianFirstName?: string
   guardianLastName?: string
-  guardianCnic?: string
   guardianPhoneNumber?: string
   guardianEmail?: string
   guardianRelationship?: string
+  fatherPhoneNumber?: string
   fatherOccupation?: string
-  fatherQualification?: string
-  fatherCnic?: string
+  motherPhoneNumber?: string
+  motherOccupation?: string
+  parentStatus?: string
 
-  requestedLevel: string
-  requestedClass?: number
-  previousSchool?: string
-  lastClassPassed?: number
-  lastPercentage?: string
-  boardName?: string
-  yearOfPassing?: number
-  requestedGroupOther?: string
-  requestedCourses: string[]
-  requestedCoursesOther?: string
-  interviewInstitute?: string
-  interviewMarksObtained?: number
-  interviewPercentage?: string
-  interviewYear?: number
-  interviewGroup?: string
+  schoolName?: string
+  regularSchoolGrade?: string
+  priorProgrammingExperience?: string
 
   passportPhotoUrl?: string
-  bFormDocUrl?: string
-  previousResultUrl?: string
-  medicalConditions?: string
-  hasDisability: boolean
-  disabilityDetails?: string
+  medicalNotes?: string
   hasSiblingAtAcademy: boolean
   siblingName?: string
   siblingClass?: string
@@ -269,18 +250,6 @@ export default function AdmissionsDashboard() {
         otherClasses.push(c)
       }
     })
-  } else if (selectedRequest) {
-    const req = selectedRequest.requestedLevel.toLowerCase()
-    classesRaw.forEach((c: any) => {
-      let isMatch = false
-      if (req.includes('kids') || req.includes('primary')) isMatch = c.grade >= 1 && c.grade <= 5
-      else if (req.includes('junior') || req.includes('middle')) isMatch = c.grade >= 6 && c.grade <= 8
-      else if (req.includes('matric') || req.includes('secondary')) isMatch = c.grade === 9 || c.grade === 10
-      else if (req.includes('inter') || req.includes('higher') || req.includes('college')) isMatch = c.grade === 11 || c.grade === 12
-
-      if (isMatch) compatibleClasses.push(c)
-      else otherClasses.push(c)
-    })
   } else {
     compatibleClasses = classesRaw
   }
@@ -443,9 +412,9 @@ export default function AdmissionsDashboard() {
               <TableHeader className="bg-gray-50">
                 <TableRow>
                   <TableHead>Applicant Name</TableHead>
-                  <TableHead>CNIC / B-Form</TableHead>
-                  <TableHead>Requested Level</TableHead>
-                  <TableHead>Requested Class</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Preferred Shift</TableHead>
+                  <TableHead>Delivery Mode</TableHead>
                   <TableHead>Applied Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Action</TableHead>
@@ -477,12 +446,12 @@ export default function AdmissionsDashboard() {
                         <p className="font-medium">{req.firstName} {req.lastName}</p>
                         <p className="text-xs text-gray-500">{req.gender} • {req.phoneNumber}</p>
                       </TableCell>
-                      <TableCell className="font-mono text-sm">{req.cnicBForm}</TableCell>
+                      <TableCell className="font-mono text-sm">{req.phoneNumber}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 font-semibold">{req.requestedLevel}</Badge>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 font-semibold">{req.preferredShift || 'N/A'}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 font-semibold">{req.requestedClass ? `Class ${req.requestedClass}` : 'N/A'}</Badge>
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 font-semibold">{req.deliveryMode}</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-gray-600">
                         {new Date(req.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -574,8 +543,8 @@ export default function AdmissionsDashboard() {
                     <h3 className="font-bold text-xl text-gray-900">{selectedRequest.firstName} {selectedRequest.lastName}</h3>
                     <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm text-gray-600 mt-3">
                       <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-400"/> Gender: <span className="font-medium text-slate-900">{selectedRequest.gender}</span></span>
-                      <span className="flex items-center gap-1.5"><Building2 className="w-4 h-4 text-slate-400"/> Requested Level: <span className="font-medium text-slate-900">{selectedRequest.requestedLevel}</span></span>
-                      <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-slate-400"/> CNIC/B-Form: <span className="font-medium text-slate-900">{selectedRequest.cnicBForm}</span></span>
+                      <span className="flex items-center gap-1.5"><Building2 className="w-4 h-4 text-slate-400"/> Delivery Mode: <span className="font-medium text-slate-900">{selectedRequest.deliveryMode}</span></span>
+                      <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-slate-400"/> Phone: <span className="font-medium text-slate-900">{selectedRequest.phoneNumber}</span></span>
                       <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-slate-400"/> DOB: <span className="font-medium text-slate-900">{new Date(selectedRequest.dateOfBirth).toLocaleDateString()}</span></span>
                     </div>
                   </div>
@@ -588,9 +557,12 @@ export default function AdmissionsDashboard() {
                       <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">Family Details</h4>
                       <dl className="space-y-1 text-sm">
                         <div className="flex justify-between"><dt className="text-slate-500">Father</dt><dd className="font-medium text-slate-900">{selectedRequest.fatherName}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Mother</dt><dd className="font-medium text-slate-900">{selectedRequest.motherName || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">Father Phone</dt><dd className="font-medium text-slate-900">{selectedRequest.fatherPhoneNumber || 'N/A'}</dd></div>
                         <div className="flex justify-between"><dt className="text-slate-500">Father Occ.</dt><dd className="font-medium text-slate-900">{selectedRequest.fatherOccupation || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Father Edu.</dt><dd className="font-medium text-slate-900">{selectedRequest.fatherQualification || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">Mother</dt><dd className="font-medium text-slate-900">{selectedRequest.motherName || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">Mother Phone</dt><dd className="font-medium text-slate-900">{selectedRequest.motherPhoneNumber || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">Mother Occ.</dt><dd className="font-medium text-slate-900">{selectedRequest.motherOccupation || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">Parent Status</dt><dd className="font-medium text-slate-900">{selectedRequest.parentStatus || 'N/A'}</dd></div>
                       </dl>
                     </div>
 
@@ -612,35 +584,21 @@ export default function AdmissionsDashboard() {
                         <dl className="space-y-1">
                           <div className="flex justify-between"><dt className="text-blue-700">Name</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianFirstName} {selectedRequest.guardianLastName}</dd></div>
                           <div className="flex justify-between"><dt className="text-blue-700">Relation</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianRelationship}</dd></div>
-                          <div className="flex justify-between"><dt className="text-blue-700">CNIC</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianCnic}</dd></div>
                           <div className="flex justify-between"><dt className="text-blue-700">Phone</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianPhoneNumber}</dd></div>
+                          <div className="flex justify-between"><dt className="text-blue-700">Email</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianEmail || 'N/A'}</dd></div>
                         </dl>
                       </div>
                     )}
                   </div>
 
-                  {/* Academic & Documents */}
+                  {/* School Background & Documents */}
                   <div className="space-y-4">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">Previous Academic Record</h4>
+                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">School Background</h4>
                       <dl className="space-y-1 text-sm">
-                        <div className="flex justify-between"><dt className="text-slate-500">School</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.previousSchool || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Last Class</dt><dd className="font-medium text-slate-900">{selectedRequest.lastClassPassed === 0 ? 'Below Class 1' : selectedRequest.lastClassPassed === 13 ? 'Above Class 12' : selectedRequest.lastClassPassed ? `Class ${selectedRequest.lastClassPassed}` : 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Percentage</dt><dd className="font-medium text-slate-900">{selectedRequest.lastPercentage || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Year</dt><dd className="font-medium text-slate-900">{selectedRequest.yearOfPassing || 'N/A'} {selectedRequest.boardName ? `(${selectedRequest.boardName})` : ''}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Custom Primary Group</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.requestedGroupOther || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Other Course Details</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.requestedCoursesOther || 'N/A'}</dd></div>
-                      </dl>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">Interview Academic Summary</h4>
-                      <dl className="space-y-1 text-sm">
-                        <div className="flex justify-between"><dt className="text-slate-500">Institute</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.interviewInstitute || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Group</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.interviewGroup || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Marks Obtained</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.interviewMarksObtained ?? 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">%age</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.interviewPercentage || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Year</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.interviewYear || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">School</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.schoolName || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">Grade</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.regularSchoolGrade || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">Prior Experience</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.priorProgrammingExperience || 'N/A'}</dd></div>
                       </dl>
                     </div>
 
@@ -648,11 +606,11 @@ export default function AdmissionsDashboard() {
                       <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">Medical & Additional</h4>
                       <dl className="space-y-1 text-sm">
                         <div className="flex justify-between"><dt className="text-slate-500">Blood Group</dt><dd className="font-medium text-slate-900">{selectedRequest.bloodGroup || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Medical</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.medicalConditions || 'None'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Disability</dt><dd className="font-medium text-slate-900">{selectedRequest.hasDisability ? 'Yes' : 'No'}</dd></div>
-                        {selectedRequest.hasDisability && selectedRequest.disabilityDetails && (
-                          <div className="mt-1 bg-red-50 p-2 rounded border border-red-100 text-red-600 text-xs">
-                            <strong>Details:</strong> {selectedRequest.disabilityDetails}
+                        <div className="flex justify-between"><dt className="text-slate-500">Medical Notes</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.medicalNotes || 'None'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">Sibling at Academy</dt><dd className="font-medium text-slate-900">{selectedRequest.hasSiblingAtAcademy ? 'Yes' : 'No'}</dd></div>
+                        {selectedRequest.hasSiblingAtAcademy && selectedRequest.siblingName && (
+                          <div className="mt-1 bg-blue-50 p-2 rounded border border-blue-100 text-blue-700 text-xs">
+                            <strong>Sibling:</strong> {selectedRequest.siblingName} ({selectedRequest.siblingClass || 'N/A'})
                           </div>
                         )}
                       </dl>
@@ -660,23 +618,14 @@ export default function AdmissionsDashboard() {
 
                     <div className="space-y-2">
                       <h4 className="text-sm font-bold text-slate-900 border-b pb-1">Documents Uploaded</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {selectedRequest.bFormDocUrl ? (
-                          <a href={selectedRequest.bFormDocUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline bg-blue-50 p-2 rounded">
-                            <CheckCircle className="w-4 h-4 text-emerald-500"/> B-Form / CNIC
+                      <div className="grid grid-cols-1 gap-2">
+                        {selectedRequest.passportPhotoUrl ? (
+                          <a href={selectedRequest.passportPhotoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline bg-blue-50 p-2 rounded">
+                            <CheckCircle className="w-4 h-4 text-emerald-500"/> Passport Photo
                           </a>
                         ) : (
                           <div className="flex items-center gap-2 text-sm text-slate-400 bg-slate-50 p-2 rounded">
-                            <XCircle className="w-4 h-4"/> B-Form / CNIC
-                          </div>
-                        )}
-                        {selectedRequest.previousResultUrl ? (
-                          <a href={selectedRequest.previousResultUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline bg-blue-50 p-2 rounded">
-                            <CheckCircle className="w-4 h-4 text-emerald-500"/> Prev. Result
-                          </a>
-                        ) : (
-                          <div className="flex items-center gap-2 text-sm text-slate-400 bg-slate-50 p-2 rounded">
-                            <XCircle className="w-4 h-4"/> Prev. Result
+                            <XCircle className="w-4 h-4"/> Passport Photo
                           </div>
                         )}
                       </div>
