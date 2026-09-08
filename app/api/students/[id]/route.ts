@@ -42,7 +42,6 @@ export async function GET(
           phoneNumber: true,
           email: true,
           relationship: true,
-          cnic: true,
         },
       },
       enrollments: {
