@@ -446,7 +446,7 @@ model Student {
   admissionNumber    String?  @unique
   firstName          String
   lastName           String
-  fullNameAr         String // Full four-part Arabic legal name, e.g. "أحمد محمد علي حسن"
+  fullNameAr         String? // Full four-part Arabic legal name, e.g. "أحمد محمد علي حسن"
   fullNameEn         String? // Full four-part English legal name, printed on certificates
   fatherName         String
   fatherPhoneNumber  String?
@@ -569,7 +569,7 @@ model AdmissionRequest {
   // ── Section 1: Student Identity ──────────────────────────────────────────
   firstName  String
   lastName   String
-  fullNameAr String // Full four-part Arabic legal name
+  fullNameAr String? // Full four-part Arabic legal name
   fullNameEn String? // Full four-part English legal name (for certificates)
   fatherName String
   motherName String? // Mother's full name
