@@ -1226,10 +1226,101 @@ model Certificate {
   remarks    String?
   createdAt  DateTime        @default(now())
 
-  student Student @relation(fields: [studentId], references: [id])
+  // ── Level-completion certificate fields ──────────────────────────────────
+  templateId   String? // Which CertificateTemplate design to render with
+  subjectId    String? // Which course/level this certificate is for
+  levelResultId String? @unique // The graded result that triggered this certificate
+  // WHY blur-by-default: certificates are handed out formally at a ceremony;
+  // student/guardian should see "earned" state before the actual artwork is revealed.
+  isRevealed   Boolean   @default(false)
+  revealedAt   DateTime?
+  revealedBy   String? // Admin/Super Admin user ID who revealed it
+
+  student      Student              @relation(fields: [studentId], references: [id])
+  template     CertificateTemplate? @relation(fields: [templateId], references: [id])
+  subject      AcademicSubject?     @relation(fields: [subjectId], references: [id])
+  levelResult  StudentLevelResult?  @relation(fields: [levelResultId], references: [id])
 
   @@index([studentId])
   @@index([type])
+  @@index([subjectId])
+  @@index([isRevealed])
+}
+
+// WHY subjectId nullable: a null row is the global default used for any
+// course that has no override. Looking up a course's active config means
+// "try the row with this subjectId first, fall back to the null row."
+model CourseGradingConfig {
+  id               String   @id @default(cuid())
+  subjectId        String?  @unique // null = global default template
+  homeworkWeight   Float    @default(20) // % weight of homework/task completion
+  taskWeight       Float    @default(20) // % weight of per-session tasks
+  instructorWeight Float    @default(20) // % weight of instructor's own evaluation
+  projectWeight    Float    @default(25) // % weight of final project
+  mcqWeight        Float    @default(15) // % weight of MCQ exam
+  passThreshold    Float    @default(60) // Minimum final % required to pass the level
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+
+  subject AcademicSubject? @relation(fields: [subjectId], references: [id])
+
+  @@index([subjectId])
+}
+
+// One row per student per course/level attempt — holds the raw component
+// scores (each stored as a 0-100 percentage of that component), the computed
+// final score, and the pass/fail outcome.
+model StudentLevelResult {
+  id                  String   @id @default(cuid())
+  studentEnrollmentId String
+  subjectId           String
+
+  // Raw component scores (0-100 scale each)
+  homeworkScore   Float? // Source: MANUAL for now, later can be MOODLE
+  homeworkSource  String  @default("MANUAL")
+  taskScore       Float?
+  taskSource      String  @default("MANUAL")
+  instructorScore Float?
+  instructorSource String @default("MANUAL")
+  projectScore    Float?
+  projectSource   String  @default("MANUAL")
+  mcqScore        Float?
+  mcqSource       String  @default("MANUAL")
+
+  finalScore    Float? // Weighted result computed from the components above
+  passed        Boolean? // Null until all components are entered and computed
+  instructorFeedback String? // Required before the result can be finalized
+
+  computedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  studentEnrollment StudentEnrollment @relation(fields: [studentEnrollmentId], references: [id], onDelete: Cascade)
+  subject           AcademicSubject   @relation(fields: [subjectId], references: [id])
+  certificate       Certificate?
+
+  @@unique([studentEnrollmentId, subjectId])
+  @@index([subjectId])
+  @@index([passed])
+}
+
+// An uploaded certificate background + the positions/styling of the dynamic
+// text fields (student name, course, date, QR code, etc.) drawn on top of it.
+model CertificateTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  backgroundUrl   String // Cloudinary URL of the uploaded design
+  widthPx         Int      @default(1600)
+  heightPx        Int      @default(1131) // A4 landscape @ ~200dpi default
+  // Array of { key, label, x, y, fontSizePx, fontFamily, color, align, bold }
+  // key is one of: studentName, courseName, levelName, issueDate, certificateId, qrCode
+  fieldLayout     Json
+  isDefault       Boolean  @default(false)
+  createdBy       String // Admin user ID
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  certificates Certificate[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1803,6 +1894,7 @@ model StudentEnrollment {
   promotionsFrom      PromotionRecord[]            @relation("PromotionFrom")
   promotionsTo        PromotionRecord[]            @relation("PromotionTo")
   feedbackSubmissions StudentFeedbackSubmission[]
+  levelResults        StudentLevelResult[]
 
   @@unique([studentId, academicYearId, classSectionId])
   @@unique([academicYearId, classSectionId, rollNumber])
@@ -1876,6 +1968,9 @@ model AcademicSubject {
 
   offerings      SubjectOffering[]
   gradingSchemes AcademicGradingScheme[]
+  gradingConfigs CourseGradingConfig[]
+  levelResults   StudentLevelResult[]
+  certificates   Certificate[]
 }
 
 model ElectiveGroup {
