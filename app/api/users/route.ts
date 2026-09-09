@@ -111,6 +111,21 @@ export async function GET(request: NextRequest) {
               }
             }
           },
+          branchManager: {
+            include: {
+              campus: { select: { id: true, name: true } }
+            }
+          },
+          secretary: {
+            include: {
+              campus: { select: { id: true, name: true } }
+            }
+          },
+          marketingStaff: {
+            include: {
+              campus: { select: { id: true, name: true } }
+            }
+          },
           parent: { select: { firstName: true, lastName: true } },
           guardian: { select: { firstName: true, lastName: true } },
           accountant: {
@@ -123,8 +138,9 @@ export async function GET(request: NextRequest) {
     ])
 
     const formattedUsers = users.map((u) => {
-      const profile = u.student ?? u.teacher ?? u.admin ?? u.parent ?? u.guardian ?? u.accountant
+      const profile = u.student ?? u.teacher ?? u.admin ?? u.branchManager ?? u.secretary ?? u.marketingStaff ?? u.parent ?? u.guardian ?? u.accountant
       const name = profile ? `${profile.firstName} ${profile.lastName}` : 'No Profile Associated'
+      const staffProfile = u.admin ?? u.branchManager ?? u.secretary ?? u.marketingStaff
       return {
         id: u.id,
         email: u.email,
@@ -133,12 +149,12 @@ export async function GET(request: NextRequest) {
         profilePictureUrl: u.profilePictureUrl,
         name,
         lastLogin: u.lastLogin,
-        adminProfile: u.admin ? {
-          firstName:  u.admin.firstName,
-          lastName:   u.admin.lastName,
-          campusId:   u.admin.campusId,
-          campusName: u.admin.campus?.name ?? 'Unassigned',
-          department: u.admin.department ?? 'N/A'
+        adminProfile: staffProfile ? {
+          firstName:  staffProfile.firstName,
+          lastName:   staffProfile.lastName,
+          campusId:   staffProfile.campusId,
+          campusName: staffProfile.campus?.name ?? 'Unassigned',
+          department: 'department' in staffProfile ? (staffProfile.department ?? 'N/A') : 'N/A'
         } : null,
         accountantProfile: u.accountant ? {
           firstName:   u.accountant.firstName,

@@ -16,8 +16,8 @@ const createAdminSchema = z.object({
   lastName: z.string().min(1, 'Last name is required').max(50),
   email: z.string().email('Invalid email address').toLowerCase().trim(),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
-  role: z.enum(['ADMIN', 'SUPER_ADMIN']),
-  campusId: z.string().min(1, 'Campus assignment is required'),
+  role: z.enum(['ADMIN', 'SUPER_ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING']),
+  campusId: z.string().optional(),
   department: z.string().max(100).optional().nullable(),
 })
 
@@ -56,16 +56,27 @@ export async function POST(request: NextRequest) {
     return errors.forbidden('Super Administrator accounts must be created through the protected bootstrap process.')
   }
 
-  try {
-    // Check if the campus exists
-    const campus = await prisma.campus.findUnique({
-      where: { id: campusId },
-    })
+  // Campus is required for ADMIN, SUPER_ADMIN, BRANCH_MANAGER, and SECRETARY.
+  // MARKETING staff may optionally be unscoped (works across campuses).
+  const campusRequired = role !== 'MARKETING'
+  if (campusRequired && !campusId) {
+    return errors.validation({
+      errors: [{ path: ['campusId'], message: 'Campus assignment is required for this role' }],
+    } as never)
+  }
 
-    if (!campus) {
-      return errors.validation({
-        errors: [{ path: ['campusId'], message: 'Selected campus does not exist' }],
-      } as never)
+  try {
+    // Check if the campus exists (only when one was provided)
+    if (campusId) {
+      const campus = await prisma.campus.findUnique({
+        where: { id: campusId },
+      })
+
+      if (!campus) {
+        return errors.validation({
+          errors: [{ path: ['campusId'], message: 'Selected campus does not exist' }],
+        } as never)
+      }
     }
 
     // Check if user already exists
@@ -92,40 +103,52 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // 2. Create Admin Profile
-      const newAdmin = await tx.admin.create({
-        data: {
-          userId: newUser.id,
-          firstName,
-          lastName,
-          campusId,
-          department: department || null,
-          isActive: true,
-        },
-      })
+      // 2. Create the appropriate profile record for the selected role
+      let profileId: string
+      if (role === 'BRANCH_MANAGER') {
+        const p = await tx.branchManager.create({
+          data: { userId: newUser.id, firstName, lastName, campusId: campusId!, department: department || null, isActive: true },
+        })
+        profileId = p.id
+      } else if (role === 'SECRETARY') {
+        const p = await tx.secretary.create({
+          data: { userId: newUser.id, firstName, lastName, campusId: campusId!, isActive: true },
+        })
+        profileId = p.id
+      } else if (role === 'MARKETING') {
+        const p = await tx.marketingStaff.create({
+          data: { userId: newUser.id, firstName, lastName, campusId: campusId || null, isActive: true },
+        })
+        profileId = p.id
+      } else {
+        const p = await tx.admin.create({
+          data: { userId: newUser.id, firstName, lastName, campusId: campusId!, department: department || null, isActive: true },
+        })
+        profileId = p.id
+      }
 
       // 3. Create Audit Log
       await tx.auditLog.create({
         data: {
           userId: session.user.id,
           action: 'CREATE',
-          entityType: 'AdminProfile',
+          entityType: `${role}Profile`,
           entityId: newUser.id,
           changes: {
             email,
             role,
             firstName,
             lastName,
-            campusId,
+            campusId: campusId || null,
             department: department || null,
           },
         },
       })
 
-      return { userId: newUser.id, adminId: newAdmin.id }
+      return { userId: newUser.id, profileId }
     })
 
-    return successResponse(result, { message: 'Administrator profile created successfully' })
+    return successResponse(result, { message: 'Account created successfully' })
   } catch (err: any) {
     console.error('[CREATE_ADMIN_ERROR]', err)
     return errors.internal()

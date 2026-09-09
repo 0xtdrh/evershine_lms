@@ -67,7 +67,7 @@ export default function SettingsPage() {
 
   // ─── Admin Management States ──────────────────────────────────────────────────
   const [adminSearch, setAdminSearch] = useState('')
-  const [adminRoleFilter, setAdminRoleFilter] = useState<'ALL' | 'SUPER_ADMIN' | 'ADMIN'>('ALL')
+  const [adminRoleFilter, setAdminRoleFilter] = useState<'ALL' | 'SUPER_ADMIN' | 'ADMIN' | 'BRANCH_MANAGER' | 'SECRETARY' | 'MARKETING'>('ALL')
   const [adminPage, setAdminPage] = useState(1)
 
   // Dialog Trigger States
@@ -80,7 +80,7 @@ export default function SettingsPage() {
   const [adminLastName, setAdminLastName] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
-  const [adminRole, setAdminRole] = useState<'ADMIN' | 'SUPER_ADMIN'>('ADMIN')
+  const [adminRole, setAdminRole] = useState<'ADMIN' | 'SUPER_ADMIN' | 'BRANCH_MANAGER' | 'SECRETARY' | 'MARKETING'>('ADMIN')
   const [adminCampusId, setAdminCampusId] = useState('')
   const [adminDepartment, setAdminDepartment] = useState('')
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false)
@@ -88,7 +88,7 @@ export default function SettingsPage() {
   // Edit Form Fields
   const [editFirstName, setEditFirstName] = useState('')
   const [editLastName, setEditLastName] = useState('')
-  const [editRole, setEditRole] = useState<'ADMIN' | 'SUPER_ADMIN'>('ADMIN')
+  const [editRole, setEditRole] = useState<'ADMIN' | 'SUPER_ADMIN' | 'BRANCH_MANAGER' | 'SECRETARY' | 'MARKETING'>('ADMIN')
   const [editCampusId, setEditCampusId] = useState('')
   const [editDepartment, setEditDepartment] = useState('')
   const [isSavingAdminEdit, setIsSavingAdminEdit] = useState(false)
@@ -109,7 +109,7 @@ export default function SettingsPage() {
   const { data: adminsData, isLoading: isLoadingAdmins, refetch: refetchAdmins } = useQuery({
     queryKey: ['admin-accounts-list', adminSearch, adminRoleFilter, adminPage],
     queryFn: () => fetchPaginatedApi<any>(
-      `/api/users?query=${encodeURIComponent(adminSearch)}&role=${adminRoleFilter === 'ALL' ? 'ADMIN,SUPER_ADMIN' : adminRoleFilter}&page=${adminPage}&limit=10`
+      `/api/users?query=${encodeURIComponent(adminSearch)}&role=${adminRoleFilter === 'ALL' ? 'ADMIN,SUPER_ADMIN,BRANCH_MANAGER,SECRETARY,MARKETING' : adminRoleFilter}&page=${adminPage}&limit=10`
     ),
     enabled: isAdmin && activeTab === 'admins',
   })
@@ -359,7 +359,7 @@ export default function SettingsPage() {
     e.preventDefault()
     setAdminSubmitError(null)
 
-    if (!adminFirstName || !adminLastName || !adminEmail || !adminPassword || !adminCampusId) {
+    if (!adminFirstName || !adminLastName || !adminEmail || !adminPassword || (adminRole !== 'MARKETING' && !adminCampusId)) {
       setAdminSubmitError('Please complete all required fields.')
       return
     }
@@ -402,7 +402,7 @@ export default function SettingsPage() {
     setAdminSubmitError(null)
     if (!editingAdmin) return
 
-    if (!editFirstName || !editLastName || !editCampusId) {
+    if (!editFirstName || !editLastName || (editRole !== 'MARKETING' && !editCampusId)) {
       setAdminSubmitError('First Name, Last Name, and Campus are required fields.')
       return
     }
@@ -760,6 +760,9 @@ export default function SettingsPage() {
                       <SelectItem value="ALL" className="text-xs">All Roles</SelectItem>
                       <SelectItem value="SUPER_ADMIN" className="text-xs">Super Admin</SelectItem>
                       <SelectItem value="ADMIN" className="text-xs">Admin</SelectItem>
+                      <SelectItem value="BRANCH_MANAGER" className="text-xs">Branch Manager</SelectItem>
+                      <SelectItem value="SECRETARY" className="text-xs">Secretary</SelectItem>
+                      <SelectItem value="MARKETING" className="text-xs">Marketing</SelectItem>
                       <SelectItem value="TEACHER" className="text-xs">Teacher</SelectItem>
                       <SelectItem value="STUDENT" className="text-xs">Student</SelectItem>
                       <SelectItem value="ACCOUNTANT" className="text-xs">Account Manager</SelectItem>
@@ -949,6 +952,9 @@ export default function SettingsPage() {
                         <SelectItem value="ALL" className="text-xs">All Admin Roles</SelectItem>
                         <SelectItem value="SUPER_ADMIN" className="text-xs">Super Admin</SelectItem>
                         <SelectItem value="ADMIN" className="text-xs">Admin</SelectItem>
+                        <SelectItem value="BRANCH_MANAGER" className="text-xs">Branch Manager</SelectItem>
+                        <SelectItem value="SECRETARY" className="text-xs">Secretary</SelectItem>
+                        <SelectItem value="MARKETING" className="text-xs">Marketing</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1008,7 +1014,13 @@ export default function SettingsPage() {
                                         ? 'bg-amber-50/80 border-amber-200 text-amber-800 shadow-amber-50/50' 
                                         : 'bg-indigo-50/80 border-indigo-200 text-indigo-800 shadow-indigo-50/50'
                                     }`}>
-                                      {u.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'}
+                                      {{
+                                        SUPER_ADMIN: 'Super Admin',
+                                        ADMIN: 'Admin',
+                                        BRANCH_MANAGER: 'Branch Manager',
+                                        SECRETARY: 'Secretary',
+                                        MARKETING: 'Marketing',
+                                      }[u.role as string] ?? u.role}
                                     </span>
                                   </td>
                                   <td className="px-4 py-3.5">
@@ -1242,11 +1254,14 @@ export default function SettingsPage() {
                       {session?.user?.role === 'SUPER_ADMIN' && (
                         <SelectItem value="SUPER_ADMIN" className="text-xs">Super Admin</SelectItem>
                       )}
+                      <SelectItem value="BRANCH_MANAGER" className="text-xs">Branch Manager</SelectItem>
+                      <SelectItem value="SECRETARY" className="text-xs">Secretary</SelectItem>
+                      <SelectItem value="MARKETING" className="text-xs">Marketing</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-700">Campus Scope <span className="text-rose-500">*</span></Label>
+                  <Label className="text-xs font-bold text-gray-700">Campus Scope {adminRole !== 'MARKETING' && <span className="text-rose-500">*</span>}{adminRole === 'MARKETING' && <span className="text-gray-400 font-normal">(optional)</span>}</Label>
                   <Select value={adminCampusId} onValueChange={setAdminCampusId}>
                     <SelectTrigger className="text-xs h-9 bg-white border-gray-200 focus:ring-indigo-500">
                       <SelectValue placeholder="Select Campus" />
@@ -1355,6 +1370,9 @@ export default function SettingsPage() {
                       {session?.user?.role === 'SUPER_ADMIN' && (
                         <SelectItem value="SUPER_ADMIN" className="text-xs">Super Admin</SelectItem>
                       )}
+                      <SelectItem value="BRANCH_MANAGER" className="text-xs">Branch Manager</SelectItem>
+                      <SelectItem value="SECRETARY" className="text-xs">Secretary</SelectItem>
+                      <SelectItem value="MARKETING" className="text-xs">Marketing</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

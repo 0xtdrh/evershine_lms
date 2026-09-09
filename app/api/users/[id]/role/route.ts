@@ -8,13 +8,11 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
-import fs from 'fs'
-import path from 'path'
 
 const updateRoleSchema = z.object({
   firstName: z.string().min(1, 'First name cannot be empty').max(50).optional(),
   lastName: z.string().min(1, 'Last name cannot be empty').max(50).optional(),
-  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'GUARDIAN']).optional(),
+  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'GUARDIAN']).optional(),
   campusId: z.string().optional(),
   department: z.string().max(100).optional().nullable(),
   isActive: z.boolean().optional(),
@@ -77,6 +75,9 @@ export async function PATCH(
         teacher: true,
         student: true,
         accountant: true,
+        branchManager: true,
+        secretary: true,
+        marketingStaff: true,
       },
     })
 
@@ -166,6 +167,111 @@ export async function PATCH(
         }
       }
 
+      if (targetRole === 'BRANCH_MANAGER') {
+        const existingBM = user.branchManager
+        const fName = firstName ?? existingBM?.firstName ?? user.teacher?.firstName ?? user.student?.firstName ?? 'Branch'
+        const lName = lastName ?? existingBM?.lastName ?? user.teacher?.lastName ?? user.student?.lastName ?? 'Manager'
+
+        let targetCampusId = campusId ?? existingBM?.campusId
+        if (!targetCampusId) {
+          const firstCampus = await tx.campus.findFirst({ where: { isActive: true } })
+          targetCampusId = firstCampus?.id ?? 'default-campus'
+        }
+
+        if (existingBM) {
+          await tx.branchManager.update({
+            where: { id: existingBM.id },
+            data: {
+              firstName: fName,
+              lastName: lName,
+              campusId: targetCampusId,
+              department: department !== undefined ? department : existingBM.department,
+              isActive: isActive !== undefined ? isActive : existingBM.isActive,
+            },
+          })
+          auditChanges.branchManagerProfile = 'UPDATED'
+        } else {
+          await tx.branchManager.create({
+            data: {
+              userId: user.id,
+              firstName: fName,
+              lastName: lName,
+              campusId: targetCampusId,
+              department: department || null,
+              isActive: true,
+            },
+          })
+          auditChanges.branchManagerProfile = 'CREATED'
+        }
+      }
+
+      if (targetRole === 'SECRETARY') {
+        const existingSec = user.secretary
+        const fName = firstName ?? existingSec?.firstName ?? user.teacher?.firstName ?? user.student?.firstName ?? 'Secretary'
+        const lName = lastName ?? existingSec?.lastName ?? user.teacher?.lastName ?? user.student?.lastName ?? 'User'
+
+        let targetCampusId = campusId ?? existingSec?.campusId
+        if (!targetCampusId) {
+          const firstCampus = await tx.campus.findFirst({ where: { isActive: true } })
+          targetCampusId = firstCampus?.id ?? 'default-campus'
+        }
+
+        if (existingSec) {
+          await tx.secretary.update({
+            where: { id: existingSec.id },
+            data: {
+              firstName: fName,
+              lastName: lName,
+              campusId: targetCampusId,
+              isActive: isActive !== undefined ? isActive : existingSec.isActive,
+            },
+          })
+          auditChanges.secretaryProfile = 'UPDATED'
+        } else {
+          await tx.secretary.create({
+            data: {
+              userId: user.id,
+              firstName: fName,
+              lastName: lName,
+              campusId: targetCampusId,
+              isActive: true,
+            },
+          })
+          auditChanges.secretaryProfile = 'CREATED'
+        }
+      }
+
+      if (targetRole === 'MARKETING') {
+        const existingMkt = user.marketingStaff
+        const fName = firstName ?? existingMkt?.firstName ?? user.teacher?.firstName ?? user.student?.firstName ?? 'Marketing'
+        const lName = lastName ?? existingMkt?.lastName ?? user.teacher?.lastName ?? user.student?.lastName ?? 'User'
+        const targetCampusId = campusId ?? existingMkt?.campusId ?? null
+
+        if (existingMkt) {
+          await tx.marketingStaff.update({
+            where: { id: existingMkt.id },
+            data: {
+              firstName: fName,
+              lastName: lName,
+              campusId: targetCampusId,
+              isActive: isActive !== undefined ? isActive : existingMkt.isActive,
+            },
+          })
+          auditChanges.marketingStaffProfile = 'UPDATED'
+        } else {
+          await tx.marketingStaff.create({
+            data: {
+              userId: user.id,
+              firstName: fName,
+              lastName: lName,
+              campusId: targetCampusId,
+              isActive: true,
+            },
+          })
+          auditChanges.marketingStaffProfile = 'CREATED'
+        }
+      }
+
       // If user's status is updated, propagate to roles if appropriate
       if (isActive !== undefined) {
         if (user.admin) {
@@ -186,6 +292,15 @@ export async function PATCH(
         if (user.accountant) {
           await tx.accountant.update({ where: { id: user.accountant.id }, data: { isActive } })
         }
+        if (user.branchManager) {
+          await tx.branchManager.update({ where: { id: user.branchManager.id }, data: { isActive } })
+        }
+        if (user.secretary) {
+          await tx.secretary.update({ where: { id: user.secretary.id }, data: { isActive } })
+        }
+        if (user.marketingStaff) {
+          await tx.marketingStaff.update({ where: { id: user.marketingStaff.id }, data: { isActive } })
+        }
       }
 
       // 3. Log Audit Trail
@@ -203,12 +318,6 @@ export async function PATCH(
     return successResponse(null, { message: 'User role and assignments updated successfully' })
   } catch (err: any) {
     console.error('[USER_ROLE_UPDATE_ERROR]', err)
-    try {
-      const logPath = '/home/ibadat/Downloads/LMS/Evershaheen-Academy-Management-System-main/log_deactivation.txt'
-      fs.writeFileSync(logPath, `TIMESTAMP: ${new Date().toISOString()}\nERROR MESSAGE: ${err.message}\nSTACK: ${err.stack}\n`, { flag: 'a' })
-    } catch (logErr) {
-      console.error('Failed to write log file', logErr)
-    }
     return errors.internal()
   }
 }
