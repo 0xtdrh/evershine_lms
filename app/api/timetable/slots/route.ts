@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     if (!teacher || teacher.userId !== session.user.id) return errors.forbidden()
   }
 
-  if (teacherId && session.user.role === 'ADMIN') {
+  if (teacherId && (session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER')) {
     const teacher = await prisma.teacher.findUnique({
       where: { id: teacherId },
       select: { campusId: true },

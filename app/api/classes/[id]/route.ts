@@ -24,7 +24,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const existing = await prisma.class.findUnique({ where: { id } })
   if (!existing) return errors.notFound('Class')
 
-  if (session.user.role === 'ADMIN' && session.user.campusId && existing.campusId !== session.user.campusId) {
+  if ((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && session.user.campusId && existing.campusId !== session.user.campusId) {
     return errors.forbidden()
   }
 

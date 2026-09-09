@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && !campusId && queryCampusId) {
+  if ((role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'BRANCH_MANAGER') && !campusId && queryCampusId) {
     campusId = queryCampusId
   }
 

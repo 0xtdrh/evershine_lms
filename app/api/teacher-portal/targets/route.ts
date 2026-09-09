@@ -55,7 +55,7 @@ async function verifyAccess(
   role: string,
   classSectionId: string
 ): Promise<{ authorised: boolean; teacherId?: string }> {
-  if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+  if (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'BRANCH_MANAGER') {
     return { authorised: true }
   }
 

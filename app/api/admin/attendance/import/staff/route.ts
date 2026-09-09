@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     // ── Pre-load DB references for O(1) row lookups ──────────────────────
     // Build a campus scope for ADMIN: only allow teachers from their campus
     const adminCampusId =
-      role === 'ADMIN' ? (session.user.campusId ?? null) : null
+      (role === 'ADMIN' || role === 'BRANCH_MANAGER') ? (session.user.campusId ?? null) : null
 
     const dbTeachers = await prisma.teacher.findMany({
       where: {

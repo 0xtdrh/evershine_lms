@@ -27,6 +27,9 @@ enum Role {
   PARENT
   ACCOUNTANT
   GUARDIAN
+  SECRETARY
+  BRANCH_MANAGER
+  MARKETING
 }
 
 enum TimetableSlotType {
@@ -280,12 +283,15 @@ model User {
   updatedAt              DateTime  @updatedAt
 
   // Profile relationships — at most one of these is populated per user
-  student    Student?
-  teacher    Teacher?
-  admin      Admin?
-  parent     Parent?
-  accountant Accountant?
-  guardian   Guardian?
+  student       Student?
+  teacher       Teacher?
+  admin         Admin?
+  parent        Parent?
+  accountant    Accountant?
+  guardian      Guardian?
+  branchManager BranchManager?
+  secretary     Secretary?
+  marketingStaff MarketingStaff?
 
   // Audit trail — every mutation this user performs
   auditLogs                 AuditLog[]
@@ -376,6 +382,9 @@ model Campus {
   accountants            Accountant[]
   expenses               Expense[]
   profitLossStatements   ProfitLossStatement[]
+  branchManagers         BranchManager[]
+  secretaries            Secretary[]
+  marketingStaff         MarketingStaff[]
 
   @@index([code])
   @@index([isActive])
@@ -717,6 +726,64 @@ model Admin {
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   campus Campus @relation(fields: [campusId], references: [id])
+
+  @@index([campusId])
+}
+
+// WHY campusId required: Branch Managers are ADMIN-equivalent but strictly
+// scoped to a single campus — see lib/rbac.ts and the campus-scoping checks
+// throughout app/api/** that key off session.user.campusId.
+model BranchManager {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  firstName  String
+  lastName   String
+  campusId   String
+  department String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campus Campus @relation(fields: [campusId], references: [id])
+
+  @@index([campusId])
+}
+
+// WHY campusId required: Secretaries handle front-desk operations (student
+// registration, attendance, fee collection) for a single campus.
+model Secretary {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  firstName   String
+  lastName    String
+  phoneNumber String?
+  campusId    String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campus Campus @relation(fields: [campusId], references: [id])
+
+  @@index([campusId])
+}
+
+// WHY campusId optional: Marketing staff work on Leads/Admissions which can
+// span multiple campuses; leave campusId nullable for future scoping.
+model MarketingStaff {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  firstName   String
+  lastName    String
+  phoneNumber String?
+  campusId    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campus Campus? @relation(fields: [campusId], references: [id])
 
   @@index([campusId])
 }

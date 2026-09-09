@@ -218,7 +218,7 @@ export async function GET(request: NextRequest) {
 
   const role = session.user.role as Role
   const isTeacher = role === 'TEACHER'
-  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN'
+  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER'
 
   if (!isTeacher && !isAdmin) return errors.forbidden()
 

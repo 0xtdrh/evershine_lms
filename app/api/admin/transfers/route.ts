@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       })
       if (!student) throw new Error('NOT_FOUND')
 
-      if (role === 'ADMIN' && session.user.campusId && student.campusId !== session.user.campusId) {
+      if ((role === 'ADMIN' || role === 'BRANCH_MANAGER') && session.user.campusId && student.campusId !== session.user.campusId) {
         throw new Error('FORBIDDEN')
       }
 
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       })
       if (!teacher) throw new Error('NOT_FOUND')
 
-      if (role === 'ADMIN' && session.user.campusId && teacher.campusId !== session.user.campusId) {
+      if ((role === 'ADMIN' || role === 'BRANCH_MANAGER') && session.user.campusId && teacher.campusId !== session.user.campusId) {
         throw new Error('FORBIDDEN')
       }
 
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
     const cls = await tx.class.findUnique({ where: { id: entityId } })
     if (!cls) throw new Error('NOT_FOUND')
 
-    if (role === 'ADMIN' && session.user.campusId && cls.campusId !== session.user.campusId) {
+    if ((role === 'ADMIN' || role === 'BRANCH_MANAGER') && session.user.campusId && cls.campusId !== session.user.campusId) {
       throw new Error('FORBIDDEN')
     }
 

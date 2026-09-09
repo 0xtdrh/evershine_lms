@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
         return errors.forbidden('Teachers can only view their own timetable')
       }
     }
-    if (role === 'ADMIN' && campusId && requestedTeacher.campusId !== campusId) {
+    if ((role === 'ADMIN' || role === 'BRANCH_MANAGER') && campusId && requestedTeacher.campusId !== campusId) {
       return errors.forbidden('Cannot view a teacher from another campus')
     }
 
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
 
   const classSectionFilter = {
     ...(shiftParsed?.success ? { shift: { code: shiftParsed.data } } : {}),
-    ...(role === 'ADMIN' && campusId ? { campusId } : {}),
+    ...((role === 'ADMIN' || role === 'BRANCH_MANAGER') && campusId ? { campusId } : {}),
   }
 
   const slots = await prisma.timetableSlot.findMany({
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
   const role = session.user.role as Role
   const legacyBlocked = guardLegacyClassMutation(request, 'timetable', role)
   if (legacyBlocked) return legacyBlocked
-  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN'
+  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER'
   if (!isAdmin) return errors.forbidden()
 
   let body: unknown
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Scoping validation: Admin cannot create timetable for a class or teacher in a different campus
-  if (role === 'ADMIN' && session.user.campusId) {
+  if ((role === 'ADMIN' || role === 'BRANCH_MANAGER') && session.user.campusId) {
     const cls = await prisma.class.findUnique({
       where: { id: data.classId },
       select: { campusId: true },

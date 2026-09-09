@@ -12,7 +12,10 @@
 
 import type { Role } from '@prisma/client'
 
-export type Action = 'create' | 'read' | 'update' | 'delete'
+// WHY export/approve added: originally only create/read/update/delete existed.
+// 'export' gates bulk data exports (reports, spreadsheets); 'approve' gates
+// workflow approval steps (e.g. admissions approval, leave approval).
+export type Action = 'create' | 'read' | 'update' | 'delete' | 'export' | 'approve'
 export type AcademicResource =
   | 'students'
   | 'teachers'
@@ -41,6 +44,10 @@ export type AcademicResource =
   | 'fee_penalties'
   | 'teacher_penalties'
   | 'expenses'
+  // WHY: Leads/Admissions was previously gated by a hardcoded role check in
+  // app/api/admissions/**; it is now a first-class RBAC resource so it can be
+  // managed from the Permissions page without touching code.
+  | 'admissions'
 
 type Resource = AcademicResource
 
@@ -58,6 +65,9 @@ const ROLE_ALIASES: Record<string, Role> = {
   GUARDIAN: 'GUARDIAN',
   ACCOUNTANT: 'ACCOUNTANT',
   ACCOUNT_MANAGER: 'ACCOUNTANT',
+  SECRETARY: 'SECRETARY',
+  BRANCH_MANAGER: 'BRANCH_MANAGER',
+  MARKETING: 'MARKETING',
 }
 
 /**
@@ -112,6 +122,7 @@ const PERMISSIONS: PermissionMap = {
     fee_penalties: ['create', 'read', 'update', 'delete'],
     teacher_penalties: ['create', 'read', 'update', 'delete'],
     expenses: ['create', 'read', 'update', 'delete'],
+    admissions: ['create', 'read', 'update', 'delete', 'approve', 'export'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -141,6 +152,7 @@ const PERMISSIONS: PermissionMap = {
     fee_penalties: ['create', 'read', 'update', 'delete'],
     teacher_penalties: ['create', 'read', 'update'],
     expenses: ['create', 'read', 'update', 'delete'],
+    admissions: ['create', 'read', 'update', 'approve', 'export'],
   },
   TEACHER: {
     students: ['read'],
@@ -171,6 +183,7 @@ const PERMISSIONS: PermissionMap = {
     fee_penalties: [],
     teacher_penalties: ['read'],
     expenses: [],
+    admissions: [],
   },
   STUDENT: {
     students: ['read'],
@@ -200,6 +213,7 @@ const PERMISSIONS: PermissionMap = {
     fee_penalties: ['read'],
     teacher_penalties: [],
     expenses: [],
+    admissions: [],
   },
   PARENT: {
     students: ['read'],
@@ -229,6 +243,7 @@ const PERMISSIONS: PermissionMap = {
     fee_penalties: ['read'],
     teacher_penalties: [],
     expenses: [],
+    admissions: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -260,6 +275,7 @@ const PERMISSIONS: PermissionMap = {
     fee_penalties: ['create', 'read', 'update'],
     teacher_penalties: [],
     expenses: ['create', 'read', 'update', 'delete'],
+    admissions: ['read', 'export'],
   },
   GUARDIAN: {
     students: ['read'],
@@ -289,6 +305,109 @@ const PERMISSIONS: PermissionMap = {
     fee_penalties: ['read'],
     teacher_penalties: [],
     expenses: [],
+    admissions: [],
+  },
+  // ── SECRETARY ────────────────────────────────────────────────────────────
+  // Front-desk operations for a single campus: student registration/edits,
+  // attendance, and recording fee payments. No financial reporting, no
+  // administrative/user-management access.
+  SECRETARY: {
+    students: ['create', 'read', 'update'],
+    teachers: ['read'],
+    batches: ['read'],
+    campuses: ['read'],
+    classes: ['read'],
+    houses: ['read'],
+    fees: ['create', 'read'],
+    attendance: ['create', 'read', 'update'],
+    documents: ['create', 'read'],
+    users: [],
+    audit_logs: [],
+    dashboard: ['read'],
+    results: ['read'],
+    exams: ['read'],
+    announcements: ['read'],
+    calendar: ['create', 'read', 'update'],
+    academic_years: ['read'],
+    shifts: ['read'],
+    class_sections: ['read'],
+    subject_offerings: ['read'],
+    subject_enrollments: ['read'],
+    timetable_engine: ['read'],
+    grading_engine: [],
+    promotions: [],
+    fee_penalties: ['read'],
+    teacher_penalties: [],
+    expenses: [],
+    admissions: ['create', 'read', 'update'],
+  },
+  // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
+  // ADMIN-equivalent resource permissions, but data is scoped to the
+  // manager's own campus via session.user.campusId in the API layer (see
+  // the campus-scoping checks in app/api/**). Explicitly denied: managing
+  // user accounts/roles and editing campus records (read-only on campuses).
+  BRANCH_MANAGER: {
+    students: ['create', 'read', 'update', 'delete'],
+    teachers: ['create', 'read', 'update', 'delete'],
+    batches: ['create', 'read', 'update', 'delete'],
+    campuses: ['read'],
+    classes: ['create', 'read', 'update', 'delete'],
+    houses: ['read', 'update', 'delete'],
+    fees: ['create', 'read', 'update', 'delete'],
+    attendance: ['create', 'read', 'update', 'delete'],
+    documents: ['create', 'read', 'update', 'delete'],
+    users: ['read'],
+    audit_logs: ['read'],
+    dashboard: ['read'],
+    results: ['create', 'read', 'update', 'delete'],
+    exams: ['create', 'read', 'update', 'delete'],
+    announcements: ['create', 'read', 'update', 'delete'],
+    calendar: ['create', 'read', 'update', 'delete'],
+    academic_years: ['read'],
+    shifts: ['read', 'update'],
+    class_sections: ['create', 'read', 'update', 'delete'],
+    subject_offerings: ['create', 'read', 'update', 'delete'],
+    subject_enrollments: ['create', 'read', 'update', 'delete'],
+    timetable_engine: ['create', 'read', 'update', 'delete'],
+    grading_engine: ['create', 'read', 'update', 'delete'],
+    promotions: ['create', 'read', 'update', 'delete'],
+    fee_penalties: ['create', 'read', 'update', 'delete'],
+    teacher_penalties: ['create', 'read', 'update'],
+    expenses: ['create', 'read', 'update', 'delete'],
+    admissions: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+  },
+  // ── MARKETING ────────────────────────────────────────────────────────────
+  // Leads/Admissions only. No visibility into enrolled students, finance,
+  // or any administrative resource.
+  MARKETING: {
+    students: [],
+    teachers: [],
+    batches: [],
+    campuses: ['read'],
+    classes: [],
+    houses: [],
+    fees: [],
+    attendance: [],
+    documents: [],
+    users: [],
+    audit_logs: [],
+    dashboard: ['read'],
+    results: [],
+    exams: [],
+    announcements: ['read'],
+    calendar: ['read'],
+    academic_years: [],
+    shifts: [],
+    class_sections: [],
+    subject_offerings: [],
+    subject_enrollments: [],
+    timetable_engine: [],
+    grading_engine: [],
+    promotions: [],
+    fee_penalties: [],
+    teacher_penalties: [],
+    expenses: [],
+    admissions: ['create', 'read', 'update', 'export'],
   },
 }
 
@@ -324,13 +443,19 @@ export function getAllowedActions(role: Role | string | null | undefined, resour
 export const DEFAULT_PERMISSION_MATRIX = PERMISSIONS
 
 /** Roles that have admin-level system access */
-export const ADMIN_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN']
+export const ADMIN_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER']
 
 /** Roles that can mark attendance */
-export const ATTENDANCE_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN', 'TEACHER']
+export const ATTENDANCE_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'BRANCH_MANAGER', 'SECRETARY']
 
 /** Roles that can mark teacher HR attendance */
-export const TEACHER_HR_ATTENDANCE_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN']
+export const TEACHER_HR_ATTENDANCE_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER']
 
 /** Roles that can manage financial records */
 export const FINANCE_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT']
+
+/** Roles whose data access must be scoped to their own campus (session.user.campusId) */
+export const CAMPUS_SCOPED_ROLES: Role[] = ['ADMIN', 'BRANCH_MANAGER']
+
+/** Roles that may only access the Leads/Admissions workflow */
+export const ADMISSIONS_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'MARKETING']

@@ -43,7 +43,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   if (session.user.role === 'TEACHER' && teacher.userId !== session.user.id) {
     return errors.forbidden()
   }
-  if (session.user.role === 'ADMIN' && teacher.campusId !== session.user.campusId) {
+  if ((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && teacher.campusId !== session.user.campusId) {
     return errors.forbidden()
   }
 

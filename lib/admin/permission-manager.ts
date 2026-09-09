@@ -18,7 +18,14 @@ export type RolePermissionOverride = {
 export type PermissionMatrix = Record<string, Action[]>
 
 function isAction(value: string): value is Action {
-  return value === 'create' || value === 'read' || value === 'update' || value === 'delete'
+  return (
+    value === 'create' ||
+    value === 'read' ||
+    value === 'update' ||
+    value === 'delete' ||
+    value === 'export' ||
+    value === 'approve'
+  )
 }
 
 export const ACADEMIC_RESOURCES = Object.keys(

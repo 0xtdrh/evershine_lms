@@ -35,7 +35,7 @@ const createExamSchema = z.object({
 
 function canAccessCampus(sessionUser: { role: string; campusId?: string | null }, campusId: string) {
   if (sessionUser.role === 'SUPER_ADMIN') return true
-  if (sessionUser.role === 'ADMIN') return !sessionUser.campusId || sessionUser.campusId === campusId
+  if (sessionUser.role === 'ADMIN' || sessionUser.role === 'BRANCH_MANAGER') return !sessionUser.campusId || sessionUser.campusId === campusId
   return sessionUser.campusId === campusId
 }
 

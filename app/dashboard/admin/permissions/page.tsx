@@ -49,6 +49,7 @@ const RESOURCE_META: Record<string, { label: string; description: string; catego
   documents:             { label: 'Documents',           description: 'Official student ID cards and profile printouts',     category: 'Operations' },
   announcements:         { label: 'Announcements',       description: 'Broadcast notices to campus stakeholders',            category: 'Operations' },
   calendar:              { label: 'Calendar',            description: 'Academic events, holidays, and schedule items',       category: 'Operations' },
+  admissions:            { label: 'Leads / Admissions',  description: 'Inbound leads, admission requests, and approvals',    category: 'Operations' },
   audit_logs:            { label: 'Audit Logs',          description: 'System-level change history (read-only by design)',   category: 'System'     },
   dashboard:             { label: 'Dashboard',           description: 'Summary analytics and KPI overview',                  category: 'System'     },
 }
@@ -66,8 +67,20 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const ROLE_OPTIONS: Role[] = ['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'PARENT', 'GUARDIAN']
-const ACTION_OPTIONS = ['create', 'read', 'update', 'delete'] as const
+const ROLE_OPTIONS: Role[] = [
+  'SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING',
+  'TEACHER', 'ACCOUNTANT', 'STUDENT', 'PARENT', 'GUARDIAN',
+]
+const ACTION_OPTIONS = ['create', 'read', 'update', 'delete', 'export', 'approve'] as const
+// WHY: business-friendly labels for non-technical admins (View/Create/Edit/Delete/Export/Approve)
+const ACTION_LABEL: Record<string, string> = {
+  create: 'Create',
+  read: 'View',
+  update: 'Edit',
+  delete: 'Delete',
+  export: 'Export',
+  approve: 'Approve',
+}
 
 type PermissionMatrix = Record<string, Record<string, string[]>>
 interface RolePermissionOverride {
@@ -248,7 +261,7 @@ export default function PermissionsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {ACTION_OPTIONS.map((a) => (
-                      <SelectItem key={a} value={a}>{a}</SelectItem>
+                      <SelectItem key={a} value={a}>{ACTION_LABEL[a]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -288,7 +301,7 @@ export default function PermissionsPage() {
                 <span>
                   <strong>{selectedRole.replace('_', ' ')}</strong> will{' '}
                   {isEnabled ? 'gain' : 'lose'}{' '}
-                  <strong>{selectedAction}</strong> access to{' '}
+                  <strong>{ACTION_LABEL[selectedAction] ?? selectedAction}</strong> access to{' '}
                   <strong>{RESOURCE_LABEL(selectedResource)}</strong>
                 </span>
               </div>
@@ -442,7 +455,7 @@ export default function PermissionsPage() {
                                 <p className="text-[10px] text-slate-400 mb-1.5 leading-relaxed">{desc}</p>
                               )}
                               <p className="text-[11px] text-slate-600 font-medium">
-                                {actions.length > 0 ? actions.join(', ') : 'No access'}
+                                {actions.length > 0 ? actions.map((a) => ACTION_LABEL[a] ?? a).join(', ') : 'No access'}
                               </p>
                             </div>
                           )
@@ -511,7 +524,7 @@ export default function PermissionsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-700 text-xs font-mono">{override.action}</td>
+                      <td className="px-4 py-3 text-slate-700 text-xs font-mono">{ACTION_LABEL[override.action] ?? override.action}</td>
                       <td className="px-4 py-3">
                         {override.isEnabled ? (
                           <Badge className="bg-green-100 text-green-800 border-0 text-[10px] font-bold">Enabled</Badge>

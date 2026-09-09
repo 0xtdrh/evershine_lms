@@ -116,22 +116,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const profile = await prisma.user.findUnique({
           where: { id: user.id },
           select: {
-            admin:      { select: { firstName: true, lastName: true, campusId: true } },
-            teacher:    { select: { firstName: true, lastName: true, campusId: true, profilePicture: true } },
-            student:    { select: { firstName: true, lastName: true, profilePicture: true } },
-            accountant: { select: { firstName: true, lastName: true, campusId: true } },
+            admin:          { select: { firstName: true, lastName: true, campusId: true } },
+            teacher:        { select: { firstName: true, lastName: true, campusId: true, profilePicture: true } },
+            student:        { select: { firstName: true, lastName: true, profilePicture: true } },
+            accountant:     { select: { firstName: true, lastName: true, campusId: true } },
+            branchManager:  { select: { firstName: true, lastName: true, campusId: true } },
+            secretary:      { select: { firstName: true, lastName: true, campusId: true } },
+            marketingStaff: { select: { firstName: true, lastName: true, campusId: true } },
           },
         })
 
-        const p = profile?.admin ?? profile?.teacher ?? profile?.student ?? profile?.accountant
+        const p =
+          profile?.admin ??
+          profile?.teacher ??
+          profile?.student ??
+          profile?.accountant ??
+          profile?.branchManager ??
+          profile?.secretary ??
+          profile?.marketingStaff
         const name = p
           ? `${p.firstName} ${p.lastName}`
           : email.split('@')[0]
 
         const campusId =
-          profile?.admin?.campusId     ??
-          profile?.teacher?.campusId   ??
-          profile?.accountant?.campusId ??
+          profile?.admin?.campusId          ??
+          profile?.teacher?.campusId        ??
+          profile?.accountant?.campusId     ??
+          profile?.branchManager?.campusId  ??
+          profile?.secretary?.campusId      ??
+          profile?.marketingStaff?.campusId ??
           null
 
         const profilePicture =

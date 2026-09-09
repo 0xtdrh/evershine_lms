@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
   // Determine which campus to query
   // ADMIN: always their own campus. SUPER_ADMIN: campusId param or all.
   let campusFilter: string | undefined
-  if (session.user.role === 'ADMIN') {
+  if (session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') {
     if (!session.user.campusId) return errors.forbidden('Admin has no assigned campus')
     campusFilter = session.user.campusId
   } else {
@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
   // ── Campus-scope enforcement ─────────────────────────────────────────────
   // For ADMIN: all teacherIds in the payload must belong to their campus.
   // Validate in one query before any writes occur.
-  if (session.user.role === 'ADMIN') {
+  if (session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') {
     const campusId = session.user.campusId
     if (!campusId) return errors.forbidden('Admin has no assigned campus')
 

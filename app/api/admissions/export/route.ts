@@ -12,19 +12,23 @@ import { errors } from '@/lib/api-response'
 import { createBrandedWorkbook, workbookToBuffer, generateExcelFilename } from '@/lib/excel/report-generator'
 import type { ColumnDef } from '@/lib/excel/report-generator'
 import type { Role } from '@prisma/client'
+import { checkPermission, CAMPUS_SCOPED_ROLES } from '@/lib/rbac'
 
 export async function GET(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
 
   const role = session.user.role as Role
-  if (!['SUPER_ADMIN', 'ADMIN'].includes(role)) return errors.forbidden()
+  if (!checkPermission(role, 'admissions', 'export')) return errors.forbidden()
 
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status') || undefined
 
   const where: Record<string, unknown> = {}
   if (status && status !== 'ALL') where.status = status
+  if (CAMPUS_SCOPED_ROLES.includes(role) && session.user.campusId) {
+    where.preferredCampusId = session.user.campusId
+  }
 
   const admissions = await prisma.admissionRequest.findMany({
     where,

@@ -7,6 +7,8 @@ import { sendApprovalNotification } from '@/lib/notifications'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createYearEnrollmentForStudent } from '@/lib/academic/enrollment'
 import { batchRequiresGenderSeparation, campusIsGenderCompatible, inferCampusGender } from '@/lib/academic/gender-policy'
+import { checkPermission, CAMPUS_SCOPED_ROLES } from '@/lib/rbac'
+import type { Role } from '@prisma/client'
 
 const ARGON2_OPTIONS = { memoryCost: 65536, timeCost: 3, parallelism: 4, outputLen: 32 }
 
@@ -42,7 +44,11 @@ export async function POST(
 ) {
   try {
     const session = await auth()
-    if (!session || !['SUPER_ADMIN', 'ADMIN'].includes(session.user.role)) {
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+    const role = session.user.role as Role
+    if (!checkPermission(role, 'admissions', 'approve')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -82,9 +88,9 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Invalid batch or campus selection' }, { status: 400 })
     }
 
-    if (session.user.role === 'ADMIN') {
+    if (CAMPUS_SCOPED_ROLES.includes(role)) {
       if (!session.user.campusId || session.user.campusId !== campusId) {
-        return NextResponse.json({ success: false, error: 'Administrators can approve admissions only for their assigned campus.' }, { status: 403 })
+        return NextResponse.json({ success: false, error: 'You can approve admissions only for your assigned campus.' }, { status: 403 })
       }
     }
 

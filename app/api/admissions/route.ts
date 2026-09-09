@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { checkPermission, CAMPUS_SCOPED_ROLES } from '@/lib/rbac'
+import type { Role } from '@prisma/client'
 
 export async function GET(req: Request) {
   try {
     const session = await auth()
-    if (!session || !['SUPER_ADMIN', 'ADMIN'].includes(session.user.role)) {
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+    const role = session.user.role as Role
+    if (!checkPermission(role, 'admissions', 'read')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -19,9 +25,9 @@ export async function GET(req: Request) {
     if (status) {
       where.status = status
     }
-    if (session.user.role === 'ADMIN') {
+    if (CAMPUS_SCOPED_ROLES.includes(role)) {
       if (!session.user.campusId) {
-        return NextResponse.json({ success: false, error: 'Admin campus assignment is required' }, { status: 403 })
+        return NextResponse.json({ success: false, error: 'Campus assignment is required' }, { status: 403 })
       }
       where.preferredCampusId = session.user.campusId
     }

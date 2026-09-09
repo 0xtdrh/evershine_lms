@@ -45,7 +45,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   }
 
   // Scoping: If user is ADMIN, they can only view teachers in their campus
-  if (session.user.role === 'ADMIN' && teacher.campusId !== session.user.campusId) {
+  if ((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && teacher.campusId !== session.user.campusId) {
     return errors.forbidden()
   }
 
@@ -62,7 +62,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const existing = await prisma.teacher.findUnique({ where: { id }, select: { id: true, campusId: true, employeeId: true } })
   if (!existing) return errors.notFound('Teacher')
 
-  if (session.user.role === 'ADMIN' && existing.campusId !== session.user.campusId) {
+  if ((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && existing.campusId !== session.user.campusId) {
     return errors.forbidden()
   }
 
@@ -93,7 +93,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   // ADMIN cannot transfer teachers to another campus
   if (
-    session.user.role === 'ADMIN' &&
+    (session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') &&
     campusId &&
     campusId !== session.user.campusId
   ) {
@@ -142,7 +142,7 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
   const existing = await prisma.teacher.findUnique({ where: { id }, select: { id: true, campusId: true, userId: true } })
   if (!existing) return errors.notFound('Teacher')
 
-  if (session.user.role === 'ADMIN' && existing.campusId !== session.user.campusId) {
+  if ((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && existing.campusId !== session.user.campusId) {
     return errors.forbidden()
   }
 

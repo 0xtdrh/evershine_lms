@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
 import { sendCancellationNotification } from '@/lib/notifications'
+import { checkPermission, CAMPUS_SCOPED_ROLES } from '@/lib/rbac'
+import type { Role } from '@prisma/client'
 
 const declineSchema = z.object({
   reason: z.string().optional(),
@@ -14,7 +16,11 @@ export async function POST(
 ) {
   try {
     const session = await auth()
-    if (!session || !['SUPER_ADMIN', 'ADMIN'].includes(session.user.role)) {
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+    const role = session.user.role as Role
+    if (!checkPermission(role, 'admissions', 'update')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -29,9 +35,9 @@ export async function POST(
     if (request.status !== 'PENDING') {
       return NextResponse.json({ success: false, error: 'Request is already processed' }, { status: 400 })
     }
-    if (session.user.role === 'ADMIN') {
+    if (CAMPUS_SCOPED_ROLES.includes(role)) {
       if (!session.user.campusId || request.preferredCampusId !== session.user.campusId) {
-        return NextResponse.json({ success: false, error: 'Administrators can decline admissions only for their assigned campus.' }, { status: 403 })
+        return NextResponse.json({ success: false, error: 'You can decline admissions only for your assigned campus.' }, { status: 403 })
       }
     }
 

@@ -20,7 +20,7 @@ import {
 } from '@/lib/admin/permission-manager'
 import { Role } from '@prisma/client'
 
-const actionSchema = z.enum(['create', 'read', 'update', 'delete'])
+const actionSchema = z.enum(['create', 'read', 'update', 'delete', 'export', 'approve'])
 const knownResources = Object.keys(DEFAULT_PERMISSION_MATRIX.SUPER_ADMIN)
 const resourceSchema = z.string().refine((value) => knownResources.includes(value), {
   message: 'Invalid resource',

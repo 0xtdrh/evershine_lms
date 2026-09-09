@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 
   // ADMIN is campus-scoped: prevent cross-campus document generation
   if (
-    session.user.role === 'ADMIN' &&
+    (session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') &&
     session.user.campusId &&
     teacher.campusId !== session.user.campusId
   ) {
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
   const where: Prisma.TeacherDocumentWhereInput = {
     ...(teacherId && { teacherId }),
     ...(parsedType?.success && { type: parsedType.data as CertificateType }),
-    ...(session.user.role === 'ADMIN' && session.user.campusId
+    ...((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && session.user.campusId
       ? { teacher: { campusId: session.user.campusId } }
       : {}),
   }

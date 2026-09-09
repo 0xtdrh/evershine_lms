@@ -58,7 +58,7 @@ async function resolveCampusScope(
     return sessionUser.campusId ?? queryCampusId ?? null
   }
 
-  if (sessionUser.role === 'ADMIN') {
+  if (sessionUser.role === 'ADMIN' || sessionUser.role === 'BRANCH_MANAGER') {
     return sessionUser.campusId ?? queryCampusId ?? null
   }
 
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
-    if (!['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    if (!['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN', 'BRANCH_MANAGER'].includes(session.user.role)) {
       return errors.forbidden()
     }
 
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
-    if (!['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    if (!['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN', 'BRANCH_MANAGER'].includes(session.user.role)) {
       return errors.forbidden('Only finance staff can generate P&L statements')
     }
 

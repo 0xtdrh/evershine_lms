@@ -17,7 +17,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const role = session.user.role as Role
   const legacyBlocked = guardLegacyClassMutation(request, 'timetable', role)
   if (legacyBlocked) return legacyBlocked
-  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN'
+  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER'
   if (!isAdmin) return errors.forbidden()
 
   const { id } = await params
@@ -32,7 +32,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (!existing) return errors.notFound('Timetable slot')
 
   // Scoping check for campus admin
-  if (role === 'ADMIN' && session.user.campusId && existing.class.campusId !== session.user.campusId) {
+  if ((role === 'ADMIN' || role === 'BRANCH_MANAGER') && session.user.campusId && existing.class.campusId !== session.user.campusId) {
     return errors.forbidden()
   }
 
@@ -49,7 +49,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const data = parsed.data
 
   // If changing class or teacher, verify that they are also in the admin's campus
-  if (role === 'ADMIN' && session.user.campusId) {
+  if ((role === 'ADMIN' || role === 'BRANCH_MANAGER') && session.user.campusId) {
     if (data.classId) {
       const cls = await prisma.class.findUnique({ where: { id: data.classId }, select: { campusId: true } })
       if (cls?.campusId !== session.user.campusId) {
@@ -93,7 +93,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const role = session.user.role as Role
   const legacyBlocked = guardLegacyClassMutation(request, 'timetable', role)
   if (legacyBlocked) return legacyBlocked
-  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN'
+  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER'
   if (!isAdmin) return errors.forbidden()
 
   const { id } = await params
@@ -108,7 +108,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   if (!existing) return errors.notFound('Timetable slot')
 
   // Scoping check for campus admin
-  if (role === 'ADMIN' && session.user.campusId && existing.class.campusId !== session.user.campusId) {
+  if ((role === 'ADMIN' || role === 'BRANCH_MANAGER') && session.user.campusId && existing.class.campusId !== session.user.campusId) {
     return errors.forbidden()
   }
 
