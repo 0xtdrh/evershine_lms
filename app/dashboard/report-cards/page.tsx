@@ -47,13 +47,13 @@ export default function ReportCardsPage() {
   const { data: years } = useQuery({
     queryKey: ['academic-years'],
     queryFn: () => fetchApi<Array<{ id: string; name: string }>>('/api/academic-years'),
-    enabled: role === 'SUPER_ADMIN' || role === 'ADMIN',
+    enabled: role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER',
   })
 
   const { data: sections } = useQuery({
     queryKey: ['class-sections'],
     queryFn: () => fetchApi<Array<{ id: string; className: string; sectionName: string }>>('/api/class-sections'),
-    enabled: role === 'SUPER_ADMIN' || role === 'ADMIN',
+    enabled: role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER',
   })
 
   const { data: classCards, isFetching, refetch } = useQuery({

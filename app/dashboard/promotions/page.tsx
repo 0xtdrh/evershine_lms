@@ -61,13 +61,13 @@ export default function PromotionsPage() {
   const { data: years } = useQuery({
     queryKey: ['academic-years'],
     queryFn: () => fetchApi<any[]>('/api/academic-years'),
-    enabled: role === 'SUPER_ADMIN' || role === 'ADMIN',
+    enabled: role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER',
   })
 
   const { data: sections } = useQuery({
     queryKey: ['class-sections'],
     queryFn: () => fetchApi<any[]>('/api/class-sections'),
-    enabled: role === 'SUPER_ADMIN' || role === 'ADMIN',
+    enabled: role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER',
   })
 
   const { data: eligible } = useQuery({

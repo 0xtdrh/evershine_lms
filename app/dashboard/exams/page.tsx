@@ -410,7 +410,7 @@ export default function ExamsPage() {
   const router = useRouter()
   const { data: session, status: sessionStatus } = useSession()
   const role = session?.user?.role as string | undefined
-  const canCreate = role === 'SUPER_ADMIN' || role === 'ADMIN'
+  const canCreate = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER'
   const queryClient = useQueryClient()
 
   useEffect(() => {

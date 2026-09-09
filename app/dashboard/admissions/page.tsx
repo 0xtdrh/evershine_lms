@@ -74,7 +74,7 @@ interface AdmissionRequest {
 export default function AdmissionsDashboard() {
   const { data: session, status } = useSession()
   const userRole = session?.user?.role as string | undefined
-  const canManageAdmissions = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN'
+  const canManageAdmissions = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'BRANCH_MANAGER' || userRole === 'SECRETARY' || userRole === 'MARKETING'
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('PENDING')

@@ -57,8 +57,8 @@ export default function TeachersPage() {
   const { data: session, status } = useSession()
   const queryClient = useQueryClient()
   const role = session?.user?.role as string | undefined
-  const canAdd = role === 'SUPER_ADMIN' || role === 'ADMIN'
-  const canViewTeachers = role === 'SUPER_ADMIN' || role === 'ADMIN'
+  const canAdd = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER'
+  const canViewTeachers = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'SECRETARY'
   const limit = 20
 
   const handleDelete = async (id: string, name: string) => {

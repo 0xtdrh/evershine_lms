@@ -150,7 +150,7 @@ function getAvatarDataUrl(firstName: string, lastName: string, bgColor: string) 
 export default function DocumentsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const isAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
+  const isAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN' || session?.user?.role === 'BRANCH_MANAGER' || session?.user?.role === 'SECRETARY'
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
   const isStudent = session?.user?.role === 'STUDENT'
   const isAuthorizedDocumentUser = isAdmin || isStudent

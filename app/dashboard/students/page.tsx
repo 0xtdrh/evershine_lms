@@ -93,7 +93,7 @@ export default function StudentsListPage() {
   const { data: session, status } = useSession()
   const queryClient = useQueryClient()
   const userRole = session?.user?.role as string | undefined
-  const canManage = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN'
+  const canManage = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'BRANCH_MANAGER' || userRole === 'SECRETARY'
   const canExport = canManage || userRole === 'ACCOUNTANT'
   const canViewStudents = ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'].includes(userRole ?? '')
 
