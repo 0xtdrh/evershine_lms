@@ -47,6 +47,8 @@ import {
   Archive,
   CheckCheck,
   UploadCloud,
+  Award,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
 import { ArcLineBrand } from '@/components/ArcLineBrand'
@@ -105,6 +107,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Batches',         href: '/dashboard/batches',      icon: BookOpen,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Classes (Legacy)', href: '/dashboard/classes',      icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN'], legacy: true },
   { name: 'Academic Engine', href: '/dashboard/academic',     icon: ClipboardList,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
+  { name: 'Grading Weights', href: '/dashboard/grading-config', icon: SlidersHorizontal, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Promotions',      href: '/dashboard/promotions',   icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Report Cards',    href: '/dashboard/report-cards', icon: FileText,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'My Children',     href: '/dashboard/my-children',  icon: Users,           roles: ['PARENT', 'GUARDIAN'] },
@@ -118,6 +121,7 @@ const TEACHER_NAV_ITEMS: NavItem[] = [
   { name: 'My Announcements',   href: '/dashboard/teacher/announcements',     icon: Megaphone },
   { name: 'Tasks & Marks',      href: '/dashboard/teacher/tasks',             icon: ClipboardList },
   { name: 'Daily Scores',       href: '/dashboard/teacher/daily-scores',      icon: Target },
+  { name: 'Level Results',      href: '/dashboard/teacher/level-results',     icon: Award },
   { name: 'Grade Entry',        href: '/dashboard/teacher/grade-entry',       icon: GraduationCap },
   { name: 'Student Targets',    href: '/dashboard/teacher/targets',           icon: Target },
   { name: 'Exam Results',       href: '/dashboard/teacher/results',           icon: BarChart2 },
