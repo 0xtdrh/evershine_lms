@@ -13,6 +13,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errors, createdResponse, successResponse } from '@/lib/api-response'
+import { generateCertificateNumber } from '@/lib/certificates/generate-number'
+import QRCode from 'qrcode'
 import type { Prisma, Role } from '@prisma/client'
 import { z } from 'zod'
 
@@ -90,6 +92,15 @@ export async function POST(request: NextRequest) {
   const student = await prisma.student.findUnique({ where: { id: data.studentId }, select: { id: true } })
   if (!student) return errors.notFound('Student')
 
+  const certificateNumber = await generateCertificateNumber(prisma)
+  const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://evershine-lms-technova.vercel.app'}/verify/${certificateNumber}`
+  const qrCodeUrl = await QRCode.toDataURL(verifyUrl, {
+    errorCorrectionLevel: 'H',
+    type: 'image/png',
+    width: 300,
+    margin: 2,
+  })
+
   const doc = await prisma.$transaction(async (tx) => {
     const newDoc = await tx.certificate.create({
       data: {
@@ -99,6 +110,12 @@ export async function POST(request: NextRequest) {
         pdfUrl: data.pdfUrl!,
         remarks: data.remarks,
         issuedBy: session.user.id,
+        certificateNumber,
+        qrCodeUrl,
+        // Manually-issued certificates (from this general documents flow) are
+        // visible immediately — the blur/reveal ceremony flow only applies to
+        // auto-generated level-completion certificates.
+        isRevealed: true,
       } satisfies Prisma.CertificateUncheckedCreateInput,
     })
 
