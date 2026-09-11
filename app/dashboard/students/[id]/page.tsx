@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { StudentEnrollmentsPanel } from '@/components/students/StudentEnrollmentsPanel'
 import type { StudentEnrollmentRow } from '@/components/students/StudentEnrollmentsPanel'
 import { StudentGuardianPanel } from '@/components/students/StudentGuardianPanel'
+import { StudentCertificatesPanel } from '@/components/students/StudentCertificatesPanel'
 import { StudentPromotionPanel } from '@/components/students/StudentPromotionPanel'
 import { StudentTimelineCard } from '@/components/students/StudentTimelineCard'
 import { StudentAdminToolbar } from '@/components/students/StudentAdminToolbar'
@@ -399,6 +400,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             guardians={student.guardians ?? []}
             canManage={isAdmin}
           />
+
+          <StudentCertificatesPanel studentId={student.id} />
 
           {engineAttendance.length > 0 && (
             <Card>

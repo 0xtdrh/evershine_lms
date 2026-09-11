@@ -18,7 +18,7 @@ import { SESSION_SHIFT_LABELS } from '@/lib/validation/shift'
 import {
   Calendar, Clock, Layers, Users, BookOpen, CalendarDays,
   MapPin, CheckSquare, BarChart, HardDrive, GraduationCap, Layout,
-  AlertCircle, Zap, Info, Trash2, Pencil, Check, X
+  AlertCircle, Zap, Info, Trash2, Pencil, Check, X, Plus, Loader2
 } from 'lucide-react'
 
 // WHY: Shift-aware labels for section dropdowns to distinguish same-name
@@ -447,6 +447,40 @@ export default function AcademicEnginePage() {
         `/api/student-enrollments?classSectionId=${enrollSectionId}&academicYearId=${activeYear?.id}&status=ACTIVE`
       ),
     enabled: !!enrollSectionId && !!activeYear?.id,
+  })
+
+  const [addStudentQuery, setAddStudentQuery] = useState('')
+  const [selectedNewStudent, setSelectedNewStudent] = useState<{ id: string; firstName: string; lastName: string } | null>(null)
+  const [newStudentRollNumber, setNewStudentRollNumber] = useState('')
+
+  const { data: studentSearchResults } = useQuery({
+    queryKey: ['roster-student-search', addStudentQuery],
+    queryFn: () => fetchApi<{ id: string; firstName: string; lastName: string; registrationNumber: string }[]>(
+      `/api/students?search=${encodeURIComponent(addStudentQuery)}&limit=8`
+    ),
+    enabled: addStudentQuery.length >= 2,
+  })
+
+  const enrollStudent = useMutation({
+    mutationFn: (payload: { studentId: string; academicYearId: string; classSectionId: string; rollNumber: string }) =>
+      fetchApi('/api/student-enrollments', { method: 'POST', body: JSON.stringify(payload) }),
+    onSuccess: () => {
+      notify.success('Student added to group')
+      setAddStudentQuery('')
+      setSelectedNewStudent(null)
+      setNewStudentRollNumber('')
+      refetchEnrollments()
+    },
+    onError: () => notify.error('Failed to add student — check the roll number is not already taken'),
+  })
+
+  const removeEnrollment = useMutation({
+    mutationFn: (enrollmentId: string) => fetchApi(`/api/student-enrollments/${enrollmentId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      notify.success('Student removed from group')
+      refetchEnrollments()
+    },
+    onError: () => notify.error('Failed to remove student'),
   })
 
   const { data: batchHouses } = useQuery({
@@ -1461,13 +1495,64 @@ export default function AcademicEnginePage() {
 
                 {!enrollSectionId ? (
                   <div className="border border-dashed border-gray-200 rounded-xl bg-gray-50/50 p-8 text-center text-gray-400 text-sm">
-                    Select a section above to view and assign enrolled students.
-                  </div>
-                ) : (sectionEnrollments ?? []).length === 0 ? (
-                  <div className="border border-dashed border-amber-200 rounded-xl bg-amber-50/50 p-8 text-center text-amber-700 text-sm font-medium">
-                    No active enrollments found in this section for {activeYear.name}.
+                    Select a section above to view and manage enrolled students.
                   </div>
                 ) : (
+                  <>
+                    <div className="flex flex-wrap items-end gap-2 border border-gray-100 bg-gray-50/60 rounded-xl p-3">
+                      <div className="flex-1 min-w-[200px] space-y-1">
+                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Add Student</Label>
+                        <Input
+                          value={addStudentQuery}
+                          onChange={(e) => setAddStudentQuery(e.target.value)}
+                          placeholder="Search by student name..."
+                          className="h-9 bg-white"
+                        />
+                        {addStudentQuery.length >= 2 && (studentSearchResults ?? []).length > 0 && (
+                          <div className="border border-gray-200 rounded-lg bg-white shadow-sm mt-1 max-h-48 overflow-y-auto">
+                            {(studentSearchResults ?? [])
+                              .filter((s: { id: string }) => !(sectionEnrollments ?? []).some((row: { student: { id: string } }) => row.student.id === s.id))
+                              .map((s: { id: string; firstName: string; lastName: string; registrationNumber: string }) => (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  onClick={() => { setSelectedNewStudent(s); setAddStudentQuery(`${s.firstName} ${s.lastName}`) }}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 flex items-center justify-between"
+                                >
+                                  <span>{s.firstName} {s.lastName}</span>
+                                  <span className="text-xs text-gray-400">{s.registrationNumber}</span>
+                                </button>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="w-28 space-y-1">
+                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Roll No.</Label>
+                        <Input value={newStudentRollNumber} onChange={(e) => setNewStudentRollNumber(e.target.value)} className="h-9 bg-white" placeholder="e.g. 12" />
+                      </div>
+                      <Button
+                        size="sm"
+                        className="h-9 gap-1.5"
+                        disabled={!selectedNewStudent || !newStudentRollNumber || enrollStudent.isPending}
+                        onClick={() => {
+                          if (!selectedNewStudent || !activeYear) return
+                          enrollStudent.mutate({
+                            studentId: selectedNewStudent.id,
+                            academicYearId: activeYear.id,
+                            classSectionId: enrollSectionId,
+                            rollNumber: newStudentRollNumber,
+                          })
+                        }}
+                      >
+                        {enrollStudent.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Add
+                      </Button>
+                    </div>
+
+                    {(sectionEnrollments ?? []).length === 0 ? (
+                      <div className="border border-dashed border-amber-200 rounded-xl bg-amber-50/50 p-8 text-center text-amber-700 text-sm font-medium">
+                        No active enrollments found in this section for {activeYear.name}.
+                      </div>
+                    ) : (
                   <div className="space-y-3 max-h-[480px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200">
                     {(sectionEnrollments ?? []).map((row: {
                       id: string
@@ -1476,7 +1561,6 @@ export default function AcademicEnginePage() {
                         id: string
                         firstName: string
                         lastName: string
-                        house?: { id: string; name: string; color: string } | null
                       }
                     }) => (
                       <div
@@ -1494,36 +1578,23 @@ export default function AcademicEnginePage() {
                             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Roll: {row.rollNumber}</p>
                           </div>
                         </div>
-                        <Select
-                          value={row.student.house?.id ?? 'none'}
-                          onValueChange={(v) =>
-                            assignHouse.mutate({
-                              studentId: row.student.id,
-                              houseId: v === 'none' ? null : v,
-                            })
-                          }
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1.5"
+                          onClick={() => {
+                            if (confirm(`Remove ${row.student.firstName} ${row.student.lastName} from this group?`)) {
+                              removeEnrollment.mutate(row.id)
+                            }
+                          }}
                         >
-                          <SelectTrigger className="w-48 h-9 border-gray-200 bg-gray-50">
-                            <SelectValue placeholder="Assign House" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none"><span className="text-gray-400 font-medium">No House</span></SelectItem>
-                            {(batchHouses ?? []).map((h: { id: string; name: string; color: string }) => (
-                              <SelectItem key={h.id} value={h.id}>
-                                <span className="inline-flex items-center gap-2 font-medium">
-                                  <span
-                                    className="w-2.5 h-2.5 rounded-full border border-black/10"
-                                    style={{ backgroundColor: h.color }}
-                                  />
-                                  {h.name}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <Trash2 className="w-3.5 h-3.5" /> Remove
+                        </Button>
                       </div>
                     ))}
                   </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>

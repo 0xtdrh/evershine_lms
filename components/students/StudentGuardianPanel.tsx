@@ -14,7 +14,6 @@ interface Guardian {
   id: string
   firstName: string
   lastName: string
-  cnic: string
   phoneNumber: string
   email?: string
   relationship: string
@@ -32,7 +31,6 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
-    cnic: '',
     phoneNumber: '',
     email: '',
     relationship: 'Father',
@@ -58,7 +56,7 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
       notify.success('Guardian linked')
       qc.invalidateQueries({ queryKey: ['student', studentId] })
       setShowForm(false)
-      setForm({ firstName: '', lastName: '', cnic: '', phoneNumber: '', email: '', relationship: 'Father' })
+      setForm({ firstName: '', lastName: '', phoneNumber: '', email: '', relationship: 'Father' })
     },
     onError: (err: Error) => notify.error(err.message || 'Failed to link guardian'),
   })
@@ -95,7 +93,7 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
                 {g.firstName} {g.lastName}
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
-                {g.relationship} · CNIC {g.cnic} · {g.phoneNumber}
+                {g.relationship} · {g.phoneNumber}
               </p>
               {g.email && <p className="text-xs text-gray-400">{g.email}</p>}
             </div>
@@ -128,15 +126,9 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
                 <Input className="h-9 text-sm bg-white" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs">CNIC (13 digits)</Label>
-                <Input className="h-9 text-sm bg-white font-mono" maxLength={13} value={form.cnic} onChange={(e) => setForm({ ...form, cnic: e.target.value.replace(/\D/g, '') })} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Phone</Label>
-                <Input className="h-9 text-sm bg-white" value={form.phoneNumber} onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })} />
-              </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Phone</Label>
+              <Input className="h-9 text-sm bg-white" value={form.phoneNumber} onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
@@ -151,7 +143,7 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
             <Button
               size="sm"
               className="w-full"
-              disabled={!form.firstName || form.cnic.length !== 13 || !form.phoneNumber || linkMutation.isPending}
+              disabled={!form.firstName || !form.phoneNumber || linkMutation.isPending}
               onClick={() => linkMutation.mutate()}
             >
               {linkMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save & link guardian'}
