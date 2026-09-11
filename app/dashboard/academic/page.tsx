@@ -936,6 +936,9 @@ export default function AcademicEnginePage() {
             </div>
             <div className="space-y-2 pt-3 border-t border-slate-100">
               <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Enrollments & subjects</p>
+              <TabsTrigger value="enrollments" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
+                <Users className="w-4 h-4" />Group Roster
+              </TabsTrigger>
               <TabsTrigger value="offerings" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
                 <BookOpen className="w-4 h-4" />Offerings
               </TabsTrigger>
@@ -1429,9 +1432,9 @@ export default function AcademicEnginePage() {
           ) : (
             <Card className="border-t-4 border-t-emerald-500 shadow-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Users className="w-4 h-4 text-emerald-500" />Assign Houses & Sports Gala</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Users className="w-4 h-4 text-emerald-500" />Group Roster</CardTitle>
                 <CardDescription>
-                  Houses are per batch (Shaheen, Parvaaz, Junoon, etc.). Updates the student profile for the active year enrollment.
+                  Select a group to see every student enrolled in it. House assignment below is optional (per batch — Shaheen, Parvaaz, Junoon, etc.).
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
