@@ -30,8 +30,15 @@ export async function GET(request: NextRequest) {
   if (role === 'TEACHER') {
     const teacher = await getTeacherByUserId(session.user.id)
     if (!teacher) return errors.forbidden()
-    const allowed = await teacherCanAccessClassSection(teacher.id, classSectionId)
-    if (!allowed) return errors.forbidden('Not assigned to this class section')
+    const allowedViaSection = await teacherCanAccessClassSection(teacher.id, classSectionId)
+    // WHY also check SubjectOffering directly: a teacher can be assigned to
+    // teach a specific course in a group (SubjectOffering.teacherId) without
+    // being that group's overall "class teacher" (TeacherSectionAssignment).
+    const allowedViaOffering = await prisma.subjectOffering.findFirst({
+      where: { teacherId: teacher.id, classSectionId, subjectId },
+      select: { id: true },
+    })
+    if (!allowedViaSection && !allowedViaOffering) return errors.forbidden('Not assigned to this class section')
   } else if (!checkPermission(role, 'grading_engine', 'read')) {
     return errors.forbidden()
   }
@@ -111,8 +118,12 @@ export async function POST(request: NextRequest) {
   if (role === 'TEACHER') {
     const teacher = await getTeacherByUserId(session.user.id)
     if (!teacher) return errors.forbidden()
-    const allowed = await teacherCanAccessClassSection(teacher.id, enrollment.classSectionId)
-    if (!allowed) return errors.forbidden('Not assigned to this class section')
+    const allowedViaSection = await teacherCanAccessClassSection(teacher.id, enrollment.classSectionId)
+    const allowedViaOffering = await prisma.subjectOffering.findFirst({
+      where: { teacherId: teacher.id, classSectionId: enrollment.classSectionId, subjectId: data.subjectId },
+      select: { id: true },
+    })
+    if (!allowedViaSection && !allowedViaOffering) return errors.forbidden('Not assigned to this class section')
   } else if (!checkPermission(role, 'grading_engine', 'update')) {
     return errors.forbidden()
   }

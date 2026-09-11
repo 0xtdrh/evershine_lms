@@ -28,14 +28,18 @@ export async function GET(req: NextRequest) {
     if (!activeYear) return successResponse([])
 
     const allowedSectionIds = await getTeacherClassSectionIds(teacher.id, activeYear.id)
-    if (allowedSectionIds.length === 0) return successResponse([])
 
+    // WHY no early-return on empty allowedSectionIds: a teacher can be
+    // assigned directly on a SubjectOffering (teacherId) without ever having
+    // a TeacherSectionAssignment (that's a separate "class teacher"
+    // concept). Bailing out early here used to hide offerings that only
+    // matched via teacherId directly.
     const offerings = await prisma.subjectOffering.findMany({
       where: {
         academicYearId: activeYear.id,
         OR: [
           { teacherId: teacher.id },
-          { classSectionId: { in: allowedSectionIds } },
+          ...(allowedSectionIds.length > 0 ? [{ classSectionId: { in: allowedSectionIds } }] : []),
         ],
       },
       include: {
