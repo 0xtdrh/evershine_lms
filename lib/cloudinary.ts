@@ -192,7 +192,7 @@ export function generateUploadSignature(folder = `${getBaseUploadFolder()}/misc`
  */
 export async function uploadProfileImageToCloudinary(
   base64DataUrl: string,
-  subfolder: 'students' | 'teachers',
+  subfolder: 'students' | 'teachers' | 'certificates',
   publicId: string
 ): Promise<string> {
   getRequiredCloudinaryConfig()

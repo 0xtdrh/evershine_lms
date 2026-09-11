@@ -49,6 +49,8 @@ import {
   UploadCloud,
   Award,
   SlidersHorizontal,
+  Palette,
+  Sparkles,
 } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
 import { ArcLineBrand } from '@/components/ArcLineBrand'
@@ -103,6 +105,8 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'My Courses',      href: '/dashboard/enrollment',   icon: BookOpen,        roles: ['STUDENT'] },
   { name: 'Timetable',       href: '/dashboard/timetable',    icon: CalendarClock,   roles: ['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'STUDENT', 'BRANCH_MANAGER', 'SECRETARY'] },
   { name: 'Documents',       href: '/dashboard/documents',    icon: FileText,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
+  { name: 'Certificate Designer', href: '/dashboard/certificate-templates', icon: Palette, roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { name: 'Certificate Reveal',   href: '/dashboard/certificate-reveal',    icon: Sparkles, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Campuses',        href: '/dashboard/campuses',     icon: Building,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
   { name: 'Batches',         href: '/dashboard/batches',      icon: BookOpen,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Classes (Legacy)', href: '/dashboard/classes',      icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN'], legacy: true },
@@ -111,6 +115,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Promotions',      href: '/dashboard/promotions',   icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Report Cards',    href: '/dashboard/report-cards', icon: FileText,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'My Children',     href: '/dashboard/my-children',  icon: Users,           roles: ['PARENT', 'GUARDIAN'] },
+  { name: 'Certificates',    href: '/dashboard/certificates', icon: Award,           roles: ['STUDENT', 'PARENT', 'GUARDIAN'] },
   { name: 'Settings',        href: '/dashboard/settings',     icon: Settings },
 ]
 
