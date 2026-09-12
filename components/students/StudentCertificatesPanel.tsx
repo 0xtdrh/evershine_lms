@@ -1,10 +1,12 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Award, ShieldCheck, ShieldX, EyeOff, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { notify } from '@/lib/notify'
+import { Award, ShieldCheck, ShieldX, EyeOff, Eye, Loader2 } from 'lucide-react'
 
 interface CertificateRow {
   id: string
@@ -17,9 +19,20 @@ interface CertificateRow {
 }
 
 export function StudentCertificatesPanel({ studentId }: { studentId: string }) {
+  const queryClient = useQueryClient()
   const { data: certificates, isLoading } = useQuery<CertificateRow[]>({
     queryKey: ['student-certificates', studentId],
     queryFn: () => fetchApi(`/api/documents?studentId=${studentId}`),
+  })
+
+  const toggleReveal = useMutation({
+    mutationFn: ({ id, isRevealed }: { id: string; isRevealed: boolean }) =>
+      fetchApi(`/api/certificates/${id}/reveal`, { method: 'PATCH', body: JSON.stringify({ isRevealed }) }),
+    onSuccess: (_res, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['student-certificates', studentId] })
+      notify.success(vars.isRevealed ? 'Certificate revealed' : 'Certificate hidden again')
+    },
+    onError: () => notify.error('Failed to update certificate visibility'),
   })
 
   return (
@@ -52,6 +65,17 @@ export function StudentCertificatesPanel({ studentId }: { studentId: string }) {
                   <Badge variant="outline" className="text-amber-600 border-amber-200 gap-1 text-[10px]"><EyeOff className="w-3 h-3" /> Hidden</Badge>
                 ) : (
                   <Badge className="bg-emerald-100 text-emerald-800 border-0 gap-1 text-[10px]"><ShieldCheck className="w-3 h-3" /> Revealed</Badge>
+                )}
+                {c.status === 'VALID' && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 text-[11px]"
+                    disabled={toggleReveal.isPending}
+                    onClick={() => toggleReveal.mutate({ id: c.id, isRevealed: !c.isRevealed })}
+                  >
+                    {c.isRevealed ? <><EyeOff className="w-3 h-3" /> Hide</> : <><Eye className="w-3 h-3" /> Reveal</>}
+                  </Button>
                 )}
               </div>
             </div>
