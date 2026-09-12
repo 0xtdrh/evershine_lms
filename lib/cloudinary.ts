@@ -113,7 +113,7 @@ export function getCloudinaryRuntimeDiagnostics() {
 
 async function uploadBufferToCloudinary(params: {
   buffer: Buffer
-  subfolder: 'students' | 'teachers' | 'fee-proofs' | 'diagnostics'
+  subfolder: 'students' | 'teachers' | 'fee-proofs' | 'diagnostics' | 'certificates'
   publicId: string
   resourceType: 'image' | 'auto'
   overwrite?: boolean

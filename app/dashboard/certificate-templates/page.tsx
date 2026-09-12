@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -73,7 +73,7 @@ export default function CertificateTemplatesPage() {
       setBackgroundBase64(null)
       setFields([])
     },
-    onError: () => notify.error('Failed to save template'),
+    onError: (err: unknown) => notify.error(err instanceof Error ? err.message : 'Failed to save template'),
   })
 
   const setDefaultMutation = useMutation({
@@ -108,6 +108,31 @@ export default function CertificateTemplatesPage() {
     const y = Math.round(((e.clientY - rect.top) / rect.height) * 1000) / 10
     setFields((prev) => prev.map((f) => f.key === selectedFieldKey ? { ...f, x, y } : f))
   }
+
+  // WHY arrow-key nudging: clicking to reposition on a small preview image is
+  // imprecise on a trackpad. Once a field is selected, arrow keys move it in
+  // small steps (0.2%), with Shift held down for bigger jumps (1%).
+  useEffect(() => {
+    if (!selectedFieldKey) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const step = e.shiftKey ? 1 : 0.2
+      let dx = 0
+      let dy = 0
+      if (e.key === 'ArrowLeft') dx = -step
+      else if (e.key === 'ArrowRight') dx = step
+      else if (e.key === 'ArrowUp') dy = -step
+      else if (e.key === 'ArrowDown') dy = step
+      else return
+
+      e.preventDefault()
+      setFields((prev) => prev.map((f) => f.key === selectedFieldKey
+        ? { ...f, x: Math.min(100, Math.max(0, Math.round((f.x + dx) * 10) / 10)), y: Math.min(100, Math.max(0, Math.round((f.y + dy) * 10) / 10)) }
+        : f
+      ))
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedFieldKey])
 
   const addField = () => {
     if (!addingKey) return
@@ -185,7 +210,7 @@ export default function CertificateTemplatesPage() {
             </div>
             <div className="space-y-1">
               <Label>Background Image</Label>
-              <input ref={fileInputRef} type="file" accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} className="hidden" />
+              <input ref={fileInputRef} type="file" accept="image/png, image/jpeg, image/gif" onChange={handleFileChange} className="hidden" />
               <Button variant="outline" size="sm" className="gap-2" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="w-4 h-4" /> {backgroundBase64 ? 'Change Image' : 'Upload Image'}
               </Button>
@@ -231,7 +256,7 @@ export default function CertificateTemplatesPage() {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-slate-500">Click a field's tag above (or in the list below) to select it, then click anywhere on the image to move it there.</p>
+              <p className="text-xs text-slate-500">Click a field's tag above (or in the list below) to select it, then click on the image to move it there — or use the arrow keys to nudge it (hold Shift for bigger steps).</p>
 
               {fields.length > 0 && (
                 <div className="space-y-2">
