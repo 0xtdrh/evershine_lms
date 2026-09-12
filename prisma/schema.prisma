@@ -1231,7 +1231,7 @@ model Certificate {
   // Distinct from the internal cuid `id` — this is the one printed on the
   // certificate and encoded in the QR code / verification URL.
   certificateNumber String  @unique
-  qrCodeUrl         String? // Cloudinary URL of the generated QR code image
+  qrCodeUrl         String? @db.LongText // Base64 QR code image (data URL)
   status            CertificateStatus @default(VALID)
   revokedAt         DateTime?
   revokedBy         String? // Admin/Super Admin user ID
