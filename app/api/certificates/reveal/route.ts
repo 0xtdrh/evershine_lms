@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
-  if (!checkPermission(role, 'documents', 'approve')) return errors.forbidden()
+  if (!checkPermission(role, 'documents', 'update')) return errors.forbidden()
 
   let body: unknown
   try {
