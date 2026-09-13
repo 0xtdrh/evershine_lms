@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchApi } from '@/lib/api-client'
+import { fetchApi, ApiError } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -73,7 +73,13 @@ export default function CertificateTemplatesPage() {
       setBackgroundBase64(null)
       setFields([])
     },
-    onError: (err: unknown) => notify.error(err instanceof Error ? err.message : 'Failed to save template'),
+    onError: (err: unknown) => {
+      if (err instanceof ApiError && err.fieldErrors.length > 0) {
+        notify.error(err.fieldErrors.map((fe) => `${fe.field}: ${fe.message}`).join(' · '))
+      } else {
+        notify.error(err instanceof Error ? err.message : 'Failed to save template')
+      }
+    },
   })
 
   const setDefaultMutation = useMutation({
