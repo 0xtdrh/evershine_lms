@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { assignmentFindMany, academicYearFindUnique } = vi.hoisted(() => ({
+const { assignmentFindMany, offeringFindMany, academicYearFindUnique } = vi.hoisted(() => ({
   assignmentFindMany: vi.fn(),
+  offeringFindMany: vi.fn(),
   academicYearFindUnique: vi.fn(),
 }))
 
@@ -10,6 +11,7 @@ vi.mock('@/lib/prisma', () => ({
     teacher: { findUnique: vi.fn() },
     academicYear: { findUnique: academicYearFindUnique },
     teacherSectionAssignment: { findMany: assignmentFindMany },
+    subjectOffering: { findMany: offeringFindMany },
   },
 }))
 
@@ -23,10 +25,11 @@ describe('teacher section resolution', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     assignmentFindMany.mockResolvedValue([])
+    offeringFindMany.mockResolvedValue([])
     academicYearFindUnique.mockResolvedValue({ id: 'year-2', name: '2025-2026' })
   })
 
-  it('returns only active canonical assignments for the active academic year', async () => {
+  it('returns active canonical assignments for the active academic year', async () => {
     assignmentFindMany.mockResolvedValue([
       { id: 'assignment-a', teacherId: 'teacher-1', classSectionId: 'sec-a', academicYearId: 'year-1', isClassTeacher: true, status: 'ACTIVE' },
       { id: 'assignment-b', teacherId: 'teacher-1', classSectionId: 'sec-b', academicYearId: 'year-1', isClassTeacher: false, status: 'ACTIVE' },
@@ -41,6 +44,29 @@ describe('teacher section resolution', () => {
         classSection: { isActive: true },
       },
     }))
+  })
+
+  it('also grants access to sections where the teacher has a direct SubjectOffering, even with no formal assignment', async () => {
+    offeringFindMany.mockResolvedValue([{ classSectionId: 'sec-x' }])
+
+    await expect(getTeacherClassSectionIds('teacher-1')).resolves.toEqual(['sec-x'])
+    expect(offeringFindMany).toHaveBeenCalledWith({
+      where: { teacherId: 'teacher-1', academicYearId: 'year-1' },
+      select: { classSectionId: true },
+    })
+  })
+
+  it('merges and de-duplicates assignment-based and offering-based sections', async () => {
+    assignmentFindMany.mockResolvedValue([
+      { id: 'assignment-a', teacherId: 'teacher-1', classSectionId: 'sec-a', academicYearId: 'year-1', isClassTeacher: true, status: 'ACTIVE' },
+    ])
+    offeringFindMany.mockResolvedValue([
+      { classSectionId: 'sec-a' }, // overlaps with the assignment above
+      { classSectionId: 'sec-x' },
+    ])
+
+    const result = await getTeacherClassSectionIds('teacher-1')
+    expect(result.sort()).toEqual(['sec-a', 'sec-x'])
   })
 
   it('does not grant access from historical timetable, task, or result records', async () => {
@@ -60,7 +86,7 @@ describe('teacher section resolution', () => {
     })
   })
 
-  it('checks section access against the canonical assignment set', async () => {
+  it('checks section access against the merged assignment + offering set', async () => {
     assignmentFindMany.mockResolvedValue([
       { id: 'assignment-a', teacherId: 'teacher-1', classSectionId: 'sec-a', academicYearId: 'year-1', isClassTeacher: false, status: 'ACTIVE' },
     ])

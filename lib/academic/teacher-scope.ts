@@ -10,9 +10,10 @@ export async function getTeacherByUserId(userId: string) {
 }
 
 /**
- * Resolve the teacher's current section scope from the canonical assignment
- * table only. Historical tasks, results, legacy classes, and old timetable
- * rows are intentionally not authorization sources.
+ * Resolve the teacher's current section scope: sections they're formally
+ * assigned to (TeacherSectionAssignment) merged with sections where they
+ * teach a course directly (SubjectOffering.teacherId). Historical/legacy
+ * class and timetable rows are intentionally not authorization sources.
  */
 export async function getTeacherClassSectionIds(
   teacherId: string,
@@ -26,7 +27,26 @@ export async function getTeacherClassSectionIds(
     : await getActiveAcademicYear()
 
   if (!year) return []
-  return getTeacherAssignedSectionIds(teacherId, year.id)
+
+  // WHY merge two sources: a TeacherSectionAssignment is the formal "class
+  // teacher / access to this group" grant. A SubjectOffering.teacherId means
+  // "this teacher teaches a specific course in this group" — assigned from
+  // the Academic Engine's Offerings tab. Historically only the former
+  // granted access, which meant a teacher assigned to teach a course still
+  // couldn't see their own students' roster, mark attendance, or enter
+  // grades until someone separately did the formal assignment too. Since
+  // that second step is easy to forget and the failure mode (silently empty
+  // lists, no error) is confusing, a direct course assignment now grants the
+  // same access on its own.
+  const [assignedIds, offerings] = await Promise.all([
+    getTeacherAssignedSectionIds(teacherId, year.id),
+    prisma.subjectOffering.findMany({
+      where: { teacherId, academicYearId: year.id },
+      select: { classSectionId: true },
+    }),
+  ])
+
+  return Array.from(new Set([...assignedIds, ...offerings.map((o) => o.classSectionId)]))
 }
 
 export async function teacherCanAccessClassSection(
