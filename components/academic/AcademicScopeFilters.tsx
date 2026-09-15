@@ -13,10 +13,8 @@ import type { UseAcademicHierarchyReturn } from '@/hooks/useAcademicHierarchy'
 
 export interface AcademicScopeFiltersProps {
   hierarchy: UseAcademicHierarchyReturn
-  /** Show campus + batch + performance house selectors (admin workflows) */
+  /** Show campus + batch selectors (admin workflows) */
   showCampusBatch?: boolean
-  /** Show performance house (always paired with batch when true) */
-  showHouse?: boolean
   /** Show morning/evening session */
   showShift?: boolean
   /** Show class dropdown */
@@ -29,13 +27,12 @@ export interface AcademicScopeFiltersProps {
 }
 
 /**
- * Campus → Batch → Performance House → Session → Class
- * Batch is required wherever shown. Performance house is required when the batch has houses.
+ * Campus → Batch → Session → Class
+ * Batch is required wherever shown.
  */
 export function AcademicScopeFilters({
   hierarchy,
   showCampusBatch = true,
-  showHouse = true,
   showShift = true,
   showClass = true,
   className = '',
@@ -46,26 +43,20 @@ export function AcademicScopeFilters({
   const {
     campuses,
     batches,
-    houses,
     filteredClasses,
     scope,
     setCampusId,
     setBatchId,
     setShift,
     setClassId,
-    setHouseId,
     isLoadingCampuses,
     isLoadingBatches,
-    isLoadingHouses,
     isLoadingClasses,
-    hasHouses,
-    houseRequired,
     scopeReady,
   } = hierarchy
 
   const campusOptions = Array.isArray(campuses) ? campuses : []
   const batchOptions = Array.isArray(batches) ? batches : []
-  const houseOptions = Array.isArray(houses) ? houses : []
   const classOptions = Array.isArray(filteredClasses) ? filteredClasses : []
 
   const notify = () => onScopeChange?.()
@@ -135,41 +126,6 @@ export function AcademicScopeFilters({
                 </SelectContent>
               </Select>
             </div>
-
-            {showHouse && scope.batchId && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-gray-600">
-                  Performance House {houseRequired ? '*' : ''}
-                </Label>
-                {isLoadingHouses ? (
-                  <p className="text-xs text-gray-400 py-2">Loading houses…</p>
-                ) : hasHouses ? (
-                  <Select
-                    value={scope.houseId || undefined}
-                    disabled={!scope.batchId}
-                    onValueChange={(v) => {
-                      setHouseId(v)
-                      notify()
-                    }}
-                  >
-                    <SelectTrigger className={compact ? 'h-9' : ''}>
-                      <SelectValue placeholder="Select performance house" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {houseOptions.map((h) => (
-                        <SelectItem key={h.id} value={h.id}>
-                          {h.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-[10px] text-gray-500 leading-snug">
-                    No performance houses for this batch.
-                  </p>
-                )}
-              </div>
-            )}
           </>
         )}
 
@@ -212,9 +168,7 @@ export function AcademicScopeFilters({
                     classBlocked
                       ? !scope.batchId
                         ? 'Select batch first'
-                        : houseRequired && !scope.houseId
-                          ? 'Select performance house first'
-                          : 'Complete campus & batch first'
+                        : 'Complete campus & batch first'
                       : isLoadingClasses
                         ? 'Loading classes…'
                         : classOptions.length === 0
@@ -239,10 +193,7 @@ export function AcademicScopeFilters({
 
       {showCampusBatch && requireCampusForClass && scope.campusId && scope.batchId && (
         <p className="text-[10px] text-gray-500">
-          Selecting a batch loads performance houses and classes for that campus.{' '}
-          {houseRequired
-            ? 'Choose a performance house before selecting a class.'
-            : 'This batch has no performance houses — proceed to session and class.'}
+          Selecting a batch loads the classes available for that campus.
         </p>
       )}
     </div>

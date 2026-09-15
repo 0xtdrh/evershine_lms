@@ -409,7 +409,6 @@ const defaultResultsScope = (): AcademicScopeState => ({
   batchId: '',
   shift: 'MORNING',
   classId: '',
-  houseId: '',
 })
 
 export default function ResultsPage() {
@@ -540,7 +539,6 @@ export default function ResultsPage() {
         <AcademicScopeFilters
           hierarchy={hierarchy}
           showCampusBatch={role !== 'TEACHER'}
-          showHouse
           showShift
           showClass
           requireCampusForClass={role !== 'TEACHER'}

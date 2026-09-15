@@ -34,7 +34,6 @@ export default function SectionAttendancePage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [batchId, setBatchId] = useState('')
   const [shiftId, setShiftId] = useState('')
-  const [houseId, setHouseId] = useState('')
   const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>({})
   const [exportStartDate, setExportStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0])
   const [exportEndDate, setExportEndDate] = useState(new Date().toISOString().split('T')[0])
@@ -64,21 +63,14 @@ export default function SectionAttendancePage() {
     enabled: isAllowed,
   })
 
-  const { data: houses } = useQuery({
-    queryKey: ['houses-att'],
-    queryFn: () => fetchApi<any[]>('/api/houses'),
-    enabled: isAllowed,
-  })
-
   const { data: roster, isLoading, refetch } = useQuery({
-    queryKey: ['enrollment-roster', classSectionId, date, batchId, shiftId, houseId],
+    queryKey: ['enrollment-roster', classSectionId, date, batchId, shiftId],
     queryFn: () => {
       const params = new URLSearchParams({
         classSectionId,
         date,
         ...(batchId && { batchId }),
         ...(shiftId && { shiftId }),
-        ...(houseId && { houseId }),
       })
       return fetchApi<{ enrollments: RosterRow[]; stats: any }>(`/api/enrollment-attendance/roster?${params}`)
     },
@@ -116,8 +108,7 @@ export default function SectionAttendancePage() {
           endDate: exportEndDate,
           ...(batchId && { batchId }),
           ...(shiftId && { shiftId }),
-          ...(houseId && { houseId }),
-        }),
+          }),
       })
       if (!response.ok) throw new Error('Export failed')
       const blob = await response.blob()
@@ -268,20 +259,6 @@ export default function SectionAttendancePage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-600">Filter by House</Label>
-                <Select value={houseId || 'all'} onValueChange={(v) => setHouseId(v === 'all' ? '' : v)}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="All houses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All houses</SelectItem>
-                    {(houses ?? []).map((h: { id: string; name: string }) => (
-                      <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           )}
 
@@ -348,7 +325,7 @@ export default function SectionAttendancePage() {
               <CardTitle className="text-base">Roster</CardTitle>
               <CardDescription>
                 {roster?.enrollments?.length ?? 0} students
-                {roster?.stats && ` • Present: ${roster.stats.byHouse ? Object.values(roster.stats.byHouse as any).reduce((sum, h: any) => sum + h.present, 0) : 0}`}
+                {roster?.stats?.present != null && ` • Present: ${roster.stats.present}`}
               </CardDescription>
             </div>
             <Button

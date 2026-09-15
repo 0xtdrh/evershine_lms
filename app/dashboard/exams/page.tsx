@@ -403,7 +403,6 @@ const defaultExamScope = (): AcademicScopeState => ({
   batchId: '',
   shift: 'MORNING',
   classId: '',
-  houseId: '',
 })
 
 export default function ExamsPage() {
@@ -669,7 +668,6 @@ export default function ExamsPage() {
         </p>
         <AcademicScopeFilters
           hierarchy={listHierarchy}
-          showHouse
           showClass
           onScopeChange={() => {}}
         />

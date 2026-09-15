@@ -7,7 +7,7 @@ import { getTeacherByUserId, teacherCanAccessClassSection } from '@/lib/academic
 import { getOrSyncSectionEnrollments } from '@/lib/academic/roster-helper'
 import type { Role } from '@prisma/client'
 
-/** Active enrollments in a class section for attendance marking with batch/shift/house filters. */
+/** Active enrollments in a class section for attendance marking with batch/shift filters. */
 export async function GET(request: NextRequest) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
   const classSectionId = params.get('classSectionId')
   const batchId = params.get('batchId')
   const shiftId = params.get('shiftId')
-  const houseId = params.get('houseId')
   const dateStr = params.get('date') ?? new Date().toISOString().split('T')[0]
   
   if (!classSectionId) {
@@ -29,7 +28,7 @@ export async function GET(request: NextRequest) {
   const attendanceDate = new Date(dateStr)
 
   const activeYear = await getActiveAcademicYear()
-  if (!activeYear) return successResponse({ enrollments: [], date: dateStr, stats: { total: 0, byHouse: {} } })
+  if (!activeYear) return successResponse({ enrollments: [], date: dateStr, stats: { total: 0, present: 0, absent: 0 } })
 
   if (session.user.role === 'TEACHER') {
     const teacher = await getTeacherByUserId(session.user.id)
@@ -44,7 +43,7 @@ export async function GET(request: NextRequest) {
   const { targetClassSectionId, enrollments: rawEnrollments } = await getOrSyncSectionEnrollments(
     classSectionId,
     activeYear?.id,
-    { batchId: batchId || undefined, shiftId: shiftId || undefined, houseId: houseId || undefined }
+    { batchId: batchId || undefined, shiftId: shiftId || undefined }
   )
 
   // Attach attendance records for attendanceDate
@@ -64,27 +63,24 @@ export async function GET(request: NextRequest) {
     }
   })
 
-  // Calculate statistics by house
-  const byHouse: Record<string, { total: number; present: number; absent: number }> = {}
+  // Calculate attendance statistics for this session
+  let present = 0
+  let absent = 0
   enrollments.forEach((e) => {
-    const houseName = e.student.house?.name ?? 'Unassigned'
-    if (!byHouse[houseName]) {
-      byHouse[houseName] = { total: 0, present: 0, absent: 0 }
-    }
-    byHouse[houseName].total++
     const status = Array.isArray(e.attendanceRecords) ? e.attendanceRecords[0]?.status : null
-    if (status === 'PRESENT') byHouse[houseName].present++
-    if (status === 'ABSENT') byHouse[houseName].absent++
+    if (status === 'PRESENT') present++
+    if (status === 'ABSENT') absent++
   })
 
   return successResponse({
     academicYear: activeYear,
     classSectionId,
     date: dateStr,
-    filters: { batchId, shiftId, houseId },
+    filters: { batchId, shiftId },
     stats: {
       total: enrollments.length,
-      byHouse,
+      present,
+      absent,
     },
     enrollments: enrollments.map((e) => ({
       studentEnrollmentId: e.id,
@@ -92,7 +88,6 @@ export async function GET(request: NextRequest) {
       student: e.student,
       batch: e.classSection.batch,
       shift: e.classSection.shift,
-      house: e.student.house,
       todayStatus: Array.isArray(e.attendanceRecords) ? e.attendanceRecords[0]?.status : null,
     })),
   })

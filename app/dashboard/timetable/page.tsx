@@ -91,7 +91,6 @@ export default function TimetablePage() {
     batchId: '',
     shift: 'MORNING',
     classId: '',
-    houseId: '',
   })
   const hierarchy = useAcademicHierarchy(scope, setScope, {
     mode: 'admin',
@@ -454,7 +453,6 @@ export default function TimetablePage() {
           <CardContent className="p-4 space-y-4">
             <AcademicScopeFilters
               hierarchy={hierarchy}
-              showHouse
               onScopeChange={() => setSelectedTeacherId('')}
             />
             <div className="border-t pt-4">
