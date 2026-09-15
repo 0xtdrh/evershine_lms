@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { notify } from '@/lib/notify'
-import { Loader2, Eye, EyeOff, Sparkles, PartyPopper, CheckSquare, Square } from 'lucide-react'
+import { Loader2, Eye, EyeOff, Sparkles, PartyPopper, CheckSquare, Square, Download, FileStack, History } from 'lucide-react'
+import { buildCertificatesPdf, groupByCourse, safeFilename, type PrintCertificate } from '@/lib/certificates/pdf-renderer'
 
 interface CertificateRow {
   id: string
@@ -43,6 +44,55 @@ export default function CertificateRevealPage() {
     },
     onError: () => notify.error('Failed to update certificates'),
   })
+
+  const [isPrinting, setIsPrinting] = useState(false)
+
+  const { data: printHistory = [] } = useQuery<{ id: string; label: string; mode: string; totalCount: number; createdAt: string }[]>({
+    queryKey: ['certificate-print-history'],
+    queryFn: () => fetchApi('/api/certificates/print'),
+  })
+
+  const handleDownload = async (mode: 'GROUPED' | 'COMBINED') => {
+    if (selectedIds.size === 0) return
+    const label = window.prompt(
+      'Name this print batch (saved in history so you can see what was printed and when):',
+      `Ceremony ${new Date().getFullYear()}`
+    )
+    if (!label) return
+
+    setIsPrinting(true)
+    try {
+      const res = await fetchApi<{ batchId: string; certificates: PrintCertificate[] }>(
+        '/api/certificates/print',
+        { method: 'POST', body: JSON.stringify({ certificateIds: Array.from(selectedIds), mode, label }) }
+      )
+
+      if (res.certificates.every((c) => !c.template)) {
+        notify.error('None of the selected certificates have a design template. Upload one in Certificate Designer first.')
+        return
+      }
+
+      if (mode === 'COMBINED') {
+        const pdf = await buildCertificatesPdf(res.certificates)
+        if (!pdf) { notify.error('Nothing to render'); return }
+        pdf.save(`${safeFilename(label)}.pdf`)
+      } else {
+        const groups = groupByCourse(res.certificates)
+        for (const [courseName, certs] of groups) {
+          const pdf = await buildCertificatesPdf(certs)
+          if (!pdf) continue
+          pdf.save(`${safeFilename(label)}-${safeFilename(courseName)}.pdf`)
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['certificate-print-history'] })
+      notify.success(`${res.certificates.length} certificate${res.certificates.length === 1 ? '' : 's'} exported`)
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : 'Failed to generate PDF')
+    } finally {
+      setIsPrinting(false)
+    }
+  }
 
   const bySubject = useMemo(() => {
     const groups = new Map<string, { subjectId: string | null; subjectName: string; items: CertificateRow[] }>()
@@ -98,6 +148,14 @@ export default function CertificateRevealPage() {
             <Button size="sm" variant="secondary" className="gap-1.5" disabled={revealMutation.isPending}
               onClick={() => revealMutation.mutate({ scope: 'certificates', certificateIds: Array.from(selectedIds), isRevealed: false })}>
               <EyeOff className="w-3.5 h-3.5" /> Hide Selected
+            </Button>
+            <Button size="sm" variant="secondary" className="gap-1.5" disabled={isPrinting}
+              onClick={() => handleDownload('GROUPED')}>
+              {isPrinting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileStack className="w-3.5 h-3.5" />} PDF per Course
+            </Button>
+            <Button size="sm" variant="secondary" className="gap-1.5" disabled={isPrinting}
+              onClick={() => handleDownload('COMBINED')}>
+              {isPrinting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} Single PDF
             </Button>
             <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-indigo-500" onClick={() => setSelectedIds(new Set())}>Clear</Button>
           </div>
@@ -170,6 +228,31 @@ export default function CertificateRevealPage() {
             </CardContent>
           </Card>
         ))
+      )}
+
+      {printHistory.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <History className="w-4 h-4 text-slate-500" /> Print History
+            </CardTitle>
+            <CardDescription>Every certificate export, so you can trace what was printed for each ceremony.</CardDescription>
+          </CardHeader>
+          <CardContent className="divide-y divide-slate-100">
+            {printHistory.map((b) => (
+              <div key={b.id} className="flex items-center justify-between py-2.5 text-sm">
+                <div>
+                  <p className="font-medium text-slate-800">{b.label}</p>
+                  <p className="text-xs text-slate-400">
+                    {new Date(b.createdAt).toLocaleDateString('en-EG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {' · '}{b.mode === 'COMBINED' ? 'Single PDF' : 'PDF per course'}
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-[10px]">{b.totalCount} certificate{b.totalCount === 1 ? '' : 's'}</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
     </div>
   )

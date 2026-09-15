@@ -1214,6 +1214,22 @@ model Achievement {
 // DOCUMENTS & CERTIFICATES
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Records every certificate PDF export so ceremonies can be reproduced and
+// audited later ("what did we print for the 2026 ceremony, in what order?").
+model CertificatePrintBatch {
+  id             String   @id @default(cuid())
+  label          String // Free-text, e.g. "Annual Ceremony 2026 — Robotics"
+  // GROUPED = one PDF per course/level; COMBINED = a single PDF with all
+  // certificates ordered by course then level.
+  mode           String   @default("GROUPED")
+  certificateIds Json // Ordered array of certificate IDs included in this batch
+  totalCount     Int
+  printedBy      String // Admin user ID
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model Certificate {
   id         String          @id @default(cuid())
   studentId  String
