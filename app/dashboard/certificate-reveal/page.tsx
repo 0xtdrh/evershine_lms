@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { notify } from '@/lib/notify'
-import { Loader2, Eye, EyeOff, Sparkles, PartyPopper, CheckSquare, Square, Download, FileStack, History } from 'lucide-react'
-import { buildCertificatesPdf, groupByCourse, safeFilename, type PrintCertificate } from '@/lib/certificates/pdf-renderer'
+import { Loader2, Eye, EyeOff, Sparkles, PartyPopper, CheckSquare, Square, Download, History } from 'lucide-react'
+import { buildCertificatesPdf, safeFilename, type PrintCertificate } from '@/lib/certificates/pdf-renderer'
 
 interface CertificateRow {
   id: string
@@ -52,7 +52,7 @@ export default function CertificateRevealPage() {
     queryFn: () => fetchApi('/api/certificates/print'),
   })
 
-  const handleDownload = async (mode: 'GROUPED' | 'COMBINED') => {
+  const handleDownload = async () => {
     if (selectedIds.size === 0) return
     const label = window.prompt(
       'Name this print batch (saved in history so you can see what was printed and when):',
@@ -64,7 +64,7 @@ export default function CertificateRevealPage() {
     try {
       const res = await fetchApi<{ batchId: string; certificates: PrintCertificate[] }>(
         '/api/certificates/print',
-        { method: 'POST', body: JSON.stringify({ certificateIds: Array.from(selectedIds), mode, label }) }
+        { method: 'POST', body: JSON.stringify({ certificateIds: Array.from(selectedIds), mode: 'COMBINED', label }) }
       )
 
       if (res.certificates.every((c) => !c.template)) {
@@ -72,18 +72,9 @@ export default function CertificateRevealPage() {
         return
       }
 
-      if (mode === 'COMBINED') {
-        const pdf = await buildCertificatesPdf(res.certificates)
-        if (!pdf) { notify.error('Nothing to render'); return }
-        pdf.save(`${safeFilename(label)}.pdf`)
-      } else {
-        const groups = groupByCourse(res.certificates)
-        for (const [courseName, certs] of groups) {
-          const pdf = await buildCertificatesPdf(certs)
-          if (!pdf) continue
-          pdf.save(`${safeFilename(label)}-${safeFilename(courseName)}.pdf`)
-        }
-      }
+      const pdf = await buildCertificatesPdf(res.certificates)
+      if (!pdf) { notify.error('Nothing to render'); return }
+      pdf.save(`${safeFilename(label)}.pdf`)
 
       queryClient.invalidateQueries({ queryKey: ['certificate-print-history'] })
       notify.success(`${res.certificates.length} certificate${res.certificates.length === 1 ? '' : 's'} exported`)
@@ -150,12 +141,8 @@ export default function CertificateRevealPage() {
               <EyeOff className="w-3.5 h-3.5" /> Hide Selected
             </Button>
             <Button size="sm" variant="secondary" className="gap-1.5" disabled={isPrinting}
-              onClick={() => handleDownload('GROUPED')}>
-              {isPrinting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileStack className="w-3.5 h-3.5" />} PDF per Course
-            </Button>
-            <Button size="sm" variant="secondary" className="gap-1.5" disabled={isPrinting}
-              onClick={() => handleDownload('COMBINED')}>
-              {isPrinting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} Single PDF
+              onClick={handleDownload}>
+              {isPrinting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} Download as PDF
             </Button>
             <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-indigo-500" onClick={() => setSelectedIds(new Set())}>Clear</Button>
           </div>
@@ -245,7 +232,6 @@ export default function CertificateRevealPage() {
                   <p className="font-medium text-slate-800">{b.label}</p>
                   <p className="text-xs text-slate-400">
                     {new Date(b.createdAt).toLocaleDateString('en-EG', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    {' · '}{b.mode === 'COMBINED' ? 'Single PDF' : 'PDF per course'}
                   </p>
                 </div>
                 <Badge variant="outline" className="text-[10px]">{b.totalCount} certificate{b.totalCount === 1 ? '' : 's'}</Badge>
