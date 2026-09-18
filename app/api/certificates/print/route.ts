@@ -2,44 +2,73 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { errors, successResponse, createdResponse } from '@/lib/api-response'
+import { errors, successResponse } from '@/lib/api-response'
 import { checkPermission } from '@/lib/rbac'
+import { resolvePrintCertificates } from '@/lib/certificates/resolve-print-certificates'
 import type { Role } from '@prisma/client'
 
 /**
- * GET /api/certificates/print — list previous print batches (ceremony history).
+ * GET /api/certificates/print/[id]
+ * Returns one print batch plus its certificates, resolved against the
+ * *current* database state (template fallback, revocations, template edits)
+ * so re-opening an old batch reflects anything that changed since it was
+ * first printed — not what was true at print time.
  */
-export async function GET() {
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
   if (!checkPermission(role, 'documents', 'read')) return errors.forbidden()
 
-  const batches = await prisma.certificatePrintBatch.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 50,
+  const { id } = await params
+  const batch = await prisma.certificatePrintBatch.findUnique({ where: { id } })
+  if (!batch) return errors.notFound('Print batch')
+
+  const storedIds = Array.isArray(batch.certificateIds) ? (batch.certificateIds as string[]) : []
+  const [certificates, printedByUser] = await Promise.all([
+    resolvePrintCertificates(storedIds),
+    prisma.user.findUnique({ where: { id: batch.printedBy }, select: { displayName: true, email: true } }),
+  ])
+
+  return successResponse({
+    batch: {
+      id: batch.id,
+      label: batch.label,
+      mode: batch.mode,
+      totalCount: batch.totalCount,
+      printedBy: batch.printedBy,
+      printedByName: printedByUser?.displayName || printedByUser?.email || null,
+      createdAt: batch.createdAt,
+    },
+    certificates,
   })
-  return successResponse(batches)
 }
 
-const printSchema = z.object({
-  certificateIds: z.array(z.string()).min(1),
-  mode: z.enum(['GROUPED', 'COMBINED']).default('GROUPED'),
-  label: z.string().min(2),
+const updateSchema = z.object({
+  certificateIds: z.array(z.string()).min(1, 'A print batch must contain at least one certificate'),
 })
 
 /**
- * POST /api/certificates/print
- * Returns the full render payload (template + field values) for the requested
- * certificates, ordered by course then level, and records the batch in the
- * print history. The actual PDF is generated client-side, which avoids
- * shipping a headless browser into the serverless runtime.
+ * PATCH /api/certificates/print/[id]
+ * Replaces the batch's certificate list — used for the add/remove controls
+ * in the print-history UI. This only edits the CertificatePrintBatch record;
+ * it never creates, deletes, or revokes an actual Certificate row.
  */
-export async function POST(request: NextRequest) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
-  if (!checkPermission(role, 'documents', 'read')) return errors.forbidden()
+  if (!checkPermission(role, 'documents', 'update')) return errors.forbidden()
+
+  const { id } = await params
+  const existing = await prisma.certificatePrintBatch.findUnique({ where: { id } })
+  if (!existing) return errors.notFound('Print batch')
 
   let body: unknown
   try {
@@ -47,52 +76,56 @@ export async function POST(request: NextRequest) {
   } catch {
     return errors.validation({ errors: [{ path: ['body'], message: 'Invalid JSON' }] } as never)
   }
-  const parsed = printSchema.safeParse(body)
+  const parsed = updateSchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
-  const data = parsed.data
 
-  const certificates = await prisma.certificate.findMany({
-    where: { id: { in: data.certificateIds }, status: 'VALID' },
-    include: {
-      student: { select: { id: true, firstName: true, lastName: true, fullNameEn: true, fullNameAr: true } },
-      subject: { select: { id: true, name: true } },
-      template: { select: { id: true, backgroundUrl: true, fieldLayout: true, widthPx: true, heightPx: true } },
-    },
-  })
+  // De-dupe defensively — the UI already excludes certificates already in the
+  // batch from the "add" search, but never trust the client alone.
+  const dedupedIds = Array.from(new Set(parsed.data.certificateIds))
 
+  const certificates = await resolvePrintCertificates(dedupedIds)
   if (certificates.length === 0) return errors.notFound('Certificates')
 
-  // Order by course name, then by certificate number (which is chronological
-  // within a course, so levels naturally come out in the order they were earned).
-  const ordered = [...certificates].sort((a, b) => {
-    const courseCompare = (a.subject?.name ?? '').localeCompare(b.subject?.name ?? '')
-    if (courseCompare !== 0) return courseCompare
-    return a.certificateNumber.localeCompare(b.certificateNumber)
-  })
-
-  const batch = await prisma.certificatePrintBatch.create({
+  const updated = await prisma.certificatePrintBatch.update({
+    where: { id },
     data: {
-      label: data.label,
-      mode: data.mode,
-      certificateIds: ordered.map((c) => c.id),
-      totalCount: ordered.length,
-      printedBy: session.user.id,
+      certificateIds: certificates.map((c) => c.id),
+      totalCount: certificates.length,
     },
   })
 
-  return createdResponse({
-    batchId: batch.id,
-    mode: data.mode,
-    certificates: ordered.map((c) => ({
-      id: c.id,
-      certificateNumber: c.certificateNumber,
-      title: c.title,
-      issuedDate: c.issuedDate,
-      qrCodeUrl: c.qrCodeUrl,
-      studentName: c.student.fullNameEn || `${c.student.firstName} ${c.student.lastName}`,
-      studentNameAr: c.student.fullNameAr,
-      courseName: c.subject?.name ?? '',
-      template: c.template,
-    })),
+  return successResponse({
+    batch: {
+      id: updated.id,
+      label: updated.label,
+      mode: updated.mode,
+      totalCount: updated.totalCount,
+      printedBy: updated.printedBy,
+      createdAt: updated.createdAt,
+    },
+    certificates,
   })
+}
+
+/**
+ * DELETE /api/certificates/print/[id]
+ * Removes the print-history record only. The underlying Certificate rows are
+ * completely untouched — this just forgets that this export happened.
+ */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+  if (!session?.user) return errors.unauthorized()
+  const role = session.user.role as Role
+  if (!checkPermission(role, 'documents', 'delete')) return errors.forbidden()
+
+  const { id } = await params
+  const existing = await prisma.certificatePrintBatch.findUnique({ where: { id } })
+  if (!existing) return errors.notFound('Print batch')
+
+  await prisma.certificatePrintBatch.delete({ where: { id } })
+
+  return successResponse({ id, deleted: true })
 }
