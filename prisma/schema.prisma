@@ -1882,10 +1882,17 @@ model ClassSection {
   isActive       Boolean           @default(true)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
+  // Which specific Level (of which Course) this Group is teaching. Nullable —
+  // existing groups keep working unassigned until an admin sets it, and the
+  // legacy Class/Subject workflow never needs this field at all.
+  levelId        String?
+  status         GroupStatus       @default(ACTIVE)
+  completedAt    DateTime?
 
   campus                    Campus                     @relation(fields: [campusId], references: [id])
   batch                     Batch                      @relation(fields: [batchId], references: [id])
   shift                     Shift                      @relation(fields: [shiftId], references: [id])
+  level                     Level?                     @relation(fields: [levelId], references: [id])
   enrollments               StudentEnrollment[]
   subjectOfferings          SubjectOffering[]
   timetableSlots            TimetableSlot[]
@@ -1901,6 +1908,7 @@ model ClassSection {
   @@index([campusId])
   @@index([batchId])
   @@index([shiftId])
+  @@index([levelId])
 }
 
 model StudentEnrollment {
@@ -1999,13 +2007,71 @@ model AcademicSubject {
   description String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
+  // Optional: which age-based Track this course belongs to. Nullable so
+  // existing courses keep working unassigned until an admin categorizes them.
+  trackId     String?
 
+  track          Track?                   @relation(fields: [trackId], references: [id])
   offerings      SubjectOffering[]
   gradingSchemes AcademicGradingScheme[]
   gradingConfigs CourseGradingConfig[]
   levelResults   StudentLevelResult[]
   certificates   Certificate[]
+  levels         Level[]
+
+  @@index([trackId])
 }
+
+/// Age-based grouping above Course (e.g. "Kids 4-7", "Teens 13-17"). A Course
+/// belongs to at most one Track.
+model Track {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  minAge      Int?
+  maxAge      Int?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  courses AcademicSubject[]
+}
+
+enum LevelPricingType {
+  MONTHLY
+  FULL_LEVEL
+}
+
+/// A Course is split into a configurable number of Levels. Each Level has its
+/// own duration (months) and session count — the two together determine the
+/// weekly frequency (e.g. 8 sessions over 2 months = once a week) — and its
+/// own subscription pricing, since different courses (and different levels
+/// within the same course) can have entirely different structures.
+model Level {
+  id               String            @id @default(cuid())
+  subjectId        String
+  name             String // "Level 1", "Beginner", etc.
+  order            Int // display/progression order within the course
+  numberOfMonths   Int
+  numberOfSessions Int
+  pricingType      LevelPricingType  @default(MONTHLY)
+  monthlyPrice     Float?
+  fullLevelPrice   Float?
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  subject      AcademicSubject @relation(fields: [subjectId], references: [id])
+  classSections ClassSection[]
+
+  @@unique([subjectId, order])
+  @@index([subjectId])
+}
+
+enum GroupStatus {
+  ACTIVE
+  COMPLETED
+}
+
 
 model ElectiveGroup {
   id             String   @id @default(cuid())

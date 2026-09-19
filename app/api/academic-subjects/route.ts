@@ -20,6 +20,7 @@ export async function GET() {
   const subjects = await prisma.academicSubject.findMany({
     where: { isActive: true },
     orderBy: { name: 'asc' },
+    include: { track: { select: { id: true, name: true } }, _count: { select: { levels: true } } },
   })
   return successResponse(subjects)
 }
