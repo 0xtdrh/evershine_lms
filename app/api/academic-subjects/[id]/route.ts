@@ -76,3 +76,32 @@ export async function PATCH(
 
   return successResponse(subject)
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { session, error } = await requireSession()
+  if (error || !session) return error!
+  const role = session.user.role as Role
+  const denied = requirePermission(role, 'subject_offerings', 'delete')
+  if (denied) return denied
+
+  const { id } = await params
+  const existing = await prisma.academicSubject.findUnique({
+    where: { id },
+    include: { _count: { select: { levels: true, offerings: true } } },
+  })
+  if (!existing) return errors.notFound('Course')
+
+  if (existing._count.levels > 0) {
+    return errors.conflict('Cannot delete a course that still has levels — delete its levels first')
+  }
+  if (existing._count.offerings > 0) {
+    return errors.conflict('Cannot delete a course that is currently offered to a group')
+  }
+
+  await prisma.academicSubject.delete({ where: { id } })
+
+  return successResponse({ id, deleted: true })
+}

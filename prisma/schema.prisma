@@ -1888,6 +1888,12 @@ model ClassSection {
   levelId        String?
   status         GroupStatus       @default(ACTIVE)
   completedAt    DateTime?
+  // When this group's sessions start/are expected to finish, and its weekly
+  // recurring schedule — kept simple (Json array of {dayOfWeek, time}) for
+  // now; a full Timetable integration is planned separately later.
+  startDate      DateTime?
+  expectedEndDate DateTime?
+  scheduleSlots  Json?
 
   campus                    Campus                     @relation(fields: [campusId], references: [id])
   batch                     Batch                      @relation(fields: [batchId], references: [id])

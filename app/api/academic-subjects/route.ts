@@ -9,6 +9,7 @@ const createSubjectSchema = z.object({
   name: z.string().min(2),
   code: z.string().min(2).max(20).toUpperCase(),
   description: z.string().optional(),
+  trackId: z.string().min(1).optional().nullable(),
 })
 
 export async function GET() {
@@ -34,11 +35,17 @@ export async function POST(request: NextRequest) {
   const parsed = createSubjectSchema.safeParse(await request.json())
   if (!parsed.success) return errors.validation(parsed.error)
 
+  if (parsed.data.trackId) {
+    const track = await prisma.track.findUnique({ where: { id: parsed.data.trackId }, select: { id: true } })
+    if (!track) return errors.notFound('Track')
+  }
+
   const subject = await prisma.academicSubject.create({
     data: {
       name: parsed.data.name,
       code: parsed.data.code,
       description: parsed.data.description,
+      trackId: parsed.data.trackId ?? null,
     },
   })
   return createdResponse(subject)
