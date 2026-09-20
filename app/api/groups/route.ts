@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   const campusId = campusScope(role, session.user.campusId, requestedCampusId)
 
   const groups = await prisma.classSection.findMany({
-    where: { ...(campusId && { campusId }) },
+    where: { isActive: true, ...(campusId && { campusId }) },
     orderBy: [{ status: 'asc' }, { startDate: 'asc' }],
     include: {
       campus: { select: { id: true, name: true } },

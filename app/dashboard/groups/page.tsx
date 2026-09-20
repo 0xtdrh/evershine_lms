@@ -1,12 +1,28 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { fetchApi } from '@/lib/api-client'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { fetchApi, ApiError } from '@/lib/api-client'
+import { CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { notify } from '@/lib/notify'
+import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, Trash2, CheckCircle2, X } from 'lucide-react'
+
+interface Campus { id: string; name: string }
+interface Batch { id: string; name: string }
+interface Shift { id: string; name: string }
+interface AcademicYear { id: string; name: string; isActive: boolean }
+interface Track { id: string; name: string }
+interface Course { id: string; name: string; code: string; track: { id: string; name: string } | null }
+interface Level { id: string; subjectId: string; name: string; order: number }
 
 interface GroupSummary {
   id: string
@@ -25,6 +41,11 @@ interface GroupSummary {
 }
 
 interface GroupDetail extends Omit<GroupSummary, 'campus' | 'level'> {
+  className: string
+  sectionName: string
+  campusId: string
+  batchId: string
+  shiftId: string
   campus: { id: string; name: string }
   batch: { id: string; name: string }
   shift: { id: string; name: string }
@@ -36,11 +57,23 @@ interface GroupDetail extends Omit<GroupSummary, 'campus' | 'level'> {
   }[]
 }
 
+interface StudentSearchResult {
+  id: string
+  firstName: string
+  lastName: string
+  registrationNumber: string
+}
+
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function formatDate(d: string | null): string {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-EG', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function toDateInputValue(d: string | null): string {
+  if (!d) return ''
+  return new Date(d).toISOString().slice(0, 10)
 }
 
 function statusBadge(status: GroupSummary['displayStatus']) {
@@ -49,7 +82,17 @@ function statusBadge(status: GroupSummary['displayStatus']) {
   return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100">Active</Badge>
 }
 
+function apiErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.hasFieldErrors) return err.fieldErrors[0].message
+    return err.message
+  }
+  return err instanceof Error ? err.message : fallback
+}
+
 export default function GroupsPage() {
+  const queryClient = useQueryClient()
+
   const { data: groups = [], isLoading } = useQuery<GroupSummary[]>({
     queryKey: ['groups'],
     queryFn: () => fetchApi('/api/groups'),
@@ -59,6 +102,11 @@ export default function GroupsPage() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
   const filtered = useMemo(() => groups.filter((g) => g.displayStatus === filter), [groups, filter])
+  const counts = useMemo(() => ({
+    ACTIVE: groups.filter((g) => g.displayStatus === 'ACTIVE').length,
+    UPCOMING: groups.filter((g) => g.displayStatus === 'UPCOMING').length,
+    COMPLETED: groups.filter((g) => g.displayStatus === 'COMPLETED').length,
+  }), [groups])
 
   const { data: detail, isLoading: isDetailLoading } = useQuery<GroupDetail>({
     queryKey: ['group-detail', selectedGroupId],
@@ -66,17 +114,189 @@ export default function GroupsPage() {
     enabled: !!selectedGroupId,
   })
 
-  const counts = useMemo(() => ({
-    ACTIVE: groups.filter((g) => g.displayStatus === 'ACTIVE').length,
-    UPCOMING: groups.filter((g) => g.displayStatus === 'UPCOMING').length,
-    COMPLETED: groups.filter((g) => g.displayStatus === 'COMPLETED').length,
-  }), [groups])
+  // ── Reference data used by the create/edit forms ─────────────────────
+  const { data: campuses = [] } = useQuery<Campus[]>({ queryKey: ['campuses'], queryFn: () => fetchApi('/api/campuses') })
+  const { data: shifts = [] } = useQuery<Shift[]>({ queryKey: ['shifts'], queryFn: () => fetchApi('/api/shifts') })
+  const { data: tracks = [] } = useQuery<Track[]>({ queryKey: ['tracks'], queryFn: () => fetchApi('/api/tracks') })
+  const { data: courses = [] } = useQuery<Course[]>({ queryKey: ['academic-subjects-for-config'], queryFn: () => fetchApi('/api/academic-subjects') })
+  const { data: academicYears = [] } = useQuery<AcademicYear[]>({ queryKey: ['academic-years'], queryFn: () => fetchApi('/api/academic-years') })
+  const activeYear = academicYears.find((y) => y.isActive)
+
+  // ── Create group ──────────────────────────────────────────────────────
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    campusId: '', batchId: '', shiftId: '', className: '', sectionName: '',
+    trackId: '', courseId: '', levelId: '', startDate: '',
+  })
+
+  const { data: createBatches = [] } = useQuery<Batch[]>({
+    queryKey: ['batches', createForm.campusId],
+    queryFn: () => fetchApi(`/api/batches?campusId=${createForm.campusId}`),
+    enabled: !!createForm.campusId,
+  })
+  const coursesForCreate = useMemo(
+    () => courses.filter((c) => c.track?.id === createForm.trackId),
+    [courses, createForm.trackId]
+  )
+  const { data: levelsForCreate = [] } = useQuery<Level[]>({
+    queryKey: ['levels', createForm.courseId],
+    queryFn: () => fetchApi(`/api/levels?subjectId=${createForm.courseId}`),
+    enabled: !!createForm.courseId,
+  })
+
+  const resetCreateForm = () => setCreateForm({ campusId: '', batchId: '', shiftId: '', className: '', sectionName: '', trackId: '', courseId: '', levelId: '', startDate: '' })
+
+  const createGroupMutation = useMutation({
+    mutationFn: () =>
+      fetchApi('/api/groups', {
+        method: 'POST',
+        body: JSON.stringify({
+          campusId: createForm.campusId,
+          batchId: createForm.batchId,
+          shiftId: createForm.shiftId,
+          className: createForm.className,
+          sectionName: createForm.sectionName,
+          levelId: createForm.levelId || null,
+          startDate: createForm.startDate ? new Date(createForm.startDate).toISOString() : null,
+        }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      notify.success('Group created')
+      setCreateOpen(false)
+      resetCreateForm()
+    },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to create group')),
+  })
+
+  // ── Edit group ────────────────────────────────────────────────────────
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    className: '', sectionName: '', trackId: '', courseId: '', levelId: '',
+    startDate: '', expectedEndDate: '',
+  })
+  const [scheduleSlots, setScheduleSlots] = useState<{ dayOfWeek: number; time: string }[]>([])
+
+  const openEdit = () => {
+    if (!detail) return
+    const course = courses.find((c) => c.id === detail.course?.id)
+    setEditForm({
+      className: detail.className,
+      sectionName: detail.sectionName,
+      trackId: course?.track?.id ?? '',
+      courseId: detail.course?.id ?? '',
+      levelId: detail.level?.id ?? '',
+      startDate: toDateInputValue(detail.startDate),
+      expectedEndDate: toDateInputValue(detail.expectedEndDate),
+    })
+    setScheduleSlots(detail.scheduleSlots ?? [])
+    setEditOpen(true)
+  }
+
+  const coursesForEdit = useMemo(() => courses.filter((c) => c.track?.id === editForm.trackId), [courses, editForm.trackId])
+  const { data: levelsForEdit = [] } = useQuery<Level[]>({
+    queryKey: ['levels', editForm.courseId],
+    queryFn: () => fetchApi(`/api/levels?subjectId=${editForm.courseId}`),
+    enabled: !!editForm.courseId && editOpen,
+  })
+
+  const updateGroupMutation = useMutation({
+    mutationFn: () =>
+      fetchApi(`/api/groups/${selectedGroupId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          className: editForm.className,
+          sectionName: editForm.sectionName,
+          levelId: editForm.levelId || null,
+          startDate: editForm.startDate ? new Date(editForm.startDate).toISOString() : null,
+          expectedEndDate: editForm.expectedEndDate ? new Date(editForm.expectedEndDate).toISOString() : null,
+          scheduleSlots: scheduleSlots.length > 0 ? scheduleSlots : null,
+        }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
+      notify.success('Group updated')
+      setEditOpen(false)
+    },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to update group')),
+  })
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: (status: 'ACTIVE' | 'COMPLETED') =>
+      fetchApi(`/api/groups/${selectedGroupId}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
+      notify.success('Status updated')
+    },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to update status')),
+  })
+
+  // ── Delete group ──────────────────────────────────────────────────────
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const deleteGroupMutation = useMutation({
+    mutationFn: () => fetchApi(`/api/groups/${selectedGroupId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      notify.success('Group deleted')
+      setConfirmDelete(false)
+      setSelectedGroupId(null)
+    },
+    onError: (err: unknown) => {
+      notify.error(apiErrorMessage(err, 'Failed to delete group'))
+      setConfirmDelete(false)
+    },
+  })
+
+  // ── Students in the group ─────────────────────────────────────────────
+  const [studentQuery, setStudentQuery] = useState('')
+  const { data: studentResults = [] } = useQuery<StudentSearchResult[]>({
+    queryKey: ['students-search-for-group', studentQuery],
+    queryFn: () => fetchApi(`/api/students?search=${encodeURIComponent(studentQuery)}&limit=8`),
+    enabled: studentQuery.trim().length >= 2,
+  })
+
+  const addStudentMutation = useMutation({
+    mutationFn: (studentId: string) =>
+      fetchApi('/api/student-enrollments', {
+        method: 'POST',
+        body: JSON.stringify({
+          studentId,
+          academicYearId: activeYear?.id,
+          classSectionId: selectedGroupId,
+          rollNumber: String(Math.floor(Math.random() * 9000) + 1000),
+        }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      notify.success('Student added')
+      setStudentQuery('')
+    },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to add student')),
+  })
+
+  const removeStudentMutation = useMutation({
+    mutationFn: (enrollmentId: string) => fetchApi(`/api/student-enrollments/${enrollmentId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      notify.success('Student removed from group')
+    },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to remove student')),
+  })
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">Groups</h1>
-        <CardDescription>Every group — where it is, who&apos;s in it, and its schedule.</CardDescription>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Groups</h1>
+          <CardDescription>Full control — create, edit, staff, and manage every group here.</CardDescription>
+        </div>
+        <Button className="gap-1.5" onClick={() => setCreateOpen(true)}>
+          <Plus className="w-4 h-4" /> New group
+        </Button>
       </div>
 
       <div className="flex gap-2">
@@ -131,13 +351,19 @@ export default function GroupsPage() {
         </div>
       )}
 
+      {/* Group detail */}
       <Dialog open={!!selectedGroupId} onOpenChange={(o) => { if (!o) setSelectedGroupId(null) }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{detail?.label ?? 'Group'}</DialogTitle>
-            <DialogDescription>
-              {detail?.course?.name}{detail?.level && ` · ${detail.level.name}`}{detail?.track && ` · ${detail.track.name} track`}
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <DialogTitle>{detail?.label ?? 'Group'}</DialogTitle>
+                <DialogDescription>
+                  {detail?.course?.name}{detail?.level && ` · ${detail.level.name}`}{detail?.track && ` · ${detail.track.name} track`}
+                </DialogDescription>
+              </div>
+              {detail && <div className="pt-1">{statusBadge(detail.displayStatus)}</div>}
+            </div>
           </DialogHeader>
 
           {isDetailLoading ? (
@@ -182,19 +408,75 @@ export default function GroupsPage() {
                 )}
               </div>
 
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={openEdit}>
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </Button>
+                {detail.status === 'ACTIVE' ? (
+                  <Button
+                    size="sm" variant="outline" className="gap-1.5"
+                    disabled={toggleStatusMutation.isPending}
+                    onClick={() => toggleStatusMutation.mutate('COMPLETED')}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Mark completed
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm" variant="outline" className="gap-1.5"
+                    disabled={toggleStatusMutation.isPending}
+                    onClick={() => toggleStatusMutation.mutate('ACTIVE')}
+                  >
+                    Reopen
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </Button>
+              </div>
+
               <div>
                 <p className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
                   <GraduationCap className="w-4 h-4 text-indigo-600" /> Students ({detail.enrollments.length})
                 </p>
-                {detail.enrollments.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-4">No students enrolled yet.</p>
-                ) : (
-                  <div className="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                    {detail.enrollments.map((e) => (
+                <div className="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-56 overflow-y-auto mb-2">
+                  {detail.enrollments.length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center py-4">No students enrolled yet.</p>
+                  ) : (
+                    detail.enrollments.map((e) => (
                       <div key={e.id} className="flex items-center justify-between px-3 py-2 text-sm">
                         <p className="text-slate-800">{e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}</p>
-                        <p className="text-xs text-slate-400">{e.student.registrationNumber}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-slate-400">{e.student.registrationNumber}</p>
+                          <Button
+                            size="sm" variant="ghost" className="h-6 w-6 p-0"
+                            disabled={removeStudentMutation.isPending}
+                            onClick={() => removeStudentMutation.mutate(e.id)}
+                          >
+                            <X className="w-3.5 h-3.5 text-red-500" />
+                          </Button>
+                        </div>
                       </div>
+                    ))
+                  )}
+                </div>
+                <Input
+                  placeholder="Search by student name to add..."
+                  value={studentQuery}
+                  onChange={(e) => setStudentQuery(e.target.value)}
+                />
+                {studentResults.length > 0 && (
+                  <div className="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-40 overflow-y-auto mt-2">
+                    {studentResults.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        disabled={addStudentMutation.isPending}
+                        onClick={() => addStudentMutation.mutate(s.id)}
+                        className="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-slate-50"
+                      >
+                        <span className="text-slate-800">{s.firstName} {s.lastName}</span>
+                        <span className="text-xs text-slate-400 font-mono">{s.registrationNumber}</span>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -203,6 +485,134 @@ export default function GroupsPage() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {/* Create group */}
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) resetCreateForm() }}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>New group</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Select value={createForm.campusId} onValueChange={(v) => setCreateForm({ ...createForm, campusId: v, batchId: '' })}>
+              <SelectTrigger><SelectValue placeholder="Branch" /></SelectTrigger>
+              <SelectContent>{campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={createForm.batchId} onValueChange={(v) => setCreateForm({ ...createForm, batchId: v })} disabled={!createForm.campusId}>
+              <SelectTrigger><SelectValue placeholder="Batch" /></SelectTrigger>
+              <SelectContent>{createBatches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={createForm.shiftId} onValueChange={(v) => setCreateForm({ ...createForm, shiftId: v })}>
+              <SelectTrigger><SelectValue placeholder="Shift" /></SelectTrigger>
+              <SelectContent>{shifts.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <div className="flex gap-3">
+              <Input placeholder="Group name" value={createForm.className} onChange={(e) => setCreateForm({ ...createForm, className: e.target.value })} />
+              <Input placeholder="Section (e.g. A)" value={createForm.sectionName} onChange={(e) => setCreateForm({ ...createForm, sectionName: e.target.value })} />
+            </div>
+            <Select value={createForm.trackId} onValueChange={(v) => setCreateForm({ ...createForm, trackId: v, courseId: '', levelId: '' })}>
+              <SelectTrigger><SelectValue placeholder="Track" /></SelectTrigger>
+              <SelectContent>{tracks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={createForm.courseId} onValueChange={(v) => setCreateForm({ ...createForm, courseId: v, levelId: '' })} disabled={!createForm.trackId}>
+              <SelectTrigger><SelectValue placeholder="Course" /></SelectTrigger>
+              <SelectContent>{coursesForCreate.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={createForm.levelId} onValueChange={(v) => setCreateForm({ ...createForm, levelId: v })} disabled={!createForm.courseId}>
+              <SelectTrigger><SelectValue placeholder="Level" /></SelectTrigger>
+              <SelectContent>{levelsForCreate.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Input type="date" placeholder="Start date" value={createForm.startDate} onChange={(e) => setCreateForm({ ...createForm, startDate: e.target.value })} />
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={!createForm.campusId || !createForm.batchId || !createForm.shiftId || !createForm.className || !createForm.sectionName || createGroupMutation.isPending}
+              onClick={() => createGroupMutation.mutate()}
+            >
+              {createGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create group'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit group */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit group</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <Input placeholder="Group name" value={editForm.className} onChange={(e) => setEditForm({ ...editForm, className: e.target.value })} />
+              <Input placeholder="Section" value={editForm.sectionName} onChange={(e) => setEditForm({ ...editForm, sectionName: e.target.value })} />
+            </div>
+            <Select value={editForm.trackId} onValueChange={(v) => setEditForm({ ...editForm, trackId: v, courseId: '', levelId: '' })}>
+              <SelectTrigger><SelectValue placeholder="Track" /></SelectTrigger>
+              <SelectContent>{tracks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={editForm.courseId} onValueChange={(v) => setEditForm({ ...editForm, courseId: v, levelId: '' })} disabled={!editForm.trackId}>
+              <SelectTrigger><SelectValue placeholder="Course" /></SelectTrigger>
+              <SelectContent>{coursesForEdit.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={editForm.levelId} onValueChange={(v) => setEditForm({ ...editForm, levelId: v })} disabled={!editForm.courseId}>
+              <SelectTrigger><SelectValue placeholder="Level" /></SelectTrigger>
+              <SelectContent>{levelsForEdit.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <div className="flex gap-3">
+              <Input type="date" value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} />
+              <Input type="date" value={editForm.expectedEndDate} onChange={(e) => setEditForm({ ...editForm, expectedEndDate: e.target.value })} />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-slate-500">Weekly schedule</p>
+              {scheduleSlots.map((slot, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <Select value={String(slot.dayOfWeek)} onValueChange={(v) => {
+                    const next = [...scheduleSlots]; next[i] = { ...slot, dayOfWeek: Number(v) }; setScheduleSlots(next)
+                  }}>
+                    <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                    <SelectContent>{DAY_NAMES.map((d, idx) => <SelectItem key={idx} value={String(idx)}>{d}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Input
+                    type="time" value={slot.time}
+                    onChange={(e) => { const next = [...scheduleSlots]; next[i] = { ...slot, time: e.target.value }; setScheduleSlots(next) }}
+                  />
+                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setScheduleSlots(scheduleSlots.filter((_, idx) => idx !== i))}>
+                    <X className="w-3.5 h-3.5 text-red-500" />
+                  </Button>
+                </div>
+              ))}
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setScheduleSlots([...scheduleSlots, { dayOfWeek: 0, time: '16:00' }])}>
+                <Plus className="w-3.5 h-3.5" /> Add time slot
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button disabled={updateGroupMutation.isPending} onClick={() => updateGroupMutation.mutate()}>
+              {updateGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent className="rounded-2xl max-w-md p-6">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-bold text-slate-900">Delete {detail?.label}?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed">
+              This is blocked while the group still has active students. Historical records (attendance, grades) are kept either way.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2 flex-col-reverse sm:flex-row">
+            <AlertDialogCancel className="h-10 text-xs sm:text-sm rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button variant="destructive" disabled={deleteGroupMutation.isPending} onClick={() => deleteGroupMutation.mutate()}>
+                {deleteGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete'}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

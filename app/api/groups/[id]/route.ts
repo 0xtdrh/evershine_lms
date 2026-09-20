@@ -63,10 +63,15 @@ export async function GET(
   const campusId = campusScope(role, session.user.campusId, null)
   if (campusId && group.campusId !== campusId) return errors.forbidden()
 
-  return successResponse(group)
+  return successResponse({ ...group, label: `${group.className} ${group.sectionName}`.trim() })
 }
 
 const updateGroupSchema = z.object({
+  campusId: z.string().min(1).optional(),
+  batchId: z.string().min(1).optional(),
+  shiftId: z.string().min(1).optional(),
+  className: z.string().min(1).max(50).optional(),
+  sectionName: z.string().min(1).max(10).optional(),
   levelId: z.string().min(1).optional().nullable(),
   startDate: z.string().datetime().optional().nullable(),
   expectedEndDate: z.string().datetime().optional().nullable(),
@@ -109,6 +114,11 @@ export async function PATCH(
   const group = await prisma.classSection.update({
     where: { id },
     data: {
+      ...(parsed.data.campusId !== undefined && { campusId: parsed.data.campusId }),
+      ...(parsed.data.batchId !== undefined && { batchId: parsed.data.batchId }),
+      ...(parsed.data.shiftId !== undefined && { shiftId: parsed.data.shiftId }),
+      ...(parsed.data.className !== undefined && { className: parsed.data.className }),
+      ...(parsed.data.sectionName !== undefined && { sectionName: parsed.data.sectionName }),
       ...(parsed.data.levelId !== undefined && { levelId: parsed.data.levelId }),
       ...(parsed.data.startDate !== undefined && { startDate: parsed.data.startDate ? new Date(parsed.data.startDate) : null }),
       ...(parsed.data.expectedEndDate !== undefined && { expectedEndDate: parsed.data.expectedEndDate ? new Date(parsed.data.expectedEndDate) : null }),
@@ -121,4 +131,40 @@ export async function PATCH(
   })
 
   return successResponse(group)
+}
+
+/**
+ * DELETE /api/groups/[id]
+ * Soft-delete only (isActive=false) — a ClassSection can be referenced by
+ * attendance, grading, timetable and exam records, so it is never hard
+ * deleted. Blocked entirely while it still has active students; remove or
+ * transfer them first.
+ */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { session, error } = await requireSession()
+  if (error || !session) return error!
+  const role = session.user.role as Role
+  const denied = requirePermission(role, 'class_sections', 'delete')
+  if (denied) return denied
+
+  const { id } = await params
+  const existing = await prisma.classSection.findUnique({
+    where: { id },
+    include: { _count: { select: { enrollments: { where: { status: 'ACTIVE' } } } } },
+  })
+  if (!existing) return errors.notFound('Group')
+
+  const campusId = campusScope(role, session.user.campusId, null)
+  if (campusId && existing.campusId !== campusId) return errors.forbidden()
+
+  if (existing._count.enrollments > 0) {
+    return errors.conflict('This group still has active students — remove or transfer them before deleting it')
+  }
+
+  await prisma.classSection.update({ where: { id }, data: { isActive: false } })
+
+  return successResponse({ id, deleted: true })
 }
