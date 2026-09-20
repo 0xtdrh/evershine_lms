@@ -102,6 +102,17 @@ export async function POST(request: NextRequest) {
   const parsed = createGroupSchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
 
+  // Branch-scoped roles can only create groups in their own campus, no matter
+  // what campusId the client sent — this mirrors the read-side scoping.
+  const scopedCampusId = campusScope(role, session.user.campusId, parsed.data.campusId)
+  if (role !== 'SUPER_ADMIN') {
+    if (!session.user.campusId) return errors.conflict('Your account has no campus assigned')
+    if (parsed.data.campusId !== session.user.campusId) {
+      return errors.forbidden('You can only create groups in your own campus')
+    }
+  }
+  const effectiveCampusId = scopedCampusId ?? parsed.data.campusId
+
   let expectedEndDate: Date | null = null
   if (parsed.data.levelId && parsed.data.startDate) {
     const level = await prisma.level.findUnique({ where: { id: parsed.data.levelId }, select: { numberOfMonths: true } })
@@ -117,7 +128,7 @@ export async function POST(request: NextRequest) {
 
   const group = await prisma.classSection.create({
     data: {
-      campusId: parsed.data.campusId,
+      campusId: effectiveCampusId,
       batchId: parsed.data.batchId,
       shiftId: parsed.data.shiftId,
       className: parsed.data.className,

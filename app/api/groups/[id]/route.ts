@@ -52,7 +52,12 @@ export async function GET(
         select: {
           id: true,
           rollNumber: true,
-          student: { select: { id: true, firstName: true, lastName: true, fullNameEn: true, registrationNumber: true } },
+          student: {
+            select: {
+              id: true, firstName: true, lastName: true, fullNameEn: true, registrationNumber: true,
+              campus: { select: { id: true, name: true } },
+            },
+          },
         },
         orderBy: { rollNumber: 'asc' },
       },

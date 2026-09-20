@@ -1,12 +1,14 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi, ApiError } from '@/lib/api-client'
 import { CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import {
@@ -46,16 +48,22 @@ interface GroupDetail extends Omit<GroupSummary, 'campus' | 'level'> {
   campusId: string
   batchId: string
   shiftId: string
+  currentCycleNumber: number
   campus: { id: string; name: string }
   batch: { id: string; name: string }
   shift: { id: string; name: string }
-  level: (GroupSummary['level'] & { pricingType: string; monthlyPrice: number | null; fullLevelPrice: number | null }) | null
+  level: (GroupSummary['level'] & { pricingType: 'MONTHLY' | 'FULL_LEVEL'; monthlyPrice: number | null; fullLevelPrice: number | null }) | null
   enrollments: {
     id: string
     rollNumber: string
-    student: { id: string; firstName: string; lastName: string; fullNameEn: string | null; registrationNumber: string }
+    student: {
+      id: string; firstName: string; lastName: string; fullNameEn: string | null; registrationNumber: string
+      campus: { id: string; name: string }
+    }
   }[]
 }
+
+interface TeacherOption { id: string; firstName: string; lastName: string }
 
 interface StudentSearchResult {
   id: string
@@ -76,6 +84,19 @@ function toDateInputValue(d: string | null): string {
   return new Date(d).toISOString().slice(0, 10)
 }
 
+/** Which calendar month of the level "today" falls in, and when that month ends. */
+function currentMonthEndDate(startDate: string, numberOfMonths: number): Date {
+  const start = new Date(startDate)
+  const monthsElapsed = Math.max(
+    0,
+    (Date.now() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
+  )
+  const currentMonthIndex = Math.min(Math.floor(monthsElapsed) + 1, numberOfMonths)
+  const end = new Date(start)
+  end.setMonth(end.getMonth() + currentMonthIndex)
+  return end
+}
+
 function statusBadge(status: GroupSummary['displayStatus']) {
   if (status === 'COMPLETED') return <Badge className="bg-slate-100 text-slate-600 border-slate-200">Completed</Badge>
   if (status === 'UPCOMING') return <Badge className="bg-amber-50 text-amber-700 border-amber-100">Upcoming</Badge>
@@ -92,6 +113,10 @@ function apiErrorMessage(err: unknown, fallback: string): string {
 
 export default function GroupsPage() {
   const queryClient = useQueryClient()
+  const { data: session } = useSession()
+  const role = session?.user?.role as string | undefined
+  const myCampusId = session?.user?.campusId as string | undefined
+  const isCampusLocked = role !== 'SUPER_ADMIN'
 
   const { data: groups = [], isLoading } = useQuery<GroupSummary[]>({
     queryKey: ['groups'],
@@ -122,6 +147,24 @@ export default function GroupsPage() {
   const { data: academicYears = [] } = useQuery<AcademicYear[]>({ queryKey: ['academic-years'], queryFn: () => fetchApi('/api/academic-years') })
   const activeYear = academicYears.find((y) => y.isActive)
 
+  // ── Instructor assignment ────────────────────────────────────────────
+  const { data: teacherOptions = [] } = useQuery<TeacherOption[]>({
+    queryKey: ['teachers-for-group', detail?.campusId],
+    queryFn: () => fetchApi(`/api/teachers/for-selection?mode=all&campusId=${detail?.campusId}`),
+    enabled: !!detail?.campusId,
+  })
+
+  const assignInstructorMutation = useMutation({
+    mutationFn: (teacherId: string | null) =>
+      fetchApi(`/api/groups/${selectedGroupId}/instructor`, { method: 'POST', body: JSON.stringify({ teacherId }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      notify.success('Instructor updated')
+    },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to assign instructor')),
+  })
+
   // ── Create group ──────────────────────────────────────────────────────
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState({
@@ -144,7 +187,15 @@ export default function GroupsPage() {
     enabled: !!createForm.courseId,
   })
 
-  const resetCreateForm = () => setCreateForm({ campusId: '', batchId: '', shiftId: '', className: '', sectionName: '', trackId: '', courseId: '', levelId: '', startDate: '' })
+  const resetCreateForm = () => setCreateForm({ campusId: isCampusLocked ? (myCampusId ?? '') : '', batchId: '', shiftId: '', className: '', sectionName: '', trackId: '', courseId: '', levelId: '', startDate: '' })
+
+  // Branch-scoped roles never pick a campus — it's fixed to their own.
+  useEffect(() => {
+    if (isCampusLocked && myCampusId && !createForm.campusId) {
+      setCreateForm((f) => ({ ...f, campusId: myCampusId }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCampusLocked, myCampusId])
 
   const createGroupMutation = useMutation({
     mutationFn: () =>
@@ -231,6 +282,39 @@ export default function GroupsPage() {
       notify.success('Status updated')
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to update status')),
+  })
+
+  const [confirmAdvance, setConfirmAdvance] = useState(false)
+  const [continuingIds, setContinuingIds] = useState<Set<string>>(new Set())
+
+  const openAdvanceDialog = () => {
+    if (!detail) return
+    setContinuingIds(new Set(detail.enrollments.map((e) => e.student.id)))
+    setConfirmAdvance(true)
+  }
+
+  const advanceCycleMutation = useMutation({
+    mutationFn: () =>
+      fetchApi(`/api/groups/${selectedGroupId}/advance-cycle`, {
+        method: 'POST',
+        body: JSON.stringify({ continuingStudentIds: Array.from(continuingIds) }),
+      }),
+    onSuccess: (res: { action: string; nextLevel: { name: string } | null; movedToNextCourse: boolean; withdrawnCount: number }) => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
+      setConfirmAdvance(false)
+      const withdrawnNote = res.withdrawnCount > 0 ? ` · ${res.withdrawnCount} student${res.withdrawnCount === 1 ? '' : 's'} withdrawn` : ''
+      if (res.action === 'MONTH_COMPLETED') notify.success(`Month closed — next month started${withdrawnNote}`)
+      else if (res.action === 'LEVEL_COMPLETED') {
+        notify.success(
+          (res.movedToNextCourse ? `Course finished — moved to ${res.nextLevel?.name}` : `Level closed — moved to ${res.nextLevel?.name}`) + withdrawnNote
+        )
+      } else notify.success(`Track finished — this was the last level, group marked completed${withdrawnNote}`)
+    },
+    onError: (err: unknown) => {
+      notify.error(apiErrorMessage(err, 'Failed to close the cycle'))
+      setConfirmAdvance(false)
+    },
   })
 
   // ── Delete group ──────────────────────────────────────────────────────
@@ -377,16 +461,33 @@ export default function GroupsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">Instructor</p>
-                  <p className="text-slate-800">{detail.teacher?.name ?? '— not assigned —'}</p>
+                  <Select
+                    value={detail.teacher?.id ?? 'none'}
+                    onValueChange={(v) => assignInstructorMutation.mutate(v === 'none' ? null : v)}
+                  >
+                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Not assigned" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not assigned</SelectItem>
+                      {teacherOptions.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.firstName} {t.lastName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">Starts</p>
                   <p className="text-slate-800">{formatDate(detail.startDate)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400">Expected to finish</p>
+                  <p className="text-xs text-slate-400">Level ends</p>
                   <p className="text-slate-800">{formatDate(detail.expectedEndDate)}</p>
                 </div>
+                {detail.level && detail.level.numberOfMonths > 1 && detail.startDate && (
+                  <div>
+                    <p className="text-xs text-slate-400">This month ends</p>
+                    <p className="text-slate-800">{formatDate(currentMonthEndDate(detail.startDate, detail.level.numberOfMonths).toISOString())}</p>
+                  </div>
+                )}
                 {detail.level && (
                   <div className="col-span-2">
                     <p className="text-xs text-slate-400">Level pricing</p>
@@ -396,6 +497,12 @@ export default function GroupsPage() {
                         : `${detail.level.fullLevelPrice ?? '—'} full level`}
                       {' · '}{detail.level.numberOfSessions} sessions over {detail.level.numberOfMonths} months
                     </p>
+                  </div>
+                )}
+                {detail.level?.pricingType === 'MONTHLY' && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-slate-400">Current billing cycle</p>
+                    <p className="text-slate-800">Month {detail.currentCycleNumber}</p>
                   </div>
                 )}
                 {detail.scheduleSlots && detail.scheduleSlots.length > 0 && (
@@ -412,6 +519,14 @@ export default function GroupsPage() {
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={openEdit}>
                   <Pencil className="w-3.5 h-3.5" /> Edit
                 </Button>
+                {detail.level && detail.status === 'ACTIVE' && (
+                  <Button
+                    size="sm" variant="outline" className="gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                    onClick={openAdvanceDialog}
+                  >
+                    {detail.level.pricingType === 'MONTHLY' ? 'Month finished' : 'Level finished'}
+                  </Button>
+                )}
                 {detail.status === 'ACTIVE' ? (
                   <Button
                     size="sm" variant="outline" className="gap-1.5"
@@ -444,9 +559,14 @@ export default function GroupsPage() {
                   ) : (
                     detail.enrollments.map((e) => (
                       <div key={e.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                        <p className="text-slate-800">{e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}</p>
+                        <div>
+                          <p className="text-slate-800">{e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}</p>
+                          <p className="text-xs text-slate-400">
+                            {e.student.registrationNumber}
+                            {e.student.campus.id !== detail.campusId && <span className="text-amber-600"> · home branch: {e.student.campus.name}</span>}
+                          </p>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <p className="text-xs text-slate-400">{e.student.registrationNumber}</p>
                           <Button
                             size="sm" variant="ghost" className="h-6 w-6 p-0"
                             disabled={removeStudentMutation.isPending}
@@ -493,10 +613,12 @@ export default function GroupsPage() {
             <DialogTitle>New group</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <Select value={createForm.campusId} onValueChange={(v) => setCreateForm({ ...createForm, campusId: v, batchId: '' })}>
-              <SelectTrigger><SelectValue placeholder="Branch" /></SelectTrigger>
-              <SelectContent>{campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-            </Select>
+            {!isCampusLocked && (
+              <Select value={createForm.campusId} onValueChange={(v) => setCreateForm({ ...createForm, campusId: v, batchId: '' })}>
+                <SelectTrigger><SelectValue placeholder="Branch" /></SelectTrigger>
+                <SelectContent>{campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
             <Select value={createForm.batchId} onValueChange={(v) => setCreateForm({ ...createForm, batchId: v })} disabled={!createForm.campusId}>
               <SelectTrigger><SelectValue placeholder="Batch" /></SelectTrigger>
               <SelectContent>{createBatches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
@@ -589,6 +711,47 @@ export default function GroupsPage() {
           <DialogFooter>
             <Button disabled={updateGroupMutation.isPending} onClick={() => updateGroupMutation.mutate()}>
               {updateGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cycle-advance: pick who continues */}
+      <Dialog open={confirmAdvance} onOpenChange={setConfirmAdvance}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {detail?.level?.pricingType === 'MONTHLY' ? 'Close this month' : 'Close this level'}
+            </DialogTitle>
+            <DialogDescription>
+              {detail?.level?.pricingType === 'MONTHLY'
+                ? `Closes month ${detail?.currentCycleNumber} and starts month ${(detail?.currentCycleNumber ?? 1) + 1}.`
+                : 'Moves the group to the next level (or the next course in the track if this was the last level).'}
+              {' '}Uncheck anyone who is not continuing — they&apos;ll be withdrawn from the group.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-64 overflow-y-auto">
+            {detail?.enrollments.map((e) => (
+              <label key={e.id} className="flex items-center justify-between px-3 py-2 text-sm cursor-pointer hover:bg-slate-50">
+                <span className="text-slate-800">{e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}</span>
+                <Checkbox
+                  checked={continuingIds.has(e.student.id)}
+                  onCheckedChange={(checked) => {
+                    const next = new Set(continuingIds)
+                    if (checked) next.add(e.student.id)
+                    else next.delete(e.student.id)
+                    setContinuingIds(next)
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400">{continuingIds.size} of {detail?.enrollments.length ?? 0} continuing</p>
+
+          <DialogFooter>
+            <Button disabled={advanceCycleMutation.isPending} onClick={() => advanceCycleMutation.mutate()}>
+              {advanceCycleMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>
