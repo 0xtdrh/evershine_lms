@@ -1894,6 +1894,14 @@ model ClassSection {
   startDate      DateTime?
   expectedEndDate DateTime?
   scheduleSlots  Json?
+  // Tracks progress through the current subscription cycle. For a MONTHLY
+  // level, currentCycleNumber counts which billing month the group is on.
+  // For a FULL_LEVEL level, "finishing the cycle" instead advances levelId
+  // to the next level and this resets to 1.
+  currentCycleNumber    Int       @default(1)
+  currentCycleStartDate DateTime?
+
+  cycleLogs GroupCycleLog[]
 
   campus                    Campus                     @relation(fields: [campusId], references: [id])
   batch                     Batch                      @relation(fields: [batchId], references: [id])
@@ -2016,6 +2024,11 @@ model AcademicSubject {
   // Optional: which age-based Track this course belongs to. Nullable so
   // existing courses keep working unassigned until an admin categorizes them.
   trackId     String?
+  // Where this course sits in its Track's progression (e.g. Beginner=1,
+  // Intermediate=2). Only meaningful when trackId is set — used so a group
+  // that finishes its course's last level can automatically move on to the
+  // next course in the same track.
+  trackOrder  Int?
 
   track          Track?                   @relation(fields: [trackId], references: [id])
   offerings      SubjectOffering[]
@@ -2076,6 +2089,30 @@ model Level {
 enum GroupStatus {
   ACTIVE
   COMPLETED
+}
+
+enum GroupCycleType {
+  MONTH_COMPLETED
+  LEVEL_COMPLETED
+}
+
+/// One row per "cycle finished" action on a group — a completed billing
+/// month (MONTHLY levels) or a completed level (FULL_LEVEL levels, which
+/// also advances the group to the next level). Kept even after the group
+/// moves on, so group financials/reporting can later show exactly what was
+/// completed and when.
+model GroupCycleLog {
+  id            String         @id @default(cuid())
+  classSectionId String
+  type          GroupCycleType
+  levelId       String? // the level that was active when this cycle closed
+  cycleNumber   Int? // which month number, for MONTH_COMPLETED
+  completedAt   DateTime       @default(now())
+  completedBy   String // User id
+
+  classSection ClassSection @relation(fields: [classSectionId], references: [id])
+
+  @@index([classSectionId])
 }
 
 
