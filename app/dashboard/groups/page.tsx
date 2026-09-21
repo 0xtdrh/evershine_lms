@@ -150,7 +150,10 @@ export default function GroupsPage() {
   // ── Instructor assignment ────────────────────────────────────────────
   const { data: teacherOptions = [] } = useQuery<TeacherOption[]>({
     queryKey: ['teachers-for-group', detail?.campusId],
-    queryFn: () => fetchApi(`/api/teachers/for-selection?mode=all&campusId=${detail?.campusId}`),
+    queryFn: async () => {
+      const res = await fetchApi<{ teachers: TeacherOption[] }>(`/api/teachers/for-selection?mode=all&campusId=${detail?.campusId}`)
+      return res.teachers
+    },
     enabled: !!detail?.campusId,
   })
 
