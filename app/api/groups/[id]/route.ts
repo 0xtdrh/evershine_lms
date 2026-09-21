@@ -12,6 +12,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { getActiveAcademicYear } from '@/lib/academic/engine'
 import type { Role } from '@prisma/client'
 
 export async function GET(
@@ -25,6 +26,7 @@ export async function GET(
   if (denied) return denied
 
   const { id } = await params
+  const activeYear = await getActiveAcademicYear()
   const group = await prisma.classSection.findUnique({
     where: { id },
     include: {
@@ -44,6 +46,8 @@ export async function GET(
         },
       },
       subjectOfferings: {
+        where: activeYear ? { academicYearId: activeYear.id } : undefined,
+        orderBy: { createdAt: 'desc' },
         take: 1,
         select: { teacher: { select: { id: true, firstName: true, lastName: true, phoneNumber: true, email: true } } },
       },
