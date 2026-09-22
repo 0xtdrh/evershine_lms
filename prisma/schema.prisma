@@ -1026,15 +1026,24 @@ model FeeInvoice {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  // Optional link to a group's billing cycle (a month, or a full level),
+  // when this invoice was generated from the Groups system rather than the
+  // legacy general monthly-invoice flow. Nullable so nothing existing breaks.
+  classSectionId String?
+  levelId        String?
+  cycleNumber    Int? // which billing month this covers; null for a one-time FULL_LEVEL invoice
 
   student            Student             @relation(fields: [studentId], references: [id])
   items              FeeItem[]
   payments           FeePayment[]
   penaltyAssessments PenaltyAssessment[]
+  classSection       ClassSection?       @relation(fields: [classSectionId], references: [id])
+  level              Level?              @relation(fields: [levelId], references: [id])
 
   @@index([studentId])
   @@index([status])
   @@index([month, academicYear])
+  @@index([classSectionId])
 }
 
 model FeeItem {
@@ -1900,8 +1909,12 @@ model ClassSection {
   // to the next level and this resets to 1.
   currentCycleNumber    Int       @default(1)
   currentCycleStartDate DateTime?
+  // Payment-gating settings for this group specifically.
+  requireFullPaymentToStart Boolean @default(false)
+  partialPaymentCounts      Boolean @default(false)
 
   cycleLogs GroupCycleLog[]
+  invoices  FeeInvoice[]
 
   campus                    Campus                     @relation(fields: [campusId], references: [id])
   batch                     Batch                      @relation(fields: [batchId], references: [id])
@@ -1938,6 +1951,12 @@ model StudentEnrollment {
   courseScope    Json?
   promotedFromId String?
   createdAt      DateTime                 @default(now())
+  // Why this enrollment was withdrawn, when it was withdrawn automatically
+  // rather than by an explicit staff action — e.g. "UNPAID_AUTO" when a
+  // student passed the group's payment checkpoint without paying. Lets the
+  // UI offer a one-click "Reinstate" specifically for these, separate from a
+  // deliberate manual removal (which has no reason and is not reinstated).
+  withdrawalReason String?
 
   student             Student                      @relation(fields: [studentId], references: [id], onDelete: Cascade)
   academicYear        AcademicYear                 @relation(fields: [academicYearId], references: [id])
@@ -2081,6 +2100,7 @@ model Level {
 
   subject      AcademicSubject @relation(fields: [subjectId], references: [id])
   classSections ClassSection[]
+  invoices      FeeInvoice[]
 
   @@unique([subjectId, order])
   @@index([subjectId])

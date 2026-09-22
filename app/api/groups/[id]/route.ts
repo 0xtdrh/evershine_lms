@@ -52,10 +52,12 @@ export async function GET(
         select: { teacher: { select: { id: true, firstName: true, lastName: true, phoneNumber: true, email: true } } },
       },
       enrollments: {
-        where: { status: 'ACTIVE' },
+        where: { OR: [{ status: 'ACTIVE' }, { withdrawalReason: 'UNPAID_AUTO' }] },
         select: {
           id: true,
           rollNumber: true,
+          status: true,
+          withdrawalReason: true,
           student: {
             select: {
               id: true, firstName: true, lastName: true, fullNameEn: true, registrationNumber: true,
@@ -86,6 +88,8 @@ const updateGroupSchema = z.object({
   expectedEndDate: z.string().datetime().optional().nullable(),
   scheduleSlots: z.array(z.object({ dayOfWeek: z.number().int().min(0).max(6), time: z.string().min(1) })).optional().nullable(),
   status: z.enum(['ACTIVE', 'COMPLETED']).optional(),
+  requireFullPaymentToStart: z.boolean().optional(),
+  partialPaymentCounts: z.boolean().optional(),
 })
 
 export async function PATCH(
@@ -136,6 +140,8 @@ export async function PATCH(
         status: parsed.data.status,
         completedAt: parsed.data.status === 'COMPLETED' ? new Date() : null,
       }),
+      ...(parsed.data.requireFullPaymentToStart !== undefined && { requireFullPaymentToStart: parsed.data.requireFullPaymentToStart }),
+      ...(parsed.data.partialPaymentCounts !== undefined && { partialPaymentCounts: parsed.data.partialPaymentCounts }),
     },
   })
 

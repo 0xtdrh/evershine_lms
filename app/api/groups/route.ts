@@ -86,6 +86,8 @@ const createGroupSchema = z.object({
   sectionName: z.string().min(1).max(10),
   levelId: z.string().min(1).optional().nullable(),
   startDate: z.string().datetime().optional().nullable(),
+  requireFullPaymentToStart: z.boolean().optional(),
+  partialPaymentCounts: z.boolean().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -139,6 +141,8 @@ export async function POST(request: NextRequest) {
       levelId: parsed.data.levelId ?? null,
       startDate: parsed.data.startDate ? new Date(parsed.data.startDate) : null,
       expectedEndDate,
+      requireFullPaymentToStart: parsed.data.requireFullPaymentToStart ?? false,
+      partialPaymentCounts: parsed.data.partialPaymentCounts ?? false,
     },
   })
 

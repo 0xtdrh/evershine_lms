@@ -49,6 +49,8 @@ interface GroupDetail extends Omit<GroupSummary, 'campus' | 'level'> {
   batchId: string
   shiftId: string
   currentCycleNumber: number
+  requireFullPaymentToStart: boolean
+  partialPaymentCounts: boolean
   campus: { id: string; name: string }
   batch: { id: string; name: string }
   shift: { id: string; name: string }
@@ -56,6 +58,8 @@ interface GroupDetail extends Omit<GroupSummary, 'campus' | 'level'> {
   enrollments: {
     id: string
     rollNumber: string
+    status: 'ACTIVE' | 'WITHDRAWN' | string
+    withdrawalReason: string | null
     student: {
       id: string; firstName: string; lastName: string; fullNameEn: string | null; registrationNumber: string
       campus: { id: string; name: string }
@@ -173,6 +177,7 @@ export default function GroupsPage() {
   const [createForm, setCreateForm] = useState({
     campusId: '', batchId: '', shiftId: '', className: '', sectionName: '',
     trackId: '', courseId: '', levelId: '', startDate: '',
+    requireFullPaymentToStart: false, partialPaymentCounts: false,
   })
 
   const { data: createBatches = [] } = useQuery<Batch[]>({
@@ -190,7 +195,7 @@ export default function GroupsPage() {
     enabled: !!createForm.courseId,
   })
 
-  const resetCreateForm = () => setCreateForm({ campusId: isCampusLocked ? (myCampusId ?? '') : '', batchId: '', shiftId: '', className: '', sectionName: '', trackId: '', courseId: '', levelId: '', startDate: '' })
+  const resetCreateForm = () => setCreateForm({ campusId: isCampusLocked ? (myCampusId ?? '') : '', batchId: '', shiftId: '', className: '', sectionName: '', trackId: '', courseId: '', levelId: '', startDate: '', requireFullPaymentToStart: false, partialPaymentCounts: false })
 
   // Branch-scoped roles never pick a campus — it's fixed to their own.
   useEffect(() => {
@@ -212,6 +217,8 @@ export default function GroupsPage() {
           sectionName: createForm.sectionName,
           levelId: createForm.levelId || null,
           startDate: createForm.startDate ? new Date(createForm.startDate).toISOString() : null,
+          requireFullPaymentToStart: createForm.requireFullPaymentToStart,
+          partialPaymentCounts: createForm.partialPaymentCounts,
         }),
       }),
     onSuccess: () => {
@@ -227,7 +234,7 @@ export default function GroupsPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({
     className: '', sectionName: '', trackId: '', courseId: '', levelId: '',
-    startDate: '', expectedEndDate: '',
+    startDate: '', expectedEndDate: '', requireFullPaymentToStart: false, partialPaymentCounts: false,
   })
   const [scheduleSlots, setScheduleSlots] = useState<{ dayOfWeek: number; time: string }[]>([])
 
@@ -242,6 +249,8 @@ export default function GroupsPage() {
       levelId: detail.level?.id ?? '',
       startDate: toDateInputValue(detail.startDate),
       expectedEndDate: toDateInputValue(detail.expectedEndDate),
+      requireFullPaymentToStart: detail.requireFullPaymentToStart,
+      partialPaymentCounts: detail.partialPaymentCounts,
     })
     setScheduleSlots(detail.scheduleSlots ?? [])
     setEditOpen(true)
@@ -265,6 +274,8 @@ export default function GroupsPage() {
           startDate: editForm.startDate ? new Date(editForm.startDate).toISOString() : null,
           expectedEndDate: editForm.expectedEndDate ? new Date(editForm.expectedEndDate).toISOString() : null,
           scheduleSlots: scheduleSlots.length > 0 ? scheduleSlots : null,
+          requireFullPaymentToStart: editForm.requireFullPaymentToStart,
+          partialPaymentCounts: editForm.partialPaymentCounts,
         }),
       }),
     onSuccess: () => {
@@ -287,37 +298,37 @@ export default function GroupsPage() {
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to update status')),
   })
 
-  const [confirmAdvance, setConfirmAdvance] = useState(false)
-  const [continuingIds, setContinuingIds] = useState<Set<string>>(new Set())
-
-  const openAdvanceDialog = () => {
-    if (!detail) return
-    setContinuingIds(new Set(detail.enrollments.map((e) => e.student.id)))
-    setConfirmAdvance(true)
-  }
-
-  const advanceCycleMutation = useMutation({
-    mutationFn: () =>
-      fetchApi(`/api/groups/${selectedGroupId}/advance-cycle`, {
-        method: 'POST',
-        body: JSON.stringify({ continuingStudentIds: Array.from(continuingIds) }),
-      }),
-    onSuccess: (res: { action: string; nextLevel: { name: string } | null; movedToNextCourse: boolean; withdrawnCount: number }) => {
+  // ── Automatic progress sync (replaces the old manual button) ─────────
+  // Runs once whenever a group is opened. Safe to call repeatedly.
+  const syncProgressMutation = useMutation({
+    mutationFn: () => fetchApi(`/api/groups/${selectedGroupId}/sync-progress`, { method: 'POST' }),
+    onSuccess: (res: { cycleClosed: boolean; cycleAction: string | null; withdrawnForNonPayment: string[] }) => {
       queryClient.invalidateQueries({ queryKey: ['groups'] })
       queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
-      setConfirmAdvance(false)
-      const withdrawnNote = res.withdrawnCount > 0 ? ` · ${res.withdrawnCount} student${res.withdrawnCount === 1 ? '' : 's'} withdrawn` : ''
-      if (res.action === 'MONTH_COMPLETED') notify.success(`Month closed — next month started${withdrawnNote}`)
-      else if (res.action === 'LEVEL_COMPLETED') {
-        notify.success(
-          (res.movedToNextCourse ? `Course finished — moved to ${res.nextLevel?.name}` : `Level closed — moved to ${res.nextLevel?.name}`) + withdrawnNote
-        )
-      } else notify.success(`Track finished — this was the last level, group marked completed${withdrawnNote}`)
+      if (res.withdrawnForNonPayment.length > 0) {
+        notify.error(`${res.withdrawnForNonPayment.join(', ')} withdrawn — payment overdue past the halfway point`)
+      }
+      if (res.cycleClosed) {
+        if (res.cycleAction === 'MONTH_COMPLETED') notify.success('This month is complete — next month started automatically')
+        else if (res.cycleAction === 'LEVEL_COMPLETED') notify.success('This level is complete — the group moved on automatically')
+        else if (res.cycleAction === 'GROUP_COMPLETED') notify.success('This was the last level — the group is now marked Completed')
+      }
     },
-    onError: (err: unknown) => {
-      notify.error(apiErrorMessage(err, 'Failed to close the cycle'))
-      setConfirmAdvance(false)
+  })
+
+  useEffect(() => {
+    if (selectedGroupId) syncProgressMutation.mutate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGroupId])
+
+  const reinstateMutation = useMutation({
+    mutationFn: (enrollmentId: string) => fetchApi(`/api/student-enrollments/${enrollmentId}/reinstate`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      notify.success('Student reinstated')
     },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to reinstate student')),
   })
 
   // ── Delete group ──────────────────────────────────────────────────────
@@ -522,14 +533,6 @@ export default function GroupsPage() {
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={openEdit}>
                   <Pencil className="w-3.5 h-3.5" /> Edit
                 </Button>
-                {detail.level && detail.status === 'ACTIVE' && (
-                  <Button
-                    size="sm" variant="outline" className="gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                    onClick={openAdvanceDialog}
-                  >
-                    {detail.level.pricingType === 'MONTHLY' ? 'Month finished' : 'Level finished'}
-                  </Button>
-                )}
                 {detail.status === 'ACTIVE' ? (
                   <Button
                     size="sm" variant="outline" className="gap-1.5"
@@ -554,13 +557,14 @@ export default function GroupsPage() {
 
               <div>
                 <p className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
-                  <GraduationCap className="w-4 h-4 text-indigo-600" /> Students ({detail.enrollments.length})
+                  <GraduationCap className="w-4 h-4 text-indigo-600" />
+                  Students ({detail.enrollments.filter((e) => e.status === 'ACTIVE').length})
                 </p>
                 <div className="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-56 overflow-y-auto mb-2">
-                  {detail.enrollments.length === 0 ? (
+                  {detail.enrollments.filter((e) => e.status === 'ACTIVE').length === 0 ? (
                     <p className="text-sm text-slate-400 text-center py-4">No students enrolled yet.</p>
                   ) : (
-                    detail.enrollments.map((e) => (
+                    detail.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => (
                       <div key={e.id} className="flex items-center justify-between px-3 py-2 text-sm">
                         <div>
                           <p className="text-slate-800">{e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}</p>
@@ -582,6 +586,27 @@ export default function GroupsPage() {
                     ))
                   )}
                 </div>
+
+                {detail.enrollments.some((e) => e.withdrawalReason === 'UNPAID_AUTO') && (
+                  <div className="mb-2">
+                    <p className="text-xs font-medium text-rose-600 mb-1">Payment overdue — removed automatically</p>
+                    <div className="border border-rose-100 bg-rose-50/40 rounded-xl divide-y divide-rose-100">
+                      {detail.enrollments.filter((e) => e.withdrawalReason === 'UNPAID_AUTO').map((e) => (
+                        <div key={e.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                          <p className="text-slate-800">{e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}</p>
+                          <Button
+                            size="sm" variant="outline" className="h-7 text-xs gap-1"
+                            disabled={reinstateMutation.isPending}
+                            onClick={() => reinstateMutation.mutate(e.id)}
+                          >
+                            Reinstate
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <Input
                   placeholder="Search by student name to add..."
                   value={studentQuery}
@@ -647,6 +672,20 @@ export default function GroupsPage() {
               <SelectContent>{levelsForCreate.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
             </Select>
             <Input type="date" placeholder="Start date" value={createForm.startDate} onChange={(e) => setCreateForm({ ...createForm, startDate: e.target.value })} />
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <Checkbox
+                checked={createForm.requireFullPaymentToStart}
+                onCheckedChange={(checked) => setCreateForm({ ...createForm, requireFullPaymentToStart: checked })}
+              />
+              Require everyone to pay before this group starts
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <Checkbox
+                checked={createForm.partialPaymentCounts}
+                onCheckedChange={(checked) => setCreateForm({ ...createForm, partialPaymentCounts: checked })}
+              />
+              A partial payment counts as paid for this group
+            </label>
           </div>
           <DialogFooter>
             <Button
@@ -710,51 +749,25 @@ export default function GroupsPage() {
                 <Plus className="w-3.5 h-3.5" /> Add time slot
               </Button>
             </div>
+
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <Checkbox
+                checked={editForm.requireFullPaymentToStart}
+                onCheckedChange={(checked) => setEditForm({ ...editForm, requireFullPaymentToStart: checked })}
+              />
+              Require everyone to pay before this group starts
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <Checkbox
+                checked={editForm.partialPaymentCounts}
+                onCheckedChange={(checked) => setEditForm({ ...editForm, partialPaymentCounts: checked })}
+              />
+              A partial payment counts as paid for this group
+            </label>
           </div>
           <DialogFooter>
             <Button disabled={updateGroupMutation.isPending} onClick={() => updateGroupMutation.mutate()}>
               {updateGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save changes'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Cycle-advance: pick who continues */}
-      <Dialog open={confirmAdvance} onOpenChange={setConfirmAdvance}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {detail?.level?.pricingType === 'MONTHLY' ? 'Close this month' : 'Close this level'}
-            </DialogTitle>
-            <DialogDescription>
-              {detail?.level?.pricingType === 'MONTHLY'
-                ? `Closes month ${detail?.currentCycleNumber} and starts month ${(detail?.currentCycleNumber ?? 1) + 1}.`
-                : 'Moves the group to the next level (or the next course in the track if this was the last level).'}
-              {' '}Uncheck anyone who is not continuing — they&apos;ll be withdrawn from the group.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-64 overflow-y-auto">
-            {detail?.enrollments.map((e) => (
-              <label key={e.id} className="flex items-center justify-between px-3 py-2 text-sm cursor-pointer hover:bg-slate-50">
-                <span className="text-slate-800">{e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}</span>
-                <Checkbox
-                  checked={continuingIds.has(e.student.id)}
-                  onCheckedChange={(checked) => {
-                    const next = new Set(continuingIds)
-                    if (checked) next.add(e.student.id)
-                    else next.delete(e.student.id)
-                    setContinuingIds(next)
-                  }}
-                />
-              </label>
-            ))}
-          </div>
-          <p className="text-xs text-slate-400">{continuingIds.size} of {detail?.enrollments.length ?? 0} continuing</p>
-
-          <DialogFooter>
-            <Button disabled={advanceCycleMutation.isPending} onClick={() => advanceCycleMutation.mutate()}>
-              {advanceCycleMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>
