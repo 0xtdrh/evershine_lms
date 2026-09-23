@@ -152,7 +152,7 @@ export default function GroupsPage() {
   const activeYear = academicYears.find((y) => y.isActive)
 
   // ── Instructor assignment ────────────────────────────────────────────
-  const { data: teacherOptions = [] } = useQuery<TeacherOption[]>({
+  const { data: teacherOptionsRaw = [] } = useQuery<TeacherOption[]>({
     queryKey: ['teachers-for-group', detail?.campusId],
     queryFn: async () => {
       const res = await fetchApi<{ teachers: TeacherOption[] }>(`/api/teachers/for-selection?mode=all&campusId=${detail?.campusId}`)
@@ -160,12 +160,24 @@ export default function GroupsPage() {
     },
     enabled: !!detail?.campusId,
   })
+  // Guarantee the currently-assigned instructor always appears as a
+  // selectable option, even if for-selection's own filtering (campus,
+  // active status, etc.) would otherwise leave them out — without this, a
+  // real save can look like it "didn't work" because the Select has nothing
+  // to render for the saved value.
+  const teacherOptions = useMemo(() => {
+    if (detail?.teacher && !teacherOptionsRaw.some((t) => t.id === detail.teacher!.id)) {
+      const [firstName, ...rest] = detail.teacher.name.split(' ')
+      return [...teacherOptionsRaw, { id: detail.teacher.id, firstName, lastName: rest.join(' ') }]
+    }
+    return teacherOptionsRaw
+  }, [teacherOptionsRaw, detail?.teacher])
 
   const assignInstructorMutation = useMutation({
     mutationFn: (teacherId: string | null) =>
       fetchApi(`/api/groups/${selectedGroupId}/instructor`, { method: 'POST', body: JSON.stringify({ teacherId }) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['group-detail', selectedGroupId] })
       queryClient.invalidateQueries({ queryKey: ['groups'] })
       notify.success('Instructor updated')
     },
