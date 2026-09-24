@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const requestedCampusId = searchParams.get('campusId')
   const campusId = campusScope(role, session.user.campusId, requestedCampusId)
-  const activeYear = await getActiveAcademicYear()
 
   const groups = await prisma.classSection.findMany({
     where: { isActive: true, ...(campusId && { campusId }) },
@@ -48,7 +47,6 @@ export async function GET(request: NextRequest) {
         },
       },
       subjectOfferings: {
-        where: activeYear ? { academicYearId: activeYear.id } : undefined,
         orderBy: { createdAt: 'desc' },
         take: 1,
         select: { teacher: { select: { id: true, firstName: true, lastName: true } } },
