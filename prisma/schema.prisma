@@ -1912,6 +1912,7 @@ model ClassSection {
   // Payment-gating settings for this group specifically.
   requireFullPaymentToStart Boolean @default(false)
   partialPaymentCounts      Boolean @default(false)
+  installmentsAllowed       Boolean @default(false)
 
   cycleLogs GroupCycleLog[]
   invoices  FeeInvoice[]

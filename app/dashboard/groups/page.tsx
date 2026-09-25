@@ -16,7 +16,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { notify } from '@/lib/notify'
-import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, Trash2, CheckCircle2, X } from 'lucide-react'
+import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, Trash2, CheckCircle2, X, Wallet } from 'lucide-react'
 
 interface Campus { id: string; name: string }
 interface Batch { id: string; name: string }
@@ -51,6 +51,7 @@ interface GroupDetail extends Omit<GroupSummary, 'campus' | 'level'> {
   currentCycleNumber: number
   requireFullPaymentToStart: boolean
   partialPaymentCounts: boolean
+  installmentsAllowed: boolean
   campus: { id: string; name: string }
   batch: { id: string; name: string }
   shift: { id: string; name: string }
@@ -189,7 +190,7 @@ export default function GroupsPage() {
   const [createForm, setCreateForm] = useState({
     campusId: '', batchId: '', shiftId: '', className: '', sectionName: '',
     trackId: '', courseId: '', levelId: '', startDate: '',
-    requireFullPaymentToStart: false, partialPaymentCounts: false,
+    requireFullPaymentToStart: false, partialPaymentCounts: false, installmentsAllowed: false,
   })
 
   const { data: createBatches = [] } = useQuery<Batch[]>({
@@ -207,7 +208,7 @@ export default function GroupsPage() {
     enabled: !!createForm.courseId,
   })
 
-  const resetCreateForm = () => setCreateForm({ campusId: isCampusLocked ? (myCampusId ?? '') : '', batchId: '', shiftId: '', className: '', sectionName: '', trackId: '', courseId: '', levelId: '', startDate: '', requireFullPaymentToStart: false, partialPaymentCounts: false })
+  const resetCreateForm = () => setCreateForm({ campusId: isCampusLocked ? (myCampusId ?? '') : '', batchId: '', shiftId: '', className: '', sectionName: '', trackId: '', courseId: '', levelId: '', startDate: '', requireFullPaymentToStart: false, partialPaymentCounts: false, installmentsAllowed: false })
 
   // Branch-scoped roles never pick a campus — it's fixed to their own.
   useEffect(() => {
@@ -231,6 +232,7 @@ export default function GroupsPage() {
           startDate: createForm.startDate ? new Date(createForm.startDate).toISOString() : null,
           requireFullPaymentToStart: createForm.requireFullPaymentToStart,
           partialPaymentCounts: createForm.partialPaymentCounts,
+          installmentsAllowed: createForm.installmentsAllowed,
         }),
       }),
     onSuccess: () => {
@@ -246,7 +248,7 @@ export default function GroupsPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({
     className: '', sectionName: '', trackId: '', courseId: '', levelId: '',
-    startDate: '', expectedEndDate: '', requireFullPaymentToStart: false, partialPaymentCounts: false,
+    startDate: '', expectedEndDate: '', requireFullPaymentToStart: false, partialPaymentCounts: false, installmentsAllowed: false,
   })
   const [scheduleSlots, setScheduleSlots] = useState<{ dayOfWeek: number; time: string }[]>([])
 
@@ -263,6 +265,7 @@ export default function GroupsPage() {
       expectedEndDate: toDateInputValue(detail.expectedEndDate),
       requireFullPaymentToStart: detail.requireFullPaymentToStart,
       partialPaymentCounts: detail.partialPaymentCounts,
+      installmentsAllowed: detail.installmentsAllowed,
     })
     setScheduleSlots(detail.scheduleSlots ?? [])
     setEditOpen(true)
@@ -288,6 +291,7 @@ export default function GroupsPage() {
           scheduleSlots: scheduleSlots.length > 0 ? scheduleSlots : null,
           requireFullPaymentToStart: editForm.requireFullPaymentToStart,
           partialPaymentCounts: editForm.partialPaymentCounts,
+          installmentsAllowed: editForm.installmentsAllowed,
         }),
       }),
     onSuccess: () => {
@@ -345,6 +349,26 @@ export default function GroupsPage() {
 
   // ── Delete group ──────────────────────────────────────────────────────
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // ── Financials ────────────────────────────────────────────────────────
+  const [financialsOpen, setFinancialsOpen] = useState(false)
+  const { data: financials, isLoading: isFinancialsLoading } = useQuery<{
+    students: {
+      studentId: string
+      name: string
+      registrationNumber: string
+      invoices: {
+        id: string; challanNumber: string; month: string; cycleNumber: number | null
+        totalAmount: number; paidAmount: number; status: string; dueDate: string
+        payments: { id: string; amount: number; paymentDate: string; paymentMethod: string; status: string }[]
+      }[]
+    }[]
+    totals: { expected: number; collected: number; outstanding: number }
+  }>({
+    queryKey: ['group-financials', selectedGroupId],
+    queryFn: () => fetchApi(`/api/groups/${selectedGroupId}/financials`),
+    enabled: financialsOpen && !!selectedGroupId,
+  })
   const deleteGroupMutation = useMutation({
     mutationFn: () => fetchApi(`/api/groups/${selectedGroupId}`, { method: 'DELETE' }),
     onSuccess: () => {
@@ -562,6 +586,9 @@ export default function GroupsPage() {
                     Reopen
                   </Button>
                 )}
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setFinancialsOpen(true)}>
+                  <Wallet className="w-3.5 h-3.5" /> Financials
+                </Button>
                 <Button size="sm" variant="ghost" className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete
                 </Button>
@@ -646,6 +673,77 @@ export default function GroupsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Financials */}
+      <Dialog open={financialsOpen} onOpenChange={setFinancialsOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Financials — {detail?.label}</DialogTitle>
+            <DialogDescription>Every invoice generated for this group, and what&apos;s been paid.</DialogDescription>
+          </DialogHeader>
+
+          {isFinancialsLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
+          ) : financials ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-slate-50 rounded-xl p-3">
+                  <p className="text-xs text-slate-400">Expected</p>
+                  <p className="text-lg font-bold text-slate-800">{financials.totals.expected.toLocaleString()}</p>
+                </div>
+                <div className="bg-emerald-50 rounded-xl p-3">
+                  <p className="text-xs text-emerald-600">Collected</p>
+                  <p className="text-lg font-bold text-emerald-700">{financials.totals.collected.toLocaleString()}</p>
+                </div>
+                <div className="bg-rose-50 rounded-xl p-3">
+                  <p className="text-xs text-rose-600">Outstanding</p>
+                  <p className="text-lg font-bold text-rose-700">{financials.totals.outstanding.toLocaleString()}</p>
+                </div>
+              </div>
+
+              {financials.students.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">No invoices generated for this group yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {financials.students.map((s) => (
+                    <div key={s.studentId} className="border border-slate-100 rounded-xl overflow-hidden">
+                      <div className="bg-slate-50 px-3 py-2 flex items-center justify-between">
+                        <p className="text-sm font-medium text-slate-800">{s.name}</p>
+                        <p className="text-xs text-slate-400">{s.registrationNumber}</p>
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                        {s.invoices.map((inv) => (
+                          <div key={inv.id} className="px-3 py-2 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-700">{inv.month}</span>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  inv.status === 'PAID' ? 'text-emerald-700 border-emerald-200' :
+                                  inv.status === 'PARTIALLY_PAID' ? 'text-amber-700 border-amber-200' :
+                                  'text-rose-700 border-rose-200'
+                                }
+                              >
+                                {inv.status}
+                              </Badge>
+                            </div>
+                            <p className="text-slate-400 mt-0.5">
+                              {Number(inv.paidAmount).toLocaleString()} / {Number(inv.totalAmount).toLocaleString()} paid
+                              {inv.payments.length > 0 && (
+                                <> · {inv.payments.map((p) => `${Number(p.amount).toLocaleString()} (${p.paymentMethod})`).join(', ')}</>
+                              )}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
       {/* Create group */}
       <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) resetCreateForm() }}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
@@ -697,6 +795,13 @@ export default function GroupsPage() {
                 onCheckedChange={(checked) => setCreateForm({ ...createForm, partialPaymentCounts: checked })}
               />
               A partial payment counts as paid for this group
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <Checkbox
+                checked={createForm.installmentsAllowed}
+                onCheckedChange={(checked) => setCreateForm({ ...createForm, installmentsAllowed: checked })}
+              />
+              Allow installment payments for this group
             </label>
           </div>
           <DialogFooter>
@@ -775,6 +880,13 @@ export default function GroupsPage() {
                 onCheckedChange={(checked) => setEditForm({ ...editForm, partialPaymentCounts: checked })}
               />
               A partial payment counts as paid for this group
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <Checkbox
+                checked={editForm.installmentsAllowed}
+                onCheckedChange={(checked) => setEditForm({ ...editForm, installmentsAllowed: checked })}
+              />
+              Allow installment payments for this group
             </label>
           </div>
           <DialogFooter>

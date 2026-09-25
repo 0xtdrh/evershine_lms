@@ -86,6 +86,7 @@ const createGroupSchema = z.object({
   startDate: z.string().datetime().optional().nullable(),
   requireFullPaymentToStart: z.boolean().optional(),
   partialPaymentCounts: z.boolean().optional(),
+  installmentsAllowed: z.boolean().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -141,6 +142,7 @@ export async function POST(request: NextRequest) {
       expectedEndDate,
       requireFullPaymentToStart: parsed.data.requireFullPaymentToStart ?? false,
       partialPaymentCounts: parsed.data.partialPaymentCounts ?? false,
+      installmentsAllowed: parsed.data.installmentsAllowed ?? false,
     },
   })
 

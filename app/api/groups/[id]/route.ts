@@ -87,6 +87,7 @@ const updateGroupSchema = z.object({
   status: z.enum(['ACTIVE', 'COMPLETED']).optional(),
   requireFullPaymentToStart: z.boolean().optional(),
   partialPaymentCounts: z.boolean().optional(),
+  installmentsAllowed: z.boolean().optional(),
 })
 
 export async function PATCH(
@@ -139,6 +140,7 @@ export async function PATCH(
       }),
       ...(parsed.data.requireFullPaymentToStart !== undefined && { requireFullPaymentToStart: parsed.data.requireFullPaymentToStart }),
       ...(parsed.data.partialPaymentCounts !== undefined && { partialPaymentCounts: parsed.data.partialPaymentCounts }),
+      ...(parsed.data.installmentsAllowed !== undefined && { installmentsAllowed: parsed.data.installmentsAllowed }),
     },
   })
 
