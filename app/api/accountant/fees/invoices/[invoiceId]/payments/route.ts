@@ -36,12 +36,29 @@ export async function POST(
 
   const existing = await prisma.feeInvoice.findUnique({
     where: { id: invoiceId },
-    select: { id: true, studentId: true, totalAmount: true, paidAmount: true, status: true, student: { select: { campusId: true, dueAmount: true } } },
+    select: {
+      id: true, studentId: true, totalAmount: true, paidAmount: true, status: true,
+      classSectionId: true,
+      student: { select: { campusId: true, dueAmount: true } },
+    },
   })
 
   if (!existing) return errors.notFound('Invoice not found')
   if (existing.status === 'PAID') return errors.conflict('Invoice is already fully paid')
   if (existing.status === 'CANCELLED') return errors.conflict('Cannot pay a cancelled invoice')
+
+  // A group-linked invoice only accepts a partial payment if that group has
+  // installments switched on — otherwise this must be paid in full at once.
+  if (existing.classSectionId) {
+    const group = await prisma.classSection.findUnique({
+      where: { id: existing.classSectionId },
+      select: { installmentsAllowed: true },
+    })
+    const wouldBeFull = Number(existing.paidAmount) + data.amount >= Number(existing.totalAmount)
+    if (group && !group.installmentsAllowed && !wouldBeFull) {
+      return errors.conflict('This group does not allow installments — the full remaining balance must be paid at once')
+    }
+  }
 
   if (role === 'ACCOUNTANT') {
     const acc = await prisma.accountant.findUnique({

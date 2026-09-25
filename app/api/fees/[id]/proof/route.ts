@@ -8,6 +8,7 @@ import { z } from 'zod'
 const uploadProofSchema = z.object({
   proofUrl: z.string().url('Invalid image URL'),
   proofRemarks: z.string().max(500).optional(),
+  amount: z.number().positive().optional(),
 })
 
 const MAX_PROOF_SIZE = 4 * 1024 * 1024
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const invoice = await prisma.feeInvoice.findUnique({
     where: { id: invoiceId },
-    select: { id: true, studentId: true, status: true },
+    select: { id: true, studentId: true, status: true, totalAmount: true, paidAmount: true, classSectionId: true },
   })
 
   if (!invoice) return errors.notFound('Fee invoice')
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   let proofUrl: string
   let proofRemarks: string | undefined
+  let declaredAmount: number | undefined
 
   // Verify ownership
   if (session.user.role === 'STUDENT') {
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const file = formData.get('file')
     const remarks = formData.get('remarks')
+    const amountRaw = formData.get('amount')
     if (!file || typeof file === 'string' || typeof file.arrayBuffer !== 'function') {
       return errors.validation({ errors: [{ path: ['file'], message: 'Payment proof file is required' }] } as never)
     }
@@ -87,6 +90,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       )
     }
     proofRemarks = typeof remarks === 'string' ? remarks.slice(0, 500) : undefined
+    if (typeof amountRaw === 'string' && amountRaw.trim()) {
+      const n = Number(amountRaw)
+      if (!Number.isFinite(n) || n <= 0) {
+        return errors.validation({ errors: [{ path: ['amount'], message: 'Enter a valid amount' }] } as never)
+      }
+      declaredAmount = n
+    }
   } else {
     let body: unknown
     try {
@@ -100,6 +110,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     proofUrl = parsed.data.proofUrl
     proofRemarks = parsed.data.proofRemarks
+    declaredAmount = parsed.data.amount
+  }
+
+  const remaining = Number(invoice.totalAmount) - Number(invoice.paidAmount)
+  if (declaredAmount !== undefined) {
+    if (declaredAmount > remaining) {
+      return errors.conflict(`Amount exceeds the remaining balance of ${remaining}`)
+    }
+    if (invoice.classSectionId) {
+      const group = await prisma.classSection.findUnique({
+        where: { id: invoice.classSectionId },
+        select: { installmentsAllowed: true },
+      })
+      if (group && !group.installmentsAllowed && declaredAmount < remaining) {
+        return errors.conflict('This group does not allow paying in installments — the full remaining balance must be paid at once')
+      }
+    }
   }
 
   const updatedInvoice = await prisma.$transaction(async (tx) => {
@@ -110,6 +137,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         proofRemarks,
         proofUploadedAt: new Date(),
         proofStatus: 'PENDING',
+        proofDeclaredAmount: declaredAmount ?? null,
       },
     })
 

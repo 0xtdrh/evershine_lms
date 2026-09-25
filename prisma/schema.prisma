@@ -1021,6 +1021,10 @@ model FeeInvoice {
   proofRemarks     String? // Student/guardian deposit comments
   proofUploadedAt  DateTime?
   proofStatus      String? // "PENDING", "APPROVED", "REJECTED"
+  // What the guardian said they paid when uploading proof — only used when
+  // the linked group allows installments; the accountant can still adjust
+  // this when approving.
+  proofDeclaredAmount Decimal? @db.Decimal(10, 2)
   penaltyAmount    Decimal   @default(0) @db.Decimal(10, 2)
   isPenaltyApplied Boolean   @default(false)
 

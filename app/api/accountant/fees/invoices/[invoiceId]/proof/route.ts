@@ -45,6 +45,8 @@ export async function PATCH(
       proofStatus: true,
       totalAmount: true,
       paidAmount: true,
+      classSectionId: true,
+      proofDeclaredAmount: true,
       student: { select: { campusId: true, dueAmount: true, userId: true } } 
     },
   })
@@ -64,11 +66,25 @@ export async function PATCH(
     }
   }
 
+  if (action === 'APPROVE' && existing.classSectionId) {
+    const group = await prisma.classSection.findUnique({
+      where: { id: existing.classSectionId },
+      select: { installmentsAllowed: true },
+    })
+    const remaining = Number(existing.totalAmount) - Number(existing.paidAmount)
+    const intendedAmount = paidAmount ?? (existing.proofDeclaredAmount ? Number(existing.proofDeclaredAmount) : remaining)
+    if (group && !group.installmentsAllowed && intendedAmount < remaining) {
+      return errors.conflict('This group does not allow installments — approve for the full remaining balance')
+    }
+  }
+
   const result = await prisma.$transaction(async (tx) => {
     if (action === 'APPROVE') {
       const remaining = Number(existing.totalAmount) - Number(existing.paidAmount)
-      // Use accountant-specified amount or default to full remaining balance
-      const amountToPay = paidAmount ? Math.min(paidAmount, remaining) : remaining
+      // Use accountant-specified amount, or what the guardian declared when
+      // uploading proof, or default to the full remaining balance.
+      const declaredAmount = existing.proofDeclaredAmount ? Number(existing.proofDeclaredAmount) : null
+      const amountToPay = paidAmount ? Math.min(paidAmount, remaining) : declaredAmount ? Math.min(declaredAmount, remaining) : remaining
       const newPaidTotal = Number(existing.paidAmount) + amountToPay
       const newInvoiceStatus = newPaidTotal >= Number(existing.totalAmount) ? 'PAID' : 'PARTIALLY_PAID'
 
@@ -90,6 +106,7 @@ export async function PATCH(
           paidAmount: { increment: amountToPay },
           status: newInvoiceStatus,
           proofStatus: 'APPROVED',
+          proofDeclaredAmount: null,
           // Clear proof so student can re-upload for remaining balance if partially paid
           ...(newInvoiceStatus === 'PARTIALLY_PAID' && { proofUrl: null, proofRemarks: null, proofUploadedAt: null }),
         },

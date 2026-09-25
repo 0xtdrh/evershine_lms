@@ -54,6 +54,7 @@ export function PaymentProofUploadModal({
   const queryClient = useQueryClient()
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [proofRemarks, setProofRemarks] = useState('')
+  const [proofAmount, setProofAmount] = useState('')
   const [isUploading, setIsUploading] = useState(false)
 
   if (!invoice) return null
@@ -88,6 +89,7 @@ export function PaymentProofUploadModal({
   const resetForm = () => {
     setProofFile(null)
     setProofRemarks('')
+    setProofAmount('')
   }
 
   const invalidateSuccessQueries = () => {
@@ -109,6 +111,20 @@ export function PaymentProofUploadModal({
     if (!proofRemarks.trim()) {
       notify.error('Please provide a brief remark about the transaction')
       return
+    }
+
+    let parsedAmount: number | undefined
+    if (proofAmount.trim()) {
+      const n = Number(proofAmount)
+      if (!Number.isFinite(n) || n <= 0) {
+        notify.error('Enter a valid amount, or leave it blank to pay the full remaining balance')
+        return
+      }
+      if (n > remaining) {
+        notify.error(`Amount can't exceed the remaining balance of ${remaining.toLocaleString()}`)
+        return
+      }
+      parsedAmount = n
     }
 
     if (!uploadEndpoint) {
@@ -147,12 +163,14 @@ export function PaymentProofUploadModal({
           body: JSON.stringify({
             proofUrl: uploadJson.secure_url,
             proofRemarks: proofRemarks.trim(),
+            ...(parsedAmount !== undefined && { amount: parsedAmount }),
           }),
         })
       } else {
         const formData = new FormData()
         formData.append('file', proofFile)
         formData.append('remarks', proofRemarks.trim())
+        if (parsedAmount !== undefined) formData.append('amount', String(parsedAmount))
 
         const response = await fetch(uploadEndpoint, {
           method: 'POST',
@@ -232,6 +250,21 @@ export function PaymentProofUploadModal({
               )}
             </div>
             <p className="text-xs text-slate-500">Max file size {Math.round(maxFileSize / 1024 / 1024)}MB.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="proof-amount">Amount you&apos;re paying (optional)</Label>
+            <Input
+              id="proof-amount"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder={`Full remaining balance: ${remaining.toLocaleString()}`}
+              value={proofAmount}
+              onChange={(event) => setProofAmount(event.target.value)}
+              disabled={isUploading}
+            />
+            <p className="text-xs text-slate-500">Leave blank to pay the full remaining balance. Some groups don&apos;t allow partial payments.</p>
           </div>
 
           <div className="space-y-2">

@@ -43,6 +43,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       totalAmount: true,
       paidAmount: true,
       proofRemarks: true,
+      classSectionId: true,
+      proofDeclaredAmount: true,
       student: { select: { userId: true, dueAmount: true } },
     },
   })
@@ -53,10 +55,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const remaining = Number(invoice.totalAmount) - Number(invoice.paidAmount)
 
+  if (action === 'APPROVE' && invoice.classSectionId) {
+    const group = await prisma.classSection.findUnique({
+      where: { id: invoice.classSectionId },
+      select: { installmentsAllowed: true },
+    })
+    const intendedAmount = paidAmount ?? (invoice.proofDeclaredAmount ? Number(invoice.proofDeclaredAmount) : remaining)
+    if (group && !group.installmentsAllowed && intendedAmount < remaining) {
+      return errors.conflict('This group does not allow installments — approve for the full remaining balance')
+    }
+  }
+
   const updatedInvoice = await prisma.$transaction(async (tx) => {
     if (action === 'APPROVE') {
-      // Use provided paidAmount or default to full remaining balance
-      const amountToPay = paidAmount ? Math.min(paidAmount, remaining) : remaining
+      // Use provided paidAmount, or what the guardian declared when
+      // uploading proof, or default to the full remaining balance.
+      const declaredAmount = invoice.proofDeclaredAmount ? Number(invoice.proofDeclaredAmount) : null
+      const amountToPay = paidAmount ? Math.min(paidAmount, remaining) : declaredAmount ? Math.min(declaredAmount, remaining) : remaining
       const newPaidTotal = Number(invoice.paidAmount) + amountToPay
       const newInvoiceStatus: InvoiceStatus = newPaidTotal >= Number(invoice.totalAmount) ? 'PAID' : 'PARTIALLY_PAID'
 
@@ -81,6 +96,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           paidAmount: { increment: amountToPay },
           status: newInvoiceStatus,
           proofStatus: 'APPROVED',
+          proofDeclaredAmount: null,
           proofRemarks: remarks ? `Admin: ${remarks}` : invoice.proofRemarks,
           // Clear proof fields if partially paid so student can re-upload for remaining
           ...(newInvoiceStatus === 'PARTIALLY_PAID' && {

@@ -46,6 +46,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       totalAmount: true,
       paidAmount: true,
       status: true,
+      classSectionId: true,
       student: { select: { dueAmount: true } },
     },
   })
@@ -69,6 +70,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         message: `Payment amount (${amount}) exceeds outstanding balance (${(total - currentPaid).toFixed(2)})`,
       }],
     } as never)
+  }
+
+  if (invoice.classSectionId) {
+    const group = await prisma.classSection.findUnique({
+      where: { id: invoice.classSectionId },
+      select: { installmentsAllowed: true },
+    })
+    if (group && !group.installmentsAllowed && newPaid < total) {
+      return errors.conflict('This group does not allow installments — the full remaining balance must be paid at once')
+    }
   }
 
   // Determine new invoice status

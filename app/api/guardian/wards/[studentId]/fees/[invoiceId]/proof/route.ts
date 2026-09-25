@@ -41,7 +41,10 @@ export async function POST(
       studentId,
       status: { in: ['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'] },
     },
-    select: { id: true, student: { select: { campus: { select: { accountants: { select: { userId: true } } } } } } },
+    select: {
+      id: true, totalAmount: true, paidAmount: true, classSectionId: true,
+      student: { select: { campus: { select: { accountants: { select: { userId: true } } } } } },
+    },
   })
 
   if (!invoice) {
@@ -58,10 +61,33 @@ export async function POST(
 
   const file = formData.get('file')
   const remarks = formData.get('remarks') as string | null
+  const amountRaw = formData.get('amount') as string | null
 
   if (!file || typeof file === 'string' || typeof file.arrayBuffer !== 'function') return errors.validation({ errors: [{ path: ['file'], message: 'File is required' }] } as never)
   if (!remarks || remarks.trim().length < 5) {
     return errors.validation({ errors: [{ path: ['remarks'], message: 'Please provide at least a brief description' }] } as never)
+  }
+
+  const remaining = Number(invoice.totalAmount) - Number(invoice.paidAmount)
+  let declaredAmount: number | null = null
+  if (amountRaw) {
+    const parsedAmount = Number(amountRaw)
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      return errors.validation({ errors: [{ path: ['amount'], message: 'Enter a valid amount' }] } as never)
+    }
+    if (parsedAmount > remaining) {
+      return errors.conflict(`Amount exceeds the remaining balance of ${remaining}`)
+    }
+    if (invoice.classSectionId) {
+      const group = await prisma.classSection.findUnique({
+        where: { id: invoice.classSectionId },
+        select: { installmentsAllowed: true },
+      })
+      if (group && !group.installmentsAllowed && parsedAmount < remaining) {
+        return errors.conflict('This group does not allow paying in installments — the full remaining balance must be paid at once')
+      }
+    }
+    declaredAmount = parsedAmount
   }
 
   if (file.size > MAX_FILE_SIZE) {
@@ -93,6 +119,7 @@ export async function POST(
         proofRemarks: remarks,
         proofUploadedAt: new Date(),
         proofStatus: 'PENDING',
+        proofDeclaredAmount: declaredAmount,
       },
     })
 
