@@ -67,6 +67,16 @@ export async function POST(
     } as never)
   }
 
+  if (invoice.classSectionId) {
+    const group = await prisma.classSection.findUnique({
+      where: { id: invoice.classSectionId },
+      select: { installmentsAllowed: true },
+    })
+    if (group && !group.installmentsAllowed && amount < remaining) {
+      return errors.conflict('This group does not allow installments — the full remaining balance must be paid at once')
+    }
+  }
+
   const newPaidAmount = Number(invoice.paidAmount) + amount
   const newStatus = newPaidAmount >= Number(invoice.totalAmount) ? 'PAID' : 'PARTIALLY_PAID'
 
