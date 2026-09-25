@@ -49,7 +49,7 @@ async function isPaidEnough(
   return invoice.status === 'PAID'
 }
 
-async function createCycleInvoice(params: {
+export async function createCycleInvoice(params: {
   studentId: string
   classSectionId: string
   levelId: string

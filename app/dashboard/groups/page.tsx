@@ -369,6 +369,16 @@ export default function GroupsPage() {
     queryFn: () => fetchApi(`/api/groups/${selectedGroupId}/financials`),
     enabled: financialsOpen && !!selectedGroupId,
   })
+
+  const generateInvoicesMutation = useMutation({
+    mutationFn: () => fetchApi(`/api/groups/${selectedGroupId}/generate-invoices`, { method: 'POST' }),
+    onSuccess: (res: { generated: number; skipped: number }) => {
+      queryClient.invalidateQueries({ queryKey: ['group-financials', selectedGroupId] })
+      if (res.generated > 0) notify.success(`${res.generated} invoice${res.generated === 1 ? '' : 's'} generated`)
+      else notify.success('Everyone already has an invoice for this cycle')
+    },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to generate invoices')),
+  })
   const deleteGroupMutation = useMutation({
     mutationFn: () => fetchApi(`/api/groups/${selectedGroupId}`, { method: 'DELETE' }),
     onSuccess: () => {
@@ -392,8 +402,8 @@ export default function GroupsPage() {
   })
 
   const addStudentMutation = useMutation({
-    mutationFn: (studentId: string) =>
-      fetchApi('/api/student-enrollments', {
+    mutationFn: async (studentId: string) => {
+      await fetchApi('/api/student-enrollments', {
         method: 'POST',
         body: JSON.stringify({
           studentId,
@@ -401,10 +411,18 @@ export default function GroupsPage() {
           classSectionId: selectedGroupId,
           rollNumber: String(Math.floor(Math.random() * 9000) + 1000),
         }),
-      }),
+      })
+      // Bill them for the group's current cycle right away — a new group's
+      // first cycle otherwise never gets an invoice until it closes.
+      await fetchApi(`/api/groups/${selectedGroupId}/generate-invoices`, {
+        method: 'POST',
+        body: JSON.stringify({ studentId }),
+      })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
       queryClient.invalidateQueries({ queryKey: ['groups'] })
+      queryClient.invalidateQueries({ queryKey: ['group-financials', selectedGroupId] })
       notify.success('Student added')
       setStudentQuery('')
     },
@@ -699,6 +717,15 @@ export default function GroupsPage() {
                   <p className="text-lg font-bold text-rose-700">{financials.totals.outstanding.toLocaleString()}</p>
                 </div>
               </div>
+
+              <Button
+                size="sm" variant="outline" className="w-full gap-1.5"
+                disabled={generateInvoicesMutation.isPending}
+                onClick={() => generateInvoicesMutation.mutate()}
+              >
+                {generateInvoicesMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wallet className="w-3.5 h-3.5" />}
+                Generate invoices for current cycle
+              </Button>
 
               {financials.students.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-6">No invoices generated for this group yet.</p>
