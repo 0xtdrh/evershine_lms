@@ -363,11 +363,54 @@ export default function GroupsPage() {
         payments: { id: string; amount: number; paymentDate: string; paymentMethod: string; status: string }[]
       }[]
     }[]
-    totals: { expected: number; collected: number; outstanding: number }
+    totals: { expected: number; collected: number; outstanding: number; teacherPay: number; profit: number }
+    teacherPay: {
+      teacherId: string; teacherName: string
+      fixedAmount: number; percentOfStudentPayment: number | null; percentAmount: number
+      perSessionAmount: number | null; sessionsCounted: number; sessionAmount: number
+      adjustmentsTotal: number
+      adjustments: { id: string; amount: number; reason: string; createdAt: string }[]
+      total: number
+      source: 'GROUP_OVERRIDE' | 'TEACHER_DEFAULT' | 'NONE'
+    } | null
   }>({
     queryKey: ['group-financials', selectedGroupId],
     queryFn: () => fetchApi(`/api/groups/${selectedGroupId}/financials`),
     enabled: financialsOpen && !!selectedGroupId,
+  })
+
+  // ── Instructor pay override + adjustments ─────────────────────────────
+  const [payForm, setPayForm] = useState({ fixedAmount: '', percentOfStudentPayment: '', perSessionAmount: '' })
+  const setInstructorPayMutation = useMutation({
+    mutationFn: () =>
+      fetchApi(`/api/groups/${selectedGroupId}/instructor-pay`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          fixedAmount: payForm.fixedAmount ? Number(payForm.fixedAmount) : null,
+          percentOfStudentPayment: payForm.percentOfStudentPayment ? Number(payForm.percentOfStudentPayment) : null,
+          perSessionAmount: payForm.perSessionAmount ? Number(payForm.perSessionAmount) : null,
+        }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group-financials', selectedGroupId] })
+      notify.success('Group pay rule updated')
+    },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to update pay rule')),
+  })
+
+  const [adjustmentForm, setAdjustmentForm] = useState({ amount: '', reason: '' })
+  const addAdjustmentMutation = useMutation({
+    mutationFn: () =>
+      fetchApi(`/api/groups/${selectedGroupId}/pay-adjustments`, {
+        method: 'POST',
+        body: JSON.stringify({ amount: Number(adjustmentForm.amount), reason: adjustmentForm.reason }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group-financials', selectedGroupId] })
+      notify.success('Adjustment added')
+      setAdjustmentForm({ amount: '', reason: '' })
+    },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to add adjustment')),
   })
 
   const generateInvoicesMutation = useMutation({
@@ -716,7 +759,70 @@ export default function GroupsPage() {
                   <p className="text-xs text-rose-600">Outstanding</p>
                   <p className="text-lg font-bold text-rose-700">{financials.totals.outstanding.toLocaleString()}</p>
                 </div>
+                <div className="bg-slate-50 rounded-xl p-3">
+                  <p className="text-xs text-slate-400">Instructor pay</p>
+                  <p className="text-lg font-bold text-slate-800">{financials.totals.teacherPay.toLocaleString()}</p>
+                </div>
+                <div className="bg-indigo-50 rounded-xl p-3 col-span-2">
+                  <p className="text-xs text-indigo-600">Group profit</p>
+                  <p className="text-lg font-bold text-indigo-700">{financials.totals.profit.toLocaleString()}</p>
+                </div>
               </div>
+
+              {financials.teacherPay && (
+                <div className="border border-slate-100 rounded-xl p-3 space-y-2">
+                  <p className="text-sm font-medium text-slate-700">{financials.teacherPay.teacherName}&apos;s pay this cycle</p>
+                  <p className="text-xs text-slate-500">
+                    Fixed {financials.teacherPay.fixedAmount.toLocaleString()}
+                    {financials.teacherPay.percentOfStudentPayment != null && ` · ${financials.teacherPay.percentOfStudentPayment}% of payments = ${financials.teacherPay.percentAmount.toLocaleString()}`}
+                    {financials.teacherPay.perSessionAmount != null && ` · ${financials.teacherPay.sessionsCounted} sessions × ${financials.teacherPay.perSessionAmount} = ${financials.teacherPay.sessionAmount.toLocaleString()}`}
+                    {financials.teacherPay.adjustmentsTotal !== 0 && ` · adjustments ${financials.teacherPay.adjustmentsTotal.toLocaleString()}`}
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    {financials.teacherPay.source === 'GROUP_OVERRIDE' ? 'Using this group\u2019s own rule' : 'Using instructor\u2019s default rule'}
+                  </p>
+
+                  {financials.teacherPay.adjustments.length > 0 && (
+                    <div className="border-t border-slate-100 pt-2 space-y-1">
+                      {financials.teacherPay.adjustments.map((a) => (
+                        <div key={a.id} className="flex items-center justify-between text-xs">
+                          <span className="text-slate-600">{a.reason}</span>
+                          <span className={a.amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}>{a.amount.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-indigo-600">Set this group&apos;s pay rule</summary>
+                    <div className="mt-2 space-y-2">
+                      <div className="flex gap-2">
+                        <Input placeholder="Fixed" type="number" value={payForm.fixedAmount} onChange={(e) => setPayForm({ ...payForm, fixedAmount: e.target.value })} className="h-8 text-xs" />
+                        <Input placeholder="% of payments" type="number" value={payForm.percentOfStudentPayment} onChange={(e) => setPayForm({ ...payForm, percentOfStudentPayment: e.target.value })} className="h-8 text-xs" />
+                        <Input placeholder="Per session" type="number" value={payForm.perSessionAmount} onChange={(e) => setPayForm({ ...payForm, perSessionAmount: e.target.value })} className="h-8 text-xs" />
+                      </div>
+                      <Button size="sm" className="h-7 text-xs w-full" disabled={setInstructorPayMutation.isPending} onClick={() => setInstructorPayMutation.mutate()}>
+                        Save rule for this group
+                      </Button>
+                    </div>
+                  </details>
+
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-indigo-600">Add bonus / deduction</summary>
+                    <div className="mt-2 space-y-2">
+                      <Input placeholder="Amount (negative for deduction)" type="number" value={adjustmentForm.amount} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })} className="h-8 text-xs" />
+                      <Input placeholder="Reason" value={adjustmentForm.reason} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, reason: e.target.value })} className="h-8 text-xs" />
+                      <Button
+                        size="sm" className="h-7 text-xs w-full"
+                        disabled={!adjustmentForm.amount || !adjustmentForm.reason || addAdjustmentMutation.isPending}
+                        onClick={() => addAdjustmentMutation.mutate()}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  </details>
+                </div>
+              )}
 
               <Button
                 size="sm" variant="outline" className="w-full gap-1.5"
