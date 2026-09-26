@@ -54,19 +54,26 @@ export async function GET(
   const logs = await prisma.groupCycleLog.findMany({
     where: { classSectionId: id },
     orderBy: { completedAt: 'asc' },
-    select: { id: true, type: true, cycleNumber: true, completedAt: true, level: { select: { name: true, subject: { select: { name: true } } } } },
+    select: { id: true, type: true, cycleNumber: true, completedAt: true, levelId: true },
   })
+
+  const levelIds = [...new Set(logs.map((l) => l.levelId).filter((v): v is string => !!v))]
+  const levels = levelIds.length > 0
+    ? await prisma.level.findMany({ where: { id: { in: levelIds } }, select: { id: true, name: true, subject: { select: { name: true } } } })
+    : []
+  const levelById = new Map(levels.map((l) => [l.id, l]))
 
   const pastCycles = []
   let windowStart = group.startDate
   for (const log of logs) {
     if (windowStart) {
       const sessions = await sessionsBetween(id, windowStart, log.completedAt)
+      const logLevel = log.levelId ? levelById.get(log.levelId) : null
       pastCycles.push({
         id: log.id,
         label: log.type === 'MONTH_COMPLETED'
-          ? `${log.level?.subject.name ?? ''} ${log.level?.name ?? ''} — Month ${log.cycleNumber}`.trim()
-          : `${log.level?.subject.name ?? ''} ${log.level?.name ?? ''} — completed`.trim(),
+          ? `${logLevel?.subject.name ?? ''} ${logLevel?.name ?? ''} — Month ${log.cycleNumber}`.trim()
+          : `${logLevel?.subject.name ?? ''} ${logLevel?.name ?? ''} — completed`.trim(),
         completedAt: log.completedAt.toISOString(),
         sessions,
       })
