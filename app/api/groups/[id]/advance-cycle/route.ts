@@ -118,7 +118,7 @@ export async function POST(
       campusId: group.campusId,
       batchId: group.batchId,
       shiftId: group.shiftId,
-      className: parsed.data.className ?? group.className,
+      className: parsed.data.className ?? `${group.className} — ${nextLevel.name} (${nextCycleNumber})`.slice(0, 50),
       sectionName: parsed.data.sectionName ?? group.sectionName,
       levelId: nextLevel.id,
       currentCycleNumber: nextCycleNumber,
