@@ -17,10 +17,16 @@
  * 3. At the 50% checkpoint: any ACTIVE student without a paid invoice for
  *    this cycle is withdrawn with withdrawalReason "UNPAID_AUTO" — visibly
  *    reversible later via the reinstate endpoint, unlike a manual removal.
- * 4. At the 100% checkpoint: closes the cycle exactly like the old manual
- *    button did (MONTHLY bumps the cycle number; FULL_LEVEL advances to the
- *    next level, or the next course in the track, or completes the group),
- *    generates the next invoice for every student still active, and logs it.
+ * 4. At the 100% checkpoint: closes the cycle.
+ *    - MONTHLY level: bumps the month counter UNLESS that was already the
+ *      level's last month (currentCycleNumber === numberOfMonths), in which
+ *      case the level itself is now finished and it advances exactly like a
+ *      FULL_LEVEL level does — next level, or next course in the track, or
+ *      the group is marked COMPLETED.
+ *    - FULL_LEVEL level: always advances immediately (it has one cycle for
+ *      the whole level).
+ *    Either way, generates the next invoice for every student still active,
+ *    and logs the closure.
  */
 
 import { prisma } from '@/lib/prisma'
@@ -78,14 +84,73 @@ export async function createCycleInvoice(params: {
   })
 }
 
-export async function syncGroupProgress(classSectionId: string, actingUserId: string): Promise<SyncResult> {
-  const group = await prisma.classSection.findUnique({
+function getGroupWithLevel(classSectionId: string) {
+  return prisma.classSection.findUnique({
     where: { id: classSectionId },
     include: {
       level: { include: { subject: true } },
       enrollments: { where: { status: 'ACTIVE' }, include: { student: { select: { id: true, firstName: true, lastName: true } } } },
     },
   })
+}
+
+type GroupWithLevel = NonNullable<Awaited<ReturnType<typeof getGroupWithLevel>>>
+
+/**
+ * Finds what comes after the current level — the next level in the same
+ * course, or the first level of the next course in the track — and either
+ * moves the group there (generating the next invoice for every still-active
+ * student) or marks the group COMPLETED if nothing comes next.
+ */
+async function advanceLevel(
+  group: GroupWithLevel,
+  actingUserId: string,
+  stillActiveStudentIds: string[],
+  academicYearName: string
+): Promise<{ cycleAction: 'LEVEL_COMPLETED' | 'GROUP_COMPLETED' }> {
+  const level = group.level!
+
+  let nextLevel = await prisma.level.findFirst({ where: { subjectId: level.subjectId, order: level.order + 1 } })
+  if (!nextLevel && level.subject.trackId && level.subject.trackOrder != null) {
+    const nextCourse = await prisma.academicSubject.findFirst({
+      where: { trackId: level.subject.trackId, trackOrder: level.subject.trackOrder + 1 },
+    })
+    if (nextCourse) nextLevel = await prisma.level.findFirst({ where: { subjectId: nextCourse.id }, orderBy: { order: 'asc' } })
+  }
+
+  await prisma.groupCycleLog.create({
+    data: { classSectionId: group.id, type: 'LEVEL_COMPLETED', levelId: group.levelId, completedBy: actingUserId },
+  })
+
+  if (!nextLevel) {
+    await prisma.classSection.update({ where: { id: group.id }, data: { status: 'COMPLETED', completedAt: new Date() } })
+    return { cycleAction: 'GROUP_COMPLETED' }
+  }
+
+  const expectedEndDate = new Date()
+  expectedEndDate.setMonth(expectedEndDate.getMonth() + nextLevel.numberOfMonths)
+  await prisma.classSection.update({
+    where: { id: group.id },
+    data: { levelId: nextLevel.id, currentCycleNumber: 1, currentCycleStartDate: new Date(), startDate: new Date(), expectedEndDate },
+  })
+  for (const studentId of stillActiveStudentIds) {
+    await createCycleInvoice({
+      studentId,
+      classSectionId: group.id,
+      levelId: nextLevel.id,
+      cycleNumber: nextLevel.pricingType === 'MONTHLY' ? 1 : null,
+      amount: Number(nextLevel.pricingType === 'MONTHLY' ? nextLevel.monthlyPrice ?? 0 : nextLevel.fullLevelPrice ?? 0),
+      academicYearName,
+      issuedBy: actingUserId,
+      label: `${level.subject.name} — ${nextLevel.name}`,
+    })
+  }
+
+  return { cycleAction: 'LEVEL_COMPLETED' }
+}
+
+export async function syncGroupProgress(classSectionId: string, actingUserId: string): Promise<SyncResult> {
+  const group = await getGroupWithLevel(classSectionId)
 
   const empty: SyncResult = { checkedSessionsInCycle: 0, sessionsPerCycle: 0, withdrawnForNonPayment: [], cycleClosed: false, cycleAction: null }
   if (!group || !group.level || group.status === 'COMPLETED') return empty
@@ -130,9 +195,20 @@ export async function syncGroupProgress(classSectionId: string, actingUserId: st
     : group.enrollments.map((e) => e.studentId)
 
   if (group.level.pricingType === 'MONTHLY') {
+    // Was this the level's LAST month? If so, the level itself is done —
+    // advance to the next level/course instead of starting a month that
+    // was never configured to exist.
+    const isLastMonthOfLevel = group.currentCycleNumber >= group.level.numberOfMonths
+
     await prisma.groupCycleLog.create({
       data: { classSectionId, type: 'MONTH_COMPLETED', levelId: group.levelId, cycleNumber: group.currentCycleNumber, completedBy: actingUserId },
     })
+
+    if (isLastMonthOfLevel) {
+      const { cycleAction } = await advanceLevel(group, actingUserId, stillActiveStudentIds, academicYearName)
+      return { checkedSessionsInCycle: sessionsSoFar, sessionsPerCycle, withdrawnForNonPayment: withdrawnNames, cycleClosed: true, cycleAction }
+    }
+
     const nextCycleNumber = group.currentCycleNumber + 1
     await prisma.classSection.update({
       where: { id: classSectionId },
@@ -153,42 +229,7 @@ export async function syncGroupProgress(classSectionId: string, actingUserId: st
     return { checkedSessionsInCycle: sessionsSoFar, sessionsPerCycle, withdrawnForNonPayment: withdrawnNames, cycleClosed: true, cycleAction: 'MONTH_COMPLETED' }
   }
 
-  // FULL_LEVEL — advance level/course, same rules as the old manual endpoint.
-  let nextLevel = await prisma.level.findFirst({ where: { subjectId: group.level.subjectId, order: group.level.order + 1 } })
-  if (!nextLevel && group.level.subject.trackId && group.level.subject.trackOrder != null) {
-    const nextCourse = await prisma.academicSubject.findFirst({
-      where: { trackId: group.level.subject.trackId, trackOrder: group.level.subject.trackOrder + 1 },
-    })
-    if (nextCourse) nextLevel = await prisma.level.findFirst({ where: { subjectId: nextCourse.id }, orderBy: { order: 'asc' } })
-  }
-
-  await prisma.groupCycleLog.create({
-    data: { classSectionId, type: 'LEVEL_COMPLETED', levelId: group.levelId, completedBy: actingUserId },
-  })
-
-  if (!nextLevel) {
-    await prisma.classSection.update({ where: { id: classSectionId }, data: { status: 'COMPLETED', completedAt: new Date() } })
-    return { checkedSessionsInCycle: sessionsSoFar, sessionsPerCycle, withdrawnForNonPayment: withdrawnNames, cycleClosed: true, cycleAction: 'GROUP_COMPLETED' }
-  }
-
-  const expectedEndDate = new Date()
-  expectedEndDate.setMonth(expectedEndDate.getMonth() + nextLevel.numberOfMonths)
-  await prisma.classSection.update({
-    where: { id: classSectionId },
-    data: { levelId: nextLevel.id, currentCycleNumber: 1, currentCycleStartDate: new Date(), startDate: new Date(), expectedEndDate },
-  })
-  for (const studentId of stillActiveStudentIds) {
-    await createCycleInvoice({
-      studentId,
-      classSectionId,
-      levelId: nextLevel.id,
-      cycleNumber: nextLevel.pricingType === 'MONTHLY' ? 1 : null,
-      amount: Number(nextLevel.pricingType === 'MONTHLY' ? nextLevel.monthlyPrice ?? 0 : nextLevel.fullLevelPrice ?? 0),
-      academicYearName,
-      issuedBy: actingUserId,
-      label: `${group.level.subject.name} — ${nextLevel.name}`,
-    })
-  }
-
-  return { checkedSessionsInCycle: sessionsSoFar, sessionsPerCycle, withdrawnForNonPayment: withdrawnNames, cycleClosed: true, cycleAction: 'LEVEL_COMPLETED' }
+  // FULL_LEVEL — always advances immediately, same rules as the old manual endpoint.
+  const { cycleAction } = await advanceLevel(group, actingUserId, stillActiveStudentIds, academicYearName)
+  return { checkedSessionsInCycle: sessionsSoFar, sessionsPerCycle, withdrawnForNonPayment: withdrawnNames, cycleClosed: true, cycleAction }
 }
