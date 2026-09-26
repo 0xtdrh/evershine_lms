@@ -89,6 +89,31 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
   const updateCF = (i: number, key: keyof CustomField, val: any) =>
     setCustomFields(f => f.map((cf, idx) => idx === i ? { ...cf, [key]: val } : cf))
 
+  const [isPullingGroupPay, setIsPullingGroupPay] = useState(false)
+  const pullInGroupPay = async () => {
+    const teacherId = selectedEmployee?.id
+    if (!teacherId) return
+    setIsPullingGroupPay(true)
+    try {
+      const summary = await fetchApi<{ groups: { groupLabel: string; total: number }[]; total: number }>(
+        `/api/teachers/${teacherId}/group-pay-summary`
+      )
+      if (summary.groups.length === 0) {
+        notify.error('No group teaching pay found for this teacher this cycle')
+        return
+      }
+      setCustomFields((f) => [
+        ...f,
+        ...summary.groups.map((g) => ({ label: `Group: ${g.groupLabel}`, value: g.total, isDeduction: g.total < 0 })),
+      ])
+      notify.success(`Added pay from ${summary.groups.length} group${summary.groups.length === 1 ? '' : 's'} — review before saving`)
+    } catch (err: any) {
+      notify.error(err?.message ?? 'Failed to fetch group pay')
+    } finally {
+      setIsPullingGroupPay(false)
+    }
+  }
+
   const additions = Number(basicSalary || 0) + Number(overtime || 0) +
     customFields.filter(cf => !cf.isDeduction).reduce((s, cf) => s + Number(cf.value), 0)
   const deductions = Number(lunchDues || 0) +
@@ -202,9 +227,16 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-black uppercase text-gray-500">Additions / Deductions</label>
-              <Button type="button" variant="outline" size="sm" onClick={addCustomField} className="h-7 text-xs gap-1">
-                <Plus className="w-3 h-3" /> Add
-              </Button>
+              <div className="flex gap-2">
+                {selectedEmployee && (
+                  <Button type="button" variant="outline" size="sm" onClick={pullInGroupPay} disabled={isPullingGroupPay} className="h-7 text-xs gap-1">
+                    {isPullingGroupPay ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Pull in group pay
+                  </Button>
+                )}
+                <Button type="button" variant="outline" size="sm" onClick={addCustomField} className="h-7 text-xs gap-1">
+                  <Plus className="w-3 h-3" /> Add
+                </Button>
+              </div>
             </div>
             {customFields.map((cf, i) => (
               <div key={i} className="flex gap-2 mb-2 items-center">
