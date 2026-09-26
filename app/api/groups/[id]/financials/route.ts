@@ -10,6 +10,8 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { getActiveAcademicYear } from '@/lib/academic/engine'
+import { computeTeacherGroupPay } from '@/lib/groups/teacher-pay'
 import type { Role } from '@prisma/client'
 
 export async function GET(
@@ -23,7 +25,7 @@ export async function GET(
   if (denied) return denied
 
   const { id } = await params
-  const group = await prisma.classSection.findUnique({ where: { id }, select: { campusId: true } })
+  const group = await prisma.classSection.findUnique({ where: { id }, select: { campusId: true, currentCycleNumber: true } })
   if (!group) return errors.notFound('Group')
 
   const campusId = campusScope(role, session.user.campusId, null)
@@ -73,12 +75,37 @@ export async function GET(
     totalCollected += Number(inv.paidAmount)
   }
 
+  // Teacher pay + profit — only computed when a teacher is actually
+  // assigned; otherwise the group has no compensation to net against.
+  let teacherPay = null
+  const activeYear = await getActiveAcademicYear()
+  const offering = activeYear
+    ? await prisma.subjectOffering.findFirst({
+        where: { classSectionId: id, academicYearId: activeYear.id, teacherId: { not: null } },
+        orderBy: { createdAt: 'desc' },
+        select: { teacherId: true, teacher: { select: { firstName: true, lastName: true } } },
+      })
+    : null
+  if (offering?.teacherId) {
+    const breakdown = await computeTeacherGroupPay(id, offering.teacherId, group.currentCycleNumber)
+    teacherPay = {
+      teacherId: offering.teacherId,
+      teacherName: `${offering.teacher!.firstName} ${offering.teacher!.lastName}`,
+      ...breakdown,
+    }
+  }
+
+  const profit = totalCollected - (teacherPay?.total ?? 0)
+
   return successResponse({
     students: Array.from(byStudent.values()),
     totals: {
       expected: totalExpected,
       collected: totalCollected,
       outstanding: totalExpected - totalCollected,
+      teacherPay: teacherPay?.total ?? 0,
+      profit,
     },
+    teacherPay,
   })
 }
