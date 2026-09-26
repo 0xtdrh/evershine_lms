@@ -88,6 +88,7 @@ export default function SalariesPage() {
   const [notes, setNotes] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isPullingGroupPay, setIsPullingGroupPay] = useState(false)
 
   // Query Slips
   const { data: slipsData, isLoading } = useQuery({
@@ -132,6 +133,28 @@ export default function SalariesPage() {
     const selectedEmp = staff.find(s => s.id === empId)
     if (selectedEmp) {
       setBasicSalary(selectedEmp.salary.toString())
+    }
+  }
+
+  const pullInGroupPay = async () => {
+    if (!employeeId) return
+    setIsPullingGroupPay(true)
+    try {
+      const summary = await fetchApi<{ groups: { groupLabel: string; total: number }[]; total: number }>(
+        `/api/teachers/${employeeId}/group-pay-summary`
+      )
+      if (summary.groups.length === 0) {
+        notify.error('No group teaching pay found for this teacher this cycle')
+        return
+      }
+      setAllowances((prev) => (Number(prev || 0) + summary.total).toString())
+      const breakdown = summary.groups.map((g) => `${g.groupLabel}: ${g.total}`).join(', ')
+      setNotes((prev) => (prev ? `${prev}\n` : '') + `Group teaching pay added: ${breakdown} (total ${summary.total})`)
+      notify.success(`Added ${summary.total} from ${summary.groups.length} group${summary.groups.length === 1 ? '' : 's'} to Allowances — review before saving`)
+    } catch (err: any) {
+      notify.error('Failed to fetch group pay', { description: err?.message })
+    } finally {
+      setIsPullingGroupPay(false)
     }
   }
 
@@ -463,9 +486,21 @@ export default function SalariesPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                        Allowances (PKR)
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-semibold text-slate-700">
+                          Allowances (PKR)
+                        </label>
+                        {employeeId && (
+                          <button
+                            type="button"
+                            onClick={pullInGroupPay}
+                            disabled={isPullingGroupPay}
+                            className="text-[11px] text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50"
+                          >
+                            {isPullingGroupPay ? 'Loading...' : 'Pull in group pay'}
+                          </button>
+                        )}
+                      </div>
                       <Input
                         type="number"
                         placeholder="e.g. 5000"

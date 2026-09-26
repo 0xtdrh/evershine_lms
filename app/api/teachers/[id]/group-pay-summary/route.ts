@@ -26,11 +26,16 @@ export async function GET(
   if (denied) return denied
 
   const { id } = await params
-  const teacher = await prisma.teacher.findUnique({ where: { id }, select: { id: true, firstName: true, lastName: true } })
+  // Accepts either a Teacher.id or a User.id (the two pages that call this
+  // reference teachers differently) — try Teacher.id first, then fall back.
+  const teacher = await prisma.teacher.findFirst({
+    where: { OR: [{ id }, { userId: id }] },
+    select: { id: true, firstName: true, lastName: true },
+  })
   if (!teacher) return errors.notFound('Teacher')
 
   const offerings = await prisma.subjectOffering.findMany({
-    where: { teacherId: id },
+    where: { teacherId: teacher.id },
     distinct: ['classSectionId'],
     select: {
       classSectionId: true,
@@ -44,7 +49,7 @@ export async function GET(
   let total = 0
   for (const o of offerings) {
     if (!o.classSection.isActive) continue
-    const breakdown = await computeTeacherGroupPay(o.classSectionId, id, o.classSection.currentCycleNumber)
+    const breakdown = await computeTeacherGroupPay(o.classSectionId, teacher.id, o.classSection.currentCycleNumber)
     if (breakdown.total === 0) continue
     groups.push({
       classSectionId: o.classSectionId,
