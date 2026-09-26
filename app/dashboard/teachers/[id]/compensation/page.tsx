@@ -15,6 +15,7 @@ interface TeacherDetail {
   id: string
   firstName: string
   lastName: string
+  monthlySalary: number | null
   defaultFixedAmount: number | null
   defaultPercentOfStudentPayment: number | null
   defaultPerSessionAmount: number | null
@@ -37,11 +38,12 @@ export default function TeacherCompensationPage() {
     queryFn: () => fetchApi(`/api/teachers/${params.id}`),
   })
 
-  const [form, setForm] = useState({ fixedAmount: '', percentOfStudentPayment: '', perSessionAmount: '' })
+  const [form, setForm] = useState({ monthlySalary: '', fixedAmount: '', percentOfStudentPayment: '', perSessionAmount: '' })
 
   useEffect(() => {
     if (teacher) {
       setForm({
+        monthlySalary: teacher.monthlySalary != null ? String(teacher.monthlySalary) : '',
         fixedAmount: teacher.defaultFixedAmount != null ? String(teacher.defaultFixedAmount) : '',
         percentOfStudentPayment: teacher.defaultPercentOfStudentPayment != null ? String(teacher.defaultPercentOfStudentPayment) : '',
         perSessionAmount: teacher.defaultPerSessionAmount != null ? String(teacher.defaultPerSessionAmount) : '',
@@ -54,13 +56,14 @@ export default function TeacherCompensationPage() {
       fetchApi(`/api/teachers/${params.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
+          monthlySalary: form.monthlySalary ? Number(form.monthlySalary) : null,
           defaultFixedAmount: form.fixedAmount ? Number(form.fixedAmount) : null,
           defaultPercentOfStudentPayment: form.percentOfStudentPayment ? Number(form.percentOfStudentPayment) : null,
           defaultPerSessionAmount: form.perSessionAmount ? Number(form.perSessionAmount) : null,
         }),
       }),
-    onSuccess: () => notify.success('Default pay rule saved'),
-    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to save pay rule')),
+    onSuccess: () => notify.success('Pay settings saved'),
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to save pay settings')),
   })
 
   return (
@@ -74,26 +77,37 @@ export default function TeacherCompensationPage() {
       ) : teacher ? (
         <Card>
           <CardHeader>
-            <CardTitle>{teacher.firstName} {teacher.lastName} — Default Pay Rule</CardTitle>
+            <CardTitle>{teacher.firstName} {teacher.lastName} — Pay Settings</CardTitle>
             <CardDescription>
-              Applies to every group this teacher is assigned to, unless that specific group has its own
-              override (set from that group&apos;s Financials in the Groups page).
+              Base monthly salary, plus the default group-pay rule that applies to every group this teacher
+              is assigned to (unless a specific group has its own override, set from that group&apos;s
+              Financials in the Groups page).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="fixed">Fixed amount per cycle</Label>
-              <Input id="fixed" type="number" placeholder="e.g. 1500" value={form.fixedAmount} onChange={(e) => setForm({ ...form, fixedAmount: e.target.value })} />
+              <Label htmlFor="salary">Fixed monthly salary</Label>
+              <Input id="salary" type="number" placeholder="e.g. 6000" value={form.monthlySalary} onChange={(e) => setForm({ ...form, monthlySalary: e.target.value })} />
+              <p className="text-xs text-slate-400">The teacher&apos;s base salary, independent of any group.</p>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="percent">Percent of what each student pays (%)</Label>
-              <Input id="percent" type="number" min="0" max="100" placeholder="e.g. 20" value={form.percentOfStudentPayment} onChange={(e) => setForm({ ...form, percentOfStudentPayment: e.target.value })} />
+
+            <div className="border-t border-slate-100 pt-4 space-y-4">
+              <p className="text-sm font-medium text-slate-700">Default group-pay rule</p>
+              <div className="space-y-1.5">
+                <Label htmlFor="fixed">Fixed amount per group, per cycle</Label>
+                <Input id="fixed" type="number" placeholder="e.g. 1500" value={form.fixedAmount} onChange={(e) => setForm({ ...form, fixedAmount: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="percent">Percent of what each student pays (%)</Label>
+                <Input id="percent" type="number" min="0" max="100" placeholder="e.g. 20" value={form.percentOfStudentPayment} onChange={(e) => setForm({ ...form, percentOfStudentPayment: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="perSession">Fixed amount per session taught</Label>
+                <Input id="perSession" type="number" placeholder="e.g. 100" value={form.perSessionAmount} onChange={(e) => setForm({ ...form, perSessionAmount: e.target.value })} />
+              </div>
+              <p className="text-xs text-slate-400">Leave any field blank to not use that component. Combine as many as needed — these apply per group the teacher teaches.</p>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="perSession">Fixed amount per session taught</Label>
-              <Input id="perSession" type="number" placeholder="e.g. 100" value={form.perSessionAmount} onChange={(e) => setForm({ ...form, perSessionAmount: e.target.value })} />
-            </div>
-            <p className="text-xs text-slate-400">Leave any field blank to not use that component. Combine as many as needed.</p>
+
             <Button className="w-full" disabled={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
               {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
             </Button>
