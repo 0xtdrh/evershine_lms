@@ -23,6 +23,7 @@ interface RosterRow {
   rollNumber: string
   student: { firstName: string; lastName: string }
   todayStatus: AttendanceStatus | null
+  isWithdrawn?: boolean
 }
 
 const STATUS_BTNS: AttendanceStatus[] = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']
@@ -551,8 +552,13 @@ export default function SectionAttendancePage() {
                     className="flex flex-wrap items-center justify-between gap-2 border rounded-lg p-3"
                   >
                     <div>
-                      <p className="font-medium">
+                      <p className="font-medium flex items-center gap-1.5">
                         {row.student.firstName} {row.student.lastName}
+                        {row.isWithdrawn && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 font-medium">
+                            Excluded since
+                          </span>
+                        )}
                       </p>
                       <p className="text-xs text-gray-500">Roll {row.rollNumber}</p>
                     </div>

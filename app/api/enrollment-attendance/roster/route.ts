@@ -46,8 +46,24 @@ export async function GET(request: NextRequest) {
     { batchId: batchId || undefined, shiftId: shiftId || undefined }
   )
 
+  // Historical completeness: a student withdrawn/excluded since this date
+  // shouldn't vanish from a PAST session they actually attended. Pull in
+  // any withdrawn enrollment in this section that already has a record for
+  // this exact date, tagged so the UI can show them as no-longer-active.
+  const withdrawnWithRecord = await prisma.studentEnrollment.findMany({
+    where: {
+      classSectionId,
+      status: 'WITHDRAWN',
+      attendanceRecords: { some: { attendanceDate } },
+    },
+    include: {
+      student: { select: { firstName: true, lastName: true, rollNumber: true } },
+      classSection: { select: { batch: { select: { id: true, name: true } }, shift: { select: { id: true, name: true } } } },
+    },
+  })
+
   // Attach attendance records for attendanceDate
-  const enrollmentIds = rawEnrollments.map((e) => e.id)
+  const enrollmentIds = [...rawEnrollments.map((e) => e.id), ...withdrawnWithRecord.map((e) => e.id)]
   const attendanceRecords = await prisma.enrollmentAttendanceRecord.findMany({
     where: {
       studentEnrollmentId: { in: enrollmentIds },
@@ -55,7 +71,10 @@ export async function GET(request: NextRequest) {
     },
   })
 
-  const enrollments = rawEnrollments.map((e) => {
+  const enrollments = [
+    ...rawEnrollments.map((e) => ({ ...e, isWithdrawn: false })),
+    ...withdrawnWithRecord.map((e) => ({ ...e, isWithdrawn: true })),
+  ].map((e) => {
     const rec = attendanceRecords.find((r) => r.studentEnrollmentId === e.id)
     return {
       ...e,
@@ -89,6 +108,7 @@ export async function GET(request: NextRequest) {
       batch: e.classSection.batch,
       shift: e.classSection.shift,
       todayStatus: Array.isArray(e.attendanceRecords) ? e.attendanceRecords[0]?.status : null,
+      isWithdrawn: e.isWithdrawn,
     })),
   })
 }
