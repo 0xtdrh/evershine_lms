@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,7 @@ const STATUS_BTNS: AttendanceStatus[] = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']
 
 export default function SectionAttendancePage() {
   const { data: session } = useSession()
+  const queryClient = useQueryClient()
   const isAllowed = ['SUPER_ADMIN', 'ADMIN', 'TEACHER'].includes(session?.user?.role ?? '')
 
   const [classSectionId, setClassSectionId] = useState('')
@@ -93,6 +94,10 @@ export default function SectionAttendancePage() {
     onSuccess: () => {
       notify.success('Attendance saved (academic engine)')
       refetch()
+      // Keep the additive session-progress/history views in sync with the
+      // save above — read-only refresh only, doesn't touch the save itself.
+      queryClient.invalidateQueries({ queryKey: ['group-session-progress', classSectionId] })
+      queryClient.invalidateQueries({ queryKey: ['group-session-history', classSectionId] })
     },
     onError: (e: Error) => notify.error(e.message),
   })
