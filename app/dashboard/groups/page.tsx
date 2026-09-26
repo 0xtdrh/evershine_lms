@@ -316,18 +316,15 @@ export default function GroupsPage() {
 
   // ── Automatic progress sync (replaces the old manual button) ─────────
   // Runs once whenever a group is opened. Safe to call repeatedly.
+  const [isLastSessionOfCycle, setIsLastSessionOfCycle] = useState(false)
   const syncProgressMutation = useMutation({
     mutationFn: () => fetchApi(`/api/groups/${selectedGroupId}/sync-progress`, { method: 'POST' }),
-    onSuccess: (res: { cycleClosed: boolean; cycleAction: string | null; withdrawnForNonPayment: string[] }) => {
+    onSuccess: (res: { flaggedForNonPayment: string[]; isLastSessionOfCycle: boolean }) => {
       queryClient.invalidateQueries({ queryKey: ['groups'] })
       queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
-      if (res.withdrawnForNonPayment.length > 0) {
-        notify.error(`${res.withdrawnForNonPayment.join(', ')} withdrawn — payment overdue past the halfway point`)
-      }
-      if (res.cycleClosed) {
-        if (res.cycleAction === 'MONTH_COMPLETED') notify.success('This month is complete — next month started automatically')
-        else if (res.cycleAction === 'LEVEL_COMPLETED') notify.success('This level is complete — the group moved on automatically')
-        else if (res.cycleAction === 'GROUP_COMPLETED') notify.success('This was the last level — the group is now marked Completed')
+      setIsLastSessionOfCycle(res.isLastSessionOfCycle)
+      if (res.flaggedForNonPayment.length > 0) {
+        notify.error(`${res.flaggedForNonPayment.join(', ')} — payment overdue past the halfway point`)
       }
     },
   })
@@ -337,14 +334,34 @@ export default function GroupsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGroupId])
 
-  const reinstateMutation = useMutation({
-    mutationFn: (enrollmentId: string) => fetchApi(`/api/student-enrollments/${enrollmentId}/reinstate`, { method: 'POST' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
+  // ── Manual cycle advance: pick who's continuing, creates a new group ────
+  const [confirmAdvance, setConfirmAdvance] = useState(false)
+  const [continuingIds, setContinuingIds] = useState<Set<string>>(new Set())
+
+  const openAdvanceDialog = () => {
+    if (!detail) return
+    setContinuingIds(new Set(detail.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => e.student.id)))
+    setConfirmAdvance(true)
+  }
+
+  const advanceCycleMutation = useMutation({
+    mutationFn: () =>
+      fetchApi(`/api/groups/${selectedGroupId}/advance-cycle`, {
+        method: 'POST',
+        body: JSON.stringify({ continuingStudentIds: Array.from(continuingIds) }),
+      }),
+    onSuccess: (res: { action: string; newGroupId: string | null }) => {
       queryClient.invalidateQueries({ queryKey: ['groups'] })
-      notify.success('Student reinstated')
+      setConfirmAdvance(false)
+      if (res.action === 'GROUP_COMPLETED') notify.success('This was the last level — the group is now marked Completed')
+      else notify.success('New group created for the continuing students')
+      if (res.newGroupId) setSelectedGroupId(res.newGroupId)
+      else setSelectedGroupId(null)
     },
-    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to reinstate student')),
+    onError: (err: unknown) => {
+      notify.error(apiErrorMessage(err, 'Failed to advance the cycle'))
+      setConfirmAdvance(false)
+    },
   })
 
   // ── Delete group ──────────────────────────────────────────────────────
@@ -647,6 +664,14 @@ export default function GroupsPage() {
                     Reopen
                   </Button>
                 )}
+                {detail.level && detail.status === 'ACTIVE' && isLastSessionOfCycle && (
+                  <Button
+                    size="sm" variant="outline" className="gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                    onClick={openAdvanceDialog}
+                  >
+                    Advance cycle
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setFinancialsOpen(true)}>
                   <Wallet className="w-3.5 h-3.5" /> Financials
                 </Button>
@@ -667,7 +692,24 @@ export default function GroupsPage() {
                     detail.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => (
                       <div key={e.id} className="flex items-center justify-between px-3 py-2 text-sm">
                         <div>
-                          <p className="text-slate-800">{e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}</p>
+                          <p className="text-slate-800 flex items-center gap-1.5">
+                            {e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}
+                            {e.withdrawalReason === 'PAYMENT_OVERDUE_WARNING' && (
+                              <>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 font-medium">
+                                  Payment overdue
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={removeStudentMutation.isPending}
+                                  onClick={() => removeStudentMutation.mutate(e.id)}
+                                  className="text-[10px] text-rose-600 hover:text-rose-700 underline underline-offset-2 font-medium disabled:opacity-50"
+                                >
+                                  Exclude
+                                </button>
+                              </>
+                            )}
+                          </p>
                           <p className="text-xs text-slate-400">
                             {e.student.registrationNumber}
                             {e.student.campus.id !== detail.campusId && <span className="text-amber-600"> · home branch: {e.student.campus.name}</span>}
@@ -686,26 +728,6 @@ export default function GroupsPage() {
                     ))
                   )}
                 </div>
-
-                {detail.enrollments.some((e) => e.withdrawalReason === 'UNPAID_AUTO') && (
-                  <div className="mb-2">
-                    <p className="text-xs font-medium text-rose-600 mb-1">Payment overdue — removed automatically</p>
-                    <div className="border border-rose-100 bg-rose-50/40 rounded-xl divide-y divide-rose-100">
-                      {detail.enrollments.filter((e) => e.withdrawalReason === 'UNPAID_AUTO').map((e) => (
-                        <div key={e.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                          <p className="text-slate-800">{e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}</p>
-                          <Button
-                            size="sm" variant="outline" className="h-7 text-xs gap-1"
-                            disabled={reinstateMutation.isPending}
-                            onClick={() => reinstateMutation.mutate(e.id)}
-                          >
-                            Reinstate
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 <Input
                   placeholder="Search by student name to add..."
@@ -874,6 +896,50 @@ export default function GroupsPage() {
               )}
             </div>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Cycle-advance: pick who continues */}
+      <Dialog open={confirmAdvance} onOpenChange={setConfirmAdvance}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Advance to the next cycle</DialogTitle>
+            <DialogDescription>
+              This creates a new group for the next month/level and marks this one Completed. Uncheck anyone
+              who is not continuing — only checked students move to the new group.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-64 overflow-y-auto">
+            {detail?.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => (
+              <label key={e.id} className="flex items-center justify-between px-3 py-2 text-sm cursor-pointer hover:bg-slate-50">
+                <span className="text-slate-800 flex items-center gap-1.5">
+                  {e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}
+                  {e.withdrawalReason === 'PAYMENT_OVERDUE_WARNING' && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 font-medium">
+                      Payment overdue
+                    </span>
+                  )}
+                </span>
+                <Checkbox
+                  checked={continuingIds.has(e.student.id)}
+                  onCheckedChange={(checked) => {
+                    const next = new Set(continuingIds)
+                    if (checked) next.add(e.student.id)
+                    else next.delete(e.student.id)
+                    setContinuingIds(next)
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400">{continuingIds.size} of {detail?.enrollments.filter((e) => e.status === 'ACTIVE').length ?? 0} continuing</p>
+
+          <DialogFooter>
+            <Button disabled={advanceCycleMutation.isPending} onClick={() => advanceCycleMutation.mutate()}>
+              {advanceCycleMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

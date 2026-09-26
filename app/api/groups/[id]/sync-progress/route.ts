@@ -1,9 +1,10 @@
 /**
  * POST /api/groups/[id]/sync-progress
- * Runs the automatic cycle-progress check (see lib/groups/sync-progress.ts):
- * withdraws unpaid students past the 50% checkpoint, and closes the cycle
- * once sessions are complete. Safe to call repeatedly — it's a no-op if
- * nothing has changed since the last call.
+ * Runs the group-progress check (see lib/groups/sync-progress.ts): flags
+ * (not withdraws) unpaid students past the 50% checkpoint, and reports
+ * whether the current cycle has reached its last session. Never closes a
+ * cycle by itself — that's the manual /advance-cycle step. Safe to call
+ * repeatedly.
  */
 
 import { NextRequest } from 'next/server'

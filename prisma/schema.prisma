@@ -2149,6 +2149,9 @@ model GroupCycleLog {
   cycleNumber   Int? // which month number, for MONTH_COMPLETED
   completedAt   DateTime       @default(now())
   completedBy   String // User id
+  // The new group created (if any) for students who continued — set once
+  // the "who's continuing" step is confirmed via the manual advance button.
+  newClassSectionId String?
 
   classSection ClassSection @relation(fields: [classSectionId], references: [id])
 
