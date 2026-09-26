@@ -77,8 +77,8 @@ export async function computeTeacherGroupPay(
       const records = await prisma.enrollmentAttendanceRecord.findMany({
         where: {
           studentEnrollment: { classSectionId },
-          markedByTeacherId: teacherId,
           attendanceDate: { gte: cycleStart },
+          OR: [{ taughtByTeacherId: teacherId }, { AND: [{ taughtByTeacherId: null }, { markedByTeacherId: teacherId }] }],
         },
         select: { attendanceDate: true },
         distinct: ['attendanceDate'],

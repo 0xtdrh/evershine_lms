@@ -123,6 +123,48 @@ export default function SectionAttendancePage() {
     onError: (e: Error) => notify.error(e.message),
   })
 
+  // ── Session progress (read-only) + "who actually taught this session" ──
+  // Additive only — never affects the attendance save flow above.
+  const { data: sessionProgress } = useQuery({
+    queryKey: ['group-session-progress', classSectionId],
+    queryFn: () => fetchApi<{
+      hasLevel: boolean
+      courseName?: string
+      levelName?: string
+      cycleNumber?: number
+      sessionsSoFar?: number
+      sessionsPerCycle?: number
+      nextSessionNumber?: number
+      isLastSessionOfCycle?: boolean
+    }>(`/api/groups/${classSectionId}/session-progress`),
+    enabled: !!classSectionId,
+  })
+
+  const { data: teacherOptionsForSession = [] } = useQuery({
+    queryKey: ['teachers-for-session', classSectionId],
+    queryFn: async () => {
+      const res = await fetchApi<{ teachers: { id: string; firstName: string; lastName: string }[] }>('/api/teachers/for-selection?mode=all')
+      return res.teachers
+    },
+    enabled: !!classSectionId,
+  })
+
+  const [taughtByTeacherId, setTaughtByTeacherId] = useState('')
+  const saveSessionTeacherMutation = useMutation({
+    mutationFn: (teacherId: string) =>
+      fetchApi(`/api/groups/${classSectionId}/session-teacher`, {
+        method: 'POST',
+        body: JSON.stringify({ date, teacherId: teacherId || null }),
+      }),
+    onSuccess: () => notify.success('Session instructor recorded'),
+    onError: (e: Error) => notify.error(e.message),
+  })
+
+  useEffect(() => {
+    setTaughtByTeacherId('')
+  }, [classSectionId, date])
+
+
   useEffect(() => {
     if (!roster?.enrollments?.length) {
       setStatusMap({})
@@ -271,6 +313,46 @@ export default function SectionAttendancePage() {
         </CardContent>
       </Card>
       </motion.div>
+
+      {/* Session progress + who actually taught (read-only additions) */}
+      {classSectionId && sessionProgress?.hasLevel && (
+        <motion.div variants={fadeUp(0.25)}>
+          <Card className={`border shadow-soft-sm ${sessionProgress.isLastSessionOfCycle ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200/60'}`}>
+            <CardContent className="pt-5 space-y-3">
+              <p className="text-sm font-semibold text-slate-800">
+                {sessionProgress.courseName} — {sessionProgress.levelName} · Session {sessionProgress.nextSessionNumber} of {sessionProgress.sessionsPerCycle} · Cycle: Month {sessionProgress.cycleNumber}
+              </p>
+              {sessionProgress.isLastSessionOfCycle && (
+                <p className="text-xs text-amber-700 font-medium">
+                  This looks like the last session for this cycle — it may close automatically once marked.
+                </p>
+              )}
+              <div className="space-y-1.5 pt-1">
+                <Label className="text-xs text-gray-600">Who actually taught this session? (optional — only if different from usual)</Label>
+                <div className="flex gap-2">
+                  <Select value={taughtByTeacherId} onValueChange={setTaughtByTeacherId}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="Same as usual (no change)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teacherOptionsForSession.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.firstName} {t.lastName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm" variant="outline"
+                    disabled={!taughtByTeacherId || saveSessionTeacherMutation.isPending}
+                    onClick={() => saveSessionTeacherMutation.mutate(taughtByTeacherId)}
+                  >
+                    {saveSessionTeacherMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Record'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Export Card */}
       {classSectionId && (

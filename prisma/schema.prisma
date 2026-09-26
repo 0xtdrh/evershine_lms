@@ -2321,6 +2321,11 @@ model EnrollmentAttendanceRecord {
   attendanceDate      DateTime         @db.Date
   status              AttendanceStatus
   markedByTeacherId   String
+  // Who actually taught/led this session — separate from markedByTeacherId
+  // (who clicked Save), since a secretary or admin can record attendance on
+  // a teacher's behalf. Defaults to the group's assigned instructor; used
+  // for accurate per-session pay and, later, the substitute-teacher flow.
+  taughtByTeacherId   String?
   remarks             String?
   createdAt           DateTime         @default(now())
 
