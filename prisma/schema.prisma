@@ -677,6 +677,12 @@ model Teacher {
   batchId        String?
   designation    String // "Teacher", "Senior Teacher", "Head Teacher"
   monthlySalary  Decimal? @db.Decimal(10, 2)
+  // Default group-pay rule, applied to any group this teacher is assigned to
+  // that doesn't have its own override on the SubjectOffering. Same
+  // combinable three components as the group-level override.
+  defaultFixedAmount             Decimal? @db.Decimal(10, 2)
+  defaultPercentOfStudentPayment Decimal? @db.Decimal(5, 2)
+  defaultPerSessionAmount        Decimal? @db.Decimal(10, 2)
   profilePicture String? // Cloudinary URL
   isActive       Boolean  @default(true)
 
@@ -694,6 +700,7 @@ model Teacher {
   subjects               SubjectTeacher[]
   attendance             TeacherAttendance[]
   penaltyAssessments     PenaltyAssessment[]
+  payAdjustments         TeacherPayAdjustment[]
   timetable              Timetable[]
   tasks                  ClassTask[]
   changeRequests         TimetableChangeRequest[]
@@ -1920,6 +1927,7 @@ model ClassSection {
 
   cycleLogs GroupCycleLog[]
   invoices  FeeInvoice[]
+  payAdjustments TeacherPayAdjustment[]
 
   campus                    Campus                     @relation(fields: [campusId], references: [id])
   batch                     Batch                      @relation(fields: [batchId], references: [id])
@@ -1996,6 +2004,13 @@ model SubjectOffering {
   // Default 20 preserves backward compatibility with existing data.
   maxDailyScore   Int      @default(20)
   createdAt       DateTime @default(now())
+  // Group-specific pay override for this teacher — when any of these three
+  // is set, it replaces the teacher's own default for THIS group only. All
+  // three can be combined (e.g. a flat amount plus a percentage), and any
+  // left null simply doesn't contribute to that component.
+  overrideFixedAmount              Decimal? @db.Decimal(10, 2)
+  overridePercentOfStudentPayment  Decimal? @db.Decimal(5, 2)
+  overridePerSessionAmount         Decimal? @db.Decimal(10, 2)
 
   academicYear           AcademicYear            @relation(fields: [academicYearId], references: [id])
   classSection           ClassSection            @relation(fields: [classSectionId], references: [id])
@@ -2137,6 +2152,26 @@ model GroupCycleLog {
 
   classSection ClassSection @relation(fields: [classSectionId], references: [id])
 
+  @@index([classSectionId])
+}
+
+/// A manual bonus or deduction on top of a teacher's computed group pay.
+/// amount is positive for a bonus, negative for a deduction — always with a
+/// reason on record.
+model TeacherPayAdjustment {
+  id             String   @id @default(cuid())
+  teacherId      String
+  classSectionId String? // null = a general adjustment, not tied to one group
+  cycleNumber    Int? // which billing cycle this applies to, if relevant
+  amount         Decimal  @db.Decimal(10, 2)
+  reason         String
+  createdBy      String // User id
+  createdAt      DateTime @default(now())
+
+  teacher      Teacher       @relation(fields: [teacherId], references: [id])
+  classSection ClassSection? @relation(fields: [classSectionId], references: [id])
+
+  @@index([teacherId])
   @@index([classSectionId])
 }
 
