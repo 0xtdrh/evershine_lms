@@ -149,6 +149,17 @@ export default function SectionAttendancePage() {
     enabled: !!classSectionId,
   })
 
+  const { data: sessionHistory } = useQuery({
+    queryKey: ['group-session-history', classSectionId],
+    queryFn: () => fetchApi<{
+      current: { courseName: string | null; levelName: string | null; cycleNumber: number | null; sessions: { sessionNumber: number; date: string }[] }
+      pastCycles: { id: string; label: string; completedAt: string; sessions: { sessionNumber: number; date: string }[] }[]
+    }>(`/api/groups/${classSectionId}/session-history`),
+    enabled: !!classSectionId,
+  })
+  const [showPastCycles, setShowPastCycles] = useState(false)
+  const [openPastCycleId, setOpenPastCycleId] = useState<string | null>(null)
+
   const [taughtByTeacherId, setTaughtByTeacherId] = useState('')
   const saveSessionTeacherMutation = useMutation({
     mutationFn: (teacherId: string) =>
@@ -349,6 +360,73 @@ export default function SectionAttendancePage() {
                   </Button>
                 </div>
               </div>
+
+              {sessionHistory && (
+                <div className="pt-2 border-t border-slate-100 space-y-2">
+                  <Label className="text-xs text-gray-600">Session history</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {sessionHistory.current.sessions.map((s) => (
+                      <button
+                        key={s.date}
+                        type="button"
+                        onClick={() => setDate(s.date)}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                          date === s.date ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Session {s.sessionNumber} · {s.date}
+                      </button>
+                    ))}
+                  </div>
+
+                  {sessionHistory.pastCycles.length > 0 && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowPastCycles((v) => !v)}
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                      >
+                        {showPastCycles ? 'Hide past cycles' : `View past cycles (${sessionHistory.pastCycles.length})`}
+                      </button>
+                      {showPastCycles && (
+                        <div className="mt-2 space-y-2">
+                          {sessionHistory.pastCycles.map((cycle) => (
+                            <div key={cycle.id} className="border border-slate-100 rounded-lg p-2">
+                              <button
+                                type="button"
+                                onClick={() => setOpenPastCycleId((v) => (v === cycle.id ? null : cycle.id))}
+                                className="text-xs font-medium text-slate-700"
+                              >
+                                {cycle.label} — {new Date(cycle.completedAt).toLocaleDateString()}
+                              </button>
+                              {openPastCycleId === cycle.id && (
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                  {cycle.sessions.length === 0 ? (
+                                    <p className="text-xs text-slate-400">No sessions recorded.</p>
+                                  ) : (
+                                    cycle.sessions.map((s) => (
+                                      <button
+                                        key={s.date}
+                                        type="button"
+                                        onClick={() => setDate(s.date)}
+                                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                                          date === s.date ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                                        }`}
+                                      >
+                                        Session {s.sessionNumber} · {s.date}
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
