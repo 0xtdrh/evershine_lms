@@ -113,13 +113,31 @@ export async function POST(
   const expectedEndDate = new Date()
   expectedEndDate.setMonth(expectedEndDate.getMonth() + nextLevel.numberOfMonths)
 
+  // Guarantee a unique (campus, batch, shift, className, sectionName)
+  // combination regardless of why a collision might happen — check first,
+  // and add a growing suffix until it's free, instead of hoping the
+  // computed name is unique.
+  const baseClassName = (parsed.data.className ?? `${group.className} — ${nextLevel.name} (${nextCycleNumber})`).slice(0, 50)
+  const sectionName = parsed.data.sectionName ?? group.sectionName
+  let finalClassName = baseClassName
+  let suffix = 2
+  while (
+    await prisma.classSection.findFirst({
+      where: { campusId: group.campusId, batchId: group.batchId, shiftId: group.shiftId, className: finalClassName, sectionName },
+      select: { id: true },
+    })
+  ) {
+    finalClassName = `${baseClassName.slice(0, 46)} #${suffix}`
+    suffix++
+  }
+
   const newGroup = await prisma.classSection.create({
     data: {
       campusId: group.campusId,
       batchId: group.batchId,
       shiftId: group.shiftId,
-      className: parsed.data.className ?? `${group.className} — ${nextLevel.name} (${nextCycleNumber})`.slice(0, 50),
-      sectionName: parsed.data.sectionName ?? group.sectionName,
+      className: finalClassName,
+      sectionName,
       levelId: nextLevel.id,
       currentCycleNumber: nextCycleNumber,
       // Left unset on purpose — the group's real start is whenever the
