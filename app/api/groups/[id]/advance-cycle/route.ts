@@ -122,8 +122,12 @@ export async function POST(
       sectionName: parsed.data.sectionName ?? group.sectionName,
       levelId: nextLevel.id,
       currentCycleNumber: nextCycleNumber,
-      currentCycleStartDate: new Date(),
-      startDate: new Date(),
+      // Left unset on purpose — the group's real start is whenever the
+      // first attendance session actually happens, not this moment (see
+      // lib/groups/cycle-start.ts). expectedEndDate is still an estimate
+      // from today so it shows a reasonable target in the meantime.
+      currentCycleStartDate: null,
+      startDate: null,
       expectedEndDate,
       scheduleSlots: group.scheduleSlots ?? undefined,
       requireFullPaymentToStart: group.requireFullPaymentToStart,

@@ -71,7 +71,12 @@ export async function GET(
   const campusId = campusScope(role, session.user.campusId, null)
   if (campusId && group.campusId !== campusId) return errors.forbidden()
 
-  return successResponse({ ...group, label: `${group.className} ${group.sectionName}`.trim() })
+  return successResponse({
+    ...group,
+    label: `${group.className} ${group.sectionName}`.trim(),
+    course: group.level?.subject ? { id: group.level.subject.id, name: group.level.subject.name } : null,
+    track: group.level?.subject?.track ? { id: group.level.subject.track.id, name: group.level.subject.track.name } : null,
+  })
 }
 
 const updateGroupSchema = z.object({

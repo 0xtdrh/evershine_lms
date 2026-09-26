@@ -14,6 +14,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
+import { resolveCycleStart } from '@/lib/groups/cycle-start'
 import type { Role } from '@prisma/client'
 
 async function sessionsBetween(classSectionId: string, from: Date, to: Date | null) {
@@ -81,7 +82,7 @@ export async function GET(
     windowStart = log.completedAt
   }
 
-  const currentStart = group.currentCycleStartDate ?? group.startDate
+  const currentStart = await resolveCycleStart(id, group.currentCycleStartDate, group.startDate)
   const currentSessions = currentStart ? await sessionsBetween(id, currentStart, null) : []
 
   return successResponse({

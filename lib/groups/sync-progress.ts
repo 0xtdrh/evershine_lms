@@ -28,6 +28,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { generateChallanNumber } from '@/lib/fees/challan-number'
+import { resolveCycleStart } from './cycle-start'
 
 export interface SyncResult {
   checkedSessionsInCycle: number
@@ -91,7 +92,7 @@ export async function syncGroupProgress(classSectionId: string, _actingUserId: s
   const empty: SyncResult = { checkedSessionsInCycle: 0, sessionsPerCycle: 0, flaggedForNonPayment: [], isLastSessionOfCycle: false }
   if (!group || !group.level || group.status === 'COMPLETED') return empty
 
-  const cycleStart = group.currentCycleStartDate ?? group.startDate
+  const cycleStart = await resolveCycleStart(classSectionId, group.currentCycleStartDate, group.startDate)
   if (!cycleStart) return empty
 
   const records = await prisma.enrollmentAttendanceRecord.findMany({

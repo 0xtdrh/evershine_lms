@@ -11,6 +11,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
+import { resolveCycleStart } from '@/lib/groups/cycle-start'
 import type { Role } from '@prisma/client'
 
 export async function GET(
@@ -46,7 +47,7 @@ export async function GET(
     return successResponse({ hasLevel: false })
   }
 
-  const cycleStart = group.currentCycleStartDate ?? group.startDate
+  const cycleStart = await resolveCycleStart(id, group.currentCycleStartDate, group.startDate)
   const sessionsPerCycle = Math.max(1, Math.round(group.level.numberOfSessions / group.level.numberOfMonths))
 
   let sessionsSoFar = 0

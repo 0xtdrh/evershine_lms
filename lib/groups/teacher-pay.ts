@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { resolveCycleStart } from './cycle-start'
 
 export interface TeacherPayBreakdown {
   fixedAmount: number
@@ -72,7 +73,7 @@ export async function computeTeacherGroupPay(
       where: { id: classSectionId },
       select: { currentCycleStartDate: true, startDate: true },
     })
-    const cycleStart = group?.currentCycleStartDate ?? group?.startDate
+    const cycleStart = group ? await resolveCycleStart(classSectionId, group.currentCycleStartDate, group.startDate) : null
     if (cycleStart) {
       const records = await prisma.enrollmentAttendanceRecord.findMany({
         where: {
