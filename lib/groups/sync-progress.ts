@@ -155,6 +155,18 @@ export async function syncGroupProgress(classSectionId: string, actingUserId: st
   const empty: SyncResult = { checkedSessionsInCycle: 0, sessionsPerCycle: 0, withdrawnForNonPayment: [], cycleClosed: false, cycleAction: null }
   if (!group || !group.level || group.status === 'COMPLETED') return empty
 
+  // Self-heal: if an earlier bug already pushed currentCycleNumber past
+  // this level's configured length (e.g. "Month 3" on a 2-month level),
+  // advance the level immediately — don't wait for a fresh cycle's worth of
+  // sessions to accumulate under an already-invalid cycle number.
+  if (group.level.pricingType === 'MONTHLY' && group.currentCycleNumber > group.level.numberOfMonths) {
+    const activeYearEarly = await getActiveAcademicYear()
+    const academicYearNameEarly = activeYearEarly?.name ?? new Date().getFullYear().toString()
+    const activeStudentIds = group.enrollments.map((e) => e.studentId)
+    const { cycleAction } = await advanceLevel(group, actingUserId, activeStudentIds, academicYearNameEarly)
+    return { checkedSessionsInCycle: 0, sessionsPerCycle: 0, withdrawnForNonPayment: [], cycleClosed: true, cycleAction }
+  }
+
   const cycleStart = group.currentCycleStartDate ?? group.startDate
   if (!cycleStart) return empty
 

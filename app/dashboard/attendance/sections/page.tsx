@@ -166,19 +166,26 @@ export default function SectionAttendancePage() {
   const [openPastCycleId, setOpenPastCycleId] = useState<string | null>(null)
 
   const [taughtByTeacherId, setTaughtByTeacherId] = useState('')
+  const { data: currentSessionTeacher } = useQuery({
+    queryKey: ['session-teacher', classSectionId, date],
+    queryFn: () => fetchApi<{ taughtByTeacherId: string | null }>(`/api/groups/${classSectionId}/session-teacher?date=${date}`),
+    enabled: !!classSectionId && !!date,
+  })
+  useEffect(() => {
+    setTaughtByTeacherId(currentSessionTeacher?.taughtByTeacherId ?? '')
+  }, [currentSessionTeacher])
   const saveSessionTeacherMutation = useMutation({
     mutationFn: (teacherId: string) =>
       fetchApi(`/api/groups/${classSectionId}/session-teacher`, {
         method: 'POST',
         body: JSON.stringify({ date, teacherId: teacherId || null }),
       }),
-    onSuccess: () => notify.success('Session instructor recorded'),
+    onSuccess: () => {
+      notify.success('Session instructor recorded')
+      queryClient.invalidateQueries({ queryKey: ['session-teacher', classSectionId, date] })
+    },
     onError: (e: Error) => notify.error(e.message),
   })
-
-  useEffect(() => {
-    setTaughtByTeacherId('')
-  }, [classSectionId, date])
 
 
   useEffect(() => {

@@ -20,6 +20,28 @@ const bodySchema = z.object({
   teacherId: z.string().min(1).nullable(),
 })
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { session, error } = await requireSession()
+  if (error || !session) return error!
+  const role = session.user.role as Role
+  const denied = requirePermission(role, 'attendance', 'read')
+  if (denied) return denied
+
+  const { id } = await params
+  const date = request.nextUrl.searchParams.get('date')
+  if (!date) return errors.validation({ errors: [{ path: ['date'], message: 'date is required' }] } as never)
+
+  const record = await prisma.enrollmentAttendanceRecord.findFirst({
+    where: { studentEnrollment: { classSectionId: id }, attendanceDate: new Date(date) },
+    select: { taughtByTeacherId: true },
+  })
+
+  return successResponse({ taughtByTeacherId: record?.taughtByTeacherId ?? null })
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
