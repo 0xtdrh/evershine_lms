@@ -111,7 +111,10 @@ export async function POST(request: NextRequest) {
 
   const enrollment = await prisma.studentEnrollment.findUnique({
     where: { id: data.studentEnrollmentId },
-    select: { id: true, studentId: true, classSectionId: true },
+    select: {
+      id: true, studentId: true, classSectionId: true,
+      classSection: { select: { currentCycleNumber: true, level: { select: { pricingType: true, numberOfMonths: true } } } },
+    },
   })
   if (!enrollment) return errors.notFound('Student enrollment')
 
@@ -166,8 +169,17 @@ export async function POST(request: NextRequest) {
   })
 
   // ── Auto-issue a certificate on first pass ───────────────────────────────
+  // Only once this enrollment's group represents the LEVEL'S LAST month (or
+  // a one-time FULL_LEVEL cycle) — otherwise a mid-level monthly result
+  // (e.g. month 1 of a 2-month level) would wrongly trigger a "level
+  // complete" certificate before the level is actually finished.
+  const level = enrollment.classSection.level
+  const isLevelActuallyComplete = level
+    ? level.pricingType === 'FULL_LEVEL' || enrollment.classSection.currentCycleNumber >= level.numberOfMonths
+    : false
+
   let certificateIssued = false
-  if (passed && result.instructorFeedback) {
+  if (passed && result.instructorFeedback && isLevelActuallyComplete) {
     const alreadyHasCertificate = await prisma.certificate.findUnique({ where: { levelResultId: result.id } })
     if (!alreadyHasCertificate) {
       const subject = await prisma.academicSubject.findUnique({ where: { id: data.subjectId }, select: { name: true } })

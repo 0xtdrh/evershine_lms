@@ -1,9 +1,9 @@
 /**
  * POST /api/student-enrollments/[id]/reinstate
- * Restores an enrollment to ACTIVE. Only allowed when it was withdrawn
- * automatically for non-payment (withdrawalReason === 'UNPAID_AUTO') — a
- * deliberate manual removal has no reason stored and is never reinstated
- * this way, on purpose.
+ * Restores a WITHDRAWN enrollment to ACTIVE, reusing the same enrollment
+ * row — so its attendance and grading history (tied to this
+ * studentEnrollmentId) stays correctly linked when the student comes back,
+ * instead of starting fresh under a brand-new enrollment.
  */
 
 import { NextRequest } from 'next/server'
@@ -32,8 +32,8 @@ export async function POST(
   const campusId = campusScope(role, session.user.campusId, null)
   if (campusId && enrollment.classSection.campusId !== campusId) return errors.forbidden()
 
-  if (enrollment.withdrawalReason !== 'UNPAID_AUTO') {
-    return errors.conflict('This enrollment was not auto-withdrawn for non-payment, so it cannot be reinstated this way')
+  if (enrollment.status !== 'WITHDRAWN') {
+    return errors.conflict('This enrollment is not withdrawn, so there is nothing to reinstate')
   }
 
   const updated = await prisma.studentEnrollment.update({

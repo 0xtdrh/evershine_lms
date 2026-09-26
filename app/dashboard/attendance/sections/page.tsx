@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select'
 import { notify } from '@/lib/notify'
 import { Save, Loader2, Download, ClipboardCheck } from 'lucide-react'
 import Link from 'next/link'
@@ -32,6 +33,12 @@ export default function SectionAttendancePage() {
   const isAllowed = ['SUPER_ADMIN', 'ADMIN', 'TEACHER'].includes(session?.user?.role ?? '')
 
   const [classSectionId, setClassSectionId] = useState('')
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const fromUrl = searchParams.get('classSectionId')
+    if (fromUrl) setClassSectionId(fromUrl)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [batchId, setBatchId] = useState('')
   const [shiftId, setShiftId] = useState('')
@@ -272,11 +279,24 @@ export default function SectionAttendancePage() {
                   <SelectValue placeholder="Choose section" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(sections ?? []).map((s: { id: string; className: string; sectionName: string; campus?: { name: string } }) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.className}-{s.sectionName} ({s.campus?.name})
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    <SelectLabel>Active</SelectLabel>
+                    {(sections ?? []).filter((s: { status?: string }) => s.status !== 'COMPLETED').map((s: { id: string; className: string; sectionName: string; campus?: { name: string } }) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.className}-{s.sectionName} ({s.campus?.name})
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  {(sections ?? []).some((s: { status?: string }) => s.status === 'COMPLETED') && (
+                    <SelectGroup>
+                      <SelectLabel>Completed</SelectLabel>
+                      {(sections ?? []).filter((s: { status?: string }) => s.status === 'COMPLETED').map((s: { id: string; className: string; sectionName: string; campus?: { name: string } }) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.className}-{s.sectionName} ({s.campus?.name})
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
                 </SelectContent>
               </Select>
             </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi, ApiError } from '@/lib/api-client'
@@ -118,6 +119,7 @@ function apiErrorMessage(err: unknown, fallback: string): string {
 
 export default function GroupsPage() {
   const queryClient = useQueryClient()
+  const router = useRouter()
   const { data: session } = useSession()
   const role = session?.user?.role as string | undefined
   const myCampusId = session?.user?.campusId as string | undefined
@@ -463,14 +465,9 @@ export default function GroupsPage() {
 
   const addStudentMutation = useMutation({
     mutationFn: async (studentId: string) => {
-      await fetchApi('/api/student-enrollments', {
+      await fetchApi(`/api/groups/${selectedGroupId}/students`, {
         method: 'POST',
-        body: JSON.stringify({
-          studentId,
-          academicYearId: activeYear?.id,
-          classSectionId: selectedGroupId,
-          rollNumber: String(Math.floor(Math.random() * 9000) + 1000),
-        }),
+        body: JSON.stringify({ studentId }),
       })
       // Bill them for the group's current cycle right away — a new group's
       // first cycle otherwise never gets an invoice until it closes.
@@ -674,6 +671,12 @@ export default function GroupsPage() {
                 )}
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setFinancialsOpen(true)}>
                   <Wallet className="w-3.5 h-3.5" /> Financials
+                </Button>
+                <Button
+                  size="sm" variant="outline" className="gap-1.5"
+                  onClick={() => router.push(`/dashboard/attendance/sections?classSectionId=${detail.id}`)}
+                >
+                  <Calendar className="w-3.5 h-3.5" /> Attendance
                 </Button>
                 <Button size="sm" variant="ghost" className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete
