@@ -82,6 +82,13 @@ export const updateTeacherSchema = createTeacherSchema
   .omit({ password: true, cnic: true, classAssignments: true })
   .partial()
   .extend({
+    // Default group-pay rule (see Teacher.default* fields) — all optional,
+    // combinable, and only used when a specific group has no override.
+    defaultFixedAmount: z.number().min(0).optional().nullable(),
+    defaultPercentOfStudentPayment: z.number().min(0).max(100).optional().nullable(),
+    defaultPerSessionAmount: z.number().min(0).optional().nullable(),
+  })
+  .extend({
     isActive: z.boolean().optional(),
     campusId: z.string().cuid('Invalid campus ID').optional(),
     batchId: z
