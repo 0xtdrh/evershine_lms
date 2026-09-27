@@ -64,7 +64,7 @@ export async function GET(
       const absence = absences.find(
         (a) => a.date.toISOString().slice(0, 10) === dateStr &&
           (a.scope === 'FULL_DAY' || a.classSectionId === s.classSectionId) &&
-          a.status !== 'REJECTED'
+          a.status !== 'REJECTED' && a.status !== 'CANCELLED'
       )
       const substituteCoverage = substituteAssignments.find(
         (sub) => sub.date.toISOString().slice(0, 10) === dateStr && sub.classSectionId === s.classSectionId

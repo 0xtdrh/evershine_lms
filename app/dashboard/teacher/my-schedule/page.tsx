@@ -169,7 +169,15 @@ export default function MySchedulePage() {
                         <p className="text-xs text-slate-400">{s.courseName} — {s.levelName}</p>
                       </div>
                       {s.isCancelled ? null : s.absenceStatus ? (
-                        <Badge variant="outline" className="text-[10px]">{s.absenceStatus}</Badge>
+                        <div className="flex flex-col items-end gap-0.5">
+                          <Badge variant="outline" className="text-[10px]">{s.absenceStatus}</Badge>
+                          <button
+                            className="text-[10px] text-indigo-600 hover:text-indigo-700 underline underline-offset-2"
+                            onClick={() => openSessionPicker(s.classSectionId)}
+                          >
+                            Excuse another session
+                          </button>
+                        </div>
                       ) : (
                         <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openSessionPicker(s.classSectionId)}>
                           Excuse

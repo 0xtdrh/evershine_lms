@@ -21,10 +21,16 @@ export async function POST(
   const role = session.user.role as Role
 
   const { id } = await params
-  const absence = await prisma.teacherAbsence.findUnique({ where: { id } })
+  const absence = await prisma.teacherAbsence.findUnique({
+    where: { id },
+    include: { substitutes: { select: { status: true } } },
+  })
   if (!absence) return errors.notFound('Absence request')
   if (absence.status === 'CANCELLED' || absence.status === 'REJECTED') {
     return errors.conflict('This request is already closed')
+  }
+  if (absence.substitutes.some((s) => s.status === 'CONFIRMED')) {
+    return errors.conflict('A substitute has already accepted this — ask them to decline first, or contact an admin')
   }
 
   if (role === 'TEACHER') {
