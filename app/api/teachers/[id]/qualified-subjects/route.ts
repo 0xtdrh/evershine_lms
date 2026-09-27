@@ -65,6 +65,16 @@ export async function POST(
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
 
+  const existing = await prisma.teacherQualifiedSubject.findFirst({
+    where: {
+      teacherId: id,
+      trackId: parsed.data.trackId ?? null,
+      subjectId: parsed.data.subjectId ?? null,
+      levelId: parsed.data.levelId ?? null,
+    },
+  })
+  if (existing) return errors.conflict('This is already added')
+
   const row = await prisma.teacherQualifiedSubject.create({
     data: {
       teacherId: id,

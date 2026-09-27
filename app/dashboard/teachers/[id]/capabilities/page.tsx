@@ -59,6 +59,10 @@ export default function TeacherCapabilitiesPage() {
   const [qualCourseId, setQualCourseId] = useState('')
   const [qualLevelId, setQualLevelId] = useState('')
 
+  const addedTrackIds = new Set(qualified.filter((q) => q.track).map((q) => q.track!.id))
+  const addedCourseIds = new Set(qualified.filter((q) => q.subject).map((q) => q.subject!.id))
+  const addedLevelIds = new Set(qualified.filter((q) => q.level).map((q) => q.level!.id))
+
   const { data: levelsForCourse = [] } = useQuery<Level[]>({
     queryKey: ['levels-for-course', qualCourseId],
     queryFn: () => fetchApi(`/api/levels?subjectId=${qualCourseId}`),
@@ -171,7 +175,7 @@ export default function TeacherCapabilitiesPage() {
                 <Select value={qualTrackId} onValueChange={setQualTrackId}>
                   <SelectTrigger className="flex-1"><SelectValue placeholder="Pick a track" /></SelectTrigger>
                   <SelectContent>
-                    {tracks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    {tracks.filter((t) => !addedTrackIds.has(t.id)).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               )}
@@ -179,7 +183,7 @@ export default function TeacherCapabilitiesPage() {
                 <Select value={qualCourseId} onValueChange={setQualCourseId}>
                   <SelectTrigger className="flex-1"><SelectValue placeholder="Pick a course" /></SelectTrigger>
                   <SelectContent>
-                    {courses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    {courses.filter((c) => !addedCourseIds.has(c.id)).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               )}
@@ -194,7 +198,7 @@ export default function TeacherCapabilitiesPage() {
                   <Select value={qualLevelId} onValueChange={setQualLevelId} disabled={!qualCourseId}>
                     <SelectTrigger className="flex-1"><SelectValue placeholder="Level" /></SelectTrigger>
                     <SelectContent>
-                      {levelsForCourse.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                      {levelsForCourse.filter((l) => !addedLevelIds.has(l.id)).map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </>

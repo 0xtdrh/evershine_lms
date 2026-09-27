@@ -69,7 +69,7 @@ interface GroupDetail extends Omit<GroupSummary, 'campus' | 'level'> {
   }[]
 }
 
-interface TeacherOption { id: string; firstName: string; lastName: string }
+interface TeacherOption { id: string; firstName: string; lastName: string; isQualified?: boolean }
 
 interface StudentSearchResult {
   id: string
@@ -156,9 +156,11 @@ export default function GroupsPage() {
 
   // ── Instructor assignment ────────────────────────────────────────────
   const { data: teacherOptionsRaw = [] } = useQuery<TeacherOption[]>({
-    queryKey: ['teachers-for-group', detail?.campusId],
+    queryKey: ['teachers-for-group', detail?.campusId, selectedGroupId],
     queryFn: async () => {
-      const res = await fetchApi<{ teachers: TeacherOption[] }>(`/api/teachers/for-selection?mode=all&campusId=${detail?.campusId}`)
+      const res = await fetchApi<{ teachers: TeacherOption[] }>(
+        `/api/teachers/for-selection?mode=all&campusId=${detail?.campusId}&classSectionId=${selectedGroupId}`
+      )
       return res.teachers
     },
     enabled: !!detail?.campusId,
@@ -593,8 +595,10 @@ export default function GroupsPage() {
                     <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Not assigned" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Not assigned</SelectItem>
-                      {teacherOptions.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>{t.firstName} {t.lastName}</SelectItem>
+                      {[...teacherOptions].sort((a, b) => (b.isQualified ? 1 : 0) - (a.isQualified ? 1 : 0)).map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.firstName} {t.lastName}{t.isQualified ? ' ✓ Qualified' : ''}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

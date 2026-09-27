@@ -23,6 +23,10 @@ const querySchema = z.object({
   shift: z.enum(['MORNING', 'EVENING', 'NIGHT']).optional(),
   search: z.string().trim().optional(),
   limit: z.coerce.number().int().min(1).max(500).default(200),
+  // Optional: when a Group's id is passed, each returned teacher is tagged
+  // isQualified based on that group's level/course/track — used to surface
+  // "available for this group" without ever hiding other options.
+  classSectionId: z.string().min(1).optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -33,7 +37,7 @@ export async function GET(request: NextRequest) {
   const parsed = querySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams))
   if (!parsed.success) return errors.validation(parsed.error)
 
-  const { mode, campusId, batchId, classId, houseId, search, limit } = parsed.data
+  const { mode, campusId, batchId, classId, houseId, search, limit, classSectionId } = parsed.data
 
   const scopedCampusId =
     session.user.role === 'SUPER_ADMIN'
@@ -120,5 +124,30 @@ export async function GET(request: NextRequest) {
     select: teacherSelect,
   })
 
-  return successResponse({ teachers, total: teachers.length, mode })
+  let qualifiedTeacherIds: Set<string> | null = null
+  if (classSectionId) {
+    const group = await prisma.classSection.findUnique({
+      where: { id: classSectionId },
+      select: { levelId: true, level: { select: { subjectId: true, subject: { select: { trackId: true } } } } },
+    })
+    if (group?.levelId) {
+      const qualRows = await prisma.teacherQualifiedSubject.findMany({
+        where: {
+          OR: [
+            { levelId: group.levelId },
+            ...(group.level?.subjectId ? [{ subjectId: group.level.subjectId }] : []),
+            ...(group.level?.subject.trackId ? [{ trackId: group.level.subject.trackId }] : []),
+          ],
+        },
+        select: { teacherId: true },
+      })
+      qualifiedTeacherIds = new Set(qualRows.map((r) => r.teacherId))
+    }
+  }
+
+  const teachersOut = qualifiedTeacherIds
+    ? teachers.map((t) => ({ ...t, isQualified: qualifiedTeacherIds!.has(t.id) }))
+    : teachers
+
+  return successResponse({ teachers: teachersOut, total: teachersOut.length, mode })
 }
