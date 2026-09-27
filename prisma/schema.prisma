@@ -2256,6 +2256,7 @@ model SubstituteAssignment {
   classSection      ClassSection   @relation(fields: [classSectionId], references: [id])
   originalTeacher   Teacher        @relation("OriginalTeacherAssignments", fields: [originalTeacherId], references: [id])
   substituteTeacher Teacher        @relation("SubstituteTeacherAssignments", fields: [substituteTeacherId], references: [id])
+  payAdjustments    TeacherPayAdjustment[]
 
   @@index([classSectionId])
   @@index([originalTeacherId])
@@ -2324,12 +2325,18 @@ model TeacherPayAdjustment {
   reason         String
   createdBy      String // User id
   createdAt      DateTime @default(now())
+  // Links this adjustment back to the substitute-coverage event it settles
+  // (a bonus for the covering teacher, or a deduction for the absent one) —
+  // lets the reconciliation screen know an event's already been handled.
+  substituteAssignmentId String?
 
-  teacher      Teacher       @relation(fields: [teacherId], references: [id])
-  classSection ClassSection? @relation(fields: [classSectionId], references: [id])
+  teacher              Teacher               @relation(fields: [teacherId], references: [id])
+  classSection         ClassSection?         @relation(fields: [classSectionId], references: [id])
+  substituteAssignment SubstituteAssignment? @relation(fields: [substituteAssignmentId], references: [id])
 
   @@index([teacherId])
   @@index([classSectionId])
+  @@index([substituteAssignmentId])
 }
 
 

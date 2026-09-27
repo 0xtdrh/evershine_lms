@@ -117,6 +117,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Groups', href: '/dashboard/groups', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
   { name: 'Groups Financials', href: '/dashboard/reports/groups-financials', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Absence Requests', href: '/dashboard/absence-requests', icon: AlertOctagon, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
+  { name: 'Substitute Reconciliation', href: '/dashboard/reports/substitute-reconciliation', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'] },
   { name: 'My Schedule', href: '/dashboard/teacher/my-schedule', icon: CalendarClock, roles: ['TEACHER'] },
   { name: 'My Substitutions', href: '/dashboard/teacher/my-substitutions', icon: ClipboardList, roles: ['TEACHER'] },
   { name: 'Promotions',      href: '/dashboard/promotions',   icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },

@@ -1,9 +1,10 @@
 /**
  * POST /api/groups/[id]/pay-adjustments
- * Body: { amount, reason, cycleNumber? }
+ * Body: { amount, reason, cycleNumber?, teacherId?, substituteAssignmentId? }
  * amount is positive for a bonus, negative for a deduction. Always requires
- * a reason on record. Applies to whichever teacher is currently assigned to
- * this group.
+ * a reason on record. Applies to the given teacherId if provided (e.g. for
+ * substitute-coverage reconciliation), otherwise to whichever teacher is
+ * currently assigned to this group.
  */
 
 import { NextRequest } from 'next/server'
@@ -18,6 +19,8 @@ const bodySchema = z.object({
   amount: z.number().refine((n) => n !== 0, 'Amount cannot be zero'),
   reason: z.string().min(3, 'Give a short reason'),
   cycleNumber: z.number().int().min(1).optional().nullable(),
+  teacherId: z.string().min(1).optional(),
+  substituteAssignmentId: z.string().min(1).optional(),
 })
 
 export async function POST(
@@ -37,16 +40,6 @@ export async function POST(
   const campusId = campusScope(role, session.user.campusId, null)
   if (campusId && group.campusId !== campusId) return errors.forbidden()
 
-  const activeYear = await getActiveAcademicYear()
-  const offering = activeYear
-    ? await prisma.subjectOffering.findFirst({
-        where: { classSectionId: id, academicYearId: activeYear.id, teacherId: { not: null } },
-        orderBy: { createdAt: 'desc' },
-        select: { teacherId: true },
-      })
-    : null
-  if (!offering?.teacherId) return errors.conflict('This group has no instructor assigned yet')
-
   let body: unknown
   try {
     body = await request.json()
@@ -56,14 +49,29 @@ export async function POST(
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
 
+  let teacherId = parsed.data.teacherId
+  if (!teacherId) {
+    const activeYear = await getActiveAcademicYear()
+    const offering = activeYear
+      ? await prisma.subjectOffering.findFirst({
+          where: { classSectionId: id, academicYearId: activeYear.id, teacherId: { not: null } },
+          orderBy: { createdAt: 'desc' },
+          select: { teacherId: true },
+        })
+      : null
+    if (!offering?.teacherId) return errors.conflict('This group has no instructor assigned yet')
+    teacherId = offering.teacherId
+  }
+
   const adjustment = await prisma.teacherPayAdjustment.create({
     data: {
-      teacherId: offering.teacherId,
+      teacherId,
       classSectionId: id,
       cycleNumber: parsed.data.cycleNumber ?? group.currentCycleNumber,
       amount: parsed.data.amount,
       reason: parsed.data.reason,
       createdBy: session.user.id,
+      substituteAssignmentId: parsed.data.substituteAssignmentId,
     },
   })
 
