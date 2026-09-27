@@ -17,7 +17,7 @@ import type { Role } from '@prisma/client'
 
 function computeDisplayStatus(status: string, startDate: Date | null): 'COMPLETED' | 'UPCOMING' | 'ACTIVE' {
   if (status === 'COMPLETED') return 'COMPLETED'
-  if (startDate && startDate.getTime() > Date.now()) return 'UPCOMING'
+  if (!startDate || startDate.getTime() > Date.now()) return 'UPCOMING'
   return 'ACTIVE'
 }
 

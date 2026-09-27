@@ -33,6 +33,7 @@ interface DaySession {
   coveringForName: string | null
   isCancelled?: boolean
   cancelledReason?: string | null
+  hasNotStarted?: boolean
 }
 
 interface DayEntry { date: string; sessions: DaySession[] }
@@ -168,7 +169,9 @@ export default function MySchedulePage() {
                         </p>
                         <p className="text-xs text-slate-400">{s.courseName} — {s.levelName}</p>
                       </div>
-                      {s.isCancelled ? null : s.absenceStatus ? (
+                      {s.isCancelled ? null : s.hasNotStarted ? (
+                        <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">Not started yet</Badge>
+                      ) : s.absenceStatus ? (
                         <div className="flex flex-col items-end gap-0.5">
                           <Badge variant="outline" className="text-[10px]">{s.absenceStatus}</Badge>
                           <button

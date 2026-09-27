@@ -76,6 +76,11 @@ export async function GET(
     label: `${group.className} ${group.sectionName}`.trim(),
     course: group.level?.subject ? { id: group.level.subject.id, name: group.level.subject.name } : null,
     track: group.level?.subject?.track ? { id: group.level.subject.track.id, name: group.level.subject.track.name } : null,
+    displayStatus: group.status === 'COMPLETED'
+      ? 'COMPLETED'
+      : !group.startDate || group.startDate.getTime() > Date.now()
+        ? 'UPCOMING'
+        : 'ACTIVE',
   })
 }
 

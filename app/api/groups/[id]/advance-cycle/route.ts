@@ -110,9 +110,6 @@ export async function POST(
     orderBy: { createdAt: 'desc' },
   })
 
-  const expectedEndDate = new Date()
-  expectedEndDate.setMonth(expectedEndDate.getMonth() + nextLevel.numberOfMonths)
-
   // Guarantee a unique (campus, batch, shift, className, sectionName)
   // combination regardless of why a collision might happen — check first,
   // and add a growing suffix until it's free, instead of hoping the
@@ -140,13 +137,13 @@ export async function POST(
       sectionName,
       levelId: nextLevel.id,
       currentCycleNumber: nextCycleNumber,
-      // Left unset on purpose — the group's real start is whenever the
-      // first attendance session actually happens, not this moment (see
-      // lib/groups/cycle-start.ts). expectedEndDate is still an estimate
-      // from today so it shows a reasonable target in the meantime.
+      // Both left unset on purpose — the group hasn't actually started
+      // until its first real session happens (see lib/groups/cycle-start.ts
+      // and the backfill in lib/groups/sync-progress.ts), so there's no
+      // real date yet to count expectedEndDate from either.
       currentCycleStartDate: null,
       startDate: null,
-      expectedEndDate,
+      expectedEndDate: null,
       scheduleSlots: group.scheduleSlots ?? undefined,
       requireFullPaymentToStart: group.requireFullPaymentToStart,
       partialPaymentCounts: group.partialPaymentCounts,

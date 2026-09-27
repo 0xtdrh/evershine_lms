@@ -605,11 +605,15 @@ export default function GroupsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">Starts</p>
-                  <p className="text-slate-800">{formatDate(detail.startDate)}</p>
+                  <p className={detail.startDate ? 'text-slate-800' : 'text-amber-600 font-medium'}>
+                    {detail.startDate ? formatDate(detail.startDate) : 'Not started yet'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">Level ends</p>
-                  <p className="text-slate-800">{formatDate(detail.expectedEndDate)}</p>
+                  <p className={detail.expectedEndDate ? 'text-slate-800' : 'text-slate-400'}>
+                    {detail.expectedEndDate ? formatDate(detail.expectedEndDate) : '—'}
+                  </p>
                 </div>
                 {detail.level && detail.level.numberOfMonths > 1 && detail.startDate && (
                   <div>

@@ -95,6 +95,19 @@ export async function syncGroupProgress(classSectionId: string, _actingUserId: s
   const cycleStart = await resolveCycleStart(classSectionId, group.currentCycleStartDate, group.startDate)
   if (!cycleStart) return empty
 
+  // First real session ever recorded for a group that hadn't "started" yet
+  // (advance-cycle leaves startDate/expectedEndDate unset on purpose) — now
+  // it has a real date, so make that official instead of leaving it blank
+  // forever.
+  if (!group.startDate && !group.currentCycleStartDate) {
+    const expectedEndDate = new Date(cycleStart)
+    expectedEndDate.setMonth(expectedEndDate.getMonth() + group.level.numberOfMonths)
+    await prisma.classSection.update({
+      where: { id: classSectionId },
+      data: { startDate: cycleStart, currentCycleStartDate: cycleStart, expectedEndDate },
+    })
+  }
+
   const records = await prisma.enrollmentAttendanceRecord.findMany({
     where: { studentEnrollment: { classSectionId }, attendanceDate: { gte: cycleStart } },
     select: { attendanceDate: true },

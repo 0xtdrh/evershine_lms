@@ -8,6 +8,7 @@ export interface ScheduledSession {
   time: string // "HH:MM"
   courseName: string | null
   levelName: string | null
+  hasNotStarted: boolean
 }
 
 /**
@@ -26,6 +27,7 @@ export async function getTeacherSessionsOnDate(teacherId: string, date: Date): P
       classSection: {
         select: {
           id: true, className: true, sectionName: true, scheduleSlots: true, isActive: true, status: true,
+          startDate: true, currentCycleStartDate: true,
           level: { select: { name: true, subject: { select: { name: true } } } },
         },
       },
@@ -36,6 +38,10 @@ export async function getTeacherSessionsOnDate(teacherId: string, date: Date): P
   for (const o of offerings) {
     const cs = o.classSection
     if (!cs.isActive || cs.status === 'COMPLETED') continue
+    // A group with no start date yet hasn't actually begun — still shown
+    // (so it's not a dead end for marking that first session), but flagged
+    // so the UI can make clear it hasn't started and hide "Excuse" for it.
+    const hasNotStarted = !cs.startDate && !cs.currentCycleStartDate
     const slots = Array.isArray(cs.scheduleSlots) ? (cs.scheduleSlots as { dayOfWeek: number; time: string }[]) : []
     for (const slot of slots) {
       if (slot.dayOfWeek === dayOfWeek) {
@@ -46,6 +52,7 @@ export async function getTeacherSessionsOnDate(teacherId: string, date: Date): P
           time: slot.time,
           courseName: cs.level?.subject.name ?? null,
           levelName: cs.level?.name ?? null,
+          hasNotStarted,
         })
       }
     }
@@ -86,6 +93,8 @@ export async function getRemainingCycleSessions(classSectionId: string): Promise
   })
   if (!group || !group.level) return []
 
+  // Brand-new groups (from /advance-cycle) have no startDate yet — it
+  // hasn't actually begun, so there's nothing to excuse until it does.
   const cycleStart = group.currentCycleStartDate ?? group.startDate
   if (!cycleStart) return []
 
