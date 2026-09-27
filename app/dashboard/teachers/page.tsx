@@ -366,6 +366,11 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
                   Pay Rule
                 </Button>
               </Link>
+              <Link href={`/dashboard/teachers/${teacher.id}/capabilities`}>
+                <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
+                  Capabilities
+                </Button>
+              </Link>
             </div>
           )}
         </DialogHeader>
