@@ -41,7 +41,7 @@ export const createTeacherSchema = z.object({
   gender: genderEnum,
 
   // Professional
-  qualification: z.string().min(2, 'Qualification is required').trim(),
+  qualification: z.string().trim().optional().default(''),
   specialization: z.string().trim().optional(),
   experienceYears: z.number().int().min(0).default(0),
   joiningDate: z.string().datetime({ message: 'joiningDate must be an ISO datetime string' }),

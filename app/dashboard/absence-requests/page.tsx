@@ -95,6 +95,29 @@ export default function AbsenceRequestsPage() {
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to assign substitute')),
   })
 
+  const noSubstituteMutation = useMutation({
+    mutationFn: ({ classSectionId, action }: { classSectionId: string; action: 'CONTINUE' | 'CANCEL_SESSION' }) =>
+      fetchApi(`/api/teacher-absences/${substituteDialogId}/no-substitute-action`, {
+        method: 'POST',
+        body: JSON.stringify({ classSectionId, action }),
+      }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['substitute-suggestions', substituteDialogId] })
+      queryClient.invalidateQueries({ queryKey: ['teacher-absences'] })
+      notify.success(vars.action === 'CANCEL_SESSION' ? 'Session cancelled' : 'Marked as continuing without a substitute')
+    },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to save')),
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => fetchApi(`/api/teacher-absences/${id}/cancel`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-absences'] })
+      notify.success('Request cancelled')
+    },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to cancel')),
+  })
+
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
       <div>
@@ -139,15 +162,23 @@ export default function AbsenceRequestsPage() {
                     <Button size="sm" variant="outline" className="text-red-600 border-red-200" onClick={() => setRejectDialogId(row.id)}>
                       Reject
                     </Button>
+                    <Button size="sm" variant="ghost" className="text-slate-500" disabled={cancelMutation.isPending} onClick={() => cancelMutation.mutate(row.id)}>
+                      Cancel
+                    </Button>
                   </div>
                 )}
 
                 {row.status === 'APPROVED' && (
                   <div className="pt-1 space-y-1">
                     {row.substitutes.length === 0 ? (
-                      <Button size="sm" variant="outline" onClick={() => setSubstituteDialogId(row.id)}>
-                        Find a substitute
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setSubstituteDialogId(row.id)}>
+                          Find a substitute
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-slate-500" disabled={cancelMutation.isPending} onClick={() => cancelMutation.mutate(row.id)}>
+                          Cancel
+                        </Button>
+                      </div>
                     ) : (
                       row.substitutes.map((s, i) => (
                         <p key={i} className="text-xs text-slate-500">
@@ -160,6 +191,9 @@ export default function AbsenceRequestsPage() {
 
                 {row.status === 'REJECTED' && (
                   <Badge variant="outline" className="text-rose-600 border-rose-200">Rejected</Badge>
+                )}
+                {row.status === 'CANCELLED' && (
+                  <Badge variant="outline" className="text-slate-500 border-slate-200">Cancelled</Badge>
                 )}
               </CardContent>
             </Card>
@@ -207,7 +241,25 @@ export default function AbsenceRequestsPage() {
                   {sg.existingAssignment ? (
                     <Badge variant="outline">Substitute {sg.existingAssignment.status === 'CONFIRMED' ? 'confirmed' : 'pending'}</Badge>
                   ) : sg.candidates.length === 0 ? (
-                    <p className="text-xs text-rose-500">No qualified & available teacher found — pick manually from Staff Directory.</p>
+                    <div className="space-y-2">
+                      <p className="text-xs text-rose-500">No qualified & available teacher found — pick manually from Staff Directory, or:</p>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm" variant="outline"
+                          disabled={noSubstituteMutation.isPending}
+                          onClick={() => noSubstituteMutation.mutate({ classSectionId: sg.classSectionId, action: 'CONTINUE' })}
+                        >
+                          Continue anyway
+                        </Button>
+                        <Button
+                          size="sm" variant="outline" className="text-red-600 border-red-200"
+                          disabled={noSubstituteMutation.isPending}
+                          onClick={() => noSubstituteMutation.mutate({ classSectionId: sg.classSectionId, action: 'CANCEL_SESSION' })}
+                        >
+                          Cancel session
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {sg.candidates.map((c) => (

@@ -38,7 +38,7 @@ export async function GET(
   const rangeEnd = new Date(today)
   rangeEnd.setDate(rangeEnd.getDate() + days)
 
-  const [absences, substituteAssignments] = await Promise.all([
+  const [absences, substituteAssignments, cancelledSessions] = await Promise.all([
     prisma.teacherAbsence.findMany({
       where: { teacherId: id, date: { gte: today, lt: rangeEnd } },
       select: { id: true, date: true, scope: true, classSectionId: true, status: true },
@@ -46,6 +46,10 @@ export async function GET(
     prisma.substituteAssignment.findMany({
       where: { substituteTeacherId: id, date: { gte: today, lt: rangeEnd }, status: 'CONFIRMED' },
       include: { originalTeacher: { select: { firstName: true, lastName: true } } },
+    }),
+    prisma.cancelledSession.findMany({
+      where: { date: { gte: today, lt: rangeEnd } },
+      select: { classSectionId: true, date: true, reason: true },
     }),
   ])
 
@@ -65,11 +69,16 @@ export async function GET(
       const substituteCoverage = substituteAssignments.find(
         (sub) => sub.date.toISOString().slice(0, 10) === dateStr && sub.classSectionId === s.classSectionId
       )
+      const cancelled = cancelledSessions.find(
+        (c) => c.date.toISOString().slice(0, 10) === dateStr && c.classSectionId === s.classSectionId
+      )
       return {
         ...s,
         absenceStatus: absence?.status ?? null,
         isSubstituteCoverageHere: !!substituteCoverage,
         coveringForName: substituteCoverage ? `${substituteCoverage.originalTeacher.firstName} ${substituteCoverage.originalTeacher.lastName}` : null,
+        isCancelled: !!cancelled,
+        cancelledReason: cancelled?.reason ?? null,
       }
     })
 

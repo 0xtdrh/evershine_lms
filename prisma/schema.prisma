@@ -1935,6 +1935,7 @@ model ClassSection {
   payAdjustments TeacherPayAdjustment[]
   absences TeacherAbsence[]
   substituteAssignments SubstituteAssignment[]
+  cancelledSessions CancelledSession[]
 
   campus                    Campus                     @relation(fields: [campusId], references: [id])
   batch                     Batch                      @relation(fields: [batchId], references: [id])
@@ -2199,6 +2200,7 @@ enum AbsenceStatus {
   PENDING
   APPROVED
   REJECTED
+  CANCELLED
 }
 
 /// A teacher's request to be absent — a whole day, or one specific group
@@ -2259,6 +2261,23 @@ model SubstituteAssignment {
   @@index([originalTeacherId])
   @@index([substituteTeacherId])
   @@index([date])
+}
+
+/// A specific session cancelled because no substitute was found (or chosen
+/// not to use one). Visible wherever the group's schedule is shown, so
+/// nobody shows up expecting a session that isn't happening.
+model CancelledSession {
+  id             String   @id @default(cuid())
+  classSectionId String
+  date           DateTime @db.Date
+  reason         String?
+  cancelledBy    String // User id
+  createdAt      DateTime @default(now())
+
+  classSection ClassSection @relation(fields: [classSectionId], references: [id])
+
+  @@unique([classSectionId, date])
+  @@index([classSectionId])
 }
 
 enum GroupStatus {

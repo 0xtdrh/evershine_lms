@@ -28,7 +28,7 @@ const teacherSchema = z.object({
     .refine(v => /^\d{13}$/.test(v), 'CNIC must be 13 digits'),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   gender: z.enum(['MALE', 'FEMALE'], { required_error: 'Gender is required' }),
-  qualification: z.string().min(2, 'Qualification must be at least 2 characters').trim(),
+  qualification: z.string().trim().optional().default(''),
   specialization: z.string().optional(),
   experienceYears: z.coerce.number().int().min(0).default(0),
   joiningDate: z.string().min(1, 'Joining date is required'),

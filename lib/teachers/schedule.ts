@@ -61,3 +61,63 @@ export function combineDateAndTime(date: Date, time: string): Date {
   combined.setHours(h || 0, m || 0, 0, 0)
   return combined
 }
+
+export interface RemainingSession {
+  date: string // YYYY-MM-DD
+  time: string
+  sessionNumber: number
+  totalSessions: number
+}
+
+/**
+ * The sessions still left in a group's CURRENT cycle, projected forward
+ * from today using its scheduleSlots recurrence, each tagged with its
+ * session number (e.g. "Session 3 of 4"). Used to let a teacher pick
+ * exactly one upcoming session to excuse (instead of only "today"), and to
+ * show a substitute which session number they're covering.
+ */
+export async function getRemainingCycleSessions(classSectionId: string): Promise<RemainingSession[]> {
+  const group = await prisma.classSection.findUnique({
+    where: { id: classSectionId },
+    select: {
+      currentCycleStartDate: true, startDate: true, scheduleSlots: true,
+      level: { select: { numberOfSessions: true, numberOfMonths: true } },
+    },
+  })
+  if (!group || !group.level) return []
+
+  const cycleStart = group.currentCycleStartDate ?? group.startDate
+  if (!cycleStart) return []
+
+  const sessionsPerCycle = Math.max(1, Math.round(group.level.numberOfSessions / group.level.numberOfMonths))
+
+  const attended = await prisma.enrollmentAttendanceRecord.findMany({
+    where: { studentEnrollment: { classSectionId }, attendanceDate: { gte: cycleStart } },
+    select: { attendanceDate: true },
+    distinct: ['attendanceDate'],
+  })
+  const sessionsSoFar = attended.length
+  const remaining = Math.max(0, sessionsPerCycle - sessionsSoFar)
+  if (remaining === 0) return []
+
+  const slots = Array.isArray(group.scheduleSlots) ? (group.scheduleSlots as { dayOfWeek: number; time: string }[]) : []
+  if (slots.length === 0) return []
+
+  const results: RemainingSession[] = []
+  const cursor = new Date()
+  cursor.setHours(0, 0, 0, 0)
+  let sessionNum = sessionsSoFar + 1
+  let daysChecked = 0
+  while (results.length < remaining && daysChecked < 120) {
+    const dow = cursor.getDay()
+    const matchingSlots = slots.filter((s) => s.dayOfWeek === dow).sort((a, b) => a.time.localeCompare(b.time))
+    for (const slot of matchingSlots) {
+      if (results.length >= remaining) break
+      results.push({ date: cursor.toISOString().slice(0, 10), time: slot.time, sessionNumber: sessionNum, totalSessions: sessionsPerCycle })
+      sessionNum++
+    }
+    cursor.setDate(cursor.getDate() + 1)
+    daysChecked++
+  }
+  return results
+}
