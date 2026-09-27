@@ -701,6 +701,11 @@ model Teacher {
   attendance             TeacherAttendance[]
   penaltyAssessments     PenaltyAssessment[]
   payAdjustments         TeacherPayAdjustment[]
+  qualifiedSubjects      TeacherQualifiedSubject[]
+  credentials            TeacherCredential[]
+  absences               TeacherAbsence[]
+  substitutingFor        SubstituteAssignment[] @relation("OriginalTeacherAssignments")
+  substituteAssignments  SubstituteAssignment[] @relation("SubstituteTeacherAssignments")
   timetable              Timetable[]
   tasks                  ClassTask[]
   changeRequests         TimetableChangeRequest[]
@@ -1928,6 +1933,8 @@ model ClassSection {
   cycleLogs GroupCycleLog[]
   invoices  FeeInvoice[]
   payAdjustments TeacherPayAdjustment[]
+  absences TeacherAbsence[]
+  substituteAssignments SubstituteAssignment[]
 
   campus                    Campus                     @relation(fields: [campusId], references: [id])
   batch                     Batch                      @relation(fields: [batchId], references: [id])
@@ -2076,6 +2083,7 @@ model AcademicSubject {
   levelResults   StudentLevelResult[]
   certificates   Certificate[]
   levels         Level[]
+  qualifiedTeachers TeacherQualifiedSubject[]
 
   @@index([trackId])
 }
@@ -2092,6 +2100,7 @@ model Track {
   createdAt   DateTime @default(now())
 
   courses AcademicSubject[]
+  qualifiedTeachers TeacherQualifiedSubject[]
 }
 
 enum LevelPricingType {
@@ -2121,9 +2130,135 @@ model Level {
   subject      AcademicSubject @relation(fields: [subjectId], references: [id])
   classSections ClassSection[]
   invoices      FeeInvoice[]
+  qualifiedTeachers TeacherQualifiedSubject[]
 
   @@unique([subjectId, order])
   @@index([subjectId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEACHER QUALIFICATIONS, CREDENTIALS, ABSENCE & SUBSTITUTE SYSTEM
+// WHY separate from academic engine's SubjectOffering: SubjectOffering means
+// "this teacher IS assigned to this group right now". These models track
+// "this teacher COULD teach this" (qualification, independent of any
+// current assignment) and the absence/substitute workflow built on top.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum TeacherCredentialType {
+  QUALIFICATION
+  TRAINING
+  CERTIFICATE
+}
+
+/// What a teacher is qualified to teach. Exactly one of trackId/subjectId/
+/// levelId is set per row — trackId covers every course in that track,
+/// subjectId covers every level of that course, levelId covers just that
+/// one level. Used to filter substitute suggestions.
+model TeacherQualifiedSubject {
+  id        String   @id @default(cuid())
+  teacherId String
+  trackId   String?
+  subjectId String?
+  levelId   String?
+  createdAt DateTime @default(now())
+
+  teacher Teacher          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  track   Track?           @relation(fields: [trackId], references: [id])
+  subject AcademicSubject? @relation(fields: [subjectId], references: [id])
+  level   Level?           @relation(fields: [levelId], references: [id])
+
+  @@index([teacherId])
+  @@index([trackId])
+  @@index([subjectId])
+  @@index([levelId])
+}
+
+/// A teacher's qualification, professional-development record, or
+/// certificate — one unified list, distinguished by type.
+model TeacherCredential {
+  id           String                @id @default(cuid())
+  teacherId    String
+  type         TeacherCredentialType
+  title        String
+  institution  String?
+  dateObtained DateTime?             @db.Date
+  fileUrl      String?
+  createdAt    DateTime              @default(now())
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+}
+
+enum AbsenceScope {
+  FULL_DAY
+  SINGLE_SESSION
+}
+
+enum AbsenceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// A teacher's request to be absent — a whole day, or one specific group
+/// session. Requires admin/manager/secretary approval (gated by the
+/// 'teacher_absences' RBAC resource, not a hardcoded role) before any
+/// substitute gets suggested. Normal requests need 6+ hours' notice before
+/// the affected session; isForceMajeure (severe illness, bereavement)
+/// bypasses that, but is flagged for faster admin attention when late.
+model TeacherAbsence {
+  id              String        @id @default(cuid())
+  teacherId       String
+  date            DateTime      @db.Date
+  scope           AbsenceScope
+  classSectionId  String? // set when scope = SINGLE_SESSION
+  reason          String
+  isForceMajeure  Boolean       @default(false)
+  status          AbsenceStatus @default(PENDING)
+  requestedAt     DateTime      @default(now())
+  respondedBy     String?
+  respondedAt     DateTime?
+  rejectionReason String?
+
+  teacher      Teacher                @relation(fields: [teacherId], references: [id])
+  classSection ClassSection?          @relation(fields: [classSectionId], references: [id])
+  substitutes  SubstituteAssignment[]
+
+  @@index([teacherId])
+  @@index([status])
+  @@index([date])
+}
+
+enum SubstituteStatus {
+  PENDING_SUBSTITUTE_APPROVAL
+  CONFIRMED
+  DECLINED
+}
+
+/// One specific session's substitute coverage — the substitute must accept
+/// before it's confirmed and shows up in anyone's schedule.
+model SubstituteAssignment {
+  id                  String           @id @default(cuid())
+  teacherAbsenceId    String
+  classSectionId      String
+  date                DateTime         @db.Date
+  originalTeacherId   String
+  substituteTeacherId String
+  status              SubstituteStatus @default(PENDING_SUBSTITUTE_APPROVAL)
+  assignedBy          String
+  assignedAt          DateTime         @default(now())
+  respondedAt         DateTime?
+
+  teacherAbsence    TeacherAbsence @relation(fields: [teacherAbsenceId], references: [id])
+  classSection      ClassSection   @relation(fields: [classSectionId], references: [id])
+  originalTeacher   Teacher        @relation("OriginalTeacherAssignments", fields: [originalTeacherId], references: [id])
+  substituteTeacher Teacher        @relation("SubstituteTeacherAssignments", fields: [substituteTeacherId], references: [id])
+
+  @@index([classSectionId])
+  @@index([originalTeacherId])
+  @@index([substituteTeacherId])
+  @@index([date])
 }
 
 enum GroupStatus {

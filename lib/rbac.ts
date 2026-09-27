@@ -48,6 +48,7 @@ export type AcademicResource =
   // app/api/admissions/**; it is now a first-class RBAC resource so it can be
   // managed from the Permissions page without touching code.
   | 'admissions'
+  | 'teacher_absences'
 
 type Resource = AcademicResource
 
@@ -123,6 +124,7 @@ const PERMISSIONS: PermissionMap = {
     teacher_penalties: ['create', 'read', 'update', 'delete'],
     expenses: ['create', 'read', 'update', 'delete'],
     admissions: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+    teacher_absences: ['create', 'read', 'update', 'delete', 'approve', 'export'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -153,6 +155,7 @@ const PERMISSIONS: PermissionMap = {
     teacher_penalties: ['create', 'read', 'update'],
     expenses: ['create', 'read', 'update', 'delete'],
     admissions: ['create', 'read', 'update', 'approve', 'export'],
+    teacher_absences: ['create', 'read', 'update', 'approve', 'export'],
   },
   TEACHER: {
     students: ['read'],
@@ -184,6 +187,7 @@ const PERMISSIONS: PermissionMap = {
     teacher_penalties: ['read'],
     expenses: [],
     admissions: [],
+    teacher_absences: ['create', 'read'],
   },
   STUDENT: {
     students: ['read'],
@@ -214,6 +218,7 @@ const PERMISSIONS: PermissionMap = {
     teacher_penalties: [],
     expenses: [],
     admissions: [],
+    teacher_absences: [],
   },
   PARENT: {
     students: ['read'],
@@ -244,6 +249,7 @@ const PERMISSIONS: PermissionMap = {
     teacher_penalties: [],
     expenses: [],
     admissions: [],
+    teacher_absences: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -276,6 +282,7 @@ const PERMISSIONS: PermissionMap = {
     teacher_penalties: [],
     expenses: ['create', 'read', 'update', 'delete'],
     admissions: ['read', 'export'],
+    teacher_absences: ['read'],
   },
   GUARDIAN: {
     students: ['read'],
@@ -306,6 +313,7 @@ const PERMISSIONS: PermissionMap = {
     teacher_penalties: [],
     expenses: [],
     admissions: [],
+    teacher_absences: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -340,6 +348,7 @@ const PERMISSIONS: PermissionMap = {
     teacher_penalties: [],
     expenses: [],
     admissions: ['create', 'read', 'update'],
+    teacher_absences: ['create', 'read', 'approve'],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -375,6 +384,7 @@ const PERMISSIONS: PermissionMap = {
     teacher_penalties: ['create', 'read', 'update'],
     expenses: ['create', 'read', 'update', 'delete'],
     admissions: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+    teacher_absences: ['create', 'read', 'update', 'approve', 'export'],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -408,6 +418,7 @@ const PERMISSIONS: PermissionMap = {
     teacher_penalties: [],
     expenses: [],
     admissions: ['create', 'read', 'update', 'export'],
+    teacher_absences: [],
   },
 }
 
