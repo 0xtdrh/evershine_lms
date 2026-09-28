@@ -19,6 +19,7 @@ import {
   deleteRolePermission,
 } from '@/lib/admin/permission-manager'
 import { Role } from '@prisma/client'
+import { reloadPermissionOverrides } from '@/lib/rbac-overrides'
 
 const actionSchema = z.enum(['create', 'read', 'update', 'delete', 'export', 'approve'])
 const knownResources = Object.keys(DEFAULT_PERMISSION_MATRIX.SUPER_ADMIN)
@@ -64,6 +65,9 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return errors.validation(parsed.error)
   }
+  if (parsed.data.role === 'SUPER_ADMIN') {
+    return errors.badRequest('Super Admin always has full access and cannot be restricted.')
+  }
 
   const updatedPermission = await upsertRolePermission({
     role: parsed.data.role,
@@ -90,6 +94,7 @@ export async function POST(request: NextRequest) {
     request,
   })
 
+  await reloadPermissionOverrides()
   return successResponse(updatedPermission, 'Permission override saved successfully.')
 }
 
@@ -130,5 +135,6 @@ export async function DELETE(request: NextRequest) {
     request,
   })
 
+  await reloadPermissionOverrides()
   return successResponse(deleted, 'Permission override removed successfully.')
 }

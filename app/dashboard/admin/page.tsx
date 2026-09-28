@@ -47,13 +47,6 @@ const ADMIN_ACTIONS = [
     badge: 'Finance',
   },
   {
-    title: 'Configure Permissions',
-    description: 'Review role allowances and create temporary permission overrides for operational exceptions.',
-    href: '/dashboard/admin/permissions',
-    icon: ShieldCheck,
-    badge: 'Security',
-  },
-  {
     title: 'Assume a role',
     description: 'Create a temporary role assumption for support, troubleshooting, and compliance review.',
     href: '/dashboard/admin/role-assumptions',
@@ -146,6 +139,13 @@ export default function AdminWorkspacePage() {
   const actions = useMemo(() => {
     const list = [...ADMIN_ACTIONS]
     if (role === 'SUPER_ADMIN') {
+      list.unshift({
+        title: 'Configure Permissions',
+        description: 'Grant or revoke access for each role. Super Admin always keeps full access.',
+        href: '/dashboard/admin/permissions',
+        icon: ShieldCheck,
+        badge: 'Security',
+      })
       list.unshift({
         title: 'Database Backups',
         description: 'Daily automatic backups (newest 7). Back up now or download a copy.',

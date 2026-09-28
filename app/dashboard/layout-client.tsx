@@ -76,7 +76,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { name: 'Dashboard',       href: '/dashboard',              icon: LayoutDashboard },
   { name: 'Admin Workspace', href: '/dashboard/admin',        icon: ShieldCheck,     roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
-  { name: 'Permissions',     href: '/dashboard/admin/permissions',      icon: ShieldCheck,     roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { name: 'Permissions',     href: '/dashboard/admin/permissions',      icon: ShieldCheck,     roles: ['SUPER_ADMIN'] },
   { name: 'Role Assumptions', href: '/dashboard/admin/role-assumptions', icon: KeyRound,    roles: ['SUPER_ADMIN', 'ADMIN'] },
   { name: 'Credential Management', href: '/dashboard/admin/credential-management', icon: KeyRound, roles: ['SUPER_ADMIN'] },
   { name: 'Backups',         href: '/dashboard/admin/backups',          icon: DatabaseBackup,  roles: ['SUPER_ADMIN'] },

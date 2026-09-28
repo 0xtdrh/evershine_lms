@@ -33,8 +33,9 @@ import { verify } from '@node-rs/argon2'
 import { compare } from 'bcryptjs'
 import { loginSchema } from '@/lib/validation/user'
 import { authConfig } from '@/lib/auth.config'
+import { ensurePermissionOverrides } from '@/lib/rbac-overrides'
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
   ...authConfig,
 
   // WHY no adapter: See module-level comment. Credentials + JWT requires no
@@ -166,3 +167,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
 })
+
+/**
+ * auth() — the NextAuth session, plus Permissions-page overrides loaded.
+ *
+ * WHY here: almost every API route starts with auth() (directly or through
+ * requireSession) and then calls the synchronous checkPermission(). Loading the
+ * overrides here makes them apply everywhere without touching 300+ routes.
+ * The load is cached for 30s and never throws.
+ */
+export const auth = (async (...args: unknown[]) => {
+  const result = await (nextAuthSession as (...a: unknown[]) => Promise<unknown>)(...args)
+  await ensurePermissionOverrides()
+  return result
+}) as typeof nextAuthSession

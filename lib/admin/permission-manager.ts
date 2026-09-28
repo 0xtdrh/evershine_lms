@@ -54,7 +54,8 @@ export async function getPermissionMatrix() {
   })
 
   for (const override of overrides) {
-    if (!isAction(override.action)) continue
+    // SUPER_ADMIN overrides are ignored by checkPermission (lib/rbac.ts); show the same here.
+    if (!isAction(override.action) || override.role === 'SUPER_ADMIN') continue
     const current = matrix[override.role] ?? {}
     const actions = new Set(current[override.resource] ?? [])
     if (override.isEnabled) {
@@ -74,7 +75,7 @@ export async function getEffectivePermissionMatrix(role: Role) {
     Object.entries(DEFAULT_PERMISSION_MATRIX[role] ?? {}).map(([resource, actions]) => [resource, [...actions]])
   ) as PermissionMatrix
 
-  const overrides = await getRolePermissionOverrides(role)
+  const overrides = role === 'SUPER_ADMIN' ? [] : await getRolePermissionOverrides(role)
   for (const override of overrides) {
     if (!isAction(override.action)) continue
     const actions = new Set(baseMatrix[override.resource] ?? [])

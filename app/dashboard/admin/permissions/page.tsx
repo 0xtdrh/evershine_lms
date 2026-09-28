@@ -71,6 +71,8 @@ const ROLE_OPTIONS: Role[] = [
   'SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING',
   'TEACHER', 'ACCOUNTANT', 'STUDENT', 'PARENT', 'GUARDIAN',
 ]
+// SUPER_ADMIN always has full access (lib/rbac.ts ignores overrides for it).
+const EDITABLE_ROLE_OPTIONS = ROLE_OPTIONS.filter((r) => r !== 'SUPER_ADMIN')
 const ACTION_OPTIONS = ['create', 'read', 'update', 'delete', 'export', 'approve'] as const
 // WHY: business-friendly labels for non-technical admins (View/Create/Edit/Delete/Export/Approve)
 const ACTION_LABEL: Record<string, string> = {
@@ -99,7 +101,7 @@ export default function PermissionsPage() {
   const { status, data: session } = useSession()
   const queryClient = useQueryClient()
   const userRole = session?.user?.role as Role | undefined
-  const isAdminView = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN'
+  const isAdminView = userRole === 'SUPER_ADMIN'
 
   // Form state
   const [selectedRole, setSelectedRole] = useState<Role>('ADMIN')
@@ -164,7 +166,7 @@ export default function PermissionsPage() {
     return (
       <AccessDenied
         title="Permission Management"
-        message="Only Administrators may view or configure permission overrides."
+        message="Only Super Administrators may view or configure permission overrides."
       />
     )
   }
@@ -219,7 +221,7 @@ export default function PermissionsPage() {
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLE_OPTIONS.map((r) => (
+                    {EDITABLE_ROLE_OPTIONS.map((r) => (
                       <SelectItem key={r} value={r}>{r.replace('_', ' ')}</SelectItem>
                     ))}
                   </SelectContent>
@@ -317,12 +319,13 @@ export default function PermissionsPage() {
               />
             </div>
 
-            {userRole === 'ADMIN' && (
-              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 flex items-start gap-2 text-xs text-amber-800">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
-                Admins may modify all roles except <strong>SUPER_ADMIN</strong>.
-              </div>
-            )}
+            <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 flex items-start gap-2 text-xs text-amber-800">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+              <span>
+                Changes apply within about 30 seconds. <strong>Super Admin</strong> always keeps full access.
+                Some screens still check fixed roles in code and are being connected to this page step by step.
+              </span>
+            </div>
 
             <div className="flex justify-end">
               <Button

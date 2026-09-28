@@ -433,19 +433,53 @@ export function checkPermission(role: Role | string | null | undefined, resource
   const normalizedRole = normalizeRole(role)
   if (!normalizedRole) return false
 
+  const override = getOverride(normalizedRole, resource, action)
+  if (override !== undefined) return override
+
   const allowed = PERMISSIONS[normalizedRole]?.[resource] ?? []
   return allowed.includes(action)
 }
 
 /**
- * Returns the allowed actions for a role on a resource.
+ * Returns the allowed actions for a role on a resource (overrides applied).
  * Useful for building role-aware UI navigation.
  */
 export function getAllowedActions(role: Role | string | null | undefined, resource: Resource): Action[] {
   const normalizedRole = normalizeRole(role)
   if (!normalizedRole) return []
 
-  return PERMISSIONS[normalizedRole]?.[resource] ?? []
+  return ALL_ACTIONS.filter((action) => checkPermission(normalizedRole, resource, action))
+}
+
+// ── Overrides from the Permissions page (RolePermission table) ───────────────
+// WHY kept here without Prisma: this file is also imported by client pages.
+// The server loads the rows (lib/rbac-overrides.ts) and registers them here;
+// checkPermission stays synchronous. Until they are loaded, or if loading fails,
+// the static matrix above applies unchanged.
+//
+// SUPER_ADMIN overrides are ignored on purpose: the owner must never be able to
+// lock himself out of the Permissions page.
+
+const ALL_ACTIONS: Action[] = ['create', 'read', 'update', 'delete', 'export', 'approve']
+
+let permissionOverrides: Map<string, boolean> | null = null
+
+function overrideKey(role: Role, resource: string, action: string) {
+  return `${role}:${resource}:${action}`
+}
+
+function getOverride(role: Role, resource: string, action: Action): boolean | undefined {
+  if (role === 'SUPER_ADMIN' || !permissionOverrides) return undefined
+  return permissionOverrides.get(overrideKey(role, resource, action))
+}
+
+export function setPermissionOverrides(rows: Array<{ role: Role; resource: string; action: string; isEnabled: boolean }>) {
+  const next = new Map<string, boolean>()
+  for (const row of rows) {
+    if (row.role === 'SUPER_ADMIN') continue
+    next.set(overrideKey(row.role, row.resource, row.action), row.isEnabled)
+  }
+  permissionOverrides = next
 }
 
 /**
