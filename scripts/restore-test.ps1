@@ -108,23 +108,43 @@ try {
   }
 
   # 6) Report
+  # Integrity = restored copy vs the manifest written INSIDE the backup (same snapshot).
+  # Live counts can legitimately be higher/lower: people keep using the system after the
+  # backup (and every backup/download adds an AuditLog row). So with a manifest, a live
+  # difference is only reported, not a failure. Without a manifest (plain mysqldump),
+  # live is the only reference and a difference is a failure.
+  $hasManifest = $manifest.Count -gt 0
   $rows = @()
-  $mismatch = 0
+  $broken = @()
+  $changedSince = @()
   $allNames = @($restored.Keys) + @($manifest.Keys) + @($live.Keys) | Sort-Object -Unique
   foreach ($t in $allNames) {
     $r = $restored[$t]; $m = $manifest[$t]; $l = $live[$t]
-    $ok = ($r -ne $null) -and (($manifest.Count -eq 0) -or ($m -eq $r)) -and ((-not $CompareLive) -or ($l -eq $r))
-    if (-not $ok) { $mismatch++ }
-    $rows += [pscustomobject]@{ Table = $t; Restored = $r; Manifest = $m; Live = $l; OK = $(if ($ok) { 'yes' } else { 'NO' }) }
+    if ($hasManifest) { $intact = ($r -ne $null) -and ($m -eq $r) }
+    elseif ($CompareLive) { $intact = ($r -ne $null) -and ($l -eq $r) }
+    else { $intact = ($r -ne $null) }
+    $liveDiff = $CompareLive -and $hasManifest -and ($l -ne $r)
+    if (-not $intact) { $broken += "$t (restored=$r manifest=$m live=$l)" }
+    elseif ($liveDiff) { $changedSince += "$t (backup=$r live now=$l)" }
+    $status = if (-not $intact) { 'NO' } elseif ($liveDiff) { 'changed' } else { 'yes' }
+    $rows += [pscustomobject]@{ Table = $t; Restored = $r; Manifest = $m; Live = $l; OK = $status }
   }
   $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
   $totalRows = ($restored.Values | Measure-Object -Sum).Sum
   Write-Host "Tables restored: $($restored.Count)   Total rows: $totalRows"
-  if ($manifest.Count -eq 0 -and -not $CompareLive) {
+  if (-not $hasManifest -and -not $CompareLive) {
     Write-Host 'No manifest in this file (plain mysqldump). Re-run with -CompareLive to compare against Railway.' -ForegroundColor Yellow
   }
-  if ($mismatch -eq 0) { Write-Host 'RESULT: PASS - every table matches.' -ForegroundColor Green }
-  else { Write-Host "RESULT: FAIL - $mismatch table(s) differ." -ForegroundColor Red; $global:LASTEXITCODE = 1 }
+  if ($changedSince.Count -gt 0) {
+    Write-Host "Changed on Railway AFTER the backup was taken (normal, not a backup problem):" -ForegroundColor Yellow
+    $changedSince | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
+  }
+  if ($broken.Count -eq 0) { Write-Host 'RESULT: PASS - the backup restored completely.' -ForegroundColor Green }
+  else {
+    Write-Host "RESULT: FAIL - $($broken.Count) table(s) did not restore correctly:" -ForegroundColor Red
+    $broken | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
+    $global:LASTEXITCODE = 1
+  }
 }
 finally {
   if ($server) {
