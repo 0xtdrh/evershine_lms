@@ -230,7 +230,7 @@ function GeneratePLModal({
           </div>
 
           <div>
-            <label className="text-xs font-black uppercase text-gray-500 block mb-1">Reserve fund contribution (PKR)</label>
+            <label className="text-xs font-black uppercase text-gray-500 block mb-1">Reserve fund contribution (EGP)</label>
             <Input type="number" min={0} value={reserveContribution} onChange={(e) => setReserveContribution(e.target.value)} placeholder="Optional — use 25% default" className="h-9 text-sm" />
             <p className="text-[10px] text-gray-400 mt-1">Account Manager selects a specific amount up to the SuperAdmin allocation. The remaining allocation is the monthly draw.</p>
           </div>

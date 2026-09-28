@@ -201,7 +201,7 @@ export default function GenerateChallanPage() {
                       <p className="font-medium text-sm text-blue-900">{selectedStudent.firstName} {selectedStudent.lastName}</p>
                       <p className="text-xs text-blue-600">{selectedStudent.registrationNumber} · {selectedStudent.campus.name}</p>
                       {selectedStudent.dueAmount > 0 && (
-                        <p className="text-xs text-red-600 mt-0.5">Previous due: Rs {Number(selectedStudent.dueAmount).toLocaleString()}</p>
+                        <p className="text-xs text-red-600 mt-0.5">Previous due: EGP {Number(selectedStudent.dueAmount).toLocaleString()}</p>
                       )}
                     </div>
                   </div>
@@ -300,11 +300,11 @@ export default function GenerateChallanPage() {
 
               <div className="grid grid-cols-2 gap-3 pt-2 border-t">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Discount (Rs)</Label>
+                  <Label className="text-xs">Discount (EGP)</Label>
                   <Input type="number" min={0} value={discount || ''} onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Late Fee (Rs)</Label>
+                  <Label className="text-xs">Late Fee (EGP)</Label>
                   <Input type="number" min={0} value={lateFee || ''} onChange={(e) => setLateFee(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
                 </div>
               </div>
@@ -342,7 +342,7 @@ export default function GenerateChallanPage() {
                 <div className="flex justify-between text-gray-500 mb-1">
                   <span>Due:</span>
                   <span className="font-medium text-gray-900">
-                    {new Date(dueDate + 'T00:00:00').toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(dueDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                 </div>
               </div>
@@ -351,7 +351,7 @@ export default function GenerateChallanPage() {
                 {items.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-gray-700">
                     <span className="truncate pr-2">{item.description || '—'}</span>
-                    <span className="font-medium flex-shrink-0">Rs {Number(item.amount).toLocaleString()}</span>
+                    <span className="font-medium flex-shrink-0">EGP {Number(item.amount).toLocaleString()}</span>
                   </div>
                 ))}
                 {(admissionFee > 0 || courseFee > 0) && (
@@ -360,36 +360,36 @@ export default function GenerateChallanPage() {
                     {admissionFee > 0 && (
                       <div className="flex justify-between">
                         <span>Admission Fee</span>
-                        <span className="font-mono">Rs {admissionFee.toLocaleString()}</span>
+                        <span className="font-mono">EGP {admissionFee.toLocaleString()}</span>
                       </div>
                     )}
                     {courseFee > 0 && (
                       <div className="flex justify-between">
                         <span>Course Fee</span>
-                        <span className="font-mono">Rs {courseFee.toLocaleString()}</span>
+                        <span className="font-mono">EGP {courseFee.toLocaleString()}</span>
                       </div>
                     )}
                     <div className="flex justify-between border-t border-slate-200 pt-2 mt-2 font-semibold text-slate-900">
                       <span>Total Academic Fee</span>
-                      <span className="font-mono">Rs {totalAcademicFee.toLocaleString()}</span>
+                      <span className="font-mono">EGP {totalAcademicFee.toLocaleString()}</span>
                     </div>
                   </div>
                 )}
                 {discount > 0 && (
                   <div className="flex justify-between text-green-700">
                     <span>Discount</span>
-                    <span>— Rs {discount.toLocaleString()}</span>
+                    <span>— EGP {discount.toLocaleString()}</span>
                   </div>
                 )}
                 {lateFee > 0 && (
                   <div className="flex justify-between text-red-700">
                     <span>Late Fee</span>
-                    <span>+ Rs {lateFee.toLocaleString()}</span>
+                    <span>+ EGP {lateFee.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-sm text-gray-900 border-t pt-2 mt-1">
                   <span>Total</span>
-                  <span>Rs {total.toLocaleString()}</span>
+                  <span>EGP {total.toLocaleString()}</span>
                 </div>
               </div>
 

@@ -163,7 +163,7 @@ export async function POST(
         data: admins.map((admin) => ({
           userId: admin.id,
           title: 'Guardian Leave Request',
-          message: `${session.user.name ?? 'A guardian'} has applied for leave on behalf of ${student.firstName} ${student.lastName} (${start.toLocaleDateString('en-PK')} – ${end.toLocaleDateString('en-PK')}).`,
+          message: `${session.user.name ?? 'A guardian'} has applied for leave on behalf of ${student.firstName} ${student.lastName} (${start.toLocaleDateString('en-GB')} – ${end.toLocaleDateString('en-GB')}).`,
           type: 'GENERAL',
           relatedId: newLeave.id,
         })),

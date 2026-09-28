@@ -62,7 +62,7 @@ export async function POST(
     return errors.validation({
       errors: [{
         path: ['amount'],
-        message: `Amount Rs ${amount} exceeds remaining balance Rs ${remaining}`,
+        message: `Amount EGP ${amount} exceeds remaining balance EGP ${remaining}`,
       }],
     } as never)
   }
@@ -131,6 +131,6 @@ export async function POST(
 
   return createdResponse(
     { id: payment.id, invoiceId, amount, newStatus },
-    `Payment of Rs ${amount} recorded successfully`
+    `Payment of EGP ${amount} recorded successfully`
   )
 }

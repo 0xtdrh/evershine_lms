@@ -284,16 +284,16 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             <CardContent className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Total Fee</span>
-                <span className="font-medium">Rs {Number(student.totalFeeAmount).toLocaleString()}</span>
+                <span className="font-medium">EGP {Number(student.totalFeeAmount).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Paid</span>
-                <span className="font-medium text-green-700">Rs {Number(student.paidAmount).toLocaleString()}</span>
+                <span className="font-medium text-green-700">EGP {Number(student.paidAmount).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold border-t pt-2">
                 <span className="text-gray-600">Due</span>
                 <span className={Number(student.dueAmount) > 0 ? 'text-red-600' : 'text-gray-400'}>
-                  Rs {Number(student.dueAmount).toLocaleString()}
+                  EGP {Number(student.dueAmount).toLocaleString()}
                 </span>
               </div>
               <Link href={`/dashboard/fees?studentId=${student.id}`}>
@@ -375,7 +375,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                 <InfoRow label="Section" value={student.section} />
                 <InfoRow label="Roll Number" value={student.rollNumber} />
                 <InfoRow label="Academic Year" value={student.academicYear} />
-                <InfoRow label="Admission Date" value={new Date(student.admissionDate).toLocaleDateString('en-PK', { day: 'numeric', month: 'long', year: 'numeric' })} />
+                <InfoRow label="Admission Date" value={new Date(student.admissionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} />
                 <InfoRow label="Adm. Number" value={student.admissionNumber} />
               </dl>
             </CardContent>
@@ -415,7 +415,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                 {engineAttendance.slice(0, 15).map((r) => (
                   <div key={r.id} className="flex justify-between px-4 py-2 text-xs">
                     <span>
-                      {new Date(r.attendanceDate).toLocaleDateString('en-PK')}
+                      {new Date(r.attendanceDate).toLocaleDateString('en-GB')}
                       {r.studentEnrollment?.classSection && (
                         <span className="text-gray-400 ml-1">
                           · {r.studentEnrollment.classSection.className}-{r.studentEnrollment.classSection.sectionName}
@@ -447,7 +447,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                         <p className="text-xs font-mono text-gray-400">{f.challanNumber}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium">Rs {Number(f.totalAmount).toLocaleString()}</p>
+                        <p className="text-sm font-medium">EGP {Number(f.totalAmount).toLocaleString()}</p>
                         <span className={`text-xs ${
                           f.status === 'PAID' ? 'text-green-600' :
                           f.status === 'OVERDUE' ? 'text-red-600' : 'text-yellow-600'

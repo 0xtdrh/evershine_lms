@@ -288,7 +288,7 @@ export async function sendStaffInterviewNotification(
   interviewDate: string,
   instructions?: string
 ) {
-  const formattedDate = new Date(interviewDate).toLocaleDateString('en-PK', {
+  const formattedDate = new Date(interviewDate).toLocaleDateString('en-GB', {
     weekday: 'long',
     day: '2-digit',
     month: 'long',

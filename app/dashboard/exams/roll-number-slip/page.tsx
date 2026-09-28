@@ -64,14 +64,14 @@ interface ExamSession { id: string; name: string; term: string }
 
 function fmtDate(iso: string) {
   try {
-    return new Date(iso).toLocaleDateString('en-PK', {
+    return new Date(iso).toLocaleDateString('en-GB', {
       weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
     })
   } catch { return iso }
 }
 
 function fmtDay(iso: string) {
-  try { return new Date(iso).toLocaleDateString('en-PK', { weekday: 'long' }) }
+  try { return new Date(iso).toLocaleDateString('en-GB', { weekday: 'long' }) }
   catch { return '' }
 }
 

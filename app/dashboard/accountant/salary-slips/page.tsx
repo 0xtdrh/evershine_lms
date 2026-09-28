@@ -210,15 +210,15 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
           {/* Salary components */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Basic Salary (PKR)*</label>
+              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Basic Salary (EGP)*</label>
               <Input type="number" value={basicSalary} onChange={e => setBasicSalary(e.target.value)} min={1} placeholder="0" className="h-9 text-sm" required />
             </div>
             <div>
-              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Overtime (PKR)</label>
+              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Overtime (EGP)</label>
               <Input type="number" value={overtime} onChange={e => setOvertime(e.target.value)} min={0} className="h-9 text-sm" />
             </div>
             <div>
-              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Lunch Dues (PKR)</label>
+              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Lunch Dues (EGP)</label>
               <Input type="number" value={lunchDues} onChange={e => setLunchDues(e.target.value)} min={0} className="h-9 text-sm" />
             </div>
           </div>
@@ -255,9 +255,9 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 
           {/* Net summary */}
           <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-4 grid grid-cols-3 text-center border border-indigo-100">
-            <div><p className="text-xs text-gray-500 font-bold uppercase">Total Additions</p><p className="text-lg font-black text-emerald-700">PKR {additions.toLocaleString()}</p></div>
-            <div><p className="text-xs text-gray-500 font-bold uppercase">Total Deductions</p><p className="text-lg font-black text-red-600">PKR {deductions.toLocaleString()}</p></div>
-            <div><p className="text-xs text-gray-500 font-bold uppercase">Net Payable</p><p className={`text-xl font-black ${net < 0 ? 'text-red-600' : 'text-indigo-900'}`}>PKR {net.toLocaleString()}</p></div>
+            <div><p className="text-xs text-gray-500 font-bold uppercase">Total Additions</p><p className="text-lg font-black text-emerald-700">EGP {additions.toLocaleString()}</p></div>
+            <div><p className="text-xs text-gray-500 font-bold uppercase">Total Deductions</p><p className="text-lg font-black text-red-600">EGP {deductions.toLocaleString()}</p></div>
+            <div><p className="text-xs text-gray-500 font-bold uppercase">Net Payable</p><p className={`text-xl font-black ${net < 0 ? 'text-red-600' : 'text-indigo-900'}`}>EGP {net.toLocaleString()}</p></div>
           </div>
 
           {/* Payment source */}
@@ -328,7 +328,7 @@ function SlipRow({ slip }: { slip: SalarySlip }) {
         <div className="flex items-center gap-3 flex-shrink-0">
           <Badge className={`text-xs font-bold border ${statusColor}`}>{slip.status}</Badge>
           <Badge className="text-xs font-bold border border-amber-200 bg-amber-50 text-amber-700">{slip.approvalStatus ?? 'PENDING'}</Badge>
-          <span className="text-sm font-black text-indigo-900">PKR {Number(slip.netSalary).toLocaleString()}</span>
+          <span className="text-sm font-black text-indigo-900">EGP {Number(slip.netSalary).toLocaleString()}</span>
           {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </div>
       </button>
@@ -339,9 +339,9 @@ function SlipRow({ slip }: { slip: SalarySlip }) {
             className="overflow-hidden">
             <div className="px-5 pb-4 border-t border-gray-100 pt-4 space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                <div><p className="text-[10px] text-gray-400 uppercase font-bold">Basic Salary</p><p className="font-black">PKR {Number(slip.basicSalary).toLocaleString()}</p></div>
-                <div><p className="text-[10px] text-gray-400 uppercase font-bold">Overtime</p><p className="font-black text-emerald-700">+ PKR {Number(slip.overtimeAmount).toLocaleString()}</p></div>
-                <div><p className="text-[10px] text-gray-400 uppercase font-bold">Lunch Dues</p><p className="font-black text-red-600">- PKR {Number(slip.lunchDues).toLocaleString()}</p></div>
+                <div><p className="text-[10px] text-gray-400 uppercase font-bold">Basic Salary</p><p className="font-black">EGP {Number(slip.basicSalary).toLocaleString()}</p></div>
+                <div><p className="text-[10px] text-gray-400 uppercase font-bold">Overtime</p><p className="font-black text-emerald-700">+ EGP {Number(slip.overtimeAmount).toLocaleString()}</p></div>
+                <div><p className="text-[10px] text-gray-400 uppercase font-bold">Lunch Dues</p><p className="font-black text-red-600">- EGP {Number(slip.lunchDues).toLocaleString()}</p></div>
                 <div><p className="text-[10px] text-gray-400 uppercase font-bold">Payment</p><p className="font-black">{slip.paymentSource}</p></div>
               </div>
 
@@ -353,7 +353,7 @@ function SlipRow({ slip }: { slip: SalarySlip }) {
                       <div key={i} className="flex justify-between bg-gray-50 rounded-lg px-3 py-1.5 text-xs">
                         <span className="text-gray-500 font-bold">{cf.label}</span>
                         <span className={`font-black ${cf.isDeduction ? 'text-red-600' : 'text-emerald-700'}`}>
-                          {cf.isDeduction ? '- ' : '+ '}PKR {Number(cf.value).toLocaleString()}
+                          {cf.isDeduction ? '- ' : '+ '}EGP {Number(cf.value).toLocaleString()}
                         </span>
                       </div>
                     ))}
@@ -460,7 +460,7 @@ export default function SalarySlipsPage() {
           <Card className="shadow-sm">
             <CardContent className="pt-4">
               <p className="text-xs font-bold text-gray-400 uppercase mb-1">Net Payable (page)</p>
-              <p className="text-2xl font-black text-indigo-900">PKR {totalNet.toLocaleString()}</p>
+              <p className="text-2xl font-black text-indigo-900">EGP {totalNet.toLocaleString()}</p>
             </CardContent>
           </Card>
           <Card className="shadow-sm hidden sm:block">

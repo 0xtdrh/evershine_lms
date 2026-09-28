@@ -9,21 +9,21 @@ export function formatDate(d?: string | Date | null) {
   if (!d) return ''
   const dt = d instanceof Date ? d : new Date(d)
   if (isNaN(dt.getTime())) return ''
-  return dt.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })
+  return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export function formatTime(d?: string | Date | null) {
   if (!d) return ''
   const dt = d instanceof Date ? d : new Date(d)
   if (isNaN(dt.getTime())) return ''
-  return dt.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true })
+  return dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
 export function formatCurrency(n?: number | string | null) {
   if (n === null || n === undefined || n === '') return ''
   const num = typeof n === 'number' ? n : parseFloat(String(n))
   if (isNaN(num)) return ''
-  return new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR' }).format(num)
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'EGP' }).format(num)
 }
 
 export const CLASSES = ['Playgroup','Nursery','KG','1','2','3','4','5','6','7','8','9','10','11','12']

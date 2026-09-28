@@ -352,7 +352,7 @@ export default function AttendancePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h2 className="font-semibold text-gray-800">
-                  {selectedClass ? formatAcademicClassLabel(selectedClass) : ''} — {SESSION_SHIFT_LABELS[sessionShift]} — {new Date(date + 'T00:00:00').toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  {selectedClass ? formatAcademicClassLabel(selectedClass) : ''} — {SESSION_SHIFT_LABELS[sessionShift]} — {new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </h2>
                 <div className="flex flex-wrap gap-3 mt-2 text-sm">
                   <span className="text-green-700 font-medium">✓ Present: {summary.PRESENT ?? 0}</span>

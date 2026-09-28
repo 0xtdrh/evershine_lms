@@ -193,7 +193,7 @@ export function generateExamDateSheetPDF(options: DateSheetPDFOptions): jsPDF {
     pdf.line(15, y + 8, 195, y + 8)
 
     const dateObj = new Date(slot.examDate)
-    const formattedDate = dateObj.toLocaleDateString('en-PK', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })
+    const formattedDate = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })
 
     pdf.text((idx + 1).toString(), 20, y + 5)
     pdf.text(formattedDate, 32, y + 5)
@@ -731,8 +731,8 @@ export function generateRollNumberSlipPDF(options: RollNumberSlipPDFOptions): js
       pdf.rect(14, y, 182, 7.5, 'S')
 
       const dateObj = new Date(slot.examDate)
-      const dayStr  = dateObj.toLocaleDateString('en-PK', { weekday: 'short' })
-      const dateStr = dateObj.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
+      const dayStr  = dateObj.toLocaleDateString('en-GB', { weekday: 'short' })
+      const dateStr = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 
       pdf.setFont('helvetica', 'normal')
       setTextColor(pdf, 17, 24, 39, bw)

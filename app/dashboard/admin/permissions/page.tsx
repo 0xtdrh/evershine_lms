@@ -551,7 +551,7 @@ export default function PermissionsPage() {
                         {override.reason ?? <span className="text-slate-300">—</span>}
                       </td>
                       <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
-                        {new Date(override.createdAt).toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' })}
+                        {new Date(override.createdAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
                       </td>
                       <td className="px-4 py-3">
                         <Button

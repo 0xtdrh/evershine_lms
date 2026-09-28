@@ -380,7 +380,7 @@ export default function StudentAcademicsPage() {
                     <div className="min-w-0">
                       <p className="text-sm font-black text-gray-900 truncate">{task.title}</p>
                       <p className="text-[11px] font-medium text-gray-500">
-                        {task.subjectName} · {task.classLabel}{task.shiftName ? <> · {task.shiftName}</> : null}{task.dueDate ? <> · Due {new Date(task.dueDate).toLocaleDateString('en-PK')}</> : null}
+                        {task.subjectName} · {task.classLabel}{task.shiftName ? <> · {task.shiftName}</> : null}{task.dueDate ? <> · Due {new Date(task.dueDate).toLocaleDateString('en-GB')}</> : null}
                       </p>
                       {task.remarks && <p className="mt-1 text-xs text-gray-600">Remarks: {task.remarks}</p>}
                     </div>

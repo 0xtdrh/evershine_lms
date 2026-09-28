@@ -148,7 +148,7 @@ export default function ReserveFundPage() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-black text-slate-800">
-                {entries.length > 0 ? formatCurrency(entries[0].contributionAmount) : 'PKR 0'}
+                {entries.length > 0 ? formatCurrency(entries[0].contributionAmount) : 'EGP 0'}
               </p>
               <p className="text-xs text-gray-400 mt-1.5">
                 {entries.length > 0 ? `Assigned for ${entries[0].periodLabel}` : 'No records yet.'}

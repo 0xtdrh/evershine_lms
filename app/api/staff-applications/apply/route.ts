@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
         cooldownEnd.setDate(cooldownEnd.getDate() + REAPPLY_COOLDOWN_DAYS)
         if (new Date() < cooldownEnd) {
           return errors.badRequest(
-            `Your previous application was declined. You may re-apply after ${cooldownEnd.toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' })}.`
+            `Your previous application was declined. You may re-apply after ${cooldownEnd.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}.`
           )
         }
       }

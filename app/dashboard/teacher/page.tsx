@@ -128,7 +128,7 @@ export default function TeacherPortalIndexPage() {
             <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-5 text-left sm:text-right shrink-0">
               <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.35em] text-slate-400">Today</p>
               <p className="mt-1 sm:mt-3 text-base sm:text-xl font-semibold text-white">
-                {new Date().toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
           </div>

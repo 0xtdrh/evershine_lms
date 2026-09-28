@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     'Month': item.month,
     'Rating (1-5)': item.rating,
     'Comments': item.comments || 'No comment provided',
-    'Date Submitted': new Date(item.createdAt).toLocaleDateString('en-PK'),
+    'Date Submitted': new Date(item.createdAt).toLocaleDateString('en-GB'),
   }))
 
   const worksheet = XLSX.utils.json_to_sheet(exportData)

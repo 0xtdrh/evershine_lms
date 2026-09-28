@@ -203,7 +203,7 @@ function SubjectCard({ group }: { group: SubjectGroup }) {
                     {task.dueDate && (
                       <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 font-medium">
                         <Clock className="h-2.5 w-2.5" />
-                        {new Date(task.dueDate).toLocaleDateString('en-PK', {
+                        {new Date(task.dueDate).toLocaleDateString('en-GB', {
                           day: 'numeric',
                           month: 'short',
                         })}

@@ -72,8 +72,8 @@ function formatEventRange(startStr: string, endStr: string) {
   
   const isSameDay = start.toDateString() === end.toDateString()
   
-  const formatDate = (d: Date) => d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })
-  const formatTime = (d: Date) => d.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const formatDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const formatTime = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })
   
   if (isSameDay) {
     return `${formatDate(start)} (${formatTime(start)} — ${formatTime(end)})`
@@ -562,7 +562,7 @@ export default function CalendarPage() {
                     <div className="space-y-1 mt-2 flex-grow overflow-y-auto max-h-16 no-scrollbar">
                       {dayEvents.slice(0, 3).map((e) => {
                         const style = EVENT_TYPE_COLORS[e.eventType] ?? EVENT_TYPE_COLORS.Other
-                        const eventTimeStr = `${new Date(e.startDate).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true })} - ${new Date(e.endDate).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true })}`
+                        const eventTimeStr = `${new Date(e.startDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })} - ${new Date(e.endDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}`
                         return (
                           <div
                             key={e.id}
@@ -914,9 +914,9 @@ export default function CalendarPage() {
                     <Calendar className="w-3.5 h-3.5" /> Start Time
                   </span>
                   <span className="font-bold text-gray-700 text-right">
-                    {new Date(viewEvent.startDate).toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    {new Date(viewEvent.startDate).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     <span className="block text-[11px] text-indigo-600 font-semibold mt-0.5">
-                      at {new Date(viewEvent.startDate).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      at {new Date(viewEvent.startDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}
                     </span>
                   </span>
                 </div>
@@ -925,9 +925,9 @@ export default function CalendarPage() {
                     <Clock className="w-3.5 h-3.5" /> End Time
                   </span>
                   <span className="font-bold text-gray-700 text-right">
-                    {new Date(viewEvent.endDate).toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    {new Date(viewEvent.endDate).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     <span className="block text-[11px] text-indigo-600 font-semibold mt-0.5">
-                      at {new Date(viewEvent.endDate).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      at {new Date(viewEvent.endDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}
                     </span>
                   </span>
                 </div>

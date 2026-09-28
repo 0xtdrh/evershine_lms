@@ -249,7 +249,7 @@ export default function DashboardPage() {
           </h1>
         </div>
         <p className="text-gray-500 mt-1">
-          {new Date().toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
       {role === 'STUDENT' && (
@@ -359,7 +359,7 @@ export default function DashboardPage() {
                     <div className="bg-white/10 backdrop-blur-md rounded-lg py-1.5 px-3 border border-white/20 text-center sm:text-left">
                       <p className="text-[9px] text-indigo-100 uppercase font-bold tracking-wider">Joining Date</p>
                       <p className="font-bold text-sm">
-                        {teacherProfile?.joiningDate ? new Date(teacherProfile.joiningDate).toLocaleDateString('en-PK', { month: 'short', day: 'numeric', year: 'numeric' }) : '--'}
+                        {teacherProfile?.joiningDate ? new Date(teacherProfile.joiningDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' }) : '--'}
                       </p>
                     </div>
                   </div>
@@ -445,7 +445,7 @@ export default function DashboardPage() {
               <>
                 <StatCard
                   title="Fee Collected"
-                  value={`Rs ${(data?.finance.totalCollected ?? 0).toLocaleString()}`}
+                  value={`EGP ${(data?.finance.totalCollected ?? 0).toLocaleString()}`}
                   sub="Verified payments received"
                   icon={TrendingUp}
                   color="text-green-600"
@@ -453,7 +453,7 @@ export default function DashboardPage() {
                 />
                 <StatCard
                   title="Fee Pending"
-                  value={`Rs ${(data?.finance.totalPending ?? 0).toLocaleString()}`}
+                  value={`EGP ${(data?.finance.totalPending ?? 0).toLocaleString()}`}
                   sub={`${data?.students.feePending ?? 0} student accounts with open invoices`}
                   icon={DollarSign}
                   color="text-yellow-600"
@@ -470,9 +470,9 @@ export default function DashboardPage() {
                 {role === 'SUPER_ADMIN' && (
                   <StatCard
                     title="Reserve Fund"
-                    value={`Rs ${(data?.finance.reserveFundBalance ?? 0).toLocaleString()}`}
+                    value={`EGP ${(data?.finance.reserveFundBalance ?? 0).toLocaleString()}`}
                     sub={data?.finance.latestReserveContribution
-                      ? `Latest: Rs ${data.finance.latestReserveContribution.amount.toLocaleString()} for ${data.finance.latestReserveContribution.periodLabel}`
+                      ? `Latest: EGP ${data.finance.latestReserveContribution.amount.toLocaleString()} for ${data.finance.latestReserveContribution.periodLabel}`
                       : 'No reserve allocations yet'}
                     icon={Wallet}
                     color="text-teal-700"
@@ -515,7 +515,7 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Fee Status"
-            value={studentProfile?.dueAmount > 0 ? `Rs ${studentProfile.dueAmount.toLocaleString()}` : 'Paid'}
+            value={studentProfile?.dueAmount > 0 ? `EGP ${studentProfile.dueAmount.toLocaleString()}` : 'Paid'}
             sub={studentProfile?.dueAmount > 0 ? 'Payment pending' : 'No outstanding dues'}
             icon={CreditCard}
             color={studentProfile?.dueAmount > 0 ? 'text-red-600' : 'text-green-600'}
@@ -635,7 +635,7 @@ export default function DashboardPage() {
                         <p className="text-xs text-gray-500">{s.registrationNumber} · {s.campus.name}</p>
                       </div>
                       <div className="text-xs text-gray-400 flex-shrink-0">
-                        {new Date(s.admissionDate).toLocaleDateString('en-PK', { month: 'short', day: 'numeric' })}
+                        {new Date(s.admissionDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
                       </div>
                     </Link>
                   ))}
@@ -733,7 +733,7 @@ export default function DashboardPage() {
                     <span className="text-slate-700">{item.action}</span>
                   </div>
                   <span className="text-xs text-slate-400 flex-shrink-0">
-                    {item.timestamp ? new Date(item.timestamp).toLocaleString('en-PK', { 
+                    {item.timestamp ? new Date(item.timestamp).toLocaleString('en-GB', { 
                       year: 'numeric', 
                       month: 'short', 
                       day: '2-digit',

@@ -12,7 +12,7 @@ export interface LedgerEntry {
   payee: string      // Payee name / employee name
   method: string     // Cash, Bank Transfer, etc.
   reference: string  // transaction ID, account number, cheque number
-  amount: number     // PKR amount
+  amount: number     // EGP amount
 }
 
 export async function buildLedgerReport(
@@ -93,7 +93,7 @@ export async function buildLedgerReport(
       amount: amountNum,
     })
 
-    row.getCell('amount').numFmt = '"PKR "#,##0.00'
+    row.getCell('amount').numFmt = '"EGP "#,##0.00'
     row.eachCell(cell => {
       cell.border = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } }
     })
@@ -106,7 +106,7 @@ export async function buildLedgerReport(
     amount: grandTotal,
   })
   totalRow.font = { bold: true, size: 12 }
-  totalRow.getCell('amount').numFmt = '"PKR "#,##0.00'
+  totalRow.getCell('amount').numFmt = '"EGP "#,##0.00'
   totalRow.eachCell(cell => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }
     cell.border = { top: { style: 'thin' }, bottom: { style: 'double' } }

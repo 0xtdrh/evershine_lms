@@ -800,7 +800,7 @@ export default function AdmissionPage() {
             {/* Total Fee */}
             <div className="space-y-1.5 md:col-span-2">
               <div className="flex flex-col gap-2">
-                <RequiredLabel>Total Monthly Fee Amount (Rs.)</RequiredLabel>
+                <RequiredLabel>Total Monthly Fee Amount (EGP)</RequiredLabel>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                   <div className="font-semibold text-slate-900">Suggested monthly fee</div>
                   <div className="mt-1 text-lg font-semibold text-slate-900">Admin-defined</div>

@@ -260,7 +260,7 @@ function IssueInvoiceTab() {
               <Input id="inv-due" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="inv-disc">Discount (PKR)</Label>
+              <Label htmlFor="inv-disc">Discount (EGP)</Label>
               <Input id="inv-disc" type="number" min="0" value={discount} onChange={e => setDiscount(e.target.value)} />
             </div>
             <div className="space-y-1">
@@ -286,7 +286,7 @@ function IssueInvoiceTab() {
                   placeholder="Tuition Fee / Computer Lab…" />
               </div>
               <div className="w-36 space-y-1">
-                <Label htmlFor={`amt-${i}`}>Amount (PKR)</Label>
+                <Label htmlFor={`amt-${i}`}>Amount (EGP)</Label>
                 <Input id={`amt-${i}`} type="number" min="0" step="0.01" value={item.amount}
                   onChange={e => setItems(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
                   placeholder="0" />
@@ -395,7 +395,7 @@ function DefaultersTab({ campuses, classes, selectedCampusId, selectedClassId, s
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800 space-y-1">
           <p className="font-semibold text-sm">Report includes: </p>
-          <p>Registration no. · Student & father name · Class · Contact number · Outstanding amount (PKR) · Last challan no.</p>
+          <p>Registration no. · Student & father name · Class · Contact number · Outstanding amount (EGP) · Last challan no.</p>
         </div>
       </CardContent>
     </Card>
@@ -486,7 +486,7 @@ function PaidFeesTab({ campuses, classes, selectedCampusId, selectedClassId, set
         </div>
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800">
           <p className="font-semibold text-sm">Report includes: </p>
-          <p>Registration no. · Student & father name · Class · Month · Amount paid (PKR) · Payment date · Method · Challan no.</p>
+          <p>Registration no. · Student & father name · Class · Month · Amount paid (EGP) · Payment date · Method · Challan no.</p>
         </div>
       </CardContent>
     </Card>
@@ -661,7 +661,7 @@ function PaymentProofsTab() {
                     {/* Upload time */}
                     {inv.proofUploadedAt && (
                       <p className="text-[10px] text-slate-400">
-                        Uploaded {new Date(inv.proofUploadedAt).toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' })}
+                        Uploaded {new Date(inv.proofUploadedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
                       </p>
                     )}
 
@@ -733,7 +733,7 @@ function PaymentProofsTab() {
           <div className="space-y-4 py-2">
             {actionType === 'APPROVE' && selectedProof && (
               <div className="space-y-1.5">
-                <Label>Verified Paid Amount (PKR)</Label>
+                <Label>Verified Paid Amount (EGP)</Label>
                 <Input
                   type="number"
                   placeholder={`Max: ${Number(selectedProof.totalAmount) - Number(selectedProof.paidAmount)}`}

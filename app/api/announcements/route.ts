@@ -176,7 +176,7 @@ async function sendAnnouncementEmails({
         <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
         <p style="color:#6B7280;font-size:12px;">
           This announcement was addressed to: <strong>${audience}</strong><br/>
-          Published: ${new Date().toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          Published: ${new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
         <a href="${appUrl}/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#1E40AF;color:white;text-decoration:none;border-radius:8px;font-size:14px;">
           View on Portal →

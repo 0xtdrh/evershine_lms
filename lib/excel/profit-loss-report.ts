@@ -57,7 +57,7 @@ export async function buildProfitLossReport(
       cell.alignment = { vertical: 'middle', horizontal: colNumber === 1 ? 'left' : 'right' }
       if (rowNumber > 2) {
         if (colNumber === 2 && typeof cell.value === 'number') {
-          cell.numFmt = '"PKR "#,##0.00'
+          cell.numFmt = '"EGP "#,##0.00'
         }
       }
     })
@@ -130,7 +130,7 @@ export async function buildProfitLossReport(
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
       }
       if ([3, 4, 5, 7, 8, 9, 10, 11].includes(colNumber) && i > 1) {
-        cell.numFmt = '"PKR "#,##0.00'
+        cell.numFmt = '"EGP "#,##0.00'
         cell.alignment = { horizontal: 'right' }
       }
       if ([6].includes(colNumber) && i > 1) {

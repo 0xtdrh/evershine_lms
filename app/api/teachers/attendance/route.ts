@@ -320,7 +320,7 @@ export async function POST(req: NextRequest) {
               title: 'Attendance recorded',
               message: `${record.date} ${SESSION_SHIFT_LABELS[record.shift as SessionShift]} — ${resolved.hrStatus}${
                 resolved.lateMinutes > 0 ? ` (${resolved.lateMinutes} min late)` : ''
-              }${resolved.penaltyAmount > 0 ? ` · Penalty: Rs ${resolved.penaltyAmount.toFixed(0)}` : ''}.`,
+              }${resolved.penaltyAmount > 0 ? ` · Penalty: EGP ${resolved.penaltyAmount.toFixed(0)}` : ''}.`,
               type: 'ATTENDANCE_ALERT',
             },
           })

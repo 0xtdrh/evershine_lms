@@ -511,7 +511,7 @@ export default function DocumentsPage() {
             .replace(/\b\w/g, (match) => match.toUpperCase()),
           value:
             typeof value === 'number'
-              ? value.toLocaleString('en-PK')
+              ? value.toLocaleString('en-GB')
               : typeof value === 'string'
                 ? value
                 : Array.isArray(value)
@@ -1435,7 +1435,7 @@ export default function DocumentsPage() {
                         <div className="mt-auto flex justify-between items-end relative z-10 w-full shrink-0">
                             <div className="block">
                                <div className="text-[10px] text-[#6b7280] font-bold leading-[1.2] mb-1 block">Issued:</div>
-                               <div className="text-[13px] font-black text-[#1e3a8a] leading-[1.2] whitespace-nowrap block">{new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                               <div className="text-[13px] font-black text-[#1e3a8a] leading-[1.2] whitespace-nowrap block">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                             </div>
                             <div className="block text-center">
                                 <div className="w-[130px] border-b-[2px] border-[#1e3a8a] pb-2 mx-auto mb-2">
@@ -1627,7 +1627,7 @@ export default function DocumentsPage() {
                     <div className="mt-6 flex flex-col items-center bg-white px-8 py-3.5 rounded-xl border border-[#1e3a8a]/20 shadow-sm relative z-10">
                       <span className="text-[10px] uppercase font-bold text-gray-500 tracking-[0.2em]">Date of Birth</span>
                       <span className="text-[16px] font-black text-gray-900 mt-1 uppercase tracking-[0.12em] leading-tight text-center whitespace-nowrap">
-                        {selectedStudent.dateOfBirth && !isNaN(new Date(selectedStudent.dateOfBirth).getTime()) ? new Date(selectedStudent.dateOfBirth).toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Unknown Date'}
+                        {selectedStudent.dateOfBirth && !isNaN(new Date(selectedStudent.dateOfBirth).getTime()) ? new Date(selectedStudent.dateOfBirth).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Unknown Date'}
                       </span>
                     </div>
 
@@ -1684,7 +1684,7 @@ export default function DocumentsPage() {
                         <div className="text-right text-[9px] text-gray-500 font-bold space-y-0.5">
                           <p>📱 Boys: 0328-4010522</p>
                           <p>📱 Girls: 0324-8985526</p>
-                          <p className="mt-2 text-indigo-600 font-mono">Date: {new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                          <p className="mt-2 text-indigo-600 font-mono">Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                         </div>
                       </div>
 
@@ -1817,7 +1817,7 @@ export default function DocumentsPage() {
                           <p className="text-[8px] text-gray-500">Boys: 0328-4010522 &nbsp;|&nbsp; Girls: 0324-8985526</p>
                         </div>
                         <div className="w-20 shrink-0 text-right text-[8px] font-bold text-gray-600">
-                          <p>{new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                          <p>{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                         </div>
                       </div>
                       {/* TITLE */}
@@ -1841,7 +1841,7 @@ export default function DocumentsPage() {
                             <div className="flex gap-1 col-span-2"><span className="font-bold uppercase w-24 shrink-0">Father Name:</span><span className="font-black underline">{selectedStudent.fatherName || '—'}</span></div>
                             
                             <div className="flex gap-1"><span className="font-bold uppercase w-24 shrink-0">Class / Sec:</span><span className="font-black underline">{selectedStudentClassSection}</span></div>
-                            <div className="flex gap-1"><span className="font-bold uppercase w-24 shrink-0">Date of Issue:</span><span className="font-bold">{new Date().toLocaleDateString('en-PK')}</span></div>
+                            <div className="flex gap-1"><span className="font-bold uppercase w-24 shrink-0">Date of Issue:</span><span className="font-bold">{new Date().toLocaleDateString('en-GB')}</span></div>
                           </div>
                         </div>
                         <div className="w-20 shrink-0 border-l border-black p-1 flex items-center justify-center bg-gray-50">
@@ -2010,7 +2010,7 @@ export default function DocumentsPage() {
                           <div className="text-right text-[9px] text-gray-500 font-bold space-y-0.5">
                             <p>📱 Boys: 0328-4010522</p>
                             <p>📱 Girls: 0324-8985526</p>
-                            <p className="mt-2 text-indigo-600 font-mono">Date: {new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                            <p className="mt-2 text-indigo-600 font-mono">Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                           </div>
                         </div>
 
@@ -2157,7 +2157,7 @@ export default function DocumentsPage() {
                       {/* Report Category */}
                       <div className="w-full flex justify-between items-center mt-3 text-[9px] font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded border border-gray-200 shadow-sm">
                         <span>Serial No: <strong className="text-[#1e3a8a] font-black">ESA/REP/{reportSubtype.toUpperCase()}/{new Date().getFullYear()}</strong></span>
-                        <span>Run Date: <strong className="text-gray-800">{new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' })}</strong></span>
+                        <span>Run Date: <strong className="text-gray-800">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</strong></span>
                       </div>
 
                       <div className="w-full text-center mt-3 mb-1">
@@ -2169,11 +2169,11 @@ export default function DocumentsPage() {
                       {/* Deficit Fees Report */}
                       {reportSubtype === 'fees' && (() => {
                         const totalOutstandingVal = liveReport?.totalOutstanding !== undefined
-                          ? `PKR ${liveReport.totalOutstanding.toLocaleString('en-PK')}`
-                          : "PKR 0";
+                          ? `EGP ${liveReport.totalOutstanding.toLocaleString('en-GB')}`
+                          : "EGP 0";
                         const totalCollectedVal = liveReport?.totalCollected !== undefined
-                          ? `PKR ${liveReport.totalCollected.toLocaleString('en-PK')}`
-                          : "PKR 0";
+                          ? `EGP ${liveReport.totalCollected.toLocaleString('en-GB')}`
+                          : "EGP 0";
                         const overdueCountVal = liveReport?.overdueStudentsCount !== undefined
                           ? `${liveReport.overdueStudentsCount} Accounts`
                           : "0 Accounts";
@@ -2225,7 +2225,7 @@ export default function DocumentsPage() {
                                         <td className="px-3 py-1.5 font-bold text-gray-600 border-r-2 border-gray-300 font-mono">
                                           {item.rollNumber ? `${item.rollNumber} / ` : ''}{item.registrationNumber}
                                         </td>
-                                        <td className="px-3 py-1.5 font-black text-[#1e3a8a] border-r-2 border-gray-300 text-right">PKR {Number(item.dueAmount).toLocaleString('en-PK')}</td>
+                                        <td className="px-3 py-1.5 font-black text-[#1e3a8a] border-r-2 border-gray-300 text-right">EGP {Number(item.dueAmount).toLocaleString('en-GB')}</td>
                                         <td className="px-3 py-1.5 text-right font-black">
                                           <span className="inline-block px-1.5 py-0.5 rounded text-[8px] tracking-wider bg-rose-100 text-rose-800 border border-rose-200">
                                             OVERDUE
@@ -2520,7 +2520,7 @@ export default function DocumentsPage() {
                         <div className="mt-auto flex justify-between items-end relative z-10 w-full shrink-0">
                             <div className="block">
                                <div className="text-[10px] text-[#047857] font-bold leading-[1.2] mb-1 block">Issued:</div>
-                               <div className="text-[13px] font-black text-[#064e3b] leading-[1.2] whitespace-nowrap block">{new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                               <div className="text-[13px] font-black text-[#064e3b] leading-[1.2] whitespace-nowrap block">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                             </div>
                             <div className="block text-center">
                                 <div className="w-[130px] border-b-[2px] border-[#047857] pb-2 mx-auto mb-2">
@@ -2658,7 +2658,7 @@ export default function DocumentsPage() {
                         <div className="text-right text-[9px] text-gray-500 font-bold space-y-0.5">
                           <p>📱 Boys: 0328-4010522</p>
                           <p>📱 Girls: 0324-8985526</p>
-                          <p className="mt-2 text-emerald-700 font-mono">Date: {new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                          <p className="mt-2 text-emerald-700 font-mono">Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                         </div>
                       </div>
 
@@ -2713,8 +2713,8 @@ export default function DocumentsPage() {
                       {/* Body */}
                       <div className="w-full text-[13px] text-gray-800 space-y-4 leading-relaxed text-left relative z-10 font-medium">
                         <p>
-                          This is to certify that <strong className="font-black text-[#065F46] text-[14px] underline decoration-2 underline-offset-4 decoration-[#065F46]">{selectedTeacher.firstName} {selectedTeacher.lastName}</strong>, holding Employee ID <strong className="font-black text-gray-900">{selectedTeacher.employeeId}</strong>, has served as <strong className="font-black text-gray-900">{selectedTeacher.designation}</strong> in the <strong className="font-black text-gray-900">{selectedTeacher.specialization ?? 'Academic'}</strong> Department at EverShine Academy, {selectedTeacher.campus?.name ?? 'Madina Town Campus'}, since <strong className="font-black text-gray-900">{selectedTeacher.joiningDate ? new Date(selectedTeacher.joiningDate).toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}</strong>
-                          {expEndDate ? ` to ${new Date(expEndDate).toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' })}` : ' and is currently serving in this role'}.
+                          This is to certify that <strong className="font-black text-[#065F46] text-[14px] underline decoration-2 underline-offset-4 decoration-[#065F46]">{selectedTeacher.firstName} {selectedTeacher.lastName}</strong>, holding Employee ID <strong className="font-black text-gray-900">{selectedTeacher.employeeId}</strong>, has served as <strong className="font-black text-gray-900">{selectedTeacher.designation}</strong> in the <strong className="font-black text-gray-900">{selectedTeacher.specialization ?? 'Academic'}</strong> Department at EverShine Academy, {selectedTeacher.campus?.name ?? 'Madina Town Campus'}, since <strong className="font-black text-gray-900">{selectedTeacher.joiningDate ? new Date(selectedTeacher.joiningDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}</strong>
+                          {expEndDate ? ` to ${new Date(expEndDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}` : ' and is currently serving in this role'}.
                         </p>
                         <p>
                           During this tenure, <strong className="font-black text-gray-900">{selectedTeacher.firstName}</strong> has performed the following responsibilities with dedication and professionalism:
@@ -2824,7 +2824,7 @@ export default function DocumentsPage() {
                               <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">Class / Batch:</td>
                               <td className="w-[22%] border-r border-gray-300 px-3 py-2 font-bold">{selectedStudentClassSection}</td>
                               <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">Date of Birth:</td>
-                              <td className="w-[22%] px-3 py-2 font-bold">{selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString('en-PK') : '—'}</td>
+                              <td className="w-[22%] px-3 py-2 font-bold">{selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString('en-GB') : '—'}</td>
                             </tr>
                             <tr className="border-b border-gray-300">
                               <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">Gender:</td>
@@ -2957,7 +2957,7 @@ export default function DocumentsPage() {
                               <td className="w-[28%] border-r border-gray-300 px-3 py-2.5 font-bold uppercase text-[#065F46]">Employee ID:</td>
                               <td className="w-[22%] border-r border-gray-300 px-3 py-2.5 font-mono font-black text-[#065F46]">{selectedTeacher.employeeId}</td>
                               <td className="w-[28%] border-r border-gray-300 px-3 py-2.5 font-bold uppercase text-[#065F46]">Joining Date:</td>
-                              <td className="w-[22%] px-3 py-2.5 font-bold">{new Date(selectedTeacher.joiningDate).toLocaleDateString('en-PK')}</td>
+                              <td className="w-[22%] px-3 py-2.5 font-bold">{new Date(selectedTeacher.joiningDate).toLocaleDateString('en-GB')}</td>
                             </tr>
                             <tr className="border-b border-gray-300">
                               <td className="w-[28%] border-r border-gray-300 px-3 py-2.5 font-bold uppercase text-[#065F46]">Full Name:</td>
@@ -2967,7 +2967,7 @@ export default function DocumentsPage() {
                               <td className="w-[28%] border-r border-gray-300 px-3 py-2.5 font-bold uppercase text-[#065F46]">Gender:</td>
                               <td className="w-[22%] border-r border-gray-300 px-3 py-2.5 font-bold">{selectedTeacher.gender || '—'}</td>
                               <td className="w-[28%] border-r border-gray-300 px-3 py-2.5 font-bold uppercase text-[#065F46]">Date of Birth:</td>
-                              <td className="w-[22%] px-3 py-2.5 font-bold">{selectedTeacher.dateOfBirth ? new Date(selectedTeacher.dateOfBirth).toLocaleDateString('en-PK') : '—'}</td>
+                              <td className="w-[22%] px-3 py-2.5 font-bold">{selectedTeacher.dateOfBirth ? new Date(selectedTeacher.dateOfBirth).toLocaleDateString('en-GB') : '—'}</td>
                             </tr>
                             <tr className="border-b border-gray-300">
                               <td className="w-[28%] border-r border-gray-300 px-3 py-2.5 font-bold uppercase text-[#065F46]">CNIC No:</td>

@@ -895,7 +895,7 @@ export default function AdmissionsDashboard() {
                         <p className="text-xs text-slate-500">
                           {manualTotalOverride
                             ? 'Manual override enabled. Confirm this amount matches approved academic charges.'
-                            : `Auto-calculated from admission + course fee = Rs ${autoAcademicTotal.toLocaleString()}.`}
+                            : `Auto-calculated from admission + course fee = EGP ${autoAcademicTotal.toLocaleString()}.`}
                         </p>
                       </div>
                     </div>
@@ -913,15 +913,15 @@ export default function AdmissionsDashboard() {
                         <div className="space-y-3 text-sm text-slate-700">
                           <div className="flex justify-between">
                             <span>Admission Fee</span>
-                            <span className="font-medium">Rs {admissionFee.toLocaleString()}</span>
+                            <span className="font-medium">EGP {admissionFee.toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Course Fee</span>
-                            <span className="font-medium">Rs {courseFee.toLocaleString()}</span>
+                            <span className="font-medium">EGP {courseFee.toLocaleString()}</span>
                           </div>
                           <div className="border-t border-slate-200 pt-3 flex justify-between text-base font-semibold text-slate-900">
                             <span>Total Academic Fee</span>
-                            <span>Rs {totalAcademicFee.toLocaleString()}</span>
+                            <span>EGP {totalAcademicFee.toLocaleString()}</span>
                           </div>
                         </div>
                       </div>

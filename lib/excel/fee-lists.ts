@@ -85,7 +85,7 @@ export async function buildPaidListReport(
 
   sheet.getRow(4).values = [
     'Reg No', 'Student Name', 'Father Name', 'Campus', 'Class', 'Section', 'Month',
-    'Amount Paid (PKR)', 'Payment Date', 'Method', 'Challan No'
+    'Amount Paid (EGP)', 'Payment Date', 'Method', 'Challan No'
   ]
 
   for (const inv of invoices) {
@@ -106,7 +106,7 @@ export async function buildPaidListReport(
       challan: inv.challanNumber,
     })
 
-    row.getCell('amountPaid').numFmt = '"PKR "#,##0.00'
+    row.getCell('amountPaid').numFmt = '"EGP "#,##0.00'
     row.eachCell((cell) => { cell.border = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } } })
   }
 
@@ -153,7 +153,7 @@ export async function buildDefaulterListReport(
 
   sheet.getRow(4).values = [
     'Reg No', 'Student Name', 'Father Name', 'Campus', 'Class', 'Section', 'Contact',
-    'Due Amount (PKR)', 'Last Challan'
+    'Due Amount (EGP)', 'Last Challan'
   ]
 
   for (const student of students) {
@@ -171,7 +171,7 @@ export async function buildDefaulterListReport(
       challan: lastInvoice ? lastInvoice.challanNumber : 'N/A',
     })
 
-    row.getCell('dueAmount').numFmt = '"PKR "#,##0.00'
+    row.getCell('dueAmount').numFmt = '"EGP "#,##0.00'
     row.eachCell((cell) => { cell.border = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } } })
   }
 

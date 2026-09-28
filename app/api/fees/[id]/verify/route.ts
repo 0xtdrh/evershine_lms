@@ -133,7 +133,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           title: newInvoiceStatus === 'PAID' ? 'Fee Payment Approved — Fully Paid' : 'Fee Payment Approved — Partial',
           message: newInvoiceStatus === 'PAID'
             ? `Your payment proof for Challan #${invoice.challanNumber || invoiceId} has been verified. Your fee is now fully paid.`
-            : `Your payment of PKR ${amountToPay.toLocaleString()} for Challan #${invoice.challanNumber || invoiceId} has been verified. Remaining: PKR ${(remaining - amountToPay).toLocaleString()}.`,
+            : `Your payment of EGP ${amountToPay.toLocaleString()} for Challan #${invoice.challanNumber || invoiceId} has been verified. Remaining: EGP ${(remaining - amountToPay).toLocaleString()}.`,
           type: 'FEE_UPDATE',
           relatedId: invoiceId,
         }

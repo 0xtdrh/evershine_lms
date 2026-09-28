@@ -779,7 +779,7 @@ export async function generateTeacherProfileDirect(data: {
 
   printRow('Qualification:', data.qualification, 'Experience (Years):', `${data.experienceYears} Years`, y)
   y += 8
-  printRow('Monthly Salary:', data.monthlySalary ? `Rs ${data.monthlySalary.toLocaleString()}` : 'N/A', 'Joining Date:', data.joiningDate ? formatDateString(data.joiningDate) : 'N/A', y)
+  printRow('Monthly Salary:', data.monthlySalary ? `EGP ${data.monthlySalary.toLocaleString()}` : 'N/A', 'Joining Date:', data.joiningDate ? formatDateString(data.joiningDate) : 'N/A', y)
 
   drawSignatureLine(pdf, 'HR Administrator', 60, 262, data.colorMode)
   drawSignatureLine(pdf, 'Principal Seal', 140, 262, data.colorMode)

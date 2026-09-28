@@ -1021,7 +1021,7 @@ export default function TeacherTasksPage() {
                   <div>
                     <span className="text-[10px] text-slate-400 font-semibold block uppercase">Due Date</span>
                     <span className="font-medium text-slate-700">
-                      {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-PK', { month: 'short', day: 'numeric' }) : 'No due date'}
+                      {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }) : 'No due date'}
                     </span>
                   </div>
                 </div>
@@ -1111,7 +1111,7 @@ export default function TeacherTasksPage() {
                     <TableCell className="py-4">
                       {task.dueDate ? (
                         <span className="text-xs font-medium text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
-                          {new Date(task.dueDate).toLocaleDateString('en-PK', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {new Date(task.dueDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       ) : (
                         <span className="text-xs text-slate-400">—</span>

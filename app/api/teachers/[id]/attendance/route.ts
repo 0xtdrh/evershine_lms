@@ -222,7 +222,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       data: {
         userId: teacher.userId,
         title: 'Attendance updated',
-        message: `${dateKey(attendanceDate)} ${SESSION_SHIFT_LABELS[shift]} marked ${resolved.hrStatus}${resolved.lateMinutes > 0 ? ` (${resolved.lateMinutes} min late)` : ''}${resolved.penaltyAmount > 0 ? ` with Rs ${resolved.penaltyAmount.toFixed(0)} penalty` : ''}.`,
+        message: `${dateKey(attendanceDate)} ${SESSION_SHIFT_LABELS[shift]} marked ${resolved.hrStatus}${resolved.lateMinutes > 0 ? ` (${resolved.lateMinutes} min late)` : ''}${resolved.penaltyAmount > 0 ? ` with EGP ${resolved.penaltyAmount.toFixed(0)} penalty` : ''}.`,
         type: 'ATTENDANCE_ALERT',
       },
     })

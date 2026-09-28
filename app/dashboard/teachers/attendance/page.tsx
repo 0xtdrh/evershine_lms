@@ -356,9 +356,9 @@ export default function BulkTeacherAttendancePage() {
       'Shift': SESSION_SHIFT_LABELS[shift],
       'Status': t.attendance?.status ?? 'UNMARKED',
       'Arrival Time': t.attendance?.checkInTime
-        ? new Date(t.attendance.checkInTime).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })
+        ? new Date(t.attendance.checkInTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
         : '—',
-      'Penalty Amount (PKR)': t.attendance?.penaltyAmount ?? 0,
+      'Penalty Amount (EGP)': t.attendance?.penaltyAmount ?? 0,
       'Penalty Applied': t.attendance?.isPenaltyApplied ? 'Yes' : 'No',
       'Admin Remarks': t.attendance?.remarks ?? ''
     }))
@@ -676,7 +676,7 @@ export default function BulkTeacherAttendancePage() {
                       </div>
 
                       <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Penalty Override (PKR)</Label>
+                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Penalty Override (EGP)</Label>
                         <Input
                           type="number"
                           min={0}

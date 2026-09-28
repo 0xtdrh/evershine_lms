@@ -163,7 +163,7 @@ export function StudentQuickViewDialog({
 
             {Number(student.dueAmount) > 0 && (
               <div className="rounded-2xl border border-red-100 bg-red-50/80 p-3 text-sm text-red-700">
-                <p className="flex items-center gap-2 font-semibold"><CreditCard className="h-4 w-4" /> Outstanding balance: Rs {Number(student.dueAmount).toLocaleString()}</p>
+                <p className="flex items-center gap-2 font-semibold"><CreditCard className="h-4 w-4" /> Outstanding balance: EGP {Number(student.dueAmount).toLocaleString()}</p>
               </div>
             )}
 

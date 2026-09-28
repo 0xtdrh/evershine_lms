@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
           <h2 style="color: #DC2626;">Fee Reminder</h2>
           <p>Dear Parent/Guardian,</p>
           <p>This is a reminder that the fee challan (<b>${invoice.challanNumber}</b>) for the month of <b>${invoice.month}</b> is now overdue.</p>
-          <p><b>Outstanding Balance: Rs. ${balance.toFixed(2)}</b></p>
+          <p><b>Outstanding Balance: EGP ${balance.toFixed(2)}</b></p>
           <p>Please arrange for the payment at your earliest convenience to avoid further late fees or suspension of portal access.</p>
           <p>If you have already paid, please ignore this email.</p>
           <br/>

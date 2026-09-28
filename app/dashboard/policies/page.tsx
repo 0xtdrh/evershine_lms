@@ -263,7 +263,7 @@ export default function PoliciesPage() {
                   <Select value={feeForm.penaltyType} onValueChange={(v) => setFeeForm({ ...feeForm, penaltyType: v as 'FIXED' })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="FIXED">Fixed (Rs)</SelectItem>
+                      <SelectItem value="FIXED">Fixed (EGP)</SelectItem>
                       <SelectItem value="PERCENTAGE">Percentage of balance</SelectItem>
                     </SelectContent>
                   </Select>
@@ -274,7 +274,7 @@ export default function PoliciesPage() {
                   <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2">Student absence rule</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div><Label className="text-indigo-700">Allowed ABSENT/Month</Label><Input type="number" min={0} value={feeForm.allowedAbsencesPerMonth} onChange={(e) => setFeeForm({ ...feeForm, allowedAbsencesPerMonth: Number(e.target.value) })} /></div>
-                    <div><Label className="text-indigo-700">Absence penalty (Rs)</Label><Input type="number" min={0} value={feeForm.absencePenaltyAmount} onChange={(e) => setFeeForm({ ...feeForm, absencePenaltyAmount: Number(e.target.value) })} /></div>
+                    <div><Label className="text-indigo-700">Absence penalty (EGP)</Label><Input type="number" min={0} value={feeForm.absencePenaltyAmount} onChange={(e) => setFeeForm({ ...feeForm, absencePenaltyAmount: Number(e.target.value) })} /></div>
                   </div>
                   <p className="text-xs text-indigo-500 mt-1.5">The 4th and each later ABSENT record creates one pending assessment. It is not added to an invoice until an authorized finance user posts it.</p>
                   <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2 mt-3">Leave reference (no student charge)</p>
@@ -285,7 +285,7 @@ export default function PoliciesPage() {
                         onChange={(e) => setFeeForm({ ...feeForm, allowedLeavesPerMonth: Number(e.target.value) })} />
                     </div>
                     <div>
-                      <Label className="text-indigo-700">Leave Penalty (Rs)</Label>
+                      <Label className="text-indigo-700">Leave Penalty (EGP)</Label>
                       <Input type="number" min={0} value={feeForm.leavePenaltyAmount}
                         onChange={(e) => setFeeForm({ ...feeForm, leavePenaltyAmount: Number(e.target.value) })} />
                     </div>
@@ -329,12 +329,12 @@ export default function PoliciesPage() {
                           </TableCell>
                           <TableCell>{p.graceDays}d</TableCell>
                           <TableCell>
-                            {p.penaltyType === 'FIXED' ? `Rs ${p.penaltyValue}` : `${p.penaltyValue}%`}
+                            {p.penaltyType === 'FIXED' ? `EGP ${p.penaltyValue}` : `${p.penaltyValue}%`}
                             {p.maxPenalty != null ? ` (max ${p.maxPenalty})` : ''}
                           </TableCell>
                           <TableCell className="text-indigo-700 font-semibold">{p.allowedLeavesPerMonth ?? 1}/mo</TableCell>
-                          <TableCell className="text-red-600 font-semibold">Rs {Number(p.leavePenaltyAmount ?? 0).toLocaleString()}</TableCell>
-                          <TableCell className="text-indigo-700 font-semibold">{p.allowedAbsencesPerMonth ?? 3}/mo · Rs {Number(p.absencePenaltyAmount ?? 0).toLocaleString()}</TableCell>
+                          <TableCell className="text-red-600 font-semibold">EGP {Number(p.leavePenaltyAmount ?? 0).toLocaleString()}</TableCell>
+                          <TableCell className="text-indigo-700 font-semibold">{p.allowedAbsencesPerMonth ?? 3}/mo · EGP {Number(p.absencePenaltyAmount ?? 0).toLocaleString()}</TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline" className="mr-2" onClick={() => {
                               setEditingFeeId(p.id)
@@ -392,7 +392,7 @@ export default function PoliciesPage() {
                   <Select value={teacherForm.penaltyType} onValueChange={(v) => setTeacherForm({ ...teacherForm, penaltyType: v as 'FIXED' })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="FIXED">Fixed (Rs)</SelectItem>
+                      <SelectItem value="FIXED">Fixed (EGP)</SelectItem>
                       <SelectItem value="PERCENTAGE">% of monthly salary</SelectItem>
                     </SelectContent>
                   </Select>
@@ -412,7 +412,7 @@ export default function PoliciesPage() {
                         onChange={(e) => setTeacherForm({ ...teacherForm, allowedLeavesPerMonth: Number(e.target.value) })} />
                     </div>
                     <div>
-                      <Label className="text-emerald-700">Leave Deduction (Rs)</Label>
+                      <Label className="text-emerald-700">Leave Deduction (EGP)</Label>
                       <Input type="number" min={0} value={teacherForm.leavePenaltyAmount}
                         onChange={(e) => setTeacherForm({ ...teacherForm, leavePenaltyAmount: Number(e.target.value) })} />
                     </div>
@@ -452,11 +452,11 @@ export default function PoliciesPage() {
                           <TableCell>{p.campus?.name ?? 'Global'}</TableCell>
                           <TableCell className="text-sm">
                             After {p.lateThreshold} lates/mo:{' '}
-                            {p.penaltyType === 'FIXED' ? `Rs ${p.penaltyValue}` : `${p.penaltyValue}% salary`}
+                            {p.penaltyType === 'FIXED' ? `EGP ${p.penaltyValue}` : `${p.penaltyValue}% salary`}
                             {p.repeatMultiplier ? ` ×${p.repeatMultiplier}` : ''}
                           </TableCell>
                           <TableCell className="text-emerald-700 font-semibold">{p.allowedLeavesPerMonth ?? 1}/mo</TableCell>
-                          <TableCell className="text-red-600 font-semibold">Rs {Number(p.leavePenaltyAmount ?? 0).toLocaleString()}</TableCell>
+                          <TableCell className="text-red-600 font-semibold">EGP {Number(p.leavePenaltyAmount ?? 0).toLocaleString()}</TableCell>
                           <TableCell className="text-emerald-700 font-semibold">{p.lateGraceMinutes ?? 25}m / {p.freeLatePasses ?? 0}</TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline" className="mr-2" onClick={() => {

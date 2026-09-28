@@ -132,7 +132,7 @@ export async function createBrandedWorkbook(
   sheet.mergeCells(2, 1, 2, totalCols)
   const titleCell = sheet.getCell(2, 1)
   const now = new Date()
-  const timestamp = now.toLocaleDateString('en-PK', {
+  const timestamp = now.toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

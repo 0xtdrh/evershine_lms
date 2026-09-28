@@ -50,7 +50,7 @@ function SlipCard({ slip }: { slip: SalarySlip }) {
           <div className="min-w-0">
             <p className="font-black text-gray-900 text-sm">{slip.month}</p>
             <p className="text-[11px] text-gray-400">
-              {new Date(slip.salaryPeriodStart).toLocaleDateString('en-PK')} — {new Date(slip.salaryPeriodEnd).toLocaleDateString('en-PK')}
+              {new Date(slip.salaryPeriodStart).toLocaleDateString('en-GB')} — {new Date(slip.salaryPeriodEnd).toLocaleDateString('en-GB')}
             </p>
           </div>
         </div>
@@ -58,7 +58,7 @@ function SlipCard({ slip }: { slip: SalarySlip }) {
           <Badge className={`text-xs font-bold border ${slip.status === 'ISSUED' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
             {slip.status}
           </Badge>
-          <span className="font-black text-indigo-900 text-sm">PKR {Number(slip.netSalary).toLocaleString()}</span>
+          <span className="font-black text-indigo-900 text-sm">EGP {Number(slip.netSalary).toLocaleString()}</span>
           {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </div>
       </button>
@@ -71,18 +71,18 @@ function SlipCard({ slip }: { slip: SalarySlip }) {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                 <div className="bg-gray-50 rounded-xl p-3">
                   <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Basic Salary</p>
-                  <p className="font-black text-gray-900">PKR {Number(slip.basicSalary).toLocaleString()}</p>
+                  <p className="font-black text-gray-900">EGP {Number(slip.basicSalary).toLocaleString()}</p>
                 </div>
                 {Number(slip.overtimeAmount) > 0 && (
                   <div className="bg-emerald-50 rounded-xl p-3">
                     <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Overtime</p>
-                    <p className="font-black text-emerald-700">+ PKR {Number(slip.overtimeAmount).toLocaleString()}</p>
+                    <p className="font-black text-emerald-700">+ EGP {Number(slip.overtimeAmount).toLocaleString()}</p>
                   </div>
                 )}
                 {Number(slip.lunchDues) > 0 && (
                   <div className="bg-red-50 rounded-xl p-3">
                     <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Lunch Dues</p>
-                    <p className="font-black text-red-600">- PKR {Number(slip.lunchDues).toLocaleString()}</p>
+                    <p className="font-black text-red-600">- EGP {Number(slip.lunchDues).toLocaleString()}</p>
                   </div>
                 )}
               </div>
@@ -96,7 +96,7 @@ function SlipCard({ slip }: { slip: SalarySlip }) {
                       <div key={i} className="flex justify-between bg-gray-50 rounded-lg px-3 py-2 text-xs">
                         <span className="text-gray-600 font-bold">{cf.label}</span>
                         <span className={`font-black ${cf.isDeduction ? 'text-red-600' : 'text-emerald-700'}`}>
-                          {cf.isDeduction ? '-' : '+'} PKR {Number(cf.value).toLocaleString()}
+                          {cf.isDeduction ? '-' : '+'} EGP {Number(cf.value).toLocaleString()}
                         </span>
                       </div>
                     ))}
@@ -108,15 +108,15 @@ function SlipCard({ slip }: { slip: SalarySlip }) {
               <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl p-4 text-white grid grid-cols-3 text-center gap-2">
                 <div>
                   <p className="text-[10px] text-indigo-200 uppercase font-bold">Gross</p>
-                  <p className="font-black text-sm">PKR {Number(slip.totalAdditions).toLocaleString()}</p>
+                  <p className="font-black text-sm">EGP {Number(slip.totalAdditions).toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-indigo-200 uppercase font-bold">Deductions</p>
-                  <p className="font-black text-sm text-red-300">- PKR {Number(slip.totalDeductions).toLocaleString()}</p>
+                  <p className="font-black text-sm text-red-300">- EGP {Number(slip.totalDeductions).toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-indigo-200 uppercase font-bold">Net Payable</p>
-                  <p className="font-black text-lg">PKR {Number(slip.netSalary).toLocaleString()}</p>
+                  <p className="font-black text-lg">EGP {Number(slip.netSalary).toLocaleString()}</p>
                 </div>
               </div>
 

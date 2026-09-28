@@ -221,7 +221,7 @@ export function PaymentProofUploadModal({
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-700">
             <div className="rounded-2xl bg-white p-3 border border-slate-200">
               <p className="text-xs text-slate-500">Remaining Due</p>
-              <p className="font-semibold text-red-600">Rs {remaining.toLocaleString()}</p>
+              <p className="font-semibold text-red-600">EGP {remaining.toLocaleString()}</p>
             </div>
             <div className="rounded-2xl bg-white p-3 border border-slate-200">
               <p className="text-xs text-slate-500">Attachment</p>

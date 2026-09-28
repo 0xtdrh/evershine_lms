@@ -499,7 +499,7 @@ export default function TeacherAttendancePage() {
               <p className="text-sm font-bold text-gray-800">
                 Mark attendance for{' '}
                 <span className="text-indigo-700">
-                  {new Date(pendingDate + 'T00:00:00').toLocaleDateString('en-PK', {
+                  {new Date(pendingDate + 'T00:00:00').toLocaleDateString('en-GB', {
                     weekday: 'long',
                     day: 'numeric',
                     month: 'long',
@@ -527,7 +527,7 @@ export default function TeacherAttendancePage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Penalty override (PKR)</Label>
+                <Label className="text-xs">Penalty override (EGP)</Label>
                 <Input
                   type="number"
                   min={0}

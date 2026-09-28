@@ -304,7 +304,7 @@ export default function AccountantExpensesPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="edit-amount">Amount (PKR)</Label>
+                <Label htmlFor="edit-amount">Amount (EGP)</Label>
                 <Input id="edit-amount" type="number" min="0.01" step="0.01" value={editForm.amount} onChange={(e) => setEditForm((prev) => ({ ...prev, amount: e.target.value }))} />
               </div>
               <div className="space-y-2">
@@ -412,7 +412,7 @@ export default function AccountantExpensesPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="amount">Amount (PKR)</Label>
+                <Label htmlFor="amount">Amount (EGP)</Label>
                 <Input id="amount" type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))} placeholder="5000" />
               </div>
               <div className="space-y-2">

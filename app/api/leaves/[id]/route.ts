@@ -151,7 +151,7 @@ export async function PUT(
                   data: {
                     userId: leave.applicantId,
                     title: '⚠️ Leave Penalty — Salary Deduction Notice',
-                    message: `A pending salary deduction of Rs ${penaltyAmount.toLocaleString()} was recorded. You have used ${totalAfterApproval} leave(s), exceeding the allowed limit of ${teacherPolicy.allowedLeavesPerMonth}/month. HR must review it before posting.`,
+                    message: `A pending salary deduction of EGP ${penaltyAmount.toLocaleString()} was recorded. You have used ${totalAfterApproval} leave(s), exceeding the allowed limit of ${teacherPolicy.allowedLeavesPerMonth}/month. HR must review it before posting.`,
                     type: 'INFO',
                     relatedId: leaveId,
                     isRead: false,
@@ -167,10 +167,10 @@ export async function PUT(
 
     // Standard approval/rejection notification
     const leaveTypeFriendly = leave.leaveType.charAt(0) + leave.leaveType.slice(1).toLowerCase()
-    const startFormatted = new Date(leave.startDate).toLocaleDateString('en-PK', {
+    const startFormatted = new Date(leave.startDate).toLocaleDateString('en-GB', {
       year: 'numeric', month: 'long', day: 'numeric',
     })
-    const endFormatted = new Date(leave.endDate).toLocaleDateString('en-PK', {
+    const endFormatted = new Date(leave.endDate).toLocaleDateString('en-GB', {
       year: 'numeric', month: 'long', day: 'numeric',
     })
 

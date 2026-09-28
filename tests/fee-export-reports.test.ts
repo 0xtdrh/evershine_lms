@@ -38,7 +38,7 @@ describe('fee export reports', () => {
     expect(sheet.columns).toHaveLength(11)
     expect(sheet.getRow(4).values).toEqual([undefined,
       'Reg No', 'Student Name', 'Father Name', 'Campus', 'Class', 'Section', 'Month',
-      'Amount Paid (PKR)', 'Payment Date', 'Method', 'Challan No',
+      'Amount Paid (EGP)', 'Payment Date', 'Method', 'Challan No',
     ])
     expect(sheet.getRow(5).getCell('amountPaid').value).toBe(500)
     expect(sheet.getRow(5).getCell('method').value).toBe('Cash')
@@ -57,7 +57,7 @@ describe('fee export reports', () => {
     const buffer = await workbook.xlsx.writeBuffer()
     expect(buffer.byteLength).toBeGreaterThan(0)
     expect(sheet.columns).toHaveLength(9)
-    expect(sheet.getRow(4).getCell(8).value).toBe('Due Amount (PKR)')
+    expect(sheet.getRow(4).getCell(8).value).toBe('Due Amount (EGP)')
     expect(sheet.getRow(5).getCell('dueAmount').value).toBe(1250)
     expect(sheet.getRow(5).getCell('challan').value).toBe('CHL-2')
   })

@@ -131,8 +131,8 @@ export async function POST(request: NextRequest) {
   // dispatchToRoleUsers scopes ADMIN notifications to the applicant's campus;
   // SUPER_ADMIN users receive all alerts regardless of campus.
   const applicantName = session.user.name ?? session.user.email ?? 'A user'
-  const startFmt = start.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })
-  const endFmt = end.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })
+  const startFmt = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const endFmt = end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   void dispatchToRoleUsers({
     roles: ['SUPER_ADMIN', 'ADMIN'],
     campusId: (session.user as { campusId?: string | null }).campusId ?? null,

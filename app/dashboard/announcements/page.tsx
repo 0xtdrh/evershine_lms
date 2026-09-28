@@ -281,14 +281,14 @@ export default function AnnouncementsPage() {
                       <div className="mt-3 flex items-center gap-4 text-xs text-gray-400">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {new Date(a.publishedAt).toLocaleDateString('en-PK', {
+                          {new Date(a.publishedAt).toLocaleDateString('en-GB', {
                             day: 'numeric', month: 'long', year: 'numeric',
                           })}
                         </span>
                         {a.expiresAt && (
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            Expires {new Date(a.expiresAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            Expires {new Date(a.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </span>
                         )}
                         <span className="flex items-center gap-1 text-blue-400">
@@ -409,12 +409,12 @@ export default function AnnouncementsPage() {
               <div className="pt-3 border-t space-y-1.5 text-xs text-gray-400">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5" />
-                  Published: {new Date(viewAnn.publishedAt).toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  Published: {new Date(viewAnn.publishedAt).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </div>
                 {viewAnn.expiresAt && (
                   <div className="flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5" />
-                    Expires: {new Date(viewAnn.expiresAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    Expires: {new Date(viewAnn.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </div>
                 )}
                 <div className="flex items-center gap-2 text-blue-400">

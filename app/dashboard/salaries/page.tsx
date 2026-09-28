@@ -365,7 +365,7 @@ export default function SalariesPage() {
                           Main Branch Campus
                         </p>
                         <p className="text-[10px] text-slate-500">
-                          Date Issued: {new Date(selectedSlip.createdAt).toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })}
+                          Date Issued: {new Date(selectedSlip.createdAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                         <p className="text-[10px] text-emerald-700 font-bold uppercase flex items-center justify-end gap-1 mt-1">
                           <CheckCircle className="w-3.5 h-3.5" />
@@ -379,7 +379,7 @@ export default function SalariesPage() {
                       <thead>
                         <tr className="bg-slate-900 text-white uppercase text-[9px] tracking-wider font-bold">
                           <th className="p-2 border border-slate-700">Account Head Description</th>
-                          <th className="p-2 border border-slate-700 text-right">Amount (PKR)</th>
+                          <th className="p-2 border border-slate-700 text-right">Amount (EGP)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
@@ -406,7 +406,7 @@ export default function SalariesPage() {
                             Net Disbursed Take-home Salary
                           </td>
                           <td className="p-2 border border-slate-300 text-right text-slate-950 font-extrabold underline decoration-double">
-                            Rs. {Number(selectedSlip.netSalary).toLocaleString()} /-
+                            EGP {Number(selectedSlip.netSalary).toLocaleString()} /-
                           </td>
                         </tr>
                       </tbody>
@@ -495,7 +495,7 @@ export default function SalariesPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                        Basic Salary (PKR)
+                        Basic Salary (EGP)
                       </label>
                       <Input
                         type="number"
@@ -512,7 +512,7 @@ export default function SalariesPage() {
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="block text-xs font-semibold text-slate-700">
-                          Allowances (PKR)
+                          Allowances (EGP)
                         </label>
                         {employeeId && (
                           <button
@@ -536,7 +536,7 @@ export default function SalariesPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                        Deductions (PKR)
+                        Deductions (EGP)
                       </label>
                       <Input
                         type="number"
@@ -646,7 +646,7 @@ export default function SalariesPage() {
                         <div className="flex items-center gap-3 shrink-0">
                           <div className="text-right">
                             <p className="text-xs font-bold text-slate-900">
-                              Rs. {Number(s.netSalary).toLocaleString()}
+                              EGP {Number(s.netSalary).toLocaleString()}
                             </p>
                             <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full uppercase">
                               {s.status}

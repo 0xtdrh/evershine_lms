@@ -470,7 +470,7 @@ export default function MyChildrenPage() {
                     <div className="max-h-64 overflow-y-auto text-sm">
                       {academic.attendance.records.map((r, i) => (
                         <div key={i} className="flex justify-between py-1 border-b">
-                          <span>{new Date(r.attendanceDate).toLocaleDateString('en-PK')}</span>
+                          <span>{new Date(r.attendanceDate).toLocaleDateString('en-GB')}</span>
                           <Badge variant="outline">{r.status}</Badge>
                         </div>
                       ))}
@@ -673,7 +673,7 @@ export default function MyChildrenPage() {
                         <div className="space-y-2">
                           {academic.monitoringReports.daily.map((entry, index) => (
                             <div key={`${entry.date}-${entry.courseName}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded border p-3 text-sm">
-                              <div><p className="font-medium">{entry.courseName}</p><p className="text-xs text-slate-500">{new Date(entry.date).toLocaleDateString('en-PK')} · Grade: {entry.grade ?? '—'} · {entry.highlight === 'STAR_OF_THE_DAY' ? 'Star of the Day' : entry.highlight === 'POOR' ? 'Poor' : 'No highlight'}</p></div>
+                              <div><p className="font-medium">{entry.courseName}</p><p className="text-xs text-slate-500">{new Date(entry.date).toLocaleDateString('en-GB')} · Grade: {entry.grade ?? '—'} · {entry.highlight === 'STAR_OF_THE_DAY' ? 'Star of the Day' : entry.highlight === 'POOR' ? 'Poor' : 'No highlight'}</p></div>
                               <p className="max-w-md text-slate-600">{entry.remarks || '—'}</p>
                             </div>
                           ))}
@@ -731,7 +731,7 @@ export default function MyChildrenPage() {
                           </div>
                           <div className="text-right">
                             <p>
-                              Rs {Number(inv.paidAmount)} / {Number(inv.totalAmount)}
+                              EGP {Number(inv.paidAmount)} / {Number(inv.totalAmount)}
                             </p>
                             <Badge 
                               variant={
@@ -743,7 +743,7 @@ export default function MyChildrenPage() {
                               {inv.status}
                             </Badge>
                             {Number(inv.penaltyAmount) > 0 && (
-                              <p className="text-xs text-red-600">Penalty: Rs {inv.penaltyAmount}</p>
+                              <p className="text-xs text-red-600">Penalty: EGP {inv.penaltyAmount}</p>
                             )}
                           </div>
                           <div className="flex flex-col gap-2 shrink-0">
@@ -890,14 +890,14 @@ export default function MyChildrenPage() {
                           <div key={leave.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                               <div>
-                                <p className="font-semibold text-slate-900">{new Date(leave.startDate).toLocaleDateString('en-PK')} — {new Date(leave.endDate).toLocaleDateString('en-PK')}</p>
+                                <p className="font-semibold text-slate-900">{new Date(leave.startDate).toLocaleDateString('en-GB')} — {new Date(leave.endDate).toLocaleDateString('en-GB')}</p>
                                 <p className="text-sm text-slate-600">{leave.reason}</p>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge variant={leave.status === 'APPROVED' ? 'default' : leave.status === 'REJECTED' ? 'destructive' : 'outline'}>
                                   {leave.status}
                                 </Badge>
-                                <span className="text-xs text-slate-500">Applied {new Date(leave.createdAt).toLocaleDateString('en-PK')}</span>
+                                <span className="text-xs text-slate-500">Applied {new Date(leave.createdAt).toLocaleDateString('en-GB')}</span>
                               </div>
                             </div>
                             {leave.remarks && (

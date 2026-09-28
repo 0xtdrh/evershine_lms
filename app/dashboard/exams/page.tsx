@@ -758,9 +758,9 @@ export default function ExamsPage() {
 
                   <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
                     <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-                    {start.toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
+                    {start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                     {' — '}
-                    {end.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t">
@@ -881,13 +881,13 @@ export default function ExamsPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">Start Date</span>
                   <span className="font-medium">
-                    {new Date(viewExam.startDate).toLocaleDateString('en-PK', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {new Date(viewExam.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">End Date</span>
                   <span className="font-medium">
-                    {new Date(viewExam.endDate).toLocaleDateString('en-PK', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {new Date(viewExam.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">

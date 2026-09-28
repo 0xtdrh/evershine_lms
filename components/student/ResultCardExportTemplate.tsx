@@ -68,7 +68,7 @@ export function ResultCardExportTemplate({ profile, exam, rows, profilePictureDa
           <div className="text-right text-[8px] text-gray-500 font-bold space-y-0.5">
             <p>📱 Boys: 0328-4010522</p>
             <p>📱 Girls: 0324-8985526</p>
-            <p className="mt-1.5 text-indigo-600 font-mono">Date: {new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+            <p className="mt-1.5 text-indigo-600 font-mono">Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
           </div>
         </div>
 

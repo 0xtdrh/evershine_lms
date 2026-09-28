@@ -137,7 +137,7 @@ export function MonthlyMonitoringGrid({ report }: { report: MonthlyReportEntry }
               <p className="text-[10px] text-slate-400 font-medium mt-0.5">
                 Monthly Performance Sheet
                 {declaredAt
-                  ? ` · Declared ${new Date(declaredAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                  ? ` · Declared ${new Date(declaredAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
                   : ''}
               </p>
             </div>

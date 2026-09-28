@@ -82,7 +82,7 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
       return
     }
     if (payAmount > remaining) {
-      notify.error(`Amount exceeds remaining balance of Rs ${remaining.toLocaleString()}`)
+      notify.error(`Amount exceeds remaining balance of EGP ${remaining.toLocaleString()}`)
       return
     }
 
@@ -126,20 +126,20 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
           <Card className="bg-blue-50 border-blue-200">
             <CardContent className="p-3">
               <p className="text-xs text-blue-600 font-medium">Total Due</p>
-              <p className="text-lg font-bold text-blue-800">Rs {Number(invoice.totalAmount).toLocaleString()}</p>
+              <p className="text-lg font-bold text-blue-800">EGP {Number(invoice.totalAmount).toLocaleString()}</p>
             </CardContent>
           </Card>
           <Card className="bg-green-50 border-green-200">
             <CardContent className="p-3">
               <p className="text-xs text-green-600 font-medium">Remaining</p>
-              <p className="text-lg font-bold text-green-800">Rs {remaining.toLocaleString()}</p>
+              <p className="text-lg font-bold text-green-800">EGP {remaining.toLocaleString()}</p>
             </CardContent>
           </Card>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Payment Amount (Rs)</Label>
+            <Label>Payment Amount (EGP)</Label>
             <Input
               type="number"
               placeholder={`Max: ${remaining}`}
@@ -406,13 +406,13 @@ export default function FeesManagementPage() {
                         </Link>
                       </TableCell>
                       <TableCell className="text-sm">{fee.month}</TableCell>
-                      <TableCell className="text-sm font-medium">Rs {total.toLocaleString()}</TableCell>
-                      <TableCell className="text-sm text-green-700">Rs {paid.toLocaleString()}</TableCell>
+                      <TableCell className="text-sm font-medium">EGP {total.toLocaleString()}</TableCell>
+                      <TableCell className="text-sm text-green-700">EGP {paid.toLocaleString()}</TableCell>
                       <TableCell className={`text-sm font-medium ${balance > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                        {balance > 0 ? `Rs ${balance.toLocaleString()}` : '—'}
+                        {balance > 0 ? `EGP ${balance.toLocaleString()}` : '—'}
                       </TableCell>
                       <TableCell className={`text-xs ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                        {new Date(fee.dueDate).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(fee.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         {isOverdue && ' ⚠'}
                       </TableCell>
                       <TableCell>

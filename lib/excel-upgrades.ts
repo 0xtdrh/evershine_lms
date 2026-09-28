@@ -19,7 +19,7 @@ function buildBrandingHeader(title: string, subtitle: string): string[][] {
     ['Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony (Boys: 0328-4010522 | Girls: 0324-8985526)'],
     [`Report: ${title}`],
     [`Sub-category: ${subtitle}`],
-    [`Generated Date: ${new Date().toLocaleDateString('en-PK')}`],
+    [`Generated Date: ${new Date().toLocaleDateString('en-GB')}`],
     [''], // spacer
   ]
 }

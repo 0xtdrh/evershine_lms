@@ -56,7 +56,7 @@ export function StudentTimelineCard({ studentId }: { studentId: string }) {
                   {e.action} · {e.entityType}
                 </p>
                 <p className="text-gray-500">
-                  {new Date(e.timestamp).toLocaleString('en-PK')}
+                  {new Date(e.timestamp).toLocaleString('en-GB')}
                   {e.user && ` · ${e.user.role}`}
                 </p>
                 {formatChange(e.changes) && (

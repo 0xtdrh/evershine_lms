@@ -10,7 +10,7 @@ import { ExpenseCategory } from '@prisma/client'
 export const createExpenseSchema = z.object({
   title:       z.string().min(3, 'Title must be at least 3 characters').max(200),
   description: z.string().max(1000).optional(),
-  /** Amount in PKR. Must be positive and have at most 2 decimal places. */
+  /** Amount in EGP. Must be positive and have at most 2 decimal places. */
   amount:      z
     .number({ required_error: 'Amount is required' })
     .positive('Amount must be greater than zero')

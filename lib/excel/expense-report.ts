@@ -48,7 +48,7 @@ export async function buildExpenseReport(
   subtitleCell.alignment = { horizontal: 'center' }
 
   // Header Row
-  summarySheet.addRow({ category: 'Category', amount: 'Total Amount (PKR)' })
+  summarySheet.addRow({ category: 'Category', amount: 'Total Amount (EGP)' })
   const headerRow = summarySheet.getRow(4)
   headerRow.font = { bold: true }
   headerRow.eachCell(cell => {
@@ -69,7 +69,7 @@ export async function buildExpenseReport(
   let currentRow = 5
   for (const [cat, total] of Object.entries(categoryTotals)) {
     const row = summarySheet.addRow({ category: cat, amount: total })
-    row.getCell('amount').numFmt = '"PKR "#,##0.00'
+    row.getCell('amount').numFmt = '"EGP "#,##0.00'
     row.eachCell(cell => { cell.border = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } } })
     currentRow++
   }
@@ -78,7 +78,7 @@ export async function buildExpenseReport(
   summarySheet.addRow({})
   const totalRow = summarySheet.addRow({ category: 'GRAND TOTAL', amount: grandTotal })
   totalRow.font = { bold: true, size: 12 }
-  totalRow.getCell('amount').numFmt = '"PKR "#,##0.00'
+  totalRow.getCell('amount').numFmt = '"EGP "#,##0.00'
   totalRow.eachCell(cell => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }
     cell.border = { top: { style: 'thin' }, bottom: { style: 'double' } }
@@ -144,7 +144,7 @@ export async function buildExpenseReport(
       status: exp.isApproved ? 'Approved' : 'Pending',
       notes: exp.notes || '',
     })
-    row.getCell('amount').numFmt = '"PKR "#,##0.00'
+    row.getCell('amount').numFmt = '"EGP "#,##0.00'
     row.eachCell(cell => { cell.border = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } } })
   }
 

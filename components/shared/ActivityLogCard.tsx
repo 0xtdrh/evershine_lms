@@ -69,7 +69,7 @@ export function ActivityLogCard({ apiUrl, title, description, emptyText = 'No ac
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                     <span className="font-semibold text-slate-700">{entry.action}</span>
                     <span>• {entry.entityType}</span>
-                    <span>• {new Date(entry.timestamp).toLocaleString('en-PK')}</span>
+                    <span>• {new Date(entry.timestamp).toLocaleString('en-GB')}</span>
                   </div>
                   <p className="text-sm text-slate-700 line-clamp-2">{formatChange(entry.changes) || 'Recorded action without details.'}</p>
                   {entry.user && (

@@ -288,7 +288,7 @@ function MonitoringCard({ results }: { results: ResultsData | undefined }) {
                         }`}
                       >
                         <td className="p-3.5 font-medium text-slate-600">
-                          {new Date(entry.date).toLocaleDateString('en-PK', {
+                          {new Date(entry.date).toLocaleDateString('en-GB', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
@@ -388,7 +388,7 @@ function ResultsTabContent({
   function formatDate(dateStr: string) {
     if (!dateStr) return '—'
     try {
-      return new Date(dateStr).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
+      return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
     } catch {
       return dateStr
     }
@@ -1211,7 +1211,7 @@ function StudentEnrollmentPageInner() {
                   <tbody>
                     {(attendance?.records ?? []).map((r) => (
                       <tr key={r.id} className="border-b border-gray-50">
-                        <td className="py-2">{new Date(r.attendanceDate).toLocaleDateString('en-PK')}</td>
+                        <td className="py-2">{new Date(r.attendanceDate).toLocaleDateString('en-GB')}</td>
                         <td className="py-2">
                           <Badge className={statusBadge[r.status] ?? ''}>{r.status}</Badge>
                         </td>
@@ -1385,7 +1385,7 @@ function StudentEnrollmentPageInner() {
                         </div>
 
                         <p className="text-[10px] text-gray-400 mt-2">
-                          Assigned by {target.assignedBy} · Updated {new Date(target.updatedAt).toLocaleDateString('en-PK')}
+                          Assigned by {target.assignedBy} · Updated {new Date(target.updatedAt).toLocaleDateString('en-GB')}
                         </p>
                       </div>
                     )

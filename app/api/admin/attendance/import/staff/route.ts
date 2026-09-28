@@ -373,7 +373,7 @@ export async function POST(req: NextRequest) {
               title:  'Attendance Imported',
               message: `Your attendance for ${rec.dateStr} (${rec.shift}) has been recorded: ` +
                 `${rec.hrStatus}${rec.lateMinutes > 0 ? ` — ${rec.lateMinutes} min late` : ''}` +
-                `${rec.penaltyAmount > 0 ? `. Penalty of Rs ${rec.penaltyAmount.toFixed(0)} pending HR review.` : '.'}`,
+                `${rec.penaltyAmount > 0 ? `. Penalty of EGP ${rec.penaltyAmount.toFixed(0)} pending HR review.` : '.'}`,
               type: 'ATTENDANCE_ALERT',
             },
           })

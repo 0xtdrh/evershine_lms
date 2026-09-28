@@ -46,10 +46,10 @@ function LiveClock() {
   return (
     <div className="text-center">
       <p className="text-4xl font-mono font-bold tracking-wider text-slate-900">
-        {time.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+        {time.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
       </p>
       <p className="text-sm text-slate-500 mt-1">
-        {time.toLocaleDateString('en-PK', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        {time.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
       </p>
     </div>
   )
@@ -88,7 +88,7 @@ function hrStatusMeta(status?: string | null) {
 }
 
 function formatCheckInTime(value?: string | null) {
-  return value ? new Date(value).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true }) : null
+  return value ? new Date(value).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }) : null
 }
 
 function hrStatusStripeClass(status?: string | null) {
@@ -197,7 +197,7 @@ export default function TeacherHRPage() {
                         Today&apos;s Attendance
                       </CardTitle>
                       <CardDescription className="mt-1">
-                        {new Date().toLocaleDateString('en-PK', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                        {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                       </CardDescription>
                     </div>
                     {activeShift && (
@@ -222,7 +222,7 @@ export default function TeacherHRPage() {
                         </div>
                         <p className="text-xs text-slate-500">
                           {activeShift.today.lateMinutes > 0 ? `${activeShift.today.lateMinutes} min late` : 'Recorded by campus administration'}
-                          {activeShift.today.penaltyAmount > 0 ? ` · Penalty: Rs ${activeShift.today.penaltyAmount}` : ''}
+                          {activeShift.today.penaltyAmount > 0 ? ` · Penalty: EGP ${activeShift.today.penaltyAmount}` : ''}
                         </p>
                       </div>
                     ) : (
@@ -285,7 +285,7 @@ export default function TeacherHRPage() {
                     <p className={`text-xs font-medium mt-1 ${graceRemaining > 0 ? 'text-blue-600' : 'text-orange-600'}`}>Grace Left</p>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-slate-700">Rs {stats.totalPenalty}</p>
+                    <p className="text-2xl font-bold text-slate-700">EGP {stats.totalPenalty}</p>
                     <p className="text-xs text-slate-500 font-medium mt-1">Total Penalty</p>
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export default function TeacherHRPage() {
                         <TableBody>
                           {checkInData!.history.map((r) => (
                             <TableRow key={r.id}>
-                              <TableCell className="font-medium">{new Date(r.date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short' })}</TableCell>
+                              <TableCell className="font-medium">{new Date(r.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</TableCell>
                               <TableCell>{SESSION_SHIFT_LABELS[r.shift as SessionShift] ?? r.shift}</TableCell>
                               <TableCell>
                                 <Badge variant="outline" className={
@@ -341,10 +341,10 @@ export default function TeacherHRPage() {
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                {r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true }) : r.remarks ?? '—'}
+                                {r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }) : r.remarks ?? '—'}
                               </TableCell>
                               <TableCell>{r.lateMinutes > 0 ? `${r.lateMinutes} min` : '—'}</TableCell>
-                              <TableCell className="text-right">{r.penaltyAmount > 0 ? `Rs ${r.penaltyAmount}` : '—'}</TableCell>
+                              <TableCell className="text-right">{r.penaltyAmount > 0 ? `EGP ${r.penaltyAmount}` : '—'}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -376,7 +376,7 @@ export default function TeacherHRPage() {
                         <TableCell className="font-medium text-gray-900">{slip.month}</TableCell>
                         <TableCell className="text-sm text-gray-500">{new Date(slip.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell><span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${slip.status === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{slip.status}</span></TableCell>
-                        <TableCell className="text-right font-medium text-gray-900">PKR {Number(slip.netSalary).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-medium text-gray-900">EGP {Number(slip.netSalary).toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

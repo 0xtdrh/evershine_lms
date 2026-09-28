@@ -503,7 +503,7 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
                 </div>
                 <div>
                   <span className="text-gray-500 block font-medium">Monthly Salary</span>
-                  <span className="font-bold text-gray-800">Rs {teacher.monthlySalary?.toLocaleString() || 'N/A'}</span>
+                  <span className="font-bold text-gray-800">EGP {teacher.monthlySalary?.toLocaleString() || 'N/A'}</span>
                 </div>
               </div>
             </div>

@@ -207,7 +207,7 @@ export async function POST(req: NextRequest) {
       await dispatchNotification({
         userId: data.employeeId,
         title: 'Salary Slip Issued',
-        message: `Your salary slip for ${data.month} has been issued. Net payable: PKR ${netSalary.toLocaleString()}.`,
+        message: `Your salary slip for ${data.month} has been issued. Net payable: EGP ${netSalary.toLocaleString()}.`,
         type: 'SALARY_SLIP_ISSUED',
         relatedId: createdSlip.id,
         tx,

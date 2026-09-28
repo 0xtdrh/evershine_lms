@@ -232,7 +232,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
 
   const dueDateObj = parseSafeDate(invoice.dueDate)
   const dueDateDisplay = dueDateObj
-    ? dueDateObj.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })
+    ? dueDateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : '—'
 
   // Resolve class + section + shift from the active enrollment (most specific) or fall back to student.class
@@ -255,7 +255,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
       return
     }
     if (amountNum > balance) {
-      notify.error(`Amount exceeds remaining balance of Rs ${balance.toLocaleString()}`)
+      notify.error(`Amount exceeds remaining balance of EGP ${balance.toLocaleString()}`)
       return
     }
 
@@ -672,7 +672,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
               </div>
               <div className="space-y-0.5">
                 <p className="text-gray-500">Issue Date:</p>
-                <p className="font-bold text-gray-900">{new Date(invoice.createdAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                <p className="font-bold text-gray-900">{new Date(invoice.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
               </div>
               <div className="space-y-0.5 text-right">
                 <p className="text-red-600 font-bold text-[9px]">Due Date:</p>
@@ -712,18 +712,18 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
                 {admissionFee > 0 && (
                   <div className="flex justify-between text-slate-800">
                     <span>Admission Fee</span>
-                    <span className="font-mono">Rs {admissionFee.toLocaleString()}</span>
+                    <span className="font-mono">EGP {admissionFee.toLocaleString()}</span>
                   </div>
                 )}
                 {courseFee > 0 && (
                   <div className="flex justify-between text-slate-800">
                     <span>Course Fee</span>
-                    <span className="font-mono">Rs {courseFee.toLocaleString()}</span>
+                    <span className="font-mono">EGP {courseFee.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between border-t border-slate-200 pt-2 font-semibold text-slate-900">
                   <span>Total Academic Fee</span>
-                  <span className="font-mono">Rs {academicFeeTotal.toLocaleString()}</span>
+                  <span className="font-mono">EGP {academicFeeTotal.toLocaleString()}</span>
                 </div>
               </div>
             )}
@@ -732,13 +732,13 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             <div className="flex-grow space-y-2">
               <div className="border-b pb-1 text-[9px] font-bold text-gray-500 flex justify-between">
                 <span>Fee Description</span>
-                <span>Amount (PKR)</span>
+                <span>Amount (EGP)</span>
               </div>
               <div className="space-y-1 text-[10px]">
                 {invoice.items.map((item) => (
                   <div key={item.id} className="flex justify-between text-gray-700">
                     <span className="truncate pr-2">{item.description}</span>
-                    <span className="font-mono">Rs {Number(item.amount).toLocaleString()}</span>
+                    <span className="font-mono">EGP {Number(item.amount).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -748,32 +748,32 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             <div className="border-t pt-2 mt-4 space-y-1 text-[10px]">
               <div className="flex justify-between text-gray-500 text-[9px]">
                 <span>Subtotal:</span>
-                <span className="font-mono">Rs {subtotal.toLocaleString()}</span>
+                <span className="font-mono">EGP {subtotal.toLocaleString()}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-green-700 text-[9px]">
                   <span>Discount:</span>
-                  <span className="font-mono">- Rs {discount.toLocaleString()}</span>
+                  <span className="font-mono">- EGP {discount.toLocaleString()}</span>
                 </div>
               )}
               {lateFee > 0 && (
                 <div className="flex justify-between text-red-600 text-[9px] font-bold">
                   <span>⚠ Late Fee / Penalty:</span>
-                  <span className="font-mono">+ Rs {lateFee.toLocaleString()}</span>
+                  <span className="font-mono">+ EGP {lateFee.toLocaleString()}</span>
                 </div>
               )}
               <div className="flex justify-between font-extrabold text-[11px] text-blue-900 border-t-2 border-blue-200 pt-1.5 mt-1 bg-blue-50 px-1 py-0.5 rounded">
                 <span>Grand Total:</span>
-                <span className="font-mono">Rs {total.toLocaleString()}</span>
+                <span className="font-mono">EGP {total.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-[9px] text-green-800 font-medium">
                 <span>Paid Amount:</span>
-                <span className="font-mono">Rs {paid.toLocaleString()}</span>
+                <span className="font-mono">EGP {paid.toLocaleString()}</span>
               </div>
               {balance > 0 && (
                 <div className="flex justify-between text-[9px] text-red-700 font-extrabold bg-red-50 px-1 py-0.5 rounded mt-0.5">
                   <span>Outstanding Balance:</span>
-                  <span className="font-mono">Rs {balance.toLocaleString()}</span>
+                  <span className="font-mono">EGP {balance.toLocaleString()}</span>
                 </div>
               )}
             </div>
@@ -783,7 +783,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
               <p className="font-bold text-gray-700 mb-2">Deposit Instructions:</p>
               {renderBankAccountsTable(invoice.bankAccounts || '')}
               <p>1. Please verify details before deposit.</p>
-              <p>2. Fine of Rs. 100/day applies on late payments after the specified due date.</p>
+              <p>2. Fine of EGP 100/day applies on late payments after the specified due date.</p>
               <p>3. Fee is non-refundable and non-transferable.</p>
             </div>
 
@@ -822,20 +822,20 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-3">
                 <p className="text-xs text-blue-600 font-medium">Total Balance</p>
-                <p className="text-lg font-bold text-blue-800">Rs {balance.toLocaleString()}</p>
+                <p className="text-lg font-bold text-blue-800">EGP {balance.toLocaleString()}</p>
               </CardContent>
             </Card>
             <Card className="bg-green-50 border-green-200">
               <CardContent className="p-3">
                 <p className="text-xs text-green-600 font-medium">Paid Amount</p>
-                <p className="text-lg font-bold text-green-800">Rs {paid.toLocaleString()}</p>
+                <p className="text-lg font-bold text-green-800">EGP {paid.toLocaleString()}</p>
               </CardContent>
             </Card>
           </div>
 
           <form onSubmit={handleRecordPayment} className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Payment Amount (Rs)</Label>
+              <Label>Payment Amount (EGP)</Label>
               <Input
                 type="number"
                 placeholder={`Outstanding: ${balance}`}
@@ -917,8 +917,8 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
               <Button type="button" variant="outline" size="sm" onClick={() => setEditItems((current) => [...current, { description: '', amount: '' }])}>Add fee item</Button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5"><Label>Discount (PKR)</Label><Input type="number" min="0" step="0.01" value={editDiscount} onChange={(e) => setEditDiscount(e.target.value)} /></div>
-              <div className="space-y-1.5"><Label>Late Fee (PKR)</Label><Input type="number" min="0" step="0.01" value={editLateFee} onChange={(e) => setEditLateFee(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label>Discount (EGP)</Label><Input type="number" min="0" step="0.01" value={editDiscount} onChange={(e) => setEditDiscount(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label>Late Fee (EGP)</Label><Input type="number" min="0" step="0.01" value={editLateFee} onChange={(e) => setEditLateFee(e.target.value)} /></div>
             </div>
             <div className="space-y-1.5"><Label>Notes</Label><Input value={editNotes} onChange={(e) => setEditNotes(e.target.value)} maxLength={500} /></div>
             <DialogFooter>
@@ -981,7 +981,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
               </div>
               {verifyAction === 'APPROVE' && (
                 <div className="space-y-1.5">
-                  <Label>Verified Paid Amount (PKR)</Label>
+                  <Label>Verified Paid Amount (EGP)</Label>
                   <Input
                     type="number"
                     placeholder={`Remaining: ${balance}`}

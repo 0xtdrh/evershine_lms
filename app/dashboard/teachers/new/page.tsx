@@ -392,7 +392,7 @@ export default function NewTeacherPage() {
               <Input type="number" min={0} {...field('experienceYears')} />{err('experienceYears')}
             </div>
             <div className="space-y-1.5">
-              <Label>Monthly Salary (Rs) — optional</Label>
+              <Label>Monthly Salary (EGP) — optional</Label>
               <Input type="number" min={0} {...register('monthlySalary', { valueAsNumber: true })} />
             </div>
           </CardContent>

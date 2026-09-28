@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
         data: {
           userId: invoice.student.userId,
           title: 'Fee penalty applied',
-          message: `A late fee penalty of Rs ${penalty} was added to challan ${invoice.challanNumber}.`,
+          message: `A late fee penalty of EGP ${penalty} was added to challan ${invoice.challanNumber}.`,
           type: 'GENERAL',
           relatedId: invoice.id,
         },

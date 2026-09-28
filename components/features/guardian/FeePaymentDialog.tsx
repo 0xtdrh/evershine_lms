@@ -103,7 +103,7 @@ export function FeePaymentDialog({ open, onOpenChange, studentId, invoice }: Fee
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-slate-500">Remaining Due</span>
-              <span className="font-bold text-red-600">PKR {remainingAmount.toLocaleString()}</span>
+              <span className="font-bold text-red-600">EGP {remainingAmount.toLocaleString()}</span>
             </div>
           </div>
         )}

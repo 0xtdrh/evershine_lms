@@ -64,7 +64,7 @@ export default function PenaltyAssessmentsPage() {
               {data.map((item) => {
                 const subject = item.student ? `${item.student.firstName} ${item.student.lastName}` : item.teacher ? `${item.teacher.firstName} ${item.teacher.lastName}` : 'Unknown'
                 return <div key={item.id} className="flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
-                  <div><p className="font-semibold">{subject} · Rs {Number(item.amount).toLocaleString()}</p><p className="text-sm text-gray-600">{item.type.replace(/_/g, ' ')} — {item.reason}</p><p className="text-xs text-gray-400">{new Date(item.createdAt).toLocaleString()}</p></div>
+                  <div><p className="font-semibold">{subject} · EGP {Number(item.amount).toLocaleString()}</p><p className="text-sm text-gray-600">{item.type.replace(/_/g, ' ')} — {item.reason}</p><p className="text-xs text-gray-400">{new Date(item.createdAt).toLocaleString()}</p></div>
                   <div className="flex flex-wrap gap-2">{statusActions.map((entry) => <Button key={entry.action} size="sm" variant={entry.action === 'REJECT' ? 'outline' : 'default'} disabled={action.isPending} onClick={() => action.mutate({ id: item.id, action: entry.action })}>{entry.label}</Button>)}</div>
                 </div>
               })}
@@ -75,7 +75,7 @@ export default function PenaltyAssessmentsPage() {
       <Card>
         <CardHeader><CardTitle>Approved and ready to post</CardTitle><CardDescription>Posting adds a fee line to the next open invoice or a deduction line to the teacher&apos;s unpaid salary slip.</CardDescription></CardHeader>
         <CardContent>
-          {!approved?.length ? <p className="text-sm text-gray-500">No approved assessments are waiting to be posted.</p> : <div className="space-y-3">{approved.map((item) => <div key={item.id} className="flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between"><div><p className="font-semibold">{item.student ? `${item.student.firstName} ${item.student.lastName}` : item.teacher ? `${item.teacher.firstName} ${item.teacher.lastName}` : 'Unknown'} · Rs {Number(item.amount).toLocaleString()}</p><p className="text-sm text-gray-600">{item.type.replace(/_/g, ' ')} — {item.reason}</p></div><Button size="sm" disabled={action.isPending} onClick={() => action.mutate({ id: item.id, action: 'POST' })}>Post financially</Button></div>)}</div>}
+          {!approved?.length ? <p className="text-sm text-gray-500">No approved assessments are waiting to be posted.</p> : <div className="space-y-3">{approved.map((item) => <div key={item.id} className="flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between"><div><p className="font-semibold">{item.student ? `${item.student.firstName} ${item.student.lastName}` : item.teacher ? `${item.teacher.firstName} ${item.teacher.lastName}` : 'Unknown'} · EGP {Number(item.amount).toLocaleString()}</p><p className="text-sm text-gray-600">{item.type.replace(/_/g, ' ')} — {item.reason}</p></div><Button size="sm" disabled={action.isPending} onClick={() => action.mutate({ id: item.id, action: 'POST' })}>Post financially</Button></div>)}</div>}
         </CardContent>
       </Card>
     </div>

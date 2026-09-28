@@ -272,7 +272,7 @@ export default function TeacherAnnouncementsPage() {
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                        {new Date(ann.publishedAt).toLocaleDateString('en-PK', {
+                        {new Date(ann.publishedAt).toLocaleDateString('en-GB', {
                           month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                         })}
                       </span>

@@ -121,12 +121,12 @@ export function FeeOverdueModal() {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-bold text-red-800">Total Amount Due</span>
-              <span className="text-2xl font-black text-red-600">Rs {data.totalOverdue.toLocaleString()}</span>
+              <span className="text-2xl font-black text-red-600">EGP {data.totalOverdue.toLocaleString()}</span>
             </div>
             {isGuardian && data.invoices.slice(0, 2).map((invoice) => (
               <div key={invoice.id} className="mt-3 flex items-center justify-between gap-3 border-t border-red-100 pt-3 text-xs text-red-700">
                 <span className="truncate">{invoice.studentName || 'Student'} · {invoice.month}</span>
-                <span className="shrink-0 font-bold">Rs {invoice.outstandingAmount.toLocaleString()}</span>
+                <span className="shrink-0 font-bold">EGP {invoice.outstandingAmount.toLocaleString()}</span>
               </div>
             ))}
           </div>

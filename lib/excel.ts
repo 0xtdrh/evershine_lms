@@ -20,7 +20,7 @@ import { getCanonicalStudentClassName, getCanonicalStudentSection, type Enrollme
 // ─── Shared metadata header rows ─────────────────────────────────────────────
 
 function buildMetaRows(reportTitle: string, subtype: string): string[][] {
-  const date = new Date().toLocaleDateString('en-PK', {
+  const date = new Date().toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
@@ -215,8 +215,8 @@ export function downloadFeesReportExcel(data: FeesReportData): void {
     ...buildMetaRows('Fees Outstanding Deficit Report', 'fees'),
     ['SUMMARY'],
     ['Metric', 'Value'],
-    ['Total Outstanding (PKR)', Number(data.totalOutstanding)],
-    ['Total Collected (PKR)', Number(data.totalCollected)],
+    ['Total Outstanding (EGP)', Number(data.totalOutstanding)],
+    ['Total Collected (EGP)', Number(data.totalCollected)],
     ['Overdue Student Accounts', data.overdueStudentsCount],
     [''],
   ]
@@ -232,7 +232,7 @@ export function downloadFeesReportExcel(data: FeesReportData): void {
     'Class / Section',
     'Registration No.',
     'Roll No.',
-    'Due Amount (PKR)',
+    'Due Amount (EGP)',
     'Status',
   ]
 
@@ -276,9 +276,9 @@ export function downloadFeesReportExcel(data: FeesReportData): void {
       'Roll No.',
       'Class & Section',
       'Campus',
-      'Total Fee (PKR)',
-      'Paid Amount (PKR)',
-      'Outstanding Dues (PKR)',
+      'Total Fee (EGP)',
+      'Paid Amount (EGP)',
+      'Outstanding Dues (EGP)',
       'Fee Status',
     ]
 
@@ -584,9 +584,9 @@ export function downloadStudentsMasterExcel(students: StudentMasterRecord[]): vo
     'Admission Date',
     'Enrollment Status',
     'Fee Status',
-    'Total Fees (PKR)',
-    'Paid Amount (PKR)',
-    'Outstanding Dues (PKR)',
+    'Total Fees (EGP)',
+    'Paid Amount (EGP)',
+    'Outstanding Dues (EGP)',
     'Account Status',
   ]
 
@@ -610,7 +610,7 @@ export function downloadStudentsMasterExcel(students: StudentMasterRecord[]): vo
     getCanonicalStudentSection(s),
     s.house?.name || 'N/A',
     s.academicYear,
-    s.admissionDate ? new Date(s.admissionDate).toLocaleDateString('en-PK') : 'N/A',
+    s.admissionDate ? new Date(s.admissionDate).toLocaleDateString('en-GB') : 'N/A',
     s.enrollmentStatus,
     s.feeStatus,
     Number(s.totalFeeAmount),
@@ -631,8 +631,8 @@ export function downloadStudentsMasterExcel(students: StudentMasterRecord[]): vo
     ['Total Registered Students', students.length],
     ['Active Students', totalActive],
     ['Suspended Students', totalSuspended],
-    ['Total Paid Fees (PKR)', totalPaid],
-    ['Total Outstanding Fees (PKR)', totalOutstanding],
+    ['Total Paid Fees (EGP)', totalPaid],
+    ['Total Outstanding Fees (EGP)', totalOutstanding],
   ]
 
   const summarySheet = XLSX.utils.aoa_to_sheet(summarySheetRows)
@@ -675,7 +675,7 @@ export function downloadTeachersMasterExcel(teachers: TeacherMasterRecord[]): vo
     'Qualifications',
     'Experience (Years)',
     'Joining Date',
-    'Monthly Salary (PKR)',
+    'Monthly Salary (EGP)',
     'Status',
     'Campus Assumed',
     'Class Teacher Assignment',
@@ -700,7 +700,7 @@ export function downloadTeachersMasterExcel(teachers: TeacherMasterRecord[]): vo
       t.specialization,
       t.qualification,
       t.experience,
-      t.joiningDate ? new Date(t.joiningDate).toLocaleDateString('en-PK') : 'N/A',
+      t.joiningDate ? new Date(t.joiningDate).toLocaleDateString('en-GB') : 'N/A',
       Number(t.salary),
       t.isActive ? 'Active' : 'Suspended',
       t.campus?.name || 'N/A',
@@ -766,7 +766,7 @@ export function downloadStaffMasterExcel(staff: StaffMasterRecord[]): void {
     s.department,
     s.campusName,
     s.status,
-    s.joinedAt ? new Date(s.joinedAt).toLocaleDateString('en-PK') : 'N/A',
+    s.joinedAt ? new Date(s.joinedAt).toLocaleDateString('en-GB') : 'N/A',
   ])
 
   const summarySheetRows = [
@@ -813,12 +813,12 @@ export function downloadFeesMasterExcel(fees: FeeMasterRecord[]): void {
     'Billing Month',
     'Academic Year',
     'Due Date',
-    'Subtotal (PKR)',
-    'Discount (PKR)',
-    'Late Fee (PKR)',
-    'Total Amount (PKR)',
-    'Paid Amount (PKR)',
-    'Remaining Dues (PKR)',
+    'Subtotal (EGP)',
+    'Discount (EGP)',
+    'Late Fee (EGP)',
+    'Total Amount (EGP)',
+    'Paid Amount (EGP)',
+    'Remaining Dues (EGP)',
     'Payment Status',
     'Proof Status',
     'Bank Instructions',
@@ -834,7 +834,7 @@ export function downloadFeesMasterExcel(fees: FeeMasterRecord[]): void {
     f.campus,
     f.billingMonth,
     f.academicYear,
-    f.dueDate ? new Date(f.dueDate).toLocaleDateString('en-PK') : 'N/A',
+    f.dueDate ? new Date(f.dueDate).toLocaleDateString('en-GB') : 'N/A',
     f.subtotal,
     f.discount,
     f.lateFee,
@@ -844,7 +844,7 @@ export function downloadFeesMasterExcel(fees: FeeMasterRecord[]): void {
     f.status,
     f.proofStatus,
     f.bankAccounts,
-    f.issuedDate ? new Date(f.issuedDate).toLocaleDateString('en-PK') : 'N/A',
+    f.issuedDate ? new Date(f.issuedDate).toLocaleDateString('en-GB') : 'N/A',
   ])
 
   // Dues calculations
@@ -855,9 +855,9 @@ export function downloadFeesMasterExcel(fees: FeeMasterRecord[]): void {
   const summarySheetRows = [
     ...buildMetaRows('Master Fee Ledger & Invoicing Report', 'fees_ledger'),
     ['SUMMARY FINANCIAL LEDGER'],
-    ['Total Invoiced Amount (PKR)', totalAmount],
-    ['Total Received Amount (PKR)', totalPaid],
-    ['Total Outstanding Balances (PKR)', totalDues],
+    ['Total Invoiced Amount (EGP)', totalAmount],
+    ['Total Received Amount (EGP)', totalPaid],
+    ['Total Outstanding Balances (EGP)', totalDues],
     ['Total Invoices Issued', fees.length],
     ['Fully Paid Invoices', fees.filter(f => f.status === 'PAID').length],
     ['Partially Paid Invoices', fees.filter(f => f.status === 'PARTIAL').length],

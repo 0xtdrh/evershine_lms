@@ -130,7 +130,7 @@ export async function PATCH(
           title: newInvoiceStatus === 'PAID' ? 'Fee Payment Approved — Fully Paid' : 'Fee Payment Approved — Partial',
           message: newInvoiceStatus === 'PAID'
             ? `Your payment proof for Challan #${existing.challanNumber} has been verified. Your fee is now fully paid.`
-            : `Your payment of PKR ${amountToPay.toLocaleString()} for Challan #${existing.challanNumber} has been verified. Remaining balance: PKR ${(remaining - amountToPay).toLocaleString()}.`,
+            : `Your payment of EGP ${amountToPay.toLocaleString()} for Challan #${existing.challanNumber} has been verified. Remaining balance: EGP ${(remaining - amountToPay).toLocaleString()}.`,
           type: 'FEE_UPDATE',
           relatedId: invoiceId,
         },

@@ -310,7 +310,7 @@ function InquiriesTable({ searchQuery, statusFilter, page, setPage }: {
                 </td>
                 <td className="px-4 py-3 text-gray-600 hidden md:table-cell max-w-[200px] truncate">{inq.message}</td>
                 <td className="px-4 py-3"><StatusBadge status={inq.status} /></td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{new Date(inq.createdAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">{new Date(inq.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-1">
                     {inq.status !== 'RESOLVED' && inq.status !== 'SPAM' && (
@@ -435,7 +435,7 @@ function StaffTable({ searchQuery, statusFilter, page, setPage }: {
                 <td className="px-4 py-3 text-gray-700 hidden md:table-cell">{app.qualification}</td>
                 <td className="px-4 py-3 text-gray-700 hidden lg:table-cell">{app.experienceYears} yr{app.experienceYears !== 1 ? 's' : ''}</td>
                 <td className="px-4 py-3"><StatusBadge status={app.status} /></td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{new Date(app.createdAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">{new Date(app.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-1">
                     {actionLoading === app.id ? (
