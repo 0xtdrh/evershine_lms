@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import type { Role, AttendanceStatus } from '@prisma/client'
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
     const role = session.user.role as Role
-    if (role !== 'SUPER_ADMIN' && role !== 'ADMIN') {
+    if (!checkPermission(role, 'attendance_import', 'create')) {
       return errors.forbidden('Only admins can import student attendance')
     }
 

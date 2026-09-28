@@ -17,6 +17,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 import { staffReviewSchema } from '@/lib/validation/staff-application'
 import {
@@ -39,7 +40,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (!session?.user) return errors.unauthorized()
 
   const role = session.user.role as Role
-  if (role !== 'SUPER_ADMIN') return errors.forbidden('Only Super Admins can review staff applications')
+  if (!checkPermission(role, 'staff_applications', 'approve')) return errors.forbidden('You do not have permission to review staff applications')
 
   const { id } = await context.params
 

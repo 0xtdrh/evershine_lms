@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { errors } from '@/lib/api-response'
 import type { Role } from '@prisma/client'
 import * as XLSX from 'xlsx'
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
   const role = session.user.role as Role
   // WHY: Teachers also need to download the student template to fill
   // it with biometric data before using the teacher import endpoint.
-  if (role !== 'SUPER_ADMIN' && role !== 'ADMIN' && role !== 'TEACHER') {
+  if (!checkPermission(role, 'attendance_import', 'read')) {
     return errors.forbidden('Only Teachers and Admins can access attendance templates')
   }
 

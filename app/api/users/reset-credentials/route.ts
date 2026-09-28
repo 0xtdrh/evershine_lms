@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   if (!session?.user) return errors.unauthorized()
   
   // Credentials reset is a sensitive administrative function requiring update on users resource
-  if (!checkPermission(session.user.role as Role, 'users', 'update') && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN') {
+  if (!checkPermission(session.user.role as Role, 'account_management', 'update')) {
     return errors.forbidden()
   }
 

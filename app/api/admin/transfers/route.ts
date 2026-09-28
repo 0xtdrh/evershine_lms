@@ -14,12 +14,11 @@ import type { Role } from '@prisma/client'
 export async function POST(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
-  if (!checkPermission(session.user.role as Role, 'students', 'update')) return errors.forbidden()
+  if (!checkPermission(session.user.role as Role, 'student_transfers', 'update')) {
+    return errors.forbidden('You do not have permission to transfer records')
+  }
 
   const role = session.user.role as Role
-  if (role !== 'SUPER_ADMIN' && role !== 'ADMIN') {
-    return errors.forbidden('Only administrators can transfer records')
-  }
 
   let body: unknown
   try {

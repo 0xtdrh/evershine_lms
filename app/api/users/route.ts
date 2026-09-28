@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   if (!session?.user) return errors.unauthorized()
   
   // Checking admin permission to read users
-  if (!checkPermission(session.user.role as Role, 'users', 'read') && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN') {
+  if (!checkPermission(session.user.role as Role, 'users', 'read')) {
     return errors.forbidden()
   }
 

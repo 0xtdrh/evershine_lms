@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { errors } from '@/lib/api-response'
 import type { Role } from '@prisma/client'
 import * as XLSX from 'xlsx'
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
-  if (role !== 'SUPER_ADMIN' && role !== 'ADMIN') {
+  if (!checkPermission(role, 'attendance_import', 'create')) {
     return errors.forbidden('Only admins can access attendance templates')
   }
 

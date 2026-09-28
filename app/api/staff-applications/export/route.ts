@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { errors } from '@/lib/api-response'
 import { createBrandedWorkbook, workbookToBuffer, generateExcelFilename } from '@/lib/excel/report-generator'
 import type { ColumnDef } from '@/lib/excel/report-generator'
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   if (!session?.user) return errors.unauthorized()
 
   const role = session.user.role as Role
-  if (role !== 'SUPER_ADMIN') return errors.forbidden()
+  if (!checkPermission(role, 'staff_applications', 'export')) return errors.forbidden()
 
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status') || undefined

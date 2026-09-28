@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit-logger'
 import { errors, successResponse } from '@/lib/api-response'
@@ -12,7 +13,6 @@ const reviewLeaveSchema = z.object({
   remarks: z.string().max(500).optional(),
 })
 
-const REVIEWER_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN']
 
 export async function GET(
   _request: NextRequest,
@@ -29,7 +29,7 @@ export async function GET(
   if (!leave) return errors.notFound('Leave request')
 
   const userRole = session.user.role as Role
-  const isAdmin = REVIEWER_ROLES.includes(userRole)
+  const isAdmin = checkPermission(userRole, 'leaves', 'approve')
   const isOwner = leave.applicantId === session.user.id
 
   if (!isAdmin && !isOwner) return errors.forbidden()
@@ -47,7 +47,7 @@ export async function PUT(
 
   const userRole = session.user.role as Role
 
-  if (!REVIEWER_ROLES.includes(userRole)) {
+  if (!checkPermission(userRole, 'leaves', 'approve')) {
     return errors.forbidden()
   }
 
@@ -231,7 +231,7 @@ export async function DELETE(
 
   if (!leave) return errors.notFound('Leave request')
 
-  if (REVIEWER_ROLES.includes(userRole)) {
+  if (checkPermission(userRole, 'leaves', 'approve')) {
     await prisma.$transaction(async (tx) => {
       await tx.leaveRequest.delete({ where: { id: leaveId } })
       await tx.notification.create({

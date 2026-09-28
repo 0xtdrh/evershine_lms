@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit-logger'
 import { errors, createdResponse, paginatedResponse } from '@/lib/api-response'
@@ -19,11 +20,8 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 })
 
-// Roles that can apply for leave
-const APPLICANT_ROLES: Role[] = ['TEACHER', 'ACCOUNTANT', 'STUDENT']
-
-// Roles that can review/approve leave requests
-const REVIEWER_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN']
+// Who can apply (leaves:create) and who reviews / sees all (leaves:approve) comes
+// from the RBAC matrix, so it can be changed on the Permissions page.
 
 export async function GET(request: NextRequest) {
   const session = await auth()
@@ -39,10 +37,10 @@ export async function GET(request: NextRequest) {
 
   let where: Prisma.LeaveRequestWhereInput = {}
 
-  if (REVIEWER_ROLES.includes(userRole)) {
+  if (checkPermission(userRole, 'leaves', 'approve')) {
     // Admins see all leave requests, including student submissions.
     where = {}
-  } else if (APPLICANT_ROLES.includes(userRole)) {
+  } else if (checkPermission(userRole, 'leaves', 'create')) {
     // Staff only see their own requests
     where = { applicantId: userId }
   } else {
@@ -69,7 +67,7 @@ export async function POST(request: NextRequest) {
   const userRole = session.user.role as Role
 
   // ADMIN/SUPER_ADMIN cannot apply for leave — they only review
-  if (!APPLICANT_ROLES.includes(userRole)) {
+  if (!checkPermission(userRole, 'leaves', 'create')) {
     return errors.forbidden()
   }
 

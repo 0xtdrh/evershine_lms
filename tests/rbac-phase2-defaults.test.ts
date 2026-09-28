@@ -36,6 +36,20 @@ const EXPECTED: Array<[AcademicResource, Action, string[], string]> = [
   ['salaries', 'update', FINANCE, 'accountant/salary-slips/[id] PATCH'],
   ['salaries', 'delete', FINANCE, 'accountant/salary-slips/[id] DELETE'],
   ['salaries', 'approve', ADMINS, 'salaries GET all/getStaff, POST, [id] PUT/DELETE, authorize'],
+  // phase 2b
+  ['attendance_import', 'create', ADMINS, 'admin/attendance/import/*, templates/staff'],
+  ['attendance_import', 'read', ['ADMIN', 'SUPER_ADMIN', 'TEACHER'], 'admin/attendance/templates/student'],
+  ['student_transfers', 'update', ADMINS, 'admin/transfers POST (was students:update AND admin)'],
+  ['leaves', 'create', ['ACCOUNTANT', 'STUDENT', 'TEACHER'], 'leaves POST (APPLICANT_ROLES)'],
+  ['leaves', 'approve', ADMINS, 'leaves GET all, [id] PUT/DELETE (REVIEWER_ROLES)'],
+  ['policies', 'read', ADMINS, 'policies GET'],
+  ['policies', 'create', ADMINS, 'policies POST'],
+  ['policies', 'update', ADMINS, 'policies PATCH'],
+  ['staff_applications', 'read', ADMINS, 'staff-applications GET, [id] GET'],
+  ['staff_applications', 'approve', ['SUPER_ADMIN'], 'staff-applications/[id]/review'],
+  ['staff_applications', 'export', ['SUPER_ADMIN'], 'staff-applications/export'],
+  ['users', 'read', ['ADMIN', 'BRANCH_MANAGER', 'SUPER_ADMIN'], 'users GET (was users:read OR admin)'],
+  ['account_management', 'update', ADMINS, 'users/reset-credentials, users/[id]/role'],
 ]
 
 describe('Phase 2 defaults match the previously hardcoded role lists', () => {

@@ -55,6 +55,13 @@ export type AcademicResource =
   | 'salaries'
   | 'profit_loss'
   | 'financial_reports'
+  // Phase 2b (same rule: defaults = the old hardcoded role lists)
+  | 'attendance_import'
+  | 'student_transfers'
+  | 'leaves'
+  | 'policies'
+  | 'staff_applications'
+  | 'account_management'
 
 type Resource = AcademicResource
 
@@ -135,6 +142,12 @@ const PERMISSIONS: PermissionMap = {
     salaries: ['create', 'read', 'update', 'delete', 'approve', 'export'],
     profit_loss: ['create', 'read', 'update', 'delete'],
     financial_reports: ['read', 'export'],
+    attendance_import: ['create', 'read'],
+    student_transfers: ['update'],
+    leaves: ['read', 'approve'],
+    policies: ['create', 'read', 'update'],
+    staff_applications: ['read', 'approve', 'export'],
+    account_management: ['update'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -170,6 +183,12 @@ const PERMISSIONS: PermissionMap = {
     salaries: ['create', 'read', 'update', 'delete', 'approve', 'export'],
     profit_loss: ['create', 'read', 'update', 'delete'],
     financial_reports: ['read', 'export'],
+    attendance_import: ['create', 'read'],
+    student_transfers: ['update'],
+    leaves: ['read', 'approve'],
+    policies: ['create', 'read', 'update'],
+    staff_applications: ['read'],
+    account_management: ['update'],
   },
   TEACHER: {
     students: ['read'],
@@ -206,6 +225,12 @@ const PERMISSIONS: PermissionMap = {
     salaries: [],
     profit_loss: [],
     financial_reports: [],
+    attendance_import: ['read'],
+    student_transfers: [],
+    leaves: ['create'],
+    policies: [],
+    staff_applications: [],
+    account_management: [],
   },
   STUDENT: {
     students: ['read'],
@@ -241,6 +266,12 @@ const PERMISSIONS: PermissionMap = {
     salaries: [],
     profit_loss: [],
     financial_reports: [],
+    attendance_import: [],
+    student_transfers: [],
+    leaves: ['create'],
+    policies: [],
+    staff_applications: [],
+    account_management: [],
   },
   PARENT: {
     students: ['read'],
@@ -276,6 +307,12 @@ const PERMISSIONS: PermissionMap = {
     salaries: [],
     profit_loss: [],
     financial_reports: [],
+    attendance_import: [],
+    student_transfers: [],
+    leaves: [],
+    policies: [],
+    staff_applications: [],
+    account_management: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -313,6 +350,12 @@ const PERMISSIONS: PermissionMap = {
     salaries: ['create', 'read', 'update', 'delete'],
     profit_loss: ['create', 'read', 'update', 'delete'],
     financial_reports: ['read', 'export'],
+    attendance_import: [],
+    student_transfers: [],
+    leaves: ['create'],
+    policies: [],
+    staff_applications: [],
+    account_management: [],
   },
   GUARDIAN: {
     students: ['read'],
@@ -348,6 +391,12 @@ const PERMISSIONS: PermissionMap = {
     salaries: [],
     profit_loss: [],
     financial_reports: [],
+    attendance_import: [],
+    student_transfers: [],
+    leaves: [],
+    policies: [],
+    staff_applications: [],
+    account_management: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -387,6 +436,12 @@ const PERMISSIONS: PermissionMap = {
     salaries: [],
     profit_loss: [],
     financial_reports: [],
+    attendance_import: [],
+    student_transfers: [],
+    leaves: [],
+    policies: [],
+    staff_applications: [],
+    account_management: [],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -427,6 +482,12 @@ const PERMISSIONS: PermissionMap = {
     salaries: [],
     profit_loss: ['create', 'read'],
     financial_reports: [],
+    attendance_import: [],
+    student_transfers: [],
+    leaves: [],
+    policies: [],
+    staff_applications: [],
+    account_management: [],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -465,6 +526,12 @@ const PERMISSIONS: PermissionMap = {
     salaries: [],
     profit_loss: [],
     financial_reports: [],
+    attendance_import: [],
+    student_transfers: [],
+    leaves: [],
+    policies: [],
+    staff_applications: [],
+    account_management: [],
   },
 }
 

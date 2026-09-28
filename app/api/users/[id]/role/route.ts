@@ -4,6 +4,7 @@
 
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { z } from 'zod'
@@ -28,7 +29,7 @@ export async function PATCH(
   }
 
   // Only SUPER_ADMIN and ADMIN are allowed to perform user elevations/updates
-  if (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN') {
+  if (!checkPermission(session.user.role, 'account_management', 'update')) {
     return errors.forbidden()
   }
 

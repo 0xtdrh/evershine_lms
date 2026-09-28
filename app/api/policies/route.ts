@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
 
-const ADMIN_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN']
 
 // ─── Validation schemas ────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ const teacherPolicySchema = z.object({
 
 export async function GET(request: NextRequest) {
   const session = await auth()
-  if (!session?.user || !ADMIN_ROLES.includes(session.user.role as Role)) {
+  if (!session?.user || !checkPermission(session.user.role, 'policies', 'read')) {
     return errors.forbidden()
   }
 
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const session = await auth()
-  if (!session?.user || !ADMIN_ROLES.includes(session.user.role as Role)) {
+  if (!session?.user || !checkPermission(session.user.role, 'policies', 'create')) {
     return errors.forbidden()
   }
 
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const session = await auth()
-  if (!session?.user || !ADMIN_ROLES.includes(session.user.role as Role)) {
+  if (!session?.user || !checkPermission(session.user.role, 'policies', 'update')) {
     return errors.forbidden()
   }
 
