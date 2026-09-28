@@ -30,7 +30,7 @@ export async function POST(
   if (denied) return denied
 
   const { id } = await params
-  const group = await prisma.classSection.findUnique({ where: { id }, select: { campusId: true } })
+  const group = await prisma.classSection.findUnique({ where: { id }, select: { campusId: true, levelId: true, level: { select: { subjectId: true } } } })
   if (!group) return errors.notFound('Group')
 
   const campusId = campusScope(role, session.user.campusId, null)
@@ -67,6 +67,24 @@ export async function POST(
         rollNumber: String(Math.floor(Math.random() * 9000) + 1000),
       },
     })
+  }
+
+  // Waiting list: a wish for this group's course (same level, or level not
+  // decided yet) is now fulfilled. Must never break adding the student.
+  if (group.level) {
+    try {
+      await prisma.waitingListEntry.updateMany({
+        where: {
+          studentId: parsed.data.studentId,
+          status: 'WAITING',
+          subjectId: group.level.subjectId,
+          OR: [{ levelId: null }, { levelId: group.levelId }],
+        },
+        data: { status: 'PLACED', placedClassSectionId: id, placedAt: new Date() },
+      })
+    } catch (err) {
+      console.error('[WAITING_LIST_MARK_PLACED]', err)
+    }
   }
 
   return createdResponse(enrollment, existing ? 'Student re-added — previous history restored' : 'Student added')

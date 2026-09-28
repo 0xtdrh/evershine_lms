@@ -53,6 +53,7 @@ import {
   Palette,
   Sparkles,
   DatabaseBackup,
+  Hourglass,
 } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
 import { ArcLineBrand } from '@/components/ArcLineBrand'
@@ -86,6 +87,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Admissions',      href: '/dashboard/admissions',   icon: ClipboardCheck,  roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING'], perm: [['admissions', 'read']] },
   { name: 'Landing Leads',   href: '/dashboard/leads',        icon: Inbox,           roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING'], perm: [['admissions', 'read']] },
   { name: 'Students',        href: '/dashboard/students',     icon: Users,           roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['students', 'read']] },
+  { name: 'Waiting List',    href: '/dashboard/waiting-list', icon: Hourglass,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['waiting_list', 'read']] },
   { name: 'Staff Directory',  href: '/dashboard/teachers',     icon: Users,           roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['teachers', 'read']] },
   { name: 'Fees',            href: '/dashboard/fees',         icon: CreditCard,      roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'STUDENT', 'PARENT', 'GUARDIAN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['fees', 'read']] },
   { name: 'Accounting Hub',   href: '/dashboard/accountant',    icon: Wallet,          roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'], perm: [['fee_collection', 'read'], ['expenses', 'read'], ['profit_loss', 'read']] },

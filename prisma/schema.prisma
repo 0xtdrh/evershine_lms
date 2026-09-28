@@ -386,6 +386,7 @@ model Campus {
   secretaries            Secretary[]
   marketingStaff         MarketingStaff[]
 
+  waitingListEntries WaitingListEntry[]
   @@index([code])
   @@index([isActive])
 }
@@ -559,6 +560,7 @@ model Student {
   dailyPerformanceScores  DailyPerformanceScore[]
   examDateSheetOverrides  ExamDateSheetOverride[]
 
+  waitingListEntries WaitingListEntry[]
   @@index([userId])
   @@index([campusId])
   @@index([batchId])
@@ -2086,6 +2088,7 @@ model AcademicSubject {
   levels         Level[]
   qualifiedTeachers TeacherQualifiedSubject[]
 
+  waitingListEntries WaitingListEntry[]
   @@index([trackId])
 }
 
@@ -2133,6 +2136,7 @@ model Level {
   invoices      FeeInvoice[]
   qualifiedTeachers TeacherQualifiedSubject[]
 
+  waitingListEntries WaitingListEntry[]
   @@unique([subjectId, order])
   @@index([subjectId])
 }
@@ -3184,4 +3188,44 @@ model AttendanceImportLog {
   createdAt    DateTime @default(now())
 
   importedBy User @relation(fields: [importedById], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAITING LIST
+// WHY a table: registration does not record which course/level a student
+// wants. An entry = "this student wants course X (level Y, optional) at
+// branch Z". It becomes PLACED automatically when the student is added to a
+// group of that course (and level, if set). Students waiting for an upcoming
+// group, and students who finished a group and did not continue, are
+// computed from enrollments and need no row here.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum WaitingListStatus {
+  WAITING
+  PLACED
+  CANCELLED
+}
+
+model WaitingListEntry {
+  id                   String            @id @default(cuid())
+  studentId            String
+  subjectId            String // course wanted
+  levelId              String? // level wanted; null = not decided yet (e.g. placement test pending)
+  campusId             String // branch
+  notes                String?           @db.Text
+  status               WaitingListStatus @default(WAITING)
+  placedClassSectionId String?
+  placedAt             DateTime?
+  createdById          String
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  student Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject AcademicSubject @relation(fields: [subjectId], references: [id])
+  level   Level?          @relation(fields: [levelId], references: [id])
+  campus  Campus          @relation(fields: [campusId], references: [id])
+
+  @@index([subjectId, levelId, status])
+  @@index([studentId, status])
+  @@index([campusId, status])
 }

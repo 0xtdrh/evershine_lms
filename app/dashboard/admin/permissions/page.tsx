@@ -24,6 +24,7 @@ import type { Role } from '@prisma/client'
 // WHY: Non-technical admins need plain-English descriptions of what each
 // resource controls. Tooltips reduce misconfiguration risk.
 const RESOURCE_META: Record<string, { label: string; description: string; category: string }> = {
+  waiting_list:          { label: 'Waiting List',        description: 'Students waiting for a group; record wanted course/level', category: 'People'     },
   students:              { label: 'Students',            description: 'Admission records, profiles, and enrollment status',     category: 'People'     },
   teachers:              { label: 'Teachers',            description: 'Staff profiles, designations, and class assignments',     category: 'People'     },
   users:                 { label: 'User Accounts',       description: 'View the list of system users',                          category: 'People'     },

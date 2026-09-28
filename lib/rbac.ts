@@ -62,6 +62,7 @@ export type AcademicResource =
   | 'policies'
   | 'staff_applications'
   | 'account_management'
+  | 'waiting_list'
 
 type Resource = AcademicResource
 
@@ -148,6 +149,7 @@ const PERMISSIONS: PermissionMap = {
     policies: ['create', 'read', 'update'],
     staff_applications: ['read', 'approve', 'export'],
     account_management: ['update'],
+    waiting_list: ['create', 'read', 'update', 'delete'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -189,6 +191,7 @@ const PERMISSIONS: PermissionMap = {
     policies: ['create', 'read', 'update'],
     staff_applications: ['read'],
     account_management: ['update'],
+    waiting_list: ['create', 'read', 'update', 'delete'],
   },
   TEACHER: {
     students: ['read'],
@@ -231,6 +234,7 @@ const PERMISSIONS: PermissionMap = {
     policies: [],
     staff_applications: [],
     account_management: [],
+    waiting_list: [],
   },
   STUDENT: {
     students: ['read'],
@@ -272,6 +276,7 @@ const PERMISSIONS: PermissionMap = {
     policies: [],
     staff_applications: [],
     account_management: [],
+    waiting_list: [],
   },
   PARENT: {
     students: ['read'],
@@ -313,6 +318,7 @@ const PERMISSIONS: PermissionMap = {
     policies: [],
     staff_applications: [],
     account_management: [],
+    waiting_list: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -356,6 +362,7 @@ const PERMISSIONS: PermissionMap = {
     policies: [],
     staff_applications: [],
     account_management: [],
+    waiting_list: [],
   },
   GUARDIAN: {
     students: ['read'],
@@ -397,6 +404,7 @@ const PERMISSIONS: PermissionMap = {
     policies: [],
     staff_applications: [],
     account_management: [],
+    waiting_list: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -442,6 +450,7 @@ const PERMISSIONS: PermissionMap = {
     policies: [],
     staff_applications: [],
     account_management: [],
+    waiting_list: ['create', 'read', 'update', 'delete'],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -488,6 +497,7 @@ const PERMISSIONS: PermissionMap = {
     policies: [],
     staff_applications: [],
     account_management: [],
+    waiting_list: ['create', 'read', 'update', 'delete'],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -532,6 +542,7 @@ const PERMISSIONS: PermissionMap = {
     policies: [],
     staff_applications: [],
     account_management: [],
+    waiting_list: [],
   },
 }
 

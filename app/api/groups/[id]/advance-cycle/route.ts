@@ -29,6 +29,7 @@ import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createCycleInvoice } from '@/lib/groups/sync-progress'
 import type { Role } from '@prisma/client'
 import { findGroupInstructorOffering } from '@/lib/groups/instructor'
+import { getNextStep } from '@/lib/groups/next-step'
 
 const bodySchema = z.object({
   continuingStudentIds: z.array(z.string()).default([]),
@@ -74,35 +75,24 @@ export async function POST(
   const level = group.level
 
   // Work out what's next: another month of the same level, or the next
-  // level/course, or nothing.
-  const isLastMonthOfLevel = level.pricingType === 'FULL_LEVEL' || group.currentCycleNumber >= level.numberOfMonths
+  // level/course, or nothing (shared rule: lib/groups/next-step.ts).
+  const nextStep = await getNextStep(level, group.currentCycleNumber)
+  const cycleLogType: 'MONTH_COMPLETED' | 'LEVEL_COMPLETED' = nextStep?.kind === 'NEXT_MONTH' ? 'MONTH_COMPLETED' : 'LEVEL_COMPLETED'
 
-  let nextLevel = level
-  let nextCycleNumber = group.currentCycleNumber + 1
-  let cycleLogType: 'MONTH_COMPLETED' | 'LEVEL_COMPLETED' = 'MONTH_COMPLETED'
-
-  if (isLastMonthOfLevel) {
-    cycleLogType = 'LEVEL_COMPLETED'
-    let found = await prisma.level.findFirst({ where: { subjectId: level.subjectId, order: level.order + 1 } })
-    if (!found && level.subject.trackId && level.subject.trackOrder != null) {
-      const nextCourse = await prisma.academicSubject.findFirst({
-        where: { trackId: level.subject.trackId, trackOrder: level.subject.trackOrder + 1 },
-      })
-      if (nextCourse) found = await prisma.level.findFirst({ where: { subjectId: nextCourse.id }, orderBy: { order: 'asc' } })
-    }
-    if (!found) {
-      // Nothing comes next — the group (and the track, for this group) is done.
-      await prisma.$transaction([
-        prisma.classSection.update({ where: { id }, data: { status: 'COMPLETED', completedAt: new Date() } }),
-        prisma.groupCycleLog.create({
-          data: { classSectionId: id, type: 'LEVEL_COMPLETED', levelId: group.levelId, cycleNumber: group.currentCycleNumber, completedBy: session.user.id },
-        }),
-      ])
-      return successResponse({ action: 'GROUP_COMPLETED', newGroupId: null })
-    }
-    nextLevel = { ...found, subject: level.subject }
-    nextCycleNumber = 1
+  if (!nextStep) {
+    // Nothing comes next — the group (and the track, for this group) is done.
+    await prisma.$transaction([
+      prisma.classSection.update({ where: { id }, data: { status: 'COMPLETED', completedAt: new Date() } }),
+      prisma.groupCycleLog.create({
+        data: { classSectionId: id, type: 'LEVEL_COMPLETED', levelId: group.levelId, cycleNumber: group.currentCycleNumber, completedBy: session.user.id },
+      }),
+    ])
+    return successResponse({ action: 'GROUP_COMPLETED', newGroupId: null })
   }
+  // WHY the level's own subject: when moving to the next course, invoice
+  // labels used to show the previous course's name.
+  const nextLevel = nextStep.level
+  const nextCycleNumber = nextStep.cycleNumber
 
   // Find the current instructor (if any) to carry over, along with any
   // group-specific pay override.
