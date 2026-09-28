@@ -21,6 +21,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse, createdResponse, paginatedResponse } from '@/lib/api-response'
 import { buildProfitLossReport } from '@/lib/excel/profit-loss-report'
 
@@ -71,7 +72,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
-    if (!['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN', 'BRANCH_MANAGER'].includes(session.user.role)) {
+    if (!checkPermission(session.user.role, 'profit_loss', 'read')) {
       return errors.forbidden()
     }
 
@@ -155,7 +156,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
-    if (!['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN', 'BRANCH_MANAGER'].includes(session.user.role)) {
+    if (!checkPermission(session.user.role, 'profit_loss', 'create')) {
       return errors.forbidden('Only finance staff can generate P&L statements')
     }
 

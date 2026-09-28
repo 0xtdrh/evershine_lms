@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors } from '@/lib/api-response'
 import { expenseExportSchema } from '@/lib/validation/expense'
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   if (!session?.user) return errors.unauthorized()
 
   const role = session.user.role
-  if (role !== 'ACCOUNTANT' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+  if (!checkPermission(session.user.role, 'expenses', 'export')) {
     return errors.forbidden('Only finance staff and admins can export expenses')
   }
 

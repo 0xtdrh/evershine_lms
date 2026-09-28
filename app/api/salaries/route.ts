@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors, createdResponse, successResponse, paginatedResponse } from '@/lib/api-response'
 import { z } from 'zod'
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
 
   // Admin utility: load list of active staff to generate a salary slip
   if (getStaff === 'true') {
-    if (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN') return errors.forbidden()
+    if (!checkPermission(userRole, 'salaries', 'approve')) return errors.forbidden()
 
     const [teachers, accountants] = await prisma.$transaction([
       prisma.teacher.findMany({
@@ -85,7 +86,8 @@ export async function GET(request: NextRequest) {
 
   let where: any = {}
 
-  if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+  // salaries:approve (SA/ADMIN by default) = manage all salaries; staff otherwise see their own.
+  if (checkPermission(userRole, 'salaries', 'approve')) {
     where = { isDeleted: false }
   } else if (userRole === 'TEACHER' || userRole === 'ACCOUNTANT') {
     where = { employeeId: session.user.id, isDeleted: false }
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
   if (!session?.user) return errors.unauthorized()
 
   const userRole = session.user.role as Role
-  if (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN') {
+  if (!checkPermission(userRole, 'salaries', 'approve')) {
     return errors.forbidden() // Only admin can issue salaries
   }
 

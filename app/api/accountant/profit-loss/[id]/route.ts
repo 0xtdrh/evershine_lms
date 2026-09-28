@@ -1,13 +1,14 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
-    if (!['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    if (!checkPermission(session.user.role, 'profit_loss', 'delete')) {
       return errors.forbidden('Only finance staff can delete P&L statements')
     }
 

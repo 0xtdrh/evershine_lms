@@ -12,6 +12,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse, paginatedResponse, createdResponse } from '@/lib/api-response'
 import { dispatchNotification } from '@/lib/notifications/dispatch'
 
@@ -41,8 +42,9 @@ export async function GET(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
 
-    const isFinance = ['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)
-    const isTeacher = session.user.role === 'TEACHER'
+    // Anyone with salaries:read sees all slips; a teacher without it sees only their own.
+    const isFinance = checkPermission(session.user.role, 'salaries', 'read')
+    const isTeacher = !isFinance && session.user.role === 'TEACHER'
     if (!isFinance && !isTeacher) {
       return errors.forbidden('Access denied.')
     }
@@ -88,7 +90,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
-    if (!['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    if (!checkPermission(session.user.role, 'salaries', 'create')) {
       return errors.forbidden('Only accountants and administrators can generate salary slips')
     }
 

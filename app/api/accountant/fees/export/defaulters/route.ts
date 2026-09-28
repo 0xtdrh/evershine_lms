@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors } from '@/lib/api-response'
 import { feeExportDefaultersSchema } from '@/lib/validation/accountant-fee'
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
   if (!session?.user) return errors.unauthorized()
 
   const role = session.user.role
-  if (role !== 'ACCOUNTANT' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+  if (!checkPermission(session.user.role, 'fee_collection', 'export')) {
     return errors.forbidden('Only finance staff can export fee reports')
   }
 

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { z } from 'zod'
@@ -19,7 +20,7 @@ export async function PUT(
   if (!session?.user) return errors.unauthorized()
 
   const userRole = session.user.role as Role
-  if (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN') {
+  if (!checkPermission(userRole, 'salaries', 'approve')) {
     return errors.forbidden() // Only admin can update salary slips
   }
 
@@ -62,7 +63,7 @@ export async function DELETE(
   if (!session?.user) return errors.unauthorized()
 
   const userRole = session.user.role as Role
-  if (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN') {
+  if (!checkPermission(userRole, 'salaries', 'approve')) {
     return errors.forbidden() // Only admin can delete salary slips
   }
 

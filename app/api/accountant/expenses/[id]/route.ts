@@ -7,6 +7,7 @@
 import { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { updateExpenseSchema } from '@/lib/validation/expense'
@@ -19,7 +20,7 @@ export async function GET(
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role
-  if (role !== 'ACCOUNTANT' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+  if (!checkPermission(session.user.role, 'expenses', 'read')) {
     return errors.forbidden()
   }
 
@@ -68,7 +69,7 @@ export async function PATCH(
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role
-  if (role !== 'ACCOUNTANT' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+  if (!checkPermission(session.user.role, 'expenses', 'update')) {
     return errors.forbidden()
   }
 
@@ -144,7 +145,7 @@ export async function DELETE(
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role
-  if (role !== 'ACCOUNTANT' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+  if (!checkPermission(session.user.role, 'expenses', 'delete')) {
     return errors.forbidden()
   }
 

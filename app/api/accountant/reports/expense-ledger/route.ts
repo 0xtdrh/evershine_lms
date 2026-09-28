@@ -11,6 +11,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 import { buildLedgerReport, LedgerEntry } from '@/lib/excel/ledger-report'
 import { getExpenseColumnSupport } from '@/lib/accounting/expense-columns'
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
     if (!session?.user) return errors.unauthorized()
 
     const role = session.user.role
-    if (!['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
+    if (!checkPermission(session.user.role, 'financial_reports', 'read')) {
       return errors.forbidden('Only finance managers can access the unified ledger')
     }
 

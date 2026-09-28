@@ -49,6 +49,12 @@ export type AcademicResource =
   // managed from the Permissions page without touching code.
   | 'admissions'
   | 'teacher_absences'
+  // Finance (phase 2): defaults copy the role lists that were hardcoded in the
+  // accountant/salary routes, so nobody's access changed when they were added.
+  | 'fee_collection'
+  | 'salaries'
+  | 'profit_loss'
+  | 'financial_reports'
 
 type Resource = AcademicResource
 
@@ -122,9 +128,13 @@ const PERMISSIONS: PermissionMap = {
     promotions: ['create', 'read', 'update', 'delete'],
     fee_penalties: ['create', 'read', 'update', 'delete'],
     teacher_penalties: ['create', 'read', 'update', 'delete'],
-    expenses: ['create', 'read', 'update', 'delete'],
+    expenses: ['create', 'read', 'update', 'delete', 'export'],
     admissions: ['create', 'read', 'update', 'delete', 'approve', 'export'],
     teacher_absences: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+    fee_collection: ['create', 'read', 'update', 'delete', 'export'],
+    salaries: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+    profit_loss: ['create', 'read', 'update', 'delete'],
+    financial_reports: ['read', 'export'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -153,9 +163,13 @@ const PERMISSIONS: PermissionMap = {
     promotions: ['create', 'read', 'update', 'delete'],
     fee_penalties: ['create', 'read', 'update', 'delete'],
     teacher_penalties: ['create', 'read', 'update'],
-    expenses: ['create', 'read', 'update', 'delete'],
+    expenses: ['create', 'read', 'update', 'delete', 'export'],
     admissions: ['create', 'read', 'update', 'approve', 'export'],
     teacher_absences: ['create', 'read', 'update', 'approve', 'export'],
+    fee_collection: ['create', 'read', 'update', 'delete', 'export'],
+    salaries: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+    profit_loss: ['create', 'read', 'update', 'delete'],
+    financial_reports: ['read', 'export'],
   },
   TEACHER: {
     students: ['read'],
@@ -188,6 +202,10 @@ const PERMISSIONS: PermissionMap = {
     expenses: [],
     admissions: [],
     teacher_absences: ['create', 'read'],
+    fee_collection: [],
+    salaries: [],
+    profit_loss: [],
+    financial_reports: [],
   },
   STUDENT: {
     students: ['read'],
@@ -219,6 +237,10 @@ const PERMISSIONS: PermissionMap = {
     expenses: [],
     admissions: [],
     teacher_absences: [],
+    fee_collection: [],
+    salaries: [],
+    profit_loss: [],
+    financial_reports: [],
   },
   PARENT: {
     students: ['read'],
@@ -250,6 +272,10 @@ const PERMISSIONS: PermissionMap = {
     expenses: [],
     admissions: [],
     teacher_absences: [],
+    fee_collection: [],
+    salaries: [],
+    profit_loss: [],
+    financial_reports: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -280,9 +306,13 @@ const PERMISSIONS: PermissionMap = {
     promotions: [],
     fee_penalties: ['create', 'read', 'update'],
     teacher_penalties: [],
-    expenses: ['create', 'read', 'update', 'delete'],
+    expenses: ['create', 'read', 'update', 'delete', 'export'],
     admissions: ['read', 'export'],
     teacher_absences: ['read'],
+    fee_collection: ['create', 'read', 'update', 'delete', 'export'],
+    salaries: ['create', 'read', 'update', 'delete'],
+    profit_loss: ['create', 'read', 'update', 'delete'],
+    financial_reports: ['read', 'export'],
   },
   GUARDIAN: {
     students: ['read'],
@@ -314,6 +344,10 @@ const PERMISSIONS: PermissionMap = {
     expenses: [],
     admissions: [],
     teacher_absences: [],
+    fee_collection: [],
+    salaries: [],
+    profit_loss: [],
+    financial_reports: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -349,6 +383,10 @@ const PERMISSIONS: PermissionMap = {
     expenses: [],
     admissions: ['create', 'read', 'update'],
     teacher_absences: ['create', 'read', 'approve'],
+    fee_collection: [],
+    salaries: [],
+    profit_loss: [],
+    financial_reports: [],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -382,9 +420,13 @@ const PERMISSIONS: PermissionMap = {
     promotions: ['create', 'read', 'update', 'delete'],
     fee_penalties: ['create', 'read', 'update', 'delete'],
     teacher_penalties: ['create', 'read', 'update'],
-    expenses: ['create', 'read', 'update', 'delete'],
+    expenses: [],
     admissions: ['create', 'read', 'update', 'delete', 'approve', 'export'],
     teacher_absences: ['create', 'read', 'update', 'approve', 'export'],
+    fee_collection: [],
+    salaries: [],
+    profit_loss: ['create', 'read'],
+    financial_reports: [],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -419,6 +461,10 @@ const PERMISSIONS: PermissionMap = {
     expenses: [],
     admissions: ['create', 'read', 'update', 'export'],
     teacher_absences: [],
+    fee_collection: [],
+    salaries: [],
+    profit_loss: [],
+    financial_reports: [],
   },
 }
 

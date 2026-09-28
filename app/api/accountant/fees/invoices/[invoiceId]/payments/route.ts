@@ -5,6 +5,7 @@
 
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors, createdResponse } from '@/lib/api-response'
 import { recordPaymentSchema } from '@/lib/validation/accountant-fee'
@@ -16,7 +17,7 @@ export async function POST(
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role
-  if (role !== 'ACCOUNTANT' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+  if (!checkPermission(session.user.role, 'fee_collection', 'create')) {
     return errors.forbidden()
   }
 

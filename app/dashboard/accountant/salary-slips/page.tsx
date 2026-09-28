@@ -375,7 +375,7 @@ function SlipRow({ slip }: { slip: SalarySlip }) {
                       await fetchApi('/api/salaries/authorize', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ salarySlipId: slip.id, approverId: session?.user?.id, reason: 'Peer authorization approved' }),
+                        body: JSON.stringify({ salarySlipId: slip.id, reason: 'Authorized from salary slips page' }),
                       })
                       notify.success('Salary authorized successfully')
                     } catch (err: any) {

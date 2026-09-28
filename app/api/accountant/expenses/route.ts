@@ -6,6 +6,7 @@
 import { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors, createdResponse, paginatedResponse } from '@/lib/api-response'
 import { createExpenseSchema, expenseQuerySchema } from '@/lib/validation/expense'
@@ -40,10 +41,8 @@ export async function GET(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
 
-  // Must have 'read' on 'fees' or 'dashboard' if we had 'expenses' resource, 
-  // but let's use the explicit ACCOUNTANT/ADMIN role check since 'expenses' isn't in RBAC yet
   const role = session.user.role
-  if (role !== 'ACCOUNTANT' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+  if (!checkPermission(session.user.role, 'expenses', 'read')) {
     return errors.forbidden('Only finance staff and admins can view expenses')
   }
 
@@ -131,7 +130,7 @@ export async function POST(request: NextRequest) {
   if (!session?.user) return errors.unauthorized()
 
   const role = session.user.role
-  if (role !== 'ACCOUNTANT' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+  if (!checkPermission(session.user.role, 'expenses', 'create')) {
     return errors.forbidden('Only finance staff can record expenses')
   }
 

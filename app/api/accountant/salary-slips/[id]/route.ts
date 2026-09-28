@@ -13,6 +13,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 
 const customFieldSchema = z.object({
@@ -57,7 +58,7 @@ export async function GET(
 
     // Allow user to view their own salary slip, or accountants/admins to view any
     const isOwner = session.user.id === slip.employeeId
-    const isStaff = ['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)
+    const isStaff = checkPermission(session.user.role, 'salaries', 'read')
 
     if (!isOwner && !isStaff) {
       return errors.forbidden('You do not have permission to view this salary slip')
@@ -77,7 +78,7 @@ export async function PATCH(
   try {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
-    if (!['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    if (!checkPermission(session.user.role, 'salaries', 'update')) {
       return errors.forbidden('Only accountants and administrators can edit salary slips')
     }
 
@@ -203,7 +204,7 @@ export async function DELETE(
   try {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
-    if (!['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    if (!checkPermission(session.user.role, 'salaries', 'delete')) {
       return errors.forbidden('Only accountants and administrators can delete salary slips')
     }
 
