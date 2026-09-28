@@ -21,6 +21,7 @@ import {
   FileText,
   Coins,
   KeyRound,
+  DatabaseBackup,
 } from 'lucide-react'
 
 const ADMIN_ACTIONS = [
@@ -145,6 +146,13 @@ export default function AdminWorkspacePage() {
   const actions = useMemo(() => {
     const list = [...ADMIN_ACTIONS]
     if (role === 'SUPER_ADMIN') {
+      list.unshift({
+        title: 'Database Backups',
+        description: 'Daily automatic backups (newest 7). Back up now or download a copy.',
+        href: '/dashboard/admin/backups',
+        icon: DatabaseBackup,
+        badge: 'Security',
+      })
       list.push({
         title: 'Reserve Fund Ledger',
         description: 'Inspect the institutional capital reserve ledger and trace P&L allocations.',
