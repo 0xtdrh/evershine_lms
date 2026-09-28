@@ -62,6 +62,29 @@ export async function GET() {
     }
   }
 
+  // SECURITY: students and parents must never receive company-wide numbers
+  // (student counts, fees collected/outstanding, reserve fund, recent
+  // admissions). The student home page only uses upcomingExams; parents are
+  // redirected to My Children and do not use this endpoint at all.
+  if (role === 'STUDENT' || role === 'PARENT' || role === 'GUARDIAN') {
+    const upcomingExams = role === 'STUDENT' && studentClassId
+      ? await prisma.exam.findMany({
+          where: { startDate: { gte: today }, isActive: true, classId: studentClassId },
+          orderBy: { startDate: 'asc' },
+          take: 5,
+          select: { id: true, name: true, startDate: true, endDate: true, class: { select: { name: true } } },
+        })
+      : []
+    return successResponse({
+      students: { total: 0, active: 0, feePending: 0, feeOverdue: 0 },
+      teachers: { total: 0 },
+      finance: { totalCollected: 0, totalPending: 0, reserveFundBalance: 0, latestReserveContribution: null, metricSource: 'hidden_for_portal_roles' },
+      attendance: { todayPresent: 0, todayTotal: 0, attendanceRate: 0, metricSource: 'hidden_for_portal_roles' },
+      upcomingExams,
+      recentAdmissions: [],
+    })
+  }
+
   const [
     totalStudents,
     activeStudents,
@@ -116,9 +139,7 @@ export async function GET() {
       where: {
         startDate: { gte: today },
         isActive: true,
-        ...(role === 'STUDENT' 
-          ? (studentClassId ? { classId: studentClassId } : { id: 'no-match' }) 
-          : (campusId ? { class: { campusId } } : {})),
+        ...(campusId ? { class: { campusId } } : {}),
       },
       orderBy: { startDate: 'asc' },
       take: 5,

@@ -267,6 +267,9 @@ model User {
   passwordHash           String
   role                   Role      @default(STUDENT)
   isActive               Boolean   @default(true)
+  // Set when a password is issued by someone else (staff reset / temporary
+  // password). The user must choose a new password before using the app.
+  mustChangePassword     Boolean   @default(false)
   lastLogin              DateTime?
   emailVerified          Boolean   @default(false)
   emailVerifiedAt        DateTime?

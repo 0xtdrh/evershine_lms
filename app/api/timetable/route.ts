@@ -22,6 +22,9 @@ export async function GET(request: NextRequest) {
   
   const role = session.user.role as Role
   if (!checkPermission(role, 'calendar', 'read')) return errors.forbidden() // Re-using general calendar/academic read permission
+  // Parents keep calendar:read for the Calendar page, but have no timetable page;
+  // without this they would get every teacher's timetable.
+  if (role === 'PARENT' || role === 'GUARDIAN') return errors.forbidden()
 
   const { searchParams } = new URL(request.url)
   const classId = searchParams.get('classId')

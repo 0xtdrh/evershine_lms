@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
-import { requireSession } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { verifyToken } from '@/lib/jwt-utils'
 
@@ -12,6 +12,10 @@ import { verifyToken } from '@/lib/jwt-utils'
 export async function POST(request: NextRequest) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
+  // SECURITY: previously ANY logged-in user (incl. parents/students) could mark
+  // attendance for any enrollment. Unused by the UI (old template QR feature).
+  const denied = requirePermission(session.user.role, 'attendance', 'create')
+  if (denied) return denied
 
   try {
     const body = await request.json()

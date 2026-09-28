@@ -20,7 +20,10 @@ import type { Role } from '@prisma/client'
 export async function GET(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
-  if (!checkPermission(session.user.role as Role, 'fees', 'read')) return errors.forbidden()
+  // Portal roles have no staff `fees` permission; they are allowed here by
+  // role because this handler filters to their own / their children's invoices.
+  const isPortalRole = ['STUDENT', 'PARENT', 'GUARDIAN'].includes(session.user.role)
+  if (!isPortalRole && !checkPermission(session.user.role as Role, 'fees', 'read')) return errors.forbidden()
 
   const { searchParams } = new URL(request.url)
   const parsed = feeQuerySchema.safeParse(Object.fromEntries(searchParams))

@@ -21,12 +21,14 @@ declare module 'next-auth' {
       role: Role
       campusId?: string | null
       profilePicture?: string | null
+      mustChangePassword?: boolean
     }
   }
   interface User {
     role: Role
     campusId?: string | null
     profilePicture?: string | null
+    mustChangePassword?: boolean
   }
 }
 
@@ -46,6 +48,8 @@ declare module '@auth/core/jwt' {
     campusId?: string | null
     /** Cloudinary profile picture URL — null if not uploaded. */
     profilePicture?: string | null
+    /** Password was issued by someone else; must be changed before using the app. */
+    mustChangePassword?: boolean
   }
 }
 
@@ -83,6 +87,7 @@ export const authConfig = {
         // is updated on login; if the user uploads a new photo, they must
         // re-login (or we invalidate via a profile-update endpoint).
         token.profilePicture = (user as { profilePicture?: string | null }).profilePicture ?? null
+        token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false
       }
 
       // Defensive: if token.role is somehow missing but we have a userId,
@@ -120,6 +125,7 @@ export const authConfig = {
           role:           token.role ?? session.user?.role ?? 'STUDENT',
           campusId:       token.campusId ?? null,
           profilePicture: token.profilePicture ?? null,
+          mustChangePassword: token.mustChangePassword ?? false,
         },
       }
     },

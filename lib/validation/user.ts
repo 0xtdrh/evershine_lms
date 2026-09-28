@@ -5,12 +5,14 @@
 
 import { z } from 'zod'
 
+// `email` carries the login identifier: an email address, or a parent's phone
+// number (resolved to the account in lib/portal-login.ts).
 export const loginSchema = z.object({
   email: z
-    .string({ required_error: 'Email is required' })
-    .email('Invalid email address')
-    .toLowerCase()
-    .trim(),
+    .string({ required_error: 'Email or phone number is required' })
+    .trim()
+    .min(3, 'Enter your email or phone number')
+    .refine((v) => v.includes('@') ? z.string().email().safeParse(v).success : /^[+\d][\d\s\-()]{6,}$/.test(v), 'Enter a valid email or phone number'),
   password: z
     .string({ required_error: 'Password is required' })
     .min(6, 'Password must be at least 6 characters'),

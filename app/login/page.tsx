@@ -17,7 +17,9 @@ import { Lock, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react'
 import { ArcLineBrand } from '@/components/ArcLineBrand'
 
 const loginSchema = z.object({
-  email:    z.string().email('Please enter a valid email address'),
+  // Email, or a parent's phone number (resolved server-side, lib/portal-login.ts)
+  email:    z.string().trim().min(3, 'Enter your email or phone number')
+    .refine((v) => v.includes('@') ? z.string().email().safeParse(v).success : /^[+\d][\d\s\-()]{6,}$/.test(v), 'Enter a valid email or phone number'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 type LoginForm = z.infer<typeof loginSchema>
@@ -52,6 +54,9 @@ function resolvePostLoginUrl(callbackUrl: string, role?: string | null) {
   }
 }
 
+const DEFAULT_PASSWORD_MESSAGE =
+  'This account still has its initial password, which is not safe. Please contact your branch to receive a temporary password.'
+
 export default function LoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading]       = useState(false)
@@ -64,7 +69,9 @@ export default function LoginPage() {
       const sp = new URLSearchParams(window.location.search)
       setCallbackUrl(sp.get('callbackUrl') || '/dashboard')
       const err = sp.get('error')
-      if (err) setFormError('Authentication failed. Please check your credentials.')
+      if (sp.get('code') === 'default_password') setFormError(DEFAULT_PASSWORD_MESSAGE)
+      else if (err) setFormError('Authentication failed. Please check your credentials.')
+      if (sp.get('changed') === '1') notify.success('Password changed', { description: 'Sign in with your new password.' })
     } catch {}
   }, [])
 
@@ -83,11 +90,19 @@ export default function LoginPage() {
     })
     setIsLoading(false)
     if (result?.error) {
-      setFormError('Invalid credentials. Please check your email and password.')
-      notify.error('Sign in failed', { description: 'Invalid email or password.' })
+      if ((result as { code?: string }).code === 'default_password') {
+        setFormError(DEFAULT_PASSWORD_MESSAGE)
+        return
+      }
+      setFormError('Invalid credentials. Please check your email/phone and password.')
+      notify.error('Sign in failed', { description: 'Invalid email/phone or password.' })
       return
     }
     const session = await getSession()
+    if ((session?.user as { mustChangePassword?: boolean } | undefined)?.mustChangePassword) {
+      router.replace('/change-password')
+      return
+    }
     notify.success('Welcome back!', { description: 'Redirecting to your dashboard…' })
     router.replace(resolvePostLoginUrl(callbackUrl, session?.user?.role))
   }
@@ -116,14 +131,15 @@ export default function LoginPage() {
 
         {/* ── Email ── */}
         <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-sm font-semibold text-slate-700">Email Address</Label>
+          <Label htmlFor="email" className="text-sm font-semibold text-slate-700">Email or phone number</Label>
           <div className="relative">
             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden />
             <Input
               id="email"
-              type="email"
-              placeholder="you@evershineacademy.edu.pk"
-              autoComplete="email"
+              type="text"
+              inputMode="email"
+              placeholder="you@example.com or 01xxxxxxxxx"
+              autoComplete="username"
               aria-required="true"
               aria-invalid={!!errors.email}
               aria-describedby={errors.email ? 'email-error' : undefined}

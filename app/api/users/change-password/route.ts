@@ -8,6 +8,8 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { verify, hash } from '@node-rs/argon2'
 import { changePasswordSchema } from '@/lib/validation/user'
+import { compare } from 'bcryptjs'
+import { isDefaultPortalPassword } from '@/lib/portal-login'
 
 const ARGON2_OPTIONS = { memoryCost: 65536, timeCost: 3, parallelism: 4, outputLen: 32 }
 
@@ -46,10 +48,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify current password hash
-    const isPasswordCorrect = await verify(user.passwordHash, currentPassword)
+    // Same hash handling as login (lib/auth.ts): older accounts may use bcrypt.
+    const isBcrypt = /^\$2[aby]\$/.test(user.passwordHash)
+    const isPasswordCorrect = isBcrypt
+      ? await compare(currentPassword, user.passwordHash)
+      : await verify(user.passwordHash, currentPassword).catch(() => false)
     if (!isPasswordCorrect) {
       return errors.validation({
         errors: [{ path: ['currentPassword'], message: 'Incorrect current password' }],
+      } as never)
+    }
+
+    // The new password must not be one of the guessable defaults (phone number,
+    // registration number...), or the account would be open to anyone again.
+    if (await isDefaultPortalPassword(user.id, user.role, newPassword)) {
+      return errors.validation({
+        errors: [{ path: ['newPassword'], message: 'Choose a password that is not your phone or registration number' }],
       } as never)
     }
 
@@ -60,7 +74,7 @@ export async function POST(request: NextRequest) {
       // Update User Password
       await tx.user.update({
         where: { id: session.user.id },
-        data: { passwordHash },
+        data: { passwordHash, mustChangePassword: false },
       })
 
       // Log to Audit Log

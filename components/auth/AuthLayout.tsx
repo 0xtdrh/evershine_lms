@@ -29,7 +29,7 @@ import { ArcLineBrand } from '@/components/ArcLineBrand'
 
 interface AuthLayoutProps {
   children: React.ReactNode
-  pageType: 'login' | 'forgot-password' | 'reset-password'
+  pageType: 'login' | 'forgot-password' | 'reset-password' | 'change-password'
 }
 
 const PAGE = {
@@ -47,6 +47,11 @@ const PAGE = {
     title:    'Create New Password',
     sub:      'Choose a strong password to secure your account.',
     back:     { href: '/login', label: 'Back to Sign In' },
+  },
+  'change-password': {
+    title:    'Choose Your Own Password',
+    sub:      'You signed in with a temporary password. Set a new one to continue.',
+    back:     null,
   },
 }
 

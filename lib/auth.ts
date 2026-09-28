@@ -26,7 +26,7 @@
  *  5. session() callback → maps JWT claims to session.user for client components
  */
 
-import NextAuth from 'next-auth'
+import NextAuth, { CredentialsSignin } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
 import { verify } from '@node-rs/argon2'
@@ -34,6 +34,12 @@ import { compare } from 'bcryptjs'
 import { loginSchema } from '@/lib/validation/user'
 import { authConfig } from '@/lib/auth.config'
 import { ensurePermissionOverrides } from '@/lib/rbac-overrides'
+import { isDefaultPortalPassword, resolveLoginEmail } from '@/lib/portal-login'
+
+/** Shown on the login page as ?code=default_password */
+class DefaultPasswordSignin extends CredentialsSignin {
+  code = 'default_password'
+}
 
 export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
   ...authConfig,
@@ -45,19 +51,23 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
     Credentials({
       name: 'credentials',
       credentials: {
-        email:    { label: 'Email',    type: 'email'    },
+        email:    { label: 'Email or phone', type: 'text' },
         password: { label: 'Password', type: 'password' },
       },
 
       async authorize(credentials) {
         // ── Input validation ──────────────────────────────────────────────
-        // loginSchema: email (valid + lowercase + trim), password (min 6)
+        // loginSchema: email-or-phone identifier + password (min 6)
         // Rejecting at this layer before any DB touch prevents enumeration
         // attacks via timing differences.
         const parsed = loginSchema.safeParse(credentials)
         if (!parsed.success) return null
 
-        const { email, password } = parsed.data
+        const { email: identifier, password } = parsed.data
+        // Parents can sign in with their phone number (Guardian.phoneNumber is
+        // the parent's identity); everyone else uses their email.
+        const email = await resolveLoginEmail(identifier)
+        if (!email) return null
 
         // ── Identity lookup ───────────────────────────────────────────────
         // WHY select only needed columns: avoids LEFT JOINs on 6 profile
@@ -71,6 +81,7 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
             passwordHash: true,
             role:         true,
             isActive:     true,
+            mustChangePassword: true,
           },
         })
 
@@ -101,6 +112,13 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
           )
         }
         if (!passwordValid) return null
+
+        // SECURITY: auto-generated portal passwords (phone number, registration
+        // number, Student@YYYY!) are guessable, so they never open an account.
+        // Staff must issue a temporary password first (lib/portal-login.ts).
+        if (await isDefaultPortalPassword(user.id, user.role, password)) {
+          throw new DefaultPasswordSignin()
+        }
 
         // ── Last-login update (fire-and-forget) ───────────────────────────
         // WHY fire-and-forget: we do not want a lastLogin update failure to
@@ -162,6 +180,7 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
           role:           user.role,
           campusId:       campusId ?? null,
           profilePicture: profilePicture ?? null,
+          mustChangePassword: user.mustChangePassword,
         }
       },
     }),

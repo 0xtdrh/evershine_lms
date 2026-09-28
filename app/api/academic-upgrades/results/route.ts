@@ -25,7 +25,11 @@ export async function GET(request: NextRequest) {
   if (!session?.user) return errors.unauthorized()
 
   const role = session.user.role as Role
-  if (!checkPermission(role, 'results', 'read')) return errors.forbidden()
+  // Portal roles have no staff `results` permission; they are allowed here by
+  // role because every branch below limits them to their own / their children's
+  // declared results (class sheets are staff-only).
+  const isPortalRole = role === 'STUDENT' || role === 'PARENT' || role === 'GUARDIAN'
+  if (!isPortalRole && !checkPermission(role, 'results', 'read')) return errors.forbidden()
 
   const { searchParams } = new URL(request.url)
   const studentId      = searchParams.get('studentId')

@@ -59,6 +59,15 @@ export default auth((req) => {
     return Response.redirect(new URL(getRoleHome(role), nextUrl.origin))
   }
 
+  // ── Temporary password issued by staff: must be changed first ─────────────
+  const mustChangePassword = !!(session?.user as { mustChangePassword?: boolean } | undefined)?.mustChangePassword
+  if (isProtectedRoute && isAuthenticated && mustChangePassword) {
+    return Response.redirect(new URL('/change-password', nextUrl.origin))
+  }
+  if (nextUrl.pathname === '/change-password' && !isAuthenticated) {
+    return Response.redirect(new URL('/login', nextUrl.origin))
+  }
+
   if (isProtectedRoute && isAuthenticated && nextUrl.pathname === '/dashboard') {
     const roleHome = getRoleHome(role)
     if (roleHome !== '/dashboard') {
