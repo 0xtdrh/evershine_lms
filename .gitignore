@@ -206,3 +206,9 @@ designs/row_profile.txt
 /tmp/
 *.zip
 graphify-out/
+
+# Database backups must never be committed (personal data).
+/*.gz
+*.sql.gz
+/*.sql
+/file*
