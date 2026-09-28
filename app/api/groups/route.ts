@@ -14,6 +14,7 @@ import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import type { Role } from '@prisma/client'
+import { pickGroupInstructorOffering } from '@/lib/groups/instructor'
 
 function computeDisplayStatus(status: string, startDate: Date | null): 'COMPLETED' | 'UPCOMING' | 'ACTIVE' {
   if (status === 'COMPLETED') return 'COMPLETED'
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const requestedCampusId = searchParams.get('campusId')
   const campusId = campusScope(role, session.user.campusId, requestedCampusId)
+  const activeYearId = (await getActiveAcademicYear())?.id
 
   const groups = await prisma.classSection.findMany({
     where: { isActive: true, ...(campusId && { campusId }) },
@@ -47,9 +49,13 @@ export async function GET(request: NextRequest) {
         },
       },
       subjectOfferings: {
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-        select: { teacher: { select: { id: true, firstName: true, lastName: true } } },
+        select: {
+          subjectId: true,
+          academicYearId: true,
+          teacherId: true,
+          createdAt: true,
+          teacher: { select: { id: true, firstName: true, lastName: true } },
+        },
       },
       _count: { select: { enrollments: { where: { status: 'ACTIVE' } } } },
     },
@@ -62,9 +68,10 @@ export async function GET(request: NextRequest) {
     course: g.level?.subject ? { id: g.level.subject.id, name: g.level.subject.name } : null,
     track: g.level?.subject.track ?? null,
     level: g.level ? { id: g.level.id, name: g.level.name, numberOfMonths: g.level.numberOfMonths, numberOfSessions: g.level.numberOfSessions } : null,
-    teacher: g.subjectOfferings[0]?.teacher
-      ? { id: g.subjectOfferings[0].teacher.id, name: `${g.subjectOfferings[0].teacher.firstName} ${g.subjectOfferings[0].teacher.lastName}` }
-      : null,
+    teacher: (() => {
+      const t = pickGroupInstructorOffering(g.subjectOfferings, g.level?.subject?.id, activeYearId)?.teacher
+      return t ? { id: t.id, name: `${t.firstName} ${t.lastName}` } : null
+    })(),
     studentCount: g._count.enrollments,
     startDate: g.startDate,
     expectedEndDate: g.expectedEndDate,

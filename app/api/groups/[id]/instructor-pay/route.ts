@@ -13,6 +13,7 @@ import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import type { Role } from '@prisma/client'
+import { findGroupInstructorOffering } from '@/lib/groups/instructor'
 
 const bodySchema = z.object({
   fixedAmount: z.number().min(0).optional().nullable(),
@@ -40,11 +41,8 @@ export async function PATCH(
   const activeYear = await getActiveAcademicYear()
   if (!activeYear) return errors.conflict('No active academic year is set')
 
-  const offering = await prisma.subjectOffering.findFirst({
-    where: { classSectionId: id, academicYearId: activeYear.id, teacherId: { not: null } },
-    orderBy: { createdAt: 'desc' },
-  })
-  if (!offering) return errors.conflict('Assign an instructor to this group first')
+  const offering = await findGroupInstructorOffering(id, activeYear.id)
+  if (!offering?.teacherId) return errors.conflict('Assign an instructor to this group first')
 
   let body: unknown
   try {

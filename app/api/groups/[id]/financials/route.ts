@@ -7,6 +7,7 @@
  */
 
 import { NextRequest } from 'next/server'
+import { findGroupInstructorOffering } from '@/lib/groups/instructor'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
@@ -79,13 +80,7 @@ export async function GET(
   // assigned; otherwise the group has no compensation to net against.
   let teacherPay = null
   const activeYear = await getActiveAcademicYear()
-  const offering = activeYear
-    ? await prisma.subjectOffering.findFirst({
-        where: { classSectionId: id, academicYearId: activeYear.id, teacherId: { not: null } },
-        orderBy: { createdAt: 'desc' },
-        select: { teacherId: true, teacher: { select: { firstName: true, lastName: true } } },
-      })
-    : null
+  const offering = activeYear ? await findGroupInstructorOffering(id, activeYear.id) : null
   if (offering?.teacherId) {
     const breakdown = await computeTeacherGroupPay(id, offering.teacherId, group.currentCycleNumber)
     teacherPay = {

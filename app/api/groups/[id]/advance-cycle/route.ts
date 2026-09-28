@@ -28,6 +28,7 @@ import { requireSession, requirePermission, campusScope } from '@/lib/academic/a
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createCycleInvoice } from '@/lib/groups/sync-progress'
 import type { Role } from '@prisma/client'
+import { findGroupInstructorOffering } from '@/lib/groups/instructor'
 
 const bodySchema = z.object({
   continuingStudentIds: z.array(z.string()).default([]),
@@ -105,10 +106,7 @@ export async function POST(
 
   // Find the current instructor (if any) to carry over, along with any
   // group-specific pay override.
-  const currentOffering = await prisma.subjectOffering.findFirst({
-    where: { classSectionId: id, academicYearId: activeYear.id, teacherId: { not: null } },
-    orderBy: { createdAt: 'desc' },
-  })
+  const currentOffering = await findGroupInstructorOffering(id, activeYear.id)
 
   // Guarantee a unique (campus, batch, shift, className, sectionName)
   // combination regardless of why a collision might happen — check first,

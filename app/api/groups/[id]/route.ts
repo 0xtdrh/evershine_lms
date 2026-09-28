@@ -13,6 +13,8 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import type { Role } from '@prisma/client'
+import { getActiveAcademicYear } from '@/lib/academic/engine'
+import { pickGroupInstructorOffering } from '@/lib/groups/instructor'
 
 export async function GET(
   _request: NextRequest,
@@ -44,9 +46,13 @@ export async function GET(
         },
       },
       subjectOfferings: {
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-        select: { teacher: { select: { id: true, firstName: true, lastName: true, phoneNumber: true, email: true } } },
+        select: {
+          subjectId: true,
+          academicYearId: true,
+          teacherId: true,
+          createdAt: true,
+          teacher: { select: { id: true, firstName: true, lastName: true, phoneNumber: true, email: true } },
+        },
       },
       enrollments: {
         where: { OR: [{ status: 'ACTIVE' }, { withdrawalReason: 'UNPAID_AUTO' }] },
@@ -71,8 +77,23 @@ export async function GET(
   const campusId = campusScope(role, session.user.campusId, null)
   if (campusId && group.campusId !== campusId) return errors.forbidden()
 
+  // WHY: the page reads `teacher`; this route never returned it, so the
+  // instructor dropdown always showed "none" even after a successful save.
+  const activeYear = await getActiveAcademicYear()
+  const instructorOffering = pickGroupInstructorOffering(group.subjectOfferings, group.level?.subject?.id, activeYear?.id)
+  const instructor = instructorOffering?.teacher ?? null
+  const { subjectOfferings: _offerings, ...groupFields } = group
+
   return successResponse({
-    ...group,
+    ...groupFields,
+    teacher: instructor
+      ? {
+          id: instructor.id,
+          name: `${instructor.firstName} ${instructor.lastName}`.trim(),
+          phoneNumber: instructor.phoneNumber,
+          email: instructor.email,
+        }
+      : null,
     label: `${group.className} ${group.sectionName}`.trim(),
     course: group.level?.subject ? { id: group.level.subject.id, name: group.level.subject.name } : null,
     track: group.level?.subject?.track ? { id: group.level.subject.track.id, name: group.level.subject.track.name } : null,
