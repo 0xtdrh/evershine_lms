@@ -7,6 +7,7 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi, fetchPaginatedApi } from '@/lib/api-client'
+import { DEFAULT_PERMISSION_MATRIX, type AcademicResource, type Action } from '@/lib/rbac'
 import { motion, AnimatePresence } from 'framer-motion'
 import { notificationPanel, pulseRing, sidebarSlide } from '@/lib/animations'
 import { PageTransition } from '@/components/shared/page-transition'
@@ -71,6 +72,8 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>
   roles?: string[]
   legacy?: boolean
+  /** Shown only if the role has ANY of these permissions (Permissions page aware). */
+  perm?: Array<[AcademicResource, Action]>
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -80,23 +83,23 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Role Assumptions', href: '/dashboard/admin/role-assumptions', icon: KeyRound,    roles: ['SUPER_ADMIN', 'ADMIN'] },
   { name: 'Credential Management', href: '/dashboard/admin/credential-management', icon: KeyRound, roles: ['SUPER_ADMIN'] },
   { name: 'Backups',         href: '/dashboard/admin/backups',          icon: DatabaseBackup,  roles: ['SUPER_ADMIN'] },
-  { name: 'Admissions',      href: '/dashboard/admissions',   icon: ClipboardCheck,  roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING'] },
-  { name: 'Landing Leads',   href: '/dashboard/leads',        icon: Inbox,           roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING'] },
-  { name: 'Students',        href: '/dashboard/students',     icon: Users,           roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER', 'SECRETARY'] },
-  { name: 'Staff Directory',  href: '/dashboard/teachers',     icon: Users,           roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
-  { name: 'Fees',            href: '/dashboard/fees',         icon: CreditCard,      roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'STUDENT', 'PARENT', 'GUARDIAN', 'BRANCH_MANAGER', 'SECRETARY'] },
-  { name: 'Accounting Hub',   href: '/dashboard/accountant',    icon: Wallet,          roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'] },
-  { name: 'Fee Collection',  href: '/dashboard/accountant/fees', icon: CreditCard,     roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER', 'SECRETARY'] },
-  { name: 'Expense Ledger',  href: '/dashboard/accountant/expenses', icon: Wallet,     roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'] },
-  { name: 'Financial Reports', href: '/dashboard/accountant/reports', icon: BarChart2, roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'] },
-  { name: 'Leaves',          href: '/dashboard/leaves',       icon: CalendarClock,   roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'STUDENT', 'BRANCH_MANAGER'] },
+  { name: 'Admissions',      href: '/dashboard/admissions',   icon: ClipboardCheck,  roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING'], perm: [['admissions', 'read']] },
+  { name: 'Landing Leads',   href: '/dashboard/leads',        icon: Inbox,           roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING'], perm: [['admissions', 'read']] },
+  { name: 'Students',        href: '/dashboard/students',     icon: Users,           roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['students', 'read']] },
+  { name: 'Staff Directory',  href: '/dashboard/teachers',     icon: Users,           roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['teachers', 'read']] },
+  { name: 'Fees',            href: '/dashboard/fees',         icon: CreditCard,      roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'STUDENT', 'PARENT', 'GUARDIAN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['fees', 'read']] },
+  { name: 'Accounting Hub',   href: '/dashboard/accountant',    icon: Wallet,          roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'], perm: [['fee_collection', 'read'], ['expenses', 'read'], ['profit_loss', 'read']] },
+  { name: 'Fee Collection',  href: '/dashboard/accountant/fees', icon: CreditCard,     roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['fee_collection', 'read']] },
+  { name: 'Expense Ledger',  href: '/dashboard/accountant/expenses', icon: Wallet,     roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'], perm: [['expenses', 'read']] },
+  { name: 'Financial Reports', href: '/dashboard/accountant/reports', icon: BarChart2, roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'], perm: [['financial_reports', 'read'], ['profit_loss', 'read']] },
+  { name: 'Leaves',          href: '/dashboard/leaves',       icon: CalendarClock,   roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'STUDENT', 'BRANCH_MANAGER'], perm: [['leaves', 'create'], ['leaves', 'approve']] },
   { name: 'Complaints',      href: '/dashboard/complaints',   icon: AlertOctagon,    roles: ['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'PARENT', 'GUARDIAN'] },
   { name: 'Academic Queries',href: '/dashboard/queries',      icon: HelpCircle,      roles: ['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'STUDENT'] },
-  { name: 'Staff Salaries',  href: '/dashboard/salaries',     icon: Banknote,        roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'] },
-  { name: 'Attendance', href: '/dashboard/attendance/sections', icon: ClipboardCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
+  { name: 'Staff Salaries',  href: '/dashboard/salaries',     icon: Banknote,        roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'], perm: [['salaries', 'read'], ['salaries', 'approve']] },
+  { name: 'Attendance', href: '/dashboard/attendance/sections', icon: ClipboardCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['attendance', 'read']] },
   { name: 'Attendance Report', href: '/dashboard/reports/attendance', icon: BarChart2, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
   { name: 'Staff Attendance', href: '/dashboard/teachers/attendance', icon: UserCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
-  { name: 'Biometric Import', href: '/dashboard/admin/attendance-import', icon: UploadCloud, roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { name: 'Biometric Import', href: '/dashboard/admin/attendance-import', icon: UploadCloud, roles: ['SUPER_ADMIN', 'ADMIN'], perm: [['attendance_import', 'create']] },
   { name: 'Class Attendance (Legacy)', href: '/dashboard/attendance/legacy', icon: ClipboardCheck, roles: ['SUPER_ADMIN', 'ADMIN'], legacy: true },
   { name: 'Exams',           href: '/dashboard/exams',        icon: BookOpen,        roles: ['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'BRANCH_MANAGER', 'SECRETARY'] },
   // Teachers use the canonical Academic Engine result workflow below. Keep
@@ -116,7 +119,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Academic Engine', href: '/dashboard/academic',     icon: ClipboardList,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Grading Weights', href: '/dashboard/grading-config', icon: SlidersHorizontal, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Course Structure', href: '/dashboard/course-config', icon: GraduationCap, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
-  { name: 'Groups', href: '/dashboard/groups', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
+  { name: 'Groups', href: '/dashboard/groups', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['class_sections', 'read']] },
   { name: 'Groups Financials', href: '/dashboard/reports/groups-financials', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Absence Requests', href: '/dashboard/absence-requests', icon: AlertOctagon, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
   { name: 'Substitute Reconciliation', href: '/dashboard/reports/substitute-reconciliation', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'] },
@@ -145,9 +148,28 @@ const TEACHER_NAV_ITEMS: NavItem[] = [
   { name: 'HR & Salary',        href: '/dashboard/teacher/hr',                icon: Wallet },
 ]
 
-function isNavItemVisible(item: NavItem, role: string): boolean {
-  if (!item.roles || item.roles.length === 0) return true
-  return item.roles.includes(role)
+type EffectivePermissions = Record<string, Action[]>
+
+/**
+ * Role list first (unchanged behaviour), then the Permissions page:
+ * - a revoked permission hides the item;
+ * - an item listed for the role but whose permission the role never had is
+ *   hidden too (it only led to a "Forbidden" page);
+ * - a permission GRANTED by an override (not in the base matrix) shows the
+ *   item even if the role is not in `roles`.
+ * Until /api/me/permissions has loaded, only the role list is used.
+ */
+function isNavItemVisible(item: NavItem, role: string, effective?: EffectivePermissions): boolean {
+  const listed = !item.roles || item.roles.length === 0 || item.roles.includes(role)
+  if (!item.perm || !effective) return listed
+
+  const base = DEFAULT_PERMISSION_MATRIX[role as keyof typeof DEFAULT_PERMISSION_MATRIX]
+  return item.perm.some(([resource, action]) => {
+    if (!effective[resource]?.includes(action)) return false
+    if (listed) return true
+    const inBase = base?.[resource]?.includes(action) ?? false
+    return !inBase
+  })
 }
 
 export default function DashboardLayoutClient({ children }: { children: React.ReactNode }) {
@@ -192,6 +214,13 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
     enabled: status === 'authenticated',
   })
 
+  const { data: myPermissions } = useQuery({
+    queryKey: ['my-permissions', role],
+    queryFn: () => fetchApi<{ role: string; permissions: EffectivePermissions }>('/api/me/permissions'),
+    staleTime: 60_000,
+    enabled: status === 'authenticated' && !!role,
+  })
+
   const getBadgeCount = (itemName: string) => {
     if (!countsData?.modules) return 0
     const key = getNotificationModuleForNavLabel(itemName)
@@ -226,7 +255,7 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
 
   const enginePrimary = isAcademicEnginePrimary()
   const visibleNav = NAV_ITEMS.filter(
-    (item) => isNavItemVisible(item, role) && (!enginePrimary || !item.legacy)
+    (item) => isNavItemVisible(item, role, myPermissions?.permissions) && (!enginePrimary || !item.legacy)
   )
   const isTeacher   = role === 'TEACHER'
 
