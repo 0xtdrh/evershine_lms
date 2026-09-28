@@ -20,13 +20,14 @@ function apiErrorMessage(err: unknown, fallback: string): string {
 interface SubstituteData {
   asSubstitute: {
     date: string
-    sessions: { id: string; status: string; groupLabel: string; courseName: string | null; levelName: string | null; originalTeacherName: string }[]
+    sessions: { id: string; status: string; groupLabel: string; courseName: string | null; levelName: string | null; originalTeacherName: string; sessionNumber: number | null; totalSessions: number | null }[]
   }[]
   asAbsent: {
     date: string
     items: {
       id: string; scope: string; status: string; reason: string; isForceMajeure: boolean
-      groupLabel: string; substitutes: { status: string; name: string }[]
+      groupLabel: string; sessionNumber: number | null; totalSessions: number | null
+      substitutes: { status: string; name: string }[]
     }[]
   }[]
 }
@@ -83,7 +84,10 @@ export default function MySubstitutionsPage() {
                       {day.sessions.map((s) => (
                         <div key={s.id} className="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-2 text-sm">
                           <div>
-                            <p className="text-slate-800">{s.groupLabel} — covering for {s.originalTeacherName}</p>
+                            <p className="text-slate-800">
+                              {s.sessionNumber ? <span className="font-semibold text-indigo-600">Session {s.sessionNumber} of {s.totalSessions} · </span> : null}
+                              {s.groupLabel} — covering for {s.originalTeacherName}
+                            </p>
                             <p className="text-xs text-slate-400">{s.courseName} — {s.levelName}</p>
                           </div>
                           {s.status === 'PENDING_SUBSTITUTE_APPROVAL' ? (
@@ -120,7 +124,7 @@ export default function MySubstitutionsPage() {
                       {day.items.map((it) => (
                         <div key={it.id} className="border border-slate-100 rounded-lg px-3 py-2 text-sm">
                           <div className="flex items-center justify-between">
-                            <p className="text-slate-800">{it.scope === 'FULL_DAY' ? 'Whole day' : it.groupLabel}</p>
+                            <p className="text-slate-800">{it.scope === 'FULL_DAY' ? 'Whole day' : `${it.groupLabel}${it.sessionNumber ? ` · Session ${it.sessionNumber} of ${it.totalSessions}` : ''}`}</p>
                             <Badge variant="outline" className="text-[10px]">{it.status}</Badge>
                           </div>
                           <p className="text-xs text-slate-400">{it.reason}</p>

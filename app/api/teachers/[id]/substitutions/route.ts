@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getTeacherByUserId } from '@/lib/academic/teacher-scope'
+import { getSessionNumberForDate } from '@/lib/teachers/schedule'
 import type { Role } from '@prisma/client'
 
 export async function GET(
@@ -48,6 +49,19 @@ export async function GET(
     orderBy: { date: 'desc' },
   })
 
+  // "Session N of M" for each covered session, and for each single-session
+  // absence, so it's obvious which lesson is meant.
+  const sessionInfoById = new Map<string, { sessionNumber: number; totalSessions: number } | null>()
+  await Promise.all([
+    ...substituteRows.map(async (r) => {
+      sessionInfoById.set(r.id, await getSessionNumberForDate(r.classSectionId, r.date.toISOString().slice(0, 10)))
+    }),
+    ...absenceRows.map(async (r) => {
+      if (!r.classSectionId) return
+      sessionInfoById.set(r.id, await getSessionNumberForDate(r.classSectionId, r.date.toISOString().slice(0, 10)))
+    }),
+  ])
+
   const groupByDate = <T extends { date: Date }>(rows: T[]) => {
     const map = new Map<string, T[]>()
     for (const row of rows) {
@@ -68,6 +82,8 @@ export async function GET(
         courseName: r.classSection.level?.subject.name ?? null,
         levelName: r.classSection.level?.name ?? null,
         originalTeacherName: `${r.originalTeacher.firstName} ${r.originalTeacher.lastName}`,
+        sessionNumber: sessionInfoById.get(r.id)?.sessionNumber ?? null,
+        totalSessions: sessionInfoById.get(r.id)?.totalSessions ?? null,
       })),
     })),
     asAbsent: groupByDate(absenceRows).map((g) => ({
@@ -79,6 +95,8 @@ export async function GET(
         reason: r.reason,
         isForceMajeure: r.isForceMajeure,
         groupLabel: r.classSection ? `${r.classSection.className} ${r.classSection.sectionName}` : 'Whole day',
+        sessionNumber: sessionInfoById.get(r.id)?.sessionNumber ?? null,
+        totalSessions: sessionInfoById.get(r.id)?.totalSessions ?? null,
         substitutes: r.substitutes.map((s) => ({ status: s.status, name: `${s.substituteTeacher.firstName} ${s.substituteTeacher.lastName}` })),
       })),
     })),

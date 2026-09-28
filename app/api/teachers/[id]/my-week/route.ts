@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getTeacherByUserId } from '@/lib/academic/teacher-scope'
-import { getTeacherSessionsOnDate } from '@/lib/teachers/schedule'
+import { getTeacherSessionsOnDate, getSessionNumberForDate } from '@/lib/teachers/schedule'
 import type { Role } from '@prisma/client'
 
 export async function GET(
@@ -35,32 +35,49 @@ export async function GET(
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const rangeEnd = new Date(today)
-  rangeEnd.setDate(rangeEnd.getDate() + days)
+  // Confirmed substitute sessions are looked up far beyond the regular
+  // window, so one that's e.g. 8 days away still shows up (as its own day
+  // card) instead of staying invisible until it's within a week.
+  const SUBSTITUTE_HORIZON_DAYS = 90
+  const horizonEnd = new Date(today)
+  horizonEnd.setDate(horizonEnd.getDate() + SUBSTITUTE_HORIZON_DAYS)
 
   const [absences, substituteAssignments, cancelledSessions] = await Promise.all([
     prisma.teacherAbsence.findMany({
-      where: { teacherId: id, date: { gte: today, lt: rangeEnd } },
+      where: { teacherId: id, date: { gte: today, lt: horizonEnd } },
       select: { id: true, date: true, scope: true, classSectionId: true, status: true },
     }),
     prisma.substituteAssignment.findMany({
-      where: { substituteTeacherId: id, date: { gte: today, lt: rangeEnd }, status: 'CONFIRMED' },
+      where: { substituteTeacherId: id, date: { gte: today, lt: horizonEnd }, status: 'CONFIRMED' },
       include: { originalTeacher: { select: { firstName: true, lastName: true } } },
     }),
     prisma.cancelledSession.findMany({
-      where: { date: { gte: today, lt: rangeEnd } },
+      where: { date: { gte: today, lt: horizonEnd } },
       select: { classSectionId: true, date: true, reason: true },
     }),
   ])
 
-  const dayList = []
+  // The regular window's days, plus any later day that has a confirmed
+  // substitute session.
+  const dateStrings: string[] = []
   for (let i = 0; i < days; i++) {
-    const date = new Date(today)
-    date.setDate(date.getDate() + i)
-    const sessions = await getTeacherSessionsOnDate(id, date)
-    const dateStr = date.toISOString().slice(0, 10)
+    const d = new Date(today)
+    d.setDate(d.getDate() + i)
+    dateStrings.push(d.toISOString().slice(0, 10))
+  }
+  for (const sub of substituteAssignments) {
+    const ds = sub.date.toISOString().slice(0, 10)
+    if (!dateStrings.includes(ds)) dateStrings.push(ds)
+  }
+  dateStrings.sort()
 
-    const daySessions = sessions.map((s) => {
+  const dayList = []
+  for (const dateStr of dateStrings) {
+    const date = new Date(`${dateStr}T00:00:00.000Z`)
+    const sessions = await getTeacherSessionsOnDate(id, date)
+
+    const daySessions = []
+    for (const s of sessions) {
       const absence = absences.find(
         (a) => a.date.toISOString().slice(0, 10) === dateStr &&
           (a.scope === 'FULL_DAY' || a.classSectionId === s.classSectionId) &&
@@ -72,18 +89,22 @@ export async function GET(
       const cancelled = cancelledSessions.find(
         (c) => c.date.toISOString().slice(0, 10) === dateStr && c.classSectionId === s.classSectionId
       )
-      return {
+      const sessionInfo = substituteCoverage ? await getSessionNumberForDate(s.classSectionId, dateStr) : null
+      daySessions.push({
         ...s,
         absenceStatus: absence?.status ?? null,
         isSubstituteCoverageHere: !!substituteCoverage,
         coveringForName: substituteCoverage ? `${substituteCoverage.originalTeacher.firstName} ${substituteCoverage.originalTeacher.lastName}` : null,
         isCancelled: !!cancelled,
         cancelledReason: cancelled?.reason ?? null,
-      }
-    })
+        sessionNumber: sessionInfo?.sessionNumber ?? null,
+        totalSessions: sessionInfo?.totalSessions ?? null,
+      })
+    }
 
     // Also surface substitute sessions this teacher is covering even if it
-    // isn't one of their own regular assigned sessions.
+    // isn't one of their own regular assigned sessions (the usual case: a
+    // covering teacher isn't assigned to that group at all).
     const extraSubSessions = substituteAssignments.filter(
       (sub) => sub.date.toISOString().slice(0, 10) === dateStr && !sessions.some((s) => s.classSectionId === sub.classSectionId)
     )
@@ -94,6 +115,10 @@ export async function GET(
       })
       const slots = Array.isArray(cs?.scheduleSlots) ? (cs!.scheduleSlots as { dayOfWeek: number; time: string }[]) : []
       const slot = slots.find((sl) => sl.dayOfWeek === date.getDay())
+      const sessionInfo = await getSessionNumberForDate(sub.classSectionId, dateStr)
+      const cancelled = cancelledSessions.find(
+        (c) => c.date.toISOString().slice(0, 10) === dateStr && c.classSectionId === sub.classSectionId
+      )
       daySessions.push({
         classSectionId: sub.classSectionId,
         className: cs?.className ?? '',
@@ -101,9 +126,14 @@ export async function GET(
         time: slot?.time ?? '00:00',
         courseName: cs?.level?.subject.name ?? null,
         levelName: cs?.level?.name ?? null,
+        hasNotStarted: false,
         absenceStatus: null,
         isSubstituteCoverageHere: true,
         coveringForName: `${sub.originalTeacher.firstName} ${sub.originalTeacher.lastName}`,
+        isCancelled: !!cancelled,
+        cancelledReason: cancelled?.reason ?? null,
+        sessionNumber: sessionInfo?.sessionNumber ?? null,
+        totalSessions: sessionInfo?.totalSessions ?? null,
       })
     }
 

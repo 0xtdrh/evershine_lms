@@ -34,6 +34,8 @@ interface DaySession {
   isCancelled?: boolean
   cancelledReason?: string | null
   hasNotStarted?: boolean
+  sessionNumber?: number | null
+  totalSessions?: number | null
 }
 
 interface DayEntry { date: string; sessions: DaySession[] }
@@ -162,14 +164,15 @@ export default function MySchedulePage() {
                           <Clock className="w-3 h-3 text-slate-400" /> {s.time} · {s.className} {s.sectionName}
                           {s.isSubstituteCoverageHere && (
                             <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-200">
-                              Substitute {s.coveringForName ? `for ${s.coveringForName}` : ''}
+                              Substitute{s.coveringForName ? ` for ${s.coveringForName}` : ''}
+                              {s.sessionNumber ? ` · Session ${s.sessionNumber} of ${s.totalSessions}` : ''}
                             </Badge>
                           )}
                           {s.isCancelled && <Badge variant="outline" className="text-[10px] text-rose-600 border-rose-200">Cancelled</Badge>}
                         </p>
                         <p className="text-xs text-slate-400">{s.courseName} — {s.levelName}</p>
                       </div>
-                      {s.isCancelled ? null : s.hasNotStarted ? (
+                      {s.isCancelled || s.isSubstituteCoverageHere ? null : s.hasNotStarted ? (
                         <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">Not started yet</Badge>
                       ) : s.absenceStatus ? (
                         <div className="flex flex-col items-end gap-0.5">

@@ -95,7 +95,38 @@ export async function GET(
     }
   }
 
-  const profit = totalCollected - (teacherPay?.total ?? 0)
+  // Bonuses/deductions that came from substitute coverage (a covering
+  // teacher's extra session, an absent teacher's missed one). Listed for
+  // EVERY teacher involved — not just the current instructor — with the
+  // reason, so they're visible in one place.
+  const substituteRows = await prisma.teacherPayAdjustment.findMany({
+    where: { classSectionId: id, substituteAssignmentId: { not: null } },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true, teacherId: true, amount: true, reason: true, createdAt: true,
+      teacher: { select: { firstName: true, lastName: true } },
+      substituteAssignment: { select: { date: true } },
+    },
+  })
+  const substituteAdjustments = substituteRows.map((a) => ({
+    id: a.id,
+    teacherId: a.teacherId,
+    teacherName: `${a.teacher.firstName} ${a.teacher.lastName}`,
+    amount: Number(a.amount),
+    reason: a.reason,
+    sessionDate: a.substituteAssignment?.date ?? null,
+    createdAt: a.createdAt.toISOString(),
+  }))
+
+  // The instructor's own adjustments are already inside teacherPay.total —
+  // only add the ones that aren't, so nothing is counted twice.
+  const alreadyCounted = new Set(teacherPay?.adjustments.map((a) => a.id) ?? [])
+  const extraTeacherCost = substituteAdjustments
+    .filter((a) => !alreadyCounted.has(a.id))
+    .reduce((sum, a) => sum + a.amount, 0)
+
+  const teacherCost = (teacherPay?.total ?? 0) + extraTeacherCost
+  const profit = totalCollected - teacherCost
 
   return successResponse({
     students: Array.from(byStudent.values()),
@@ -103,9 +134,10 @@ export async function GET(
       expected: totalExpected,
       collected: totalCollected,
       outstanding: totalExpected - totalCollected,
-      teacherPay: teacherPay?.total ?? 0,
+      teacherPay: teacherCost,
       profit,
     },
     teacherPay,
+    substituteAdjustments,
   })
 }

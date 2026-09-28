@@ -394,6 +394,10 @@ export default function GroupsPage() {
       total: number
       source: 'GROUP_OVERRIDE' | 'TEACHER_DEFAULT' | 'NONE'
     } | null
+    substituteAdjustments: {
+      id: string; teacherId: string; teacherName: string
+      amount: number; reason: string; sessionDate: string | null; createdAt: string
+    }[]
   }>({
     queryKey: ['group-financials', selectedGroupId],
     queryFn: () => fetchApi(`/api/groups/${selectedGroupId}/financials`),
@@ -854,6 +858,23 @@ export default function GroupsPage() {
                       </Button>
                     </div>
                   </details>
+                </div>
+              )}
+
+              {financials.substituteAdjustments && financials.substituteAdjustments.length > 0 && (
+                <div className="border border-amber-100 bg-amber-50/40 rounded-xl p-3 space-y-1.5">
+                  <p className="text-sm font-medium text-slate-700">Substitute coverage adjustments</p>
+                  {financials.substituteAdjustments.map((a) => (
+                    <div key={a.id} className="flex items-start justify-between gap-3 text-xs">
+                      <div>
+                        <p className="text-slate-700 font-medium">{a.teacherName}</p>
+                        <p className="text-slate-500">{a.reason}</p>
+                      </div>
+                      <span className={`whitespace-nowrap font-semibold ${a.amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {a.amount >= 0 ? '+' : ''}{a.amount.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
 

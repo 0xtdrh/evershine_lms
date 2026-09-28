@@ -83,7 +83,10 @@ export interface RemainingSession {
  * exactly one upcoming session to excuse (instead of only "today"), and to
  * show a substitute which session number they're covering.
  */
-export async function getRemainingCycleSessions(classSectionId: string): Promise<RemainingSession[]> {
+export async function getRemainingCycleSessions(
+  classSectionId: string,
+  opts: { allowNotStarted?: boolean } = {}
+): Promise<RemainingSession[]> {
   const group = await prisma.classSection.findUnique({
     where: { id: classSectionId },
     select: {
@@ -95,7 +98,13 @@ export async function getRemainingCycleSessions(classSectionId: string): Promise
 
   // Brand-new groups (from /advance-cycle) have no startDate yet — it
   // hasn't actually begun, so there's nothing to excuse until it does.
-  const cycleStart = group.currentCycleStartDate ?? group.startDate
+  // (Only session *labelling* passes allowNotStarted, to number the first
+  // upcoming session as 1.)
+  let cycleStart: Date | null = group.currentCycleStartDate ?? group.startDate
+  if (!cycleStart && opts.allowNotStarted) {
+    cycleStart = new Date()
+    cycleStart.setHours(0, 0, 0, 0)
+  }
   if (!cycleStart) return []
 
   const sessionsPerCycle = Math.max(1, Math.round(group.level.numberOfSessions / group.level.numberOfMonths))
@@ -106,6 +115,9 @@ export async function getRemainingCycleSessions(classSectionId: string): Promise
     distinct: ['attendanceDate'],
   })
   const sessionsSoFar = attended.length
+  // A day whose session is already recorded must not be projected again as
+  // an upcoming one (otherwise today's finished session gets counted twice).
+  const attendedDates = new Set(attended.map((a) => a.attendanceDate.toISOString().slice(0, 10)))
   const remaining = Math.max(0, sessionsPerCycle - sessionsSoFar)
   if (remaining === 0) return []
 
@@ -119,7 +131,10 @@ export async function getRemainingCycleSessions(classSectionId: string): Promise
   let daysChecked = 0
   while (results.length < remaining && daysChecked < 120) {
     const dow = cursor.getDay()
-    const matchingSlots = slots.filter((s) => s.dayOfWeek === dow).sort((a, b) => a.time.localeCompare(b.time))
+    const cursorDateStr = cursor.toISOString().slice(0, 10)
+    const matchingSlots = attendedDates.has(cursorDateStr)
+      ? []
+      : slots.filter((s) => s.dayOfWeek === dow).sort((a, b) => a.time.localeCompare(b.time))
     for (const slot of matchingSlots) {
       if (results.length >= remaining) break
       results.push({ date: cursor.toISOString().slice(0, 10), time: slot.time, sessionNumber: sessionNum, totalSessions: sessionsPerCycle })
@@ -129,4 +144,41 @@ export async function getRemainingCycleSessions(classSectionId: string): Promise
     daysChecked++
   }
   return results
+}
+
+/**
+ * "Session N of M" for one specific date of a group's current cycle — shown
+ * to a substitute so they know exactly which lesson they're covering.
+ * Looks at the projected upcoming sessions first; for a date that already
+ * happened it counts the attendance sessions recorded up to that day.
+ * Null when it can't be worked out (e.g. the group hasn't started yet).
+ */
+export async function getSessionNumberForDate(
+  classSectionId: string,
+  dateStr: string
+): Promise<{ sessionNumber: number; totalSessions: number } | null> {
+  const upcoming = await getRemainingCycleSessions(classSectionId, { allowNotStarted: true })
+  const match = upcoming.find((s) => s.date === dateStr)
+  if (match) return { sessionNumber: match.sessionNumber, totalSessions: match.totalSessions }
+
+  const group = await prisma.classSection.findUnique({
+    where: { id: classSectionId },
+    select: {
+      currentCycleStartDate: true, startDate: true,
+      level: { select: { numberOfSessions: true, numberOfMonths: true } },
+    },
+  })
+  const cycleStart = group?.currentCycleStartDate ?? group?.startDate
+  if (!group?.level || !cycleStart) return null
+
+  const target = new Date(`${dateStr}T00:00:00.000Z`)
+  const attended = await prisma.enrollmentAttendanceRecord.findMany({
+    where: { studentEnrollment: { classSectionId }, attendanceDate: { gte: cycleStart, lte: target } },
+    select: { attendanceDate: true },
+    distinct: ['attendanceDate'],
+  })
+  if (!attended.some((a) => a.attendanceDate.toISOString().slice(0, 10) === dateStr)) return null
+
+  const totalSessions = Math.max(1, Math.round(group.level.numberOfSessions / group.level.numberOfMonths))
+  return { sessionNumber: attended.length, totalSessions }
 }

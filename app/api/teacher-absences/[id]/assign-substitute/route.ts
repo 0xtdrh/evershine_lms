@@ -11,6 +11,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { errors, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
+import { getSessionNumberForDate } from '@/lib/teachers/schedule'
 import type { Role } from '@prisma/client'
 
 const bodySchema = z.object({
@@ -68,11 +69,21 @@ export async function POST(
   })
 
   try {
+    const dateStr = absence.date.toISOString().slice(0, 10)
+    const [sessionInfo, group] = await Promise.all([
+      getSessionNumberForDate(parsed.data.classSectionId, dateStr),
+      prisma.classSection.findUnique({
+        where: { id: parsed.data.classSectionId },
+        select: { className: true, sectionName: true },
+      }),
+    ])
+    const sessionText = sessionInfo ? `session ${sessionInfo.sessionNumber} of ${sessionInfo.totalSessions}` : 'a session'
+    const groupText = group ? ` (${group.className} ${group.sectionName})` : ''
     await prisma.notification.create({
       data: {
         userId: substitute.userId,
         title: 'Substitute session request',
-        message: `You're requested to cover a session for ${absence.teacher.firstName} ${absence.teacher.lastName} on ${absence.date.toISOString().slice(0, 10)}. Please accept or decline in My Substitutions.`,
+        message: `You're requested to cover ${sessionText}${groupText} for ${absence.teacher.firstName} ${absence.teacher.lastName} on ${dateStr}. Please accept or decline in My Substitutions.`,
         type: 'SUBSTITUTE_REQUESTED',
         relatedId: assignment.id,
       },

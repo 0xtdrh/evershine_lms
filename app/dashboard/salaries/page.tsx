@@ -140,17 +140,41 @@ export default function SalariesPage() {
     if (!employeeId) return
     setIsPullingGroupPay(true)
     try {
-      const summary = await fetchApi<{ groups: { groupLabel: string; total: number }[]; total: number }>(
-        `/api/teachers/${employeeId}/group-pay-summary`
-      )
-      if (summary.groups.length === 0) {
-        notify.error('No group teaching pay found for this teacher this cycle')
+      const summary = await fetchApi<{
+        groups: {
+          groupLabel: string; earned: number
+          adjustments: { amount: number; reason: string }[]
+        }[]
+        substituteAdjustments: { groupLabel: string; amount: number; reason: string }[]
+        totals: { earnings: number; bonuses: number; deductions: number; net: number }
+      }>(`/api/teachers/${employeeId}/group-pay-summary?month=${encodeURIComponent(month)}`)
+
+      if (summary.groups.length === 0 && summary.substituteAdjustments.length === 0) {
+        notify.error('No group teaching pay or substitute adjustments found for this teacher')
         return
       }
-      setAllowances((prev) => (Number(prev || 0) + summary.total).toString())
-      const breakdown = summary.groups.map((g) => `${g.groupLabel}: ${g.total}`).join(', ')
-      setNotes((prev) => (prev ? `${prev}\n` : '') + `Group teaching pay added: ${breakdown} (total ${summary.total})`)
-      notify.success(`Added ${summary.total} from ${summary.groups.length} group${summary.groups.length === 1 ? '' : 's'} to Allowances — review before saving`)
+
+      // Earnings + bonuses go to Allowances, deductions to Deductions — and
+      // every line (with its reason) is written into the notes so the slip
+      // explains itself.
+      const round2 = (n: number) => Math.round(n * 100) / 100
+      setAllowances((prev) => String(round2(Number(prev || 0) + summary.totals.earnings + summary.totals.bonuses)))
+      setDeductions((prev) => String(round2(Number(prev || 0) + summary.totals.deductions)))
+
+      const lines: string[] = []
+      for (const g of summary.groups) {
+        lines.push(`Group pay - ${g.groupLabel}: ${g.earned}`)
+        for (const a of g.adjustments) {
+          lines.push(`${a.amount >= 0 ? 'Bonus' : 'Deduction'} ${Math.abs(a.amount)} - ${a.reason}`)
+        }
+      }
+      for (const a of summary.substituteAdjustments) {
+        lines.push(`${a.amount >= 0 ? 'Bonus' : 'Deduction'} ${Math.abs(a.amount)} - ${a.reason}`)
+      }
+      setNotes((prev) => (prev ? `${prev}\n` : '') + lines.join('\n'))
+      notify.success(
+        `Added earnings ${summary.totals.earnings}, bonuses ${summary.totals.bonuses}, deductions ${summary.totals.deductions} - review before saving`
+      )
     } catch (err: any) {
       notify.error('Failed to fetch group pay', { description: err?.message })
     } finally {

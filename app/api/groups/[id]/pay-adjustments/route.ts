@@ -5,12 +5,16 @@
  * a reason on record. Applies to the given teacherId if provided (e.g. for
  * substitute-coverage reconciliation), otherwise to whichever teacher is
  * currently assigned to this group.
+ *
+ * DELETE /api/groups/[id]/pay-adjustments?adjustmentId=... removes one
+ * (e.g. a bonus/deduction recorded by mistake). Same permission as editing
+ * fees, and the adjustment must belong to this group.
  */
 
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { errors, createdResponse } from '@/lib/api-response'
+import { errors, createdResponse, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import type { Role } from '@prisma/client'
@@ -63,6 +67,16 @@ export async function POST(
     teacherId = offering.teacherId
   }
 
+  // A substitute-coverage event settles each teacher once — guards against a
+  // double-tap on Save recording the same bonus/deduction twice.
+  if (parsed.data.substituteAssignmentId) {
+    const existing = await prisma.teacherPayAdjustment.findFirst({
+      where: { teacherId, substituteAssignmentId: parsed.data.substituteAssignmentId },
+      select: { id: true },
+    })
+    if (existing) return errors.conflict('A bonus/deduction is already recorded for this teacher on this session')
+  }
+
   const adjustment = await prisma.teacherPayAdjustment.create({
     data: {
       teacherId,
@@ -76,4 +90,33 @@ export async function POST(
   })
 
   return createdResponse(adjustment, 'Adjustment recorded')
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { session, error } = await requireSession()
+  if (error || !session) return error!
+  const role = session.user.role as Role
+  const denied = requirePermission(role, 'fees', 'update')
+  if (denied) return denied
+
+  const { id } = await params
+  const adjustmentId = request.nextUrl.searchParams.get('adjustmentId')
+  if (!adjustmentId) {
+    return errors.validation({ errors: [{ path: ['adjustmentId'], message: 'adjustmentId is required' }] } as never)
+  }
+
+  const adjustment = await prisma.teacherPayAdjustment.findUnique({
+    where: { id: adjustmentId },
+    include: { classSection: { select: { campusId: true } } },
+  })
+  if (!adjustment || adjustment.classSectionId !== id) return errors.notFound('Adjustment')
+
+  const campusId = campusScope(role, session.user.campusId, null)
+  if (campusId && adjustment.classSection?.campusId !== campusId) return errors.forbidden()
+
+  await prisma.teacherPayAdjustment.delete({ where: { id: adjustmentId } })
+  return successResponse({ id: adjustmentId, deleted: true })
 }

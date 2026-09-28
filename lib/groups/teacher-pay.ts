@@ -15,6 +15,30 @@ export interface TeacherPayBreakdown {
 }
 
 /**
+ * The per-session rate that applies to ONE session of this group,
+ * regardless of who teaches it. Used to price substitute coverage: the
+ * covering teacher's bonus and the absent teacher's deduction both use the
+ * GROUP's own per-session rule (set via "Set this group's pay rule"),
+ * because that's the price of the session itself. Only if the group has no
+ * per-session rule does it fall back to the given teacher's own default.
+ * Returns null when neither exists, so the accountant enters it manually.
+ */
+export async function resolveGroupSessionRate(classSectionId: string, teacherId: string): Promise<number | null> {
+  const groupRule = await prisma.subjectOffering.findFirst({
+    where: { classSectionId, overridePerSessionAmount: { not: null } },
+    orderBy: { createdAt: 'desc' },
+    select: { overridePerSessionAmount: true },
+  })
+  if (groupRule?.overridePerSessionAmount != null) return Number(groupRule.overridePerSessionAmount)
+
+  const teacher = await prisma.teacher.findUnique({
+    where: { id: teacherId },
+    select: { defaultPerSessionAmount: true },
+  })
+  return teacher?.defaultPerSessionAmount != null ? Number(teacher.defaultPerSessionAmount) : null
+}
+
+/**
  * Computes what a teacher has earned for one group's current billing cycle:
  * fixed + (percent of what students paid this cycle) + (flat amount per
  * session they actually taught, per attendance records) + manual
