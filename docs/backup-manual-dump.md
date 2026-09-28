@@ -8,9 +8,9 @@
 2. اختار **MySQL Community Server 8.4 LTS**، ونظام **Microsoft Windows**.
 3. نزّل **Windows (x86, 64-bit), ZIP Archive** (مش الـ MSI Installer).
    لو ظهرتلك صفحة Login اضغط **"No thanks, just start my download"**.
-4. فك الضغط، وسمّي الفولدر `C:\mysql`، بحيث يبقى عندك الملف ده:
-   `C:\mysql\bin\mysqldump.exe`
-5. اعمل فولدر للنسخ **برّه المشروع**: `C:\TechNovaBackups`
+4. فك الضغط، وسمّي الفولدر `D:\mysql` (على D: مش C:، لأن C: مليان)، بحيث يبقى عندك الملف ده:
+   `D:\mysql\bin\mysqldump.exe`
+5. اعمل فولدر للنسخ **برّه المشروع**: `D:\TechNovaBackups`
 
 > نفس الـ ZIP ده فيه MySQL server كامل، وهنستخدمه بعدين في اختبار الـ Restore على الجهاز.
 
@@ -33,7 +33,7 @@
 بدّل HOST وPORT وDB، وسيب `-p` زي ما هو من غير باسورد:
 
 ```powershell
-& "C:\mysql\bin\mysqldump.exe" -h HOST -P PORT -u root -p --single-transaction --routines --triggers --events --no-tablespaces --set-gtid-purged=OFF --default-character-set=utf8mb4 --result-file="C:\TechNovaBackups\technova-2026-09-28.sql" DB
+& "D:\mysql\bin\mysqldump.exe" -h HOST -P PORT -u root -p --single-transaction --routines --triggers --events --no-tablespaces --set-gtid-purged=OFF --default-character-set=utf8mb4 --result-file="D:\TechNovaBackups\technova-2026-09-28.sql" DB
 ```
 
 - هيسألك `Enter password:`. الصق الباسورد (Right-click) واضغط Enter.
@@ -44,22 +44,22 @@
 
 **أ) آخر سطر في الملف** لازم يبقى `-- Dump completed on ...`:
 ```powershell
-Get-Content "C:\TechNovaBackups\technova-2026-09-28.sql" -Tail 1
+Get-Content "D:\TechNovaBackups\technova-2026-09-28.sql" -Tail 1
 ```
 
 **ب) عدد الجداول في الملف:**
 ```powershell
-(Select-String -Path "C:\TechNovaBackups\technova-2026-09-28.sql" -Pattern '^CREATE TABLE').Count
+(Select-String -Path "D:\TechNovaBackups\technova-2026-09-28.sql" -Pattern '^CREATE TABLE').Count
 ```
 
 **ج) عدد الجداول في القاعدة نفسها** (لازم يطلع نفس رقم ب):
 ```powershell
-& "C:\mysql\bin\mysql.exe" -h HOST -P PORT -u root -p -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='DB' AND table_type='BASE TABLE';"
+& "D:\mysql\bin\mysql.exe" -h HOST -P PORT -u root -p -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='DB' AND table_type='BASE TABLE';"
 ```
 
 **د) حجم الملف** (لازم ميبقاش 0):
 ```powershell
-(Get-Item "C:\TechNovaBackups\technova-2026-09-28.sql").Length / 1KB
+(Get-Item "D:\TechNovaBackups\technova-2026-09-28.sql").Length / 1KB
 ```
 
 لو (أ) طلع صح و(ب) = (ج)، يبقى الملف كامل. الاختبار النهائي هو الـ Restore على قاعدة محلية، وهنعمله بعدين.
