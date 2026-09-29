@@ -16,6 +16,7 @@
 
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { nextTeacherEmployeeId } from '@/lib/ids/sequence'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
@@ -90,8 +91,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           : application.applicantType === 'ACCOUNTANT' ? 'ACC'
           : 'ADM'
 
-        const staffCount = await prisma.teacher.count()
-        const employeeId = `ESA-${prefix}-${String(staffCount + 1).padStart(3, '0')}`
+        const employeeId = await nextTeacherEmployeeId(`ESA-${prefix}`)
 
         try {
           const result = await prisma.$transaction(async (tx) => {

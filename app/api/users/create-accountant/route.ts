@@ -16,6 +16,7 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { nextAccountantEmployeeId } from '@/lib/ids/sequence'
 import { errors, createdResponse } from '@/lib/api-response'
 import { hash } from '@node-rs/argon2'
 import { z } from 'zod'
@@ -93,8 +94,7 @@ export async function POST(request: NextRequest) {
   // WHY: Predictable, human-readable IDs aid the finance office in cross-referencing records.
   let resolvedEmployeeId = employeeId
   if (!resolvedEmployeeId) {
-    const existingCount = await prisma.accountant.count()
-    resolvedEmployeeId = `ACC-${new Date().getFullYear()}-${String(existingCount + 1).padStart(4, '0')}`
+    resolvedEmployeeId = await nextAccountantEmployeeId()
   }
 
   // Reject duplicate employee IDs (caller-supplied)

@@ -22,6 +22,12 @@ const optionalCuid = z.preprocess((value) => {
   return value
 }, z.string().cuid().optional())
 
+// react-hook-form sends '' for every text input left empty. For OPTIONAL
+// fields '' must mean "not provided", otherwise .min()/.email() rejects it and
+// the admission form cannot be submitted (bug reported by the owner).
+const optionalText = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), schema.optional())
+
 const blankOptionalNumber = (value: unknown) => {
   if (typeof value === 'string' && value.trim() === '') return undefined
   if (typeof value === 'number' && Number.isNaN(value)) return undefined
@@ -74,7 +80,7 @@ const createStudentSchemaBase = z.object({
   classId:        optionalCuid,
   classSectionId: optionalCuid,
   section:        z.string().max(5).optional(),
-  rollNumber:     z.string().min(1).max(20).optional(),
+  rollNumber:     optionalText(z.string().trim().min(1).max(20)),
   shift:          sessionShiftSchema.optional(),
   deliveryMode:   deliveryModeSchema.optional(),
   houseId:        optionalCuid,
@@ -91,15 +97,15 @@ const createStudentSchemaBase = z.object({
   sourceOfInfo: z.string().optional(),
 
   // Parent/Guardian details (for new admission; creates Guardian account)
-  parentEmail: z.string().email().optional(),
+  parentEmail: optionalText(z.string().trim().email()),
 })
 
 const guardianFieldsSchema = z.object({
-  guardianFirstName:    z.string().min(2).trim().optional(),
-  guardianLastName:     z.string().trim().optional(),
-  guardianPhone:        z.string().optional(),
-  guardianEmail:        z.string().email().optional().or(z.literal('')),
-  guardianRelationship: z.string().max(50).optional(),
+  guardianFirstName:    optionalText(z.string().trim().min(2, 'Guardian first name must be at least 2 characters')),
+  guardianLastName:     optionalText(z.string().trim()),
+  guardianPhone:        optionalText(z.string().trim().regex(/^\+?[\d\s\-]{10,15}$/, 'Invalid guardian phone number')),
+  guardianEmail:        optionalText(z.string().trim().email('Invalid guardian email')),
+  guardianRelationship: optionalText(z.string().trim().max(50)),
 })
 
 // sourceOfInfo now lives directly on createStudentSchemaBase
@@ -119,11 +125,9 @@ const mergedStudentSchema = createStudentSchemaBase
   .merge(guardianFieldsSchema)
 
 // Apply refinements to the merged schema
+// Roll number is NOT required with a group: POST /api/students falls back to
+// the registration number.
 export const createStudentSchema = mergedStudentSchema
-  .refine(
-    (data) => !data.classSectionId || (data.rollNumber && data.rollNumber.length > 0),
-    { message: 'Roll number is required when a class section is selected', path: ['rollNumber'] }
-  )
   .refine(
     (d) => !d.guardianPhone || (d.guardianFirstName && d.guardianFirstName.length >= 2),
     { message: 'Guardian first name is required when guardian phone is provided', path: ['guardianFirstName'] }

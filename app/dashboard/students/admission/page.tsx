@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import NextImage from 'next/image'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/lib/notify'
@@ -66,9 +66,6 @@ export default function AdmissionPage() {
   const [enrollmentStatus, setEnrollmentStatus] = useState<'none' | 'enrolled' | 'skipped'>('none')
   // Change 1: global client-side validation error summary
   const [validationErrors, setValidationErrors] = useState<{ field: string; label: string }[]>([])
-  // Change 2: level/gender-based campus separation
-  const [studentLevel, setStudentLevel] = useState<'primary' | 'senior' | null>(null)
-  const [seniorCampusGender, setSeniorCampusGender] = useState<'BOYS' | 'GIRLS' | null>(null)
 
   const {
     register,
@@ -99,21 +96,6 @@ export default function AdmissionPage() {
   })
   const campuses = Array.isArray(campusesRaw) ? campusesRaw : campusesRaw?.data || []
 
-  // CHANGE 2: Filter campus list based on selected student level and gender.
-  // Falls back to all campuses if no keyword matches (handles generic campus names).
-  const filteredCampuses = (() => {
-    if (studentLevel === 'senior' && seniorCampusGender) {
-      const keywords = seniorCampusGender === 'BOYS'
-        ? ['boy', 'male', 'gents', 'bros']
-        : ['girl', 'female', 'ladies', 'sis']
-      const filtered = campuses.filter((c: Campus) =>
-        keywords.some(kw => c.name.toLowerCase().includes(kw))
-      )
-      return filtered.length > 0 ? filtered : campuses
-    }
-    return campuses
-  })()
-
   const { data: batchesRaw } = useQuery<QueryResult<Batch[]>>({
     queryKey: ['batches', selectedCampusId],
     queryFn: () => fetchApi<Batch[]>(`/api/batches?campusId=${selectedCampusId}`),
@@ -140,6 +122,18 @@ export default function AdmissionPage() {
     enabled: !!selectedBatchId,
   })
   const houses = Array.isArray(housesRaw) ? housesRaw : housesRaw?.data ?? []
+
+  // Default the academic year to the ACTIVE year in the system (not "this
+  // calendar year" — in September that pointed at a year that isn't active).
+  const { data: academicYearsRaw } = useQuery<QueryResult<{ name: string; isActive: boolean }[]>>({
+    queryKey: ['academic-years'],
+    queryFn: () => fetchApi<{ name: string; isActive: boolean }[]>('/api/academic-years'),
+  })
+  const academicYears = Array.isArray(academicYearsRaw) ? academicYearsRaw : academicYearsRaw?.data ?? []
+  const activeYearName = academicYears.find((y) => y.isActive)?.name
+  useEffect(() => {
+    if (activeYearName && /^\d{4}-\d{4}$/.test(activeYearName)) setValue('academicYear', activeYearName)
+  }, [activeYearName, setValue])
 
   const [previewImage, setPreviewImage] = useState<string | null>(null)
 
@@ -275,6 +269,9 @@ export default function AdmissionPage() {
     academicYear: 'Academic Year',
     totalFeeAmount: 'Total Monthly Fee Amount',
     rollNumber: 'Roll Number',
+    guardianFirstName: 'Guardian First Name',
+    guardianPhone: 'Guardian Phone',
+    guardianEmail: 'Guardian Email',
   }
 
   const onInvalid = (errors: FieldErrors<CreateStudentFormValues>) => {
@@ -411,11 +408,6 @@ export default function AdmissionPage() {
               <div className="space-y-1.5">
                 <Label>Full Name (English) <span className="text-muted-foreground text-xs">(for certificates)</span></Label>
                 <Input {...register('fullNameEn')} placeholder="Ahmed Mohamed Ali Hassan" />
-              </div>
-              <div className="space-y-1.5">
-                <RequiredLabel>Father&apos;s Name</RequiredLabel>
-                <Input {...register('fatherName')} className={errors.fatherName ? 'border-destructive focus-visible:ring-destructive' : ''} placeholder="Father&apos;s full name" />
-                <FieldError message={errors.fatherName?.message} />
               </div>
               <div className="space-y-1.5">
                 <Label>Father&apos;s Phone</Label>
@@ -571,109 +563,17 @@ export default function AdmissionPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            {/* CHANGE 2: Student Level Selector — controls campus visibility and gender separation */}
-            <div className="md:col-span-2 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-800">
-                  Student Academic Level <span className="text-destructive">*</span>
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Select the level to determine campus options. Primary (up to Class 5) is co-educational. Senior (Class 6+) allows gender-separated campus selection.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Primary level button */}
-                <button
-                  type="button"
-                  onClick={() => { setStudentLevel('primary'); setSeniorCampusGender(null); setValue('campusId', ''); setValue('batchId', ''); setValue('classSectionId', '') }}
-                  className={`flex items-start gap-3 rounded-xl border-2 p-4 text-left transition-all duration-150 ${
-                    studentLevel === 'primary'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-border bg-white hover:border-slate-400 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
-                    studentLevel === 'primary' ? 'border-blue-500 bg-blue-500' : 'border-slate-300'
-                  }`}>
-                    {studentLevel === 'primary' && <div className="h-2 w-2 rounded-full bg-white" />}
-                  </div>
-                  <div>
-                    <div className={`font-semibold text-sm ${studentLevel === 'primary' ? 'text-blue-900' : 'text-slate-800'}`}>Primary / Junior Level</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Up to Class 5 · Co-educational · No gender separation</div>
-                  </div>
-                </button>
-                {/* Senior level button */}
-                <button
-                  type="button"
-                  onClick={() => { setStudentLevel('senior'); setValue('campusId', ''); setValue('batchId', ''); setValue('classSectionId', '') }}
-                  className={`flex items-start gap-3 rounded-xl border-2 p-4 text-left transition-all duration-150 ${
-                    studentLevel === 'senior'
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-border bg-white hover:border-slate-400 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
-                    studentLevel === 'senior' ? 'border-purple-500 bg-purple-500' : 'border-slate-300'
-                  }`}>
-                    {studentLevel === 'senior' && <div className="h-2 w-2 rounded-full bg-white" />}
-                  </div>
-                  <div>
-                    <div className={`font-semibold text-sm ${studentLevel === 'senior' ? 'text-purple-900' : 'text-slate-800'}`}>Senior Level</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Class 6 and above · Gender-separated campuses available</div>
-                  </div>
-                </button>
-              </div>
-
-              {/* Gender campus type — only shown for senior level */}
-              {studentLevel === 'senior' && (
-                <div className="border-t border-slate-200 pt-3 mt-1">
-                  <p className="text-xs font-semibold text-slate-700 mb-2">Select Campus Type</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setSeniorCampusGender('BOYS'); setValue('campusId', ''); setValue('batchId', ''); setValue('classSectionId', '') }}
-                      className={`flex items-center justify-center gap-2 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all ${
-                        seniorCampusGender === 'BOYS'
-                          ? 'border-sky-500 bg-sky-50 text-sky-800'
-                          : 'border-border bg-white hover:border-slate-400'
-                      }`}
-                    >
-                      <span aria-hidden>👦</span> Boys Campus
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setSeniorCampusGender('GIRLS'); setValue('campusId', ''); setValue('batchId', ''); setValue('classSectionId', '') }}
-                      className={`flex items-center justify-center gap-2 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all ${
-                        seniorCampusGender === 'GIRLS'
-                          ? 'border-pink-400 bg-pink-50 text-pink-800'
-                          : 'border-border bg-white hover:border-slate-400'
-                      }`}
-                    >
-                      <span aria-hidden>👧</span> Girls Campus
-                    </button>
-                  </div>
-                  {seniorCampusGender && filteredCampuses.length === campuses.length && campuses.length > 0 && (
-                    <p className="flex items-center gap-1 text-xs text-amber-600 mt-2">
-                      <Info className="w-3 h-3" />
-                      No campuses matched the gender filter by name — showing all campuses. Contact admin to label campus names with gender identifiers.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Campus — filtered by level/gender selection above */}
+            {/* Campus */}
             <div className="space-y-1.5">
               <RequiredLabel>Campus</RequiredLabel>
               <Select
-                disabled={!studentLevel}
                 onValueChange={(val) => { setValue('campusId', val); setValue('batchId', ''); setValue('classSectionId', '') }}
               >
                 <SelectTrigger className={errors.campusId ? 'border-destructive focus:ring-destructive' : ''}>
-                  <SelectValue placeholder={!studentLevel ? 'Select student level first' : 'Select campus'} />
+                  <SelectValue placeholder="Select campus" />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredCampuses.map((c: Campus) => (
+                  {campuses.map((c: Campus) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -744,13 +644,11 @@ export default function AdmissionPage() {
             {/* Roll Number — required only if section selected */}
             <div className="space-y-1.5">
               <Label>
-                Roll Number
-                {selectedSectionId && <span className="text-destructive ml-1">*</span>}
-                {!selectedSectionId && <span className="text-muted-foreground text-xs ml-1">(required if section selected)</span>}
+                Roll Number <span className="text-muted-foreground text-xs ml-1">(optional — the registration number is used if empty)</span>
               </Label>
               <Input
                 {...register('rollNumber')}
-                placeholder={selectedSectionId ? 'Required — e.g. 9321' : 'e.g. 9321'}
+                placeholder="e.g. 9321"
                 className={errors.rollNumber ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
               <FieldError message={errors.rollNumber?.message} />
@@ -823,7 +721,7 @@ export default function AdmissionPage() {
           <CardHeader>
             <CardTitle>Guardian / Parent</CardTitle>
             <CardDescription>
-              Optional. Creates a guardian portal account with default password based on the guardian's phone number.
+              Optional. Creates the parent's portal account. The parent signs in with this phone number after staff issue a temporary password (Credential Management).
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">

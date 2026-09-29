@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { errors } from '@/lib/api-response'
 import type { Role } from '@prisma/client'
-import type { AcademicResource } from '@/lib/rbac'
+import type { AcademicResource, Action } from '@/lib/rbac'
 
 export async function requireSession() {
   const session = await auth()
@@ -10,7 +10,7 @@ export async function requireSession() {
   return { session, error: null }
 }
 
-export function requirePermission(role: Role, resource: AcademicResource, action: 'create' | 'read' | 'update' | 'delete') {
+export function requirePermission(role: Role, resource: AcademicResource, action: Action) {
   if (!checkPermission(role, resource, action)) return errors.forbidden()
   return null
 }

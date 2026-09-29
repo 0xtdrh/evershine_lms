@@ -10,6 +10,7 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { nextRegistrationNumber, isUniqueConflictOn } from '@/lib/ids/sequence'
 import { checkPermission } from '@/lib/rbac'
 import { errors, errorResponse, createdResponse, paginatedResponse } from '@/lib/api-response'
 import { createStudentSchema, studentQuerySchema } from '@/lib/validation/student'
@@ -216,10 +217,9 @@ export async function POST(request: NextRequest) {
 
   const data = parsed.data
 
-  // Generate registration number: TN/YYYY/NNNN
+  // Registration number: TN/YYYY/NNNN (highest used this year + 1; see lib/ids/sequence.ts)
   const year = new Date().getFullYear()
-  const count = await prisma.student.count()
-  const registrationNumber = `TN/${year}/${String(count + 1).padStart(4, '0')}`
+  let registrationNumber = await nextRegistrationNumber(year)
 
   let profilePictureUrl = data.profilePicture || null
   if (isProfileImageDataUrl(profilePictureUrl)) {
@@ -254,12 +254,15 @@ export async function POST(request: NextRequest) {
   // WHY $transaction: User + Student must be created atomically.
   // If Student creation fails after User succeeds, the orphaned User
   // would allow login with no profile — a security and data integrity issue.
-  let student: Awaited<ReturnType<typeof prisma.student.create>>
+  let student!: Awaited<ReturnType<typeof prisma.student.create>>
+  for (let attempt = 0; ; attempt++) {
   try {
     student = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          email: data.email ?? `${registrationNumber.replace(/\//g, '.')}@students.technova.local`,
+          // WHY ||: an empty email field arrives as '' — using it as the login email
+          // made every later admission without an email fail as a duplicate.
+          email: data.email || `${registrationNumber.replace(/\//g, '.')}@students.technova.local`,
           passwordHash: studentPasswordHash,
           role: 'STUDENT',
           isActive: true,
@@ -333,7 +336,13 @@ export async function POST(request: NextRequest) {
 
       return newStudent
     })
+    break
   } catch (txErr: unknown) {
+    // Two admissions at the same moment can pick the same number: take the next one and retry.
+    if (attempt < 2 && isUniqueConflictOn(txErr, 'registrationNumber')) {
+      registrationNumber = await nextRegistrationNumber(year)
+      continue
+    }
     // WHY: Prisma P2002 = unique constraint violation. Surface it as a 409 so the
     // frontend can show a field-level error (e.g. email already registered).
     const err = getPrismaError(txErr)
@@ -359,6 +368,7 @@ export async function POST(request: NextRequest) {
     }
     logStudentCreateFailure('transaction', txErr)
     return errors.internal()
+  }
   }
 
   // ── Guardian linking (post-transaction) ─────────────────────────────────

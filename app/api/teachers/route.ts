@@ -6,6 +6,7 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { nextTeacherEmployeeId } from '@/lib/ids/sequence'
 import { checkPermission } from '@/lib/rbac'
 import { errors, errorResponse, createdResponse, paginatedResponse } from '@/lib/api-response'
 import { createTeacherSchema, teacherQuerySchema } from '@/lib/validation/teacher'
@@ -161,8 +162,7 @@ export async function POST(request: NextRequest) {
 
   // Auto-generate employee ID with designation-aware prefix
   const prefix = getEmployeeIdPrefix(resolvedDesignation)
-  const teacherCount = await prisma.teacher.count()
-  const employeeId = `${prefix}-${String(teacherCount + 1).padStart(3, '0')}`
+  const employeeId = await nextTeacherEmployeeId(prefix)
 
   let profilePictureUrl = data.profilePicture || null
   if (isProfileImageDataUrl(profilePictureUrl)) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { nextRegistrationNumber } from '@/lib/ids/sequence'
 import { auth } from '@/lib/auth'
 import { hash } from '@node-rs/argon2'
 import { z } from 'zod'
@@ -145,12 +146,10 @@ export async function POST(
       guardianPasswordHash = await hash(guardianPhone, ARGON2_OPTIONS)
     }
 
-    // Generate Registration Number (e.g., TN/2026/001)
+    // Registration number — fixed rule TN/YYYY/NNNN (was `<campus code>/YYYY/NNN`,
+    // e.g. BC/2026/001, which broke the rule and could repeat per campus).
     const year = new Date().getFullYear()
-    const count = await prisma.student.count({ where: { campusId } })
-    const seq = String(count + 1).padStart(3, '0')
-    const selectedCampus = await prisma.campus.findUnique({ where: { id: campusId } })
-    const regNumber = `${selectedCampus?.code || 'TN'}/${year}/${seq}`
+    const regNumber = await nextRegistrationNumber()
     const passwordHash = await hash(regNumber.replace(/\//g, ''), ARGON2_OPTIONS)
 
     // Use Prisma Transaction
