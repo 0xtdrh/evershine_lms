@@ -29,7 +29,8 @@ Track / Course (Subject) / Level، مع صفحة "Course Structure" لإدارت
 - صفحة `/dashboard/admin/backups` (Super Admin بس) فيها «Back up now» وزرار تنزيل
 - اختبار الـ restore على البيانات الحقيقية نجح (110 جدول مطابقين)، والتفاصيل في `docs/backup-restore.md`
 - **مؤجل:** سكريبت backup محلي من جهاز صاحب الشغل (mysqldump بأمر واحد)
-- **لسه:** نتأكد إن أول backup ليلي اتعمل لوحده
+- أول backup ليلي ماتعملش. السبب: كل الـ crons كانت بتترفض بسبب مقارنة `CRON_SECRET` (اتصلّحت 2026-09-29). **لسه:** نتأكد بكرة إن فيه نسخة ليلية اتعملت
+- **الـ crons القديمة من الـ template وقفناها مؤقتًا** (fee-penalties، fee-reminder، teacher-attendance، birthday-check)، لأنها عمرها ما اشتغلت، ولو اشتغلت فجأة ممكن تحط غرامات وتسجّل غياب مدرسين غلط. محتاجة مراجعة واحد واحد قبل ما نرجّعها
 
 ---
 
