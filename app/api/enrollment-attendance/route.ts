@@ -1,13 +1,59 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
-import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { markEnrollmentAttendanceSchema } from '@/lib/validation/academic'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { resolveMarkedByTeacherId } from '@/lib/academic/attendance'
-import { getTeacherByUserId, teacherCanAccessClassSection } from '@/lib/academic/teacher-scope'
+import { getTeacherByUserId, getTeacherClassSectionIds, teacherCanAccessClassSection } from '@/lib/academic/teacher-scope'
 import type { Role } from '@prisma/client'
 import { createStudentAbsenceAssessment } from '@/lib/penalties/assessments'
+import { syncGroupProgress } from '@/lib/groups/sync-progress'
+
+const ATTENDANCE_STATUSES = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'] as const
+
+/**
+ * A branch-scoped user may only mark attendance in their own branch, and a
+ * teacher only in groups they are assigned to.
+ */
+async function assertCanMarkGroup(
+  session: { user: { id: string; role: string; campusId?: string | null } },
+  classSectionId: string,
+  activeYearId?: string,
+  attendanceDate?: string
+) {
+  const group = await prisma.classSection.findUnique({
+    where: { id: classSectionId },
+    select: { campusId: true, status: true, completedAt: true },
+  })
+  if (!group) return errors.notFound('Group')
+  // A closed cycle takes no NEW sessions (corrections of its own past dates are fine).
+  if (group.status === 'COMPLETED' && attendanceDate && group.completedAt && new Date(attendanceDate) > group.completedAt) {
+    return errors.conflict("This group's cycle is closed. Record attendance in the group of the next cycle.")
+  }
+  const scoped = campusScope(session.user.role as Role, session.user.campusId, null)
+  if (scoped && group.campusId !== scoped) return errors.forbidden()
+  if (session.user.role === 'TEACHER') {
+    const teacher = await getTeacherByUserId(session.user.id)
+    if (!teacher) return errors.forbidden()
+    const allowed = await teacherCanAccessClassSection(teacher.id, classSectionId, activeYearId)
+    if (!allowed) return errors.forbidden('You are not assigned to this section')
+  }
+  return null
+}
+
+/**
+ * Group start date / 50% payment warning used to update only when someone
+ * opened the group on the Groups page. Refresh right after attendance is saved.
+ * Never allowed to break the attendance save.
+ */
+async function refreshGroupProgress(classSectionId: string, userId: string) {
+  try {
+    await syncGroupProgress(classSectionId, userId)
+  } catch (err) {
+    console.error('[ATTENDANCE_SYNC_PROGRESS]', err)
+  }
+}
 
 export async function GET(request: NextRequest) {
   const { session, error } = await requireSession()
@@ -22,14 +68,30 @@ export async function GET(request: NextRequest) {
   const studentId = searchParams.get('studentId')
   const limit = Math.min(Number(searchParams.get('limit') ?? 60), 200)
 
+  // SECURITY: teachers only read their own groups; branch-scoped staff only
+  // their branch (this used to return any group's attendance to any teacher).
+  const role = session.user.role as Role
+  let teacherGroupFilter: { classSectionId: { in: string[] } } | undefined
+  if (role === 'TEACHER') {
+    const teacher = await getTeacherByUserId(session.user.id)
+    if (!teacher) return errors.forbidden()
+    if (classSectionId && !(await teacherCanAccessClassSection(teacher.id, classSectionId))) {
+      return errors.forbidden('You are not assigned to this section')
+    }
+    if (!classSectionId) teacherGroupFilter = { classSectionId: { in: await getTeacherClassSectionIds(teacher.id) } }
+  }
+  const scoped = campusScope(role, session.user.campusId, null)
+
   const records = await prisma.enrollmentAttendanceRecord.findMany({
     where: {
       ...(studentEnrollmentId && { studentEnrollmentId }),
       ...(date && { attendanceDate: new Date(date) }),
-      ...(studentId && { studentEnrollment: { studentId } }),
-      ...(classSectionId && {
-        studentEnrollment: { classSectionId },
-      }),
+      studentEnrollment: {
+        ...(studentId && { studentId }),
+        ...(classSectionId && { classSectionId }),
+        ...(teacherGroupFilter ?? {}),
+        ...(scoped && { classSection: { campusId: scoped } }),
+      },
     },
     include: {
       studentEnrollment: {
@@ -52,7 +114,12 @@ export async function POST(request: NextRequest) {
   const denied = requirePermission(session.user.role as Role, 'attendance', 'create')
   if (denied) return denied
 
-  const body = await request.json()
+  let body: any
+  try {
+    body = await request.json()
+  } catch {
+    return errors.badRequest('Invalid JSON')
+  }
 
   // Bulk: { classSectionId, attendanceDate, records: [{ studentEnrollmentId, status, remarks? }] }
   if (Array.isArray(body.records)) {
@@ -67,16 +134,19 @@ export async function POST(request: NextRequest) {
     const activeYear = await getActiveAcademicYear()
     if (activeYear?.isLocked) return errors.forbidden('Academic year is locked')
 
-    if (session.user.role === 'TEACHER') {
-      const teacher = await getTeacherByUserId(session.user.id)
-      if (!teacher) return errors.forbidden()
-      const allowed = await teacherCanAccessClassSection(
-        teacher.id,
-        classSectionId,
-        activeYear?.id
-      )
-      if (!allowed) return errors.forbidden('You are not assigned to this section')
+    const deniedGroup = await assertCanMarkGroup(session, classSectionId, activeYear?.id, attendanceDate)
+    if (deniedGroup) return deniedGroup
+
+    // SECURITY: every record must belong to THIS group (a teacher allowed on
+    // group X could otherwise write attendance for any enrollment), and the
+    // status must be a real one (bad values used to fail with a 500).
+    const submitted = body.records as { studentEnrollmentId: string; status: string; remarks?: string }[]
+    if (submitted.some((r) => !ATTENDANCE_STATUSES.includes(r.status as (typeof ATTENDANCE_STATUSES)[number]))) {
+      return errors.badRequest(`Status must be one of ${ATTENDANCE_STATUSES.join(', ')}`)
     }
+    const ids = [...new Set(submitted.map((r) => r.studentEnrollmentId))]
+    const inGroup = await prisma.studentEnrollment.count({ where: { id: { in: ids }, classSectionId } })
+    if (inGroup !== ids.length) return errors.forbidden('Some students are not in this group')
 
     const markedBy = await resolveMarkedByTeacherId(session.user.id)
 
@@ -126,11 +196,23 @@ export async function POST(request: NextRequest) {
       return out
     })
 
+    await refreshGroupProgress(classSectionId, session.user.id)
     return createdResponse(results, 'Attendance saved')
   }
 
   const parsed = markEnrollmentAttendanceSchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
+
+  // SECURITY: the single-record path had no group/branch/teacher check at all.
+  const target = await prisma.studentEnrollment.findUnique({
+    where: { id: parsed.data.studentEnrollmentId! },
+    select: { classSectionId: true },
+  })
+  if (!target) return errors.notFound('Enrollment')
+  const activeYearSingle = await getActiveAcademicYear()
+  if (activeYearSingle?.isLocked) return errors.forbidden('Academic year is locked')
+  const deniedSingle = await assertCanMarkGroup(session, target.classSectionId, activeYearSingle?.id, parsed.data.attendanceDate)
+  if (deniedSingle) return deniedSingle
 
   const markedBy = await resolveMarkedByTeacherId(session.user.id)
 
@@ -163,5 +245,6 @@ export async function POST(request: NextRequest) {
     return row
   })
 
+  await refreshGroupProgress(target.classSectionId, session.user.id)
   return createdResponse(record)
 }

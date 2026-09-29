@@ -26,7 +26,7 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
-import { createCycleInvoice } from '@/lib/groups/sync-progress'
+import { createCycleInvoice, syncGroupProgress } from '@/lib/groups/sync-progress'
 import type { Role } from '@prisma/client'
 import { findGroupInstructorOffering } from '@/lib/groups/instructor'
 import { getNextStep } from '@/lib/groups/next-step'
@@ -35,6 +35,8 @@ const bodySchema = z.object({
   continuingStudentIds: z.array(z.string()).default([]),
   className: z.string().min(1).max(50).optional(),
   sectionName: z.string().min(1).max(10).optional(),
+  /** Super Admin only: close the cycle before all its sessions happened. */
+  force: z.boolean().optional(),
 })
 
 export async function POST(
@@ -72,6 +74,24 @@ export async function POST(
   if (!activeYear) return errors.conflict('No active academic year is set')
   const academicYearName = activeYear.name
 
+  // The cycle may only be closed once all its sessions happened. The Groups
+  // page hid the button, but the server itself did not check: a stale tab or a
+  // wrong click closed a group after 2 of 4 sessions with nobody continuing.
+  const progress = await syncGroupProgress(id, session.user.id)
+  if (!progress.isLastSessionOfCycle && !(parsed.data.force && role === 'SUPER_ADMIN')) {
+    return errors.conflict(
+      `This cycle is not finished yet: ${progress.checkedSessionsInCycle} of ${progress.sessionsPerCycle} sessions recorded.`
+    )
+  }
+
+  // Only students actually in this group can continue (any id used to be accepted).
+  const activeIds = new Set(
+    (await prisma.studentEnrollment.findMany({ where: { classSectionId: id, status: 'ACTIVE' }, select: { studentId: true } }))
+      .map((e) => e.studentId)
+  )
+  const outsiders = parsed.data.continuingStudentIds.filter((sid) => !activeIds.has(sid))
+  if (outsiders.length) return errors.badRequest('Some selected students are not active in this group')
+
   const level = group.level
 
   // Work out what's next: another month of the same level, or the next
@@ -102,7 +122,7 @@ export async function POST(
   // combination regardless of why a collision might happen — check first,
   // and add a growing suffix until it's free, instead of hoping the
   // computed name is unique.
-  const baseClassName = (parsed.data.className ?? `${group.className} — ${nextLevel.name} (${nextCycleNumber})`).slice(0, 50)
+  const baseClassName = (parsed.data.className ?? `${group.className.trim()} — ${nextLevel.name.trim()} (${nextCycleNumber})`).slice(0, 50)
   const sectionName = parsed.data.sectionName ?? group.sectionName
   let finalClassName = baseClassName
   let suffix = 2

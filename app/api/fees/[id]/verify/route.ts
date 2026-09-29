@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { updateInvoiceIfUnchanged, catchInvoiceChanged, InvoiceChangedError, refreshGroupAfterPayment } from '@/lib/fees/guarded-payment'
 import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 import { z } from 'zod'
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
   }
 
-  const updatedInvoice = await prisma.$transaction(async (tx) => {
+  const updatedInvoice = await catchInvoiceChanged(() => prisma.$transaction(async (tx) => {
     if (action === 'APPROVE') {
       // Use provided paidAmount, or what the guardian declared when
       // uploading proof, or default to the full remaining balance.
@@ -90,9 +91,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       })
 
       // Update invoice
-      const res = await tx.feeInvoice.update({
-        where: { id: invoiceId },
-        data: {
+      await updateInvoiceIfUnchanged(tx, invoiceId, invoice.paidAmount, {
           paidAmount: { increment: amountToPay },
           status: newInvoiceStatus,
           proofStatus: 'APPROVED',
@@ -102,8 +101,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           ...(newInvoiceStatus === 'PARTIALLY_PAID' && {
             proofUrl: null, proofRemarks: null, proofUploadedAt: null,
           }),
-        },
       })
+      const res = await tx.feeInvoice.findUniqueOrThrow({ where: { id: invoiceId } })
 
       // Update student totals without allowing negative dues.
       const remainingStudentDue = Math.max(0, Number(invoice.student.dueAmount) - amountToPay)
@@ -173,7 +172,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       return res
     }
-  })
+  }))
+  if (updatedInvoice instanceof InvoiceChangedError) return errors.conflict(updatedInvoice.message)
+  if (action === 'APPROVE') await refreshGroupAfterPayment(invoice.classSectionId, session.user.id)
 
   return successResponse(updatedInvoice, { message: `Payment proof ${action.toLowerCase()}d successfully` })
 }

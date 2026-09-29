@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
+import { updateInvoiceIfUnchanged, catchInvoiceChanged, InvoiceChangedError, refreshGroupAfterPayment } from '@/lib/fees/guarded-payment'
 import { errors, createdResponse } from '@/lib/api-response'
 import { recordPaymentSchema } from '@/lib/validation/accountant-fee'
 
@@ -82,7 +83,7 @@ export async function POST(
 
   const newStatus = (currentPaid + amountToPay >= total) ? 'PAID' : 'PARTIALLY_PAID'
 
-  const payment = await prisma.$transaction(async (tx) => {
+  const payment = await catchInvoiceChanged(() => prisma.$transaction(async (tx) => {
     const p = await tx.feePayment.create({
       data: {
         invoiceId,
@@ -97,12 +98,9 @@ export async function POST(
     })
 
     // Update invoice
-    await tx.feeInvoice.update({
-      where: { id: invoiceId },
-      data: {
-        paidAmount: { increment: amountToPay },
-        status: newStatus,
-      },
+    await updateInvoiceIfUnchanged(tx, invoiceId, existing.paidAmount, {
+      paidAmount: { increment: amountToPay },
+      status: newStatus,
     })
 
     // Update student totals without allowing dueAmount to drift below zero.
@@ -127,7 +125,9 @@ export async function POST(
     })
 
     return p
-  })
+  }))
+  if (payment instanceof InvoiceChangedError) return errors.conflict(payment.message)
+  await refreshGroupAfterPayment(existing.classSectionId, session.user.id)
 
   return createdResponse(payment, 'Payment recorded successfully')
 }

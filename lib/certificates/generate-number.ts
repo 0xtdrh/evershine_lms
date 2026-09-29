@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { nextInSequence } from '@/lib/ids/sequence'
 
 /**
  * Generates a unique, human-readable certificate number, e.g. "TN-CERT-2026-00001".
@@ -12,9 +13,13 @@ import { prisma } from '@/lib/prisma'
 export async function generateCertificateNumber(
   tx: Prisma.TransactionClient | typeof prisma = prisma
 ): Promise<string> {
+  // Highest number used this year + 1 (count + 1 could repeat an existing
+  // number after any deletion). Format is fixed: TN-CERT-YYYY-NNNNN.
   const year = new Date().getFullYear()
-  const count = await tx.certificate.count({
-    where: { certificateNumber: { startsWith: `TN-CERT-${year}-` } },
+  const prefix = `TN-CERT-${year}-`
+  const rows = await tx.certificate.findMany({
+    where: { certificateNumber: { startsWith: prefix } },
+    select: { certificateNumber: true },
   })
-  return `TN-CERT-${year}-${String(count + 1).padStart(5, '0')}`
+  return nextInSequence(rows.map((r) => r.certificateNumber), prefix, 5)
 }

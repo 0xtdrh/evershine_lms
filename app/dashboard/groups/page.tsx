@@ -471,13 +471,8 @@ export default function GroupsPage() {
 
   const addStudentMutation = useMutation({
     mutationFn: async (studentId: string) => {
+      // The server also bills the student for the current cycle (idempotent).
       await fetchApi(`/api/groups/${selectedGroupId}/students`, {
-        method: 'POST',
-        body: JSON.stringify({ studentId }),
-      })
-      // Bill them for the group's current cycle right away — a new group's
-      // first cycle otherwise never gets an invoice until it closes.
-      await fetchApi(`/api/groups/${selectedGroupId}/generate-invoices`, {
         method: 'POST',
         body: JSON.stringify({ studentId }),
       })

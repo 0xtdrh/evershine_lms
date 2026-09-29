@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
+import { updateInvoiceIfUnchanged, catchInvoiceChanged, InvoiceChangedError, refreshGroupAfterPayment } from '@/lib/fees/guarded-payment'
 import { errors, successResponse } from '@/lib/api-response'
 import { proofActionSchema } from '@/lib/validation/accountant-fee'
 import { dispatchNotification } from '@/lib/notifications/in-app'
@@ -79,7 +80,7 @@ export async function PATCH(
     }
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await catchInvoiceChanged(() => prisma.$transaction(async (tx) => {
     if (action === 'APPROVE') {
       const remaining = Number(existing.totalAmount) - Number(existing.paidAmount)
       // Use accountant-specified amount, or what the guardian declared when
@@ -101,16 +102,13 @@ export async function PATCH(
         },
       })
 
-      await tx.feeInvoice.update({
-        where: { id: invoiceId },
-        data: {
-          paidAmount: { increment: amountToPay },
-          status: newInvoiceStatus,
-          proofStatus: 'APPROVED',
-          proofDeclaredAmount: null,
-          // Clear proof so student can re-upload for remaining balance if partially paid
-          ...(newInvoiceStatus === 'PARTIALLY_PAID' && { proofUrl: null, proofRemarks: null, proofUploadedAt: null }),
-        },
+      await updateInvoiceIfUnchanged(tx, invoiceId, existing.paidAmount, {
+        paidAmount: { increment: amountToPay },
+        status: newInvoiceStatus,
+        proofStatus: 'APPROVED',
+        proofDeclaredAmount: null,
+        // Clear proof so student can re-upload for remaining balance if partially paid
+        ...(newInvoiceStatus === 'PARTIALLY_PAID' && { proofUrl: null, proofRemarks: null, proofUploadedAt: null }),
       })
 
       const remainingStudentDue = Math.max(0, Number(existing.student.dueAmount) - amountToPay)
@@ -178,7 +176,9 @@ export async function PATCH(
       })
       return { status: 'REJECTED' }
     }
-  })
+  }))
+  if (result instanceof InvoiceChangedError) return errors.conflict(result.message)
+  if (result.status === 'APPROVED') await refreshGroupAfterPayment(existing.classSectionId, session.user.id)
 
   // Notify guardians via fire-and-forget notification engine
   if (result.status === 'APPROVED') {

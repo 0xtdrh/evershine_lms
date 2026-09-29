@@ -137,6 +137,20 @@ export async function POST(request: NextRequest) {
   const activeYear = await getActiveAcademicYear()
   if (!activeYear) return errors.conflict('No active academic year is set')
 
+  // Same campus + batch + shift + name + section already exists -> clear 409
+  // (the unique-constraint error used to surface as an empty 500).
+  const clash = await prisma.classSection.findFirst({
+    where: {
+      campusId: effectiveCampusId,
+      batchId: parsed.data.batchId,
+      shiftId: parsed.data.shiftId,
+      className: parsed.data.className,
+      sectionName: parsed.data.sectionName,
+    },
+    select: { id: true },
+  })
+  if (clash) return errors.conflict('A group with this name and section already exists in this branch/batch/shift. Choose another name or section.')
+
   const group = await prisma.classSection.create({
     data: {
       campusId: effectiveCampusId,
