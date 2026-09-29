@@ -87,6 +87,8 @@ export async function GET(request: NextRequest) {
           OR: [
             { firstName: { contains: query } },
             { lastName: { contains: query } },
+            // Parents are identified by phone number (Credential Management search)
+            { phoneNumber: { contains: query.replace(/[\s\-()]/g, '') } },
           ],
         },
       },
