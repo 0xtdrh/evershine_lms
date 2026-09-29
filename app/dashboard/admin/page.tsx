@@ -23,6 +23,7 @@ import {
   KeyRound,
   DatabaseBackup,
   Wand2,
+  Trash2,
 } from 'lucide-react'
 
 const ADMIN_ACTIONS = [
@@ -140,6 +141,13 @@ export default function AdminWorkspacePage() {
   const actions = useMemo(() => {
     const list = [...ADMIN_ACTIONS]
     if (role === 'SUPER_ADMIN') {
+      list.unshift({
+        title: 'Delete test data',
+        description: 'One-time cleanup before going live. Backs up first; keeps setup and your account.',
+        href: '/dashboard/admin/wipe-test-data',
+        icon: Trash2,
+        badge: 'Setup',
+      })
       list.unshift({
         title: 'Initial Setup',
         description: 'Main branch, tracks & levels, default batch — TechNova base data in one step.',
