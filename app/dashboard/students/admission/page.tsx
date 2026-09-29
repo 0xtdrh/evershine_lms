@@ -684,8 +684,8 @@ export default function AdmissionPage() {
               </Select>
             </div>
 
-            {/* Academic Year */}
-            <div className="space-y-1.5">
+            {/* Academic year: not used by TechNova — kept internally, hidden (owner, 2026-09-29) */}
+            <div className="hidden">
               <RequiredLabel>Academic Year (YYYY-YYYY)</RequiredLabel>
               <Input
                 {...register('academicYear')}

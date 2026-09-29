@@ -226,7 +226,8 @@ export default function GenerateChallanPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
+              {/* Academic year: hidden (owner, 2026-09-29) */}
+              <div className="hidden">
                 <Label>Academic Year</Label>
                 <Input value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} placeholder="2025-2026" />
               </div>

@@ -902,7 +902,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
           <form onSubmit={(event) => { event.preventDefault(); editMutation.mutate() }} className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1.5"><Label>Month</Label><Input value={editMonth} onChange={(e) => setEditMonth(e.target.value)} required /></div>
-              <div className="space-y-1.5"><Label>Academic Year</Label><Input value={editAcademicYear} onChange={(e) => setEditAcademicYear(e.target.value)} required /></div>
+              <div className="hidden"><Label>Academic Year</Label><Input value={editAcademicYear} onChange={(e) => setEditAcademicYear(e.target.value)} required /></div>
               <div className="space-y-1.5"><Label>Due Date</Label><Input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} required /></div>
             </div>
             <div className="space-y-2">

@@ -427,7 +427,8 @@ export default function EditStudentPage() {
                 <Label>Section</Label>
                 <Input name="section" value={formData.section} onChange={handleChange} placeholder="e.g. A" />
               </div>
-              <div className="space-y-2">
+              {/* Academic year: hidden (owner, 2026-09-29) */}
+              <div className="hidden">
                 <Label>Academic Year</Label>
                 <Input name="academicYear" value={formData.academicYear} onChange={handleChange} placeholder="e.g. 2026-2027" />
               </div>

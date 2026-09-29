@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { ensureInternalYear } from '@/lib/setup/initial-setup'
 
 /** Parse HH:mm to minutes since midnight */
 export function timeToMinutes(t: string): number {
@@ -35,7 +36,12 @@ export async function assertAcademicYearEditable(academicYearId: string): Promis
 export async function getActiveAcademicYear() {
   const active = await prisma.academicYear.findFirst({ where: { isActive: true } })
   if (active) return active
-  return prisma.academicYear.findFirst({ orderBy: { startDate: 'desc' } })
+  const latest = await prisma.academicYear.findFirst({ orderBy: { startDate: 'desc' } })
+  if (latest) return latest
+  // TechNova does not use academic years (owner, 2026-09-29), but much of the
+  // code needs one: create a fixed internal year instead of ever failing with
+  // "No active academic year".
+  return ensureInternalYear()
 }
 
 export type TimetableConflict = {

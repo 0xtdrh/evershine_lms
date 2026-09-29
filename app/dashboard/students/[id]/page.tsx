@@ -374,7 +374,6 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                 <InfoRow label="Class" value={student.class?.name} />
                 <InfoRow label="Section" value={student.section} />
                 <InfoRow label="Roll Number" value={student.rollNumber} />
-                <InfoRow label="Academic Year" value={student.academicYear} />
                 <InfoRow label="Admission Date" value={new Date(student.admissionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} />
                 <InfoRow label="Adm. Number" value={student.admissionNumber} />
               </dl>

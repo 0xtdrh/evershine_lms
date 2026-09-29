@@ -22,6 +22,7 @@ import {
   Coins,
   KeyRound,
   DatabaseBackup,
+  Wand2,
 } from 'lucide-react'
 
 const ADMIN_ACTIONS = [
@@ -139,6 +140,13 @@ export default function AdminWorkspacePage() {
   const actions = useMemo(() => {
     const list = [...ADMIN_ACTIONS]
     if (role === 'SUPER_ADMIN') {
+      list.unshift({
+        title: 'Initial Setup',
+        description: 'Main branch, tracks & levels, default batch — TechNova base data in one step.',
+        href: '/dashboard/admin/setup',
+        icon: Wand2,
+        badge: 'Setup',
+      })
       list.unshift({
         title: 'Configure Permissions',
         description: 'Grant or revoke access for each role. Super Admin always keeps full access.',

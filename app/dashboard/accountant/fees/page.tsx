@@ -251,7 +251,7 @@ function IssueInvoiceTab() {
                 <SelectContent>{MONTHS.map(m => <SelectItem key={m} value={`${m} ${YEAR}`}>{m} {YEAR}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
+            <div className="hidden">
               <Label htmlFor="inv-ay">Academic Year</Label>
               <Input id="inv-ay" value={ay} onChange={e => setAy(e.target.value)} placeholder="2025-2026" />
             </div>
@@ -329,15 +329,15 @@ function IssueInvoiceTab() {
 }
 
 function DefaultersTab({ campuses, classes, selectedCampusId, selectedClassId, setSelectedCampusId, setSelectedClassId, canSelectCampus }: ReportFiltersProps) {
-  const [ay, setAy]           = useState(AY)
+  const [ay, setAy]           = useState('') // no year filter (years are hidden)
   const [exporting, setExp]   = useState(false)
   const handleExport = useCallback(async () => {
     setExp(true)
     try {
-      const params = new URLSearchParams({ academicYear: ay })
+      const params = new URLSearchParams(ay ? { academicYear: ay } : {})
       if (selectedCampusId) params.set('campusId', selectedCampusId)
       if (selectedClassId) params.set('classId', selectedClassId)
-      await downloadExcel(`/api/accountant/fees/export/defaulters?${params.toString()}`, `defaulters-${ay}.xlsx`)
+      await downloadExcel(`/api/accountant/fees/export/defaulters?${params.toString()}`, `defaulters${ay ? `-${ay}` : ''}.xlsx`)
       notify.success('Defaulter list downloaded')
     } catch {
       notify.error('Export failed')
@@ -385,7 +385,7 @@ function DefaultersTab({ campuses, classes, selectedCampusId, selectedClassId, s
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1"><Label htmlFor="def-ay">Academic Year</Label>
+          <div className="hidden"><Label htmlFor="def-ay">Academic Year</Label>
             <Input id="def-ay" value={ay} onChange={e => setAy(e.target.value)} className="w-40" />
           </div>
           <Button id="export-defaulters-btn" onClick={handleExport} disabled={exporting} className="gap-2 bg-red-600 hover:bg-red-700 text-white">
@@ -404,7 +404,7 @@ function DefaultersTab({ campuses, classes, selectedCampusId, selectedClassId, s
 
 function PaidFeesTab({ campuses, classes, selectedCampusId, selectedClassId, setSelectedCampusId, setSelectedClassId, canSelectCampus }: ReportFiltersProps) {
   const [month, setMonth]   = useState(THIS_MONTH)
-  const [ay, setAy]         = useState(AY)
+  const [ay, setAy]         = useState('') // no year filter (years are hidden)
   const [exporting, setExp] = useState(false)
   const monthOptions = useMemo(
     () => MONTHS.map((monthName) => academicMonthLabel(monthName, ay)),
@@ -413,7 +413,7 @@ function PaidFeesTab({ campuses, classes, selectedCampusId, selectedClassId, set
   const handleExport = useCallback(async () => {
     setExp(true)
     try {
-      const params = new URLSearchParams({ month, academicYear: ay })
+      const params = new URLSearchParams(ay ? { month, academicYear: ay } : { month })
       if (selectedCampusId) params.set('campusId', selectedCampusId)
       if (selectedClassId) params.set('classId', selectedClassId)
       await downloadExcel(`/api/accountant/fees/export/paid?${params.toString()}`, `paid-${month.replace(' ', '-')}.xlsx`)
@@ -470,7 +470,7 @@ function PaidFeesTab({ campuses, classes, selectedCampusId, selectedClassId, set
               <SelectContent>{monthOptions.map((monthLabel) => <SelectItem key={monthLabel} value={monthLabel}>{monthLabel}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="space-y-1"><Label htmlFor="paid-ay">Academic Year</Label>
+          <div className="hidden"><Label htmlFor="paid-ay">Academic Year</Label>
             <Input id="paid-ay" value={ay} onChange={e => {
               const nextAcademicYear = e.target.value
               setAy(nextAcademicYear)

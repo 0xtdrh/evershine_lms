@@ -21,7 +21,7 @@ import { notify } from '@/lib/notify'
 import {
   Search, ChevronLeft, ChevronRight, Users, MapPin, Building2,
   GraduationCap, Filter, SendHorizonal, UserX, ShieldAlert,
-  CalendarDays, Phone, Mail, Hash,
+  Phone, Mail, Hash,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 
@@ -289,7 +289,6 @@ function StudentDetailDialog({ student, open, onClose, onRequestAction }: Studen
             <InfoRow icon={<GraduationCap className="w-3.5 h-3.5" />} label="Class" value={getStudentClassLabel(student)} />
             <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Batch" value={`${student.batch.name} (${student.batch.code})`} />
             <InfoRow icon={<Building2 className="w-3.5 h-3.5" />} label="Campus" value={`${student.campus.name} — ${student.campus.city}`} />
-            <InfoRow icon={<CalendarDays className="w-3.5 h-3.5" />} label="Academic Year" value={student.academicYear} />
             {student.house && (
               <div className="col-span-2 flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: student.house.color }} />
