@@ -20,7 +20,7 @@ const { mockAuth, mockPrisma, mockTx, mockHash, mockSendApprovalNotification, mo
     admissionRequest: { findUnique: vi.fn() },
     batch: { findUnique: vi.fn() },
     campus: { findUnique: vi.fn() },
-    student: { findFirst: vi.fn(), count: vi.fn() },
+    student: { findFirst: vi.fn(), count: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     guardian: { findUnique: vi.fn() },
     class: { findUnique: vi.fn() },
     shift: { findUnique: vi.fn() },

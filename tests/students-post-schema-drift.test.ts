@@ -10,6 +10,7 @@ const { mockAuth, mockCheckPermission, mockHash, mockPrisma } = vi.hoisted(() =>
     student: {
       findUnique: vi.fn(),
       count: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
     },
     $transaction: vi.fn(),
   }

@@ -35,8 +35,8 @@ const {
   }
 
   const mockPrisma = {
-    student: { findUnique: vi.fn(), count: vi.fn() },
-    teacher: { findUnique: vi.fn(), count: vi.fn() },
+    student: { findUnique: vi.fn(), count: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
+    teacher: { findUnique: vi.fn(), count: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     user: { findUnique: vi.fn() },
     $transaction: vi.fn(),
   }
@@ -175,6 +175,8 @@ describe('Cloudinary profile image storage', () => {
     mockPrisma.teacher.findUnique.mockResolvedValue(null)
     mockPrisma.user.findUnique.mockResolvedValue(null)
     mockPrisma.teacher.count.mockResolvedValue(7)
+    // Employee IDs = highest existing number + 1 (lib/ids/sequence.ts)
+    mockPrisma.teacher.findMany.mockResolvedValue([{ employeeId: 'ESA-TCH-007' }, { employeeId: 'ESA-TCH-002' }])
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockTeacherTx) => Promise<unknown>) => cb(mockTeacherTx))
     mockTeacherTx.user.create.mockResolvedValue({ id: 'teacher-user-1' })
     mockTeacherTx.teacher.create.mockResolvedValue({ id: 'teacher-1', employeeId: 'ESA-TCH-008' })

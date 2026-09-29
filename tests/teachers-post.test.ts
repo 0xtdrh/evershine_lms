@@ -19,6 +19,7 @@ const { mockAuth, mockCheckPermission, mockHash, mockSendTeacherWelcomeEmail, mo
     teacher: {
       findUnique: vi.fn(),
       count: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
     },
     user: {
       findUnique: vi.fn(),
