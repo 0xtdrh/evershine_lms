@@ -10,12 +10,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isAuthorizedCronRequest } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
 import { sendEmail } from '@/lib/email'
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCronRequest(request, 'birthday-check')) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 

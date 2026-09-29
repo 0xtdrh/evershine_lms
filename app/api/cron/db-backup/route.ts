@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isAuthorizedCronRequest } from '@/lib/cron-auth'
 import { runBackup } from '@/lib/backup/run-backup'
 
 export const dynamic = 'force-dynamic'
@@ -16,16 +17,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  // Diagnostics for Vercel → Logs (never logs the secret itself).
-  console.log('[DB_BACKUP_CRON] invoked', {
-    at: new Date().toISOString(),
-    userAgent: request.headers.get('user-agent'),
-    hasAuthHeader: !!authHeader,
-    secretConfigured: !!process.env.CRON_SECRET,
-  })
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    console.warn('[DB_BACKUP_CRON] rejected: authorization header does not match CRON_SECRET')
+  if (!isAuthorizedCronRequest(request, 'db-backup')) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 

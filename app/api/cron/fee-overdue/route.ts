@@ -5,16 +5,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isAuthorizedCronRequest } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
 import { dispatchNotification } from '@/lib/notifications/in-app'
 
 export async function GET(request: NextRequest) {
   // Ensure the request comes from Vercel Cron or contains a valid auth header in custom deployments
-  const authHeader = request.headers.get('authorization')
-  if (
-    process.env.NODE_ENV === 'production' &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
+  if (!isAuthorizedCronRequest(request, 'fee-overdue')) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAuthorizedCronRequest } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
 import { calculatePenaltyAmount } from '@/lib/academic/engine'
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCronRequest(request, 'fee-penalties')) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
   }
 
