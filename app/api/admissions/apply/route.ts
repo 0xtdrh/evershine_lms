@@ -1,57 +1,9 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
 import { uploadProfileImageToCloudinary } from '@/lib/cloudinary'
 import { sendPendingNotification, sendAdminAdmissionAlert } from '@/lib/notifications'
 import { Gender } from '@prisma/client'
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Saves a base64-encoded image (B-Form scan, previous result) to local disk.
- *
- * WHY local disk for these: Supporting documents are admin-reviewed once then
- * archived. They do not need CDN delivery. Hostinger's disk is persistent for
- * documents (unlike profile photos that appear in the UI on every page load).
- * Keeping them local avoids Cloudinary storage costs for large PDF/image files.
- *
- * TRADEOFF: Files are lost on a full server rebuild / disk wipe. Mitigation:
- * include public/uploads/ in Hostinger's backup schedule.
- */
-async function saveDocumentToDisk(
-  base64DataUrl: string,
-  subDir: string,
-  filePrefix: string
-): Promise<string> {
-  const base64Data = base64DataUrl.replace(/^data:image\/\w+;base64,/, '')
-  const buffer = Buffer.from(base64Data, 'base64')
-
-  // Magic-bytes validation (CWE-434)
-  const magic = buffer.subarray(0, 4).toString('hex').toUpperCase()
-  const isValidImage =
-    magic.startsWith('FFD8')     || // JPEG
-    magic.startsWith('89504E47') || // PNG
-    magic.startsWith('47494638')    // GIF
-  if (!isValidImage) {
-    throw new Error('Invalid image format. Only JPEG, PNG and GIF are accepted.')
-  }
-
-  if (buffer.length > 5 * 1024 * 1024) {
-    throw new Error('Document too large. Maximum allowed size is 5 MB.')
-  }
-
-  const uploadDir = path.join(process.cwd(), `public/uploads/${subDir}`)
-  await mkdir(uploadDir, { recursive: true })
-
-  const ext = magic.startsWith('89504E47') ? 'png' : 'jpg'
-  const fileName = `${filePrefix}-${Date.now()}.${ext}`
-  await writeFile(path.join(uploadDir, fileName), buffer)
-
-  return `/uploads/${subDir}/${fileName}`
-}
-
 
 // ─── Validation Schema ────────────────────────────────────────────────────────
 
@@ -63,7 +15,7 @@ const applySchema = z.object({
   fullNameEn:   z.string().optional(),
   fatherName:   z.string().min(2, "Father's name is required"),
   motherName:   z.string().optional(),
-  dateOfBirth:  z.string().min(1, 'Date of birth is required'),
+  dateOfBirth:  z.string().min(1, 'Date of birth is required').refine((v) => !Number.isNaN(new Date(v).getTime()), 'Invalid date of birth'),
   gender:       z.nativeEnum(Gender),
   bloodGroup:   z.string().optional(),
   nationality:  z.string().default('Egyptian'),
@@ -111,10 +63,45 @@ const applySchema = z.object({
   // ── Declaration ──────────────────────────────────────────────────────────
   // WHY: Terms acceptance is a hard server-side requirement, not just UI.
   // The API rejects any submission where termsAccepted !== true.
+  // Anti-spam honeypot: hidden in the page, only bots fill it.
+  website: z.string().optional(),
+
   termsAccepted: z.literal(true, {
     errorMap: () => ({ message: 'You must accept the Terms & Conditions to proceed.' })
   }),
 })
+
+// ─── Anti-spam (public endpoint; no external service needed) ─────────────────
+// Per-IP: best effort (per server instance). Global: counted in the database,
+// so a flood is capped even across instances.
+const PER_IP_LIMIT = 5
+const PER_IP_WINDOW_MS = 60 * 60 * 1000
+const GLOBAL_LIMIT = 30
+const GLOBAL_WINDOW_MS = 10 * 60 * 1000
+const recentByIp = new Map<string, number[]>()
+
+function ipOf(req: Request) {
+  return req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'unknown'
+}
+
+function tooManyFromIp(ip: string) {
+  const now = Date.now()
+  const hits = (recentByIp.get(ip) ?? []).filter((t) => now - t < PER_IP_WINDOW_MS)
+  if (hits.length >= PER_IP_LIMIT) {
+    recentByIp.set(ip, hits)
+    return true
+  }
+  hits.push(now)
+  recentByIp.set(ip, hits)
+  if (recentByIp.size > 5000) recentByIp.clear()
+  return false
+}
+
+const TOO_MANY = () =>
+  NextResponse.json(
+    { success: false, error: 'Too many applications right now. Please try again later or contact the administration.' },
+    { status: 429 }
+  )
 
 // ─── POST /api/admissions/apply ───────────────────────────────────────────────
 export async function POST(req: Request) {
@@ -122,9 +109,21 @@ export async function POST(req: Request) {
     const body = await req.json()
     const validated = applySchema.parse(body)
 
+    // Honeypot filled -> a bot. Pretend success, store nothing.
+    if (validated.website) {
+      return NextResponse.json({ success: true, message: 'Your application has been submitted successfully.' })
+    }
+    if (tooManyFromIp(ipOf(req))) return TOO_MANY()
+    const recentTotal = await prisma.admissionRequest.count({
+      where: { createdAt: { gte: new Date(Date.now() - GLOBAL_WINDOW_MS) } },
+    })
+    if (recentTotal >= GLOBAL_LIMIT) return TOO_MANY()
+
     // ── Duplicate guard ─────────────────────────────────────────────────────
+    // Same phone AND same first name = the same child. Siblings often share
+    // the parent's phone, so phone alone used to reject the second sibling.
     const existingRequest = await prisma.admissionRequest.findFirst({
-      where: { phoneNumber: validated.phoneNumber, status: 'PENDING' },
+      where: { phoneNumber: validated.phoneNumber, firstName: validated.firstName.trim(), status: 'PENDING' },
     })
     if (existingRequest) {
       return NextResponse.json(
@@ -134,7 +133,7 @@ export async function POST(req: Request) {
     }
 
     const existingStudent = await prisma.student.findFirst({
-      where: { phoneNumber: validated.phoneNumber },
+      where: { phoneNumber: validated.phoneNumber, firstName: validated.firstName.trim() },
     })
     if (existingStudent) {
       return NextResponse.json(

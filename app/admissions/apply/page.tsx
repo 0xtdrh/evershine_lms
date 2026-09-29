@@ -34,6 +34,7 @@ const INITIAL_ADMISSION_FORM_DATA = {
   passportPhotoBase64: '',
   medicalNotes: '', hasSiblingAtAcademy: false, siblingName: '', siblingClass: '',
   sourceOfInfo: '', termsAccepted: false,
+  website: '', // anti-spam honeypot: hidden from people, filled only by bots
 }
 
 type AdmissionFormData = typeof INITIAL_ADMISSION_FORM_DATA
@@ -182,6 +183,17 @@ export default function AdmissionFormPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center pb-24" style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 30%, #f1f5f9 60%, #eff6ff 100%)' }}>
+      {/* Anti-spam honeypot: off-screen, not focusable, ignored by people. */}
+      <input
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        value={formData.website}
+        onChange={(e) => setFormData((prev) => ({ ...prev, website: e.target.value }))}
+        style={{ position: 'absolute', left: '-10000px', width: 1, height: 1, opacity: 0 }}
+      />
       {/* ── Branded Header Bar ── */}
       <div className="w-full" style={{ background: 'linear-gradient(135deg, #1B4F8A 0%, #1e3a5f 50%, #1B4F8A 100%)' }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between">
