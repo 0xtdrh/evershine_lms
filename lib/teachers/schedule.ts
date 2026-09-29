@@ -92,7 +92,7 @@ export async function getRemainingCycleSessions(
     where: { id: classSectionId },
     select: {
       currentCycleStartDate: true, startDate: true, scheduleSlots: true,
-      level: { select: { numberOfSessions: true, numberOfMonths: true } },
+      level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } },
     },
   })
   if (!group || !group.level) return []
@@ -166,7 +166,7 @@ export async function getSessionNumberForDate(
     where: { id: classSectionId },
     select: {
       currentCycleStartDate: true, startDate: true,
-      level: { select: { numberOfSessions: true, numberOfMonths: true } },
+      level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } },
     },
   })
   const cycleStart = group?.currentCycleStartDate ?? group?.startDate

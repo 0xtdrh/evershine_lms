@@ -4,12 +4,13 @@
  * listings (teacher absences / substitutes) and the end-date estimates, so
  * they can never disagree.
  *
- * Current rule (unchanged): numberOfSessions / numberOfMonths, i.e. one
- * month's worth of sessions per cycle — for every pricing type.
- * OPEN QUESTION to the owner (2026-09-29): for FULL_LEVEL pricing (one invoice
- * for the whole level) should one cycle be the WHOLE level? Today such a group
- * closes after one month of sessions and advance-cycle moves it to the NEXT
- * level. Change it here only after the owner confirms.
+ * Rule (confirmed by the owner, 2026-09-29):
+ *  - MONTHLY pricing: one cycle = one month = numberOfSessions / numberOfMonths
+ *    sessions. At the end, staff choose who continues into the next month.
+ *  - FULL_LEVEL pricing (one invoice for the whole level): one cycle = the
+ *    WHOLE level = numberOfSessions. At the end, the group moves to the next
+ *    level. (Before this, such a group closed after one month of sessions and
+ *    jumped to the next level, i.e. students got half a 2-month level.)
  */
 
 export interface LevelForCycle {
@@ -19,6 +20,7 @@ export interface LevelForCycle {
 }
 
 export function sessionsPerCycle(level: LevelForCycle): number {
+  if (level.pricingType === 'FULL_LEVEL') return Math.max(1, level.numberOfSessions)
   return Math.max(1, Math.round(level.numberOfSessions / Math.max(1, level.numberOfMonths)))
 }
 

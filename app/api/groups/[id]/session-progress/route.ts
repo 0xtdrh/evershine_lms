@@ -37,6 +37,7 @@ export async function GET(
           name: true,
           numberOfMonths: true,
           numberOfSessions: true,
+          pricingType: true,
           subject: { select: { name: true } },
         },
       },
