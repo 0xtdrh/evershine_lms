@@ -118,8 +118,11 @@ export default function EditStudentPage() {
       method: 'PATCH',
       body: JSON.stringify(data)
     }),
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       notify.success('Student profile updated successfully')
+      // A linked parent's login number follows the edited phone; if it could not
+      // be moved (e.g. number already used by another parent), say so.
+      for (const warning of result?.phoneWarnings ?? []) notify.error(warning)
       queryClient.invalidateQueries({ queryKey: ['student', id] })
       router.push(`/dashboard/students/${id}`)
     },
@@ -331,6 +334,7 @@ export default function EditStudentPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Father's Phone</Label>
+                  {/* Changing it also moves a linked parent's portal login (if the parent had the old number). */}
                   <Input name="fatherPhoneNumber" value={formData.fatherPhoneNumber} onChange={handleChange} />
                 </div>
               </div>

@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errorResponse, errors, successResponse } from '@/lib/api-response'
 import { updateStudentSchema } from '@/lib/validation/student'
+import { syncGuardianPhonesAfterStudentEdit } from '@/lib/students/guardian-phone'
 import { enrollmentInclude } from '@/lib/students/enrollment-sync'
 import { isProfileImageDataUrl, sanitizeCloudinaryError, uploadProfileImageToCloudinary } from '@/lib/cloudinary'
 import type { Role } from '@prisma/client'
@@ -85,7 +86,10 @@ export async function PATCH(
     return errors.validation({ errors: [{ path: [], message: 'Invalid JSON' }] } as never)
   }
 
-  const existing = await prisma.student.findUnique({ where: { id }, select: { id: true, registrationNumber: true } })
+  const existing = await prisma.student.findUnique({
+    where: { id },
+    select: { id: true, registrationNumber: true, phoneNumber: true, fatherPhoneNumber: true, motherPhoneNumber: true },
+  })
   if (!existing) return errors.notFound('Student')
 
   const parsed = updateStudentSchema.safeParse(body)
@@ -161,7 +165,28 @@ export async function PATCH(
       return result
     })
 
-    return successResponse(updated, { message: 'Student profile updated successfully' })
+    // The parent's login number always follows their phone: a linked parent whose
+    // phone was the old number moves to the new one (lib/students/guardian-phone.ts).
+    let phoneWarnings: string[] = []
+    try {
+      phoneWarnings = await syncGuardianPhonesAfterStudentEdit(
+        id,
+        [
+          { from: existing.fatherPhoneNumber, to: safeData.fatherPhoneNumber as string | undefined },
+          { from: existing.motherPhoneNumber, to: safeData.motherPhoneNumber as string | undefined },
+          { from: existing.phoneNumber, to: safeData.phoneNumber as string | undefined },
+        ],
+        session.user.id
+      )
+    } catch (syncErr) {
+      console.error('[STUDENT_PATCH_GUARDIAN_PHONE_SYNC]', syncErr)
+      phoneWarnings = ['The parent login number could not be updated automatically. Edit it from the Guardians card.']
+    }
+
+    return successResponse(
+      { ...updated, phoneWarnings },
+      { message: phoneWarnings.length ? `Student saved. ${phoneWarnings.join(' ')}` : 'Student profile updated successfully' }
+    )
   } catch (error) {
     console.error('[STUDENT_PATCH]', error)
     return errors.internal()

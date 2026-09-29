@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Users, Plus, Loader2, Unlink } from 'lucide-react'
+import { Users, Plus, Loader2, Unlink, Pencil, Check, X } from 'lucide-react'
 import { notify } from '@/lib/notify'
 
 interface Guardian {
@@ -34,6 +34,19 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
     phoneNumber: '',
     email: '',
     relationship: 'Father',
+  })
+
+  // Editing a parent's phone also moves their portal login to the new number.
+  const [editing, setEditing] = useState<{ id: string; phone: string } | null>(null)
+  const phoneMutation = useMutation({
+    mutationFn: ({ id, phone }: { id: string; phone: string }) =>
+      fetchApi(`/api/guardians/${id}/phone`, { method: 'PATCH', body: JSON.stringify({ phoneNumber: phone }) }),
+    onSuccess: () => {
+      notify.success('Phone updated', { description: 'The parent now signs in with the new number.' })
+      qc.invalidateQueries({ queryKey: ['student', studentId] })
+      setEditing(null)
+    },
+    onError: (err: Error) => notify.error(err.message || 'Could not update the phone'),
   })
 
   const unlinkMutation = useMutation({
@@ -92,9 +105,34 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
               <p className="text-sm font-semibold text-gray-900">
                 {g.firstName} {g.lastName}
               </p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {g.relationship} · {g.phoneNumber}
-              </p>
+              {editing?.id === g.id ? (
+                <div className="mt-1 flex items-center gap-1">
+                  <Input
+                    className="h-8 w-40 bg-white text-sm"
+                    value={editing.phone}
+                    onChange={(e) => setEditing({ id: g.id, phone: e.target.value })}
+                    autoFocus
+                  />
+                  <Button size="sm" variant="ghost" className="h-8 px-2" disabled={phoneMutation.isPending}
+                    onClick={() => phoneMutation.mutate({ id: g.id, phone: editing.phone })}>
+                    {phoneMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setEditing(null)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                  {g.relationship} · {g.phoneNumber}
+                  {canManage && (
+                    <button type="button" title="Change phone (also the portal login number)"
+                      className="text-gray-400 hover:text-gray-700" onClick={() => setEditing({ id: g.id, phone: g.phoneNumber })}>
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
+                </p>
+              )}
+              <p className="text-[11px] text-gray-400">Portal login: this phone number</p>
               {g.email && <p className="text-xs text-gray-400">{g.email}</p>}
             </div>
             {canManage && (
