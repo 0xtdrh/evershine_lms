@@ -10,6 +10,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { estimateGroupEnds } from '@/lib/groups/end-estimates'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import type { Role } from '@prisma/client'
@@ -94,6 +95,7 @@ export async function GET(
           email: instructor.email,
         }
       : null,
+    ends: await estimateGroupEnds(group),
     label: `${group.className} ${group.sectionName}`.trim(),
     course: group.level?.subject ? { id: group.level.subject.id, name: group.level.subject.name } : null,
     track: group.level?.subject?.track ? { id: group.level.subject.track.id, name: group.level.subject.track.name } : null,

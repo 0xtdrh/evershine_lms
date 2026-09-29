@@ -34,6 +34,8 @@ interface GroupSummary {
   course: { id: string; name: string } | null
   track: { id: string; name: string } | null
   level: { id: string; name: string; numberOfMonths: number; numberOfSessions: number } | null
+  /** Estimated from recorded sessions + weekly schedule (lib/groups/end-estimates.ts). */
+  ends?: { cycleEnd: string | null; levelEnd: string | null; sessionsDoneInCycle: number; sessionsPerCycle: number; cycleNumber: number; cyclesInLevel: number; basis: string }
   teacher: { id: string; name: string } | null
   studentCount: number
   startDate: string | null
@@ -90,18 +92,6 @@ function toDateInputValue(d: string | null): string {
   return new Date(d).toISOString().slice(0, 10)
 }
 
-/** Which calendar month of the level "today" falls in, and when that month ends. */
-function currentMonthEndDate(startDate: string, numberOfMonths: number): Date {
-  const start = new Date(startDate)
-  const monthsElapsed = Math.max(
-    0,
-    (Date.now() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
-  )
-  const currentMonthIndex = Math.min(Math.floor(monthsElapsed) + 1, numberOfMonths)
-  const end = new Date(start)
-  end.setMonth(end.getMonth() + currentMonthIndex)
-  return end
-}
 
 function statusBadge(status: GroupSummary['displayStatus']) {
   if (status === 'COMPLETED') return <Badge className="bg-slate-100 text-slate-600 border-slate-200">Completed</Badge>
@@ -291,7 +281,6 @@ export default function GroupsPage() {
           sectionName: editForm.sectionName,
           levelId: editForm.levelId || null,
           startDate: editForm.startDate ? new Date(editForm.startDate).toISOString() : null,
-          expectedEndDate: editForm.expectedEndDate ? new Date(editForm.expectedEndDate).toISOString() : null,
           scheduleSlots: scheduleSlots.length > 0 ? scheduleSlots : null,
           requireFullPaymentToStart: editForm.requireFullPaymentToStart,
           partialPaymentCounts: editForm.partialPaymentCounts,
@@ -548,7 +537,7 @@ export default function GroupsPage() {
               <div className="mt-3 space-y-1 text-xs text-slate-500">
                 <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {g.campus.name}</p>
                 <p className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> {g.studentCount} students {g.teacher && `· ${g.teacher.name}`}</p>
-                <p className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {formatDate(g.startDate)} → {formatDate(g.expectedEndDate)}</p>
+                <p className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {formatDate(g.startDate)} → cycle ends ≈ {formatDate(g.ends?.cycleEnd ?? null)} · level ≈ {formatDate(g.ends?.levelEnd ?? null)}</p>
                 {g.scheduleSlots && g.scheduleSlots.length > 0 && (
                   <p className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
@@ -609,17 +598,24 @@ export default function GroupsPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400">Level ends</p>
-                  <p className={detail.expectedEndDate ? 'text-slate-800' : 'text-slate-400'}>
-                    {detail.expectedEndDate ? formatDate(detail.expectedEndDate) : '—'}
+                  <p className="text-xs text-slate-400">
+                    This cycle ends ≈{detail.ends ? ` (session ${detail.ends.sessionsDoneInCycle}/${detail.ends.sessionsPerCycle})` : ''}
+                  </p>
+                  <p className={detail.ends?.cycleEnd ? 'text-slate-800' : 'text-slate-400'}>
+                    {detail.ends?.cycleEnd ? formatDate(detail.ends.cycleEnd) : '—'}
                   </p>
                 </div>
-                {detail.level && detail.level.numberOfMonths > 1 && detail.startDate && (
-                  <div>
-                    <p className="text-xs text-slate-400">This month ends</p>
-                    <p className="text-slate-800">{formatDate(currentMonthEndDate(detail.startDate, detail.level.numberOfMonths).toISOString())}</p>
-                  </div>
-                )}
+                <div>
+                  <p className="text-xs text-slate-400">
+                    Level ends ≈{detail.ends ? ` (cycle ${detail.ends.cycleNumber}/${detail.ends.cyclesInLevel})` : ''}
+                  </p>
+                  <p className={detail.ends?.levelEnd ? 'text-slate-800' : 'text-slate-400'}>
+                    {detail.ends?.levelEnd ? formatDate(detail.ends.levelEnd) : '—'}
+                  </p>
+                  {detail.ends?.basis === 'ONE_MONTH_PER_CYCLE' && (
+                    <p className="text-[11px] text-amber-600">Add a weekly schedule for a better estimate</p>
+                  )}
+                </div>
                 {detail.level && (
                   <div className="col-span-2">
                     <p className="text-xs text-slate-400">Level pricing</p>
@@ -1066,7 +1062,6 @@ export default function GroupsPage() {
             </Select>
             <div className="flex gap-3">
               <Input type="date" value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} />
-              <Input type="date" value={editForm.expectedEndDate} onChange={(e) => setEditForm({ ...editForm, expectedEndDate: e.target.value })} />
             </div>
 
             <div className="space-y-2">

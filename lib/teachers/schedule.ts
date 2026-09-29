@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { sessionsPerCycle as cycleSessionCount } from '@/lib/groups/cycle-rules'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 
 export interface ScheduledSession {
@@ -107,7 +108,7 @@ export async function getRemainingCycleSessions(
   }
   if (!cycleStart) return []
 
-  const sessionsPerCycle = Math.max(1, Math.round(group.level.numberOfSessions / group.level.numberOfMonths))
+  const sessionsPerCycle = cycleSessionCount(group.level)
 
   const attended = await prisma.enrollmentAttendanceRecord.findMany({
     where: { studentEnrollment: { classSectionId }, attendanceDate: { gte: cycleStart } },
@@ -179,6 +180,6 @@ export async function getSessionNumberForDate(
   })
   if (!attended.some((a) => a.attendanceDate.toISOString().slice(0, 10) === dateStr)) return null
 
-  const totalSessions = Math.max(1, Math.round(group.level.numberOfSessions / group.level.numberOfMonths))
+  const totalSessions = cycleSessionCount(group.level)
   return { sessionNumber: attended.length, totalSessions }
 }

@@ -10,6 +10,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { estimateGroupEnds } from '@/lib/groups/end-estimates'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
           name: true,
           numberOfMonths: true,
           numberOfSessions: true,
+          pricingType: true,
           subject: { select: { id: true, name: true, track: { select: { id: true, name: true } } } },
         },
       },
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
     },
   })
 
-  const shaped = groups.map((g) => ({
+  const shaped = await Promise.all(groups.map(async (g) => ({
     id: g.id,
     label: `${g.className} ${g.sectionName}`.trim(),
     campus: g.campus,
@@ -78,7 +80,8 @@ export async function GET(request: NextRequest) {
     scheduleSlots: g.scheduleSlots,
     status: g.status,
     displayStatus: computeDisplayStatus(g.status, g.startDate),
-  }))
+    ends: await estimateGroupEnds(g),
+  })))
 
   return successResponse(shaped)
 }
@@ -124,15 +127,8 @@ export async function POST(request: NextRequest) {
   }
   const effectiveCampusId = scopedCampusId ?? parsed.data.campusId
 
-  let expectedEndDate: Date | null = null
-  if (parsed.data.levelId && parsed.data.startDate) {
-    const level = await prisma.level.findUnique({ where: { id: parsed.data.levelId }, select: { numberOfMonths: true } })
-    if (level) {
-      const start = new Date(parsed.data.startDate)
-      expectedEndDate = new Date(start)
-      expectedEndDate.setMonth(expectedEndDate.getMonth() + level.numberOfMonths)
-    }
-  }
+  // End dates are estimated live from sessions + schedule (lib/groups/end-estimates.ts);
+  // expectedEndDate is no longer written.
 
   const activeYear = await getActiveAcademicYear()
   if (!activeYear) return errors.conflict('No active academic year is set')
@@ -160,7 +156,6 @@ export async function POST(request: NextRequest) {
       sectionName: parsed.data.sectionName,
       levelId: parsed.data.levelId ?? null,
       startDate: parsed.data.startDate ? new Date(parsed.data.startDate) : null,
-      expectedEndDate,
       requireFullPaymentToStart: parsed.data.requireFullPaymentToStart ?? false,
       partialPaymentCounts: parsed.data.partialPaymentCounts ?? false,
       installmentsAllowed: parsed.data.installmentsAllowed ?? false,

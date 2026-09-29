@@ -27,6 +27,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
+import { sessionsPerCycle as cycleSessionCount } from '@/lib/groups/cycle-rules'
 import { generateChallanNumber } from '@/lib/fees/challan-number'
 import { resolveCycleStart } from './cycle-start'
 
@@ -99,12 +100,12 @@ export async function syncGroupProgress(classSectionId: string, _actingUserId: s
   // (advance-cycle leaves startDate/expectedEndDate unset on purpose) — now
   // it has a real date, so make that official instead of leaving it blank
   // forever.
+  // (expectedEndDate is no longer written: end dates are estimated live —
+  // lib/groups/end-estimates.ts.)
   if (!group.startDate && !group.currentCycleStartDate) {
-    const expectedEndDate = new Date(cycleStart)
-    expectedEndDate.setMonth(expectedEndDate.getMonth() + group.level.numberOfMonths)
     await prisma.classSection.update({
       where: { id: classSectionId },
-      data: { startDate: cycleStart, currentCycleStartDate: cycleStart, expectedEndDate },
+      data: { startDate: cycleStart, currentCycleStartDate: cycleStart },
     })
   }
 
@@ -114,7 +115,7 @@ export async function syncGroupProgress(classSectionId: string, _actingUserId: s
     distinct: ['attendanceDate'],
   })
   const sessionsSoFar = records.length
-  const sessionsPerCycle = Math.max(1, Math.round(group.level.numberOfSessions / group.level.numberOfMonths))
+  const sessionsPerCycle = cycleSessionCount(group.level)
   const checkpoint50 = sessionsPerCycle * 0.5
 
   const flaggedNames: string[] = []

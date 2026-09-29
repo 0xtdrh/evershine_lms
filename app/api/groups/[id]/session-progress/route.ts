@@ -9,6 +9,7 @@
 
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sessionsPerCycle as cycleSessionCount } from '@/lib/groups/cycle-rules'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { resolveCycleStart } from '@/lib/groups/cycle-start'
@@ -48,7 +49,7 @@ export async function GET(
   }
 
   const cycleStart = await resolveCycleStart(id, group.currentCycleStartDate, group.startDate)
-  const sessionsPerCycle = Math.max(1, Math.round(group.level.numberOfSessions / group.level.numberOfMonths))
+  const sessionsPerCycle = cycleSessionCount(group.level)
 
   let sessionsSoFar = 0
   if (cycleStart) {
