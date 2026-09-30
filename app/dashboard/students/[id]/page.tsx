@@ -19,6 +19,7 @@ import { StudentCertificatesPanel } from '@/components/students/StudentCertifica
 import { StudentPromotionPanel } from '@/components/students/StudentPromotionPanel'
 import { StudentTimelineCard } from '@/components/students/StudentTimelineCard'
 import { StudentAdminToolbar } from '@/components/students/StudentAdminToolbar'
+import { StudentPortalAccessCard } from '@/components/students/StudentPortalAccessCard'
 
 interface StudentDetail {
   id: string
@@ -398,6 +399,13 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             studentId={student.id}
             guardians={student.guardians ?? []}
             canManage={isAdmin}
+          />
+
+          <StudentPortalAccessCard
+            studentId={student.id}
+            studentName={`${student.firstName} ${student.lastName}`}
+            guardians={student.guardians ?? []}
+            hasStudentAccount={!!student.user}
           />
 
           <StudentCertificatesPanel studentId={student.id} />
