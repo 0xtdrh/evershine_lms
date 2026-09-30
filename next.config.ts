@@ -31,6 +31,16 @@ const nextConfig: NextConfig = {
     staticGenerationMaxConcurrency: 1,
   },
 
+  // On Vercel, do not reuse webpack's on-disk cache from the previous deploy.
+  // WHY: two builds in a row (90b95c4, 7d3fd57) froze at "Creating an optimized
+  // production build" for 45+ minutes right after "Restored build cache", while
+  // the same commit compiles in ~66s locally. Compiling from scratch costs about
+  // a minute; a frozen build costs the whole deploy.
+  webpack: (config, { dev }) => {
+    if (!dev && process.env.VERCEL) config.cache = false;
+    return config;
+  },
+
   // Image remote patterns — add domains your images are served from.
   images: {
     formats: ["image/avif", "image/webp"],
