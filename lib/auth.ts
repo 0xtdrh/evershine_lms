@@ -35,10 +35,16 @@ import { loginSchema } from '@/lib/validation/user'
 import { authConfig } from '@/lib/auth.config'
 import { ensurePermissionOverrides } from '@/lib/rbac-overrides'
 import { isDefaultPortalPassword, resolveLoginEmail } from '@/lib/portal-login'
+import { accountKey, clearLoginFailures, clientIp, isLoginLocked, recordLoginFailure } from '@/lib/login-throttle'
 
 /** Shown on the login page as ?code=default_password */
 class DefaultPasswordSignin extends CredentialsSignin {
   code = 'default_password'
+}
+
+/** Shown on the login page: too many failed attempts (lib/login-throttle.ts). */
+class TooManyAttemptsSignin extends CredentialsSignin {
+  code = 'too_many_attempts'
 }
 
 export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
@@ -55,7 +61,7 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
 
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         // ── Input validation ──────────────────────────────────────────────
         // loginSchema: email-or-phone identifier + password (min 6)
         // Rejecting at this layer before any DB touch prevents enumeration
@@ -67,7 +73,18 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
         // Parents can sign in with their phone number (Guardian.phoneNumber is
         // the parent's identity); everyone else uses their email.
         const email = await resolveLoginEmail(identifier)
-        if (!email) return null
+
+        // ── Throttle (before any password work) ───────────────────────────
+        // Counted per account (resolved email, so every phone format of a
+        // parent counts together) and per IP. See lib/login-throttle.ts.
+        const key = accountKey(email ?? identifier)
+        const ip = clientIp(request as Request | undefined)
+        if (await isLoginLocked(key, ip)) throw new TooManyAttemptsSignin()
+
+        if (!email) {
+          await recordLoginFailure(key, ip)
+          return null
+        }
 
         // ── Identity lookup ───────────────────────────────────────────────
         // WHY select only needed columns: avoids LEFT JOINs on 6 profile
@@ -87,7 +104,10 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
 
         // Return null (not throw) to signal "invalid credentials" to NextAuth.
         // Throwing would trigger a 500; returning null triggers a 401.
-        if (!user || !user.isActive) return null
+        if (!user || !user.isActive) {
+          await recordLoginFailure(key, ip)
+          return null
+        }
 
         // ── Password verification ─────────────────────────────────────────
         // @node-rs/argon2 verifies Argon2id hashes (preferred) and Argon2i/d.
@@ -111,7 +131,11 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
             'Error:', err instanceof Error ? err.message : String(err),
           )
         }
-        if (!passwordValid) return null
+        if (!passwordValid) {
+          await recordLoginFailure(key, ip)
+          return null
+        }
+        await clearLoginFailures(key)
 
         // SECURITY: auto-generated portal passwords (phone number, registration
         // number, Student@YYYY!) are guessable, so they never open an account.

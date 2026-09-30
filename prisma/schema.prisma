@@ -3232,3 +3232,20 @@ model WaitingListEntry {
   @@index([studentId, status])
   @@index([campusId, status])
 }
+
+/// Failed sign-in attempts, used to slow down password guessing
+/// (lib/auth/login-throttle.ts). Only failures are stored; rows older than a
+/// day are removed automatically. No relation to User on purpose: attempts on
+/// unknown accounts are counted too.
+model LoginAttempt {
+  id         String   @id @default(cuid())
+  /// Resolved login email (phone logins resolve to the parent's email), or the
+  /// typed identifier, lower-cased, when no account matches.
+  identifier String   @db.VarChar(191)
+  ip         String   @db.VarChar(64)
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, createdAt])
+  @@index([ip, createdAt])
+  @@index([createdAt])
+}

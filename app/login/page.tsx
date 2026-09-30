@@ -56,6 +56,8 @@ function resolvePostLoginUrl(callbackUrl: string, role?: string | null) {
 
 const DEFAULT_PASSWORD_MESSAGE =
   'This account still has its initial password, which is not safe. Please contact your branch to receive a temporary password.'
+const TOO_MANY_ATTEMPTS_MESSAGE =
+  'Too many failed attempts. For your security, sign-in is paused for 15 minutes. Please try again later or contact your branch.'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -70,6 +72,7 @@ export default function LoginPage() {
       setCallbackUrl(sp.get('callbackUrl') || '/dashboard')
       const err = sp.get('error')
       if (sp.get('code') === 'default_password') setFormError(DEFAULT_PASSWORD_MESSAGE)
+      else if (sp.get('code') === 'too_many_attempts') setFormError(TOO_MANY_ATTEMPTS_MESSAGE)
       else if (err) setFormError('Authentication failed. Please check your credentials.')
       if (sp.get('changed') === '1') notify.success('Password changed', { description: 'Sign in with your new password.' })
     } catch {}
@@ -92,6 +95,10 @@ export default function LoginPage() {
     if (result?.error) {
       if ((result as { code?: string }).code === 'default_password') {
         setFormError(DEFAULT_PASSWORD_MESSAGE)
+        return
+      }
+      if ((result as { code?: string }).code === 'too_many_attempts') {
+        setFormError(TOO_MANY_ATTEMPTS_MESSAGE)
         return
       }
       setFormError('Invalid credentials. Please check your email/phone and password.')

@@ -24,6 +24,7 @@ import {
   DatabaseBackup,
   Wand2,
   Trash2,
+  LockKeyhole,
 } from 'lucide-react'
 
 const ADMIN_ACTIONS = [
@@ -154,6 +155,13 @@ export default function AdminWorkspacePage() {
         href: '/dashboard/admin/setup',
         icon: Wand2,
         badge: 'Setup',
+      })
+      list.unshift({
+        title: 'Login locks',
+        description: 'Accounts or devices paused after too many wrong passwords. Unlock one here.',
+        href: '/dashboard/admin/login-locks',
+        icon: LockKeyhole,
+        badge: 'Security',
       })
       list.unshift({
         title: 'Configure Permissions',

@@ -36,6 +36,9 @@ const nextConfig: NextConfig = {
   // production build" for 45+ minutes right after "Restored build cache", while
   // the same commit compiles in ~66s locally. Compiling from scratch costs about
   // a minute; a frozen build costs the whole deploy.
+  // Dev (`next dev`) uses Turbopack, which refuses to start when only a webpack
+  // config exists; this empty config tells it that is intended.
+  turbopack: {},
   webpack: (config, { dev }) => {
     if (!dev && process.env.VERCEL) config.cache = false;
     return config;
