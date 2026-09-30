@@ -385,9 +385,9 @@ export default function BulkTeacherAttendancePage() {
     <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6">
       
       {/* Header Info Panel */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div className="space-y-1">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2.5">
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl text-indigo-600 dark:text-indigo-400">
               <UserCheck className="w-6 h-6" />
             </div>
@@ -417,7 +417,7 @@ export default function BulkTeacherAttendancePage() {
             variant="outline"
             onClick={handleExport}
             disabled={mergedTeachers.length === 0}
-            className="gap-2 border-slate-200 hover:bg-slate-50 dark:border-slate-800"
+            className="gap-2 border-slate-200 hover:bg-slate-50"
           >
             <Download className="w-4 h-4" />
             Export Excel
@@ -437,7 +437,7 @@ export default function BulkTeacherAttendancePage() {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-background pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex h-10 w-full rounded-lg border border-slate-200 bg-background pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -445,7 +445,7 @@ export default function BulkTeacherAttendancePage() {
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Coaching Shift</Label>
             <Select value={shift} onValueChange={(v) => setShift(v as SessionShift)}>
-              <SelectTrigger className="border-slate-200 dark:border-slate-800 h-10">
+              <SelectTrigger className="border-slate-200 h-10">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -460,7 +460,7 @@ export default function BulkTeacherAttendancePage() {
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Campus Division</Label>
               <Select value={selectedCampusId} onValueChange={setSelectedCampusId}>
-                <SelectTrigger className="border-slate-200 dark:border-slate-800 h-10">
+                <SelectTrigger className="border-slate-200 h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -483,7 +483,7 @@ export default function BulkTeacherAttendancePage() {
                 placeholder="Search name, code, role..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 border-slate-200 dark:border-slate-800 h-10"
+                className="pl-9 border-slate-200 h-10"
               />
             </div>
           </div>
@@ -542,7 +542,7 @@ export default function BulkTeacherAttendancePage() {
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="p-0 divide-y divide-slate-100 dark:divide-slate-800">
+        <CardContent className="p-0 divide-y divide-slate-100">
           {isLoading ? (
             <div className="p-12 text-center space-y-4">
               <Skeleton className="h-10 w-full rounded-lg" />
@@ -584,7 +584,7 @@ export default function BulkTeacherAttendancePage() {
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                          <p className="font-semibold text-sm text-slate-900">
                             {t.firstName} {t.lastName}
                           </p>
                           <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-full uppercase">
@@ -606,7 +606,7 @@ export default function BulkTeacherAttendancePage() {
                     <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
                       
                       {/* Interactive Status Pills */}
-                      <div className="flex rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
+                      <div className="flex rounded-lg border border-slate-200 bg-white overflow-hidden">
                         {(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'] as AttendanceStatus[]).map((st) => {
                           const isSelected = currentRecord?.status === st
                           const cfg = STATUS_CONFIG[st]
@@ -616,7 +616,7 @@ export default function BulkTeacherAttendancePage() {
                               key={st}
                               type="button"
                               onClick={() => handleStatusChange(t.id, st)}
-                              className={`px-3 py-1.5 text-xs font-bold border-r last:border-r-0 border-slate-200 dark:border-slate-800 transition-all ${
+                              className={`px-3 py-1.5 text-xs font-bold border-r last:border-r-0 border-slate-200 transition-all ${
                                 isSelected
                                   ? `${cfg.bg} ${cfg.color} font-black`
                                   : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
@@ -656,7 +656,7 @@ export default function BulkTeacherAttendancePage() {
 
                   {/* Expanded Custom Details panel */}
                   {isExpanded && (
-                    <div className="bg-slate-50/70 dark:bg-slate-900/40 p-4 border-t border-b border-slate-100 dark:border-slate-800 grid gap-4 md:grid-cols-3 text-xs">
+                    <div className="bg-slate-50/70 p-4 border-t border-b border-slate-100 grid gap-4 md:grid-cols-3 text-xs">
                       
                       <div className="space-y-1">
                         <Label className="text-[10px] font-bold text-slate-500 uppercase">Observed arrival time</Label>
@@ -671,7 +671,7 @@ export default function BulkTeacherAttendancePage() {
                             const val = e.target.value
                             handleDetailChange(t.id, 'checkInTime', val ? `${date}T${val}:00` : null)
                           }}
-                          className="flex h-9 w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white px-3 py-1.5 text-xs focus:outline-none"
+                          className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs focus:outline-none"
                         />
                       </div>
 
@@ -683,7 +683,7 @@ export default function BulkTeacherAttendancePage() {
                           value={currentRecord?.penaltyAmount ?? ''}
                           placeholder="Calculated automatically"
                           onChange={(e) => handleDetailChange(t.id, 'penaltyAmount', e.target.value === '' ? undefined : Number(e.target.value))}
-                          className="bg-white border-slate-200 dark:border-slate-800 h-9 text-xs"
+                          className="bg-white border-slate-200 h-9 text-xs"
                         />
                       </div>
 
@@ -695,7 +695,7 @@ export default function BulkTeacherAttendancePage() {
                             onChange={(e) => handleDetailChange(t.id, 'isPenaltyApplied', !e.target.checked)}
                             className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-semibold text-slate-600 dark:text-slate-300">Waive / Remove penalty</span>
+                          <span className="font-semibold text-slate-600">Waive / Remove penalty</span>
                         </label>
                       </div>
 
@@ -705,7 +705,7 @@ export default function BulkTeacherAttendancePage() {
                           value={currentRecord?.remarks ?? ''}
                           placeholder="Add comments / reasons for status correction..."
                           onChange={(e) => handleDetailChange(t.id, 'remarks', e.target.value)}
-                          className="bg-white border-slate-200 dark:border-slate-800 h-9 text-xs"
+                          className="bg-white border-slate-200 h-9 text-xs"
                         />
                       </div>
 

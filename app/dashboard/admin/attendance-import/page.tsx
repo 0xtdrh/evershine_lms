@@ -106,11 +106,11 @@ export default function AdminAttendanceImportPage() {
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
             <FileSpreadsheet className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
             Biometric & Excel Attendance Ingestion
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-slate-500 mt-1">
             Download verified templates, parse raw biometric logs, and import attendance records directly.
           </p>
         </div>
@@ -119,21 +119,21 @@ export default function AdminAttendanceImportPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Navigation Sidebar */}
         <div className="md:col-span-1 space-y-4">
-          <Card className="shadow-md border-slate-200 dark:border-slate-800">
+          <Card className="shadow-md border-slate-200">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-400">Import Target</CardTitle>
             </CardHeader>
             <CardContent className="p-2 space-y-1">
               <button
                 onClick={() => { setActiveTab('staff'); setFile(null); setValidationErrors([]); setSuccessCount(null) }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'staff' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'staff' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 font-semibold' : 'text-slate-600 hover:bg-slate-100'}`}
               >
                 <Users className="w-4 h-4" />
                 Staff & Teacher Ingestion
               </button>
               <button
                 onClick={() => { setActiveTab('student'); setFile(null); setValidationErrors([]); setSuccessCount(null) }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'student' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'student' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 font-semibold' : 'text-slate-600 hover:bg-slate-100'}`}
               >
                 <Calendar className="w-4 h-4" />
                 Student Ingestion
@@ -141,7 +141,7 @@ export default function AdminAttendanceImportPage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-amber-50/50 dark:bg-amber-950/10">
+          <Card className="shadow-sm border-slate-200 bg-amber-50/50 dark:bg-amber-950/10">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2 text-amber-800 dark:text-amber-400">
                 <Info className="w-4 h-4" />
@@ -158,7 +158,7 @@ export default function AdminAttendanceImportPage() {
 
         {/* Action Panel */}
         <div className="md:col-span-2 space-y-6">
-          <Card className="shadow-lg border-slate-200 dark:border-slate-800">
+          <Card className="shadow-lg border-slate-200">
             <CardHeader>
               <CardTitle className="text-xl font-bold">
                 {activeTab === 'staff' ? 'Staff & Teacher Attendance Ingestion' : 'Student Attendance Ingestion'}
@@ -169,7 +169,7 @@ export default function AdminAttendanceImportPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Template Download */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4">
                 <div className="space-y-1">
                   <div className="font-semibold text-sm">Download Verified Schema</div>
                   <div className="text-xs text-slate-500">Ensure the downloaded biometric report is mapped to this template.</div>
@@ -185,7 +185,7 @@ export default function AdminAttendanceImportPage() {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`relative border-2 border-dashed rounded-xl p-8 transition-all duration-200 flex flex-col items-center justify-center cursor-pointer ${isDragOver ? 'border-indigo-500 bg-indigo-50/20' : 'border-slate-300 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-700'}`}
+                className={`relative border-2 border-dashed rounded-xl p-8 transition-all duration-200 flex flex-col items-center justify-center cursor-pointer ${isDragOver ? 'border-indigo-500 bg-indigo-50/20' : 'border-slate-300 hover:border-indigo-400 dark:hover:border-indigo-700'}`}
               >
                 <input
                   type="file"
@@ -202,7 +202,7 @@ export default function AdminAttendanceImportPage() {
                   </div>
                 ) : (
                   <div className="text-center space-y-1">
-                    <p className="font-medium text-slate-700 dark:text-slate-300">Drag & drop your Excel report here, or click to browse</p>
+                    <p className="font-medium text-slate-700">Drag & drop your Excel report here, or click to browse</p>
                     <p className="text-xs text-slate-400">Only .xlsx and .xls formats are accepted</p>
                   </div>
                 )}
@@ -242,7 +242,7 @@ export default function AdminAttendanceImportPage() {
 
               {/* Validation Errors Panel */}
               {validationErrors.length > 0 && (
-                <div className="space-y-3 border-t border-slate-200 dark:border-slate-800 pt-4">
+                <div className="space-y-3 border-t border-slate-200 pt-4">
                   <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
                     <AlertTriangle className="w-4 h-4" />
                     Row-Level Schema Errors Detected ({validationErrors.length})

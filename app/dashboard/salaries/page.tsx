@@ -309,7 +309,7 @@ export default function SalariesPage() {
                 <div className="w-full overflow-x-auto pb-4">
                   <div 
                     ref={printContainerRef}
-                    className="bg-white p-8 rounded-none border-[3px] border-slate-800 shadow-sm relative overflow-hidden font-serif max-w-[620px] mx-auto text-slate-900"
+                    className="keep-light bg-white p-8 rounded-none border-[3px] border-slate-800 shadow-sm relative overflow-hidden font-serif max-w-[620px] mx-auto text-slate-900"
                     style={{ minHeight: '680px', minWidth: '580px' }}
                   >
                   {/* Subtle watermarked background */}

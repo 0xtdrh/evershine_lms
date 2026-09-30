@@ -1,6 +1,7 @@
 'use client'
 
 import { useAppStore } from '@/lib/store'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { signOut, useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
@@ -435,6 +436,7 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <NotificationBell />
             <div className="hidden sm:flex items-center gap-3 pl-3 border-l border-gray-200">
               <div className="text-right">

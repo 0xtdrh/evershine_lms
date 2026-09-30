@@ -106,7 +106,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           </span>
         ),
         loading: (
-          <span className="flex items-center justify-center shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+          <span className="flex items-center justify-center shrink-0 w-5 h-5 rounded-full bg-slate-100 text-slate-500">
             <Loader2Icon className="size-3 animate-spin" />
           </span>
         ),

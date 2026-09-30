@@ -19,6 +19,7 @@
  */
 
 import React, { useEffect, useState } from 'react'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Shield, ArrowLeft } from 'lucide-react'
@@ -97,6 +98,7 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
               <p className="text-xs text-slate-500">Professional LMS</p>
             </div>
           </Link>
+          <ThemeToggle className="ml-auto" />
           <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
             <Shield className="w-3.5 h-3.5" />
             Secured Portal

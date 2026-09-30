@@ -103,7 +103,11 @@ export default function LandingPage() {
   const handleApplyClick = () => router.push('/admissions/apply')
 
   return (
+    // keep-light: the public home page stays in its light design even when a
+    // visitor chose dark mode (it is built with inline colours; see
+    // scripts/generate-dark-theme.mjs).
     <div
+      className="keep-light"
       style={{
         backgroundColor: 'var(--lp-background)',
         color: 'var(--lp-text)',

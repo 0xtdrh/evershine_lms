@@ -182,7 +182,7 @@ export default function AdmissionFormPage() {
   const progressPct = Math.round((step / STEP_META.length) * 100)
 
   return (
-    <div className="min-h-screen flex flex-col items-center pb-24" style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 30%, #f1f5f9 60%, #eff6ff 100%)' }}>
+    <div className="min-h-screen flex flex-col items-center pb-24 bg-gradient-to-br from-slate-50 via-indigo-50 to-blue-50">
       {/* Anti-spam honeypot: off-screen, not focusable, ignored by people. */}
       <input
         type="text"
@@ -591,7 +591,7 @@ export default function AdmissionFormPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       {/* Applicant Card */}
                       <div className="rounded-xl border border-slate-200 overflow-hidden">
-                        <div className="px-5 py-3 border-b" style={{ background: 'linear-gradient(135deg, #eff6ff, #eef2ff)' }}>
+                        <div className="px-5 py-3 border-b bg-gradient-to-br from-blue-50 to-indigo-50">
                           <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-blue-600" /> Applicant
                           </h4>
@@ -609,7 +609,7 @@ export default function AdmissionFormPage() {
                       {/* Program & Guardian Card */}
                       <div className="space-y-5">
                         <div className="rounded-xl border border-slate-200 overflow-hidden">
-                          <div className="px-5 py-3 border-b" style={{ background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)' }}>
+                          <div className="px-5 py-3 border-b bg-gradient-to-br from-green-50 to-emerald-50">
                             <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-emerald-500" /> Program
                             </h4>
@@ -620,7 +620,7 @@ export default function AdmissionFormPage() {
                           </dl>
                         </div>
                         <div className="rounded-xl border border-slate-200 overflow-hidden">
-                          <div className="px-5 py-3 border-b" style={{ background: 'linear-gradient(135deg, #fefce8, #fef9c3)' }}>
+                          <div className="px-5 py-3 border-b bg-gradient-to-br from-yellow-50 to-yellow-100">
                             <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-amber-500" /> Guardian
                             </h4>
@@ -690,7 +690,7 @@ export default function AdmissionFormPage() {
           </CardContent>
 
           {/* Navigation Footer */}
-          <div className="px-6 py-4 sm:px-8 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3" style={{ background: 'linear-gradient(180deg, #fafbfc, #f1f5f9)' }}>
+          <div className="px-6 py-4 sm:px-8 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-gradient-to-b from-slate-50 to-slate-100">
             {step > 1 ? (
               <Button type="button" variant="outline" onClick={handlePrev} disabled={isSubmitting} className="w-full sm:w-auto border-slate-300 text-slate-700 hover:bg-white transition-all">
                 <ArrowLeft className="w-4 h-4 mr-2" /> Back
