@@ -1,25 +1,15 @@
 /**
- * POST /api/fees/[id]/pay — record a payment against a fee invoice
- *
- * WHY $transaction with three writes:
- *   1. Create FeePayment record (the receipt)
- *   2. Update FeeInvoice.paidAmount and status
- *   3. Update Student.feeStatus (denormalized cache for dashboard queries)
- *   4. Audit log
- *
- * If any step fails, all four roll back — no phantom payments, no
- * mismatched ledger entries.
+ * POST /api/fees/[id]/pay — record a payment against a fee invoice.
+ * All the rules and the database writes live in lib/fees/record-payment.ts.
  */
 
 import { NextRequest } from 'next/server'
+import type { Role } from '@prisma/client'
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { updateInvoiceIfUnchanged, catchInvoiceChanged, InvoiceChangedError, refreshGroupAfterPayment } from '@/lib/fees/guarded-payment'
 import { checkPermission } from '@/lib/rbac'
 import { errors, createdResponse } from '@/lib/api-response'
 import { recordPaymentSchema } from '@/lib/validation/fee'
-import type { Role, InvoiceStatus } from '@prisma/client'
-import { isActivePaymentMethod } from '@/lib/fees/payment-settings'
+import { paymentErrorResponse, recordPayment } from '@/lib/fees/record-payment'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -31,109 +21,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!checkPermission(session.user.role as Role, 'fees', 'create')) return errors.forbidden()
 
   const { id: invoiceId } = await params
-
   let body: unknown
   try { body = await request.json() } catch { return errors.validation({ errors: [{ path: [], message: 'Invalid JSON' }] } as never) }
 
-  const parsed = recordPaymentSchema.safeParse({ ...(body as any), invoiceId })
+  const parsed = recordPaymentSchema.safeParse({ ...(body as Record<string, unknown>), invoiceId })
   if (!parsed.success) return errors.validation(parsed.error)
-
   const { amount, paymentMethod, transactionId, paymentDate, remarks } = parsed.data
-  // The list of methods is managed in Settings > Payments.
-  if (!(await isActivePaymentMethod(paymentMethod))) return errors.badRequest('Unknown payment method. Choose one from the list.')
 
-  const invoice = await prisma.feeInvoice.findUnique({
-    where: { id: invoiceId },
-    select: {
-      id: true,
-      studentId: true,
-      totalAmount: true,
-      paidAmount: true,
-      status: true,
-      classSectionId: true,
-      student: { select: { dueAmount: true } },
-    },
+  const r = await recordPayment({
+    invoiceId,
+    amount: amount!,
+    method: paymentMethod!,
+    source: 'STAFF',
+    receivedBy: session.user.id,
+    transactionId: transactionId ?? null,
+    remarks: remarks ?? null,
+    paymentDate: paymentDate ? new Date(paymentDate) : undefined,
   })
-
-  if (!invoice) return errors.notFound('Fee Invoice')
-  if (invoice.status === 'CANCELLED') {
-    return errors.conflict('Cannot record payment on a cancelled invoice')
-  }
-  if (invoice.status === 'PAID') {
-    return errors.conflict('This invoice is already fully paid')
-  }
-
-  const currentPaid = Number(invoice.paidAmount)
-  const total = Number(invoice.totalAmount)
-  const newPaid = currentPaid + amount
-
-  if (newPaid > total) {
-    return errors.validation({
-      errors: [{
-        path: ['amount'],
-        message: `Payment amount (${amount}) exceeds outstanding balance (${(total - currentPaid).toFixed(2)})`,
-      }],
-    } as never)
-  }
-
-  if (invoice.classSectionId) {
-    const group = await prisma.classSection.findUnique({
-      where: { id: invoice.classSectionId },
-      select: { installmentsAllowed: true },
-    })
-    if (group && !group.installmentsAllowed && newPaid < total) {
-      return errors.conflict('This group does not allow installments — the full remaining balance must be paid at once')
-    }
-  }
-
-  // Determine new invoice status
-  const newInvoiceStatus: InvoiceStatus = newPaid >= total ? 'PAID' : 'PARTIALLY_PAID'
-
-  const payment = await catchInvoiceChanged(() => prisma.$transaction(async (tx) => {
-    const newPayment = await tx.feePayment.create({
-      data: {
-        invoiceId,
-        studentId: invoice.studentId,
-        amount,
-        paymentMethod,
-        transactionId: transactionId ?? null,
-        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-        status: 'COMPLETED',
-        receivedBy: session.user.id,
-        remarks: remarks ?? null,
-      },
-    })
-
-    await updateInvoiceIfUnchanged(tx, invoiceId, invoice.paidAmount, {
-      paidAmount: newPaid,
-      status: newInvoiceStatus,
-    })
-
-    // Update denormalized fee summary on Student for fast dashboard reads without negative dues.
-    const remainingStudentDue = Math.max(0, Number(invoice.student.dueAmount) - amount)
-    await tx.student.update({
-      where: { id: invoice.studentId },
-      data: {
-        paidAmount: { increment: amount },
-        dueAmount: remainingStudentDue,
-        feeStatus: newInvoiceStatus === 'PAID' && remainingStudentDue <= 0 ? 'PAID' : 'PARTIALLY_PAID',
-      },
-    })
-
-    await tx.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: 'CREATE',
-        entityType: 'FeePayment',
-        entityId: newPayment.id,
-        changes: { invoiceId, amount, paymentMethod, newInvoiceStatus },
-      },
-    })
-
-    return newPayment
-  }))
-  if (payment instanceof InvoiceChangedError) return errors.conflict(payment.message)
-  await refreshGroupAfterPayment(invoice.classSectionId, session.user.id)
-
-  return createdResponse(payment, `Payment of ${amount} recorded successfully`)
+  if ('code' in r) return paymentErrorResponse(r)
+  return createdResponse(r.payment, `Payment of ${r.amount} recorded successfully`)
 }

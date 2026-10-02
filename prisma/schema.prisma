@@ -1091,6 +1091,10 @@ model FeePayment {
   status        PaymentStatus @default(COMPLETED)
   receivedBy    String // Accountant/Admin user ID
   remarks       String?
+  /// Receipt number TN-RCPT-YYYY-NNNNN (lib/fees/record-payment.ts). Null for payments recorded before 2026-10-02.
+  receiptNumber String?       @unique @db.VarChar(30)
+  /// STAFF | PROOF | ONLINE | WALLET — how the payment came in.
+  source        String?       @db.VarChar(10)
   createdAt     DateTime      @default(now())
 
   invoice FeeInvoice @relation(fields: [invoiceId], references: [id])

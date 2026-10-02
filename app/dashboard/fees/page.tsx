@@ -27,6 +27,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { PaymentProofUploadModal } from '@/components/fees/PaymentProofUploadModal'
 import { getCanonicalStudentClassSection, type EnrollmentRecord } from '@/lib/academic/record-formatters'
 import { PaymentMethodSelect } from '@/components/fees/PaymentMethodSelect'
+import { useAfterPayment } from '@/lib/fees/use-after-payment'
 
 interface FeeInvoice {
   id: string
@@ -70,6 +71,7 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
   const [transactionId, setTransactionId] = useState('')
   const [remarks, setRemarks] = useState('')
   const [loading, setLoading] = useState(false)
+  const afterPayment = useAfterPayment()
 
   if (!invoice) return null
 
@@ -89,7 +91,7 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
 
     setLoading(true)
     try {
-      await fetchApi(`/api/fees/${invoice.id}/payments`, {
+      const res = await fetchApi<{ id: string; receiptNumber?: string }>(`/api/fees/${invoice.id}/payments`, {
         method: 'POST',
         body: JSON.stringify({
           amount: payAmount,
@@ -101,6 +103,7 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
       notify.success('Payment recorded successfully')
       queryClient.invalidateQueries({ queryKey: ['fees'] })
       onClose()
+      afterPayment(res?.id, res?.receiptNumber) // open / print the receipt (Settings > Payments)
     } catch (err: any) {
       notify.error('Failed to record payment', { description: err.message })
     } finally {

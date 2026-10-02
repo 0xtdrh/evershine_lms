@@ -98,8 +98,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     select: { label: true, amount: true },
     orderBy: { amount: 'desc' },
   })
+  // Payments on this invoice, each with its receipt (/receipts/[paymentId]).
+  const payments = await prisma.feePayment.findMany({
+    where: { invoiceId: invoice.id },
+    select: { id: true, amount: true, paymentDate: true, paymentMethod: true, receiptNumber: true, status: true },
+    orderBy: { createdAt: 'asc' },
+  })
   return successResponse({
     ...invoice,
+    payments: payments.map((pm) => ({ ...pm, amount: Number(pm.amount) })),
     bankAccounts: await paymentAccountsSnapshot(),
     discountLines: discountLines.map((l) => ({ label: l.label, amount: Number(l.amount) })),
   })

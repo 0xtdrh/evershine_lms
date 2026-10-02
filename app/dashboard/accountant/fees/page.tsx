@@ -537,12 +537,19 @@ function PaymentProofsTab() {
     mutationFn: async ({ invoiceId, action, remarks, paidAmount }: {
       invoiceId: string; action: string; remarks?: string; paidAmount?: number
     }) =>
-      fetchApi(`/api/accountant/fees/invoices/${invoiceId}/proof`, {
+      fetchApi<{ paymentId?: string; receiptNumber?: string } | null>(`/api/accountant/fees/invoices/${invoiceId}/proof`, {
         method: 'PATCH',
         body: JSON.stringify({ action, remarks, paidAmount }),
       }),
-    onSuccess: () => {
-      notify.success(actionType === 'APPROVE' ? 'Payment approved!' : 'Payment rejected.')
+    onSuccess: (res) => {
+      if (actionType === 'APPROVE' && res?.paymentId) {
+        const paymentId = res.paymentId
+        notify.success(`Payment approved — receipt ${res.receiptNumber ?? ''}`, {
+          action: { label: 'Receipt', onClick: () => window.open(`/receipts/${paymentId}`, '_blank') },
+        })
+      } else {
+        notify.success(actionType === 'APPROVE' ? 'Payment approved!' : 'Payment rejected.')
+      }
       setSelectedProof(null)
       setActionRemarks('')
       setPaidAmountStr('')

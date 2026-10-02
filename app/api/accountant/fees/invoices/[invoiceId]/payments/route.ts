@@ -1,21 +1,18 @@
 /**
  * POST /api/accountant/fees/invoices/[invoiceId]/payments
- * Records a manual payment against an invoice.
+ * Records a manual payment against an invoice (accountants: own branch only).
+ * All the rules and the database writes live in lib/fees/record-payment.ts.
  */
 
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
-import { updateInvoiceIfUnchanged, catchInvoiceChanged, InvoiceChangedError, refreshGroupAfterPayment } from '@/lib/fees/guarded-payment'
 import { errors, createdResponse } from '@/lib/api-response'
 import { recordPaymentSchema } from '@/lib/validation/accountant-fee'
-import { isActivePaymentMethod } from '@/lib/fees/payment-settings'
+import { paymentErrorResponse, recordPayment } from '@/lib/fees/record-payment'
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ invoiceId: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ invoiceId: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role
@@ -24,113 +21,37 @@ export async function POST(
   }
 
   const { invoiceId } = await params
-
   let body: unknown
   try {
     body = await request.json()
   } catch {
     return errors.validation({ errors: [{ path: [], message: 'Invalid JSON body' }] } as never)
   }
-
   const parsed = recordPaymentSchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
-
   const data = parsed.data
-  // The list of methods is managed in Settings > Payments.
-  if (!(await isActivePaymentMethod(data.paymentMethod))) return errors.badRequest('Unknown payment method. Choose one from the list.')
-
-  const existing = await prisma.feeInvoice.findUnique({
-    where: { id: invoiceId },
-    select: {
-      id: true, studentId: true, totalAmount: true, paidAmount: true, status: true,
-      classSectionId: true,
-      student: { select: { campusId: true, dueAmount: true } },
-    },
-  })
-
-  if (!existing) return errors.notFound('Invoice not found')
-  if (existing.status === 'PAID') return errors.conflict('Invoice is already fully paid')
-  if (existing.status === 'CANCELLED') return errors.conflict('Cannot pay a cancelled invoice')
-
-  // A group-linked invoice only accepts a partial payment if that group has
-  // installments switched on — otherwise this must be paid in full at once.
-  if (existing.classSectionId) {
-    const group = await prisma.classSection.findUnique({
-      where: { id: existing.classSectionId },
-      select: { installmentsAllowed: true },
-    })
-    const wouldBeFull = Number(existing.paidAmount) + data.amount >= Number(existing.totalAmount)
-    if (group && !group.installmentsAllowed && !wouldBeFull) {
-      return errors.conflict('This group does not allow installments — the full remaining balance must be paid at once')
-    }
-  }
 
   if (role === 'ACCOUNTANT') {
-    const acc = await prisma.accountant.findUnique({
-      where: { userId: session.user.id },
-      select: { campusId: true },
-    })
-    if (existing.student.campusId !== acc?.campusId) {
+    const [invoice, acc] = await Promise.all([
+      prisma.feeInvoice.findUnique({ where: { id: invoiceId }, select: { student: { select: { campusId: true } } } }),
+      prisma.accountant.findUnique({ where: { userId: session.user.id }, select: { campusId: true } }),
+    ])
+    if (!invoice) return errors.notFound('Invoice not found')
+    if (invoice.student.campusId !== acc?.campusId) {
       return errors.forbidden('Cannot record payment for a student in a different campus')
     }
   }
 
-  // Prevent overpayment
-  const amountToPay = data.amount
-  const currentPaid = Number(existing.paidAmount)
-  const total = Number(existing.totalAmount)
-  
-  if (currentPaid + amountToPay > total) {
-    return errors.conflict(`Payment amount exceeds remaining balance of ${total - currentPaid}`)
-  }
-
-  const newStatus = (currentPaid + amountToPay >= total) ? 'PAID' : 'PARTIALLY_PAID'
-
-  const payment = await catchInvoiceChanged(() => prisma.$transaction(async (tx) => {
-    const p = await tx.feePayment.create({
-      data: {
-        invoiceId,
-        studentId: existing.studentId,
-        amount: amountToPay,
-        paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),
-        paymentMethod: data.paymentMethod,
-        transactionId: data.transactionId,
-        remarks: data.remarks,
-        receivedBy: session.user.id,
-      },
-    })
-
-    // Update invoice
-    await updateInvoiceIfUnchanged(tx, invoiceId, existing.paidAmount, {
-      paidAmount: { increment: amountToPay },
-      status: newStatus,
-    })
-
-    // Update student totals without allowing dueAmount to drift below zero.
-    const remainingStudentDue = Math.max(0, Number(existing.student.dueAmount) - amountToPay)
-    await tx.student.update({
-      where: { id: existing.studentId },
-      data: {
-        paidAmount: { increment: amountToPay },
-        dueAmount: remainingStudentDue,
-        feeStatus: newStatus === 'PAID' && remainingStudentDue <= 0 ? 'PAID' : 'PARTIALLY_PAID',
-      },
-    })
-
-    await tx.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: 'CREATE',
-        entityType: 'FeePayment',
-        entityId: p.id,
-        changes: { amount: amountToPay, invoiceId, newStatus },
-      },
-    })
-
-    return p
-  }))
-  if (payment instanceof InvoiceChangedError) return errors.conflict(payment.message)
-  await refreshGroupAfterPayment(existing.classSectionId, session.user.id)
-
-  return createdResponse(payment, 'Payment recorded successfully')
+  const r = await recordPayment({
+    invoiceId,
+    amount: data.amount!,
+    method: data.paymentMethod!,
+    source: 'STAFF',
+    receivedBy: session.user.id,
+    transactionId: data.transactionId ?? null,
+    remarks: data.remarks ?? null,
+    paymentDate: data.paymentDate ? new Date(data.paymentDate) : undefined,
+  })
+  if ('code' in r) return paymentErrorResponse(r)
+  return createdResponse(r.payment, 'Payment recorded successfully')
 }

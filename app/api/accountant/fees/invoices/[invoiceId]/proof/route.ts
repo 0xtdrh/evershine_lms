@@ -7,7 +7,8 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
-import { updateInvoiceIfUnchanged, catchInvoiceChanged, InvoiceChangedError, refreshGroupAfterPayment } from '@/lib/fees/guarded-payment'
+import { paymentErrorResponse, recordPayment } from '@/lib/fees/record-payment'
+import { PROOF_METHOD } from '@/lib/fees/payment-settings'
 import { errors, successResponse } from '@/lib/api-response'
 import { proofActionSchema } from '@/lib/validation/accountant-fee'
 import { dispatchNotification } from '@/lib/notifications/in-app'
@@ -80,121 +81,66 @@ export async function PATCH(
     }
   }
 
-  const result = await catchInvoiceChanged(() => prisma.$transaction(async (tx) => {
-    if (action === 'APPROVE') {
-      const remaining = Number(existing.totalAmount) - Number(existing.paidAmount)
-      // Use accountant-specified amount, or what the guardian declared when
-      // uploading proof, or default to the full remaining balance.
-      const declaredAmount = existing.proofDeclaredAmount ? Number(existing.proofDeclaredAmount) : null
-      const amountToPay = paidAmount ? Math.min(paidAmount, remaining) : declaredAmount ? Math.min(declaredAmount, remaining) : remaining
-      const newPaidTotal = Number(existing.paidAmount) + amountToPay
-      const newInvoiceStatus = newPaidTotal >= Number(existing.totalAmount) ? 'PAID' : 'PARTIALLY_PAID'
-
-      const p = await tx.feePayment.create({
-        data: {
-          invoiceId,
-          studentId: existing.studentId,
-          amount: amountToPay,
-          paymentDate: new Date(),
-          paymentMethod: 'Bank Transfer',
-          remarks: remarks ?? 'Approved from proof',
-          receivedBy: session.user.id,
-        },
-      })
-
-      await updateInvoiceIfUnchanged(tx, invoiceId, existing.paidAmount, {
-        paidAmount: { increment: amountToPay },
-        status: newInvoiceStatus,
+  if (action === 'APPROVE') {
+    const remaining = Number(existing.totalAmount) - Number(existing.paidAmount)
+    // Amount: what the accountant typed, or what the parent declared, or the whole balance.
+    const declaredAmount = existing.proofDeclaredAmount ? Number(existing.proofDeclaredAmount) : null
+    const amountToPay = paidAmount ? Math.min(paidAmount, remaining) : declaredAmount ? Math.min(declaredAmount, remaining) : remaining
+    const willBePaid = Number(existing.paidAmount) + amountToPay >= Number(existing.totalAmount)
+    const r = await recordPayment({
+      invoiceId,
+      amount: amountToPay,
+      method: PROOF_METHOD,
+      source: 'PROOF',
+      receivedBy: session.user.id,
+      remarks: remarks ?? 'Approved from proof',
+      invoiceUpdate: {
         proofStatus: 'APPROVED',
         proofDeclaredAmount: null,
-        // Clear proof so student can re-upload for remaining balance if partially paid
-        ...(newInvoiceStatus === 'PARTIALLY_PAID' && { proofUrl: null, proofRemarks: null, proofUploadedAt: null }),
-      })
-
-      const remainingStudentDue = Math.max(0, Number(existing.student.dueAmount) - amountToPay)
-      await tx.student.update({
-        where: { id: existing.studentId },
-        data: {
-          paidAmount: { increment: amountToPay },
-          dueAmount: remainingStudentDue,
-          feeStatus: newInvoiceStatus === 'PAID' && remainingStudentDue <= 0 ? 'PAID' : 'PARTIALLY_PAID',
-        },
-      })
-
-      // Notify student directly
-      await tx.notification.create({
+        // Partly paid: clear the proof so the parent can upload one for the rest.
+        ...(!willBePaid && { proofUrl: null, proofRemarks: null, proofUploadedAt: null }),
+      },
+      audit: { action: 'UPDATE', entityType: 'FeeInvoice', extra: { proofStatus: 'APPROVED', amountApproved: amountToPay } },
+    })
+    if ('code' in r) return paymentErrorResponse(r)
+    try {
+      await prisma.notification.create({
         data: {
           userId: existing.student.userId,
-          title: newInvoiceStatus === 'PAID' ? 'Fee Payment Approved — Fully Paid' : 'Fee Payment Approved — Partial',
-          message: newInvoiceStatus === 'PAID'
-            ? `Your payment proof for Challan #${existing.challanNumber} has been verified. Your fee is now fully paid.`
-            : `Your payment of EGP ${amountToPay.toLocaleString()} for Challan #${existing.challanNumber} has been verified. Remaining balance: EGP ${(remaining - amountToPay).toLocaleString()}.`,
+          title: r.invoiceStatus === 'PAID' ? 'Fee Payment Approved — Fully Paid' : 'Fee Payment Approved — Partial',
+          message: r.invoiceStatus === 'PAID'
+            ? `Your payment proof for invoice #${existing.challanNumber} has been verified. Your fee is now fully paid. Receipt ${r.receiptNumber}.`
+            : `Your payment of EGP ${r.amount.toLocaleString()} for invoice #${existing.challanNumber} has been verified. Remaining balance: EGP ${r.remaining.toLocaleString()}. Receipt ${r.receiptNumber}.`,
           type: 'FEE_UPDATE',
           relatedId: invoiceId,
         },
       })
-
-      await tx.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: 'UPDATE',
-          entityType: 'FeeInvoice',
-          entityId: invoiceId,
-          changes: { proofStatus: 'APPROVED', paymentId: p.id, amountApproved: amountToPay, newStatus: newInvoiceStatus },
-        },
-      })
-      return { status: 'APPROVED', newInvoiceStatus, amountToPay }
-    } else {
-      // REJECT
-      await tx.feeInvoice.update({
-        where: { id: invoiceId },
-        data: {
-          proofStatus: 'REJECTED',
-          proofRemarks: remarks ? `Rejected: ${remarks}` : 'Rejected',
-        },
-      })
-
-      // Notify student directly
-      await tx.notification.create({
-        data: {
-          userId: existing.student.userId,
-          title: 'Payment Proof Rejected',
-          message: `Your payment proof for Challan #${existing.challanNumber} was rejected.${remarks ? ` Reason: ${remarks}` : ' Please contact the accounts office.'}`,
-          type: 'FEE_UPDATE',
-          relatedId: invoiceId,
-        },
-      })
-
-      await tx.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: 'UPDATE',
-          entityType: 'FeeInvoice',
-          entityId: invoiceId,
-          changes: { proofStatus: 'REJECTED', remarks },
-        },
-      })
-      return { status: 'REJECTED' }
+    } catch (err) {
+      console.error('[PROOF_APPROVE_NOTIFY]', err)
     }
-  }))
-  if (result instanceof InvoiceChangedError) return errors.conflict(result.message)
-  if (result.status === 'APPROVED') await refreshGroupAfterPayment(existing.classSectionId, session.user.id)
-
-  // Notify guardians via fire-and-forget notification engine
-  if (result.status === 'APPROVED') {
-    dispatchNotification({
-      type: 'PROOF_APPROVED',
-      invoiceId,
-      studentId: existing.studentId,
-    })
-  } else {
-    dispatchNotification({
-      type: 'PROOF_REJECTED',
-      invoiceId,
-      studentId: existing.studentId,
-      reason: remarks ?? 'Invalid or unreadable proof',
-    })
+    dispatchNotification({ type: 'PROOF_APPROVED', invoiceId, studentId: existing.studentId })
+    return successResponse({ receiptNumber: r.receiptNumber, paymentId: r.payment.id, invoiceStatus: r.invoiceStatus }, 'Payment proof approved successfully')
   }
 
-  return successResponse(null, `Payment proof ${result.status.toLowerCase()} successfully`)
+  // REJECT
+  await prisma.$transaction(async (tx) => {
+    await tx.feeInvoice.update({
+      where: { id: invoiceId },
+      data: { proofStatus: 'REJECTED', proofRemarks: remarks ? `Rejected: ${remarks}` : 'Rejected' },
+    })
+    await tx.notification.create({
+      data: {
+        userId: existing.student.userId,
+        title: 'Payment Proof Rejected',
+        message: `Your payment proof for invoice #${existing.challanNumber} was rejected.${remarks ? ` Reason: ${remarks}` : ' Please contact the accounts office.'}`,
+        type: 'FEE_UPDATE',
+        relatedId: invoiceId,
+      },
+    })
+    await tx.auditLog.create({
+      data: { userId: session.user.id, action: 'UPDATE', entityType: 'FeeInvoice', entityId: invoiceId, changes: { proofStatus: 'REJECTED', remarks } },
+    })
+  })
+  dispatchNotification({ type: 'PROOF_REJECTED', invoiceId, studentId: existing.studentId, reason: remarks ?? 'Invalid or unreadable proof' })
+  return successResponse(null, 'Payment proof rejected successfully')
 }

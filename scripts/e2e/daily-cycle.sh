@@ -48,7 +48,7 @@ rm -rf "$DATA_DIR"
 for i in $(seq 1 40); do "$MYSQL_DIR/bin/mysqladmin.exe" --no-defaults -h 127.0.0.1 -P $DB_PORT -u root ping >/dev/null 2>&1 && break; sleep 1; done
 "$MYSQL_DIR/bin/mysql.exe" --no-defaults -h 127.0.0.1 -P $DB_PORT -u root -e "CREATE DATABASE e2e CHARACTER SET utf8mb4"
 gzip -dc "$BACKUP" > /d/tn-e2e-restore.sql && "$MYSQL_DIR/bin/mysql.exe" --no-defaults -h 127.0.0.1 -P $DB_PORT -u root --default-character-set=utf8mb4 e2e -e "source D:/tn-e2e-restore.sql"
-DATABASE_URL="$URL" npx prisma db push --skip-generate >/dev/null 2>&1 || { echo "schema push failed"; exit 1; }
+DATABASE_URL="$URL" npx prisma db push --skip-generate --accept-data-loss >/tmp/tn-e2e-push.log 2>&1 || { echo "schema push failed"; cat /tmp/tn-e2e-push.log; exit 1; }
 cat > scripts/e2e/.tmp-sa.ts <<'EOF'
 import { prisma } from '../../lib/prisma'
 import { hash } from '@node-rs/argon2'
@@ -455,6 +455,34 @@ check "report total = sum of discount lines" "$(echo "$REP" | jq_ "d['data']['to
 check "report splits by type" "$(echo "$REP" | jq_ "len(d['data']['byType'])>=4")" "True"
 check "student absence fines switched off" "$(grep -c 'STUDENT_ABSENCE_PENALTIES_ENABLED = false' lib/penalties/assessments.ts)" "1"
 rm -f "$SECJ"
+echo "== 18. one payment path + receipts + printer settings"
+check "only ONE place in the code creates payments" "$(grep -rl 'feePayment.create' app lib | wc -l | tr -d ' ')" "1"
+PAY1=$(M "SELECT id FROM FeePayment WHERE invoiceId='$FIRSTPAID' AND status='COMPLETED' ORDER BY createdAt DESC LIMIT 1")
+check "payment got a receipt number TN-RCPT-YYYY-NNNNN" "$(M "SELECT receiptNumber LIKE 'TN-RCPT-____-_____' FROM FeePayment WHERE id='$PAY1'")" "1"
+check "payment source recorded (STAFF)" "$(M "SELECT source FROM FeePayment WHERE id='$PAY1'")" "STAFF"
+RC=$(api GET /api/payments/$PAY1/receipt)
+check "receipt: amount and remaining balance" "$(echo "$RC" | jq_ "str(d['data']['amount'])+'/'+str(d['data']['invoice']['remaining'])")" "750/0"
+check "receipt: WhatsApp goes to the parent's number" "$(echo "$RC" | jq_ "d['data']['whatsappTo']")" "201066660009"
+check "receipt text is ready for WhatsApp" "$(echo "$RC" | jq_ "d['data']['receiptNumber'] in d['data']['text']")" "True"
+LATEINV=$(invid $LATE $DG)
+R=$(api POST /api/fees/$LATEINV/payments '{"amount":665,"paymentMethod":"Cash"}')
+PAY2=$(echo "$R" | jq_ "d['data']['id']")
+check "payment response returns the receipt number" "$(echo "$R" | jq_ "d['data']['receiptNumber'].startswith('TN-RCPT-')")" "True"
+check "receipt numbers go up (no repeats)" "$(M "SELECT COUNT(DISTINCT receiptNumber)=COUNT(receiptNumber) FROM FeePayment WHERE receiptNumber IS NOT NULL")" "1"
+G1=$(M "SELECT g.id FROM Guardian g JOIN _GuardianToStudent gs ON gs.A=g.id WHERE gs.B='$S1'")
+TPW=$(api POST /api/students/$S1/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$G1\"}" | jq_ "d['data']['password']")
+PJ2=$(mktemp); login_jar 01066660009 "$TPW" "$PJ2" 10.0.0.96
+check "parent opens own child's receipt" "$(code_with "$PJ2" /api/payments/$PAY1/receipt)" "200"
+check "parent cannot open another student's receipt" "$(code_with "$PJ2" /api/payments/$PAY2/receipt)" "403"
+check "invoice page lists the payment with its receipt" "$(api GET /api/fees/$FIRSTPAID | jq_ "any(p['id']=='$PAY1' and p['receiptNumber'] for p in d['data']['payments'])")" "True"
+rm -f "$PJ2"
+FS2=$(api GET /api/admin/finance-settings)
+F58=$(echo "$FS2" | python -c "import sys,json;d=json.load(sys.stdin)['data'];f=d['finance'];f['receiptPaper']='58mm';f['receiptAfterPayment']='PRINT';f['companyPhone']='01000000000';print(json.dumps({'finance':f,'accounts':d['accounts'],'methods':[{'id':m['id'],'name':m['name'],'isActive':m['isActive']} for m in d['methods']]}))")
+check "printer paper set to 58 mm" "$(api PUT /api/admin/finance-settings "$F58" | jq_ "d['data']['finance']['receiptPaper']")" "58mm"
+check "receipt uses the printer setting" "$(api GET /api/payments/$PAY1/receipt | jq_ "d['data']['company']['receiptPaper']+'/'+d['data']['company']['companyPhone']")" "58mm/01000000000"
+check "staff screen knows to open+print after a payment" "$(api GET /api/payment-accounts | jq_ "d['data']['receiptAfterPayment']")" "PRINT"
+FAUTO=$(echo "$F58" | python -c "import sys,json;d=json.load(sys.stdin);d['finance']['autoSendReceiptWhatsApp']=True;print(json.dumps(d))")
+check "automatic WhatsApp refused until the Business API is connected" "$(api PUT /api/admin/finance-settings "$FAUTO" | jq_ "d['success']")" "False"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

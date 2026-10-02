@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ArrowDown, ArrowUp, Landmark, Loader2, Plus, Save, Trash2, Wallet } from 'lucide-react'
+import { ArrowDown, ArrowUp, Landmark, Loader2, Plus, Receipt, Save, Trash2, Wallet } from 'lucide-react'
 
 interface Account {
   id?: string
@@ -26,7 +26,17 @@ interface Account {
   isActive: boolean
 }
 interface Method { id?: string; name: string; isActive: boolean; isSystem?: boolean }
-interface Settings { finance: { invoiceDueDays: number }; accounts: Account[]; methods: Method[] }
+interface Finance {
+  invoiceDueDays: number
+  receiptPaper: '80mm' | '58mm' | 'A4'
+  receiptAfterPayment: 'OPEN' | 'PRINT' | 'NONE'
+  companyName: string
+  companyPhone: string
+  companyAddress: string
+  receiptFooter: string
+  autoSendReceiptWhatsApp: boolean
+}
+interface Settings { finance: Finance; accounts: Account[]; methods: Method[]; autoWhatsAppAvailable?: boolean }
 
 const KINDS: { value: string; label: string }[] = [
   { value: 'INSTAPAY', label: 'InstaPay' },
@@ -84,6 +94,7 @@ export default function FinanceSettingsPage() {
 
   const setAccount = (i: number, patch: Partial<Account>) =>
     setForm({ ...form, accounts: form.accounts.map((a, k) => (k === i ? { ...a, ...patch } : a)) })
+  const setFinance = (patch: Partial<Finance>) => setForm({ ...form, finance: { ...form.finance, ...patch } })
   const setMethod = (i: number, patch: Partial<Method>) =>
     setForm({ ...form, methods: form.methods.map((m, k) => (k === i ? { ...m, ...patch } : m)) })
 
@@ -227,10 +238,73 @@ export default function FinanceSettingsPage() {
             max={90}
             className="w-24"
             value={form.finance.invoiceDueDays}
-            onChange={(e) => setForm({ ...form, finance: { invoiceDueDays: Math.max(0, Math.min(90, Number(e.target.value) || 0)) } })}
+            onChange={(e) => setForm({ ...form, finance: { ...form.finance, invoiceDueDays: Math.max(0, Math.min(90, Number(e.target.value) || 0)) } })}
             disabled={!canEdit}
           />
           <span className="text-sm">days</span>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base"><Receipt className="h-4 w-4" /> Receipts &amp; printer</CardTitle>
+          <CardDescription>Every payment gets a receipt (TN-RCPT-…). Print it, or send it to the parent on WhatsApp.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label>Printer / paper</Label>
+            <Select value={form.finance.receiptPaper} onValueChange={(v) => setFinance({ receiptPaper: v as Finance['receiptPaper'] })} disabled={!canEdit}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="80mm">Receipt printer (thermal) 80 mm</SelectItem>
+                <SelectItem value="58mm">Receipt printer (thermal) 58 mm</SelectItem>
+                <SelectItem value="A4">Normal printer (A4)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>After recording a payment</Label>
+            <Select value={form.finance.receiptAfterPayment} onValueChange={(v) => setFinance({ receiptAfterPayment: v as Finance['receiptAfterPayment'] })} disabled={!canEdit}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="OPEN">Open the receipt</SelectItem>
+                <SelectItem value="PRINT">Open the receipt and print it</SelectItem>
+                <SelectItem value="NONE">Do nothing (link in the message)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Name on the receipt</Label>
+            <Input value={form.finance.companyName} onChange={(e) => setFinance({ companyName: e.target.value })} disabled={!canEdit} />
+          </div>
+          <div className="space-y-1">
+            <Label>Phone on the receipt</Label>
+            <Input dir="ltr" value={form.finance.companyPhone} onChange={(e) => setFinance({ companyPhone: e.target.value })} disabled={!canEdit} />
+          </div>
+          <div className="space-y-1">
+            <Label>Address on the receipt</Label>
+            <Input value={form.finance.companyAddress} onChange={(e) => setFinance({ companyAddress: e.target.value })} disabled={!canEdit} />
+          </div>
+          <div className="space-y-1">
+            <Label>Message at the bottom</Label>
+            <Input value={form.finance.receiptFooter} onChange={(e) => setFinance({ receiptFooter: e.target.value })} disabled={!canEdit} />
+          </div>
+          <label className="flex items-start gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={form.finance.autoSendReceiptWhatsApp}
+              disabled={!canEdit || !form.autoWhatsAppAvailable}
+              onChange={(e) => setFinance({ autoSendReceiptWhatsApp: e.target.checked })}
+            />
+            <span>Send the receipt to the parent on WhatsApp automatically
+              <span className="block text-xs text-muted-foreground">
+                {form.autoWhatsAppAvailable
+                  ? 'WhatsApp Business API is connected.'
+                  : 'Needs a WhatsApp Business API account (later). Until then, staff send it with one click from the receipt.'}
+              </span>
+            </span>
+          </label>
         </CardContent>
       </Card>
     </div>

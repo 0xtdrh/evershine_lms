@@ -20,13 +20,23 @@ import {
   listPaymentMethods,
   saveFinanceSettings,
 } from '@/lib/fees/payment-settings'
+import { isAutoWhatsAppConfigured } from '@/lib/messaging/whatsapp'
 
 export const dynamic = 'force-dynamic'
 
 const text = (max: number) => z.string().trim().max(max).optional().nullable().transform((v) => (v ? v : null))
 
 const bodySchema = z.object({
-  finance: z.object({ invoiceDueDays: z.number().int().min(0).max(90) }),
+  finance: z.object({
+    invoiceDueDays: z.number().int().min(0).max(90),
+    receiptPaper: z.enum(['80mm', '58mm', 'A4']).default('80mm'),
+    receiptAfterPayment: z.enum(['OPEN', 'PRINT', 'NONE']).default('OPEN'),
+    companyName: z.string().trim().max(80).default('TechNova'),
+    companyPhone: z.string().trim().max(40).default(''),
+    companyAddress: z.string().trim().max(160).default(''),
+    receiptFooter: z.string().trim().max(200).default(''),
+    autoSendReceiptWhatsApp: z.boolean().default(false),
+  }),
   accounts: z
     .array(
       z.object({
@@ -53,7 +63,7 @@ export async function GET() {
   if (!session?.user) return errors.unauthorized()
   if (!checkPermission(session.user.role as Role, 'finance_settings', 'read')) return errors.forbidden()
   const [finance, accounts, methods] = await Promise.all([getFinanceSettings(), listPaymentAccounts(), listPaymentMethods()])
-  return successResponse({ finance, accounts, methods })
+  return successResponse({ finance, accounts, methods, autoWhatsAppAvailable: isAutoWhatsAppConfigured() })
 }
 
 export async function PUT(request: NextRequest) {
@@ -115,7 +125,22 @@ export async function PUT(request: NextRequest) {
       }
     }
   })
-  await saveFinanceSettings({ invoiceDueDays: Number(finance.invoiceDueDays) }, session.user.id)
+  if (finance.autoSendReceiptWhatsApp && !isAutoWhatsAppConfigured()) {
+    return errors.badRequest('Automatic WhatsApp needs a WhatsApp Business API account first')
+  }
+  await saveFinanceSettings(
+    {
+      invoiceDueDays: Number(finance.invoiceDueDays),
+      receiptPaper: finance.receiptPaper ?? '80mm',
+      receiptAfterPayment: finance.receiptAfterPayment ?? 'OPEN',
+      companyName: finance.companyName || 'TechNova',
+      companyPhone: finance.companyPhone ?? '',
+      companyAddress: finance.companyAddress ?? '',
+      receiptFooter: finance.receiptFooter ?? '',
+      autoSendReceiptWhatsApp: !!finance.autoSendReceiptWhatsApp,
+    },
+    session.user.id
+  )
 
   try {
     await logAudit({
@@ -131,5 +156,5 @@ export async function PUT(request: NextRequest) {
   }
 
   const [f, a, m] = await Promise.all([getFinanceSettings(), listPaymentAccounts(), listPaymentMethods()])
-  return successResponse({ finance: f, accounts: a, methods: m }, 'Saved')
+  return successResponse({ finance: f, accounts: a, methods: m, autoWhatsAppAvailable: isAutoWhatsAppConfigured() }, 'Saved')
 }

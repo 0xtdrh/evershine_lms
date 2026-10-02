@@ -76,11 +76,32 @@ export async function paymentAccountsSnapshot(): Promise<string | null> {
   return rows.length ? rows.map((r) => `${r.label}: ${r.value}`).join('\n') : null
 }
 
+export type ReceiptPaper = '80mm' | '58mm' | 'A4'
 export interface FinanceSettings {
   /** A new group invoice is due this many days after it is issued. */
   invoiceDueDays: number
+  /** Receipt paper: thermal 80mm / 58mm, or a normal A4 printer. */
+  receiptPaper: ReceiptPaper
+  /** After staff record a payment: open the receipt, open it and print, or nothing. */
+  receiptAfterPayment: 'OPEN' | 'PRINT' | 'NONE'
+  /** Printed at the top / bottom of every receipt. */
+  companyName: string
+  companyPhone: string
+  companyAddress: string
+  receiptFooter: string
+  /** Send receipts on WhatsApp automatically (needs WhatsApp Business API; see lib/messaging/whatsapp.ts). */
+  autoSendReceiptWhatsApp: boolean
 }
-const FINANCE_DEFAULTS: FinanceSettings = { invoiceDueDays: 7 }
+export const FINANCE_DEFAULTS: FinanceSettings = {
+  invoiceDueDays: 7,
+  receiptPaper: '80mm',
+  receiptAfterPayment: 'OPEN',
+  companyName: 'TechNova',
+  companyPhone: '',
+  companyAddress: 'Hurghada',
+  receiptFooter: 'Thank you!',
+  autoSendReceiptWhatsApp: false,
+}
 
 export function getFinanceSettings() {
   return getSetting<FinanceSettings>('finance.settings', FINANCE_DEFAULTS)

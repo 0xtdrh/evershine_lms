@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { notify } from '@/lib/notify'
 import { paymentDetailsRowsFromSnapshot } from '@/lib/fees/payment-details'
 import { PaymentMethodSelect } from '@/components/fees/PaymentMethodSelect'
+import { useAfterPayment } from '@/lib/fees/use-after-payment'
 
 interface FeeItem {
   id: string
@@ -57,6 +58,7 @@ interface FeeInvoice {
   subtotal: string | number
   discount: string | number
   discountLines?: { label: string; amount: number }[]
+  payments?: { id: string; amount: number; paymentDate: string; paymentMethod: string; receiptNumber: string | null; status: string }[]
   lateFee: string | number
   totalAmount: string | number
   paidAmount: string | number
@@ -110,6 +112,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
   const [transactionId, setTransactionId] = useState('')
   const [remarks, setRemarks] = useState('')
   const [isRecording, setIsRecording] = useState(false)
+  const afterPayment = useAfterPayment()
   
   const { data: session } = useSession()
   const role = (session?.user?.role as string) || ''
@@ -263,7 +266,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
 
     setIsRecording(true)
     try {
-      await fetchApi(`/api/fees/${invoice.id}/payments`, {
+      const res = await fetchApi<{ id: string; receiptNumber?: string }>(`/api/fees/${invoice.id}/payments`, {
         method: 'POST',
         body: JSON.stringify({
           amount: amountNum,
@@ -279,6 +282,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
       setRemarks('')
       queryClient.invalidateQueries({ queryKey: ['fee-invoice', id] })
       queryClient.invalidateQueries({ queryKey: ['fees'] })
+      afterPayment(res?.id, res?.receiptNumber) // open / print the receipt (Settings > Payments)
     } catch (err: any) {
       notify.error(err.message || 'Failed to record payment')
     } finally {
@@ -639,6 +643,25 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
                 </Button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {(invoice.payments?.length ?? 0) > 0 && (
+        <div className="print:hidden rounded-xl border border-slate-200 bg-white p-4">
+          <p className="mb-2 text-sm font-semibold text-slate-800">Payments &amp; receipts</p>
+          <div className="space-y-1">
+            {invoice.payments!.map((pm) => (
+              <div key={pm.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-100 px-3 py-2 text-sm">
+                <span>
+                  {new Date(pm.paymentDate).toLocaleDateString('en-GB')} · EGP {pm.amount.toLocaleString()} · {pm.paymentMethod}
+                  {pm.status !== 'COMPLETED' && <span className="ml-1 text-xs text-red-600">({pm.status})</span>}
+                </span>
+                <Link href={`/receipts/${pm.id}`} className="text-sm font-medium text-blue-600 hover:underline">
+                  Receipt {pm.receiptNumber ?? ''}
+                </Link>
+              </div>
+            ))}
           </div>
         </div>
       )}
