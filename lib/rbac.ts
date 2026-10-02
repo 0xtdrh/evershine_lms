@@ -68,6 +68,8 @@ export type AcademicResource =
   | 'discount_types'
   | 'discounts'
   | 'discount_approvals'
+  // Refunds + student wallet (create = request, approve = approve)
+  | 'refunds'
 
 type Resource = AcademicResource
 
@@ -166,6 +168,7 @@ const PERMISSIONS: PermissionMap = {
     discount_types: ['create', 'read', 'update', 'delete'],
     discounts: ['create', 'read', 'update', 'delete'],
     discount_approvals: ['read', 'approve'],
+    refunds: ['create', 'read', 'approve'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -212,6 +215,7 @@ const PERMISSIONS: PermissionMap = {
     discount_types: ['create', 'read', 'update', 'delete'],
     discounts: ['create', 'read', 'update', 'delete'],
     discount_approvals: ['read', 'approve'],
+    refunds: ['create', 'read', 'approve'],
   },
   TEACHER: {
     students: ['read'],
@@ -259,6 +263,7 @@ const PERMISSIONS: PermissionMap = {
     discount_types: [],
     discounts: [],
     discount_approvals: [],
+    refunds: [],
   },
   STUDENT: {
     students: [],
@@ -305,6 +310,7 @@ const PERMISSIONS: PermissionMap = {
     discount_types: [],
     discounts: [],
     discount_approvals: [],
+    refunds: [],
   },
   PARENT: {
     students: [],
@@ -351,6 +357,7 @@ const PERMISSIONS: PermissionMap = {
     discount_types: [],
     discounts: [],
     discount_approvals: [],
+    refunds: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -399,6 +406,7 @@ const PERMISSIONS: PermissionMap = {
     discount_types: ['read'],
     discounts: ['create', 'read'],
     discount_approvals: [],
+    refunds: ['create', 'read'],
   },
   GUARDIAN: {
     students: [],
@@ -445,6 +453,7 @@ const PERMISSIONS: PermissionMap = {
     discount_types: [],
     discounts: [],
     discount_approvals: [],
+    refunds: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -495,6 +504,7 @@ const PERMISSIONS: PermissionMap = {
     discount_types: ['read'],
     discounts: ['create', 'read'],
     discount_approvals: [],
+    refunds: ['read'],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -546,6 +556,7 @@ const PERMISSIONS: PermissionMap = {
     discount_types: ['read'],
     discounts: ['create', 'read', 'update'],
     discount_approvals: ['read', 'approve'],
+    refunds: ['create', 'read', 'approve'],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -595,6 +606,7 @@ const PERMISSIONS: PermissionMap = {
     discount_types: [],
     discounts: [],
     discount_approvals: [],
+    refunds: [],
   },
 }
 

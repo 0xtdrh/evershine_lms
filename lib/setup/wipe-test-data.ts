@@ -29,7 +29,7 @@ export const WIPE_CONFIRMATION = 'امسح كل بيانات التجربة'
 const KEEP_ALL = new Set([
   '_prisma_migrations', 'AcademicYear', 'Shift', 'CertificateTemplate', 'FeedbackQuestion', 'ResultCardConfig', 'RolePermission',
   // Settings, not data (2026-10-02): payment accounts/methods, app settings, discount types.
-  'AppSetting', 'PaymentAccount', 'PaymentMethod', 'DiscountType',
+  'AppSetting', 'PaymentAccount', 'PaymentMethod', 'DiscountType', 'RefundRule',
 ])
 
 type Tx = Prisma.TransactionClient | typeof prisma

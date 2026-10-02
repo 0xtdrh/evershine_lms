@@ -29,6 +29,7 @@ const RESOURCE_META: Record<string, { label: string; description: string; catego
   discount_types:        { label: 'Discount Types',      description: 'Create and edit the kinds of discounts (sibling, promo, manual...)', category: 'Finance' },
   discounts:             { label: 'Discounts',           description: 'Give a discount to a student or a whole group', category: 'Finance' },
   discount_approvals:    { label: 'Discount Approvals',  description: 'Approve or reject discount requests', category: 'Finance' },
+  refunds:               { label: 'Refunds',             description: 'Request (create) or approve refunds; student wallets', category: 'Finance' },
   students:              { label: 'Students',            description: 'Admission records, profiles, and enrollment status',     category: 'People'     },
   teachers:              { label: 'Teachers',            description: 'Staff profiles, designations, and class assignments',     category: 'People'     },
   users:                 { label: 'User Accounts',       description: 'View the list of system users',                          category: 'People'     },

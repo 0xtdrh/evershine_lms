@@ -35,7 +35,7 @@ export async function GET(_request: NextRequest) {
       subjectOfferings: activeYear
         ? { where: { academicYearId: activeYear.id, teacherId: { not: null } }, orderBy: { createdAt: 'desc' }, take: 1, select: { teacherId: true } }
         : false,
-      invoices: { select: { totalAmount: true, paidAmount: true } },
+      invoices: { select: { totalAmount: true, paidAmount: true, refundedAmount: true } },
     },
   })
 
@@ -49,7 +49,7 @@ export async function GET(_request: NextRequest) {
     let collected = 0
     for (const inv of g.invoices) {
       expected += Number(inv.totalAmount)
-      collected += Number(inv.paidAmount)
+      collected += Number(inv.paidAmount) - Number(inv.refundedAmount) // net of refunds
     }
 
     let teacherPay = 0

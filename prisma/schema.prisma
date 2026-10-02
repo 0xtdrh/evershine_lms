@@ -1046,6 +1046,8 @@ model FeeInvoice {
   // this when approving.
   proofDeclaredAmount Decimal? @db.Decimal(10, 2)
   penaltyAmount    Decimal   @default(0) @db.Decimal(10, 2)
+  /// Money given back on this invoice (approved refunds). Net paid = paidAmount - refundedAmount.
+  refundedAmount   Decimal   @default(0) @db.Decimal(10, 2)
   isPenaltyApplied Boolean   @default(false)
 
   createdAt DateTime @default(now())
@@ -3400,4 +3402,75 @@ model InvoiceDiscount {
   @@index([discountTypeId, createdAt])
   @@index([studentId, discountTypeId])
   @@index([assignmentId, studentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REFUNDS + STUDENT WALLET (2026-10-02, docs/design-discounts.md part 3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Refund policy for a scope (most specific wins: GROUP > LEVEL > COURSE > TRACK > ALL).
+model RefundRule {
+  id            String   @id @default(cuid())
+  /// ALL | TRACK | COURSE | LEVEL | GROUP
+  scopeType     String   @default("ALL") @db.VarChar(10)
+  scopeId       String?
+  allowed       Boolean  @default(true)
+  /// FIXED | PERCENT (of what the student paid)
+  adminFeeType  String   @default("FIXED") @db.VarChar(10)
+  adminFeeValue Decimal  @default(0) @db.Decimal(10, 2)
+  /// ATTENDED = sessions the student attended; HELD = sessions the group held
+  deductBasis   String   @default("ATTENDED") @db.VarChar(10)
+  note          String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/// Money given back for an invoice: cash back, or credit in the student's wallet.
+model Refund {
+  id              String    @id @default(cuid())
+  /// TN-RFND-YYYY-NNNNN, set when approved
+  refundNumber    String?   @unique @db.VarChar(30)
+  invoiceId       String
+  studentId       String
+  suggestedAmount Decimal   @db.Decimal(10, 2)
+  amount          Decimal   @db.Decimal(10, 2)
+  /// CASH | WALLET
+  method          String    @db.VarChar(10)
+  /// How the cash goes back (a payment method name), for CASH
+  payoutMethod    String?   @db.VarChar(50)
+  reason          String?   @db.Text
+  /// How the suggestion was computed (sessions, price per session, admin fee)
+  calc            Json?
+  /// Also remove the student from the group when approved
+  withdrawStudent Boolean   @default(false)
+  /// PENDING | APPROVED | REJECTED
+  status          String    @default("PENDING") @db.VarChar(10)
+  requestedById   String
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectedReason  String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([invoiceId])
+  @@index([studentId])
+  @@index([status])
+  @@index([approvedAt])
+}
+
+/// Student wallet ledger: balance = sum(amount). + credit (refund), - spent (invoice payment).
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  studentId   String
+  amount      Decimal  @db.Decimal(10, 2)
+  /// REFUND | PAYMENT | ADJUSTMENT
+  type        String   @db.VarChar(12)
+  refundId    String?
+  paymentId   String?
+  note        String?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([studentId])
 }

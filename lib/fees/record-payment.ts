@@ -37,10 +37,12 @@ export interface RecordPaymentInput {
   invoiceUpdate?: Prisma.FeeInvoiceUpdateManyMutationInput
   /** Audit-log action/entity (proof approvals log as an invoice UPDATE, like before). */
   audit?: { action: 'CREATE' | 'UPDATE'; entityType: 'FeePayment' | 'FeeInvoice'; extra?: Record<string, unknown> }
+  /** Extra writes in the SAME transaction (e.g. the wallet debit for a wallet payment). Throw to cancel. */
+  onTx?: (tx: Prisma.TransactionClient, payment: { id: string; amount: number }) => Promise<void>
 }
 
 export type PaymentErrorCode =
-  | 'NOT_FOUND' | 'CANCELLED' | 'ALREADY_PAID' | 'INVALID_AMOUNT' | 'OVERPAY' | 'INSTALLMENTS' | 'BAD_METHOD' | 'CHANGED'
+  | 'NOT_FOUND' | 'CANCELLED' | 'ALREADY_PAID' | 'INVALID_AMOUNT' | 'OVERPAY' | 'INSTALLMENTS' | 'BAD_METHOD' | 'CHANGED' | 'REFUSED'
 
 export type RecordPaymentResult =
   | {
@@ -56,6 +58,9 @@ export type RecordPaymentResult =
   | { ok: false; code: PaymentErrorCode; message: string }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
+
+/** Throw from onTx to cancel the payment with a clear message (e.g. not enough in the wallet). */
+export class PaymentRefusedError extends Error {}
 
 /** Next receipt number TN-RCPT-YYYY-NNNNN (highest + 1; callers retry on a clash). */
 export async function nextReceiptNumber(db: Prisma.TransactionClient | typeof prisma = prisma) {
@@ -160,6 +165,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<RecordPa
           } as Prisma.InputJsonValue,
         },
       })
+      if (input.onTx) await input.onTx(tx, { id: payment.id, amount })
       return payment
     })
     await refreshGroupAfterPayment(invoice.classSectionId, input.receivedBy)
@@ -176,6 +182,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<RecordPa
     }
   } catch (err) {
     if (err instanceof InvoiceChangedError) return { ok: false, code: 'CHANGED', message: err.message }
+    if (err instanceof PaymentRefusedError) return { ok: false, code: 'REFUSED', message: err.message }
     throw err
   }
 }
@@ -190,7 +197,8 @@ export function paymentErrorResponse(r: { code: PaymentErrorCode; message: strin
     case 'CANCELLED':
     case 'ALREADY_PAID':
     case 'INSTALLMENTS':
-    case 'CHANGED': return errors.conflict(r.message)
+    case 'CHANGED':
+    case 'REFUSED': return errors.conflict(r.message)
     default: return errorResponse('PAYMENT_FAILED', r.message, 400)
   }
 }

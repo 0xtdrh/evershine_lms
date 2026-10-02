@@ -23,6 +23,13 @@ const { mockAuth, mockPrisma, mockTx } = vi.hoisted(() => {
       aggregate: vi.fn(),
       findMany: vi.fn(),
     },
+    // Refunds approved in the period are taken off the income (none here).
+    refund: {
+      aggregate: vi.fn().mockResolvedValue({ _sum: { amount: null } }),
+    },
+    student: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     expense: {
       aggregate: vi.fn(),
       findMany: vi.fn(),

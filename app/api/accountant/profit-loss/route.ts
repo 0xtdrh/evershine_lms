@@ -257,7 +257,19 @@ export async function POST(req: NextRequest) {
       take: 1000,
     })
 
-    const totalIncome = Number(feeAgg._sum.amount ?? 0)
+    // Refunds approved in the period are taken off the income (cash back and
+    // wallet credit alike; wallet money comes back as income when it is spent).
+    const refundAgg = await prisma.refund.aggregate({
+      where: {
+        status: 'APPROVED',
+        approvedAt: { gte: periodStartDate, lte: periodEndDate },
+        ...(campusId
+          ? { studentId: { in: (await prisma.student.findMany({ where: { campusId }, select: { id: true } })).map((st) => st.id) } }
+          : {}),
+      },
+      _sum: { amount: true },
+    })
+    const totalIncome = Number(feeAgg._sum.amount ?? 0) - Number(refundAgg._sum.amount ?? 0)
     const totalExpenses =
       Number(expenseAgg._sum.amount ?? 0) + Number(salaryAgg._sum.netSalary ?? 0)
 

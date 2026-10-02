@@ -42,6 +42,7 @@ export async function GET(
       cycleNumber: true,
       totalAmount: true,
       paidAmount: true,
+      refundedAmount: true,
       status: true,
       dueDate: true,
       student: { select: { id: true, firstName: true, lastName: true, fullNameEn: true, registrationNumber: true } },
@@ -73,7 +74,7 @@ export async function GET(
   let totalCollected = 0
   for (const inv of invoices) {
     totalExpected += Number(inv.totalAmount)
-    totalCollected += Number(inv.paidAmount)
+    totalCollected += Number(inv.paidAmount) - Number(inv.refundedAmount) // net of refunds
   }
 
   // Teacher pay + profit — only computed when a teacher is actually

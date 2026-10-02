@@ -454,7 +454,6 @@ REP=$(api GET "/api/discounts/report?from=$TODAY&to=$TODAY")
 check "report total = sum of discount lines" "$(echo "$REP" | jq_ "d['data']['total']")" "$(M "SELECT CAST(ROUND(SUM(d.amount),2) AS DOUBLE) FROM InvoiceDiscount d JOIN FeeInvoice f ON f.id=d.invoiceId WHERE f.status<>'CANCELLED'")"
 check "report splits by type" "$(echo "$REP" | jq_ "len(d['data']['byType'])>=4")" "True"
 check "student absence fines switched off" "$(grep -c 'STUDENT_ABSENCE_PENALTIES_ENABLED = false' lib/penalties/assessments.ts)" "1"
-rm -f "$SECJ"
 echo "== 18. one payment path + receipts + printer settings"
 check "only ONE place in the code creates payments" "$(grep -rl 'feePayment.create' app lib | wc -l | tr -d ' ')" "1"
 PAY1=$(M "SELECT id FROM FeePayment WHERE invoiceId='$FIRSTPAID' AND status='COMPLETED' ORDER BY createdAt DESC LIMIT 1")
@@ -483,6 +482,54 @@ check "receipt uses the printer setting" "$(api GET /api/payments/$PAY1/receipt 
 check "staff screen knows to open+print after a payment" "$(api GET /api/payment-accounts | jq_ "d['data']['receiptAfterPayment']")" "PRINT"
 FAUTO=$(echo "$F58" | python -c "import sys,json;d=json.load(sys.stdin);d['finance']['autoSendReceiptWhatsApp']=True;print(json.dumps(d))")
 check "automatic WhatsApp refused until the Business API is connected" "$(api PUT /api/admin/finance-settings "$FAUTO" | jq_ "d['success']")" "False"
+echo "== 19. refunds + student wallet"
+api PUT /api/refunds/rules '{"rules":[{"scopeType":"ALL","allowed":true,"adminFeeType":"FIXED","adminFeeValue":50,"deductBasis":"ATTENDED"}]}' >/dev/null
+SG=$(api GET "/api/refunds/suggest?invoiceId=$LATEINV")
+check "suggestion with no session attended: 665 paid - 50 admin fee" "$(echo "$SG" | jq_ "str(d['data']['netPaid'])+'/'+str(d['data']['deduction'])+'/'+str(d['data']['adminFee'])+'/'+str(d['data']['suggested'])")" "665/0/50/615"
+LATEENR=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$LATE' AND classSectionId='$DG'")
+sess $DG 2026-02-01 "$(rec $LATEENR PRESENT)" >/dev/null
+SG=$(api GET "/api/refunds/suggest?invoiceId=$LATEINV")
+check "one attended session deducted (665/4 = 166.25): 665 - 166.25 - 50" "$(echo "$SG" | jq_ "str(d['data']['perSession'])+'/'+str(d['data']['suggested'])")" "166.25/448.75"
+check "secretary (view only) cannot request a refund" "$(secapi POST /api/refunds "{\"invoiceId\":\"$LATEINV\",\"amount\":100,\"method\":\"WALLET\"}" | jq_ "d['success']")" "False"
+ACCE=refund-acc@e2e.local
+api POST /api/users/create-accountant "{\"firstName\":\"Refund\",\"lastName\":\"Accountant\",\"email\":\"$ACCE\",\"password\":\"E2eAcc12345\",\"phoneNumber\":\"01055550001\",\"campusId\":\"$CAMPUS\"}" >/dev/null
+ACJ=$(mktemp); login_jar $ACCE E2eAcc12345 "$ACJ" 10.0.0.97
+accapi() { curl -s -b "$ACJ" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+check "more than what was paid is refused" "$(accapi POST /api/refunds "{\"invoiceId\":\"$LATEINV\",\"amount\":1000,\"method\":\"WALLET\"}" | jq_ "d['success']")" "False"
+R=$(accapi POST /api/refunds "{\"invoiceId\":\"$LATEINV\",\"amount\":448.75,\"method\":\"WALLET\",\"withdrawStudent\":true,\"reason\":\"moving away\"}")
+RF1=$(echo "$R" | jq_ "d['data']['refundId']")
+check "accountant request goes PENDING" "$(echo "$R" | jq_ "d['data']['status']")" "PENDING"
+check "approvers notified" "$(M "SELECT COUNT(*)>0 FROM Notification WHERE type='REFUND_REQUEST' AND relatedId='$RF1'")" "1"
+check "nothing refunded before approval" "$(M "SELECT CAST(refundedAmount AS DOUBLE) FROM FeeInvoice WHERE id='$LATEINV'")" "0"
+check "accountant cannot approve" "$(accapi PATCH /api/refunds/$RF1 '{"action":"approve"}' | jq_ "d['success']")" "False"
+R=$(api PATCH /api/refunds/$RF1 '{"action":"approve"}')
+check "manager approves" "$(echo "$R" | jq_ "d['data']['status']")" "APPROVED"
+check "refund number TN-RFND-YYYY-NNNNN" "$(M "SELECT refundNumber LIKE 'TN-RFND-____-_____' FROM Refund WHERE id='$RF1'")" "1"
+check "invoice shows the refunded amount" "$(M "SELECT CAST(refundedAmount AS DOUBLE) FROM FeeInvoice WHERE id='$LATEINV'")" "448.75"
+check "credit landed in the student wallet" "$(api GET /api/students/$LATE/wallet | jq_ "d['data']['balance']")" "448.75"
+check "student removed from the group (asked for)" "$(M "SELECT status FROM StudentEnrollment WHERE id='$LATEENR'")" "WITHDRAWN"
+check "approving twice is refused" "$(api PATCH /api/refunds/$RF1 '{"action":"approve"}' | jq_ "d['success']")" "False"
+check "refund receipt available" "$(api GET /api/refunds/$RF1 | jq_ "d['data']['refundNumber'].startswith('TN-RFND-')")" "True"
+check "accountant's next request can't exceed what is left" "$(accapi POST /api/refunds "{\"invoiceId\":\"$LATEINV\",\"amount\":300,\"method\":\"WALLET\"}" | jq_ "d['success']")" "False"
+M "UPDATE ClassSection SET installmentsAllowed=1 WHERE id='$DG2'"
+api POST /api/groups/$DG2/students "{\"studentId\":\"$LATE\"}" >/dev/null
+LATE2=$(invid $LATE $DG2)
+R=$(api POST /api/fees/$LATE2/pay-from-wallet '{}')
+check "next invoice paid from the wallet (448.75)" "$(echo "$R" | jq_ "d['data']['amount']")" "448.75"
+check "wallet payment has a receipt and source WALLET" "$(M "SELECT CONCAT(source,'/',receiptNumber LIKE 'TN-RCPT-%') FROM FeePayment WHERE invoiceId='$LATE2'")" "WALLET/1"
+check "wallet is now empty" "$(api GET /api/students/$LATE/wallet | jq_ "d['data']['balance']")" "0"
+check "paying from an empty wallet is refused" "$(api POST /api/fees/$LATE2/pay-from-wallet '{}' | jq_ "d['success']")" "False"
+api PUT /api/refunds/rules "{\"rules\":[{\"scopeType\":\"ALL\",\"allowed\":true,\"adminFeeType\":\"FIXED\",\"adminFeeValue\":0,\"deductBasis\":\"ATTENDED\"},{\"scopeType\":\"GROUP\",\"scopeId\":\"$DG\",\"allowed\":false,\"adminFeeType\":\"FIXED\",\"adminFeeValue\":0,\"deductBasis\":\"ATTENDED\"}]}" >/dev/null
+check "rule 'not allowed' for one group wins over 'everywhere'" "$(api GET "/api/refunds/suggest?invoiceId=$FIRSTPAID" | jq_ "d['data']['allowed']")" "False"
+check "refund refused in that group" "$(api POST /api/refunds "{\"invoiceId\":\"$FIRSTPAID\",\"amount\":100,\"method\":\"WALLET\"}" | jq_ "d['success']")" "False"
+api PUT /api/refunds/rules '{"rules":[{"scopeType":"ALL","allowed":true,"adminFeeType":"PERCENT","adminFeeValue":10,"deductBasis":"ATTENDED"}]}' >/dev/null
+check "percent admin fee: 10% of 750 paid" "$(api GET "/api/refunds/suggest?invoiceId=$FIRSTPAID" | jq_ "str(d['data']['adminFee'])+'/'+str(d['data']['suggested'])")" "75/675"
+R=$(api POST /api/refunds "{\"invoiceId\":\"$FIRSTPAID\",\"amount\":100,\"method\":\"CASH\",\"payoutMethod\":\"InstaPay\"}")
+check "a manager's own refund is approved at once (cash back by InstaPay)" "$(echo "$R" | jq_ "d['data']['status']")" "APPROVED"
+check "cash refund does not touch the wallet" "$(api GET /api/students/$S1/wallet | jq_ "d['data']['balance']")" "0"
+check "cash refund needs how the money goes back" "$(api POST /api/refunds "{\"invoiceId\":\"$FIRSTPAID\",\"amount\":10,\"method\":\"CASH\"}" | jq_ "d['success']")" "False"
+check "refund rules kept by the test-data wipe (settings)" "$(grep -c "'RefundRule'" lib/setup/wipe-test-data.ts)" "1"
+rm -f "$ACJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

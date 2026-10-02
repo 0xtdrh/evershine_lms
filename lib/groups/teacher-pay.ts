@@ -79,16 +79,17 @@ export async function computeTeacherGroupPay(
 
   // Percent-of-payment component: what students paid on this cycle's invoices,
   // valued at the price BEFORE discounts (owner, 2026-10-02: the company bears
-  // discounts, so they never reduce the teacher's share). See preDiscountCollected.
+  // discounts, so they never reduce the teacher's share). Refunds DO reduce it:
+  // the teacher gets a share of what the company keeps. See preDiscountCollected.
   let percentAmount = 0
   if (percentOfStudentPayment) {
     const invoices = await prisma.feeInvoice.findMany({
       where: { classSectionId, cycleNumber },
-      select: { paidAmount: true, subtotal: true, totalAmount: true, status: true },
+      select: { paidAmount: true, refundedAmount: true, subtotal: true, totalAmount: true, status: true },
     })
     const collected = invoices.reduce(
       (sum, inv) =>
-        sum + preDiscountCollected({ paidAmount: Number(inv.paidAmount), subtotal: Number(inv.subtotal), totalAmount: Number(inv.totalAmount), status: inv.status }),
+        sum + preDiscountCollected({ paidAmount: Number(inv.paidAmount) - Number(inv.refundedAmount), subtotal: Number(inv.subtotal), totalAmount: Number(inv.totalAmount), status: inv.status }),
       0
     )
     percentAmount = Math.round(collected * (percentOfStudentPayment / 100) * 100) / 100

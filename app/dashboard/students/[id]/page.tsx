@@ -21,6 +21,7 @@ import { StudentTimelineCard } from '@/components/students/StudentTimelineCard'
 import { StudentAdminToolbar } from '@/components/students/StudentAdminToolbar'
 import { StudentPortalAccessCard } from '@/components/students/StudentPortalAccessCard'
 import { StudentDiscountsCard } from '@/components/students/StudentDiscountsCard'
+import { StudentWalletCard } from '@/components/students/StudentWalletCard'
 
 interface StudentDetail {
   id: string
@@ -416,6 +417,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               .filter((e) => e.status === 'ACTIVE' && e.classSection)
               .map((e) => ({ id: e.classSection.id, name: `${e.classSection.className} ${e.classSection.sectionName}`.trim() }))}
           />
+
+          <StudentWalletCard studentId={student.id} />
 
           <StudentCertificatesPanel studentId={student.id} />
 

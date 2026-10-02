@@ -18,6 +18,7 @@ import { notify } from '@/lib/notify'
 import { paymentDetailsRowsFromSnapshot } from '@/lib/fees/payment-details'
 import { PaymentMethodSelect } from '@/components/fees/PaymentMethodSelect'
 import { useAfterPayment } from '@/lib/fees/use-after-payment'
+import { InvoiceMoneyActions } from '@/components/refunds/InvoiceMoneyActions'
 
 interface FeeItem {
   id: string
@@ -58,6 +59,7 @@ interface FeeInvoice {
   subtotal: string | number
   discount: string | number
   discountLines?: { label: string; amount: number }[]
+  refundedAmount?: string | number
   payments?: { id: string; amount: number; paymentDate: string; paymentMethod: string; receiptNumber: string | null; status: string }[]
   lateFee: string | number
   totalAmount: string | number
@@ -502,6 +504,14 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
               Collect Payment
             </Button>
           )}
+
+          <InvoiceMoneyActions
+            invoiceId={invoice.id}
+            studentId={invoice.studentId}
+            status={invoice.status}
+            paidAmount={paid}
+            refundedAmount={Number(invoice.refundedAmount ?? 0)}
+          />
 
           {canEdit && (
             <Button onClick={openEditDialog} variant="outline" className="text-indigo-700 border-indigo-300 hover:bg-indigo-50 font-bold gap-2 text-xs h-9">
