@@ -60,14 +60,13 @@ export function ResultCardExportTemplate({ profile, exam, rows, profilePictureDa
           <div className="flex items-center gap-3">
             <AcademyLogo className="w-14 h-14 text-[#1e3a8a] shrink-0" />
             <div>
-              <h2 className="text-[20px] font-black uppercase text-[#1e3a8a] leading-none tracking-tight">Evershine Academy</h2>
-              <p className="text-[8.5px] text-gray-500 uppercase tracking-[0.2em] font-black mt-1">We Make Your Children More Valuable</p>
-              <p className="text-[7.5px] text-gray-600 mt-0.5">Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony</p>
+              <h2 className="text-[20px] font-black uppercase text-[#1e3a8a] leading-none tracking-tight">TechNova</h2>
+              <p className="text-[8.5px] text-gray-500 uppercase tracking-[0.2em] font-black mt-1">STEM · Robotics · Programming</p>
+              <p className="text-[7.5px] text-gray-600 mt-0.5">El Kawthar, Hurghada, Egypt</p>
             </div>
           </div>
           <div className="text-right text-[8px] text-gray-500 font-bold space-y-0.5">
-            <p>📱 Boys: 0328-4010522</p>
-            <p>📱 Girls: 0324-8985526</p>
+            <p>📍 El Kawthar, Hurghada</p>
             <p className="mt-1.5 text-indigo-600 font-mono">Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
           </div>
         </div>

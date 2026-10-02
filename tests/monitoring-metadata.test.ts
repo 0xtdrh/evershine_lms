@@ -63,7 +63,7 @@ describe('monitoring metadata helpers', () => {
   })
 
   it('matches the monthly monitoring status criteria requested by the school', () => {
-    expect(derivePerformanceGroup(91)).toBe('Ever Shine Group')
+    expect(derivePerformanceGroup(91)).toBe('Nova Stars Group')
     expect(derivePerformanceGroup(84)).toBe('Quaid Group')
     expect(derivePerformanceGroup(65)).toBe('Iqbal Group')
     expect(derivePerformanceGroup(59)).toBe('Improvement Group')

@@ -29,7 +29,7 @@ const createTeacherDocSchema = z.object({
   title: z.string().min(2, 'Title is required').trim(),
   // WHY: pdfUrl is a placeholder in dev; Cloudinary URL in production.
   // Non-blocking: if upload fails the PDF was still delivered to the admin.
-  pdfUrl: z.string().default('https://evershaheen.edu/documents/placeholder.pdf'),
+  pdfUrl: z.string().default('https://example.com/documents/placeholder.pdf'),
   remarks: z.string().trim().optional(),
 })
 

@@ -178,10 +178,10 @@ describe('Cloudinary profile image storage', () => {
     mockPrisma.user.findUnique.mockResolvedValue(null)
     mockPrisma.teacher.count.mockResolvedValue(7)
     // Employee IDs = highest existing number + 1 (lib/ids/sequence.ts)
-    mockPrisma.teacher.findMany.mockResolvedValue([{ employeeId: 'ESA-TCH-007' }, { employeeId: 'ESA-TCH-002' }])
+    mockPrisma.teacher.findMany.mockResolvedValue([{ employeeId: 'TN-TCH-007' }, { employeeId: 'TN-TCH-002' }])
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockTeacherTx) => Promise<unknown>) => cb(mockTeacherTx))
     mockTeacherTx.user.create.mockResolvedValue({ id: 'teacher-user-1' })
-    mockTeacherTx.teacher.create.mockResolvedValue({ id: 'teacher-1', employeeId: 'ESA-TCH-008' })
+    mockTeacherTx.teacher.create.mockResolvedValue({ id: 'teacher-1', employeeId: 'TN-TCH-008' })
     mockTeacherTx.auditLog.create.mockResolvedValue({ id: 'audit-1' })
 
     const response = await createTeacher(new NextRequest('http://localhost/api/teachers', {
@@ -194,7 +194,7 @@ describe('Cloudinary profile image storage', () => {
     expect(mockUploadProfileImageToCloudinary).toHaveBeenCalledWith(
       pngDataUrl,
       'teachers',
-      'ESA-TCH-008'
+      'TN-TCH-008'
     )
     expect(mockTeacherTx.teacher.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({

@@ -16,7 +16,7 @@ export async function buildExpenseReport(
   filters: { start?: string; end?: string; category?: string }
 ): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'EverShine Academy'
+  workbook.creator = 'TechNova'
   workbook.lastModifiedBy = 'Account Manager'
   workbook.created = new Date()
 
@@ -35,7 +35,7 @@ export async function buildExpenseReport(
   // Branding Headers
   summarySheet.mergeCells('A1:B1')
   const titleCell = summarySheet.getCell('A1')
-  titleCell.value = 'EverShine Academy — Expense Summary'
+  titleCell.value = 'TechNova — Expense Summary'
   titleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } }
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } } // Teal 600
   titleCell.alignment = { vertical: 'middle', horizontal: 'center' }
@@ -103,7 +103,7 @@ export async function buildExpenseReport(
   // Branding Headers
   detailSheet.mergeCells('A1:G1')
   const detailTitle = detailSheet.getCell('A1')
-  detailTitle.value = 'EverShine Academy — Expense Ledger'
+  detailTitle.value = 'TechNova — Expense Ledger'
   detailTitle.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } }
   detailTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } }
   detailTitle.alignment = { vertical: 'middle', horizontal: 'center' }

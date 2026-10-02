@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
           <p>Please arrange for the payment at your earliest convenience to avoid further late fees or suspension of portal access.</p>
           <p>If you have already paid, please ignore this email.</p>
           <br/>
-          <p>Regards,<br/>Evershine Academy Accounts Department</p>
+          <p>Regards,<br/>TechNova Accounts</p>
         </div>
       `,
     })

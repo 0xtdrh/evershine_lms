@@ -47,8 +47,8 @@ export async function GET(request: NextRequest) {
       html: `
         <div style="font-family: sans-serif; text-align: center; padding: 40px;">
           <h1 style="color: #1E40AF;">Happy Birthday, ${student.firstName}!</h1>
-          <p style="font-size: 18px;">Wishing you a fantastic day from all of us at Evershine Academy!</p>
-          <img src="https://evershineacademy.edu.pk/images/birthday-bg.png" alt="Birthday Card" style="max-width: 100%; border-radius: 10px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />
+          <p style="font-size: 18px;">Wishing you a fantastic day from all of us at TechNova!</p>
+          <img src="https://evershine-lms-technova.vercel.app/brand/pwa-icon-512.png" alt="Birthday Card" style="max-width: 100%; border-radius: 10px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />
         </div>
       `,
     })

@@ -337,7 +337,7 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
         <DialogHeader className="pb-4 border-b flex flex-row items-center justify-between gap-4">
           <div>
             <DialogTitle className="text-lg font-black text-gray-900">Staff Profile Detail</DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">Official staff record for Evershine Academy.</DialogDescription>
+            <DialogDescription className="text-xs text-gray-500">Official staff record for TechNova.</DialogDescription>
           </div>
           {!isLoading && teacher && (
             <div className="flex gap-2 flex-shrink-0 flex-wrap">

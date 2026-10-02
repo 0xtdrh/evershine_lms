@@ -83,7 +83,7 @@ export async function PATCH(request: Request) {
         const uploadResult = await new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
             {
-              folder: 'evershine-academy/profile-pictures',
+              folder: 'technova/profile-pictures',
               resource_type: 'auto',
               width: 400,
               height: 400,

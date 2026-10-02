@@ -15,7 +15,7 @@ export async function buildProfitLossReport(
   filters: { campusLabel?: string; year?: number }
 ): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'EverShine Academy'
+  workbook.creator = 'TechNova'
   workbook.lastModifiedBy = 'Account Manager'
   workbook.created = new Date()
 
@@ -32,7 +32,7 @@ export async function buildProfitLossReport(
 
   summarySheet.mergeCells('A1:B1')
   const titleCell = summarySheet.getCell('A1')
-  titleCell.value = 'EverShine Academy — Profit & Loss Analysis'
+  titleCell.value = 'TechNova — Profit & Loss Analysis'
   titleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } }
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } }
   titleCell.alignment = { vertical: 'middle', horizontal: 'center' }

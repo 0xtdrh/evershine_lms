@@ -16,7 +16,7 @@ const AGREEMENT_RULES = [
   'Institution is relieved of responsibility (legal, etc.) in case of any injury, damage or loss, which is beyond its control.',
   'Use of mobile phones and wearing jewelry is strictly prohibited in the campus premises.',
   'Institution will not, in any case, be responsible for any loss suffered by a student.',
-  'It is mandatory for every student to attend the ESA EVENTS.',
+  'It is mandatory for every student to attend the TechNova events.',
   'Registration is mandatory for every student every year.',
   'Decisions of the administration will be final, in any case.',
   'I acknowledge that my enrollment will remain active for the complete academic session unless an official withdrawal application is submitted and approved. If I wish to leave the institute, I must submit the application at least 14 calendar days before the end of the intended final month and clear all outstanding dues.'
@@ -104,7 +104,7 @@ export function RulesAgreementBlocker() {
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-100">Portal Terms &amp; Rules Agreement</h2>
               <p className="text-slate-400 text-sm font-medium mt-1">
-                Evershine Academy Portal First-Time Registration &amp; Policy Verification
+                TechNova Portal First-Time Registration &amp; Policy Verification
               </p>
             </div>
           </div>
@@ -113,7 +113,7 @@ export function RulesAgreementBlocker() {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
           <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 text-sm text-slate-600 font-medium">
-            👋 Welcome to your Evershine Academy student portal! Before accessing your dashboard for the first time, you must review and agree to the institution's official rules and regulations below. Please read and mark each checkbox to acknowledge.
+            👋 Welcome to your TechNova student portal! Before accessing your dashboard for the first time, you must review and agree to the institution's official rules and regulations below. Please read and mark each checkbox to acknowledge.
           </div>
 
           <div className="space-y-3">

@@ -325,7 +325,7 @@ export default function SalariesPage() {
                         <AcademyLogo className="w-14 h-14 shrink-0 text-blue-900" />
                         <div>
                           <h2 className="text-xl font-bold tracking-tight text-slate-950 uppercase">
-                            EverShine Academy
+                            TechNova
                           </h2>
                           <p className="text-[9px] font-sans tracking-widest text-slate-500 font-bold uppercase mt-0.5">
                             Excellence in Education · Payroll Ledger
@@ -428,7 +428,7 @@ export default function SalariesPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-serif italic text-sm text-slate-800 mr-8 select-none">
-                          EverShine Payroll Dep.
+                          TechNova Payroll
                         </p>
                         <div className="border-t border-slate-400 pt-1 text-slate-500 text-center">
                           Authorized Officer Stamp & Signature
@@ -438,7 +438,7 @@ export default function SalariesPage() {
 
                     {/* Verification Footer Disclaimer */}
                     <div className="pt-4 border-t border-slate-200 text-center font-sans text-[8px] text-slate-450 leading-relaxed">
-                      This is a digitally generated, audited payroll disbursement ledger statement representing monthly salary credits. Securely issued under the EverShine LMS Registrar and Finance Act compliance rules.
+                      This is a digitally generated, audited payroll disbursement ledger statement representing monthly salary credits. Securely issued under the TechNova finance records rules.
                     </div>
                   </div>
                 </div>

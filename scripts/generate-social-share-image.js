@@ -22,7 +22,7 @@ const backgroundSvg = `
 </svg>
 `;
 
-const logoPath = path.join(__dirname, '../public/brand/logo-crest.png');
+const logoPath = path.join(__dirname, '../public/brand/bglogo.png');
 const outputPath = path.join(outputDir, 'evershine-social-share.jpg');
 
 async function main() {

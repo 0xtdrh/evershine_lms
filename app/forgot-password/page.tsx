@@ -137,7 +137,7 @@ export default function ForgotPasswordPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@evershineacademy.edu.pk"
+                  placeholder="you@example.com"
                   autoComplete="email"
                   aria-required="true"
                   aria-invalid={!!errors.email}

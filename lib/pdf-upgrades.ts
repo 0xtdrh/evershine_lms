@@ -2,11 +2,11 @@
  * lib/pdf-upgrades.ts
  * Client-side direct PDF generation using jsPDF for Date Sheets and Result Cards.
  *
- * Enforces EverShine Academy branding standards:
- * - Title: EVERSHINE ACADEMY
- * - Slogan: "We Make Your Children More Valuable"
- * - Address: Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony
- * - Contacts: Boys: 0328-4010522, Girls: 0324-8985526
+ * Enforces TechNova branding standards:
+ * - Title: TECHNOVA
+ * - Slogan: STEM · Robotics · Programming
+ * - Address: El Kawthar, Hurghada, Egypt
+ * - Contacts: TechNova · El Kawthar, Hurghada, Egypt
  */
 
 import jsPDF from 'jspdf'
@@ -78,20 +78,20 @@ function drawBrandingHeader(pdf: jsPDF, title: string, subtitle: string, logoUrl
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(16)
   setTextColor(pdf, 30, 58, 138, bw)
-  pdf.text('EVERSHINE ACADEMY', 105, 12, { align: 'center' })
+  pdf.text('TECHNOVA', 105, 12, { align: 'center' })
 
   // Slogan
   pdf.setFont('helvetica', 'italic')
   pdf.setFontSize(8.5)
   setTextColor(pdf, 37, 99, 235, bw) // Student blue
-  pdf.text('"We Make Your Children More Valuable"', 105, 17, { align: 'center' })
+  pdf.text('STEM · Robotics · Programming', 105, 17, { align: 'center' })
 
   // Details
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(7.5)
   setTextColor(pdf, 75, 85, 99, bw)
-  pdf.text('Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony', 105, 22, { align: 'center' })
-  pdf.text('Contact: Boys Campus: 0328-4010522 | Girls Campus: 0324-8985526', 105, 26, { align: 'center' })
+  pdf.text('El Kawthar, Hurghada, Egypt', 105, 22, { align: 'center' })
+  pdf.text('TechNova · El Kawthar, Hurghada, Egypt', 105, 26, { align: 'center' })
 
   // Divider
   setDrawColor(pdf, 30, 58, 138, bw)
@@ -226,7 +226,7 @@ export function generateExamDateSheetPDF(options: DateSheetPDFOptions): jsPDF {
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(7)
   setTextColor(pdf, 107, 114, 128, bw)
-  pdf.text('This date sheet is generated dynamically by EverShine Academy Examination System. Verify at office.', 105, y + 5, { align: 'center' })
+  pdf.text('This date sheet is generated dynamically by TechNova Examination System. Verify at office.', 105, y + 5, { align: 'center' })
 
   return pdf
 }
@@ -430,7 +430,7 @@ export function generateResultCardPDF(options: ResultCardPDFOptions): jsPDF {
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(5)
   setTextColor(pdf, 30, 58, 138, bw)
-  pdf.text('EVERSHINE', 115, 240, { align: 'center' })
+  pdf.text('TECHNOVA', 115, 240, { align: 'center' })
   pdf.text('ACADEMY', 115, 244, { align: 'center' })
 
   // Bottom Footer
@@ -440,7 +440,7 @@ export function generateResultCardPDF(options: ResultCardPDFOptions): jsPDF {
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(7)
   setTextColor(pdf, 107, 114, 128, bw)
-  pdf.text('EverShine Academy Management System © All Rights Reserved. For any corrections, contact the examination controller.', 105, y + 5, { align: 'center' })
+  pdf.text('TechNova Management System © All Rights Reserved. For any corrections, contact the examination controller.', 105, y + 5, { align: 'center' })
 
   return pdf
 }
@@ -534,7 +534,7 @@ export function generateRollNumberSlipPDF(options: RollNumberSlipPDFOptions): js
     pdf.setFont('helvetica', 'bold')
     pdf.setFontSize(7)
     setTextColor(pdf, cNavy.r, cNavy.g, cNavy.b, bw)
-    pdf.text('ESA', logoX + logoW / 2, logoY + logoH / 2 + 2, { align: 'center' })
+    pdf.text('TN', logoX + logoW / 2, logoY + logoH / 2 + 2, { align: 'center' })
   }
 
   // ── Student Passport Photo (right) ───────────────────────────────────────
@@ -573,18 +573,18 @@ export function generateRollNumberSlipPDF(options: RollNumberSlipPDFOptions): js
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(18)
   setTextColor(pdf, cNavy.r, cNavy.g, cNavy.b, bw)
-  pdf.text('EVERSHINE ACADEMY', 105, 14, { align: 'center' })
+  pdf.text('TECHNOVA', 105, 14, { align: 'center' })
 
   pdf.setFont('helvetica', 'italic')
   pdf.setFontSize(7.5)
   setTextColor(pdf, cTeal.r, cTeal.g, cTeal.b, bw)
-  pdf.text('"We Make Your Children More Valuable"', 105, 18, { align: 'center' })
+  pdf.text('STEM · Robotics · Programming', 105, 18, { align: 'center' })
 
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(7)
   setTextColor(pdf, 107, 114, 128, bw)
-  pdf.text('Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony', 105, 21.5, { align: 'center' })
-  pdf.text('Boys: 0328-4010522  |  Girls: 0324-8985526', 105, 24.5, { align: 'center' })
+  pdf.text('El Kawthar, Hurghada, Egypt', 105, 21.5, { align: 'center' })
+  pdf.text('TechNova · El Kawthar, Hurghada, Egypt', 105, 24.5, { align: 'center' })
 
   // Document Title Badge
   setFillColor(pdf, cNavy.r, cNavy.g, cNavy.b, bw)
@@ -804,7 +804,7 @@ export function generateRollNumberSlipPDF(options: RollNumberSlipPDFOptions): js
   pdf.setFont('times', 'bold')
   pdf.setFontSize(6.5)
   setTextColor(pdf, cNavy.r, cNavy.g, cNavy.b, bw)
-  pdf.text('EVERSHINE', sealX, sealY - 4, { align: 'center' })
+  pdf.text('TECHNOVA', sealX, sealY - 4, { align: 'center' })
   pdf.text('ACADEMY', sealX, sealY - 1, { align: 'center' })
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(5.5)
@@ -825,7 +825,7 @@ export function generateRollNumberSlipPDF(options: RollNumberSlipPDFOptions): js
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(7.5)
   setTextColor(pdf, 156, 163, 175, bw)
-  pdf.text('This slip is generated by EverShine Academy LMS. For corrections or re-issuance, contact the Examination Office.', 105, footerY + 4.5, { align: 'center' })
+  pdf.text('This slip is generated by TechNova Management. For corrections or re-issuance, contact the Examination Office.', 105, footerY + 4.5, { align: 'center' })
 
   setFillColor(pdf, cNavy.r, cNavy.g, cNavy.b, bw)
   pdf.rect(0, 292, 210, 5, 'F')

@@ -49,10 +49,10 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   
   return sendEmail({
     to: email,
-    subject: 'Reset your Evershine Academy Password',
+    subject: 'Reset your TechNova Password',
     html: `
       <h2>Password Reset Request</h2>
-      <p>Someone recently requested a password change for your Evershine Academy account.</p>
+      <p>Someone recently requested a password change for your TechNova account.</p>
       <p>If this was you, you can set a new password here:</p>
       <a href="${resetUrl}" style="display:inline-block;padding:10px 20px;background:#1E40AF;color:white;text-decoration:none;border-radius:5px;">Reset Password</a>
       <p>This link will expire in 1 hour.</p>
@@ -68,10 +68,10 @@ export async function sendTeacherWelcomeEmail(email: string, password: string, n
   const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:5000'}/login`
   return sendEmail({
     to: email,
-    subject: 'Welcome to Evershine Academy - Your Teacher Credentials',
+    subject: 'Welcome to TechNova - Your Teacher Credentials',
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-        <h2 style="color: #1e3a8a;">Welcome to Evershine Academy, ${name}!</h2>
+        <h2 style="color: #1e3a8a;">Welcome to TechNova, ${name}!</h2>
         <p>Your official teacher account has been successfully created by the administrator.</p>
         <p style="margin-bottom: 20px;">Use the following credentials to access the portal:</p>
         <div style="background: #f8fafc; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #f1f5f9;">
@@ -80,7 +80,7 @@ export async function sendTeacherWelcomeEmail(email: string, password: string, n
           <p style="margin: 0;"><strong>Temporary Password:</strong> <code>${password}</code></p>
         </div>
         <p style="color: #475569; font-size: 0.9em;">We recommend changing your password under dashboard settings immediately upon login.</p>
-        <p style="margin-top: 30px; font-weight: bold; color: #1e3a8a;">Evershine Academy Administration</p>
+        <p style="margin-top: 30px; font-weight: bold; color: #1e3a8a;">TechNova Administration</p>
       </div>
     `,
   })

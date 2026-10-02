@@ -39,10 +39,10 @@ export async function POST(request: NextRequest) {
       } as never)
     }
 
-    // Student cards use an attendance-only credential. Keep legacy ESA-QR
-    // cards working while preventing arbitrary registration values from being
+    // Student cards use an attendance-only credential. Accept TN-QR (current)
+    // and legacy ESA-QR cards while preventing arbitrary registration values from being
     // submitted to this endpoint.
-    if (!/^esa-qr-/i.test(studentQrCode)) {
+    if (!/^(tn|esa)-qr-/i.test(studentQrCode)) {
       return errors.validation({
         errors: [{ path: ['studentQrCode'], message: 'This QR code is not a student attendance credential' }],
       } as never)

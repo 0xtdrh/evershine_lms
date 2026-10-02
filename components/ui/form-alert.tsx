@@ -1,5 +1,5 @@
 /**
- * FormAlert — EverShine LMS Inline Alert Component
+ * FormAlert — TechNova Management Inline Alert Component
  *
  * Purpose: Render structured, accessible alert banners *within* forms,
  * dialogs, and page sections — distinct from the toast notification system

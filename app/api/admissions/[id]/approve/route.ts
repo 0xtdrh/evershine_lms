@@ -361,7 +361,7 @@ export async function POST(
       await prisma.notification.create({
         data: {
           userId: result.userId,
-          title: '🎉 Welcome to Evershine Academy!',
+          title: '🎉 Welcome to TechNova!',
           message: `Your admission has been approved. Registration No: ${result.registrationNumber}. Log in with your email (${result.email ?? request.guardianEmail ?? 'your registered email'}) and CNIC (without hyphens) as your password. Update your password after first login.`,
           type: 'ADMISSION_APPROVED',
           relatedId: id,

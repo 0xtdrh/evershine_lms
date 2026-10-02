@@ -20,7 +20,7 @@ export async function buildLedgerReport(
   filters: { start?: string; end?: string; category?: string; paymentSource?: string }
 ): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'EverShine Academy'
+  workbook.creator = 'TechNova'
   workbook.lastModifiedBy = 'Account Manager'
   workbook.created = new Date()
 
@@ -43,7 +43,7 @@ export async function buildLedgerReport(
   // Branding Headers
   sheet.mergeCells('A1:H1')
   const titleCell = sheet.getCell('A1')
-  titleCell.value = 'EverShine Academy — Unified Ledger of Expenses'
+  titleCell.value = 'TechNova — Unified Ledger of Expenses'
   titleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } }
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } } // Slate 900
   titleCell.alignment = { vertical: 'middle', horizontal: 'center' }

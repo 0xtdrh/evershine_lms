@@ -259,7 +259,7 @@ export default function DashboardPage() {
               <School className="w-64 h-64" />
             </div>
             <CardContent className="p-8 relative z-10">
-              <h2 className="text-2xl font-bold mb-2">Welcome to Evershaheen Academy!</h2>
+              <h2 className="text-2xl font-bold mb-2">Welcome to TechNova!</h2>
               <p className="text-blue-100 mb-4 max-w-md">
                 We're glad to have you here. This is your central hub for classes, results, and fee management.
               </p>
@@ -354,7 +354,7 @@ export default function DashboardPage() {
                   <div className="flex flex-wrap justify-center sm:justify-start gap-4 mt-4">
                     <div className="bg-white/10 backdrop-blur-md rounded-lg py-1.5 px-3 border border-white/20 text-center sm:text-left">
                       <p className="text-[9px] text-indigo-100 uppercase font-bold tracking-wider">Employee ID</p>
-                      <p className="font-mono font-bold text-sm">{teacherProfile?.employeeId || 'ESA-TCH-...'}</p>
+                      <p className="font-mono font-bold text-sm">{teacherProfile?.employeeId || 'TN-TCH-...'}</p>
                     </div>
                     <div className="bg-white/10 backdrop-blur-md rounded-lg py-1.5 px-3 border border-white/20 text-center sm:text-left">
                       <p className="text-[9px] text-indigo-100 uppercase font-bold tracking-wider">Joining Date</p>

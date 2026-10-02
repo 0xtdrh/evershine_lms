@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * AuthLayout — Unified auth shell for EverShine Academy LMS.
+ * AuthLayout — Unified auth shell for TechNova Management.
  *
  * DESIGN SYSTEM COMPLIANCE:
  * ─────────────────────────
@@ -24,7 +24,6 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Shield, ArrowLeft } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
-import { ArcLineBrand } from '@/components/ArcLineBrand'
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 
@@ -56,7 +55,7 @@ const PAGE = {
   },
 }
 
-const SLOGAN_WORDS = ['We', 'Make', 'Your', 'Children', 'More', 'Valuable']
+const SLOGAN_WORDS = ['STEM', '·', 'Robotics', '·', 'Programming']
 
 // Project-standard easing (from page.tsx fadeUp)
 const EASE = [0, 0, 0.2, 1] as const
@@ -94,8 +93,8 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
           <Link href="/" className="flex items-center gap-3">
             <AcademyLogo variant="compact" className="h-10 w-10" />
             <div>
-              <p className="text-sm font-bold tracking-wide text-slate-800">EverShine Academy</p>
-              <p className="text-xs text-slate-500">Professional LMS</p>
+              <p className="text-sm font-bold tracking-wide text-slate-800">TechNova</p>
+              <p className="text-xs text-slate-500">Management System</p>
             </div>
           </Link>
           <ThemeToggle className="ml-auto" />
@@ -136,7 +135,7 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
                   Official Portal
                 </p>
                 <h2 className="text-lg font-extrabold text-slate-900 tracking-wide uppercase leading-none" style={{ fontFamily: 'var(--font-manrope)' }}>
-                  EverShine Academy
+                  TechNova
                 </h2>
               </div>
 
@@ -144,12 +143,11 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
               <div className="overflow-hidden">
                 <motion.p
                   className="text-sm font-semibold text-slate-500 leading-relaxed"
-                  aria-label="We Make Your Children More Valuable"
+                  aria-label="STEM · Robotics · Programming"
                   initial="initial"
                   animate={ready ? 'animate' : 'initial'}
                   variants={{ initial: {}, animate: { transition: { staggerChildren: 0.07, delayChildren: 0.5 } } }}
                 >
-                  &ldquo;
                   {SLOGAN_WORDS.map((word, i) => (
                     <motion.span
                       key={i}
@@ -162,7 +160,6 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
                       {word}{i < SLOGAN_WORDS.length - 1 ? '\u00a0' : ''}
                     </motion.span>
                   ))}
-                  &rdquo;
                 </motion.p>
               </div>
             </motion.div>
@@ -219,9 +216,9 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
         >
           <Link href="/" className="hover:text-blue-700 transition-colors">Home</Link>
           <span aria-hidden>·</span>
-          <a href="mailto:info@evershaheen.edu.pk" className="hover:text-blue-700 transition-colors">Support</a>
+          <Link href="/forgot-password" className="hover:text-blue-700 transition-colors">Forgot password</Link>
           <span aria-hidden>·</span>
-          <span>Madina Town, Gujranwala</span>
+          <span>El Kawthar, Hurghada</span>
         </motion.div>
 
         {/* ── COPYRIGHT ── */}
@@ -229,11 +226,8 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
           {...fadeUp(1.1)}
           className="text-center text-[10px] text-slate-400 mt-2"
         >
-          © {new Date().getFullYear()} EverShine Academy. All rights reserved.
+          © {new Date().getFullYear()} TechNova. All rights reserved.
         </motion.p>
-        <motion.div {...fadeUp(1.15)} className="text-center mt-1">
-          <ArcLineBrand prefix="Developed by" />
-        </motion.div>
       </motion.div>
     </main>
   )

@@ -180,7 +180,7 @@ export default function MonthlyMonitoringPage() {
     const dateStr = dailyDate
     const sectionName = selectedSection ? `${selectedSection.className} — ${selectedSection.sectionName}` : 'Section'
 
-    let message = `*EVERSHINE ACADEMY*\n`
+    let message = `*TECHNOVA*\n`
     message += `*Daily Academic Monitoring Report*\n`
     message += `----------------------------------\n`
     message += `*Class & Section:* ${sectionName}\n`
@@ -200,7 +200,7 @@ export default function MonthlyMonitoringPage() {
     })
 
     message += `----------------------------------\n`
-    message += `Generated via Evershine Academy LMS.`
+    message += `Generated via TechNova Management.`
 
     const encodedText = encodeURIComponent(message)
     window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank')
@@ -499,7 +499,7 @@ export default function MonthlyMonitoringPage() {
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {[
-              ['Ever Shine Group', 'border-amber-200 bg-amber-50 text-amber-900'],
+              ['Nova Stars Group', 'border-amber-200 bg-amber-50 text-amber-900'],
               ['Quaid Group', 'border-blue-200 bg-blue-50 text-blue-900'],
               ['Iqbal Group', 'border-emerald-200 bg-emerald-50 text-emerald-900'],
               ['Improvement Group', 'border-rose-200 bg-rose-50 text-rose-900'],
@@ -560,7 +560,7 @@ export default function MonthlyMonitoringPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Ever Shine Group">Ever Shine Group</SelectItem>
+                            <SelectItem value="Nova Stars Group">Nova Stars Group</SelectItem>
                             <SelectItem value="Quaid Group">Quaid Group</SelectItem>
                             <SelectItem value="Iqbal Group">Iqbal Group</SelectItem>
                             <SelectItem value="Improvement Group">Improvement Group</SelectItem>

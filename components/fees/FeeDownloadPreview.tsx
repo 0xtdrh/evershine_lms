@@ -97,7 +97,7 @@ export function FeeDownloadPreview({ invoice, variant, elementId }: FeeDownloadP
           <div className="flex items-start gap-4">
             <AcademyLogo className="w-16 h-16" />
             <div>
-              <p className="text-xs uppercase tracking-[0.32em] text-slate-500">EverShine Academy</p>
+              <p className="text-xs uppercase tracking-[0.32em] text-slate-500">TechNova</p>
               <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">{labels.heading}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{labels.subheading}</p>
             </div>

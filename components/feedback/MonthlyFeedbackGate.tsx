@@ -111,7 +111,7 @@ export function MonthlyFeedbackGate({ children }: { children: React.ReactNode })
           <DialogHeader>
             <DialogTitle>Monthly teacher feedback — {data.cycle.label}</DialogTitle>
             <DialogDescription>
-              Evershaheen Academy collects confidential student feedback each month. Please complete
+              TechNova collects confidential student feedback each month. Please complete
               feedback for all assigned teachers before using the portal ({remaining} remaining).
             </DialogDescription>
           </DialogHeader>

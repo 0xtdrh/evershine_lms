@@ -449,7 +449,7 @@ function ResultsTabContent({
             const isDownloading = downloadingId === sessionResult.termResultId
 
             const batchColorClass =
-              sessionResult.performanceBatch === 'Ever Shine'
+              sessionResult.performanceBatch === 'Nova Stars'
                 ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
                 : sessionResult.performanceBatch === 'Quaid'
                 ? 'bg-blue-100 text-blue-800 border-blue-200'

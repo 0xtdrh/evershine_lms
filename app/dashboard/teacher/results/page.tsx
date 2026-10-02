@@ -34,7 +34,7 @@ type ClassSection = { id: string; className: string; sectionName: string }
 type ResultSession = { id: string; name: string; type: string; status: string }
 
 function batchColor(batch: string | null) {
-  if (batch === 'Ever Shine') return 'bg-emerald-100 text-emerald-800'
+  if (batch === 'Nova Stars' || batch === 'Ever Shine') return 'bg-emerald-100 text-emerald-800'
   if (batch === 'Quaid') return 'bg-blue-100 text-blue-800'
   if (batch === 'Iqbal') return 'bg-amber-100 text-amber-800'
   return 'bg-rose-100 text-rose-800'

@@ -62,14 +62,14 @@ type SubjectEntry = {
 }
 
 const PERFORMANCE_BATCH_OPTIONS = [
-  'Ever Shine',
+  'Nova Stars',
   'Quaid',
   'Iqbal',
   'Improvement',
 ] as const
 
 function batchColor(batch: string) {
-  if (batch === 'Ever Shine') return 'bg-emerald-100 text-emerald-800'
+  if (batch === 'Nova Stars' || batch === 'Ever Shine') return 'bg-emerald-100 text-emerald-800'
   if (batch === 'Quaid') return 'bg-blue-100 text-blue-800'
   if (batch === 'Iqbal') return 'bg-amber-100 text-amber-800'
   return 'bg-rose-100 text-rose-800'
@@ -445,7 +445,7 @@ function TeacherResultEntryInner() {
   })()
 
   const autoPerformanceBatch =
-    computedPct >= 90 ? 'Ever Shine'
+    computedPct >= 90 ? 'Nova Stars'
     : computedPct >= 75 ? 'Quaid'
     : computedPct >= 50 ? 'Iqbal'
     : 'Improvement'

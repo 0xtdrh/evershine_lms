@@ -690,8 +690,8 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             {/* Slip Header */}
             <div className="space-y-2 pb-3 border-b-2 border-dashed border-gray-400">
               <div className="text-center">
-                <h2 className="text-sm font-black uppercase tracking-wider text-blue-900">EverShine Academy</h2>
-                <p className="text-[9px] text-gray-500 uppercase tracking-tight">Main Campus, Gujranwala, Pakistan</p>
+                <h2 className="text-sm font-black uppercase tracking-wider text-blue-900">TechNova</h2>
+                <p className="text-[9px] text-gray-500 uppercase tracking-tight">El Kawthar, Hurghada, Egypt</p>
                 <div className="mt-1 inline-block bg-blue-100 border border-blue-300 text-blue-800 text-[8px] font-black px-2 py-0.5 rounded">
                   {copyType}
                 </div>

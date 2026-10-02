@@ -1,5 +1,5 @@
 /**
- * notify.ts — EverShine LMS Centralised Notification Utility
+ * notify.ts — TechNova Management Centralised Notification Utility
  *
  * Single-source-of-truth wrapper around Sonner's `toast` API.
  * Import and call `notify.*` instead of raw `toast.*` throughout the

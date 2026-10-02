@@ -23,7 +23,7 @@ export default function OfflinePage() {
           <div className="relative w-24 h-24 p-2 bg-slate-850 border border-slate-700 rounded-xl flex items-center justify-center">
             <Image
               src="/brand/logo-icon.svg"
-              alt="EverShine Academy Crest"
+              alt="TechNova Crest"
               width={80}
               height={80}
               priority
@@ -32,7 +32,7 @@ export default function OfflinePage() {
           </div>
           <div className="space-y-1">
             <h1 className="text-xl font-black text-white tracking-tight font-heading">
-              EverShine Academy LMS
+              TechNova Management
             </h1>
             <p className="text-indigo-400 font-bold text-xs uppercase tracking-widest">
               Portal Offline
@@ -89,19 +89,19 @@ export default function OfflinePage() {
         {/* Institutional Directory Info */}
         <div className="border-t border-slate-700/50 pt-5 space-y-3 text-slate-400 text-left">
           <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-            Academy Contact Directory
+            Address Directory
           </h3>
           <div className="space-y-2 text-xs font-medium">
             <div className="flex items-start gap-2.5">
               <MapPin className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
               <span className="text-[11px] leading-snug">
-                Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony, Gujranwala
+                El Kawthar, Hurghada, Egypt
               </span>
             </div>
             <div className="flex items-center gap-2.5">
               <Phone className="w-4 h-4 text-indigo-400 shrink-0" />
               <span className="text-[11px] font-mono">
-                Boys: 0328-4010522 · Girls: 0324-8985526
+                TechNova · El Kawthar, Hurghada, Egypt
               </span>
             </div>
           </div>

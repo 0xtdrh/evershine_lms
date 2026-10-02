@@ -1,5 +1,5 @@
 /**
- * GET /api/verify?id=ESA-QR-ESA-2024-0001
+ * GET /api/verify?id=TN-QR-TN-2026-0001
  *
  * Public endpoint — no authentication required.
  * Used by QR code scanning on student ID cards to verify authenticity.

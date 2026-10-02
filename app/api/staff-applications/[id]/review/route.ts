@@ -91,7 +91,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           : application.applicantType === 'ACCOUNTANT' ? 'ACC'
           : 'ADM'
 
-        const employeeId = await nextTeacherEmployeeId(`ESA-${prefix}`)
+        const employeeId = await nextTeacherEmployeeId(`TN-${prefix}`)
 
         try {
           const result = await prisma.$transaction(async (tx) => {

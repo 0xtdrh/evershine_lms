@@ -133,7 +133,7 @@ describe('GET /api/teacher-portal/monthly-monitoring', () => {
       obtainedMarks: 36,
       totalMarks: 40,
       percentage: 90,
-      performanceBatch: 'Ever Shine Group',
+      performanceBatch: 'Nova Stars Group',
       remarks: 'Physics: Excellent work',
     }))
   })

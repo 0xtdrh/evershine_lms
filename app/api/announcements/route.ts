@@ -160,7 +160,7 @@ async function sendAnnouncementEmails({
   const recipients = users.map((u) => u.email).filter(Boolean) as string[]
   if (recipients.length === 0) return
 
-  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? 'Evershaheen Academy'
+  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? 'TechNova'
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '#'
   const audience = targetRole ? targetRole.charAt(0) + targetRole.slice(1).toLowerCase() + 's' : 'All Staff & Students'
 

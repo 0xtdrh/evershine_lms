@@ -387,7 +387,7 @@ export default function CampusesPage() {
           <DialogHeader>
             <DialogTitle className="text-xl font-black text-gray-900 tracking-tight">Add New Campus</DialogTitle>
             <DialogDescription className="text-xs font-medium text-gray-500">
-              Create a new physical branch for Evershaheen Academy.
+              Create a new physical branch for TechNova.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4 py-2">
@@ -426,7 +426,7 @@ export default function CampusesPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-gray-600">Email Address <span className="text-red-500">*</span></Label>
-                <Input type="email" placeholder="boys.campus@evershaheen.edu.pk" className="rounded-xl" {...createForm.register('email')} />
+                <Input type="email" placeholder="branch@technova.com" className="rounded-xl" {...createForm.register('email')} />
                 {createForm.formState.errors.email && (
                   <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.email.message}</p>
                 )}
@@ -518,7 +518,7 @@ export default function CampusesPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-gray-600">Email Address <span className="text-red-500">*</span></Label>
-                    <Input type="email" placeholder="boys.campus@evershaheen.edu.pk" className="rounded-xl" {...editForm.register('email')} />
+                    <Input type="email" placeholder="branch@technova.com" className="rounded-xl" {...editForm.register('email')} />
                     {editForm.formState.errors.email && (
                       <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.email.message}</p>
                     )}

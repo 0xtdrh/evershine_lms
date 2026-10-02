@@ -68,7 +68,7 @@ export type ResultReportCardProps = {
 
 function getPerformanceBatchStyle(batch: string): { bg: string; text: string; border: string } {
   const normBatch = (batch || "").toLowerCase()
-  if (normBatch.includes("ever shine") || normBatch.includes("shine")) {
+  if (normBatch.includes("nova star") || normBatch.includes("ever shine") || normBatch.includes("shine")) {
     return { bg: "bg-[#E6F4EA]", text: "text-[#16835D]", border: "border-[#A3E2C9]" } // Success green
   }
   if (normBatch.includes("quaid")) {
@@ -280,7 +280,7 @@ export function ResultCardHeader({
   sectionLabel: string
   shiftName: string | null
 }) {
-  const displayCampus = campusName ?? 'Madina Town Campus'
+  const displayCampus = campusName ?? 'TechNova Company'
   
   return (
     <div className="bg-[#173B7A] text-white px-6 py-5 rounded-md flex flex-col gap-4 select-none page-break-inside-avoid border border-[#173B7A]">
@@ -290,20 +290,20 @@ export function ResultCardHeader({
           <div className="w-14 h-14 bg-white p-1 rounded-md shrink-0 flex items-center justify-center overflow-hidden">
             <img
               src="/bglogo.png"
-              alt="Evershine Academy Logo"
+              alt="TechNova Logo"
               className="w-full h-full object-contain scale-[1.75]"
               crossOrigin="anonymous"
             />
           </div>
           <div>
             <h1 className="text-xl font-extrabold tracking-tight leading-none mb-1 text-white">
-              {academyName || 'Evershine Academy'}
+              {academyName || 'TechNova'}
             </h1>
             <p className="text-[11px] font-bold text-blue-100 uppercase tracking-wide">
               {displayCampus}
             </p>
             <p className="text-[9px] text-blue-200 mt-0.5 font-medium">
-              Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony
+              El Kawthar, Hurghada, Egypt
             </p>
           </div>
         </div>
@@ -688,7 +688,7 @@ export function ResultCardFooter() {
   return (
     <div className="pt-4 border-t border-[#D9E0E8]/60 flex items-center justify-between text-[9px] text-[#5F6B7A] uppercase tracking-wider select-none font-semibold">
       <p>
-        Official Document of Evershine Academy.
+        Official Document of TechNova.
       </p>
     </div>
   )

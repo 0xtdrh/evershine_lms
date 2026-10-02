@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 
 /**
- * Toaster — EverShine LMS Professional Notification Host
+ * Toaster — TechNova Management Professional Notification Host
  *
  * Drop-in replacement for the default Sonner Toaster.  Provides:
  *   • Semantically-coloured icon badges per notification type

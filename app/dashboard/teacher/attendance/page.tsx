@@ -534,7 +534,7 @@ export default function TeacherAttendancePage() {
                       <div className="rounded-lg bg-white border border-indigo-200 p-3 text-sm text-indigo-800 space-y-1">
                         <p className="font-semibold">📋 Instructions for students:</p>
                         <ol className="list-decimal pl-4 text-xs space-y-0.5">
-                          <li>Open the Evershaheen student app or portal.</li>
+                          <li>Open the TechNova student app or portal.</li>
                           <li>Tap <strong>Scan QR</strong> on the attendance screen.</li>
                           <li>Point your camera at this QR code.</li>
                           <li>Your attendance will be marked automatically.</li>

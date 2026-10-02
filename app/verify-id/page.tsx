@@ -78,7 +78,7 @@ export default function VerifyIDPage() {
         {/* Header */}
         <div className="text-center mb-12 animate-slideInTop">
           <AcademyLogo variant="primary" className="w-24 h-24 mx-auto drop-shadow-lg mb-4 hover:scale-110 transition-transform" />
-          <h1 className="text-4xl font-black text-slate-900 mb-2">EverShine Academy</h1>
+          <h1 className="text-4xl font-black text-slate-900 mb-2">TechNova</h1>
           <p className="text-lg text-slate-600">Student ID Verification Portal</p>
           <p className="text-sm text-slate-500 mt-2">Scan or upload a student QR code to verify identity</p>
         </div>
@@ -288,8 +288,8 @@ export default function VerifyIDPage() {
                 ← Back Home
               </Link>
               <span className="hidden sm:inline">•</span>
-              <a href="mailto:support@evershineacademy.edu.pk" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
-                Need Help?
+              <a href="/login" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+                Staff sign in
               </a>
             </div>
           </CardFooter>

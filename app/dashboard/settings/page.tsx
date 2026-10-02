@@ -1227,7 +1227,7 @@ export default function SettingsPage() {
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   required
-                  placeholder="admin.name@evershaheen.edu"
+                  placeholder="admin.name@technova.com"
                   className="text-xs h-9 bg-white focus-visible:ring-indigo-500 border-gray-200"
                 />
               </div>

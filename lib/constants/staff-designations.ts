@@ -99,10 +99,10 @@ export function getDesignationBadge(designation: string): {
 
 /**
  * Returns the employee ID prefix based on designation category.
- * Teaching staff → ESA-TCH, Support staff → ESA-SUP, Leadership → ESA-ADM
+ * Teaching staff → TN-TCH, Support staff → TN-SUP, Leadership → TN-ADM
  */
 export function getEmployeeIdPrefix(designation: string): string {
-  if (TEACHING_DESIGNATIONS.includes(designation)) return 'ESA-TCH'
-  if (NON_TEACHING_DESIGNATIONS.includes(designation)) return 'ESA-SUP'
-  return 'ESA-ADM'
+  if (TEACHING_DESIGNATIONS.includes(designation)) return 'TN-TCH'
+  if (NON_TEACHING_DESIGNATIONS.includes(designation)) return 'TN-SUP'
+  return 'TN-ADM'
 }

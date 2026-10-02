@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   
   // Instructions sheet
   const instructionRows = [
-    ['EVERSHINE ACADEMY - STAFF ATTENDANCE IMPORT GUIDE'],
+    ['TECHNOVA - STAFF ATTENDANCE IMPORT GUIDE'],
     [''],
     ['1. Do not modify or delete the header columns in the "Template" sheet.'],
     ['2. The "Employee ID" must match the Teacher Code / User ID registered in the LMS.'],

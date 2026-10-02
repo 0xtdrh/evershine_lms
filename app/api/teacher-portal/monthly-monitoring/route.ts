@@ -111,7 +111,7 @@ function calculateMonthlySnapshot(input: unknown, enrollments: Array<{ studentId
   })
   ;[...rows].sort((a, b) => b.percentage - a.percentage || a.name.localeCompare(b.name)).forEach((row, index) => { row.rank = index + 1 })
   return { classSectionId, columns: parsed.data.columns, students: rows, statusCriteria: [
-    { label: 'Ever Shine Group', min: 90, max: 100 },
+    { label: 'Nova Stars Group', min: 90, max: 100 },
     { label: 'Quaid Group', min: 80, max: 89.99 },
     { label: 'Iqbal Group', min: 60, max: 79.99 },
     { label: 'Improvement Group', min: 0, max: 59.99 },
@@ -381,7 +381,7 @@ export async function GET(req: NextRequest) {
       subjects: offerings.map((offering) => ({ id: offering.id, name: offering.subject.name, code: offering.subject.code, maxDailyScore: offering.maxDailyScore })),
       students,
       statusCriteria: [
-        { label: 'Ever Shine Group', min: 90, max: 100 },
+        { label: 'Nova Stars Group', min: 90, max: 100 },
         { label: 'Quaid Group', min: 80, max: 89.99 },
         { label: 'Iqbal Group', min: 60, max: 79.99 },
         { label: 'Improvement Group', min: 0, max: 59.99 },

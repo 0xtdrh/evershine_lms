@@ -36,7 +36,7 @@ describe('monthly monitoring portal mapping', () => {
           totalMarks: 60,
           obtainedMarks: 59,
           percentage: 98.33,
-          performanceBatch: 'Ever Shine Group',
+          performanceBatch: 'Nova Stars Group',
           rank: 1,
         },
       ],

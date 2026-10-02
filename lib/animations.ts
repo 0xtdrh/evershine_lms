@@ -1,7 +1,7 @@
 /**
  * lib/animations.ts
  * ─────────────────
- * Central Framer Motion animation variant library for Evershaheen Academy LMS.
+ * Central Framer Motion animation variant library for TechNova Management.
  *
  * WHY centralised: Prevents animation drift across components and makes
  * duration/easing changes a single-file operation.

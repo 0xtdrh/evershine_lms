@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Home } from 'lucide-react';
 import { AcademyLogo } from '@/components/AcademyLogo';
-import { ArcLineBrand } from '@/components/ArcLineBrand';
 
 export default function NotFound() {
   return (
@@ -72,15 +71,6 @@ export default function NotFound() {
             <Home className="w-4 h-4" />
             Dashboard
           </Link>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="text-center mt-6"
-        >
-          <ArcLineBrand prefix="Built by" />
         </motion.div>
       </div>
     </div>

@@ -26,7 +26,7 @@ function buildMetaRows(reportTitle: string, subtype: string): string[][] {
     year: 'numeric',
   })
   return [
-    ['EVERSHINE ACADEMY — ADMINISTRATIVE REPORT'],
+    ['TECHNOVA — ADMINISTRATIVE REPORT'],
     [`Report: ${reportTitle}`],
     [`Generated: ${date}`],
     [`Report Type: ${subtype.toUpperCase()}`],
@@ -953,7 +953,7 @@ const STUDENT_IMPORT_HEADERS = [
 export function downloadStudentImportTemplate(): void {
   const wb = XLSX.utils.book_new()
   const instructions = [
-    ['EVERSHINE ACADEMY — STUDENT BULK IMPORT TEMPLATE'],
+    ['TECHNOVA — STUDENT BULK IMPORT TEMPLATE'],
     ['Fill one row per student. Do not change column headers in row 3.'],
     ['dateOfBirth: YYYY-MM-DD | gender: MALE or FEMALE | shift: MORNING, EVENING, or NIGHT'],
     ['campusCode/batchCode: match codes in Academic Engine (e.g. EA, MATRIC)'],
@@ -969,9 +969,9 @@ export function downloadStudentImportTemplate(): void {
       'MALE',
       '+923001234567',
       '+923009876543',
-      'Madina Town, Gujranwala',
-      'Gujranwala',
-      'Punjab',
+      'El Kawthar, Hurghada',
+      'Hurghada',
+      'Red Sea',
       'EA',
       'MATRIC',
       'Class 9',
@@ -1046,7 +1046,7 @@ export function downloadStudentImportFailuresExcel(
     headers.map((h) => (h === 'importError' ? f.importError : h === 'importRow' ? f.importRow : f[h] ?? ''))
   )
   const sheet = XLSX.utils.aoa_to_sheet([
-    ['EVERSHINE ACADEMY — FAILED IMPORT ROWS (fix and re-upload)'],
+    ['TECHNOVA — FAILED IMPORT ROWS (fix and re-upload)'],
     [],
     headers,
     ...rows,

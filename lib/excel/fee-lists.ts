@@ -56,7 +56,7 @@ export async function buildPaidListReport(
   month?: string
 ): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'EverShine Academy'
+  workbook.creator = 'TechNova'
   workbook.created = new Date()
 
   const sheet = workbook.addWorksheet('Paid Fees')
@@ -77,7 +77,7 @@ export async function buildPaidListReport(
 
   applyBranding(
     sheet,
-    'EverShine Academy — Paid Fees Report',
+    'TechNova — Paid Fees Report',
     month ? `Month: ${month}` : 'All-Time Paid Invoices',
     sheet.columns.length,
     4
@@ -126,7 +126,7 @@ export async function buildDefaulterListReport(
   students: DefaulterStudent[]
 ): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'EverShine Academy'
+  workbook.creator = 'TechNova'
   workbook.created = new Date()
 
   const sheet = workbook.addWorksheet('Defaulters')
@@ -145,7 +145,7 @@ export async function buildDefaulterListReport(
 
   applyBranding(
     sheet,
-    'EverShine Academy — Fee Defaulters',
+    'TechNova — Fee Defaulters',
     'Students with outstanding dues',
     sheet.columns.length,
     4

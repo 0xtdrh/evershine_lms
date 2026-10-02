@@ -45,9 +45,9 @@ function buildMessage(event: NotificationEvent): { title: string; body: string }
     case 'RESULT_PUBLISHED':
       return { title: 'Result Published', body: "Your child's exam result is now available." }
     case 'BIRTHDAY':
-      return { title: '🎂 Birthday Today', body: "Wishing your child a very happy birthday from Evershaheen Academy!" }
+      return { title: '🎂 Birthday Today', body: "Wishing your child a very happy birthday from TechNova!" }
     case 'ANNOUNCEMENT':
-      return { title: 'New Announcement', body: 'There is a new announcement from Evershaheen Academy.' }
+      return { title: 'New Announcement', body: 'There is a new announcement from TechNova.' }
   }
 }
 

@@ -126,7 +126,7 @@ export function toDailyMonitoringPortalEntry(input: {
 }
 
 export function derivePerformanceGroup(percentage: number): string {
-  if (percentage >= 90) return 'Ever Shine Group'
+  if (percentage >= 90) return 'Nova Stars Group'
   if (percentage >= 80) return 'Quaid Group'
   if (percentage >= 60) return 'Iqbal Group'
   return 'Improvement Group'
@@ -134,7 +134,7 @@ export function derivePerformanceGroup(percentage: number): string {
 
 export function monitoringStatusCriteria() {
   return [
-    { label: 'Ever Shine Group', min: 90, max: 100 },
+    { label: 'Nova Stars Group', min: 90, max: 100 },
     { label: 'Quaid Group', min: 80, max: 89 },
     { label: 'Iqbal Group', min: 60, max: 79 },
     { label: 'Improvement Group', min: 0, max: 59 },

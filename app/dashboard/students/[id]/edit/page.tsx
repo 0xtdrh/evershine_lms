@@ -494,7 +494,7 @@ export default function EditStudentPage() {
         </CardHeader>
         {/* WHY: Show the current auth email explicitly so admins don't confuse
             student.email (contact/profile field) with User.email (login credential).
-            Synthetic login emails (e.g. ESA.2026.0085@students...) are not visible
+            Synthetic login emails (e.g. tn.2026.0085@students...) are not visible
             anywhere else in the UI, causing admins to unknowingly type a new email
             that matches the contact email, which suppresses the auth email update. */}
         {student.user?.email && (

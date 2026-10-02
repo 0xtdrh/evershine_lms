@@ -12,7 +12,7 @@ import { getActiveAcademicYear } from '@/lib/academic/engine'
  * an intentional design — it bridges the legacy `Student.classId` model and the
  * modern ClassSection engine without requiring a full data migration up-front.
  *
- * WHY shift-filtering matters: Evershine runs Morning and Evening sections.
+ * WHY shift-filtering matters: TechNova runs Morning and Evening sections.
  * A Student in Class 9-A Morning must never appear in the Evening teacher's
  * roster. We enforce this at the query level, not just in the UI.
  */

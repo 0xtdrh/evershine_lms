@@ -3,7 +3,7 @@ import { derivePerformanceBatch } from '@/lib/academic/result-utils'
 
 describe('monitoring performance groups', () => {
   it.each([
-    [90, 'Ever Shine Group'],
+    [90, 'Nova Stars Group'],
     [89.99, 'Quaid Group'],
     [80, 'Quaid Group'],
     [79.99, 'Iqbal Group'],

@@ -12,7 +12,7 @@ import { auth } from '@/lib/auth'
 import { errors, successResponse } from '@/lib/api-response'
 
 const VALID_BATCHES = [
-  'Ever Shine',
+  'Nova Stars',
   'Quaid',
   'Iqbal',
   'Improvement',

@@ -205,7 +205,7 @@ export default function DocumentsPage() {
   )
   const [expEndDate, setExpEndDate] = useState('')
   const [expPrincipalName, setExpPrincipalName] = useState('Principal')
-  const [expPrincipalTitle, setExpPrincipalTitle] = useState('Principal, EverShine Academy')
+  const [expPrincipalTitle, setExpPrincipalTitle] = useState('Director, TechNova')
 
   useEffect(() => {
     if (selectedStudent) {
@@ -1397,7 +1397,7 @@ export default function DocumentsPage() {
                             <AcademyLogo className="w-full h-full text-[#1e3a8a]" />
                           </div>
                           <div className="flex flex-col w-[330px]">
-                            <h2 className="text-[24px] font-black tracking-tight text-[#1e3a8a] leading-[1.2] m-0 uppercase whitespace-nowrap">EverShine Academy</h2>
+                            <h2 className="text-[24px] font-black tracking-tight text-[#1e3a8a] leading-[1.2] m-0 uppercase whitespace-nowrap">TechNova</h2>
                             <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#2563eb] leading-[1.2] mt-1 block whitespace-nowrap">Student Identity Card</span>
                           </div>
                         </div>
@@ -1412,7 +1412,7 @@ export default function DocumentsPage() {
                           <div className="flex items-start">
                              <div className="w-[90px] text-[#6b7280] uppercase tracking-wider text-[11px] font-bold leading-[1.2] pt-[2px]">ID No.</div>
                              <div className="text-[#93c5fd] font-normal mr-3 leading-[1.2] pt-[2px]">:</div>
-                             <div className="text-[#0f172a] font-black text-[15px] leading-[1.2] w-[280px] break-words">ESA-{new Date().getFullYear().toString().slice(-2)}-{selectedStudent.registrationNumber.slice(-4)}</div>
+                             <div className="text-[#0f172a] font-black text-[15px] leading-[1.2] w-[280px] break-words">TN-{new Date().getFullYear().toString().slice(-2)}-{selectedStudent.registrationNumber.slice(-4)}</div>
                           </div>
                           <div className="flex items-start">
                              <div className="w-[90px] text-[#6b7280] uppercase tracking-wider text-[11px] font-bold leading-[1.2] pt-[2px]">Class</div>
@@ -1516,14 +1516,14 @@ export default function DocumentsPage() {
                                         <div className="text-[#0f172a] font-black text-[14px] leading-[1.2] w-full block">—</div>
                                     </div>
                                     <div className="block w-[160px]">
-                                        <div className="text-[#9ca3af] uppercase tracking-wider text-[10px] font-bold leading-[1.2] mb-1.5 block">Academy Contact</div>
-                                        <div className="text-[#0f172a] font-black text-[14px] leading-[1.2] w-full block">0328-4010522</div>
+                                        <div className="text-[#9ca3af] uppercase tracking-wider text-[10px] font-bold leading-[1.2] mb-1.5 block">Address</div>
+                                        <div className="text-[#0f172a] font-black text-[14px] leading-[1.2] w-full block">El Kawthar, Hurghada</div>
                                     </div>
                                 </div>
 
                                 <div className="block w-full">
                                     <div className="text-[#9ca3af] uppercase tracking-wider text-[10px] font-bold leading-[1.2] mb-1.5 block">Residential Address</div>
-                                    <div className="text-[#0f172a] font-bold text-[13px] leading-[1.4] w-full break-words block">Moor G.T. Road, Gujranwala</div>
+                                    <div className="text-[#0f172a] font-bold text-[13px] leading-[1.4] w-full break-words block">El Kawthar, Hurghada</div>
                                 </div>
                             </div>
                             
@@ -1535,7 +1535,7 @@ export default function DocumentsPage() {
                                         <div className="text-[11px] uppercase font-black tracking-widest text-[#1e3a8a] leading-[1.2]">Important Notice</div>
                                     </div>
                                     <p className="text-[10px] text-[#4b5563] leading-[1.5] font-medium m-0 p-0 w-full">
-                                        This identity card is the property of <strong className="text-[#1f2937]">EverShine Academy</strong>. It must be carried during academy hours and presented upon request. If found, please return it to the administration office immediately or contact the academy helpline.
+                                        This identity card is the property of <strong className="text-[#1f2937]">TechNova</strong>. It must be carried during academy hours and presented upon request. If found, please return it to the administration office immediately or contact the academy helpline.
                                     </p>
                                 </div>
                             </div>
@@ -1577,10 +1577,10 @@ export default function DocumentsPage() {
                         <AcademyLogo className="w-10 h-10 text-[#1e3a8a]" />
                       </div>
                       <div className="text-center w-full">
-                        <h2 className="text-[#1e3a8a] text-[20px] font-black uppercase tracking-[0.2em] leading-tight">EverShine Academy</h2>
-                        <p className="text-[9px] text-gray-500 uppercase tracking-widest font-black mt-1">We Make Your Children More Valuable</p>
-                        <p className="text-[8px] text-gray-600 font-bold leading-normal mt-0.5 max-w-[300px] mx-auto">Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony</p>
-                        <p className="text-[9px] text-[#1e3a8a] font-black mt-1">📱 Boys: 0328-4010522 · Girls: 0324-8985526</p>
+                        <h2 className="text-[#1e3a8a] text-[20px] font-black uppercase tracking-[0.2em] leading-tight">TechNova</h2>
+                        <p className="text-[9px] text-gray-500 uppercase tracking-widest font-black mt-1">STEM · Robotics · Programming</p>
+                        <p className="text-[8px] text-gray-600 font-bold leading-normal mt-0.5 max-w-[300px] mx-auto">El Kawthar, Hurghada, Egypt</p>
+                        <p className="text-[9px] text-[#1e3a8a] font-black mt-1">TechNova · El Kawthar, Hurghada, Egypt</p>
                       </div>
                     </div>
 
@@ -1620,7 +1620,7 @@ export default function DocumentsPage() {
 
                     {/* Message Body */}
                     <p className="text-[13px] text-gray-700 max-w-lg text-center leading-relaxed mt-6 px-6 font-medium relative z-10">
-                      On this beautiful day, the administration and faculty of EverShine Academy come together to celebrate your life and academic progress. We wish you an abundance of joy, wisdom, sound health, and spectacular future endeavors. Keep shining and climbing high!
+                      On this beautiful day, the administration and faculty of TechNova come together to celebrate your life and academic progress. We wish you an abundance of joy, wisdom, sound health, and spectacular future endeavors. Keep shining and climbing high!
                     </p>
 
                     {/* Date Details */}
@@ -1676,21 +1676,20 @@ export default function DocumentsPage() {
                         <div className="flex items-center gap-4">
                           <AcademyLogo className="w-16 h-16 text-[#1e3a8a] shrink-0" />
                           <div>
-                            <h2 className="text-[24px] font-black uppercase text-[#1e3a8a] leading-none tracking-tight">EVERSHINE ACADEMY</h2>
-                            <p className="text-[9.5px] text-gray-500 uppercase tracking-[0.2em] font-black mt-1.5">We Make Your Children More Valuable</p>
-                            <p className="text-[8.5px] text-gray-600 mt-0.5">Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony</p>
+                            <h2 className="text-[24px] font-black uppercase text-[#1e3a8a] leading-none tracking-tight">TECHNOVA</h2>
+                            <p className="text-[9.5px] text-gray-500 uppercase tracking-[0.2em] font-black mt-1.5">STEM · Robotics · Programming</p>
+                            <p className="text-[8.5px] text-gray-600 mt-0.5">El Kawthar, Hurghada, Egypt</p>
                           </div>
                         </div>
                         <div className="text-right text-[9px] text-gray-500 font-bold space-y-0.5">
-                          <p>📱 Boys: 0328-4010522</p>
-                          <p>📱 Girls: 0324-8985526</p>
+                          <p>📍 El Kawthar, Hurghada</p>
                           <p className="mt-2 text-indigo-600 font-mono">Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                         </div>
                       </div>
 
                       {/* Metadata Serial No */}
                       <div className="w-full flex justify-between items-center mt-4 text-[10px] font-bold text-gray-500">
-                        <span>Ref No: ESA/BON/{selectedStudent.registrationNumber.split('/').pop()}/{new Date().getFullYear()}</span>
+                        <span>Ref No: TN/BON/{selectedStudent.registrationNumber.split('/').pop()}/{new Date().getFullYear()}</span>
                       </div>
 
                       {/* Document Title */}
@@ -1810,11 +1809,11 @@ export default function DocumentsPage() {
                           <AcademyLogo variant="icon" theme="mono-black" className="w-full h-full text-[#1e3a8a]" />
                         </div>
                         <div className="flex-1 text-center">
-                          <h1 className="text-[22px] font-black uppercase tracking-wide text-black leading-tight mb-1">{activeResultCardConfig.academyNameOverride || 'EVERSHINE ACADEMY'}</h1>
+                          <h1 className="text-[22px] font-black uppercase tracking-wide text-black leading-tight mb-1">{activeResultCardConfig.academyNameOverride || 'TECHNOVA'}</h1>
                           <div className="w-72 h-[2px] bg-black mx-auto mb-1" />
-                          <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-gray-600">Pakistan Education System</p>
-                          <p className="text-[8px] text-gray-500 mt-0.5">Madina Town, near Mandiala Warraich Road, Labor Gulshan Colony</p>
-                          <p className="text-[8px] text-gray-500">Boys: 0328-4010522 &nbsp;|&nbsp; Girls: 0324-8985526</p>
+                          <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-gray-600">STEM · Robotics · Programming</p>
+                          <p className="text-[8px] text-gray-500 mt-0.5">El Kawthar, Hurghada, Egypt</p>
+                          <p className="text-[8px] text-gray-500">TechNova · El Kawthar, Hurghada, Egypt</p>
                         </div>
                         <div className="w-20 shrink-0 text-right text-[8px] font-bold text-gray-600">
                           <p>{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
@@ -1961,7 +1960,7 @@ export default function DocumentsPage() {
                           </div>
                         </div>
                         <div className="w-full flex justify-end" style={{ marginTop: '6px', paddingTop: '5px', borderTop: '1px solid #e5e7eb' }}>
-                          <p style={{ fontSize: '6.5px', color: '#9ca3af', textAlign: 'right', lineHeight: '1.4', fontStyle: 'italic' }}>This document is computer-generated by EverShine Academy.</p>
+                          <p style={{ fontSize: '6.5px', color: '#9ca3af', textAlign: 'right', lineHeight: '1.4', fontStyle: 'italic' }}>This document is computer-generated by TechNova.</p>
                         </div>
                       </div>
                     </div>
@@ -2002,14 +2001,13 @@ export default function DocumentsPage() {
                           <div className="flex items-center gap-4">
                             <AcademyLogo className="w-16 h-16 text-[#1e3a8a] shrink-0" />
                             <div>
-                              <h2 className="text-[24px] font-black uppercase text-[#1e3a8a] leading-none tracking-tight">EVERSHINE ACADEMY</h2>
-                              <p className="text-[9.5px] text-gray-500 uppercase tracking-[0.2em] font-black mt-1.5">We Make Your Children More Valuable</p>
-                              <p className="text-[8.5px] text-gray-600 mt-0.5">Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony</p>
+                              <h2 className="text-[24px] font-black uppercase text-[#1e3a8a] leading-none tracking-tight">TECHNOVA</h2>
+                              <p className="text-[9.5px] text-gray-500 uppercase tracking-[0.2em] font-black mt-1.5">STEM · Robotics · Programming</p>
+                              <p className="text-[8.5px] text-gray-600 mt-0.5">El Kawthar, Hurghada, Egypt</p>
                             </div>
                           </div>
                           <div className="text-right text-[9px] text-gray-500 font-bold space-y-0.5">
-                            <p>📱 Boys: 0328-4010522</p>
-                            <p>📱 Girls: 0324-8985526</p>
+                            <p>📍 El Kawthar, Hurghada</p>
                             <p className="mt-2 text-indigo-600 font-mono">Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                           </div>
                         </div>
@@ -2143,20 +2141,19 @@ export default function DocumentsPage() {
                         <div className="flex items-center gap-3">
                           <AcademyLogo className="w-14 h-14 text-[#1e3a8a] shrink-0" />
                           <div>
-                            <h2 className="text-[20px] font-black uppercase text-[#1e3a8a] leading-none tracking-tight">EVERSHINE ACADEMY</h2>
-                            <p className="text-[8.5px] text-gray-500 uppercase tracking-[0.2em] font-black mt-1">We Make Your Children More Valuable</p>
-                            <p className="text-[7.5px] text-gray-600 mt-0.5">Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony</p>
+                            <h2 className="text-[20px] font-black uppercase text-[#1e3a8a] leading-none tracking-tight">TECHNOVA</h2>
+                            <p className="text-[8.5px] text-gray-500 uppercase tracking-[0.2em] font-black mt-1">STEM · Robotics · Programming</p>
+                            <p className="text-[7.5px] text-gray-600 mt-0.5">El Kawthar, Hurghada, Egypt</p>
                           </div>
                         </div>
                         <div className="text-right text-[8px] text-gray-500 font-bold space-y-0.5">
-                          <p>📱 Boys: 0328-4010522</p>
-                          <p>📱 Girls: 0324-8985526</p>
+                          <p>📍 El Kawthar, Hurghada</p>
                         </div>
                       </div>
 
                       {/* Report Category */}
                       <div className="w-full flex justify-between items-center mt-3 text-[9px] font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded border border-gray-200 shadow-sm">
-                        <span>Serial No: <strong className="text-[#1e3a8a] font-black">ESA/REP/{reportSubtype.toUpperCase()}/{new Date().getFullYear()}</strong></span>
+                        <span>Serial No: <strong className="text-[#1e3a8a] font-black">TN/REP/{reportSubtype.toUpperCase()}/{new Date().getFullYear()}</strong></span>
                         <span>Run Date: <strong className="text-gray-800">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</strong></span>
                       </div>
 
@@ -2391,7 +2388,7 @@ export default function DocumentsPage() {
                       {/* Bottom stamp and report provenance */}
                       <div className="w-full flex justify-between items-end mb-4 relative z-10">
                         <div className="text-[8px] text-gray-500 max-w-[200px] leading-relaxed">
-                          <p className="font-black text-gray-600 uppercase tracking-widest mb-0.5 border-b border-gray-300 pb-0.5 inline-block">Evershine Reports Engine</p>
+                          <p className="font-black text-gray-600 uppercase tracking-widest mb-0.5 border-b border-gray-300 pb-0.5 inline-block">TechNova Reports</p>
                           <p>Automated document generated securely from live academic database records. Not valid without official seal.</p>
                         </div>
 
@@ -2428,7 +2425,7 @@ export default function DocumentsPage() {
                         </div>
                         <div className="flex-1 p-8 bg-white flex flex-col">
                           <div className="border-b-2 border-red-100 pb-4 mb-5">
-                            <p className="text-[11px] font-black tracking-[0.2em] text-red-700 uppercase">Evershine Academy</p>
+                            <p className="text-[11px] font-black tracking-[0.2em] text-red-700 uppercase">TechNova</p>
                             <h2 className="text-[27px] font-black text-slate-900 mt-2">{selectedAdministrationUser.name}</h2>
                             <p className="text-[12px] font-bold text-red-800 mt-1">{selectedAdministrationUser.role === 'SUPER_ADMIN' ? 'Super Administrator' : 'Account Manager'}</p>
                           </div>
@@ -2444,7 +2441,7 @@ export default function DocumentsPage() {
                     ) : (
                       <div className="w-[680px] h-[428px] bg-white rounded-[20px] shadow-lg relative border-[3px] border-red-200 overflow-hidden" style={{ fontFamily: 'Arial, sans-serif', color: '#111827', boxSizing: 'border-box' }}>
                         <div className="h-[70px] bg-[#7f1d1d] px-8 flex items-center justify-between text-white">
-                          <div><p className="text-[11px] font-black tracking-[0.2em] uppercase">Property of EverShine Academy</p><p className="text-[10px] text-red-100 mt-1">Official administration directory card</p></div>
+                          <div><p className="text-[11px] font-black tracking-[0.2em] uppercase">Property of TechNova</p><p className="text-[10px] text-red-100 mt-1">Official administration directory card</p></div>
                           <span className="text-[26px] font-black tracking-[0.1em]">{selectedAdministrationUser.role === 'SUPER_ADMIN' ? 'SA' : 'AM'}</span>
                         </div>
                         <div className="p-8 grid grid-cols-2 gap-x-10 gap-y-5 text-[12px]">
@@ -2452,7 +2449,7 @@ export default function DocumentsPage() {
                           <div><p className="text-[9px] uppercase tracking-wider font-black text-red-700">Role</p><p className="font-bold text-slate-900 mt-1">{selectedAdministrationUser.role === 'SUPER_ADMIN' ? 'Super Administrator' : 'Account Manager'}</p></div>
                           <div><p className="text-[9px] uppercase tracking-wider font-black text-red-700">Employee ID</p><p className="font-bold text-slate-900 mt-1">{selectedAdministrationUser.adminProfile?.employeeId || selectedAdministrationUser.accountantProfile?.employeeId || '—'}</p></div>
                           <div><p className="text-[9px] uppercase tracking-wider font-black text-red-700">Campus</p><p className="font-bold text-slate-900 mt-1">{selectedAdministrationUser.adminProfile?.campusName || selectedAdministrationUser.accountantProfile?.campusName || 'All Campuses'}</p></div>
-                          <div className="col-span-2"><p className="text-[9px] uppercase tracking-wider font-black text-red-700">Return instructions</p><p className="font-medium text-slate-700 mt-1 leading-relaxed">This card remains the property of EverShine Academy. If found, return it to the administration office. It must be carried during academy hours.</p></div>
+                          <div className="col-span-2"><p className="text-[9px] uppercase tracking-wider font-black text-red-700">Return instructions</p><p className="font-medium text-slate-700 mt-1 leading-relaxed">This card remains the property of TechNova. If found, return it to the administration office. It must be carried during academy hours.</p></div>
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 h-[48px] border-t border-red-100 px-8 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-500"><span>Card status: {selectedAdministrationUser.isActive ? 'Active' : 'Inactive'}</span><span>Serial: {selectedAdministrationUser.id}</span></div>
                       </div>
@@ -2487,7 +2484,7 @@ export default function DocumentsPage() {
                             <AcademyLogo className="w-full h-full text-[#047857]" />
                           </div>
                           <div className="flex flex-col w-[330px]">
-                            <h2 className="text-[24px] font-black tracking-tight text-[#064e3b] leading-[1.2] m-0 uppercase whitespace-nowrap">EverShine Academy</h2>
+                            <h2 className="text-[24px] font-black tracking-tight text-[#064e3b] leading-[1.2] m-0 uppercase whitespace-nowrap">TechNova</h2>
                             <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#047857] leading-[1.2] mt-1 block whitespace-nowrap">Staff Identity Card</span>
                           </div>
                         </div>
@@ -2586,7 +2583,7 @@ export default function DocumentsPage() {
                             <div className="block w-full pt-2">
                                 <div className="block w-full mb-6">
                                     <div className="text-[#9ca3af] uppercase tracking-wider text-[10px] font-bold leading-[1.2] mb-1.5 block">Campus Allocation</div>
-                                    <div className="text-[#064e3b] font-black text-[15px] leading-[1.2] w-full break-words block">{selectedTeacher.campus?.name ?? 'Madina Town Campus'}</div>
+                                    <div className="text-[#064e3b] font-black text-[15px] leading-[1.2] w-full break-words block">{selectedTeacher.campus?.name ?? 'TechNova Company'}</div>
                                 </div>
                                 
                                 <div className="flex flex-row w-full gap-[30px] mb-6">
@@ -2596,7 +2593,7 @@ export default function DocumentsPage() {
                                     </div>
                                     <div className="block w-[160px]">
                                         <div className="text-[#9ca3af] uppercase tracking-wider text-[10px] font-bold leading-[1.2] mb-1.5 block">Academy HR Contact</div>
-                                        <div className="text-[#064e3b] font-black text-[14px] leading-[1.2] w-full block">0328-4010522</div>
+                                        <div className="text-[#064e3b] font-black text-[14px] leading-[1.2] w-full block">El Kawthar, Hurghada</div>
                                     </div>
                                 </div>
 
@@ -2614,7 +2611,7 @@ export default function DocumentsPage() {
                                         <div className="text-[11px] uppercase font-black tracking-widest text-[#064e3b] leading-[1.2]">Important Notice</div>
                                     </div>
                                     <p className="text-[10px] text-[#4b5563] leading-[1.5] font-medium m-0 p-0 w-full">
-                                        This identity card is the property of <strong className="text-[#064e3b]">EverShine Academy</strong>. It must be worn and visible at all times while on campus. If found by a third party, please return to the administration immediately.
+                                        This identity card is the property of <strong className="text-[#064e3b]">TechNova</strong>. It must be worn and visible at all times while on campus. If found by a third party, please return to the administration immediately.
                                     </p>
                                 </div>
                             </div>
@@ -2650,21 +2647,20 @@ export default function DocumentsPage() {
                         <div className="flex items-center gap-4">
                           <AcademyLogo className="w-16 h-16 text-[#065F46] shrink-0" />
                           <div>
-                            <h2 className="text-[24px] font-black uppercase text-[#065F46] leading-none tracking-tight">EVERSHINE ACADEMY</h2>
-                            <p className="text-[9.5px] text-gray-500 uppercase tracking-[0.2em] font-black mt-1.5">We Make Your Children More Valuable</p>
-                            <p className="text-[8.5px] text-gray-600 mt-0.5">Madina Town near Mandiala Warraich Road, Near Labor Gulshan Colony</p>
+                            <h2 className="text-[24px] font-black uppercase text-[#065F46] leading-none tracking-tight">TECHNOVA</h2>
+                            <p className="text-[9.5px] text-gray-500 uppercase tracking-[0.2em] font-black mt-1.5">STEM · Robotics · Programming</p>
+                            <p className="text-[8.5px] text-gray-600 mt-0.5">El Kawthar, Hurghada, Egypt</p>
                           </div>
                         </div>
                         <div className="text-right text-[9px] text-gray-500 font-bold space-y-0.5">
-                          <p>📱 Boys: 0328-4010522</p>
-                          <p>📱 Girls: 0324-8985526</p>
+                          <p>📍 El Kawthar, Hurghada</p>
                           <p className="mt-2 text-emerald-700 font-mono">Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                         </div>
                       </div>
 
                       {/* Metadata Serial No */}
                       <div className="w-full flex justify-between items-center mt-4 text-[10px] font-bold text-gray-500">
-                        <span>Ref No: ESA/EXP/{selectedTeacher.employeeId}/{new Date().getFullYear()}</span>
+                        <span>Ref No: TN/EXP/{selectedTeacher.employeeId}/{new Date().getFullYear()}</span>
                       </div>
 
                       {/* Document Title */}
@@ -2713,7 +2709,7 @@ export default function DocumentsPage() {
                       {/* Body */}
                       <div className="w-full text-[13px] text-gray-800 space-y-4 leading-relaxed text-left relative z-10 font-medium">
                         <p>
-                          This is to certify that <strong className="font-black text-[#065F46] text-[14px] underline decoration-2 underline-offset-4 decoration-[#065F46]">{selectedTeacher.firstName} {selectedTeacher.lastName}</strong>, holding Employee ID <strong className="font-black text-gray-900">{selectedTeacher.employeeId}</strong>, has served as <strong className="font-black text-gray-900">{selectedTeacher.designation}</strong> in the <strong className="font-black text-gray-900">{selectedTeacher.specialization ?? 'Academic'}</strong> Department at EverShine Academy, {selectedTeacher.campus?.name ?? 'Madina Town Campus'}, since <strong className="font-black text-gray-900">{selectedTeacher.joiningDate ? new Date(selectedTeacher.joiningDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}</strong>
+                          This is to certify that <strong className="font-black text-[#065F46] text-[14px] underline decoration-2 underline-offset-4 decoration-[#065F46]">{selectedTeacher.firstName} {selectedTeacher.lastName}</strong>, holding Employee ID <strong className="font-black text-gray-900">{selectedTeacher.employeeId}</strong>, has served as <strong className="font-black text-gray-900">{selectedTeacher.designation}</strong> in the <strong className="font-black text-gray-900">{selectedTeacher.specialization ?? 'Academic'}</strong> Department at TechNova, {selectedTeacher.campus?.name ?? 'TechNova Company'}, since <strong className="font-black text-gray-900">{selectedTeacher.joiningDate ? new Date(selectedTeacher.joiningDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}</strong>
                           {expEndDate ? ` to ${new Date(expEndDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}` : ' and is currently serving in this role'}.
                         </p>
                         <p>
@@ -2744,7 +2740,7 @@ export default function DocumentsPage() {
                           <div className="w-40 border-b-2 border-gray-400 pb-2 mx-auto mb-2">
                             <span className="font-black text-[13px] text-gray-900 block">HR Administrator</span>
                           </div>
-                          <span className="text-[10px] uppercase font-bold text-gray-600 tracking-widest block">EverShine Academy</span>
+                          <span className="text-[10px] uppercase font-bold text-gray-600 tracking-widest block">TechNova</span>
                         </div>
 
                         {/* Seal / QR placeholder */}
@@ -2792,9 +2788,9 @@ export default function DocumentsPage() {
                           <AcademyLogo variant="icon" theme="mono-black" className="w-full h-full text-[#1e3a8a]" />
                         </div>
                         <div className="flex-1 text-center">
-                          <h1 className="text-[22px] font-black uppercase tracking-wider text-[#1e3a8a] leading-tight mb-1.5">EVERSHINE ACADEMY</h1>
+                          <h1 className="text-[22px] font-black uppercase tracking-wider text-[#1e3a8a] leading-tight mb-1.5">TECHNOVA</h1>
                           <div className="w-64 h-[2px] bg-[#1e3a8a] mx-auto"></div>
-                          <p className="text-[9px] font-bold tracking-widest mt-1.5 uppercase text-gray-600">Pakistan Education System</p>
+                          <p className="text-[9px] font-bold tracking-widest mt-1.5 uppercase text-gray-600">STEM · Robotics · Programming</p>
                           <div className="mt-1.5 text-[12px] font-black uppercase border border-[#1e3a8a] inline-block px-4 py-1 bg-[#eff6ff] text-[#1e3a8a]">Admission / Student Profile</div>
                         </div>
                         <div className="w-24 h-28 shrink-0 border-2 border-[#1e3a8a] p-1 flex items-center justify-center bg-[#eff6ff]">
@@ -2886,7 +2882,7 @@ export default function DocumentsPage() {
                         </div>
                         <div className="px-8 py-4 text-[11.5px] text-justify leading-relaxed font-medium">
                           <p>
-                            I solemnly declare that the information provided is accurate. I agree to abide by the rules, regulations, and disciplinary policies of EverShine Academy. I commit to maintaining regular attendance and paying all dues on time.
+                            I solemnly declare that the information provided is accurate. I agree to abide by the rules, regulations, and disciplinary policies of TechNova. I commit to maintaining regular attendance and paying all dues on time.
                           </p>
                         </div>
                         
@@ -2930,9 +2926,9 @@ export default function DocumentsPage() {
                         </div>
                         <div className="flex-1 text-center">
                           <h1 className="text-[24px] font-black uppercase tracking-wider text-[#065F46] leading-tight border-b-2 border-[#065F46] inline-block pb-1 px-6">
-                            EVERSHINE ACADEMY
+                            TECHNOVA
                           </h1>
-                          <p className="text-[11px] font-bold tracking-widest mt-2 uppercase text-gray-600">Pakistan Education System</p>
+                          <p className="text-[11px] font-bold tracking-widest mt-2 uppercase text-gray-600">STEM · Robotics · Programming</p>
                           <div className="mt-2 text-[14px] font-black uppercase border border-[#065F46] inline-block px-5 py-1 bg-emerald-50 text-[#065F46]">
                             Staff / Faculty Profile
                           </div>
@@ -3031,7 +3027,7 @@ export default function DocumentsPage() {
                         </div>
                         <div className="p-5 py-4 text-[11px] text-justify leading-relaxed font-medium space-y-1">
                           <p>
-                            I declare that the particulars furnished in this profile are true and complete. I shall perform my duties with dedication, maintain confidentiality, and uphold the academic standards of EverShine Academy.
+                            I declare that the particulars furnished in this profile are true and complete. I shall perform my duties with dedication, maintain confidentiality, and uphold the academic standards of TechNova.
                           </p>
                         </div>
                         

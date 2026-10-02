@@ -3,10 +3,10 @@
  * Client-side Excel report downloads for academic upgrades.
  *
  * Implements styling and branding conventions:
- * - Title: EVERSHAHEEN ACADEMY
+ * - Title: TECHNOVA
  * - Slogan: "We Make your Children More Valueable"
- * - Address: Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony
- * - Contacts: Boys: 0328-4010522, Girls: 0324-8985526
+ * - Address: El Kawthar, Hurghada, Egypt
+ * - Contacts: TechNova · El Kawthar, Hurghada, Egypt
  */
 
 import * as XLSX from 'xlsx'
@@ -14,9 +14,9 @@ import * as XLSX from 'xlsx'
 // ─── Branding Block Generator ───────────────────────────────────────────────
 function buildBrandingHeader(title: string, subtitle: string): string[][] {
   return [
-    ['EVERSHAHEEN ACADEMY'],
+    ['TECHNOVA'],
     ['"We Make your Children More Valueable"'],
-    ['Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony (Boys: 0328-4010522 | Girls: 0324-8985526)'],
+    ['El Kawthar, Hurghada, Egypt'],
     [`Report: ${title}`],
     [`Sub-category: ${subtitle}`],
     [`Generated Date: ${new Date().toLocaleDateString('en-GB')}`],

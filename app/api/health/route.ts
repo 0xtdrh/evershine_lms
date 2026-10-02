@@ -56,7 +56,7 @@ export async function GET() {
       success: ok,
       data: {
         status: ok ? 'ok' : 'degraded',
-        app: 'evershine-lms',
+        app: 'technova',
         runtime: 'nodejs',
         nodeEnv: process.env.NODE_ENV ?? 'unknown',
         checks,

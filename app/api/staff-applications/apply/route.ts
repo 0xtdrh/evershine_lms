@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     })
     if (existingTeacher) {
       return errors.badRequest(
-        'A staff member with this CNIC is already registered at Evershaheen Academy.'
+        'A staff member with this CNIC is already registered at TechNova.'
       )
     }
 

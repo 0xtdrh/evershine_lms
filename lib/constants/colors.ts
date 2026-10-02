@@ -1,5 +1,5 @@
 /**
- * EVERSHINE ACADEMY LMS - COLOR PALETTE
+ * TECHNOVA LMS - COLOR PALETTE
  * 
  * Complete color system for the educational platform
  * Based on design philosophy: Professional, trustworthy, accessible

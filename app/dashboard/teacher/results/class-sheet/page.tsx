@@ -264,7 +264,7 @@ function ClassResultSheetInner() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="result-card-academy-name">Academy name on card</Label>
-                <Input id="result-card-academy-name" value={cardConfig.academyNameOverride ?? ''} placeholder="Evershine Academy" onChange={(event) => setCardConfig((current) => ({ ...current, academyNameOverride: event.target.value || null }))} />
+                <Input id="result-card-academy-name" value={cardConfig.academyNameOverride ?? ''} placeholder="TechNova" onChange={(event) => setCardConfig((current) => ({ ...current, academyNameOverride: event.target.value || null }))} />
               </div>
             </div>
             <div>

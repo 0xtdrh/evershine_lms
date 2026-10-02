@@ -83,7 +83,7 @@ export default function FeeDownloadPage({ params }: FeeDownloadPageProps) {
           <div className="flex items-start gap-4">
             <AcademyLogo className="w-16 h-16" />
             <div>
-              <p className="text-xs uppercase tracking-[0.32em] text-slate-500">EverShine Academy</p>
+              <p className="text-xs uppercase tracking-[0.32em] text-slate-500">TechNova</p>
               <h1 className="text-3xl font-bold tracking-tight text-slate-950">Styled Fee Receipt Downloads</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                 View and export the student or teacher fee receipt in a professional A4 print format using clear boxes, borders, and accessible typography.

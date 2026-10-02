@@ -1,7 +1,7 @@
 import { sendEmail } from './email'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://evershineacademy.com'
-const ACADEMY_NAME = 'Evershaheen Academy'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://evershine-lms-technova.vercel.app'
+const ACADEMY_NAME = 'TechNova'
 
 /**
  * Send notification when a new admission request is received
@@ -321,7 +321,7 @@ export async function sendStaffInterviewNotification(
         <li>Two passport-size photographs</li>
       </ul>
       
-      <p style="color: #374151;">Venue: Evershaheen Academy, Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony</p>
+      <p style="color: #374151;">Venue: TechNova, El Kawthar, Hurghada, Egypt</p>
       
       <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
       <p style="font-size: 12px; color: #6b7280; text-align: center;">HR Department, ${ACADEMY_NAME}</p>

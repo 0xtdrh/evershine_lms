@@ -58,11 +58,11 @@ export type MonthlyReportEntry = {
 // ── Performance batch config ──────────────────────────────────────────────────
 
 const BATCH_CONFIG: Record<string, { badge: string; bar: string; glow: string; label: string }> = {
-  'Ever Shine': {
+  'Nova Stars': {
     badge: 'bg-amber-100 text-amber-800 border-amber-300',
     bar: 'bg-amber-400',
     glow: 'from-amber-50 to-white',
-    label: '⭐ Ever Shine',
+    label: '⭐ Nova Stars',
   },
   Quaid: {
     badge: 'bg-blue-100 text-blue-800 border-blue-300',
@@ -86,7 +86,7 @@ const BATCH_CONFIG: Record<string, { badge: string; bar: string; glow: string; l
 
 function getBatchConf(batch: string) {
   return (
-    BATCH_CONFIG[batch] ?? {
+    BATCH_CONFIG[batch === 'Ever Shine' ? 'Nova Stars' : batch] ?? {
       badge: 'bg-slate-100 text-slate-700 border-slate-200',
       bar: 'bg-slate-400',
       glow: 'from-slate-50 to-white',

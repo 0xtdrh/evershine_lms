@@ -143,10 +143,10 @@ export async function generateIDCardDirect(studentData: {
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(5.5)
   setTextColorC(pdf, 255, 255, 255, cm)
-  pdf.text('EVERSHINE', W / 2, 15, { align: 'center' })
+  pdf.text('TECHNOVA', W / 2, 15, { align: 'center' })
   pdf.setFontSize(4)
   pdf.setFont('helvetica', 'normal')
-  pdf.text('MADINA TOWN CAMPUS', W / 2, 19, { align: 'center' })
+  pdf.text('HURGHADA', W / 2, 19, { align: 'center' })
 
   // Avatar circle (centered, overlapping header/body boundary)
   const avatarY = hdrH - 8
@@ -239,7 +239,7 @@ export async function generateIDCardDirect(studentData: {
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(4)
   setTextColorC(pdf, 147, 197, 253, cm)
-  pdf.text('✦ EVERSHINE', W - 3, H - 3.5, { align: 'right' })
+  pdf.text('✦ TECHNOVA', W - 3, H - 3.5, { align: 'right' })
 
   // ── BACK FACE ─────────────────────────────────────────────────────────────
   pdf.addPage([W, H])
@@ -257,7 +257,7 @@ export async function generateIDCardDirect(studentData: {
   pdf.line(5, 12, W - 5, 12)
 
   const policyLines = [
-    'This card is property of Evershine Academy.',
+    'This card is property of TechNova.',
     'Carry at all times on campus premises.',
     'Report loss immediately to administration.',
     'Non-transferable under any circumstances.',
@@ -312,7 +312,7 @@ export async function generateIDCardDirect(studentData: {
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(3.5)
   setTextColorC(pdf, 147, 197, 253, cm)
-  pdf.text('evershineacadmey.com | Boys: 0328-4010522 | Girls: 0324-8985526', W / 2, H - 2, { align: 'center' })
+  pdf.text('TechNova · El Kawthar, Hurghada, Egypt', W / 2, H - 2, { align: 'center' })
 
   return pdf
 }
@@ -343,18 +343,18 @@ export async function generateBirthdayCertificateDirect(certificateData: {
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(12)
   setTextColorC(pdf, 30, 58, 138, certificateData.colorMode)
-  pdf.text('Evershine Academy', 105, 48, { align: 'center' })
+  pdf.text('TechNova', 105, 48, { align: 'center' })
 
   pdf.setFont('helvetica', 'italic')
   pdf.setFontSize(8)
   setTextColorC(pdf, 30, 58, 138, certificateData.colorMode)
-  pdf.text('"We Make Your Children More Valuable"', 105, 54, { align: 'center' })
+  pdf.text('STEM · Robotics · Programming', 105, 54, { align: 'center' })
 
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(7.5)
   setTextColorC(pdf, 30, 58, 138, certificateData.colorMode)
-  pdf.text('Madina Town near Mandiala Warraich Road, Near to Labor Gulshan Colony', 105, 60, { align: 'center' })
-  pdf.text('Boys: 0328-4010522 | Girls: 0324-8985526', 105, 65, { align: 'center' })
+  pdf.text('El Kawthar, Hurghada, Egypt', 105, 60, { align: 'center' })
+  pdf.text('TechNova · El Kawthar, Hurghada, Egypt', 105, 65, { align: 'center' })
 
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(18)
@@ -385,7 +385,7 @@ export async function generateBirthdayCertificateDirect(certificateData: {
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(9)
   setTextColorC(pdf, 0, 0, 0, certificateData.colorMode)
-  pdf.text(certificateData.issuedBy ?? 'Evershine Academy', 120, 272, { align: 'center' })
+  pdf.text(certificateData.issuedBy ?? 'TechNova', 120, 272, { align: 'center' })
 
   return pdf
 }
@@ -669,7 +669,7 @@ export async function generateTeacherProfileDirect(data: {
   setFillColorC(pdf, 255, 255, 255, data.colorMode)
   pdf.rect(0, 0, 210, 297, 'F')
 
-  drawLetterhead(pdf, 'Staff Profile Document', 'Evershine Academy Official HR Record', data.logo, data.colorMode)
+  drawLetterhead(pdf, 'Staff Profile Document', 'TechNova Official HR Record', data.logo, data.colorMode)
 
   // Photo / Placeholder on left, employee main details on right
   if (data.photo) {
@@ -748,7 +748,7 @@ export async function generateTeacherProfileDirect(data: {
   drawSectionTitle('Academic Placement & Assignments', y)
   y += 10
 
-  printRow('Campus Name:', data.campusName || 'Madina Town Campus', 'Academic Batch:', data.batchName || 'Regular', y)
+  printRow('Campus Name:', data.campusName || 'TechNova Company', 'Academic Batch:', data.batchName || 'Regular', y)
   y += 8
 
   // Performance House (optional)
@@ -825,12 +825,12 @@ export async function generateTeacherIDCardDirect(data: TeacherIDCardData): Prom
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(6.5)
   setTextColorC(pdf, 255, 255, 255, data.colorMode)
-  pdf.text('EVERSHINE', leftW / 2, 8, { align: 'center' })
+  pdf.text('TECHNOVA', leftW / 2, 8, { align: 'center' })
   pdf.setFontSize(5.5)
   pdf.text('ACADEMY', leftW / 2, 12, { align: 'center' })
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(4)
-  pdf.text(data.campus ?? 'Madina Town', leftW / 2, 16, { align: 'center' })
+  pdf.text(data.campus ?? 'Hurghada', leftW / 2, 16, { align: 'center' })
 
   // Photo circle
   setFillColorC(pdf, 255, 255, 255, data.colorMode)
@@ -847,7 +847,7 @@ export async function generateTeacherIDCardDirect(data: TeacherIDCardData): Prom
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(4)
   setTextColorC(pdf, 107, 114, 128, data.colorMode)
-  pdf.text('EverShine Academy', leftW / 2, 48, { align: 'center' })
+  pdf.text('TechNova', leftW / 2, 48, { align: 'center' })
 
   // Right info panel
   setDrawColorC(pdf, 226, 232, 240, data.colorMode)
@@ -898,7 +898,7 @@ export async function generateTeacherIDCardDirect(data: TeacherIDCardData): Prom
   pdf.setFontSize(4.5)
   setTextColorC(pdf, 51, 65, 85, data.colorMode)
   const policies = [
-    'Property of EverShine Academy.',
+    'Property of TechNova.',
     'Must be visible at all times on campus.',
     'Report loss to HR within 24 hours.',
     'Non-transferable under any circumstances.',
@@ -934,7 +934,7 @@ export async function generateTeacherIDCardDirect(data: TeacherIDCardData): Prom
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(3.5)
   setTextColorC(pdf, 255, 255, 255, data.colorMode)
-  pdf.text('evershineacadmey.com | Boys: 0328-4010522 | Girls: 0324-8985526', 42, 53, { align: 'center' })
+  pdf.text('TechNova · El Kawthar, Hurghada, Egypt', 42, 53, { align: 'center' })
 
   return pdf
 }
@@ -971,13 +971,13 @@ export async function generateExperienceLetterDirect(data: ExperienceLetterData)
   pdf.rect(0, 0, 210, 4, 'F')
 
   // Letterhead
-  drawLetterhead(pdf, 'EVERSHINE ACADEMY', '"We Make Your Children More Valuable"', data.logo, data.colorMode)
+  drawLetterhead(pdf, 'TECHNOVA', 'STEM · Robotics · Programming', data.logo, data.colorMode)
 
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(8)
   setTextColorC(pdf, 75, 85, 99, data.colorMode)
-  pdf.text('Madina Town near Mandiala Warraich Road, Near Labor Gulshan Colony, Faisalabad', 105, 26, { align: 'center' })
-  pdf.text('Boys: 0328-4010522 | Girls: 0324-8985526', 105, 30, { align: 'center' })
+  pdf.text('El Kawthar, Hurghada, Egypt', 105, 26, { align: 'center' })
+  pdf.text('TechNova · El Kawthar, Hurghada, Egypt', 105, 30, { align: 'center' })
 
   // Emerald divider
   setDrawColorC(pdf, 6, 95, 70, data.colorMode)
@@ -985,7 +985,7 @@ export async function generateExperienceLetterDirect(data: ExperienceLetterData)
   pdf.line(20, 34, 190, 34)
 
   // Ref & date row
-  const refNo = data.referenceNo ?? `ESA/EXP/${data.employeeId}/${new Date(data.issueDate).getFullYear()}`
+  const refNo = data.referenceNo ?? `TN/EXP/${data.employeeId}/${new Date(data.issueDate).getFullYear()}`
   pdf.setFontSize(9)
   setTextColorC(pdf, 75, 85, 99, data.colorMode)
   pdf.text(`Ref No: ${refNo}`, 20, 42)
@@ -1020,7 +1020,7 @@ export async function generateExperienceLetterDirect(data: ExperienceLetterData)
   setTextColorC(pdf, 51, 65, 85, data.colorMode)
 
   let y = 68
-  const para1 = `This is to certify that ${formatPersonName(fullName)}, holding Employee ID ${data.employeeId}, has served as ${data.designation} in the ${data.department} Department at EverShine Academy, Madina Town Campus, ${tenure}.`
+  const para1 = `This is to certify that ${formatPersonName(fullName)}, holding Employee ID ${data.employeeId}, has served as ${data.designation} in the ${data.department} Department at TechNova, TechNova Company, ${tenure}.`
   pdf.text(pdf.splitTextToSize(para1, 170), 20, y)
   y += 26
 
@@ -1069,7 +1069,7 @@ export async function generateExperienceLetterDirect(data: ExperienceLetterData)
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(7)
   setTextColorC(pdf, 107, 114, 128, data.colorMode)
-  pdf.text('EverShine Academy | Madina Town, Gujranwala | Boys: 0328-4010522 | Girls: 0324-8985526', 105, 285, { align: 'center' })
+  pdf.text('TechNova · El Kawthar, Hurghada, Egypt', 105, 285, { align: 'center' })
 
   // Emerald bottom stripe
   setFillColorC(pdf, 6, 95, 70, data.colorMode)
@@ -1186,7 +1186,7 @@ export async function generateAdministrationDirectoryCardDirect(
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(pxFont(11))
   setTextColorC(pdf, 127, 29, 29, cm)
-  pdf.text('EVERSHINE ACADEMY', pxX(260), pxY(49))
+  pdf.text('TECHNOVA', pxX(260), pxY(49))
   pdf.setFontSize(pxFont(12))
   setTextColorC(pdf, 185, 28, 28, cm)
   pdf.text(roleName, pxX(260), pxY(95))
@@ -1220,7 +1220,7 @@ export async function generateAdministrationDirectoryCardDirect(
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(pxFont(11))
   setTextColorC(pdf, 255, 255, 255, cm)
-  pdf.text('PROPERTY OF EVERSHINE ACADEMY', pxX(32), pxY(31))
+  pdf.text('PROPERTY OF TECHNOVA', pxX(32), pxY(31))
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(pxFont(10))
   setTextColorC(pdf, 254, 226, 226, cm)
@@ -1242,7 +1242,7 @@ export async function generateAdministrationDirectoryCardDirect(
   pdf.text('RETURN INSTRUCTIONS', pxX(32), pxY(220))
   setTextColorC(pdf, 55, 65, 81, cm)
   pdf.setFont('helvetica', 'normal')
-  drawFitted('This card remains the property of EverShine Academy. If found, return it to the administration office. It must be carried during academy hours.', 32, 236, 588, 12, 7, 3)
+  drawFitted('This card remains the property of TechNova. If found, return it to the administration office. It must be carried during academy hours.', 32, 236, 588, 12, 7, 3)
   setFillColorC(pdf, 127, 29, 29, cm)
   pdf.rect(0, pxY(380), W, pxY(48), 'F')
   pdf.setFontSize(pxFont(10))

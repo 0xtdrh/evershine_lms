@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-// Canonical session shift values for Evershaheen Academy (09:00–21:00 operating window).
+// Canonical session shift values for TechNova (09:00–21:00 operating window).
 // Morning: 09:00–12:00 | Evening: 15:00–18:00 | Night: 18:00–21:00
 export const sessionShiftSchema = z.enum(['MORNING', 'EVENING', 'NIGHT'], {
   errorMap: () => ({ message: "Shift must be 'MORNING', 'EVENING', or 'NIGHT'" }),

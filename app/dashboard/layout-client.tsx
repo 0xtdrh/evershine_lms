@@ -59,7 +59,6 @@ import {
   Undo2,
 } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
-import { ArcLineBrand } from '@/components/ArcLineBrand'
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { isAcademicEnginePrimary } from '@/lib/academic/config'
@@ -418,9 +417,6 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
               <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
               Sign out
             </button>
-            <div className="text-center pt-1 border-t border-gray-100">
-              <ArcLineBrand prefix="Powered by" />
-            </div>
           </div>
         </motion.aside>
       </AnimatePresence>

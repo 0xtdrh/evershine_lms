@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AuthLayout } from '@/components/auth/AuthLayout'
 import { Lock, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react'
-import { ArcLineBrand } from '@/components/ArcLineBrand'
 
 const loginSchema = z.object({
   // Email, or a parent's phone number (resolved server-side, lib/portal-login.ts)
@@ -241,11 +240,6 @@ export default function LoginPage() {
             'Sign In to Portal'
           )}
         </Button>
-
-        {/* ── Developer Attribution ── */}
-        <div className="text-center pt-1">
-          <ArcLineBrand prefix="This system is built by" />
-        </div>
       </form>
     </AuthLayout>
   )

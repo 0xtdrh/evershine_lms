@@ -5,30 +5,30 @@ import { AcademyLogo } from '@/components/AcademyLogo'
 
 export const metadata: Metadata = {
   title: 'Admissions',
-  description: 'Join Evershine Academy. We are committed to providing top-tier academic excellence, holistic character development, and a state-of-the-art learning environment.',
+  description: 'Join TechNova. We are committed to providing top-tier academic excellence, holistic character development, and a state-of-the-art learning environment.',
   alternates: {
-    canonical: 'https://www.evershineacadmey.com/admissions',
+    canonical: 'https://evershine-lms-technova.vercel.app/admissions',
   },
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://www.evershineacadmey.com/admissions',
-    title: 'Admissions | Evershine Academy',
-    description: 'Join Evershine Academy. We are committed to providing top-tier academic excellence, holistic character development, and a state-of-the-art learning environment.',
+    url: 'https://evershine-lms-technova.vercel.app/admissions',
+    title: 'Admissions | TechNova',
+    description: 'Join TechNova. We are committed to providing top-tier academic excellence, holistic character development, and a state-of-the-art learning environment.',
     images: [
       {
-        url: 'https://www.evershineacadmey.com/assets/images/evershine-social-share.jpg',
+        url: 'https://evershine-lms-technova.vercel.app/assets/images/evershine-social-share.jpg',
         width: 1200,
         height: 630,
-        alt: 'Admissions at Evershine Academy',
+        alt: 'Admissions at TechNova',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Admissions | Evershine Academy',
-    description: 'Join Evershine Academy. We are committed to providing top-tier academic excellence, holistic character development, and a state-of-the-art learning environment.',
-    images: ['https://www.evershineacadmey.com/assets/images/evershine-social-share.jpg'],
+    title: 'Admissions | TechNova',
+    description: 'Join TechNova. We are committed to providing top-tier academic excellence, holistic character development, and a state-of-the-art learning environment.',
+    images: ['https://evershine-lms-technova.vercel.app/assets/images/evershine-social-share.jpg'],
   },
 }
 
@@ -59,7 +59,7 @@ export default function AdmissionsLandingPage() {
               Shape Your Future With Excellence
             </h2>
             <p className="text-lg md:text-xl text-blue-200 max-w-2xl mx-auto leading-relaxed">
-              Join Evershine Academy. We are committed to providing top-tier academic excellence, holistic character development, and a state-of-the-art learning environment.
+              Join TechNova. We are committed to providing top-tier academic excellence, holistic character development, and a state-of-the-art learning environment.
             </p>
             <div className="pt-6">
               <Link href="/admissions/apply" className="inline-flex items-center justify-center bg-white text-blue-900 font-bold px-8 py-4 rounded-full text-lg hover:bg-blue-50 transition-transform hover:scale-105 active:scale-95 shadow-xl gap-2">
@@ -162,7 +162,7 @@ export default function AdmissionsLandingPage() {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-gray-400 py-8 px-6 text-center text-sm">
-        <p>© {new Date().getFullYear()} Evershine Academy. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} TechNova. All rights reserved.</p>
       </footer>
     </div>
   )
