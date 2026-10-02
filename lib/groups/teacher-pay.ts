@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { resolveCycleStart } from './cycle-start'
+import { preDiscountCollected } from '@/lib/discounts/calculate'
 
 export interface TeacherPayBreakdown {
   fixedAmount: number
@@ -76,15 +77,20 @@ export async function computeTeacherGroupPay(
     ? offering!.overridePerSessionAmount != null ? Number(offering!.overridePerSessionAmount) : null
     : teacher?.defaultPerSessionAmount != null ? Number(teacher.defaultPerSessionAmount) : null
 
-  // Percent-of-payment component: sum of what students actually paid this
-  // cycle's invoices for this group.
+  // Percent-of-payment component: what students paid on this cycle's invoices,
+  // valued at the price BEFORE discounts (owner, 2026-10-02: the company bears
+  // discounts, so they never reduce the teacher's share). See preDiscountCollected.
   let percentAmount = 0
   if (percentOfStudentPayment) {
     const invoices = await prisma.feeInvoice.findMany({
       where: { classSectionId, cycleNumber },
-      select: { paidAmount: true },
+      select: { paidAmount: true, subtotal: true, totalAmount: true, status: true },
     })
-    const collected = invoices.reduce((sum, inv) => sum + Number(inv.paidAmount), 0)
+    const collected = invoices.reduce(
+      (sum, inv) =>
+        sum + preDiscountCollected({ paidAmount: Number(inv.paidAmount), subtotal: Number(inv.subtotal), totalAmount: Number(inv.totalAmount), status: inv.status }),
+      0
+    )
     percentAmount = Math.round(collected * (percentOfStudentPayment / 100) * 100) / 100
   }
 

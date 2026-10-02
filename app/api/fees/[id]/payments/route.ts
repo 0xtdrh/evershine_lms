@@ -14,10 +14,11 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, createdResponse } from '@/lib/api-response'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
+import { isActivePaymentMethod } from '@/lib/fees/payment-settings'
 
 const paymentSchema = z.object({
   amount: z.number().positive('Amount must be positive'),
-  paymentMethod: z.enum(['Cash', 'Bank Transfer', 'Online', 'Cheque']),
+  paymentMethod: z.string().trim().min(1, 'Choose a payment method').max(50),
   transactionId: z.string().optional(),
   remarks: z.string().optional(),
 })
@@ -43,6 +44,8 @@ export async function POST(
   if (!parsed.success) return errors.validation(parsed.error)
 
   const { amount, paymentMethod, transactionId, remarks } = parsed.data
+  // The list of methods is managed in Settings > Payments.
+  if (!(await isActivePaymentMethod(paymentMethod))) return errors.badRequest('Unknown payment method. Choose one from the list.')
 
   // Fetch invoice with current state
   const invoice = await prisma.feeInvoice.findUnique({

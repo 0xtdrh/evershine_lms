@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label'
 import { notify } from '@/lib/notify'
 import { Upload, Loader2, FileText, ImageIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { PaymentAccountsList } from '@/components/fees/PaymentAccountsList'
 
 interface FeePaymentDialogProps {
   open: boolean
@@ -107,6 +108,8 @@ export function FeePaymentDialog({ open, onOpenChange, studentId, invoice }: Fee
             </div>
           </div>
         )}
+
+        <PaymentAccountsList className="mb-4" />
 
         <form onSubmit={(e) => { e.preventDefault(); uploadMutation.mutate() }} className="space-y-4">
           <div className="space-y-2">

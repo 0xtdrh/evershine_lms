@@ -173,6 +173,23 @@ export async function POST(
     })
   }
 
+  // Discounts follow the group into its next cycle (each cycle is a new group):
+  // group-wide ones move to the new group; a student's discount for this group
+  // moves with them if they continue, otherwise it ends. Done BEFORE the new
+  // invoices are created so they get the discounts.
+  await prisma.discountAssignment.updateMany({
+    where: { classSectionId: id, studentId: null, status: { in: ['ACTIVE', 'PENDING'] } },
+    data: { classSectionId: newGroup.id },
+  })
+  await prisma.discountAssignment.updateMany({
+    where: { classSectionId: id, studentId: { in: parsed.data.continuingStudentIds }, status: { in: ['ACTIVE', 'PENDING'] } },
+    data: { classSectionId: newGroup.id },
+  })
+  await prisma.discountAssignment.updateMany({
+    where: { classSectionId: id, studentId: { notIn: parsed.data.continuingStudentIds }, status: 'ACTIVE' },
+    data: { status: 'ENDED', endedAt: new Date(), endedById: session.user.id },
+  })
+
   let rollSeed = 1000
   for (const studentId of parsed.data.continuingStudentIds) {
     await prisma.studentEnrollment.create({

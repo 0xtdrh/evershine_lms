@@ -20,6 +20,7 @@ import { StudentPromotionPanel } from '@/components/students/StudentPromotionPan
 import { StudentTimelineCard } from '@/components/students/StudentTimelineCard'
 import { StudentAdminToolbar } from '@/components/students/StudentAdminToolbar'
 import { StudentPortalAccessCard } from '@/components/students/StudentPortalAccessCard'
+import { StudentDiscountsCard } from '@/components/students/StudentDiscountsCard'
 
 interface StudentDetail {
   id: string
@@ -406,6 +407,14 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             studentName={`${student.firstName} ${student.lastName}`}
             guardians={student.guardians ?? []}
             hasStudentAccount={!!student.user}
+          />
+
+          <StudentDiscountsCard
+            studentId={student.id}
+            studentName={`${student.firstName} ${student.lastName}`}
+            groups={(student.enrollments ?? [])
+              .filter((e) => e.status === 'ACTIVE' && e.classSection)
+              .map((e) => ({ id: e.classSection.id, name: `${e.classSection.className} ${e.classSection.sectionName}`.trim() }))}
           />
 
           <StudentCertificatesPanel studentId={student.id} />

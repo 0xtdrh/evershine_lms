@@ -25,6 +25,7 @@ import {
   Wand2,
   Trash2,
   LockKeyhole,
+  Wallet,
 } from 'lucide-react'
 
 const ADMIN_ACTIONS = [
@@ -155,6 +156,13 @@ export default function AdminWorkspacePage() {
         href: '/dashboard/admin/setup',
         icon: Wand2,
         badge: 'Setup',
+      })
+      list.unshift({
+        title: 'Payment settings',
+        description: 'Accounts parents pay to (InstaPay, Vodafone Cash, bank), payment methods, invoice due days.',
+        href: '/dashboard/admin/finance-settings',
+        icon: Wallet,
+        badge: 'Finance',
       })
       list.unshift({
         title: 'Login locks',

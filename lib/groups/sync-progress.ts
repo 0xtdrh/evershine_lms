@@ -28,7 +28,9 @@
 
 import { prisma } from '@/lib/prisma'
 import { sessionsPerCycle as cycleSessionCount } from '@/lib/groups/cycle-rules'
-import { generateChallanNumber } from '@/lib/fees/challan-number'
+import { createWithInvoiceNumber } from '@/lib/fees/challan-number'
+import { invoiceDueDate, paymentAccountsSnapshot } from '@/lib/fees/payment-settings'
+import { computeForInvoice, recordInvoiceDiscounts } from '@/lib/discounts/engine'
 import { resolveCycleStart } from './cycle-start'
 
 export interface SyncResult {
@@ -62,22 +64,37 @@ export async function createCycleInvoice(params: {
   issuedBy: string
   label: string
 }) {
-  const challanNumber = await generateChallanNumber(params.academicYearName)
-  await prisma.feeInvoice.create({
-    data: {
-      challanNumber,
-      studentId: params.studentId,
-      month: params.label,
-      academicYear: params.academicYearName,
-      dueDate: new Date(),
-      subtotal: params.amount,
-      totalAmount: params.amount,
-      status: 'ISSUED',
-      issuedBy: params.issuedBy,
-      classSectionId: params.classSectionId,
-      levelId: params.levelId,
-      cycleNumber: params.cycleNumber,
-    },
+  // Due N days after issue (Settings > Payments; was "due today", which made
+  // every new invoice overdue at once). Payment instructions = current accounts.
+  const [dueDate, bankAccounts] = await Promise.all([invoiceDueDate(), paymentAccountsSnapshot()])
+  await prisma.$transaction(async (tx) => {
+    // Discounts (lib/discounts/engine.ts): assignments + automatic types.
+    const discounts = await computeForInvoice(tx, params.studentId, params.classSectionId, params.amount)
+    const totalAmount = Math.round((params.amount - discounts.total) * 100) / 100
+    const invoice = await createWithInvoiceNumber(
+      (challanNumber) =>
+        tx.feeInvoice.create({
+          data: {
+            challanNumber,
+            studentId: params.studentId,
+            month: params.label,
+            academicYear: params.academicYearName,
+            dueDate,
+            subtotal: params.amount,
+            discount: discounts.total,
+            totalAmount,
+            // A 100% discount leaves nothing to pay.
+            status: totalAmount <= 0 ? 'PAID' : 'ISSUED',
+            bankAccounts,
+            issuedBy: params.issuedBy,
+            classSectionId: params.classSectionId,
+            levelId: params.levelId,
+            cycleNumber: params.cycleNumber,
+          },
+        }),
+      tx
+    )
+    await recordInvoiceDiscounts(tx, invoice.id, params.studentId, discounts, params.issuedBy)
   })
 }
 

@@ -3265,3 +3265,135 @@ model RateLimitHit {
   @@index([key, createdAt])
   @@index([createdAt])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FINANCE SETTINGS + DISCOUNTS (2026-10-02, docs/design-discounts.md)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Small key/value settings edited from the UI (JSON values), e.g.
+/// "finance.invoiceDueDays", "discounts.rules". See lib/settings/app-settings.ts.
+model AppSetting {
+  key         String   @id @db.VarChar(100)
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+/// Where parents send money (shown on invoices and in the parent portal).
+/// kind: INSTAPAY | VODAFONE_CASH | BANK | FAWRY | ONLINE_GATEWAY | OTHER
+/// (ONLINE_GATEWAY is reserved for a future online payment provider).
+model PaymentAccount {
+  id            String   @id @default(cuid())
+  kind          String   @db.VarChar(30)
+  label         String
+  accountName   String?
+  accountNumber String?
+  bankName      String?
+  iban          String?
+  instructions  String?  @db.Text
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/// Methods staff can pick when recording a payment (Cash, InstaPay...).
+/// FeePayment.paymentMethod stores the name (text), so renaming or disabling
+/// a method never changes old payments.
+model PaymentMethod {
+  id        String   @id @default(cuid())
+  name      String   @unique @db.VarChar(50)
+  isActive  Boolean  @default(true)
+  /// Built-in methods the system itself uses (cannot be deleted).
+  isSystem  Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+/// A kind of discount, managed from Discounts > Types.
+model DiscountType {
+  id           String    @id @default(cuid())
+  name         String
+  /// MANUAL | SIBLING | PROMO | OTHER
+  kind         String    @db.VarChar(20)
+  /// PERCENT | FIXED
+  valueType    String    @db.VarChar(10)
+  value        Decimal   @db.Decimal(10, 2)
+  /// Staff may type the value when applying it (up to maxValue).
+  editableValue Boolean  @default(false)
+  maxValue     Decimal?  @db.Decimal(10, 2)
+  /// EVERY_CYCLE | FIRST_CYCLE | ONE_TIME
+  duration     String    @db.VarChar(20)
+  /// Applied by the system without an assignment (siblings, promos for a scope).
+  autoApply    Boolean   @default(false)
+  /// STAFF | MANAGER | STAFF_WITH_APPROVAL
+  approvalMode String    @db.VarChar(25)
+  /// ALL | TRACK | COURSE | LEVEL | GROUP (+ scopeId)
+  scopeType    String    @default("ALL") @db.VarChar(10)
+  scopeId      String?
+  validFrom    DateTime?
+  validTo      DateTime?
+  /// Can be combined with other discounts on the same invoice.
+  stackable    Boolean   @default(true)
+  isActive     Boolean   @default(true)
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignments      DiscountAssignment[]
+  invoiceDiscounts InvoiceDiscount[]
+}
+
+/// A discount given to a student (optionally only in one group or track) or to
+/// a whole group (studentId null + classSectionId).
+model DiscountAssignment {
+  id             String    @id @default(cuid())
+  discountTypeId String
+  studentId      String?
+  classSectionId String?
+  trackId        String?
+  /// Value resolved when applied (the type's value, or what staff typed).
+  value          Decimal   @db.Decimal(10, 2)
+  /// PENDING | ACTIVE | REJECTED | ENDED
+  status         String    @default("ACTIVE") @db.VarChar(10)
+  reason         String?   @db.Text
+  requestedById  String
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectedReason String?   @db.Text
+  endedAt        DateTime?
+  endedById      String?
+  /// Invoices this assignment was applied to (for FIRST_CYCLE / ONE_TIME).
+  timesUsed      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  discountType     DiscountType      @relation(fields: [discountTypeId], references: [id])
+  invoiceDiscounts InvoiceDiscount[]
+
+  @@index([studentId, status])
+  @@index([classSectionId, status])
+  @@index([status])
+}
+
+/// One discount applied to one invoice (FeeInvoice.discount is the total).
+model InvoiceDiscount {
+  id             String   @id @default(cuid())
+  invoiceId      String
+  /// Copied from the invoice: counts "once per student" for group-wide/auto discounts.
+  studentId      String
+  discountTypeId String
+  assignmentId   String?
+  label          String
+  amount         Decimal  @db.Decimal(10, 2)
+  appliedById    String?
+  createdAt      DateTime @default(now())
+
+  discountType DiscountType        @relation(fields: [discountTypeId], references: [id])
+  assignment   DiscountAssignment? @relation(fields: [assignmentId], references: [id])
+
+  @@index([invoiceId])
+  @@index([discountTypeId, createdAt])
+  @@index([studentId, discountTypeId])
+  @@index([assignmentId, studentId])
+}

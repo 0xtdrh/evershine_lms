@@ -7,7 +7,8 @@
  *  - Main branch "TechNova Company" (code TN) and its batch "General"
  *  - The 5 Nova tracks, their courses and levels (from Initial Setup)
  *  - Configuration: Permissions overrides, academic year, shifts,
- *    certificate designs, feedback questions, result-card settings
+ *    certificate designs, feedback questions, result-card settings,
+ *    payment settings, discount types
  * DELETED: every other row in every other table (students, parents,
  *  teachers, staff accounts, groups, attendance, invoices, payments,
  *  salaries, results, certificates, applications, notifications, audit
@@ -25,7 +26,11 @@ import { TRACKS, MAIN_BRANCH } from './initial-setup'
 export const WIPE_CONFIRMATION = 'امسح كل بيانات التجربة'
 
 /** Tables kept completely. */
-const KEEP_ALL = new Set(['_prisma_migrations', 'AcademicYear', 'Shift', 'CertificateTemplate', 'FeedbackQuestion', 'ResultCardConfig', 'RolePermission'])
+const KEEP_ALL = new Set([
+  '_prisma_migrations', 'AcademicYear', 'Shift', 'CertificateTemplate', 'FeedbackQuestion', 'ResultCardConfig', 'RolePermission',
+  // Settings, not data (2026-10-02): payment accounts/methods, app settings, discount types.
+  'AppSetting', 'PaymentAccount', 'PaymentMethod', 'DiscountType',
+])
 
 type Tx = Prisma.TransactionClient | typeof prisma
 

@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma'
 import { updateInvoiceIfUnchanged, catchInvoiceChanged, InvoiceChangedError, refreshGroupAfterPayment } from '@/lib/fees/guarded-payment'
 import { errors, createdResponse } from '@/lib/api-response'
 import { recordPaymentSchema } from '@/lib/validation/accountant-fee'
+import { isActivePaymentMethod } from '@/lib/fees/payment-settings'
 
 export async function POST(
   request: NextRequest,
@@ -35,6 +36,8 @@ export async function POST(
   if (!parsed.success) return errors.validation(parsed.error)
 
   const data = parsed.data
+  // The list of methods is managed in Settings > Payments.
+  if (!(await isActivePaymentMethod(data.paymentMethod))) return errors.badRequest('Unknown payment method. Choose one from the list.')
 
   const existing = await prisma.feeInvoice.findUnique({
     where: { id: invoiceId },

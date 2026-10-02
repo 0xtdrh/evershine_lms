@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  DEFAULT_PAYMENT_DETAILS,
+  accountRows,
   parsePaymentDetails,
   paymentDetailsRowsFromSnapshot,
-  serializePaymentDetails,
 } from '@/lib/fees/payment-details'
 import {
   getCanonicalStudentClassSection,
@@ -32,16 +31,22 @@ describe('canonical document record mapping', () => {
     expect(getCanonicalStudentRollNumber(student)).toBe('A-12')
   })
 
-  it('serializes and parses the complete canonical payment snapshot', () => {
-    const snapshot = serializePaymentDetails(DEFAULT_PAYMENT_DETAILS)
-    const rows = parsePaymentDetails(snapshot)
-    expect(rows).toEqual(expect.arrayContaining([
-      { label: 'Account Title', value: 'Ali Aslam' },
-      { label: 'Easypaisa Account Number', value: '0309-1830726' },
-      { label: 'Meezan Bank IBAN', value: 'PK39MEZN00003011275565' },
-      { label: 'Meezan Bank Branch', value: 'Meezan Digital Centre' },
-    ]))
-    expect(paymentDetailsRowsFromSnapshot(null)).toEqual(rows)
+  it('builds payment rows from a configured account and parses the snapshot back', () => {
+    const rows = accountRows({
+      kind: 'INSTAPAY', label: 'InstaPay', accountName: 'TechNova', accountNumber: '01012345678',
+      bankName: null, iban: null, instructions: 'Send the screenshot after paying',
+    })
+    expect(rows).toEqual([
+      { label: 'InstaPay', value: '01012345678' },
+      { label: 'InstaPay - account name', value: 'TechNova' },
+      { label: 'InstaPay - note', value: 'Send the screenshot after paying' },
+    ])
+    const snapshot = rows.map((r) => `${r.label}: ${r.value}`).join('\n')
+    expect(parsePaymentDetails(snapshot)).toEqual(rows)
+  })
+
+  it('never falls back to a hard-coded bank account when none is configured', () => {
+    expect(paymentDetailsRowsFromSnapshot(null)).toEqual([])
   })
 
   it('creates a two-page administration directory card', async () => {

@@ -1,5 +1,8 @@
 import { Prisma, type PenaltyAssessmentType } from '@prisma/client'
 
+/** Template feature (fine a student for absences). Hidden for now; set true to bring it back. */
+export const STUDENT_ABSENCE_PENALTIES_ENABLED = false
+
 export type PenaltyTransaction = Prisma.TransactionClient
 
 export function calendarMonthBounds(value: Date): { start: Date; end: Date } {
@@ -71,6 +74,9 @@ export async function createStudentAbsenceAssessment(
     }
     return existing
   }
+  // Student absence fines are switched OFF for TechNova (owner, 2026-10-02):
+  // existing ones can still be reversed above, but no new one is created.
+  if (!STUDENT_ABSENCE_PENALTIES_ENABLED) return existing
   if (!policy || Number(policy.absencePenaltyAmount) <= 0) return existing
 
   const absentCount = await tx.enrollmentAttendanceRecord.count({

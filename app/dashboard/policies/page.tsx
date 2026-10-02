@@ -203,7 +203,7 @@ export default function PoliciesPage() {
           Penalty Policies
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Configure attendance rules. Only ABSENT student attendance counts toward the monthly absence limit; PRESENT, LATE, and EXCUSED never do. Qualifying events create a pending assessment for finance review before posting.
+          Configure late-payment and leave rules.
         </p>
       </div>
 
@@ -271,12 +271,7 @@ export default function PoliciesPage() {
                 <div><Label>Penalty value</Label><Input type="number" value={feeForm.penaltyValue} onChange={(e) => setFeeForm({ ...feeForm, penaltyValue: Number(e.target.value) })} /></div>
                 <div><Label>Max penalty cap (optional)</Label><Input value={feeForm.maxPenalty} onChange={(e) => setFeeForm({ ...feeForm, maxPenalty: e.target.value })} placeholder="e.g. 5000" /></div>
                 <div className="border-t border-indigo-100 pt-3 mt-1">
-                  <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2">Student absence rule</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><Label className="text-indigo-700">Allowed ABSENT/Month</Label><Input type="number" min={0} value={feeForm.allowedAbsencesPerMonth} onChange={(e) => setFeeForm({ ...feeForm, allowedAbsencesPerMonth: Number(e.target.value) })} /></div>
-                    <div><Label className="text-indigo-700">Absence penalty (EGP)</Label><Input type="number" min={0} value={feeForm.absencePenaltyAmount} onChange={(e) => setFeeForm({ ...feeForm, absencePenaltyAmount: Number(e.target.value) })} /></div>
-                  </div>
-                  <p className="text-xs text-indigo-500 mt-1.5">The 4th and each later ABSENT record creates one pending assessment. It is not added to an invoice until an authorized finance user posts it.</p>
+                  {/* Student absence fines hidden (owner, 2026-10-02): lib/penalties/assessments.ts STUDENT_ABSENCE_PENALTIES_ENABLED */}
                   <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2 mt-3">Leave reference (no student charge)</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -316,7 +311,6 @@ export default function PoliciesPage() {
                         <TableHead>Late Fee Penalty</TableHead>
                         <TableHead>Leave Allowance</TableHead>
                         <TableHead>Leave Penalty</TableHead>
-                        <TableHead>Absence Rule</TableHead>
                         <TableHead />
                       </TableRow>
                     </TableHeader>
@@ -334,7 +328,6 @@ export default function PoliciesPage() {
                           </TableCell>
                           <TableCell className="text-indigo-700 font-semibold">{p.allowedLeavesPerMonth ?? 1}/mo</TableCell>
                           <TableCell className="text-red-600 font-semibold">EGP {Number(p.leavePenaltyAmount ?? 0).toLocaleString()}</TableCell>
-                          <TableCell className="text-indigo-700 font-semibold">{p.allowedAbsencesPerMonth ?? 3}/mo · EGP {Number(p.absencePenaltyAmount ?? 0).toLocaleString()}</TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline" className="mr-2" onClick={() => {
                               setEditingFeeId(p.id)

@@ -340,6 +340,121 @@ check "certificate verification limited (61st lookup in 10 min)" "$VC" "429"
 check "dangerous run-migration endpoint removed" "$(curl -s -o /dev/null -w '%{http_code}' "$B/api/admin/run-migration?secret=x")" "404"
 check "CV download needs login" "$(curl -s -o /dev/null -w '%{http_code}' "$B/api/staff-applications/x/cv")" "401"
 
+echo "== 16. payment settings"
+FS=$(api GET /api/admin/finance-settings)
+check "default payment methods created (Cash, InstaPay, Vodafone Cash...)" "$(echo "$FS" | jq_ "','.join(m['name'] for m in d['data']['methods'])")" "Cash,InstaPay,Vodafone Cash,Bank Transfer,Fawry,Cheque"
+METHODS=$(echo "$FS" | python -c "import sys,json;d=json.load(sys.stdin)['data'];print(json.dumps([{'id':m['id'],'name':m['name'],'isActive':m['isActive']} for m in d['methods']]))")
+SAVE=$(api PUT /api/admin/finance-settings "{\"finance\":{\"invoiceDueDays\":7},\"accounts\":[{\"kind\":\"INSTAPAY\",\"label\":\"InstaPay\",\"accountNumber\":\"technova@instapay\",\"accountName\":\"TechNova\",\"isActive\":true}],\"methods\":$METHODS}")
+check "payment settings saved" "$(echo "$SAVE" | jq_ "d['success']")" "True"
+NOSYS=$(echo "$METHODS" | python -c "import sys,json;print(json.dumps([m for m in json.load(sys.stdin) if m['name']!='Cash']))")
+check "built-in method (Cash) cannot be removed" "$(api PUT /api/admin/finance-settings "{\"finance\":{\"invoiceDueDays\":7},\"accounts\":[],\"methods\":$NOSYS}" | jq_ "d['success']")" "False"
+check "parents see the configured account" "$(api GET /api/payment-accounts | jq_ "'technova@instapay' in (d['data']['snapshot'] or '')")" "True"
+
+echo "== 17. discounts (every scenario through the real API)"
+NLEVEL=$(M "SELECT l.id FROM Level l JOIN AcademicSubject s ON s.id=l.subjectId WHERE s.code LIKE 'NOVA-%' ORDER BY s.code, l.\`order\` LIMIT 1")
+NTRACK=$(M "SELECT s.trackId FROM Level l JOIN AcademicSubject s ON s.id=l.subjectId WHERE l.id='$NLEVEL'")
+OLEVEL=$(M "SELECT l.id FROM Level l JOIN AcademicSubject s ON s.id=l.subjectId WHERE s.code LIKE 'NOVA-%' AND s.trackId<>'$NTRACK' ORDER BY s.code, l.\`order\` LIMIT 1")
+mkgroup() { api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"batchId\":\"$BATCH\",\"shiftId\":\"$SHIFT\",\"className\":\"$1\",\"sectionName\":\"D\",\"levelId\":\"$2\"}" >/dev/null; M "SELECT id FROM ClassSection WHERE className='$1'"; }
+DG=$(mkgroup "E2E Disc" "$NLEVEL"); DG2=$(mkgroup "E2E Disc Other" "$OLEVEL")
+[ -n "$DG" ] && [ -n "$DG2" ] && ok "two Nova groups created (850 EGP/month)" || bad "groups for discounts"
+api PUT /api/discounts/rules '{"allowStacking":true,"maxTotalPercent":50,"siblingAppliesTo":"SECOND_AND_LATER"}' >/dev/null
+TODAY=$(date +%F); YESTERDAY=$(date -d yesterday +%F); LATER=$(date -d '+30 days' +%F); LASTWEEK=$(date -d '-7 days' +%F)
+mktype() { api POST /api/discount-types "$1" | jq_ "d['data']['id']"; }
+T_MAN=$(mktype '{"name":"Manual","kind":"MANUAL","valueType":"PERCENT","value":10,"editableValue":true,"maxValue":30,"duration":"EVERY_CYCLE","approvalMode":"STAFF","stackable":true}')
+T_SIB=$(mktype '{"name":"Siblings","kind":"SIBLING","valueType":"PERCENT","value":10,"duration":"EVERY_CYCLE","autoApply":true,"approvalMode":"STAFF","stackable":true}')
+T_PROMO=$(mktype "{\"name\":\"Track offer\",\"kind\":\"PROMO\",\"valueType\":\"FIXED\",\"value\":100,\"duration\":\"FIRST_CYCLE\",\"autoApply\":true,\"approvalMode\":\"STAFF\",\"scopeType\":\"TRACK\",\"scopeId\":\"$NTRACK\",\"validFrom\":\"$YESTERDAY\",\"validTo\":\"$LATER\",\"stackable\":true}")
+T_OLD=$(mktype "{\"name\":\"Old offer\",\"kind\":\"PROMO\",\"valueType\":\"FIXED\",\"value\":200,\"duration\":\"EVERY_CYCLE\",\"autoApply\":true,\"approvalMode\":\"STAFF\",\"validFrom\":\"$LASTWEEK\",\"validTo\":\"$YESTERDAY\",\"stackable\":true}")
+T_VIP=$(mktype '{"name":"VIP","kind":"MANUAL","valueType":"PERCENT","value":40,"duration":"EVERY_CYCLE","approvalMode":"MANAGER","stackable":false}')
+T_APPR=$(mktype '{"name":"Needs approval","kind":"OTHER","valueType":"PERCENT","value":20,"duration":"EVERY_CYCLE","approvalMode":"STAFF_WITH_APPROVAL","stackable":true}')
+T_FREE=$(mktype '{"name":"Full scholarship","kind":"MANUAL","valueType":"PERCENT","value":100,"duration":"EVERY_CYCLE","approvalMode":"STAFF","stackable":true}')
+check "a percentage over 100 is refused" "$(api POST /api/discount-types '{"name":"Bad","kind":"MANUAL","valueType":"PERCENT","value":120,"duration":"EVERY_CYCLE","approvalMode":"STAFF"}' | jq_ "d['success']")" "False"
+check "7 discount types created" "$(M "SELECT COUNT(*) FROM DiscountType")" "7"
+mkstu() { api POST /api/students "$(stu "$1" "$2" "$3" "$4")" | jq_ "d['data']['id']"; }
+S1=$(mkstu Sib1 01066660001 Karim 01066660009); S2=$(mkstu Sib2 01066660002 Karim 01066660009); SOLO=$(mkstu Solo 01066660003 '' '')
+inv() { M "SELECT CONCAT(CAST(subtotal AS DOUBLE),'/',CAST(discount AS DOUBLE),'/',CAST(totalAmount AS DOUBLE),'/',status) FROM FeeInvoice WHERE studentId='$1' AND classSectionId='$2' ORDER BY createdAt DESC LIMIT 1"; }
+invid() { M "SELECT id FROM FeeInvoice WHERE studentId='$1' AND classSectionId='$2' ORDER BY createdAt DESC LIMIT 1"; }
+api POST /api/groups/$DG/students "{\"studentId\":\"$S1\"}" >/dev/null
+check "first child: track offer only (first month), no sibling discount yet -> 850-100" "$(inv $S1 $DG)" "850/100/750/ISSUED"
+check "expired offer never applied" "$(M "SELECT COUNT(*) FROM InvoiceDiscount WHERE discountTypeId='$T_OLD'")" "0"
+check "new invoice number TN-INV-YYYY-NNNNN" "$(M "SELECT challanNumber LIKE 'TN-INV-____-_____' FROM FeeInvoice WHERE id='$(invid $S1 $DG)'")" "1"
+check "due 7 days after issue (setting)" "$(M "SELECT DATEDIFF(dueDate, createdAt) FROM FeeInvoice WHERE id='$(invid $S1 $DG)'")" "7"
+check "invoice shows the configured account (not the old template one)" "$(api GET /api/fees/$(invid $S1 $DG) | jq_ "'technova@instapay' in d['data']['bankAccounts'] and 'Ali Aslam' not in d['data']['bankAccounts']")" "True"
+api POST /api/groups/$DG/students "{\"studentId\":\"$S2\"}" >/dev/null
+check "second child: offer 100 + sibling 10% (85), both on the base price" "$(inv $S2 $DG)" "850/185/665/ISSUED"
+check "two discount lines recorded for the second child" "$(M "SELECT COUNT(*) FROM InvoiceDiscount WHERE invoiceId='$(invid $S2 $DG)'")" "2"
+check "invoice page lists the discount breakdown" "$(api GET /api/fees/$(invid $S2 $DG) | jq_ "len(d['data']['discountLines'])")" "2"
+api POST /api/groups/$DG2/students "{\"studentId\":\"$SOLO\"}" >/dev/null
+check "offer limited to another track does not apply" "$(inv $SOLO $DG2)" "850/0/850/ISSUED"
+check "manual value above its maximum (50% > 30%) refused" "$(api POST /api/discounts "{\"discountTypeId\":\"$T_MAN\",\"studentId\":\"$SOLO\",\"value\":50}" | jq_ "d['success']")" "False"
+R=$(api POST /api/discounts "{\"discountTypeId\":\"$T_MAN\",\"studentId\":\"$SOLO\",\"value\":20,\"reason\":\"e2e\"}")
+A_MAN=$(echo "$R" | jq_ "d['data']['assignment']['id']")
+check "manual 20% given (active at once)" "$(echo "$R" | jq_ "d['data']['assignment']['status']")" "ACTIVE"
+check "system ASKS about the current unpaid invoice" "$(echo "$R" | jq_ "len(d['data']['affectedInvoices'])")" "1"
+check "nothing changed before answering" "$(inv $SOLO $DG2)" "850/0/850/ISSUED"
+api POST /api/discounts/$A_MAN/apply "{\"invoiceIds\":[\"$(invid $SOLO $DG2)\"]}" >/dev/null
+check "applied to the current invoice after 'yes'" "$(inv $SOLO $DG2)" "850/170/680/ISSUED"
+R=$(api POST /api/discounts "{\"discountTypeId\":\"$T_VIP\",\"studentId\":\"$SOLO\"}"); A_VIP=$(echo "$R" | jq_ "d['data']['assignment']['id']")
+api POST /api/discounts/$A_VIP/apply "{\"invoiceIds\":[\"$(invid $SOLO $DG2)\"]}" >/dev/null
+check "non-combinable VIP 40% applies alone (better than manual 20%)" "$(inv $SOLO $DG2)" "850/340/510/ISSUED"
+api PUT /api/discounts/rules '{"allowStacking":true,"maxTotalPercent":30,"siblingAppliesTo":"SECOND_AND_LATER"}' >/dev/null
+api POST /api/discounts/$A_VIP/apply "{\"invoiceIds\":[\"$(invid $SOLO $DG2)\"]}" >/dev/null
+check "maximum total 30% from settings caps it (255)" "$(inv $SOLO $DG2)" "850/255/595/ISSUED"
+api PUT /api/discounts/rules '{"allowStacking":false,"maxTotalPercent":50,"siblingAppliesTo":"SECOND_AND_LATER"}' >/dev/null
+R=$(api POST /api/discounts "{\"discountTypeId\":\"$T_MAN\",\"studentId\":\"$S2\",\"value\":5}"); A_S2=$(echo "$R" | jq_ "d['data']['assignment']['id']")
+api POST /api/discounts/$A_S2/apply "{\"invoiceIds\":[\"$(invid $S2 $DG)\"]}" >/dev/null
+check "combining OFF in settings: only the biggest single discount (offer 100)" "$(inv $S2 $DG)" "850/100/750/ISSUED"
+api PUT /api/discounts/rules '{"allowStacking":true,"maxTotalPercent":50,"siblingAppliesTo":"ALL"}' >/dev/null
+api POST /api/discounts/$A_S2/apply "{\"invoiceIds\":[\"$(invid $S2 $DG)\"]}" >/dev/null
+check "combining ON again: offer 100 + sibling 85 + manual 42.5" "$(inv $S2 $DG)" "850/227.5/622.5/ISSUED"
+FIRSTPAID=$(M "SELECT id FROM FeeInvoice WHERE id='$(invid $S1 $DG)'")
+api POST /api/fees/$FIRSTPAID/payments '{"amount":100,"paymentMethod":"Bitcoin"}' >/dev/null
+check "unknown payment method refused" "$(api POST /api/fees/$FIRSTPAID/payments '{"amount":100,"paymentMethod":"Bitcoin"}' | jq_ "d['success']")" "False"
+check "a method from settings (InstaPay) accepted" "$(api POST /api/fees/$FIRSTPAID/payments '{"amount":750,"paymentMethod":"InstaPay"}' | jq_ "d['success']")" "True"
+R=$(api POST /api/discounts "{\"discountTypeId\":\"$T_MAN\",\"studentId\":\"$S1\",\"value\":10}")
+check "a fully paid invoice is not offered for a new discount" "$(echo "$R" | jq_ "len(d['data']['affectedInvoices'])")" "0"
+R=$(api POST /api/discounts "{\"discountTypeId\":\"$T_MAN\",\"classSectionId\":\"$DG\",\"value\":10,\"reason\":\"group offer\"}")
+check "whole-group discount given" "$(echo "$R" | jq_ "d['data']['assignment']['status']")" "ACTIVE"
+LATE=$(mkstu Late 01066660004 '' ''); api POST /api/groups/$DG/students "{\"studentId\":\"$LATE\"}" >/dev/null
+check "student added LATER to the group gets the group discount (+ first-month offer)" "$(inv $LATE $DG)" "850/185/665/ISSUED"
+FREE=$(mkstu Free 01066660005 '' '')
+api POST /api/discounts "{\"discountTypeId\":\"$T_FREE\",\"studentId\":\"$FREE\"}" >/dev/null
+api PUT /api/discounts/rules '{"allowStacking":true,"maxTotalPercent":null,"siblingAppliesTo":"ALL"}' >/dev/null
+api POST /api/groups/$DG2/students "{\"studentId\":\"$FREE\"}" >/dev/null
+check "100% scholarship: nothing to pay, invoice PAID at once" "$(inv $FREE $DG2)" "850/850/0/PAID"
+cat > scripts/e2e/.tmp-sec.ts <<'EOS'
+import { prisma } from '../../lib/prisma'
+import { hash } from '@node-rs/argon2'
+async function main() {
+  await prisma.user.create({ data: { email: 'sec@e2e.local', passwordHash: await hash('E2eSec12345'), role: 'SECRETARY', isActive: true } })
+  await prisma.$disconnect()
+}
+main()
+EOS
+DATABASE_URL="$URL" npx tsx scripts/e2e/.tmp-sec.ts >/dev/null 2>&1; rm -f scripts/e2e/.tmp-sec.ts
+SECJ=$(mktemp); login_jar sec@e2e.local E2eSec12345 "$SECJ" 10.0.0.95
+secapi() { curl -s -b "$SECJ" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+R=$(secapi POST /api/discounts "{\"discountTypeId\":\"$T_APPR\",\"studentId\":\"$SOLO\",\"reason\":\"needs ok\"}")
+A_APPR=$(echo "$R" | jq_ "d['data']['assignment']['id']")
+check "secretary: discount needing approval goes PENDING" "$(echo "$R" | jq_ "d['data']['assignment']['status']")" "PENDING"
+check "every approver gets a notification" "$(M "SELECT COUNT(*) FROM Notification WHERE type='DISCOUNT_REQUEST' AND relatedId='$A_APPR'")" "$(M "SELECT COUNT(*) FROM User WHERE isActive=1 AND role IN ('SUPER_ADMIN','ADMIN','BRANCH_MANAGER')")"
+check "pending discount not applied to invoices yet" "$(M "SELECT COUNT(*) FROM InvoiceDiscount WHERE assignmentId='$A_APPR'")" "0"
+check "secretary cannot approve" "$(secapi PATCH /api/discounts/$A_APPR '{"action":"approve"}' | jq_ "d['success']")" "False"
+check "secretary cannot give a manager-only discount" "$(secapi POST /api/discounts "{\"discountTypeId\":\"$T_VIP\",\"studentId\":\"$SOLO\"}" | jq_ "d['success']")" "False"
+R=$(api PATCH /api/discounts/$A_APPR '{"action":"approve"}')
+check "manager approves" "$(echo "$R" | jq_ "d['data']['assignment']['status']")" "ACTIVE"
+check "after approval the system asks about the unpaid invoice" "$(echo "$R" | jq_ "len(d['data']['affectedInvoices'])")" "1"
+check "requester notified of the approval" "$(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.email='sec@e2e.local' AND n.relatedId='$A_APPR'")" "1"
+check "an approved request cannot be approved twice" "$(api PATCH /api/discounts/$A_APPR '{"action":"approve"}' | jq_ "d['success']")" "False"
+R=$(secapi POST /api/discounts "{\"discountTypeId\":\"$T_APPR\",\"studentId\":\"$S1\"}"); A_REJ=$(echo "$R" | jq_ "d['data']['assignment']['id']")
+check "manager rejects with a reason" "$(api PATCH /api/discounts/$A_REJ '{"action":"reject","reason":"not eligible"}' | jq_ "d['data']['assignment']['status']")" "REJECTED"
+check "stop a discount" "$(api PATCH /api/discounts/$A_MAN '{"action":"end"}' | jq_ "d['data']['assignment']['status']")" "ENDED"
+check "used type is switched off instead of deleted" "$(api DELETE /api/discount-types/$T_PROMO | jq_ "d['data'].get('deactivated')")" "True"
+check "unused type is really deleted" "$(api DELETE /api/discount-types/$T_OLD | jq_ "d['data'].get('deleted')")" "True"
+REP=$(api GET "/api/discounts/report?from=$TODAY&to=$TODAY")
+check "report total = sum of discount lines" "$(echo "$REP" | jq_ "d['data']['total']")" "$(M "SELECT CAST(ROUND(SUM(d.amount),2) AS DOUBLE) FROM InvoiceDiscount d JOIN FeeInvoice f ON f.id=d.invoiceId WHERE f.status<>'CANCELLED'")"
+check "report splits by type" "$(echo "$REP" | jq_ "len(d['data']['byType'])>=4")" "True"
+check "student absence fines switched off" "$(grep -c 'STUDENT_ABSENCE_PENALTIES_ENABLED = false' lib/penalties/assessments.ts)" "1"
+rm -f "$SECJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

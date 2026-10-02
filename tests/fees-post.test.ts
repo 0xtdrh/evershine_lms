@@ -6,7 +6,7 @@ const { mockAuth, mockCheckPermission, mockPrisma, mockTx } = vi.hoisted(() => {
   const mockCheckPermission = vi.fn()
 
   const mockTx = {
-    feeInvoice: { create: vi.fn() },
+    feeInvoice: { create: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     auditLog: { create: vi.fn() },
     student: { update: vi.fn() },
   }
@@ -23,9 +23,9 @@ const { mockAuth, mockCheckPermission, mockPrisma, mockTx } = vi.hoisted(() => {
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 vi.mock('@/lib/rbac', () => ({ checkPermission: mockCheckPermission }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
+vi.mock('@/lib/fees/payment-settings', () => ({ paymentAccountsSnapshot: vi.fn().mockResolvedValue('InstaPay: 01000000000') }))
 
 import { POST } from '../app/api/fees/route'
-import { serializePaymentDetails } from '@/lib/fees/payment-details'
 
 const validPayload = {
   studentId: 'student-1',
@@ -59,7 +59,7 @@ describe('POST /api/fees', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx))
     mockTx.feeInvoice.create.mockResolvedValue({
       id: 'invoice-1',
-      challanNumber: 'CHL/22/2627/JUN',
+      challanNumber: `TN-INV-${new Date().getFullYear()}-00001`,
       studentId: 'student-1',
       totalAmount: 5600,
       items: [],
@@ -68,7 +68,7 @@ describe('POST /api/fees', () => {
     mockTx.student.update.mockResolvedValue({ id: 'student-1' })
   })
 
-  it('creates a SuperAdmin challan and updates student outstanding balance', async () => {
+  it('creates a SuperAdmin invoice (TN-INV number) and updates student outstanding balance', async () => {
     const response = await POST(
       new NextRequest('http://localhost/api/fees', {
         method: 'POST',
@@ -82,14 +82,15 @@ describe('POST /api/fees', () => {
     expect(mockTx.feeInvoice.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          challanNumber: 'CHL/22/2627/JUN',
+          challanNumber: `TN-INV-${new Date().getFullYear()}-00001`,
           studentId: 'student-1',
           subtotal: 6000,
           discount: 500,
           lateFee: 100,
           totalAmount: 5600,
           status: 'ISSUED',
-          bankAccounts: serializePaymentDetails(),
+          // from Settings > Payments, never from the client
+          bankAccounts: 'InstaPay: 01000000000',
         }),
       })
     )
@@ -105,7 +106,7 @@ describe('POST /api/fees', () => {
         data: expect.objectContaining({
           userId: 'admin-1',
           entityType: 'FeeInvoice',
-          changes: { challanNumber: 'CHL/22/2627/JUN', studentId: 'student-1', totalAmount: 5600 },
+          changes: { challanNumber: `TN-INV-${new Date().getFullYear()}-00001`, studentId: 'student-1', totalAmount: 5600 },
         }),
       })
     )

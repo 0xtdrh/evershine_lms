@@ -63,6 +63,11 @@ export type AcademicResource =
   | 'staff_applications'
   | 'account_management'
   | 'waiting_list'
+  // Finance settings + discounts (2026-10-02, docs/design-discounts.md)
+  | 'finance_settings'
+  | 'discount_types'
+  | 'discounts'
+  | 'discount_approvals'
 
 type Resource = AcademicResource
 
@@ -157,6 +162,10 @@ const PERMISSIONS: PermissionMap = {
     staff_applications: ['read', 'approve', 'export'],
     account_management: ['update'],
     waiting_list: ['create', 'read', 'update', 'delete'],
+    finance_settings: ['read', 'update'],
+    discount_types: ['create', 'read', 'update', 'delete'],
+    discounts: ['create', 'read', 'update', 'delete'],
+    discount_approvals: ['read', 'approve'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -199,6 +208,10 @@ const PERMISSIONS: PermissionMap = {
     staff_applications: ['read'],
     account_management: ['update'],
     waiting_list: ['create', 'read', 'update', 'delete'],
+    finance_settings: ['read', 'update'],
+    discount_types: ['create', 'read', 'update', 'delete'],
+    discounts: ['create', 'read', 'update', 'delete'],
+    discount_approvals: ['read', 'approve'],
   },
   TEACHER: {
     students: ['read'],
@@ -242,6 +255,10 @@ const PERMISSIONS: PermissionMap = {
     staff_applications: [],
     account_management: [],
     waiting_list: [],
+    finance_settings: [],
+    discount_types: [],
+    discounts: [],
+    discount_approvals: [],
   },
   STUDENT: {
     students: [],
@@ -284,6 +301,10 @@ const PERMISSIONS: PermissionMap = {
     staff_applications: [],
     account_management: [],
     waiting_list: [],
+    finance_settings: [],
+    discount_types: [],
+    discounts: [],
+    discount_approvals: [],
   },
   PARENT: {
     students: [],
@@ -326,6 +347,10 @@ const PERMISSIONS: PermissionMap = {
     staff_applications: [],
     account_management: [],
     waiting_list: [],
+    finance_settings: [],
+    discount_types: [],
+    discounts: [],
+    discount_approvals: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -370,6 +395,10 @@ const PERMISSIONS: PermissionMap = {
     staff_applications: [],
     account_management: [],
     waiting_list: [],
+    finance_settings: ['read'],
+    discount_types: ['read'],
+    discounts: ['create', 'read'],
+    discount_approvals: [],
   },
   GUARDIAN: {
     students: [],
@@ -412,6 +441,10 @@ const PERMISSIONS: PermissionMap = {
     staff_applications: [],
     account_management: [],
     waiting_list: [],
+    finance_settings: [],
+    discount_types: [],
+    discounts: [],
+    discount_approvals: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -458,6 +491,10 @@ const PERMISSIONS: PermissionMap = {
     staff_applications: [],
     account_management: [],
     waiting_list: ['create', 'read', 'update', 'delete'],
+    finance_settings: [],
+    discount_types: ['read'],
+    discounts: ['create', 'read'],
+    discount_approvals: [],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -505,6 +542,10 @@ const PERMISSIONS: PermissionMap = {
     staff_applications: [],
     account_management: [],
     waiting_list: ['create', 'read', 'update', 'delete'],
+    finance_settings: ['read'],
+    discount_types: ['read'],
+    discounts: ['create', 'read', 'update'],
+    discount_approvals: ['read', 'approve'],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -550,6 +591,10 @@ const PERMISSIONS: PermissionMap = {
     staff_applications: [],
     account_management: [],
     waiting_list: [],
+    finance_settings: [],
+    discount_types: [],
+    discounts: [],
+    discount_approvals: [],
   },
 }
 

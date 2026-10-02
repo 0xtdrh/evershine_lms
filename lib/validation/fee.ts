@@ -52,7 +52,7 @@ export const updateChallanSchema = z.object({
 export const recordPaymentSchema = z.object({
   invoiceId: z.string().min(1, 'Invalid invoice ID'),
   amount: z.number().positive('Payment amount must be positive'),
-  paymentMethod: z.enum(['Cash', 'Bank Transfer', 'Online', 'Cheque']),
+  paymentMethod: z.string().trim().min(1, 'Choose a payment method').max(50), // checked against Settings > Payments
   transactionId: z.string().optional(),
   paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').optional(),
   remarks: z.string().max(500).optional(),

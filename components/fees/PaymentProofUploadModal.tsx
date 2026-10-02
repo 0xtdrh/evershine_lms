@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { notify } from '@/lib/notify'
 import { FileText, ImageIcon, Upload, Loader2 } from 'lucide-react'
+import { PaymentAccountsList } from '@/components/fees/PaymentAccountsList'
 
 export interface FeeInvoiceSummary {
   id: string
@@ -232,6 +233,8 @@ export function PaymentProofUploadModal({
             </div>
           </div>
         </div>
+
+        <PaymentAccountsList className="mb-2" />
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

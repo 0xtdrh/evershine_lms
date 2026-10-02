@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Trash2, Search, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
-import { paymentDetailsRowsFromSnapshot, serializePaymentDetails } from '@/lib/fees/payment-details'
+import { paymentDetailsRowsFromSnapshot } from '@/lib/fees/payment-details'
 
 interface FeeItem {
   description: string
@@ -83,7 +83,13 @@ export default function GenerateChallanPage() {
   const [items, setItems] = useState<FeeItem[]>([{ description: 'Tuition Fee', amount: 0 }])
   const [discount, setDiscount] = useState(0)
   const [lateFee, setLateFee] = useState(0)
-  const [bankAccounts] = useState(() => serializePaymentDetails())
+  // Preview only: the server stores its own snapshot from Settings > Payments.
+  const { data: paymentInfo } = useQuery({
+    queryKey: ['payment-accounts'],
+    queryFn: () => fetchApi<{ snapshot: string | null }>('/api/payment-accounts'),
+    staleTime: 60_000,
+  })
+  const bankAccounts = paymentInfo?.snapshot ?? ''
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 

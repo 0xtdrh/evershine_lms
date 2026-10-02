@@ -26,6 +26,7 @@ import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
 import { PaymentProofUploadModal } from '@/components/fees/PaymentProofUploadModal'
 import { getCanonicalStudentClassSection, type EnrollmentRecord } from '@/lib/academic/record-formatters'
+import { PaymentMethodSelect } from '@/components/fees/PaymentMethodSelect'
 
 interface FeeInvoice {
   id: string
@@ -152,15 +153,7 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
           </div>
           <div className="space-y-1.5">
             <Label>Payment Method</Label>
-            <Select value={method} onValueChange={setMethod}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Cash">Cash</SelectItem>
-                <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                <SelectItem value="Online">Online</SelectItem>
-                <SelectItem value="Cheque">Cheque</SelectItem>
-              </SelectContent>
-            </Select>
+            <PaymentMethodSelect value={method} onValueChange={setMethod} />
           </div>
           {method !== 'Cash' && (
             <div className="space-y-1.5">

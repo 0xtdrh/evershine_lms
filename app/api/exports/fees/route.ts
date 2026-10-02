@@ -14,7 +14,7 @@ import { errors, successResponse } from '@/lib/api-response'
 import type { Role } from '@prisma/client'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { getCanonicalStudentClassSection } from '@/lib/academic/record-formatters'
-import { serializePaymentDetails } from '@/lib/fees/payment-details'
+import { paymentAccountsSnapshot } from '@/lib/fees/payment-settings'
 import { effectivePaidAmount } from '@/lib/fees/reporting'
 
 export async function GET(request: NextRequest) {
@@ -87,6 +87,9 @@ export async function GET(request: NextRequest) {
     },
   })
 
+  // Current payment accounts (Settings > Payments), never an old snapshot.
+  const currentAccounts = await paymentAccountsSnapshot()
+
   // Format into a flat list for tabular export
   const formattedInvoices = invoices.map(inv => {
     const total = Number(inv.totalAmount)
@@ -127,7 +130,7 @@ export async function GET(request: NextRequest) {
       remainingDues: due,
       status: calculatedStatus,
       proofStatus: inv.proofStatus || 'No Proof Uploaded',
-      bankAccounts: inv.bankAccounts || serializePaymentDetails(),
+      bankAccounts: currentAccounts ?? '',
       issuedDate: inv.createdAt,
     }
   })

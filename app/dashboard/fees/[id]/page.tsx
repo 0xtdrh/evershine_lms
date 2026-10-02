@@ -16,6 +16,7 @@ import { ArrowLeft, Printer, Ban, Trash2, DollarSign, Loader2, FileText, CheckCi
 import Link from 'next/link'
 import { notify } from '@/lib/notify'
 import { paymentDetailsRowsFromSnapshot } from '@/lib/fees/payment-details'
+import { PaymentMethodSelect } from '@/components/fees/PaymentMethodSelect'
 
 interface FeeItem {
   id: string
@@ -55,6 +56,7 @@ interface FeeInvoice {
   dueDate: string
   subtotal: string | number
   discount: string | number
+  discountLines?: { label: string; amount: number }[]
   lateFee: string | number
   totalAmount: string | number
   paidAmount: string | number
@@ -756,6 +758,13 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
                   <span className="font-mono">- EGP {discount.toLocaleString()}</span>
                 </div>
               )}
+              {discount > 0 && (invoice.discountLines?.length ?? 0) > 1 && (
+                <div className="pl-2 text-green-700 text-[8px]">
+                  {invoice.discountLines!.map((l) => (
+                    <div key={l.label} className="flex justify-between"><span>· {l.label}</span><span className="font-mono">- {l.amount.toLocaleString()}</span></div>
+                  ))}
+                </div>
+              )}
               {lateFee > 0 && (
                 <div className="flex justify-between text-red-600 text-[9px] font-bold">
                   <span>⚠ Late Fee / Penalty:</span>
@@ -848,15 +857,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             </div>
             <div className="space-y-1.5">
               <Label>Payment Method</Label>
-              <Select value={payMethod} onValueChange={setPayMethod}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Cash">Cash</SelectItem>
-                  <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="Online">Online</SelectItem>
-                  <SelectItem value="Cheque">Cheque</SelectItem>
-                </SelectContent>
-              </Select>
+              <PaymentMethodSelect value={payMethod} onValueChange={setPayMethod} />
             </div>
             {payMethod !== 'Cash' && (
               <div className="space-y-1.5">

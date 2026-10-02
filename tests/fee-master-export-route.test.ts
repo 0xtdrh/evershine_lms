@@ -16,7 +16,7 @@ vi.mock('@/lib/rbac', () => ({ checkPermission: mockCheckPermission }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
 vi.mock('@/lib/academic/engine', () => ({ getActiveAcademicYear: mockGetActiveAcademicYear }))
 vi.mock('@/lib/academic/record-formatters', () => ({ getCanonicalStudentClassSection: mockCanonicalStudentClassSection }))
-vi.mock('@/lib/fees/payment-details', () => ({ serializePaymentDetails: mockSerializePaymentDetails }))
+vi.mock('@/lib/fees/payment-settings', () => ({ paymentAccountsSnapshot: mockSerializePaymentDetails }))
 
 import { GET } from '../app/api/exports/fees/route'
 
@@ -27,7 +27,7 @@ describe('GET /api/exports/fees', () => {
     mockCheckPermission.mockReturnValue(true)
     mockGetActiveAcademicYear.mockResolvedValue(null)
     mockCanonicalStudentClassSection.mockReturnValue('Class 10 - A')
-    mockSerializePaymentDetails.mockReturnValue('academy-payment-details')
+    mockSerializePaymentDetails.mockResolvedValue('academy-payment-details')
     mockPrisma.feeInvoice.findMany.mockResolvedValue([
       {
         challanNumber: 'CHL-1',

@@ -42,7 +42,7 @@ export type UpdateInvoiceStatusInput = z.infer<typeof updateInvoiceStatusSchema>
 
 export const recordPaymentSchema = z.object({
   amount:        z.number().positive('Amount must be greater than zero'),
-  paymentMethod: z.enum(['Cash', 'Bank Transfer', 'Cheque', 'Online']),
+  paymentMethod: z.string().trim().min(1, 'Choose a payment method').max(50), // checked against Settings > Payments
   transactionId: z.string().max(100).optional(),
   remarks:       z.string().max(500).optional(),
   /** ISO datetime string. Defaults to now() if not provided. */

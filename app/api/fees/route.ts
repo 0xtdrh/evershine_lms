@@ -13,7 +13,8 @@ import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse, createdResponse, paginatedResponse } from '@/lib/api-response'
 import { generateChallanSchema, feeQuerySchema } from '@/lib/validation/fee'
-import { serializePaymentDetails } from '@/lib/fees/payment-details'
+import { paymentAccountsSnapshot } from '@/lib/fees/payment-settings'
+import { createWithInvoiceNumber } from '@/lib/fees/challan-number'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import type { Role } from '@prisma/client'
 
@@ -163,17 +164,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const monthCode = month.split(' ')[0].slice(0, 3).toUpperCase()
-    const parts = academicYear.split('-')
-    const yearCode = parts.length === 2 
-      ? `${parts[0].slice(-2)}${parts[1].slice(-2)}` 
-      : academicYear.replace('-', '').slice(2, 6)
-
-    const studentIdentifier = student.rollNumber && student.rollNumber.trim()
-      ? student.rollNumber.trim().replace(/\//g, '-')
-      : student.registrationNumber.replace(/\//g, '-')
-
-    const challanNumber = `CHL/${studentIdentifier}/${yearCode}/${monthCode}`
+    // Payment instructions come from Settings > Payments (server-owned).
+    const bankAccounts = await paymentAccountsSnapshot()
 
     const subtotal = items.reduce((sum, item) => sum + item.amount, 0)
     const totalAmount = subtotal - discount + lateFee
@@ -182,7 +174,7 @@ export async function POST(request: NextRequest) {
     // Default 5s timeout is too short for slower DB operations; 30s ensures completion
     const invoice = await prisma.$transaction(
       async (tx) => {
-        const newInvoice = await tx.feeInvoice.create({
+        const newInvoice = await createWithInvoiceNumber((challanNumber) => tx.feeInvoice.create({
           data: {
             challanNumber,
             studentId,
@@ -196,7 +188,7 @@ export async function POST(request: NextRequest) {
             status: 'ISSUED',
             // Payment instructions are canonical server-owned data. The client
             // may display them, but cannot replace them on a financial record.
-            bankAccounts: serializePaymentDetails(),
+            bankAccounts,
             notes: notes ?? null,
             issuedBy: session.user.id,
             items: {
@@ -207,7 +199,8 @@ export async function POST(request: NextRequest) {
             },
           },
           include: { items: true },
-        })
+        }), tx)
+        const challanNumber = newInvoice.challanNumber
 
         await tx.auditLog.create({
           data: {
@@ -232,7 +225,7 @@ export async function POST(request: NextRequest) {
       { timeout: 30000 }
     )
 
-    return createdResponse(invoice, `Challan ${challanNumber} generated successfully`)
+    return createdResponse(invoice, `Invoice ${invoice.challanNumber} generated successfully`)
   } catch (error: any) {
     console.error('[GENERATE_CHALLAN_ERROR]', error)
     if (error.code === 'P2002') {

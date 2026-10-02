@@ -19,6 +19,7 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, createdResponse } from '@/lib/api-response'
 import { recordPaymentSchema } from '@/lib/validation/fee'
 import type { Role, InvoiceStatus } from '@prisma/client'
+import { isActivePaymentMethod } from '@/lib/fees/payment-settings'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -38,6 +39,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!parsed.success) return errors.validation(parsed.error)
 
   const { amount, paymentMethod, transactionId, paymentDate, remarks } = parsed.data
+  // The list of methods is managed in Settings > Payments.
+  if (!(await isActivePaymentMethod(paymentMethod))) return errors.badRequest('Unknown payment method. Choose one from the list.')
 
   const invoice = await prisma.feeInvoice.findUnique({
     where: { id: invoiceId },

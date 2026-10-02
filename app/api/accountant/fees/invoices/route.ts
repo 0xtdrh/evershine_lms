@@ -9,9 +9,9 @@ import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors, createdResponse } from '@/lib/api-response'
 import { accountantCreateInvoiceSchema } from '@/lib/validation/accountant-fee'
-import { generateChallanNumber } from '@/lib/fees/challan-number'
+import { createWithInvoiceNumber } from '@/lib/fees/challan-number'
 import { dispatchNotification } from '@/lib/notifications/in-app'
-import { serializePaymentDetails } from '@/lib/fees/payment-details'
+import { paymentAccountsSnapshot } from '@/lib/fees/payment-settings'
 
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -53,13 +53,13 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const challanNumber = await generateChallanNumber(data.academicYear)
+  const bankAccounts = await paymentAccountsSnapshot()
   const totalItems = data.items.reduce((sum, item) => sum + item.amount, 0)
   const totalAmount = totalItems - data.discount
 
   const invoice = await prisma.$transaction(async (tx) => {
     // Create Invoice and Items
-    const newInvoice = await tx.feeInvoice.create({
+    const newInvoice = await createWithInvoiceNumber((challanNumber) => tx.feeInvoice.create({
       data: {
         challanNumber,
         studentId: data.studentId,
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         totalAmount,
         dueDate: new Date(data.dueDate),
         status: 'ISSUED', // Skip DRAFT state for direct generation
-        bankAccounts: serializePaymentDetails(),
+        bankAccounts,
         discount: data.discount,
         notes: data.notes ?? null,
         issuedBy: session.user.id,
@@ -80,7 +80,8 @@ export async function POST(request: NextRequest) {
           })),
         },
       },
-    })
+    }), tx)
+    const challanNumber = newInvoice.challanNumber
 
     // Update Student outstanding balance
     await tx.student.update({

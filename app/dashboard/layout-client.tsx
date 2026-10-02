@@ -55,6 +55,7 @@ import {
   Sparkles,
   DatabaseBackup,
   Hourglass,
+  BadgePercent,
 } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
 import { ArcLineBrand } from '@/components/ArcLineBrand'
@@ -93,6 +94,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Fees',            href: '/dashboard/fees',         icon: CreditCard,      roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'STUDENT', 'PARENT', 'GUARDIAN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['fees', 'read']] },
   { name: 'Accounting Hub',   href: '/dashboard/accountant',    icon: Wallet,          roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'], perm: [['fee_collection', 'read'], ['expenses', 'read'], ['profit_loss', 'read']] },
   { name: 'Fee Collection',  href: '/dashboard/accountant/fees', icon: CreditCard,     roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['fee_collection', 'read']] },
+  { name: 'Discounts',       href: '/dashboard/discounts',    icon: BadgePercent,    roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['discounts', 'read'], ['discount_approvals', 'read'], ['discount_types', 'read']] },
   { name: 'Expense Ledger',  href: '/dashboard/accountant/expenses', icon: Wallet,     roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'], perm: [['expenses', 'read']] },
   { name: 'Financial Reports', href: '/dashboard/accountant/reports', icon: BarChart2, roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'], perm: [['financial_reports', 'read'], ['profit_loss', 'read']] },
   { name: 'Leaves',          href: '/dashboard/leaves',       icon: CalendarClock,   roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'STUDENT', 'BRANCH_MANAGER'], perm: [['leaves', 'create'], ['leaves', 'approve']] },
