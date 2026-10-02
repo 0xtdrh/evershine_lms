@@ -19,6 +19,7 @@ import { paymentDetailsRowsFromSnapshot } from '@/lib/fees/payment-details'
 import { PaymentMethodSelect } from '@/components/fees/PaymentMethodSelect'
 import { useAfterPayment } from '@/lib/fees/use-after-payment'
 import { InvoiceMoneyActions } from '@/components/refunds/InvoiceMoneyActions'
+import { PayOnlineButton } from '@/components/fees/PayOnlineButton'
 
 interface FeeItem {
   id: string
@@ -504,6 +505,8 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
               Collect Payment
             </Button>
           )}
+
+          {isStudentOrGuardian && invoice.status !== 'PAID' && invoice.status !== 'CANCELLED' && <PayOnlineButton invoiceId={invoice.id} />}
 
           <InvoiceMoneyActions
             invoiceId={invoice.id}

@@ -21,6 +21,7 @@ import {
   saveFinanceSettings,
 } from '@/lib/fees/payment-settings'
 import { isAutoWhatsAppConfigured } from '@/lib/messaging/whatsapp'
+import { isPaymobConfigured } from '@/lib/payments/paymob'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,7 +64,7 @@ export async function GET() {
   if (!session?.user) return errors.unauthorized()
   if (!checkPermission(session.user.role as Role, 'finance_settings', 'read')) return errors.forbidden()
   const [finance, accounts, methods] = await Promise.all([getFinanceSettings(), listPaymentAccounts(), listPaymentMethods()])
-  return successResponse({ finance, accounts, methods, autoWhatsAppAvailable: isAutoWhatsAppConfigured() })
+  return successResponse({ finance, accounts, methods, autoWhatsAppAvailable: isAutoWhatsAppConfigured(), onlinePayment: isPaymobConfigured() })
 }
 
 export async function PUT(request: NextRequest) {
@@ -156,5 +157,5 @@ export async function PUT(request: NextRequest) {
   }
 
   const [f, a, m] = await Promise.all([getFinanceSettings(), listPaymentAccounts(), listPaymentMethods()])
-  return successResponse({ finance: f, accounts: a, methods: m, autoWhatsAppAvailable: isAutoWhatsAppConfigured() }, 'Saved')
+  return successResponse({ finance: f, accounts: a, methods: m, autoWhatsAppAvailable: isAutoWhatsAppConfigured(), onlinePayment: isPaymobConfigured() }, 'Saved')
 }

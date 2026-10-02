@@ -3474,3 +3474,28 @@ model WalletTransaction {
 
   @@index([studentId])
 }
+
+/// An online payment attempt (Paymob). The FeePayment is created only when the
+/// provider confirms it through the signed webhook (lib/payments/paymob.ts).
+model OnlinePayment {
+  id              String   @id @default(cuid())
+  invoiceId       String
+  studentId       String
+  amount          Decimal  @db.Decimal(10, 2)
+  /// PAYMOB
+  provider        String   @default("PAYMOB") @db.VarChar(20)
+  /// PENDING | PAID | FAILED | REVIEW (amount mismatch etc.)
+  status          String   @default("PENDING") @db.VarChar(10)
+  providerOrderId String?  @db.VarChar(64)
+  providerTxnId   String?  @unique @db.VarChar(64)
+  /// FeePayment created after a successful, verified callback
+  paymentId       String?
+  note            String?  @db.Text
+  createdById     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([invoiceId])
+  @@index([providerOrderId])
+  @@index([status])
+}

@@ -18,7 +18,8 @@
  *  payment settings · discount rules · discount types · siblings discount ·
  *  "apply to current invoice?" · approval flow · report ·
  *  password change signs out old sessions · deactivated staff signed out ·
- *  parent uploads a payment proof · accountant approves it.
+ *  parent uploads a payment proof · accountant approves it · receipt ·
+ *  refund to the student wallet.
  */
 
 import readline from 'node:readline'
@@ -249,6 +250,22 @@ async function main() {
     const approve = await sa.json('PATCH', `/api/accountant/fees/invoices/${i2.id}/proof`, { body: { action: 'APPROVE' } })
     const after = (await sa.json('GET', `/api/fees/${i2.id}`)).data?.data
     check(`receipt approved -> invoice ${after?.status}`, approve.data?.success && after?.status === 'PAID', approve.data?.error?.message)
+    const paymentId = approve.data?.data?.paymentId
+    const rc = paymentId ? await sa.json('GET', `/api/payments/${paymentId}/receipt`) : null
+    check(`payment receipt ${rc?.data?.data?.receiptNumber ?? ''} ready (print / WhatsApp)`, !!rc?.data?.data?.receiptNumber)
+    check('parent can open the receipt too', paymentId ? (await parent.json('GET', `/api/payments/${paymentId}/receipt`)).status === 200 : false)
+
+    // ── 8b. refund to the student wallet ─────────────────────────────────────
+    section('8b. Refund to the student wallet')
+    const sug = await sa.json('GET', `/api/refunds/suggest?invoiceId=${i2.id}`)
+    check(`refund suggestion works (suggested ${sug.data?.data?.suggested ?? '-'} EGP)`, sug.data?.success)
+    const refundAmount = Math.min(50, sug.data?.data?.maxRefundable ?? 0)
+    const rf = refundAmount > 0
+      ? await sa.json('POST', '/api/refunds', { body: { invoiceId: i2.id, amount: refundAmount, method: 'WALLET', reason: 'demo refund' } })
+      : null
+    check(`refund of ${refundAmount} EGP approved (${rf?.data?.data?.refundNumber ?? '-'})`, rf?.data?.data?.status === 'APPROVED', rf?.data?.error?.message)
+    const wal = await sa.json('GET', `/api/students/${s2.id}/wallet`)
+    check(`wallet credited (${wal.data?.data?.balance ?? 0} EGP)`, (wal.data?.data?.balance ?? 0) >= refundAmount)
 
     // ── 9. security ─────────────────────────────────────────────────────────
     section('9. Security (waits about 70 seconds)')

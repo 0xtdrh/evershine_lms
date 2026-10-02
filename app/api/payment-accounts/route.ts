@@ -6,6 +6,7 @@
 import { auth } from '@/lib/auth'
 import { errors, successResponse } from '@/lib/api-response'
 import { getFinanceSettings, paymentAccountsSnapshot, publicPaymentAccounts } from '@/lib/fees/payment-settings'
+import { isPaymobConfigured } from '@/lib/payments/paymob'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,5 +15,5 @@ export async function GET() {
   if (!session?.user) return errors.unauthorized()
   const [accounts, snapshot, settings] = await Promise.all([publicPaymentAccounts(), paymentAccountsSnapshot(), getFinanceSettings()])
   // receiptAfterPayment: what the staff screen does after recording a payment.
-  return successResponse({ accounts, snapshot, receiptAfterPayment: settings.receiptAfterPayment })
+  return successResponse({ accounts, snapshot, receiptAfterPayment: settings.receiptAfterPayment, onlinePayment: isPaymobConfigured() })
 }

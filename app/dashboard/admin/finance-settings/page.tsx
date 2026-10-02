@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowDown, ArrowUp, Landmark, Loader2, Plus, Receipt, Save, Trash2, Wallet } from 'lucide-react'
+import { OnlinePaymentsCard } from '@/components/fees/OnlinePaymentsCard'
 
 interface Account {
   id?: string
@@ -36,7 +37,7 @@ interface Finance {
   receiptFooter: string
   autoSendReceiptWhatsApp: boolean
 }
-interface Settings { finance: Finance; accounts: Account[]; methods: Method[]; autoWhatsAppAvailable?: boolean }
+interface Settings { finance: Finance; accounts: Account[]; methods: Method[]; autoWhatsAppAvailable?: boolean; onlinePayment?: boolean }
 
 const KINDS: { value: string; label: string }[] = [
   { value: 'INSTAPAY', label: 'InstaPay' },
@@ -188,9 +189,10 @@ export default function FinanceSettingsPage() {
               <Plus className="mr-2 h-4 w-4" /> Add account
             </Button>
           )}
-          <p className="text-xs text-muted-foreground">Online payment (cards / wallets) will be added here later as another account type.</p>
         </CardContent>
       </Card>
+
+      <OnlinePaymentsCard connected={!!form.onlinePayment} />
 
       <Card>
         <CardHeader>

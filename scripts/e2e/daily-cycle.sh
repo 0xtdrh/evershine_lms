@@ -60,7 +60,7 @@ async function main() {
 main()
 EOF
 SA_EMAIL=$(DATABASE_URL="$URL" npx tsx scripts/e2e/.tmp-sa.ts); rm -f scripts/e2e/.tmp-sa.ts
-DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" npx next dev -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
+DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" PAYMOB_HMAC_SECRET="e2e-paymob-hmac" npx next dev -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
 APP_PID=$!
 for i in $(seq 1 120); do [ "$(curl -s -o /dev/null -w '%{http_code}' $B/api/auth/csrf)" = "200" ] && break; sleep 3; done
 tok=$(curl -s -c "$JAR" -b "$JAR" $B/api/auth/csrf | jq_ "d['csrfToken']")
@@ -530,6 +530,45 @@ check "cash refund does not touch the wallet" "$(api GET /api/students/$S1/walle
 check "cash refund needs how the money goes back" "$(api POST /api/refunds "{\"invoiceId\":\"$FIRSTPAID\",\"amount\":10,\"method\":\"CASH\"}" | jq_ "d['success']")" "False"
 check "refund rules kept by the test-data wipe (settings)" "$(grep -c "'RefundRule'" lib/setup/wipe-test-data.ts)" "1"
 rm -f "$ACJ"
+echo "== 20. online payment (Paymob webhook, signed with a test key)"
+paymob() { # reference txnId amountCents success -> "<hmac> <json body>"
+python - "$@" <<'PY'
+import sys, json, hmac, hashlib
+ref, txn, cents, success = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4] == 'true'
+obj = {"id": txn, "amount_cents": cents, "created_at": "2026-10-03T10:00:00", "currency": "EGP", "error_occured": False,
+       "has_parent_transaction": False, "integration_id": 123, "is_3d_secure": True, "is_auth": False, "is_capture": False,
+       "is_refunded": False, "is_standalone_payment": True, "is_voided": False, "order": {"id": 999, "merchant_order_id": ref},
+       "owner": 1, "pending": False, "source_data": {"pan": "2346", "sub_type": "MasterCard", "type": "card"}, "success": success}
+v = lambda x: ('true' if x else 'false') if isinstance(x, bool) else ('' if x is None else str(x))
+f = [obj['amount_cents'], obj['created_at'], obj['currency'], obj['error_occured'], obj['has_parent_transaction'], obj['id'],
+     obj['integration_id'], obj['is_3d_secure'], obj['is_auth'], obj['is_capture'], obj['is_refunded'], obj['is_standalone_payment'],
+     obj['is_voided'], obj['order']['id'], obj['owner'], obj['pending'], obj['source_data']['pan'], obj['source_data']['sub_type'],
+     obj['source_data']['type'], obj['success']]
+sig = hmac.new(b'e2e-paymob-hmac', ''.join(v(x) for x in f).encode(), hashlib.sha512).hexdigest()
+print(sig + ' ' + json.dumps({"type": "TRANSACTION", "obj": obj}))
+PY
+}
+hook() { local out sig body; out=$(paymob "$@"); sig=${out%% *}; body=${out#* }; curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d "$body" "$B/api/webhooks/paymob?hmac=$sig"; }
+S2INV=$(invid $S2 $DG)
+check "'Pay online' refused while Paymob is not connected" "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST -H 'Content-Type: application/json' -d '{}' $B/api/fees/$S2INV/pay-online)" "503"
+check "parents are told online payment is off" "$(api GET /api/payment-accounts | jq_ "d['data']['onlinePayment']")" "False"
+S2LEFT=$(M "SELECT CAST(ROUND((totalAmount-paidAmount)*100) AS UNSIGNED) FROM FeeInvoice WHERE id='$S2INV'")
+M "INSERT INTO OnlinePayment (id, invoiceId, studentId, amount, provider, status, createdById, createdAt, updatedAt) VALUES ('op-e2e-1','$S2INV','$S2',$S2LEFT/100,'PAYMOB','PENDING','$SA_ID',NOW(3),NOW(3))"
+BAD=$(paymob op-e2e-1 5001 $S2LEFT true); BADBODY=${BAD#* }
+check "webhook with a wrong signature refused (401)" "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d "$BADBODY" "$B/api/webhooks/paymob?hmac=deadbeef")" "401"
+check "nothing recorded after a forged callback" "$(M "SELECT COUNT(*) FROM FeePayment WHERE invoiceId='$S2INV' AND source='ONLINE'")" "0"
+check "signed success callback accepted" "$(hook op-e2e-1 5001 $S2LEFT true)" "200"
+check "payment recorded automatically (source ONLINE, with receipt)" "$(M "SELECT CONCAT(COUNT(*),'/',MIN(receiptNumber LIKE 'TN-RCPT-%')) FROM FeePayment WHERE invoiceId='$S2INV' AND source='ONLINE'")" "1/1"
+check "invoice PAID" "$(M "SELECT status FROM FeeInvoice WHERE id='$S2INV'")" "PAID"
+check "online payment marked PAID and linked" "$(M "SELECT CONCAT(status,'/',paymentId IS NOT NULL) FROM OnlinePayment WHERE id='op-e2e-1'")" "PAID/1"
+check "the same callback twice does not pay twice" "$(hook op-e2e-1 5001 $S2LEFT true)/$(M "SELECT COUNT(*) FROM FeePayment WHERE invoiceId='$S2INV' AND source='ONLINE'")" "200/1"
+L2LEFT=$(M "SELECT CAST(ROUND((totalAmount-paidAmount)*100) AS UNSIGNED) FROM FeeInvoice WHERE id='$LATE2'")
+M "INSERT INTO OnlinePayment (id, invoiceId, studentId, amount, provider, status, createdById, createdAt, updatedAt) VALUES ('op-e2e-2','$LATE2','$LATE',$L2LEFT/100,'PAYMOB','PENDING','$SA_ID',NOW(3),NOW(3)), ('op-e2e-3','$LATE2','$LATE',$L2LEFT/100,'PAYMOB','PENDING','$SA_ID',NOW(3),NOW(3))"
+hook op-e2e-2 5002 100 true >/dev/null
+check "wrong amount: kept for review, not applied" "$(M "SELECT status FROM OnlinePayment WHERE id='op-e2e-2'")/$(M "SELECT COUNT(*) FROM FeePayment WHERE invoiceId='$LATE2' AND source='ONLINE'")" "REVIEW/0"
+hook op-e2e-3 5003 $L2LEFT false >/dev/null
+check "declined card: marked FAILED, nothing recorded" "$(M "SELECT status FROM OnlinePayment WHERE id='op-e2e-3'")/$(M "SELECT COUNT(*) FROM FeePayment WHERE invoiceId='$LATE2' AND source='ONLINE'")" "FAILED/0"
+check "staff see the payment that needs review" "$(api GET '/api/online-payments?status=REVIEW' | jq_ "any(r['id']=='op-e2e-2' for r in d['data'])")" "True"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
