@@ -2,11 +2,16 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { errorResponse, errors, successResponse } from '@/lib/api-response'
-import { sanitizeCloudinaryError, uploadPaymentProofToCloudinary } from '@/lib/cloudinary'
+import { isOwnCloudinaryUrl, sanitizeCloudinaryError, uploadPaymentProofToCloudinary } from '@/lib/cloudinary'
 import { z } from 'zod'
 
 const uploadProofSchema = z.object({
-  proofUrl: z.string().url('Invalid image URL'),
+  // Only files in OUR Cloudinary account (uploaded with /api/upload); any other
+  // link could send staff to a phishing or malware page when they open it.
+  proofUrl: z
+    .string()
+    .url('Invalid image URL')
+    .refine((u) => isOwnCloudinaryUrl(u), 'The proof must be uploaded through the system'),
   proofRemarks: z.string().max(500).optional(),
   amount: z.number().positive().optional(),
 })

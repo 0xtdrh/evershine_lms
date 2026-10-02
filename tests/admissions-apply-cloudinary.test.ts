@@ -5,9 +5,12 @@ const { mockPrisma, mockUploadProfileImageToCloudinary, mockSendPendingNotificat
   const mockPrisma = {
     admissionRequest: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      count: vi.fn(),
       create: vi.fn(),
     },
-    student: { findUnique: vi.fn() },
+    student: { findUnique: vi.fn(), findFirst: vi.fn() },
+    rateLimitHit: { findMany: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
   }
   return {
     mockPrisma,
@@ -32,6 +35,7 @@ const passportPhotoBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAA
 
 const validApplication = {
   firstName: 'Ali',
+  fullNameAr: 'علي حسن',
   lastName: 'Hassan',
   fatherName: 'Hassan',
   cnicBForm: '3530198546250',
@@ -63,10 +67,17 @@ describe('POST /api/admissions/apply Cloudinary profile photo storage', () => {
     vi.clearAllMocks()
     mockPrisma.admissionRequest.findUnique.mockResolvedValue(null)
     mockPrisma.student.findUnique.mockResolvedValue(null)
+    mockPrisma.student.findFirst.mockResolvedValue(null)
+    mockPrisma.admissionRequest.findFirst.mockResolvedValue(null)
+    mockPrisma.admissionRequest.count.mockResolvedValue(0)
+    mockPrisma.rateLimitHit.findMany.mockResolvedValue([])
+    mockPrisma.rateLimitHit.create.mockResolvedValue({})
+    mockPrisma.rateLimitHit.deleteMany.mockResolvedValue({ count: 0 })
     mockUploadProfileImageToCloudinary.mockResolvedValue('https://res.cloudinary.com/evershine/admission-photo.webp')
     mockPrisma.admissionRequest.create.mockResolvedValue({
       id: 'clxadmission000000001',
       firstName: 'Ali',
+  fullNameAr: 'علي حسن',
       lastName: 'Hassan',
       email: null,
       guardianEmail: 'guardian@example.com',
@@ -88,7 +99,8 @@ describe('POST /api/admissions/apply Cloudinary profile photo storage', () => {
     expect(mockUploadProfileImageToCloudinary).toHaveBeenCalledWith(
       passportPhotoBase64,
       'students',
-      '3530198546250'
+      // public id = guardian phone + timestamp (CNIC is no longer used)
+      expect.stringMatching(/^\d+-\d+$/)
     )
     expect(mockPrisma.admissionRequest.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({

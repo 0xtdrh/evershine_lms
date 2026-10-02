@@ -28,6 +28,7 @@ interface UploadSignatureResponse {
   cloudName: string
   apiKey: string
   folder: string
+  allowedFormats?: string
 }
 
 interface PaymentProofUploadModalProps {
@@ -146,6 +147,8 @@ export function PaymentProofUploadModal({
         cloudinaryForm.append('timestamp', sigRes.timestamp.toString())
         cloudinaryForm.append('signature', sigRes.signature)
         cloudinaryForm.append('folder', sigRes.folder)
+        // Part of the signature: must be sent back unchanged.
+        if (sigRes.allowedFormats) cloudinaryForm.append('allowed_formats', sigRes.allowedFormats)
 
         const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${sigRes.cloudName}/image/upload`, {
           method: 'POST',

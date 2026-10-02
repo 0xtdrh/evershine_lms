@@ -74,7 +74,9 @@ export async function POST(request: NextRequest) {
       // Update User Password
       await tx.user.update({
         where: { id: session.user.id },
-        data: { passwordHash, mustChangePassword: false },
+        // Signs out every session of this account, including this one (the
+        // page sends the user back to the login screen).
+        data: { passwordHash, mustChangePassword: false, sessionsRevokedAt: new Date() },
       })
 
       // Log to Audit Log

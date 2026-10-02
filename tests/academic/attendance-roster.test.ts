@@ -55,7 +55,9 @@ describe('attendance roster API', () => {
     timetableSlotFindFirst.mockResolvedValue({ id: 'slot-1' })
     subjectOfferingFindFirst.mockResolvedValue(null)
     enrollmentAttendanceRecordFindMany.mockResolvedValue([])
-    studentEnrollmentFindMany.mockResolvedValue([
+    // 1st call: the active roster; 2nd call: withdrawn students who already have
+    // a record on that date (none here).
+    studentEnrollmentFindMany.mockResolvedValueOnce([
       {
         id: 'enroll-1',
         rollNumber: '123',
@@ -63,7 +65,7 @@ describe('attendance roster API', () => {
         classSection: { batch: { id: 'batch-1', name: 'Batch A' }, shift: { id: 'shift-1', name: 'Morning' } },
         attendanceRecords: [],
       },
-    ])
+    ]).mockResolvedValueOnce([])
 
     const request = new Request('http://localhost/api/enrollment-attendance/roster?classSectionId=section-1', {
       method: 'GET',

@@ -81,6 +81,7 @@ const pngDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB'
 const studentPayload = {
   firstName: 'Ali',
   lastName: 'Hassan',
+  fullNameAr: 'علي حسن',
   fatherName: 'Hassan',
   cnicBForm: '3530198546250',
   dateOfBirth: '2012-04-15T00:00:00.000Z',
@@ -162,7 +163,8 @@ describe('Cloudinary profile image storage', () => {
     expect(mockUploadProfileImageToCloudinary).toHaveBeenCalledWith(
       pngDataUrl,
       'students',
-      'ESA/2026/0043'
+      // registration number format TN/YYYY/NNNN (next free number)
+      expect.stringMatching(/^TN\/\d{4}\/\d{4}$/)
     )
     expect(mockStudentTx.student.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({

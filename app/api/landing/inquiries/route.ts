@@ -20,10 +20,13 @@ import { sendInquiryAckNotification, sendAdminInquiryAlert } from '@/lib/notific
 import { dispatchToRoleUsers } from '@/lib/notifications/dispatch'
 import { ZodError } from 'zod'
 import type { Role } from '@prisma/client'
+import { HOUR, MINUTE, rateLimit, requestIp } from '@/lib/rate-limit-db'
 
 // ── POST — Public submission ──────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimit(`inquiry:ip:${requestIp(request)}`, 5, HOUR)
+  if (!limited.ok) return errors.rateLimited(limited.resetAt)
   try {
     const body = await request.json()
     const validated = inquirySchema.parse(body)

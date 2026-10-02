@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { HOUR, MINUTE, rateLimit, requestIp } from '@/lib/rate-limit-db'
 
 /**
  * GET /api/verify/[certificateNumber]
@@ -13,9 +14,11 @@ import { prisma } from '@/lib/prisma'
  * financial data, or any other student PII beyond the display name.
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ certificateNumber: string }> }
 ) {
+  const limited = await rateLimit(`verify:ip:${requestIp(req)}`, 60, 10 * MINUTE)
+  if (!limited.ok) return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 })
   const { certificateNumber } = await params
 
   const certificate = await prisma.certificate.findUnique({

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { uploadProfileImageToCloudinary } from '@/lib/cloudinary'
 import { sendPendingNotification, sendAdminAdmissionAlert } from '@/lib/notifications'
 import { Gender } from '@prisma/client'
+import { rateLimit } from '@/lib/rate-limit-db'
 
 // ─── Validation Schema ────────────────────────────────────────────────────────
 
@@ -72,29 +73,19 @@ const applySchema = z.object({
 })
 
 // ─── Anti-spam (public endpoint; no external service needed) ─────────────────
-// Per-IP: best effort (per server instance). Global: counted in the database,
-// so a flood is capped even across instances.
+// Per-IP and global limits are both counted in the database, so they hold
+// across server instances (lib/rate-limit-db.ts).
 const PER_IP_LIMIT = 5
 const PER_IP_WINDOW_MS = 60 * 60 * 1000
 const GLOBAL_LIMIT = 30
 const GLOBAL_WINDOW_MS = 10 * 60 * 1000
-const recentByIp = new Map<string, number[]>()
 
 function ipOf(req: Request) {
   return req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'unknown'
 }
 
-function tooManyFromIp(ip: string) {
-  const now = Date.now()
-  const hits = (recentByIp.get(ip) ?? []).filter((t) => now - t < PER_IP_WINDOW_MS)
-  if (hits.length >= PER_IP_LIMIT) {
-    recentByIp.set(ip, hits)
-    return true
-  }
-  hits.push(now)
-  recentByIp.set(ip, hits)
-  if (recentByIp.size > 5000) recentByIp.clear()
-  return false
+async function tooManyFromIp(ip: string) {
+  return !(await rateLimit(`admissions-apply:ip:${ip}`, PER_IP_LIMIT, PER_IP_WINDOW_MS)).ok
 }
 
 const TOO_MANY = () =>
@@ -113,7 +104,7 @@ export async function POST(req: Request) {
     if (validated.website) {
       return NextResponse.json({ success: true, message: 'Your application has been submitted successfully.' })
     }
-    if (tooManyFromIp(ipOf(req))) return TOO_MANY()
+    if (await tooManyFromIp(ipOf(req))) return TOO_MANY()
     const recentTotal = await prisma.admissionRequest.count({
       where: { createdAt: { gte: new Date(Date.now() - GLOBAL_WINDOW_MS) } },
     })

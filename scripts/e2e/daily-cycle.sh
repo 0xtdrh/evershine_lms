@@ -306,6 +306,40 @@ check "student password issued" "$(echo "$R" | jq_ "d['success']")" "True"
 case "$(login_ip "$SLOGIN" "$SPW" 10.0.0.73)" in *error=*) bad "student signs in with the temporary password";; *) ok "student signs in with the temporary password";; esac
 check "old parent password stops working after a new one" "$(R2=$(api POST /api/students/$PS/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$PG\"}"); case "$(login_ip 01077770003 "$PW" 10.0.0.74)" in *error=*) echo yes;; *) echo no;; esac)" "yes"
 
+echo "== 15. security hardening"
+login_jar() { # id pw jar ip
+  local t; t=$(curl -s -c "$3" -b "$3" -H "X-Forwarded-For: $4" $B/api/auth/csrf | jq_ "d['csrfToken']")
+  curl -s -o /dev/null -c "$3" -b "$3" -H "X-Forwarded-For: $4" -X POST $B/api/auth/callback/credentials --data-urlencode "csrfToken=$t" --data-urlencode "email=$1" --data-urlencode "password=$2" --data-urlencode "callbackUrl=$B/dashboard"
+}
+code_with() { curl -s -o /dev/null -w '%{http_code}' -b "$1" "$B$2"; }
+PJ=$(mktemp); SJ=$(mktemp)
+PW3=$(api POST /api/students/$PS/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$PG\"}" | jq_ "d['data']['password']")
+SPW3=$(api POST /api/students/$PS/portal-password '{"target":"student"}' | jq_ "d['data']['password']")
+login_jar 01077770003 "$PW3" "$PJ" 10.0.0.81
+login_jar "$SLOGIN" "$SPW3" "$SJ" 10.0.0.82
+check "parent session works" "$(code_with "$PJ" /api/me/permissions)" "200"
+check "student session works" "$(code_with "$SJ" /api/me/permissions)" "200"
+check "student cannot get an upload signature for staff folders" "$(code_with "$SJ" '/api/upload?folder=students')" "403"
+[ "$(code_with "$SJ" '/api/upload?folder=challans')" != "403" ] && ok "student may still upload payment proofs" || bad "student may still upload payment proofs"
+check "unknown upload folder refused" "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$B/api/upload?folder=misc")" "400"
+PGUSER=$(M "SELECT userId FROM Guardian WHERE id='$PG'")
+M "UPDATE User SET isActive=0 WHERE id='$PGUSER'"
+api POST /api/students/$PS/portal-password '{"target":"student"}' >/dev/null
+check "new temporary password recorded a revocation time" "$(M "SELECT sessionsRevokedAt IS NOT NULL FROM User u JOIN Student s ON s.userId=u.id WHERE s.id='$PS'")" "1"
+sleep 32 # session state is cached for 30 s per user
+check "deactivated parent is signed out at once (not after 8 h)" "$(code_with "$PJ" /api/me/permissions)" "401"
+check "old student session signed out after a password reset" "$(code_with "$SJ" /api/me/permissions)" "401"
+check "super admin (untouched) still signed in" "$(code_with "$JAR" /api/me/permissions)" "200"
+M "UPDATE User SET isActive=1 WHERE id='$PGUSER'"
+rm -f "$PJ" "$SJ"
+FP=""; for i in $(seq 1 11); do FP=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.0.90' -d '{"email":"nobody@example.com"}' $B/api/auth/forgot-password); done
+check "forgot-password limited (11th request from one device)" "$FP" "429"
+check "a different device can still ask for a reset" "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.0.91' -d '{"email":"nobody@example.com"}' $B/api/auth/forgot-password)" "200"
+VC=""; for i in $(seq 1 61); do VC=$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-For: 10.0.0.92' "$B/api/verify?id=TN-CERT-2026-0000$i"); done
+check "certificate verification limited (61st lookup in 10 min)" "$VC" "429"
+check "dangerous run-migration endpoint removed" "$(curl -s -o /dev/null -w '%{http_code}' "$B/api/admin/run-migration?secret=x")" "404"
+check "CV download needs login" "$(curl -s -o /dev/null -w '%{http_code}' "$B/api/staff-applications/x/cv")" "401"
+
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

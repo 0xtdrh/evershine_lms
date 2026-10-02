@@ -270,6 +270,9 @@ model User {
   // Set when a password is issued by someone else (staff reset / temporary
   // password). The user must choose a new password before using the app.
   mustChangePassword     Boolean   @default(false)
+  // Sessions that signed in before this moment are rejected (set when the
+  // password changes or is reset). See lib/session-guard.ts.
+  sessionsRevokedAt      DateTime?
   lastLogin              DateTime?
   emailVerified          Boolean   @default(false)
   emailVerifiedAt        DateTime?
@@ -3247,5 +3250,18 @@ model LoginAttempt {
 
   @@index([identifier, createdAt])
   @@index([ip, createdAt])
+  @@index([createdAt])
+}
+
+/// One request counted by the generic rate limiter (lib/rate-limit-db.ts) for
+/// public forms: forgot password, contact form, job applications, admission
+/// applications, certificate verification. Rows older than a day are deleted.
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  /// e.g. "forgot-password:ip:1.2.3.4" or "forgot-password:email:a@b.com"
+  key       String   @db.VarChar(191)
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
   @@index([createdAt])
 }

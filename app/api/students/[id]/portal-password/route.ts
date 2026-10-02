@@ -117,7 +117,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: account!.id },
-      data: { passwordHash, mustChangePassword: true },
+      data: { passwordHash, mustChangePassword: true, sessionsRevokedAt: new Date() },
     })
     await tx.auditLog.create({
       data: {

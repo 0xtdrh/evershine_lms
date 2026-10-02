@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
     }
     const passwordHash = await hash(newPassword, ARGON2_OPTIONS)
     updateData.passwordHash = passwordHash
+    updateData.sessionsRevokedAt = new Date() // sign out the old sessions of that account
     // A password chosen by someone else is temporary: the owner must replace it
     // on first login (middleware redirects to /dashboard/change-password).
     if (userId !== session.user.id) updateData.mustChangePassword = true

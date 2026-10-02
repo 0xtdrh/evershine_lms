@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi, fetchPaginatedApi } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -303,7 +303,9 @@ export default function SettingsPage() {
           confirmPassword: confirmPasswordSelf,
         }),
       })
-      notify.success('Success', { description: 'Your password was updated successfully.' })
+      notify.success('Success', { description: 'Password updated. Please sign in again with the new password.' })
+      // The server signed out every session of this account (lib/session-guard.ts).
+      await signOut({ callbackUrl: '/login?changed=1' })
       setCurrentPassword('')
       setNewPasswordSelf('')
       setConfirmPasswordSelf('')

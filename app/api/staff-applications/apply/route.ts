@@ -6,7 +6,8 @@
  * - CNIC deduplication: checks against existing Teacher records AND active applications
  * - 90-day cooldown enforced after declined applications
  * - CV PDF validation: magic-bytes check + 5 MB size limit
- * - File saved to public/uploads/staff-cv/ with CNIC-based filename
+ * - CV stored PRIVATELY in Cloudinary (lib/staff-cv-storage.ts); staff open it
+ *   through /api/staff-applications/[id]/cv
  */
 
 import { NextRequest } from 'next/server'
@@ -15,19 +16,16 @@ import { errors, createdResponse } from '@/lib/api-response'
 import { staffApplicationSchema } from '@/lib/validation/staff-application'
 import { sendStaffPendingNotification, sendAdminStaffAlert } from '@/lib/notifications'
 import { dispatchToRoleUsers } from '@/lib/notifications/dispatch'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
+import { uploadPrivateCv } from '@/lib/staff-cv-storage'
 import { ZodError } from 'zod'
+import { HOUR, MINUTE, rateLimit, requestIp } from '@/lib/rate-limit-db'
 
 // WHY: 90 days = the minimum cooldown before re-application after decline.
 // Prevents spam re-submissions while giving rejected applicants a fair window.
 const REAPPLY_COOLDOWN_DAYS = 90
 
 /** Validates base64-encoded PDF by checking magic bytes (%PDF = hex 25504446) */
-async function savePdfDocument(
-  base64Data: string,
-  cnic: string
-): Promise<string> {
+async function savePdfDocument(base64Data: string): Promise<string> {
   const cleaned = base64Data.replace(/^data:application\/pdf;base64,/, '')
   const buffer = Buffer.from(cleaned, 'base64')
 
@@ -42,18 +40,13 @@ async function savePdfDocument(
     throw new Error('CV file too large. Maximum allowed size is 5 MB.')
   }
 
-  const uploadDir = path.join(process.cwd(), 'public/uploads/staff-cv')
-  await mkdir(uploadDir, { recursive: true })
-
-  const slug = cnic.replace(/-/g, '')
-  const fileName = `cv-${slug}-${Date.now()}.pdf`
-  const filePath = path.join(uploadDir, fileName)
-  await writeFile(filePath, buffer)
-
-  return `/uploads/staff-cv/${fileName}`
+  // Private file (no public URL); was public/uploads before (personal data).
+  return uploadPrivateCv(buffer)
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimit(`staff-apply:ip:${requestIp(request)}`, 3, HOUR)
+  if (!limited.ok) return errors.rateLimited(limited.resetAt)
   try {
     const body = await request.json()
     const validated = staffApplicationSchema.parse(body)
@@ -105,7 +98,7 @@ export async function POST(request: NextRequest) {
     let cvDocUrl: string | null = null
     if (validated.cvDocBase64) {
       try {
-        cvDocUrl = await savePdfDocument(validated.cvDocBase64, validated.cnic)
+        cvDocUrl = await savePdfDocument(validated.cvDocBase64)
       } catch (cvErr: unknown) {
         const message = cvErr instanceof Error ? cvErr.message : 'CV processing error.'
         return errors.badRequest(`CV Upload Error: ${message}`)

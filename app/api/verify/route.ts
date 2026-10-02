@@ -17,8 +17,11 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errors } from '@/lib/api-response'
+import { HOUR, MINUTE, rateLimit, requestIp } from '@/lib/rate-limit-db'
 
 export async function GET(request: NextRequest) {
+  const limited = await rateLimit(`verify:ip:${requestIp(request)}`, 60, 10 * MINUTE)
+  if (!limited.ok) return errors.rateLimited(limited.resetAt)
   const { searchParams } = new URL(request.url)
   const qrId = searchParams.get('id')?.trim()
 

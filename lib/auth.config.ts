@@ -22,6 +22,8 @@ declare module 'next-auth' {
       campusId?: string | null
       profilePicture?: string | null
       mustChangePassword?: boolean
+      /** When this session signed in (ms). Used to revoke older sessions. */
+      loginAt?: number
     }
   }
   interface User {
@@ -50,6 +52,8 @@ declare module '@auth/core/jwt' {
     profilePicture?: string | null
     /** Password was issued by someone else; must be changed before using the app. */
     mustChangePassword?: boolean
+    /** Sign-in time (ms). Kept across token refreshes, unlike iat. */
+    loginAt?: number
   }
 }
 
@@ -88,6 +92,7 @@ export const authConfig = {
         // re-login (or we invalidate via a profile-update endpoint).
         token.profilePicture = (user as { profilePicture?: string | null }).profilePicture ?? null
         token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false
+        token.loginAt = Date.now()
       }
 
       // Defensive: if token.role is somehow missing but we have a userId,
@@ -126,6 +131,7 @@ export const authConfig = {
           campusId:       token.campusId ?? null,
           profilePicture: token.profilePicture ?? null,
           mustChangePassword: token.mustChangePassword ?? false,
+          loginAt:        token.loginAt,
         },
       }
     },

@@ -36,6 +36,7 @@ import { authConfig } from '@/lib/auth.config'
 import { ensurePermissionOverrides } from '@/lib/rbac-overrides'
 import { isDefaultPortalPassword, resolveLoginEmail } from '@/lib/portal-login'
 import { accountKey, clearLoginFailures, clientIp, isLoginLocked, recordLoginFailure } from '@/lib/login-throttle'
+import { guardSession } from '@/lib/session-guard'
 
 /** Shown on the login page as ?code=default_password */
 class DefaultPasswordSignin extends CredentialsSignin {
@@ -222,5 +223,9 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
 export const auth = (async (...args: unknown[]) => {
   const result = await (nextAuthSession as (...a: unknown[]) => Promise<unknown>)(...args)
   await ensurePermissionOverrides()
+  // auth() is also used as a middleware wrapper (auth(handler)); only plain
+  // session lookups (no arguments) return a session object to re-check.
+  // Deactivated accounts / revoked sessions -> null; role refreshed from the DB.
+  if (args.length === 0) return guardSession(result as Parameters<typeof guardSession>[0])
   return result
 }) as typeof nextAuthSession

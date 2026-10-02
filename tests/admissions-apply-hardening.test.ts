@@ -3,6 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const db = vi.hoisted(() => ({
   admissionRequest: { findFirst: vi.fn(), count: vi.fn(), create: vi.fn() },
   student: { findFirst: vi.fn() },
+  // In-memory stand-in for the RateLimitHit table (lib/rate-limit-db.ts).
+  rateLimitHit: {
+    rows: [] as { key: string; createdAt: Date }[],
+    findMany: vi.fn(),
+    create: vi.fn(),
+    deleteMany: vi.fn(),
+  },
 }))
 vi.mock('@/lib/prisma', () => ({ prisma: db }))
 vi.mock('@/lib/cloudinary', () => ({ uploadProfileImageToCloudinary: vi.fn().mockResolvedValue('https://res.cloudinary.com/x/photo.jpg') }))
@@ -29,6 +36,14 @@ const post = (body: unknown, ip = `10.0.0.${++ipCounter}`) =>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  db.rateLimitHit.rows = []
+  db.rateLimitHit.findMany.mockImplementation(async ({ where, take }: { where: { key: string; createdAt: { gte: Date } }; take: number }) =>
+    db.rateLimitHit.rows.filter((r) => r.key === where.key && r.createdAt >= where.createdAt.gte).slice(0, take))
+  db.rateLimitHit.create.mockImplementation(async ({ data }: { data: { key: string } }) => {
+    db.rateLimitHit.rows.push({ key: data.key, createdAt: new Date() })
+    return data
+  })
+  db.rateLimitHit.deleteMany.mockResolvedValue({ count: 0 })
   db.admissionRequest.count.mockResolvedValue(0)
   db.admissionRequest.findFirst.mockResolvedValue(null)
   db.student.findFirst.mockResolvedValue(null)

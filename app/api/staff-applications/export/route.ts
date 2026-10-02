@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
+import { PRIVATE_CV_PREFIX } from '@/lib/staff-cv-storage'
 import { errors } from '@/lib/api-response'
 import { createBrandedWorkbook, workbookToBuffer, generateExcelFilename } from '@/lib/excel/report-generator'
 import type { ColumnDef } from '@/lib/excel/report-generator'
@@ -64,7 +65,10 @@ export async function GET(request: NextRequest) {
     phone: app.phone,
     email: app.email,
     preferredShift: app.preferredShift || '—',
-    cvLink: app.cvDocUrl || app.cvLink || '—',
+    // Private CVs: a link that opens it after checking the viewer's permission.
+    cvLink: app.cvDocUrl?.startsWith(PRIVATE_CV_PREFIX)
+      ? `${new URL(request.url).origin}/api/staff-applications/${app.id}/cv`
+      : app.cvDocUrl || app.cvLink || '—',
     status: app.status,
     interviewDate: app.interviewDate || '—',
     adminNotes: app.adminNotes || '—',

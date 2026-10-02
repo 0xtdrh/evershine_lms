@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
         passwordHash,
         resetToken: null,
         resetTokenExpiry: null,
+        sessionsRevokedAt: new Date(), // sign out every old session
       },
     })
 

@@ -31,6 +31,7 @@ import { POST } from '../app/api/students/route'
 const validPayload = {
   firstName: 'Ali',
   lastName: 'Hassan',
+  fullNameAr: 'علي حسن',
   fatherName: 'Hassan',
   cnicBForm: '3530198546250',
   dateOfBirth: '2012-04-15T00:00:00.000Z',

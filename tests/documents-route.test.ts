@@ -5,7 +5,8 @@ const { mockAuth, mockCheckPermission, mockPrisma, mockTx } = vi.hoisted(() => {
   const mockAuth = vi.fn()
   const mockCheckPermission = vi.fn()
   const mockTx = {
-    certificate: { create: vi.fn() },
+    // findMany: certificate numbers are now "highest this year + 1"
+    certificate: { create: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     auditLog: { create: vi.fn() },
   }
   const mockPrisma = {
@@ -41,6 +42,7 @@ describe('document generation audit routes', () => {
     mockTx.auditLog.create.mockResolvedValue({ id: 'clxaudit0000000000001' })
     mockPrisma.teacherDocument.count.mockResolvedValue(0)
     mockPrisma.teacherDocument.findMany.mockResolvedValue([])
+    mockPrisma.certificate.findMany.mockResolvedValue([])
   })
 
   it('allows SuperAdmin to save a generated student profile document audit record', async () => {

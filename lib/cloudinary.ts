@@ -147,15 +147,35 @@ async function uploadBufferToCloudinary(params: {
   })
 }
 
+/** True for an https URL of a file stored in this system's Cloudinary account. */
+export function isOwnCloudinaryUrl(url: string): boolean {
+  if (!cloudName) return false
+  try {
+    const u = new URL(url)
+    return u.protocol === 'https:' && u.hostname === 'res.cloudinary.com' && u.pathname.startsWith(`/${cloudName}/`)
+  } catch {
+    return false
+  }
+}
+
+/** File types a browser may upload directly with a signature (images + PDF). */
+export const DIRECT_UPLOAD_FORMATS = 'jpg,jpeg,png,webp,heic,pdf'
+
 /**
  * Generates a signed payload for client-side direct upload.
- * Valid for 1 hour.
+ * Valid for 1 hour. allowed_formats is part of the signature, so the browser
+ * cannot use it to upload other file types (HTML, scripts, executables...).
+ * The client must send allowed_formats back exactly as returned.
  */
 export function generateUploadSignature(folder = `${getBaseUploadFolder()}/misc`) {
   const config = getRequiredCloudinaryConfig()
   const normalizedFolder = normalizeFolderPath(folder)
   const timestamp = Math.round(Date.now() / 1000)
-  const signature = cloudinary.utils.api_sign_request({ folder: normalizedFolder, timestamp }, config.apiSecret)
+  const allowedFormats = DIRECT_UPLOAD_FORMATS
+  const signature = cloudinary.utils.api_sign_request(
+    { allowed_formats: allowedFormats, folder: normalizedFolder, timestamp },
+    config.apiSecret
+  )
 
   return {
     timestamp,
@@ -163,6 +183,7 @@ export function generateUploadSignature(folder = `${getBaseUploadFolder()}/misc`
     cloudName: config.cloudName,
     apiKey: config.apiKey,
     folder: normalizedFolder,
+    allowedFormats,
   }
 }
 

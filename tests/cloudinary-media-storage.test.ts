@@ -1,3 +1,5 @@
+// @vitest-environment node
+// (multipart FormData uploads are parsed by Node's Request; jsdom's FormData is not compatible)
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
