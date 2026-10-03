@@ -7,6 +7,7 @@
  *   node scripts/live-check.mjs --transfer # only try moving students between groups (2026-10-03)
  *   node scripts/live-check.mjs --schedule # only make demo data for the Groups calendar (2026-10-03)
  *   node scripts/live-check.mjs --phase-a  # demo data for phase A: capacity/waiting, contact log, renewals
+ *   node scripts/live-check.mjs --phase-b  # demo data for phase B: wallets, top-ups, auto-pay, siblings, withdrawal
  *
  * Asks for the site address, the Super Admin email and password at run time.
  * The password is never printed, saved or sent anywhere except the login.
@@ -103,7 +104,8 @@ async function main() {
   const transferOnly = process.argv.includes('--transfer')
   const scheduleOnly = process.argv.includes('--schedule')
   const phaseAOnly = process.argv.includes('--phase-a')
-  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : scheduleOnly ? ' — demo data for the Groups calendar' : phaseAOnly ? ' — demo data for phase A' : ''))
+  const phaseBOnly = process.argv.includes('--phase-b')
+  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : scheduleOnly ? ' — demo data for the Groups calendar' : phaseAOnly ? ' — demo data for phase A' : phaseBOnly ? ' — demo data for phase B (wallets)' : ''))
   const base = ((await ask('Site address [https://evershine-lms-technova.vercel.app]: ')) || 'https://evershine-lms-technova.vercel.app').replace(/\/+$/, '')
   const email = await ask('Super Admin email: ')
   const password = await ask('Super Admin password (hidden): ', { hidden: true })
@@ -124,6 +126,11 @@ async function main() {
 
   const run = String(randomInt(1000, 9999))
   const phone = (n) => `0109990${run.slice(0, 2)}${String(n).padStart(2, '0')}`
+  if (phaseBOnly) {
+    try { await phaseBDemo(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
+    console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
+    return finish()
+  }
   if (phaseAOnly) {
     try { await phaseADemo(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
     console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
@@ -608,6 +615,97 @@ async function phaseADemo(sa, base, run, phone) {
   console.log('  ↳ open: Groups → "DEMO A Full" (capacity + waiting + Other groups), "DEMO A Renew" (extra session, Advance cycle ticks)')
   console.log('  ↳ open: Follow-ups, Renewals, the student "Seat1-' + run + ' DEMO-TEST" (Contact with parents), Campuses → Open branch profile')
   console.log('  ↳ try yourself: add a holiday (Holidays page) on a day without real groups, then remove it')
+}
+
+async function phaseBDemo(sa, base, run, phone) {
+  section('13. Demo data for phase B (wallets)')
+  const campuses = list((await sa.json('GET', '/api/campuses')).data)
+  const campus = campuses.find((c) => c.isActive !== false) ?? campuses[0]
+  const levels = (await sa.json('GET', '/api/discounts/options')).data?.data?.levels ?? []
+  const level = levels[0]
+  if (!campus || !level) return bad('a branch and a level are needed')
+  const year = new Date().getFullYear()
+  const parentPhone = phone(60)
+  let k = 61
+  const mkStudent = async (first, guardianPhone) => (await sa.json('POST', '/api/students', {
+    body: {
+      firstName: `${first}-${run}`, lastName: 'DEMO-TEST', fullNameAr: `تجربة ${first}`, fatherName: 'Father Demo', fatherPhoneNumber: '', motherName: '',
+      parentStatus: 'BOTH_ALIVE', dateOfBirth: '2015-05-10T00:00:00.000Z', gender: 'MALE', nationality: 'Egyptian', address: '12 Demo St Hurghada',
+      city: 'Hurghada', phoneNumber: phone(k), emergencyContact: phone(k++), email: '', hasSiblingAtAcademy: false, campusId: campus.id,
+      rollNumber: '', totalFeeAmount: 0, academicYear: `${year}-${year + 1}`, guardianFirstName: 'Demo Wallet Parent', guardianLastName: '',
+      guardianPhone, guardianEmail: '', guardianRelationship: '',
+    },
+  })).data?.data
+  const mkGroup = async (name, extra = {}) => (await sa.json('POST', '/api/groups', { body: { campusId: campus.id, className: name, sectionName: 'A', levelId: level.id, ...extra } })).data?.data?.id
+  const bal = async (id) => Number((await sa.json('GET', `/api/students/${id}/wallet`)).data?.data?.balance ?? 0)
+  const invoiceOf = async (studentId, groupId) => list((await sa.json('GET', `/api/fees?studentId=${studentId}&limit=20`)).data).find((i) => i.classSectionId === groupId && i.status !== 'CANCELLED')
+  const money = (n) => `${Number(n).toLocaleString('en-US')} EGP`
+
+  const full = await mkGroup(`DEMO B Wallet ${run}`)
+  const inst = await mkGroup(`DEMO B Installments ${run}`, { installmentsAllowed: true })
+  const [a, b] = [await mkStudent('WalletA', parentPhone), await mkStudent('WalletB', parentPhone)]
+  check('demo groups + two siblings (same parent) created', full && inst && a?.id && b?.id)
+  if (!full || !inst || !a?.id || !b?.id) return
+  const min = Number((await sa.json('GET', `/api/students/${a.id}/wallet`)).data?.data?.minimumTopUp ?? 0)
+
+  // 1) top-up in parts: the invoice waits, then is paid automatically
+  await sa.json('POST', `/api/groups/${full}/students`, { body: { studentId: a.id } })
+  const invA = await invoiceOf(a.id, full)
+  const price = Number(invA?.totalAmount ?? 0)
+  check(`WalletA has an invoice in "DEMO B Wallet" (${money(price)})`, !!invA && price > 0, 'the first level needs a price')
+  if (!invA || price <= 0) return
+  const half = Math.max(min, Math.ceil(price / 2))
+  const t1 = await sa.json('POST', '/api/wallet/topups', { body: { studentId: a.id, amount: half, method: 'Cash', remarks: 'DEMO top-up' } })
+  check(`staff top-up ${money(half)} → receipt ${t1.data?.data?.topUpNumber ?? '-'}`, t1.data?.success, t1.data?.error?.message)
+  const w1 = (await invoiceOf(a.id, full))?.status
+  check(`group without installments: not enough yet, invoice still ${w1}`, half >= price || w1 !== 'PAID')
+  const rest = Math.max(min, price - half + 100)
+  await sa.json('POST', '/api/wallet/topups', { body: { studentId: a.id, amount: rest, method: 'InstaPay', remarks: 'DEMO top-up 2' } })
+  const w2 = (await invoiceOf(a.id, full))?.status
+  check(`second top-up → invoice paid automatically from the wallet (${w2}), ${money(await bal(a.id))} left`, w2 === 'PAID')
+
+  // 2) installments group: partial payment from the wallet
+  await sa.json('POST', '/api/wallet/topups', { body: { studentId: b.id, amount: half, method: 'Cash', remarks: 'DEMO top-up' } })
+  await sa.json('POST', `/api/groups/${inst}/students`, { body: { studentId: b.id } })
+  const ib = await invoiceOf(b.id, inst)
+  check(`installments allowed: WalletB's invoice paid from the wallet (${money(ib?.paidAmount ?? 0)} of ${money(ib?.totalAmount ?? 0)})`, ib?.status === 'PARTIALLY_PAID' || ib?.status === 'PAID', ib?.status)
+
+  // 3) sibling transfer
+  const before = await bal(a.id)
+  if (before > 0) {
+    const amt = Math.min(50, before)
+    const tr = await sa.json('POST', `/api/students/${a.id}/wallet/transfer`, { body: { toStudentId: b.id, amount: amt } })
+    check(`moved ${money(amt)} from WalletA to his brother`, tr.data?.success, tr.data?.error?.message)
+  }
+
+  // 4) parent: sees both wallets, uploads a receipt (waits in "Receipts to check"), asks for a withdrawal
+  const guardianId = ((await sa.json('GET', `/api/students/${a.id}`)).data?.data?.guardians ?? [])[0]?.id
+  const temp = await sa.json('POST', `/api/students/${a.id}/portal-password`, { body: { target: 'guardian', guardianId } })
+  const parent = new Client(base)
+  const signed = !!temp.data?.data?.password && (await parent.login(parentPhone, temp.data.data.password))
+  check(`parent ${parentPhone} signs in (temporary password)`, signed)
+  if (signed) {
+    const pw = (await parent.json('GET', '/api/guardian-portal/wallet')).data?.data
+    check(`parent sees both children's wallets (${(pw?.wallets ?? []).map((w) => money(w.balance)).join(' + ')})`, (pw?.wallets?.length ?? 0) === 2)
+    const form = new FormData()
+    form.append('studentId', b.id); form.append('amount', String(Math.max(min, 300))); form.append('remarks', 'DEMO transfer receipt')
+    form.append('file', new Blob([PNG], { type: 'image/png' }), 'receipt.png')
+    const up = await parent.json('POST', '/api/guardian-portal/wallet/topups', { multipart: form })
+    check('parent uploaded a top-up receipt → waits in "Receipts to check"', up.status < 300, up.data?.error?.message)
+    const payout = pw?.payoutMethods?.[0]
+    const left = await bal(a.id)
+    if (payout && left > 0) {
+      const amt = Math.min(20, left)
+      const wd = await parent.json('POST', '/api/guardian-portal/wallet/withdrawals', { body: { studentId: a.id, amount: amt, payoutMethod: payout } })
+      check(`parent asked for ${money(amt)} back (${payout}) → waits in "Withdrawals"`, wd.data?.success, wd.data?.error?.message)
+    }
+  }
+  const sum = (await sa.json('GET', '/api/wallet/summary')).data?.data
+  check(`prepaid money in all wallets: ${money(sum?.prepaidTotal ?? 0)}`, sum?.prepaidTotal !== undefined)
+
+  console.log('  ↳ open: Wallet & Top-ups → "Receipts to check" (approve the demo receipt) and "Withdrawals" (approve/reject)')
+  console.log(`  ↳ open: the student "WalletA-${run} DEMO-TEST" → Wallet card (statement, top-up receipts), Fees → invoices paid from the wallet`)
+  console.log(`  ↳ parent portal: phone ${parentPhone} (reset its portal password from the student page to sign in yourself)`)
 }
 
 function finish() {
