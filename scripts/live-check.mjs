@@ -5,6 +5,7 @@
  *   node scripts/live-check.mjs            # run the checks, leave demo data to explore
  *   node scripts/live-check.mjs --cleanup  # remove ONLY the demo data
  *   node scripts/live-check.mjs --transfer # only try moving students between groups (2026-10-03)
+ *   node scripts/live-check.mjs --schedule # only make demo data for the Groups calendar (2026-10-03)
  *
  * Asks for the site address, the Super Admin email and password at run time.
  * The password is never printed, saved or sent anywhere except the login.
@@ -99,7 +100,8 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 async function main() {
   const cleanupOnly = process.argv.includes('--cleanup')
   const transferOnly = process.argv.includes('--transfer')
-  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : ''))
+  const scheduleOnly = process.argv.includes('--schedule')
+  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : scheduleOnly ? ' — demo data for the Groups calendar' : ''))
   const base = ((await ask('Site address [https://evershine-lms-technova.vercel.app]: ')) || 'https://evershine-lms-technova.vercel.app').replace(/\/+$/, '')
   const email = await ask('Super Admin email: ')
   const password = await ask('Super Admin password (hidden): ', { hidden: true })
@@ -120,6 +122,11 @@ async function main() {
 
   const run = String(randomInt(1000, 9999))
   const phone = (n) => `0109990${run.slice(0, 2)}${String(n).padStart(2, '0')}`
+  if (scheduleOnly) {
+    try { await scheduleDemo(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
+    console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
+    return finish()
+  }
   if (transferOnly) {
     try { await transferChecks(sa, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
     console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
@@ -408,6 +415,121 @@ async function transferChecks(sa, run, phone) {
   const newB = await invoiceIn(b.id, toId)
   check(`B got a normal invoice in the new group (${n(newB?.totalAmount)} EGP)`, !!newB)
   console.log(`  ↳ open the student "MoveA-${run} DEMO-TEST" → card "Groups & moves" to see it in the screen`)
+}
+
+// ── demo data for the Groups calendar (/dashboard/schedule) ─────────────────
+// 2 demo instructors, 4 demo groups around today: held sessions, a forgotten
+// attendance, a clash, a substitute, a cancelled session and a group that has
+// not started. All DEMO-marked, removed by --cleanup.
+async function scheduleDemo(sa, base, run, phone) {
+  section('11. Demo data for the Groups calendar')
+  const iso = (d) => d.toISOString().slice(0, 10)
+  const dayOf = (k) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() + k); return d }
+  const date = (k) => iso(dayOf(k))
+  const dow = (k) => dayOf(k).getUTCDay()
+
+  const campuses = list((await sa.json('GET', '/api/campuses')).data)
+  const campus = campuses.find((c) => c.isActive !== false) ?? campuses[0]
+  const batch = list((await sa.json('GET', `/api/batches?campusId=${campus?.id}`)).data)[0]
+  const shift = list((await sa.json('GET', '/api/shifts')).data)[0]
+  const levels = (await sa.json('GET', '/api/discounts/options')).data?.data?.levels ?? []
+  const lvl = (i) => levels[i % Math.max(1, levels.length)]
+  if (!campus || !batch || !shift || !levels.length) return bad('branch, batch, shift and levels needed')
+
+  // instructors
+  const year = new Date().getFullYear()
+  const teachers = []
+  for (const [i, name] of ['Ahmed', 'Mona'].entries()) {
+    const email = `cal-${name.toLowerCase()}-${run}@demo.technova.local`
+    const password = `Demo${run}Tt${i}`
+    const r = await sa.json('POST', '/api/teachers', {
+      body: {
+        firstName: name, lastName: `DEMO ${run}`, cnic: `29${run}${String(1000000 + i).slice(1)}${i}`.slice(0, 13).padEnd(13, '7'),
+        dateOfBirth: '1992-03-15T00:00:00.000Z', gender: i ? 'FEMALE' : 'MALE', qualification: 'BSc Engineering',
+        joiningDate: `${year}-01-01T00:00:00.000Z`, designation: 'Teacher', phoneNumber: phone(60 + i), email,
+        address: '12 Demo St Hurghada', city: 'Hurghada', emergencyContact: phone(70 + i), campusId: campus.id, password,
+      },
+    })
+    const id = r.data?.data?.id ?? r.data?.data?.teacher?.id
+    check(`demo instructor ${name} created (${email})`, !!id, r.data?.error?.message ?? JSON.stringify(r.data?.error?.details ?? '').slice(0, 200))
+    teachers.push({ id, name, email, password })
+  }
+  const [tA, tB] = teachers
+  if (!tA.id || !tB.id) return
+
+  // groups: weekly slots placed around today's weekday
+  const slot = (k, time) => ({ dayOfWeek: dow(k), time })
+  const plan = [
+    { key: 'g1', name: `DEMO Cal Robotics A ${run}`, level: lvl(0), teacher: tA, slots: [slot(-3, '16:00'), slot(-1, '16:00'), slot(2, '16:00')], held: [-10, -8, -3] },
+    { key: 'g2', name: `DEMO Cal Robotics B ${run}`, level: lvl(0), teacher: tA, slots: [slot(2, '16:00'), slot(3, '16:00')], held: [-4] },
+    { key: 'g3', name: `DEMO Cal Coding ${run}`, level: lvl(1), teacher: tB, slots: [slot(-2, '18:00'), slot(1, '18:00'), slot(3, '18:00')], held: [-9, -2] },
+    { key: 'g4', name: `DEMO Cal Kids ${run}`, level: lvl(2), teacher: tB, slots: [slot(0, '17:00'), slot(4, '17:00')], held: [] },
+  ]
+  const g = {}
+  let k = 30
+  for (const p of plan) {
+    const r = await sa.json('POST', '/api/groups', { body: { campusId: campus.id, batchId: batch.id, shiftId: shift.id, className: p.name, sectionName: 'C', levelId: p.level.id } })
+    const id = r.data?.data?.id
+    if (!id) { bad(`group ${p.name}`, r.data?.error?.message); continue }
+    await sa.json('PATCH', `/api/groups/${id}`, { body: { scheduleSlots: p.slots } })
+    await sa.json('POST', `/api/groups/${id}/instructor`, { body: { teacherId: p.teacher.id } })
+    for (let s = 0; s < (p.held.length ? 2 : 1); s++) {
+      const st = (await sa.json('POST', '/api/students', {
+        body: {
+          firstName: `Cal${p.key}${s}-${run}`, lastName: 'DEMO-TEST', fullNameAr: `تجربة ${s}`, fatherName: 'Father Demo', fatherPhoneNumber: '', motherName: '',
+          parentStatus: 'BOTH_ALIVE', dateOfBirth: '2015-05-10T00:00:00.000Z', gender: 'MALE', nationality: 'Egyptian', address: '12 Demo St Hurghada',
+          city: 'Hurghada', phoneNumber: phone(k), emergencyContact: phone(k), email: '', hasSiblingAtAcademy: false, campusId: campus.id,
+          batchId: batch.id, rollNumber: '', totalFeeAmount: 0, academicYear: `${year}-${year + 1}`, guardianFirstName: 'Demo Parent', guardianLastName: '',
+          guardianPhone: phone(k + 40), guardianEmail: '', guardianRelationship: '',
+        },
+      })).data?.data
+      k++
+      if (st?.id) await sa.json('POST', `/api/groups/${id}/students`, { body: { studentId: st.id } })
+    }
+    const detail = (await sa.json('GET', `/api/groups/${id}`)).data?.data
+    const enr = (detail?.enrollments ?? []).map((e) => e.id)
+    for (const h of p.held) {
+      await sa.json('POST', '/api/enrollment-attendance', {
+        body: { classSectionId: id, attendanceDate: date(h), records: enr.map((e, i) => ({ studentEnrollmentId: e, status: i === 1 && h === p.held[0] ? 'ABSENT' : 'PRESENT' })) },
+      })
+    }
+    g[p.key] = id
+    ok(`"${p.name}" · ${p.teacher.name} · ${p.slots.map((s) => `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][s.dayOfWeek]} ${s.time}`).join(', ')} · ${p.held.length} session(s) held`)
+  }
+
+  // substitute: Mona is absent tomorrow, Ahmed covers (and accepts)
+  if (g.g3) {
+    const abs = await sa.json('POST', '/api/teacher-absences', { body: { teacherId: tB.id, date: date(1), scope: 'SINGLE_SESSION', classSectionId: g.g3, reason: 'Demo: doctor appointment' } })
+    const absId = abs.data?.data?.id
+    await sa.json('POST', `/api/teacher-absences/${absId}/respond`, { body: { decision: 'APPROVE' } })
+    const asg = await sa.json('POST', `/api/teacher-absences/${absId}/assign-substitute`, { body: { classSectionId: g.g3, substituteTeacherId: tA.id } })
+    const asgId = asg.data?.data?.id
+    const ahmed = new Client(base)
+    let accepted = false
+    if (asgId && (await ahmed.login(tA.email, tA.password))) {
+      accepted = (await ahmed.json('POST', `/api/substitute-assignments/${asgId}/respond`, { body: { decision: 'ACCEPT' } })).data?.success === true
+    }
+    check(`tomorrow: ${tB.name} absent, ${tA.name} substitutes${accepted ? ' (accepted)' : ' (waiting for him to accept)'}`, !!asgId, abs.data?.error?.message ?? asg.data?.error?.message)
+
+    // cancelled: Mona absent again in 3 days, no substitute -> session cancelled
+    const abs2 = await sa.json('POST', '/api/teacher-absences', { body: { teacherId: tB.id, date: date(3), scope: 'SINGLE_SESSION', classSectionId: g.g3, reason: 'Demo: travel' } })
+    const abs2Id = abs2.data?.data?.id
+    await sa.json('POST', `/api/teacher-absences/${abs2Id}/respond`, { body: { decision: 'APPROVE' } })
+    const cancel = await sa.json('POST', `/api/teacher-absences/${abs2Id}/no-substitute-action`, { body: { classSectionId: g.g3, action: 'CANCEL_SESSION', reason: 'Demo: instructor travelling' } })
+    check('in 3 days: a cancelled session (with its reason)', cancel.data?.success, abs2.data?.error?.message ?? cancel.data?.error?.message)
+  }
+
+  // what the calendar shows now
+  const cal = (await sa.json('GET', `/api/groups/schedule?from=${date(-14)}&to=${date(14)}`)).data?.data
+  const mine = (cal?.sessions ?? []).filter((s) => Object.values(g).includes(s.groupId))
+  const n = (f) => mine.filter(f).length
+  check(`calendar: ${n((s) => s.status === 'HELD')} held, ${n((s) => s.status === 'MISSING')} without attendance, ${n((s) => s.status === 'SCHEDULED')} upcoming, ${n((s) => s.status === 'NOT_STARTED')} not started`, n((s) => s.status === 'HELD') > 0 && n((s) => s.status === 'NOT_STARTED') > 0)
+  check(`clash shown (${tA.name} has 2 groups at 16:00 in 2 days)`, mine.some((s) => s.conflict))
+  check('substitute shown on its session', mine.some((s) => s.substitute))
+  check('cancelled session shown', mine.some((s) => s.status === 'CANCELLED'))
+  check('last session of a month flagged', mine.some((s) => s.isLastOfCycle))
+  console.log(`  ↳ open Groups Schedule (Week / Month). Filter "All instructors" → ${tA.name} DEMO ${run} to see a clash.`)
+  console.log(`  ↳ instructor view: sign in as ${tA.email} / ${tA.password} → My Calendar`)
 }
 
 function finish() {
