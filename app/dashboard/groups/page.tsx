@@ -131,6 +131,11 @@ export default function GroupsPage() {
 
   const [filter, setFilter] = useState<'ACTIVE' | 'UPCOMING' | 'COMPLETED'>('ACTIVE')
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  // Opened from another page (e.g. the Groups schedule): /dashboard/groups?group=<id>
+  useEffect(() => {
+    const g = new URLSearchParams(window.location.search).get('group')
+    if (g) setSelectedGroupId(g)
+  }, [])
 
   const filtered = useMemo(() => groups.filter((g) => g.displayStatus === filter), [groups, filter])
   const counts = useMemo(() => ({

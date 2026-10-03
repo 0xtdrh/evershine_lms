@@ -611,6 +611,48 @@ R=$(api POST /api/students/$TC/transfer "{\"fromClassSectionId\":\"$TG1\",\"toCl
 check "nothing paid, nothing attended: old invoice cancelled" "$(echo "$R" | jq_ "d['success']")/$(M "SELECT status FROM FeeInvoice WHERE id='$TCINV'")" "True/CANCELLED"
 check "a GroupTransfer row per move" "$(M "SELECT COUNT(*) FROM GroupTransfer WHERE fromClassSectionId='$TG1'")" "3"
 check "old teacher's share follows net paid (paid - refunded = 212.5 kept)" "$(M "SELECT CAST(paidAmount-refundedAmount AS DOUBLE) FROM FeeInvoice WHERE id='$(invid $TA $TG1)'")" "212.5"
+echo "== 22. groups schedule (weekly / monthly calendar)"
+cat > scripts/e2e/.tmp-tch.ts <<'EOS'
+import { prisma } from '../../lib/prisma'
+import { hash } from '@node-rs/argon2'
+async function main() {
+  const u = await prisma.user.create({ data: { email: 'tch@e2e.local', passwordHash: await hash('E2eTch12345'), role: 'TEACHER', isActive: true } })
+  const t = await prisma.teacher.create({ data: { userId: u.id, employeeId: 'TN-TCH-E2E', firstName: 'Cal', lastName: 'Teacher', cnic: 'e2e-cnic-cal', dateOfBirth: new Date('1990-01-01'), gender: 'MALE', qualification: 'BSc', joiningDate: new Date(), phoneNumber: '01077770001', email: 'tch@e2e.local', address: 'Hurghada', city: 'Hurghada', emergencyContact: '01077770001', campusId: process.env.E2E_CAMPUS!, designation: 'Teacher' } })
+  console.log(t.id); await prisma.$disconnect()
+}
+main()
+EOS
+CALT=$(DATABASE_URL="$URL" E2E_CAMPUS="$CAMPUS" npx tsx scripts/e2e/.tmp-tch.ts 2>/dev/null | tail -1); rm -f scripts/e2e/.tmp-tch.ts
+[ -n "$CALT" ] && ok "a teacher for the calendar checks" || bad "a teacher for the calendar checks"
+SG1=$(mkgroup "E2E Sched One" "$NLEVEL"); SG2=$(mkgroup "E2E Sched Two" "$NLEVEL")
+EVERYDAY='[{"dayOfWeek":0,"time":"16:00"},{"dayOfWeek":1,"time":"16:00"},{"dayOfWeek":2,"time":"16:00"},{"dayOfWeek":3,"time":"16:00"},{"dayOfWeek":4,"time":"16:00"},{"dayOfWeek":5,"time":"16:00"},{"dayOfWeek":6,"time":"16:00"}]'
+M "UPDATE ClassSection SET scheduleSlots='$EVERYDAY' WHERE id IN ('$SG1','$SG2')"
+api POST /api/groups/$SG1/instructor "{\"teacherId\":\"$CALT\"}" >/dev/null
+SCH=$(mkstu Sched 01066660031 '' ''); api POST /api/groups/$SG1/students "{\"studentId\":\"$SCH\"}" >/dev/null
+SCHE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$SCH' AND classSectionId='$SG1'")
+D() { date -u -d "$1 days" +%F; }
+sess $SG1 "$(D -3)" "$(rec $SCHE PRESENT)" >/dev/null
+M "INSERT INTO CancelledSession (id, classSectionId, date, reason, cancelledBy, createdAt) VALUES ('cs-e2e-1','$SG1','$(D 1)','Holiday','$SA_ID',NOW(3))"
+CAL=$(api GET "/api/groups/schedule?from=$(D -5)&to=$(D 6)")
+row() { echo "$CAL" | jq_ "' '.join('%s:%s:%s' % (s['date'][5:], s['status'], s['sessionNumber'] or '-') for s in d['data']['sessions'] if s['groupId']=='$1')"; }
+check "held, no-attendance, cancelled and upcoming sessions on their dates (4 per cycle)" "$(row $SG1)" \
+  "$(D -3 | cut -c6-):HELD:1 $(D -2 | cut -c6-):MISSING:- $(D -1 | cut -c6-):MISSING:- $(D 0 | cut -c6-):SCHEDULED:2 $(D 1 | cut -c6-):CANCELLED:- $(D 2 | cut -c6-):SCHEDULED:3 $(D 3 | cut -c6-):SCHEDULED:4"
+check "last session of the cycle is flagged" "$(echo "$CAL" | jq_ "[s['date'] for s in d['data']['sessions'] if s['groupId']=='$SG1' and s['isLastOfCycle']]==['$(D 3)']")" "True"
+check "cancel reason shown" "$(echo "$CAL" | jq_ "[s['cancelReason'] for s in d['data']['sessions'] if s['groupId']=='$SG1' and s['status']=='CANCELLED'][0]")" "Holiday"
+check "group not started yet: faded upcoming sessions numbered from 1" "$(echo "$CAL" | jq_ "[s['sessionNumber'] for s in d['data']['sessions'] if s['groupId']=='$SG2' and s['status']=='NOT_STARTED'][:2]")" "[1, 2]"
+check "no clash while the instructor has one group at 16:00" "$(echo "$CAL" | jq_ "any(s['conflict'] for s in d['data']['sessions'] if s['groupId'] in ('$SG1','$SG2'))")" "False"
+api POST /api/groups/$SG2/instructor "{\"teacherId\":\"$CALT\"}" >/dev/null
+CAL=$(api GET "/api/groups/schedule?from=$(D 0)&to=$(D 0)")
+check "same instructor, two groups at the same time -> clash on both" "$(echo "$CAL" | jq_ "sorted(s['groupId'] for s in d['data']['sessions'] if s['conflict'] and s['groupId'] in ('$SG1','$SG2'))==sorted(['$SG1','$SG2'])")" "True"
+check "group details for the calendar (course, level, instructor, students)" "$(echo "$CAL" | jq_ "[(g['course'] is not None, g['level'] is not None, g['teacher'] is not None, g['studentCount']) for g in d['data']['groups'] if g['id']=='$SG1'][0]")" "(True, True, True, 1)"
+check "more than 62 days at once refused" "$(api GET "/api/groups/schedule?from=$(D 0)&to=$(D 90)" | jq_ "d['success']")" "False"
+check "a month (6 weeks grid) is accepted" "$(api GET "/api/groups/schedule?from=$(D -20)&to=$(D 21)" | jq_ "d['success']")" "True"
+check "not signed in -> refused (401)" "$(curl -s -b "$(mktemp)" $B/api/groups/schedule?from=$(D 0)\&to=$(D 0) -o /dev/null -w '%{http_code}')" "401"
+SG3=$(mkgroup "E2E Sched Three" "$NLEVEL"); M "UPDATE ClassSection SET scheduleSlots='$EVERYDAY' WHERE id='$SG3'"
+TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.0.99
+TCAL=$(curl -s -b "$TJ" "$B/api/groups/schedule?from=$(D 0)&to=$(D 0)")
+check "teacher sees only his own groups in his calendar" "$(echo "$TCAL" | jq_ "sorted(set(s['groupId'] for s in d['data']['sessions']))==sorted(['$SG1','$SG2'])")" "True"
+rm -f "$TJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
