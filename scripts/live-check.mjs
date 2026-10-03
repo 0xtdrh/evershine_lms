@@ -9,6 +9,7 @@
  *   node scripts/live-check.mjs --phase-a  # demo data for phase A: capacity/waiting, contact log, renewals
  *   node scripts/live-check.mjs --phase-b  # demo data for phase B: wallets, top-ups, auto-pay, siblings, withdrawal
  *   node scripts/live-check.mjs --phase-c  # demo data for phase C: excuses, attendance alerts, ratings, birthdays, reports
+ *   node scripts/live-check.mjs --logins   # demo instructor + student + parent you can sign in with (printed once, removed by --cleanup)
  *
  * Asks for the site address, the Super Admin email and password at run time.
  * The password is never printed, saved or sent anywhere except the login.
@@ -107,7 +108,8 @@ async function main() {
   const phaseAOnly = process.argv.includes('--phase-a')
   const phaseBOnly = process.argv.includes('--phase-b')
   const phaseCOnly = process.argv.includes('--phase-c')
-  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : scheduleOnly ? ' — demo data for the Groups calendar' : phaseAOnly ? ' — demo data for phase A' : phaseBOnly ? ' — demo data for phase B (wallets)' : phaseCOnly ? ' — demo data for phase C' : ''))
+  const loginsOnly = process.argv.includes('--logins')
+  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : scheduleOnly ? ' — demo data for the Groups calendar' : phaseAOnly ? ' — demo data for phase A' : phaseBOnly ? ' — demo data for phase B (wallets)' : phaseCOnly ? ' — demo data for phase C' : loginsOnly ? ' — demo accounts to sign in with' : ''))
   const base = ((await ask('Site address [https://evershine-lms-technova.vercel.app]: ')) || 'https://evershine-lms-technova.vercel.app').replace(/\/+$/, '')
   const email = await ask('Super Admin email: ')
   const password = await ask('Super Admin password (hidden): ', { hidden: true })
@@ -128,6 +130,11 @@ async function main() {
 
   const run = String(randomInt(1000, 9999))
   const phone = (n) => `0109990${run.slice(0, 2)}${String(n).padStart(2, '0')}`
+  if (loginsOnly) {
+    try { await demoLogins(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
+    console.log('\nThese are DEMO accounts only. Remove them (and all demo data) any time with:  node scripts/live-check.mjs --cleanup')
+    return finish()
+  }
   if (phaseCOnly) {
     try { await phaseCDemo(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
     console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
@@ -783,6 +790,70 @@ async function phaseCDemo(sa, base, run, phone) {
   console.log(`  ↳ open: Absence Excuses (the demo excuse), Follow-ups ("Older-${run}" absent twice), Birthdays (today), Ratings`)
   console.log(`  ↳ open: the student "Older-${run} DEMO-TEST" → Reports / attendance; Settings → Notifications to switch types on/off`)
   console.log(`  ↳ parent portal: phone ${parentPhone} (reset its portal password from the student page to sign in yourself)`)
+}
+
+async function demoLogins(sa, base, run, phone) {
+  section('15. Demo accounts: instructor, student, parent')
+  const iso = (k) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() + k); return d.toISOString().slice(0, 10) }
+  const campuses = list((await sa.json('GET', '/api/campuses')).data)
+  const campus = campuses.find((c) => c.isActive !== false) ?? campuses[0]
+  const levels = (await sa.json('GET', '/api/discounts/options')).data?.data?.levels ?? []
+  const level = levels[0]
+  if (!campus || !level) return bad('a branch and a level are needed')
+  const year = new Date().getFullYear()
+
+  // instructor (staff e-mail @demo.technova.local = removed by --cleanup)
+  const teacherEmail = `teacher-${run}${'@demo.technova.local'}`
+  const teacherPass = `Demo${run}Tt${randomInt(10, 99)}`
+  const t = await sa.json('POST', '/api/teachers', {
+    body: {
+      firstName: 'Demo', lastName: `Instructor ${run}`, cnic: `29${run}${String(randomInt(1000000, 9999999))}`, dateOfBirth: '1995-04-12T00:00:00.000Z', gender: 'MALE',
+      qualification: 'BSc', experienceYears: 2, joiningDate: new Date().toISOString(), designation: 'Instructor',
+      phoneNumber: phone(90), email: teacherEmail, address: '12 Demo St Hurghada', city: 'Hurghada', emergencyContact: phone(91),
+      campusId: campus.id, password: teacherPass,
+    },
+  })
+  const teacherId = t.data?.data?.id ?? t.data?.data?.teacher?.id
+  check('demo instructor created', !!teacherId, t.data?.error?.message)
+
+  // group + student + parent
+  const group = (await sa.json('POST', '/api/groups', { body: { campusId: campus.id, className: `DEMO Logins ${run}`, sectionName: 'A', levelId: level.id } })).data?.data?.id
+  if (group) {
+    await sa.json('PATCH', `/api/groups/${group}`, { body: { scheduleSlots: [0, 1, 2, 3, 4, 5, 6].map((d) => ({ dayOfWeek: d, time: '17:00' })) } })
+    if (teacherId) await sa.json('POST', `/api/groups/${group}/instructor`, { body: { teacherId } })
+  }
+  const parentPhone = phone(92)
+  const s = (await sa.json('POST', '/api/students', {
+    body: {
+      firstName: `Login-${run}`, lastName: 'DEMO-TEST', fullNameAr: 'طالب تجربة', fatherName: 'Father Demo', fatherPhoneNumber: '', motherName: '',
+      parentStatus: 'BOTH_ALIVE', dateOfBirth: '2014-05-10T00:00:00.000Z', gender: 'MALE', nationality: 'Egyptian', address: '12 Demo St Hurghada',
+      city: 'Hurghada', phoneNumber: phone(93), emergencyContact: phone(93), email: '', hasSiblingAtAcademy: false, campusId: campus.id,
+      rollNumber: '', totalFeeAmount: 0, academicYear: `${year}-${year + 1}`, guardianFirstName: 'Demo Login Parent', guardianLastName: '',
+      guardianPhone: parentPhone, guardianEmail: '', guardianRelationship: '',
+    },
+  })).data?.data
+  check('demo group, student and parent created', !!group && !!s?.id)
+  if (!group || !s?.id) return
+  await sa.json('POST', `/api/groups/${group}/students`, { body: { studentId: s.id } })
+  const g = (await sa.json('GET', `/api/groups/${group}`)).data?.data
+  const enr = (g?.enrollments ?? [])[0]?.id
+  if (enr) {
+    for (const [k, st] of [[-2, 'PRESENT'], [-1, 'LATE']]) await sa.json('POST', '/api/enrollment-attendance', { body: { classSectionId: group, attendanceDate: iso(k), records: [{ studentEnrollmentId: enr, status: st }] } })
+  }
+  const guardianId = ((await sa.json('GET', `/api/students/${s.id}`)).data?.data?.guardians ?? [])[0]?.id
+  const pp = (await sa.json('POST', `/api/students/${s.id}/portal-password`, { body: { target: 'guardian', guardianId } })).data?.data
+  const sp = (await sa.json('POST', `/api/students/${s.id}/portal-password`, { body: { target: 'student' } })).data?.data
+  check('temporary passwords issued for the student and the parent', !!pp?.password && !!sp?.password)
+
+  console.log(`\n  Sign in at ${base}/login  (write these down now — they are not saved anywhere)`)
+  console.log('  ┌─────────────┬──────────────────────────────────────────┬──────────────────────┐')
+  const row = (who, id, pw) => console.log(`  │ ${who.padEnd(11)} │ ${String(id).padEnd(40)} │ ${String(pw).padEnd(20)} │`)
+  if (teacherId) row('Instructor', teacherEmail, teacherPass)
+  if (pp?.password) row('Parent', pp.loginId ?? parentPhone, pp.password)
+  if (sp?.password) row('Student', sp.loginId ?? '—', sp.password)
+  console.log('  └─────────────┴──────────────────────────────────────────┴──────────────────────┘')
+  console.log('  The parent and the student are asked to choose a new password at first sign-in.')
+  console.log(`  The instructor sees the group "DEMO Logins ${run}" (2 sessions recorded, attendance, excuses, birthdays page).`)
 }
 
 function finish() {
