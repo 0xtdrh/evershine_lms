@@ -17,7 +17,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { notify } from '@/lib/notify'
-import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, Trash2, CheckCircle2, X, Wallet } from 'lucide-react'
+import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, Trash2, CheckCircle2, X, Wallet, ArrowRightLeft } from 'lucide-react'
+import { TransferStudentDialog } from '@/components/groups/TransferStudentDialog'
 
 interface Campus { id: string; name: string }
 interface Batch { id: string; name: string }
@@ -111,6 +112,14 @@ export default function GroupsPage() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const { data: session } = useSession()
+  const { data: myPerms } = useQuery({
+    queryKey: ['my-permissions', session?.user?.role],
+    queryFn: () => fetchApi<{ permissions: Record<string, string[]> }>('/api/me/permissions'),
+    staleTime: 60_000,
+    enabled: !!session?.user?.role,
+  })
+  const canMoveStudents = !!myPerms?.permissions?.group_transfers?.includes('create')
+  const [moving, setMoving] = useState<{ studentId: string; name: string } | null>(null)
   const role = session?.user?.role as string | undefined
   const myCampusId = session?.user?.campusId as string | undefined
   const isCampusLocked = role !== 'SUPER_ADMIN'
@@ -722,6 +731,15 @@ export default function GroupsPage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
+                          {canMoveStudents && (
+                            <Button
+                              size="sm" variant="ghost" className="h-6 gap-1 px-1.5 text-xs text-indigo-600"
+                              title="Move to another group"
+                              onClick={() => setMoving({ studentId: e.student.id, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}` })}
+                            >
+                              <ArrowRightLeft className="w-3.5 h-3.5" /> Move
+                            </Button>
+                          )}
                           <Button
                             size="sm" variant="ghost" className="h-6 w-6 p-0"
                             disabled={removeStudentMutation.isPending}
@@ -1137,6 +1155,16 @@ export default function GroupsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {moving && selectedGroupId && (
+        <TransferStudentDialog
+          open={!!moving}
+          onOpenChange={(o) => { if (!o) setMoving(null) }}
+          studentId={moving.studentId}
+          studentName={moving.name}
+          fromGroupId={selectedGroupId}
+        />
+      )}
     </div>
   )
 }

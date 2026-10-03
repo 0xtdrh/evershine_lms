@@ -3499,3 +3499,41 @@ model OnlinePayment {
   @@index([providerOrderId])
   @@index([status])
 }
+
+/// A student moved from one group to another (docs/design-student-transfer.md).
+/// The money left over from the old group is returned as an approved refund
+/// (refundId) to the wallet, and optionally paid onto the new invoice (paymentId).
+model GroupTransfer {
+  id                 String   @id @default(cuid())
+  studentId          String
+  fromClassSectionId String
+  toClassSectionId   String
+  fromEnrollmentId   String
+  toEnrollmentId     String
+  oldInvoiceId       String?
+  newInvoiceId       String?
+  sessionsCounted    Int      @default(0)
+  perSession         Decimal  @default(0) @db.Decimal(10, 2)
+  /// What the attended/held sessions cost (stays due on the old invoice)
+  consumedAmount     Decimal  @default(0) @db.Decimal(10, 2)
+  netPaidBefore      Decimal  @default(0) @db.Decimal(10, 2)
+  /// Paid but not used: goes to the wallet / the new invoice
+  creditAmount       Decimal  @default(0) @db.Decimal(10, 2)
+  /// NEW_INVOICE | WALLET
+  creditTo           String   @db.VarChar(12)
+  /// Part of the new invoice actually paid from the credit
+  creditApplied      Decimal  @default(0) @db.Decimal(10, 2)
+  /// Unpaid part of the old invoice that was cancelled
+  cancelledAmount    Decimal  @default(0) @db.Decimal(10, 2)
+  refundId           String?
+  paymentId          String?
+  /// [{ assignmentId, typeName, action: MOVE | KEEP | END }]
+  discountDecisions  Json?
+  reason             String?  @db.Text
+  createdById        String
+  createdAt          DateTime @default(now())
+
+  @@index([studentId])
+  @@index([fromClassSectionId])
+  @@index([toClassSectionId])
+}

@@ -37,6 +37,8 @@ export interface RecordPaymentInput {
   invoiceUpdate?: Prisma.FeeInvoiceUpdateManyMutationInput
   /** Audit-log action/entity (proof approvals log as an invoice UPDATE, like before). */
   audit?: { action: 'CREATE' | 'UPDATE'; entityType: 'FeePayment' | 'FeeInvoice'; extra?: Record<string, unknown> }
+  /** Skip the group's "no installments" rule (credit moved from another group, docs/design-student-transfer.md). */
+  allowPartial?: boolean
   /** Extra writes in the SAME transaction (e.g. the wallet debit for a wallet payment). Throw to cancel. */
   onTx?: (tx: Prisma.TransactionClient, payment: { id: string; amount: number }) => Promise<void>
 }
@@ -93,7 +95,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<RecordPa
     return { ok: false, code: 'OVERPAY', message: `The amount (${amount}) is more than the remaining balance (${remaining})` }
   }
 
-  if (invoice.classSectionId && amount < remaining) {
+  if (invoice.classSectionId && amount < remaining && !input.allowPartial) {
     const group = await prisma.classSection.findUnique({ where: { id: invoice.classSectionId }, select: { installmentsAllowed: true } })
     if (group && !group.installmentsAllowed) {
       return { ok: false, code: 'INSTALLMENTS', message: 'This group does not allow installments — the full remaining balance must be paid at once' }

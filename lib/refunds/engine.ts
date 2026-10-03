@@ -188,7 +188,7 @@ export async function requestRefund(input: {
   return { ok: true, refundId: refund.id, status: 'PENDING', refundNumber: null }
 }
 
-async function nextRefundNumber(db: Db) {
+export async function nextRefundNumber(db: Db) {
   const prefix = `TN-RFND-${new Date().getFullYear()}-`
   const rows = await db.refund.findMany({ where: { refundNumber: { startsWith: prefix } }, select: { refundNumber: true } })
   return nextInSequence(rows.map((r) => r.refundNumber!).filter(Boolean), prefix, 5)
@@ -277,7 +277,7 @@ export async function walletBalance(studentId: string, db: Db = prisma): Promise
 export const WALLET_METHOD = 'Wallet'
 
 /** Pays an invoice from the student's wallet (all of the balance needed, or `amount`). */
-export async function payFromWallet(invoiceId: string, userId: string, amount?: number) {
+export async function payFromWallet(invoiceId: string, userId: string, amount?: number, opts: { remarks?: string; allowPartial?: boolean } = {}) {
   const inv = await prisma.feeInvoice.findUnique({ where: { id: invoiceId }, select: { studentId: true, totalAmount: true, paidAmount: true } })
   if (!inv) return { ok: false as const, code: 'NOT_FOUND' as const, message: 'Invoice not found' }
   const balance = await walletBalance(inv.studentId)
@@ -290,7 +290,8 @@ export async function payFromWallet(invoiceId: string, userId: string, amount?: 
     method: WALLET_METHOD,
     source: 'WALLET',
     receivedBy: userId,
-    remarks: 'Paid from the student wallet',
+    remarks: opts.remarks ?? 'Paid from the student wallet',
+    allowPartial: opts.allowPartial,
     onTx: async (tx, payment) => {
       // Check again inside the transaction, then take the money out of the wallet.
       const now = await walletBalance(inv.studentId, tx)

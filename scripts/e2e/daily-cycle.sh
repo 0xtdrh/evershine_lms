@@ -34,6 +34,8 @@ jq_() { python -c "import sys,json;d=json.load(sys.stdin);print($1)" 2>/dev/null
 api() { if [ -n "${3:-}" ]; then curl -s -b "$JAR" -X "$1" -H 'Content-Type: application/json' -d "$3" "$B$2"; else curl -s -b "$JAR" -X "$1" "$B$2"; fi; }
 
 cleanup() {
+  # E2E_KEEP=1: leave the local test DB + app running to look at the screens; stop them by hand afterwards.
+  if [ "${E2E_KEEP:-}" = 1 ]; then echo "kept running: $B (DB port $DB_PORT)"; return; fi
   [ -n "${APP_PID:-}" ] && taskkill //PID "$APP_PID" //T //F >/dev/null 2>&1
   powershell -NoProfile -Command "(Get-NetTCPConnection -LocalPort $APP_PORT -State Listen -ErrorAction SilentlyContinue).OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id \$_ -Force -ErrorAction SilentlyContinue }" >/dev/null 2>&1
   "$MYSQL_DIR/bin/mysqladmin.exe" --no-defaults -h 127.0.0.1 -P $DB_PORT -u root shutdown >/dev/null 2>&1
@@ -569,6 +571,46 @@ check "wrong amount: kept for review, not applied" "$(M "SELECT status FROM Onli
 hook op-e2e-3 5003 $L2LEFT false >/dev/null
 check "declined card: marked FAILED, nothing recorded" "$(M "SELECT status FROM OnlinePayment WHERE id='op-e2e-3'")/$(M "SELECT COUNT(*) FROM FeePayment WHERE invoiceId='$LATE2' AND source='ONLINE'")" "FAILED/0"
 check "staff see the payment that needs review" "$(api GET '/api/online-payments?status=REVIEW' | jq_ "any(r['id']=='op-e2e-2' for r in d['data'])")" "True"
+echo "== 21. move a student to another group (money, discounts, history)"
+TG1=$(mkgroup "E2E Move From" "$NLEVEL"); TG2=$(mkgroup "E2E Move Other" "$OLEVEL"); TG3=$(mkgroup "E2E Move Same" "$NLEVEL")
+M "UPDATE ClassSection SET installmentsAllowed=1 WHERE id='$TG1'"
+TA=$(mkstu MoveA 01066660011 '' ''); TB=$(mkstu MoveB 01066660012 '' ''); TC=$(mkstu MoveC 01066660013 '' '')
+for s in $TA $TB; do api POST /api/groups/$TG1/students "{\"studentId\":\"$s\"}" >/dev/null; done
+pay $(invid $TA $TG1) 850 >/dev/null; pay $(invid $TB $TG1) 100 >/dev/null
+EA=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$TA' AND classSectionId='$TG1'"); EB=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$TB' AND classSectionId='$TG1'")
+sess $TG1 2026-03-01 "$(rec $EA PRESENT),$(rec $EB PRESENT)" >/dev/null
+sess $TG1 2026-03-03 "$(rec $EA ABSENT),$(rec $EB PRESENT)" >/dev/null
+A_TG=$(api POST /api/discounts "{\"discountTypeId\":\"$T_MAN\",\"studentId\":\"$TA\",\"classSectionId\":\"$TG1\",\"value\":10}" | jq_ "d['data']['assignment']['id']")
+PV=$(api GET "/api/students/$TA/transfer?from=$TG1&to=$TG2")
+check "preview: paid 850, 1 session attended (850/4 = 212.5), credit 637.5" "$(echo "$PV" | jq_ "'%s/%s/%s/%s' % (d['data']['invoice']['netPaid'], d['data']['invoice']['perSession'], d['data']['invoice']['consumed'], d['data']['invoice']['credit'])")" "850/212.5/212.5/637.5"
+check "preview: the group discount is listed, suggestion = move it" "$(echo "$PV" | jq_ "','.join(x['suggested'] for x in d['data']['discounts'])")" "MOVE"
+check "moving without answering about the discount is refused" "$(api POST /api/students/$TA/transfer "{\"fromClassSectionId\":\"$TG1\",\"toClassSectionId\":\"$TG2\",\"creditTo\":\"NEW_INVOICE\"}" | jq_ "d['success']")" "False"
+ACJ=$(mktemp); login_jar $ACCE E2eAcc12345 "$ACJ" 10.0.0.98
+check "accountant (view only) cannot move students" "$(curl -s -b "$ACJ" -X POST -H 'Content-Type: application/json' -d "{\"fromClassSectionId\":\"$TG1\",\"toClassSectionId\":\"$TG2\",\"creditTo\":\"WALLET\",\"discountDecisions\":[{\"assignmentId\":\"$A_TG\",\"action\":\"MOVE\"}]}" $B/api/students/$TA/transfer | jq_ "d['success']")" "False"
+rm -f "$ACJ"
+R=$(secapi POST /api/students/$TA/transfer "{\"fromClassSectionId\":\"$TG1\",\"toClassSectionId\":\"$TG2\",\"creditTo\":\"NEW_INVOICE\",\"discountDecisions\":[{\"assignmentId\":\"$A_TG\",\"action\":\"MOVE\"}],\"reason\":\"another course\"}")
+check "secretary moves the student to another course (credit -> new invoice)" "$(echo "$R" | jq_ "'%s/%s/%s' % (d['success'], d['data']['credit'], d['data']['creditApplied'])")" "True/637.5/637.5"
+check "old enrollment withdrawn as TRANSFERRED, new one active" "$(M "SELECT CONCAT(status,'/',withdrawalReason) FROM StudentEnrollment WHERE id='$EA'")/$(M "SELECT status FROM StudentEnrollment WHERE studentId='$TA' AND classSectionId='$TG2'")" "WITHDRAWN/TRANSFERRED/ACTIVE"
+check "attendance history kept on the old enrollment" "$(M "SELECT COUNT(*) FROM EnrollmentAttendanceRecord WHERE studentEnrollmentId='$EA'")" "2"
+check "old invoice: 637.5 refunded, stays PAID (212.5 kept for the session)" "$(M "SELECT CONCAT(CAST(totalAmount AS DOUBLE),'/',CAST(refundedAmount AS DOUBLE),'/',status) FROM FeeInvoice WHERE id='$(invid $TA $TG1)'")" "850/637.5/PAID"
+check "credit recorded as an approved refund (TN-RFND, reason group transfer)" "$(M "SELECT CONCAT(status,'/',refundNumber LIKE 'TN-RFND-%','/',reason LIKE 'Group transfer%') FROM Refund WHERE invoiceId='$(invid $TA $TG1)'")" "APPROVED/1/1"
+check "discount moved with the student: new invoice 850 - 10%" "$(inv $TA $TG2)" "850/85/765/PARTIALLY_PAID"
+check "credit paid onto the new invoice from the wallet, with a receipt" "$(M "SELECT CONCAT(source,'/',CAST(amount AS DOUBLE),'/',receiptNumber LIKE 'TN-RCPT-%') FROM FeePayment WHERE invoiceId='$(invid $TA $TG2)'")" "WALLET/637.5/1"
+check "wallet back to zero" "$(api GET /api/students/$TA/wallet | jq_ "d['data']['balance']")" "0"
+check "discount assignment now points at the new group" "$(M "SELECT classSectionId FROM DiscountAssignment WHERE id='$A_TG'")" "$TG2"
+check "transfer history: 1 move, by the secretary" "$(api GET /api/students/$TA/transfer | jq_ "'%s/%s/%s' % (len(d['data']), d['data'][0]['to']['label'], d['data'][0]['by'])")" "1/E2E Move Other D/sec@e2e.local"
+check "moving again from the old group is refused" "$(api POST /api/students/$TA/transfer "{\"fromClassSectionId\":\"$TG1\",\"toClassSectionId\":\"$TG3\",\"creditTo\":\"WALLET\"}" | jq_ "d['success']")" "False"
+check "moving to the group they are already in is refused" "$(api POST /api/students/$TA/transfer "{\"fromClassSectionId\":\"$TG2\",\"toClassSectionId\":\"$TG2\",\"creditTo\":\"WALLET\"}" | jq_ "d['success']")" "False"
+R=$(api POST /api/students/$TB/transfer "{\"fromClassSectionId\":\"$TG1\",\"toClassSectionId\":\"$TG3\",\"creditTo\":\"WALLET\"}")
+check "paid less than used (100 for 2 sessions = 425): no credit" "$(echo "$R" | jq_ "'%s/%s/%s/%s' % (d['success'], d['data']['credit'], d['data']['oldInvoice']['owed'], d['data']['oldInvoice']['cancelled'])")" "True/0/325/425"
+check "old invoice cut to the 2 sessions, 325 still due" "$(M "SELECT CONCAT(CAST(totalAmount AS DOUBLE),'/',CAST(paidAmount AS DOUBLE),'/',status) FROM FeeInvoice WHERE id='$(invid $TB $TG1)'")" "425/100/PARTIALLY_PAID"
+check "same level, other time: new invoice issued normally" "$(inv $TB $TG3)" "850/0/850/ISSUED"
+api POST /api/groups/$TG1/students "{\"studentId\":\"$TC\"}" >/dev/null
+TCINV=$(invid $TC $TG1)
+R=$(api POST /api/students/$TC/transfer "{\"fromClassSectionId\":\"$TG1\",\"toClassSectionId\":\"$TG2\",\"creditTo\":\"NEW_INVOICE\"}")
+check "nothing paid, nothing attended: old invoice cancelled" "$(echo "$R" | jq_ "d['success']")/$(M "SELECT status FROM FeeInvoice WHERE id='$TCINV'")" "True/CANCELLED"
+check "a GroupTransfer row per move" "$(M "SELECT COUNT(*) FROM GroupTransfer WHERE fromClassSectionId='$TG1'")" "3"
+check "old teacher's share follows net paid (paid - refunded = 212.5 kept)" "$(M "SELECT CAST(paidAmount-refundedAmount AS DOUBLE) FROM FeeInvoice WHERE id='$(invid $TA $TG1)'")" "212.5"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

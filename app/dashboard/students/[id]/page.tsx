@@ -22,6 +22,7 @@ import { StudentAdminToolbar } from '@/components/students/StudentAdminToolbar'
 import { StudentPortalAccessCard } from '@/components/students/StudentPortalAccessCard'
 import { StudentDiscountsCard } from '@/components/students/StudentDiscountsCard'
 import { StudentWalletCard } from '@/components/students/StudentWalletCard'
+import { StudentTransferCard } from '@/components/students/StudentTransferCard'
 
 interface StudentDetail {
   id: string
@@ -411,6 +412,14 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           />
 
           <StudentDiscountsCard
+            studentId={student.id}
+            studentName={`${student.firstName} ${student.lastName}`}
+            groups={(student.enrollments ?? [])
+              .filter((e) => e.status === 'ACTIVE' && e.classSection)
+              .map((e) => ({ id: e.classSection.id, name: `${e.classSection.className} ${e.classSection.sectionName}`.trim() }))}
+          />
+
+          <StudentTransferCard
             studentId={student.id}
             studentName={`${student.firstName} ${student.lastName}`}
             groups={(student.enrollments ?? [])
