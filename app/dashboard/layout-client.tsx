@@ -74,6 +74,7 @@ import { RulesAgreementBlocker } from '@/components/student/RulesAgreementBlocke
 import { GuardianFeedbackModal } from '@/components/feedback/GuardianFeedbackModal'
 import { FeeOverdueModal } from '@/components/student/FeeOverdueModal'
 import { getNotificationModuleForNavLabel, type NotificationCounts } from '@/lib/notifications/module-map'
+import { BirthdayCelebration, useBirthdayToday } from '@/components/birthdays/BirthdayCelebration'
 
 // ─── Role-gated nav items ─────────────────────────────────────────────────────
 interface NavItem {
@@ -200,6 +201,7 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
   const pathname = usePathname()
   const { sidebarOpen, setSidebarOpen, setUser } = useAppStore()
   const role = (session?.user?.role as string) ?? ''
+  const { active: birthdayToday } = useBirthdayToday()
 
   useEffect(() => {
     if (status === 'authenticated' && !role) {
@@ -438,7 +440,7 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
       </AnimatePresence>
 
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="relative z-50 h-16 border-b border-gray-200/80 bg-white/95 backdrop-blur-sm flex items-center px-4 md:px-6 gap-4 flex-shrink-0 shadow-[0_1px_3px_0_rgba(0,0,0,0.04)]">
+        <header className={`relative z-50 h-16 border-b flex items-center px-4 md:px-6 gap-4 flex-shrink-0 shadow-[0_1px_3px_0_rgba(0,0,0,0.04)] ${birthdayToday ? 'keep-light border-pink-200 bg-gradient-to-r from-pink-100 via-amber-50 to-pink-100' : 'border-gray-200/80 bg-white/95 backdrop-blur-sm'}`}>
           <button
             className="md:hidden p-2 rounded-xl hover:bg-gray-100 transition-colors"
             onClick={() => setSidebarOpen(true)}
@@ -456,7 +458,7 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
             <NotificationBell />
             <div className="hidden sm:flex items-center gap-3 pl-3 border-l border-gray-200">
               <div className="text-right">
-                <p className="text-sm font-semibold text-gray-800 leading-tight">{session?.user?.name ?? session?.user?.email}</p>
+                <p className="text-sm font-semibold text-gray-800 leading-tight">{birthdayToday && <span className="mr-1" title="Happy birthday!">🎂</span>}{session?.user?.name ?? session?.user?.email}</p>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${roleBadge.className}`}>
                   {roleBadge.label}
                 </span>
@@ -481,6 +483,7 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
 
         <div className="flex-1 overflow-auto p-4 pb-24 sm:p-6 md:pb-6 relative bg-slate-50/50" style={{ paddingBottom: 'clamp(6rem, calc(6rem + env(safe-area-inset-bottom, 0px)), 8rem)' }}>
           <PageTransition>
+            <BirthdayCelebration />
             {role === 'STUDENT' && (
               <>
                 <RulesAgreementBlocker />

@@ -8,6 +8,7 @@ import { ChildExcusesCard } from '@/components/portal/ChildExcusesCard'
 import { AttendanceTimeline } from '@/components/attendance/AttendanceTimeline'
 import { StudentReportsList } from '@/components/reports/StudentReportsList'
 import { BirthdayBanner } from '@/components/birthdays/BirthdayBanner'
+import { useBirthdayToday } from '@/components/birthdays/BirthdayCelebration'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -189,6 +190,8 @@ export default function MyChildrenPage() {
   })
 
   const childId = selectedChildId || children?.[0]?.id || ''
+  const { data: bdays } = useBirthdayToday()
+  const birthdayIds = new Set((bdays?.children ?? []).map((c) => c.studentId))
 
 
 
@@ -248,6 +251,8 @@ export default function MyChildrenPage() {
                   key={c.id}
                   onClick={() => setSelectedChildId(c.id)}
                   className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left transition-all ${
+                    birthdayIds.has(c.id) ? 'ring-4 ring-amber-300 ring-offset-1 ' : ''
+                  }${
                     isSelected
                       ? 'border-emerald-500 bg-emerald-50 shadow-md'
                       : 'border-slate-200 bg-white hover:border-emerald-300 hover:shadow-sm'
@@ -265,7 +270,7 @@ export default function MyChildrenPage() {
                   )}
                   <div className="min-w-0">
                     <p className={`font-bold text-sm truncate ${isSelected ? 'text-emerald-800' : 'text-slate-800'}`}>
-                      {c.firstName} {c.lastName}
+                      {birthdayIds.has(c.id) && <span className="mr-1">🎂</span>}{c.firstName} {c.lastName}
                     </p>
                     <p className="text-[11px] text-slate-400 truncate">{c.registrationNumber}</p>
                   </div>
