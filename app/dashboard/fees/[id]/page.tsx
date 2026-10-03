@@ -919,7 +919,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
                 Cancel
               </Button>
               <Button type="submit" disabled={isRecording} className="bg-green-600 hover:bg-green-700 text-white font-bold">
-                {isRecording ? 'Processing...' : 'Record Payment'}
+                {isRecording ? 'Processing...' : 'Record payment (top up & pay)'}
               </Button>
             </DialogFooter>
           </form>

@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { PAYMOB_METHOD, verifyPaymobHmac, type PaymobTransaction } from '@/lib/payments/paymob'
 import { recordPayment } from '@/lib/fees/record-payment'
+import { onlineTopUpPaid } from '@/lib/wallet/engine'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -60,13 +61,20 @@ export async function POST(request: NextRequest) {
     return ok('not successful')
   }
 
-  const expectedCents = Math.round(Number(online.amount) * 100)
+  // Phase B: the parent paid amount + Paymob fee.
+  const expectedCents = Math.round((Number(online.amount) + Number(online.fee ?? 0)) * 100)
   if (Number(t.amount_cents) !== expectedCents || String(t.currency).toUpperCase() !== 'EGP') {
     await prisma.onlinePayment.update({
       where: { id: online.id },
       data: { status: 'REVIEW', providerTxnId: txnId, note: `Amount mismatch: paid ${t.amount_cents / 100} ${t.currency}, expected ${expectedCents / 100} EGP` },
     })
     return ok('needs review')
+  }
+
+  // Phase B: a wallet top-up (no invoice) — credit the wallet, then pay open invoices.
+  if (online.kind === 'TOPUP' || !online.invoiceId) {
+    await onlineTopUpPaid(online, txnId)
+    return ok('wallet topped up')
   }
 
   const r = await recordPayment({

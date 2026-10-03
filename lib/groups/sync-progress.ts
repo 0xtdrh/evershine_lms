@@ -68,7 +68,7 @@ export async function createCycleInvoice(params: {
   // Due N days after issue (Settings > Payments; was "due today", which made
   // every new invoice overdue at once). Payment instructions = current accounts.
   const [dueDate, bankAccounts] = await Promise.all([invoiceDueDate(), paymentAccountsSnapshot()])
-  await prisma.$transaction(async (tx) => {
+  const invoiceId = await prisma.$transaction(async (tx) => {
     // Discounts (lib/discounts/engine.ts): assignments + automatic types.
     const discounts = await computeForInvoice(tx, params.studentId, params.classSectionId, params.amount)
     const totalAmount = Math.round((params.amount - discounts.total) * 100) / 100
@@ -96,7 +96,12 @@ export async function createCycleInvoice(params: {
       tx
     )
     await recordInvoiceDiscounts(tx, invoice.id, params.studentId, discounts, params.issuedBy)
+    return invoice.id
   })
+  // Phase B (wallet-first): pay the new invoice from the wallet straight away.
+  const { autoPay } = await import('@/lib/wallet/engine')
+  await autoPay(params.studentId, { userId: params.issuedBy, preferInvoiceId: invoiceId })
+  return invoiceId
 }
 
 export async function syncGroupProgress(classSectionId: string, _actingUserId: string): Promise<SyncResult> {

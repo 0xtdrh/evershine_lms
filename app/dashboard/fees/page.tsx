@@ -182,7 +182,7 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
               Cancel
             </Button>
             <Button type="submit" disabled={loading} className="bg-green-600 hover:bg-green-700 text-white">
-              {loading ? 'Recording...' : 'Record Payment'}
+              {loading ? 'Recording...' : 'Record payment (top up & pay)'}
             </Button>
           </DialogFooter>
         </form>

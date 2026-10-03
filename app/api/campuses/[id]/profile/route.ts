@@ -9,6 +9,7 @@ import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { prepaidTotal } from '@/lib/wallet/engine'
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireSession()
@@ -62,6 +63,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       overdueInvoices: overdue,
       waiting,
       fullness: campus.maxStudents ? Math.round((students / campus.maxStudents) * 100) : null,
+      prepaid: await prepaidTotal(id),
     },
   })
 }

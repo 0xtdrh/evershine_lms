@@ -36,6 +36,7 @@ const RESOURCE_META: Record<string, { label: string; description: string; catego
   group_capacity:        { label: 'Group capacity',      description: 'Approve = add a student to a full group anyway',          category: 'Academic' },
   renewals:              { label: 'Renewals',            description: 'Who continues next month (parent answers, reminders)',   category: 'Academic' },
   holidays:              { label: 'Holidays',            description: 'Branch / company days off (sessions are postponed)',      category: 'Structure' },
+  wallet:                { label: 'Wallet',              description: 'Top up (create), approve uploaded top-ups and withdrawals (approve)', category: 'Finance' },
   teachers:              { label: 'Teachers',            description: 'Staff profiles, designations, and class assignments',     category: 'People'     },
   users:                 { label: 'User Accounts',       description: 'View the list of system users',                          category: 'People'     },
   account_management:    { label: 'Account Management',  description: 'Reset passwords/emails, change role or suspend accounts', category: 'People'     },

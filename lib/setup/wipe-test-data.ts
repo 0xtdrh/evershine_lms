@@ -30,6 +30,8 @@ const KEEP_ALL = new Set([
   '_prisma_migrations', 'AcademicYear', 'Shift', 'CertificateTemplate', 'FeedbackQuestion', 'ResultCardConfig', 'RolePermission',
   // Settings, not data (2026-10-02): payment accounts/methods, app settings, discount types.
   'AppSetting', 'PaymentAccount', 'PaymentMethod', 'DiscountType', 'RefundRule',
+  // Phase B: wallet rules are settings too.
+  'WalletRule',
 ])
 
 type Tx = Prisma.TransactionClient | typeof prisma

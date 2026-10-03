@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma'
 import { errorResponse, errors, successResponse } from '@/lib/api-response'
 import { canViewReceipt } from '@/lib/fees/receipt'
 import { createPaymobCheckout, isPaymobConfigured } from '@/lib/payments/paymob'
+import { getWalletSettings, paymobFee } from '@/lib/wallet/engine'
 import { MINUTE, rateLimit } from '@/lib/rate-limit-db'
 
 export const dynamic = 'force-dynamic'
@@ -33,19 +34,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (invoice.status === 'PAID' || invoice.status === 'CANCELLED') return errors.conflict('This invoice is already paid or cancelled')
   const remaining = Math.round((Number(invoice.totalAmount) - Number(invoice.paidAmount)) * 100) / 100
   if (!(remaining > 0)) return errors.conflict('Nothing left to pay')
+  // Phase B: the Paymob fee is paid by the parent, on top of the amount.
+  const fee = paymobFee(remaining, await getWalletSettings())
 
   const limited = await rateLimit(`pay-online:user:${session.user.id}`, 5, 10 * MINUTE)
   if (!limited.ok) return errors.rateLimited(limited.resetAt)
 
   const online = await prisma.onlinePayment.create({
-    data: { invoiceId, studentId: invoice.studentId, amount: remaining, createdById: session.user.id },
+    data: { invoiceId, studentId: invoice.studentId, amount: remaining, fee, createdById: session.user.id },
   })
   const origin = request.headers.get('origin') || process.env.AUTH_URL || process.env.NEXTAUTH_URL || new URL(request.url).origin
   const g = invoice.student.guardians[0]
   try {
     const { checkoutUrl, providerOrderId } = await createPaymobCheckout({
       reference: online.id,
-      amountEgp: remaining,
+      amountEgp: Math.round((remaining + fee) * 100) / 100,
       description: `${invoice.challanNumber} ${invoice.month}`,
       customer: {
         firstName: g?.firstName ?? invoice.student.firstName,
@@ -57,7 +60,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       redirectionUrl: `${origin}/dashboard/fees/${invoiceId}?online=1`,
     })
     await prisma.onlinePayment.update({ where: { id: online.id }, data: { providerOrderId } })
-    return successResponse({ checkoutUrl, onlinePaymentId: online.id, amount: remaining })
+    return successResponse({ checkoutUrl, onlinePaymentId: online.id, amount: remaining, fee })
   } catch (err) {
     await prisma.onlinePayment.update({ where: { id: online.id }, data: { status: 'FAILED', note: err instanceof Error ? err.message : String(err) } })
     console.error('[PAY_ONLINE]', err)

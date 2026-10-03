@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { ParentRenewalsCard } from '@/components/portal/ParentRenewalsCard'
+import { ParentWalletCard } from '@/components/portal/ParentWalletCard'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -243,6 +244,7 @@ export default function MyChildrenPage() {
       </div>
 
       <ParentRenewalsCard />
+      <ParentWalletCard />
 
       {loadingChildren ? (
         <div className="flex items-center gap-2 text-gray-500">

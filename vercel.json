@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/db-backup",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/wallet-alerts",
+      "schedule": "0 7 * * *"
     }
   ]
 }

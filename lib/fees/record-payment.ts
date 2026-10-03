@@ -19,6 +19,7 @@ import { isUniqueConflictOn, nextInSequence } from '@/lib/ids/sequence'
 import { InvoiceChangedError, refreshGroupAfterPayment, updateInvoiceIfUnchanged } from '@/lib/fees/guarded-payment'
 import { isActivePaymentMethod } from '@/lib/fees/payment-settings'
 import { errorResponse, errors } from '@/lib/api-response'
+import { createApprovedTopUp } from '@/lib/wallet/numbers'
 import { afterPaymentRecorded } from '@/lib/fees/receipt'
 
 export type PaymentSource = 'STAFF' | 'PROOF' | 'ONLINE' | 'WALLET'
@@ -167,6 +168,25 @@ export async function recordPayment(input: RecordPaymentInput): Promise<RecordPa
           } as Prisma.InputJsonValue,
         },
       })
+      // Phase B (wallet-first): money paid for an invoice passes through the wallet —
+      // in as a top-up (with its own TN-TOPUP receipt) and straight out to this invoice.
+      // Wallet payments themselves (source WALLET) already come from the wallet.
+      if (input.source !== 'WALLET') {
+        const topUp = await createApprovedTopUp(tx, {
+          studentId: invoice.studentId,
+          amount,
+          method: input.method,
+          source: 'PAYMENT',
+          transactionId: input.transactionId ?? null,
+          remarks: input.remarks ?? null,
+          invoiceId: invoice.id,
+          paymentId: payment.id,
+          userId: input.receivedBy,
+        })
+        await tx.walletTransaction.create({
+          data: { studentId: invoice.studentId, amount: -amount, type: 'PAYMENT', paymentId: payment.id, topUpId: topUp.id, note: `Invoice payment ${payment.receiptNumber}`, createdById: input.receivedBy },
+        })
+      }
       if (input.onTx) await input.onTx(tx, { id: payment.id, amount })
       return payment
     })

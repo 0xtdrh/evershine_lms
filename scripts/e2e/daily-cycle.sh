@@ -62,7 +62,7 @@ async function main() {
 main()
 EOF
 SA_EMAIL=$(DATABASE_URL="$URL" npx tsx scripts/e2e/.tmp-sa.ts); rm -f scripts/e2e/.tmp-sa.ts
-DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" PAYMOB_HMAC_SECRET="e2e-paymob-hmac" npx next dev -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
+DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" PAYMOB_HMAC_SECRET="e2e-paymob-hmac" CRON_SECRET="e2e-cron" npx next dev -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
 APP_PID=$!
 for i in $(seq 1 120); do [ "$(curl -s -o /dev/null -w '%{http_code}' $B/api/auth/csrf)" = "200" ] && break; sleep 3; done
 tok=$(curl -s -c "$JAR" -b "$JAR" $B/api/auth/csrf | jq_ "d['csrfToken']")
@@ -516,8 +516,7 @@ check "accountant's next request can't exceed what is left" "$(accapi POST /api/
 M "UPDATE ClassSection SET installmentsAllowed=1 WHERE id='$DG2'"
 api POST /api/groups/$DG2/students "{\"studentId\":\"$LATE\"}" >/dev/null
 LATE2=$(invid $LATE $DG2)
-R=$(api POST /api/fees/$LATE2/pay-from-wallet '{}')
-check "next invoice paid from the wallet (448.75)" "$(echo "$R" | jq_ "d['data']['amount']")" "448.75"
+check "next invoice paid automatically from the wallet (448.75, phase B)" "$(M "SELECT CAST(SUM(amount) AS DOUBLE) FROM FeePayment WHERE invoiceId='$LATE2' AND source='WALLET'")" "448.75"
 check "wallet payment has a receipt and source WALLET" "$(M "SELECT CONCAT(source,'/',receiptNumber LIKE 'TN-RCPT-%') FROM FeePayment WHERE invoiceId='$LATE2'")" "WALLET/1"
 check "wallet is now empty" "$(api GET /api/students/$LATE/wallet | jq_ "d['data']['balance']")" "0"
 check "paying from an empty wallet is refused" "$(api POST /api/fees/$LATE2/pay-from-wallet '{}' | jq_ "d['success']")" "False"
@@ -761,6 +760,91 @@ check "group details carry the answers for Advance cycle" "$(api GET /api/groups
 curl -s -b "$RJ" -X POST -H 'Content-Type: application/json' -d '{"answer":"NO","reason":"TIME"}' $B/api/guardian-portal/renewals/$RQ1 >/dev/null
 check "parent changes to NO -> unused early discount taken back" "$(M "SELECT status FROM DiscountAssignment WHERE studentId='$R1' AND discountTypeId='$T_EARLY'")" "ENDED"
 rm -f "$RJ"
+echo "== 26. phase B: wallet-first payments"
+M "UPDATE DiscountType SET isActive=0 WHERE kind='SIBLING'" # keep the amounts simple (850 each)
+bal() { api GET /api/students/$1/wallet | jq_ "d['data']['balance']"; }
+WB=$(mkgroup "E2E Wallet" "$NLEVEL"); WB2=$(mkgroup "E2E Wallet Inst" "$NLEVEL")
+M "UPDATE ClassSection SET installmentsAllowed=0 WHERE id='$WB'; UPDATE ClassSection SET installmentsAllowed=1 WHERE id='$WB2'"
+W1=$(mkstu WalletOne 01066660091 Rania 01066660099); W2=$(mkstu WalletTwo 01066660092 Rania 01066660099); W3=$(mkstu WalletThree 01066660093 '' '')
+# 1) every payment passes through the wallet
+api POST /api/groups/$WB/students "{\"studentId\":\"$W1\"}" >/dev/null
+W1INV=$(invid $W1 $WB)
+api POST /api/fees/$W1INV/payments '{"amount":850,"paymentMethod":"Cash"}' >/dev/null
+check "staff payment still recorded as STAFF with its receipt" "$(M "SELECT CONCAT(source,'/',receiptNumber LIKE 'TN-RCPT-%') FROM FeePayment WHERE invoiceId='$W1INV'")" "STAFF/1"
+check "…and passed through the wallet: top-up TN-TOPUP in, payment out" "$(M "SELECT CONCAT(t.source,'/',t.topUpNumber LIKE 'TN-TOPUP-____-_____') FROM WalletTopUp t WHERE t.invoiceId='$W1INV'")/$(M "SELECT GROUP_CONCAT(CAST(amount AS DOUBLE) ORDER BY amount DESC) FROM WalletTransaction WHERE studentId='$W1'")" "PAYMENT/1/850,-850"
+check "wallet back to 0 after a direct payment" "$(bal $W1)" "0"
+# 2) staff top-up, no installments: waits until enough, then pays in full
+check "staff top-up at the branch (500)" "$(api POST /api/wallet/topups "{\"studentId\":\"$W3\",\"amount\":500,\"method\":\"Cash\"}" | jq_ "d['data']['topUpNumber'][:9]")" "TN-TOPUP-"
+api POST /api/groups/$WB/students "{\"studentId\":\"$W3\"}" >/dev/null
+check "group without installments: 500 is not enough, invoice waits" "$(inv $W3 $WB)/$(bal $W3)" "850/0/850/ISSUED/500"
+api POST /api/wallet/topups "{\"studentId\":\"$W3\",\"amount\":400,\"method\":\"InstaPay\"}" >/dev/null
+check "after the next top-up the invoice is paid automatically (850), 50 left" "$(inv $W3 $WB)/$(bal $W3)" "850/0/850/PAID/50"
+check "automatic payment has source WALLET" "$(M "SELECT source FROM FeePayment WHERE invoiceId='$(invid $W3 $WB)'")" "WALLET"
+# 3) installments allowed: partial payment; 4) oldest first
+api POST /api/wallet/topups "{\"studentId\":\"$W2\",\"amount\":300,\"method\":\"Cash\"}" >/dev/null
+api POST /api/groups/$WB2/students "{\"studentId\":\"$W2\"}" >/dev/null
+check "installments allowed: the new invoice is paid partly from the wallet (300)" "$(M "SELECT CONCAT(CAST(paidAmount AS DOUBLE),'/',status) FROM FeeInvoice WHERE id='$(invid $W2 $WB2)'")" "300/PARTIALLY_PAID"
+api POST /api/groups/$WB/students "{\"studentId\":\"$W2\"}" >/dev/null
+api POST /api/wallet/topups "{\"studentId\":\"$W2\",\"amount\":2000,\"method\":\"Cash\"}" >/dev/null
+check "a big top-up pays every open invoice, oldest first (550 + 850), 600 left" "$(M "SELECT status FROM FeeInvoice WHERE id='$(invid $W2 $WB2)'")/$(M "SELECT status FROM FeeInvoice WHERE id='$(invid $W2 $WB)'")/$(bal $W2)" "PAID/PAID/600"
+# 5) minimum top-up
+api PUT /api/wallet/rules '{"rules":[{"kind":"MIN_TOPUP","scopeType":"ALL","minAmount":200}]}' >/dev/null
+check "below the minimum (100 < 200) refused" "$(api POST /api/wallet/topups "{\"studentId\":\"$W1\",\"amount\":100,\"method\":\"Cash\"}" | jq_ "d['success']")" "False"
+check "at the minimum accepted" "$(api POST /api/wallet/topups "{\"studentId\":\"$W1\",\"amount\":200,\"method\":\"Cash\"}" | jq_ "d['success']")" "True"
+api PUT /api/wallet/rules "{\"rules\":[{\"kind\":\"MIN_TOPUP\",\"scopeType\":\"ALL\",\"minAmount\":200},{\"kind\":\"MIN_TOPUP\",\"scopeType\":\"GROUP\",\"scopeId\":\"$WB2\",\"minAmount\":500}]}" >/dev/null
+check "a student in several groups gets the largest minimum (500)" "$(api GET /api/students/$W2/wallet | jq_ "d['data']['minimumTopUp']")" "500"
+# 6) sibling transfer
+check "move 200 to a sibling (same parent)" "$(api POST /api/students/$W2/wallet/transfer "{\"toStudentId\":\"$W1\",\"amount\":200}" | jq_ "d['success']")/$(bal $W2)/$(bal $W1)" "True/400/400"
+check "not to a student of another family" "$(api POST /api/students/$W1/wallet/transfer "{\"toStudentId\":\"$W3\",\"amount\":10}" | jq_ "d['success']")" "False"
+# 7) withdrawals: rules, approval, fee by payout method
+api PUT /api/wallet/rules '{"rules":[{"kind":"WITHDRAW","scopeType":"ALL","allowed":false}]}' >/dev/null
+check "withdrawals switched off in the rules -> refused" "$(api POST /api/wallet/withdrawals "{\"studentId\":\"$W2\",\"amount\":100,\"payoutMethod\":\"Cash\"}" | jq_ "d['success']")" "False"
+api PUT /api/wallet/rules '{"rules":[{"kind":"WITHDRAW","scopeType":"ALL","allowed":true}]}' >/dev/null
+api PUT /api/wallet/settings '{"paymobFeePercent":2.5,"paymobFeeFixed":0,"withdrawFees":{"Cash":{"type":"FIXED","value":10}},"lowBalanceDays":3,"promos":[{"minAmount":1000,"bonus":100,"active":true}]}' >/dev/null
+WDR=$(api POST /api/wallet/withdrawals "{\"studentId\":\"$W2\",\"amount\":100,\"payoutMethod\":\"Cash\",\"reason\":\"e2e\"}")
+WDID=$(echo "$WDR" | jq_ "d['data']['withdrawalId']")
+check "withdrawal requested with the Cash fee (10)" "$(echo "$WDR" | jq_ "d['data']['fee']")" "10"
+check "more than the balance refused" "$(api POST /api/wallet/withdrawals "{\"studentId\":\"$W2\",\"amount\":5000,\"payoutMethod\":\"Cash\"}" | jq_ "d['success']")" "False"
+check "secretary cannot approve a withdrawal" "$(secapi PATCH /api/wallet/withdrawals/$WDID '{"action":"approve"}' | jq_ "d['success']")" "False"
+check "manager approves: TN-WDRW number, wallet -100" "$(api PATCH /api/wallet/withdrawals/$WDID '{"action":"approve"}' | jq_ "d['data']['withdrawalNumber'][:8]")/$(bal $W2)" "TN-WDRW-/300"
+# 8) uploaded receipt approved; online top-up (webhook, fee on top); promo
+M "INSERT INTO WalletTopUp (id, studentId, amount, fee, method, source, status, proofUrl, createdAt, updatedAt) VALUES ('wt-e2e-1','$W3',300,0,'Bank Transfer','PROOF','PENDING','https://res.cloudinary.com/demo/x.png',NOW(3),NOW(3))"
+check "receipt waiting in 'Receipts to check'" "$(api GET '/api/wallet/topups?status=PENDING' | jq_ "any(t['id']=='wt-e2e-1' for t in d['data']['topUps'])")" "True"
+check "approved -> numbered and added to the wallet" "$(api PATCH /api/wallet/topups/wt-e2e-1 '{"action":"approve"}' | jq_ "d['data']['topUpNumber'][:9]")/$(bal $W3)" "TN-TOPUP-/350"
+check "approving twice refused" "$(api PATCH /api/wallet/topups/wt-e2e-1 '{"action":"approve"}' | jq_ "d['success']")" "False"
+M "INSERT INTO OnlinePayment (id, kind, invoiceId, studentId, amount, fee, provider, status, createdById, createdAt, updatedAt) VALUES ('op-e2e-top','TOPUP',NULL,'$W3',500,12.5,'PAYMOB','PENDING','$SA_ID',NOW(3),NOW(3))"
+check "online top-up callback must include the fee (500 alone -> review)" "$(hook op-e2e-top 6001 50000 true)/$(M "SELECT status FROM OnlinePayment WHERE id='op-e2e-top'")" "200/REVIEW"
+M "INSERT INTO OnlinePayment (id, kind, invoiceId, studentId, amount, fee, provider, status, createdById, createdAt, updatedAt) VALUES ('op-e2e-top2','TOPUP',NULL,'$W3',500,12.5,'PAYMOB','PENDING','$SA_ID',NOW(3),NOW(3))"
+check "online top-up with fee (512.50 paid) -> wallet +500" "$(hook op-e2e-top2 6002 51250 true)/$(M "SELECT CONCAT(t.source,'/',CAST(t.fee AS DOUBLE)) FROM WalletTopUp t JOIN OnlinePayment o ON o.topUpId=t.id WHERE o.id='op-e2e-top2'")/$(bal $W3)" "200/ONLINE/12.5/850"
+api POST /api/wallet/topups "{\"studentId\":\"$W3\",\"amount\":1000,\"method\":\"Cash\"}" >/dev/null
+check "top-up offer: 1000+ gives a 100 EGP discount on the next invoice" "$(M "SELECT CAST(a.value AS DOUBLE) FROM DiscountAssignment a JOIN DiscountType t ON t.id=a.discountTypeId WHERE a.studentId='$W3' AND t.name='Top-up bonus' AND a.status='ACTIVE'")" "100"
+# 9) parent portal
+GW=$(M "SELECT userId FROM Guardian WHERE phoneNumber='01066660099'")
+api POST /api/users/reset-credentials "{\"userId\":\"$GW\",\"newPassword\":\"Wallet2026A\"}" >/dev/null
+M "UPDATE User SET mustChangePassword=0 WHERE id='$GW'"
+WJ=$(mktemp); login_as 01066660099 Wallet2026A "$WJ" >/dev/null
+pget() { curl -s -b "$WJ" "$B$1"; }
+ppost() { curl -s -b "$WJ" -X "$1" -H 'Content-Type: application/json' -d "$3" "$B$2"; }
+check "parent sees both children's wallets" "$(pget /api/guardian-portal/wallet | jq_ "sorted(w['balance'] for w in d['data']['wallets'])")" "[300, 400]"
+check "parent moves 50 between the children" "$(ppost POST /api/guardian-portal/wallet/transfer "{\"fromId\":\"$W1\",\"toId\":\"$W2\",\"amount\":50}" | jq_ "d['success']")/$(bal $W1)/$(bal $W2)" "True/350/350"
+check "parent cannot move money from another family's child" "$(ppost POST /api/guardian-portal/wallet/transfer "{\"fromId\":\"$W3\",\"toId\":\"$W1\",\"amount\":10}" | jq_ "d['success']")" "False"
+check "parent asks for a withdrawal (waits for approval)" "$(ppost POST /api/guardian-portal/wallet/withdrawals "{\"studentId\":\"$W1\",\"amount\":50,\"payoutMethod\":\"Cash\"}" | jq_ "d['success']")" "True"
+check "online top-up refused while Paymob is not connected" "$(curl -s -o /dev/null -w '%{http_code}' -b "$WJ" -X POST -H 'Content-Type: application/json' -d "{\"studentId\":\"$W1\",\"amount\":500,\"mode\":\"ONLINE\"}" $B/api/guardian-portal/wallet/topups)" "503"
+ppost PATCH /api/guardian-portal/wallet/visibility "{\"studentId\":\"$W2\",\"visible\":false}" >/dev/null
+check "parent hides the wallet from one child" "$(M "SELECT walletVisibleToStudent FROM Student WHERE id='$W2'")" "0"
+check "account statement: closing = balance" "$(api GET /api/students/$W2/wallet/statement | jq_ "d['data']['closing']")" "$(bal $W2)"
+rm -f "$WJ"
+# 10) prepaid total + low-balance alert (cron)
+check "prepaid money shown (sum of wallets)" "$(api GET /api/wallet/summary | jq_ "d['data']['prepaidTotal'] >= 1500")" "True"
+M "UPDATE ClassSection SET scheduleSlots='$EVERYDAY' WHERE id='$WB'"
+W4=$(mkstu WalletLow 01066660094 Sara 01066660095); api POST /api/groups/$WB/students "{\"studentId\":\"$W4\"}" >/dev/null
+W4E=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$W4' AND classSectionId='$WB'")
+sess $WB "$(D -1)" "$(rec $W4E PRESENT)" >/dev/null
+check "cron refused without the secret" "$(curl -s -o /dev/null -w '%{http_code}' $B/api/cron/wallet-alerts)" "401"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/wallet-alerts >/dev/null
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/wallet-alerts >/dev/null
+check "low-balance alert sent once to the parent (month ends soon, wallet < price)" "$(M "SELECT COUNT(*) FROM Notification n JOIN Guardian g ON g.userId=n.userId WHERE g.phoneNumber='01066660095' AND n.type='LOW_BALANCE'")" "1"
+check "only one place creates FeePayment (wallet uses recordPayment)" "$(grep -rn 'feePayment.create(' app lib --include=*.ts | wc -l | tr -d ' ')" "1"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

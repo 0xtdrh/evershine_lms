@@ -252,6 +252,7 @@ class TransferError extends Error {
 }
 
 export async function executeTransfer(input: ExecuteTransferInput): Promise<ExecuteOutcome> {
+  const startedAt = new Date()
   const pre = await previewTransfer(input.studentId, input.fromClassSectionId, input.toClassSectionId)
   if ('message' in pre) return { ok: false, status: pre.status, message: pre.message }
   const p = pre.preview
@@ -449,15 +450,28 @@ export async function executeTransfer(input: ExecuteTransferInput): Promise<Exec
   })
 
   // ── credit onto the new invoice (from the wallet, with a receipt) ──
+  // Phase B: a new invoice is paid from the wallet automatically when it is created,
+  // so count what already went onto it, then pay the rest of the credit if needed.
   let creditApplied = 0
   let paymentId: string | null = null
-  if (input.creditTo === 'NEW_INVOICE' && out.credit > 0 && newInv && newInv.status !== 'PAID') {
-    const r = await payFromWallet(newInv.id, input.userId, out.credit, { remarks: `Credit moved from group ${p.from.label}`, allowPartial: true })
-    if ('payment' in r) {
-      creditApplied = r.amount
-      paymentId = r.payment.id
-    } else {
-      warning = `The credit stayed in the wallet: ${'message' in r ? r.message : ''}`
+  if (out.credit > 0 && newInv) {
+    const auto = await prisma.feePayment.findMany({
+      where: { invoiceId: newInv.id, source: 'WALLET', createdAt: { gte: startedAt } },
+      select: { id: true, amount: true },
+      orderBy: { createdAt: 'asc' },
+    })
+    creditApplied = Math.min(out.credit, auto.reduce((a, x) => a + Number(x.amount), 0))
+    paymentId = auto[0]?.id ?? null
+    const fresh = await prisma.feeInvoice.findUnique({ where: { id: newInv.id }, select: { status: true } })
+    const left = Math.round((out.credit - creditApplied) * 100) / 100
+    if (input.creditTo === 'NEW_INVOICE' && left > 0 && fresh?.status !== 'PAID') {
+      const r = await payFromWallet(newInv.id, input.userId, left, { remarks: `Credit moved from group ${p.from.label}`, allowPartial: true })
+      if ('payment' in r) {
+        creditApplied = Math.round((creditApplied + r.amount) * 100) / 100
+        paymentId = paymentId ?? r.payment.id
+      } else if (creditApplied === 0) {
+        warning = `The credit stayed in the wallet: ${'message' in r ? r.message : ''}`
+      }
     }
   }
   await prisma.groupTransfer.update({

@@ -25,7 +25,7 @@ interface Profile {
     staff: { userId: string; name: string; role: string; email: string; department: string | null }[]
     instructors: { id: string; name: string; designation: string; phone: string }[]
   }
-  stats: { activeGroups: number; activeStudents: number; monthIncome: number; overdueInvoices: number; waiting: number; fullness: number | null }
+  stats: { activeGroups: number; activeStudents: number; monthIncome: number; overdueInvoices: number; waiting: number; fullness: number | null; prepaid?: number }
 }
 
 const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 0 })} EGP`
@@ -81,6 +81,7 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
     ['Overdue invoices', String(s.overdueInvoices), s.overdueInvoices ? 'text-rose-700' : 'text-slate-700'],
     ['Waiting list', String(s.waiting), s.waiting ? 'text-amber-700' : 'text-slate-700'],
     ['Branch fullness', s.fullness == null ? '—' : `${s.fullness}%`, 'text-slate-700'],
+    ['Prepaid (wallets)', money(s.prepaid ?? 0), 'text-indigo-700'],
   ]
 
   return (
@@ -91,7 +92,7 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
         {canEdit && !editing && <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditing(true)}><Pencil className="h-3.5 w-3.5" /> Edit details</Button>}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
         {tiles.map(([label, value, tone]) => (
           <Card key={label}><CardContent className="p-3"><p className="text-xs text-slate-500">{label}</p><p className={`text-lg font-bold ${tone}`}>{value}</p></CardContent></Card>
         ))}

@@ -77,6 +77,8 @@ export type AcademicResource =
   | 'group_capacity'
   | 'renewals'
   | 'holidays'
+  // Phase B: wallet (create = top up, approve = approve proof top-ups and withdrawals)
+  | 'wallet'
 
 type Resource = AcademicResource
 
@@ -181,6 +183,7 @@ const PERMISSIONS: PermissionMap = {
     group_capacity: ['approve'],
     renewals: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
+    wallet: ['create', 'read', 'approve'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -233,6 +236,7 @@ const PERMISSIONS: PermissionMap = {
     group_capacity: ['approve'],
     renewals: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
+    wallet: ['create', 'read', 'approve'],
   },
   TEACHER: {
     students: ['read'],
@@ -286,6 +290,7 @@ const PERMISSIONS: PermissionMap = {
     group_capacity: [],
     renewals: [],
     holidays: [],
+    wallet: [],
   },
   STUDENT: {
     students: [],
@@ -338,6 +343,7 @@ const PERMISSIONS: PermissionMap = {
     group_capacity: [],
     renewals: [],
     holidays: [],
+    wallet: [],
   },
   PARENT: {
     students: [],
@@ -390,6 +396,7 @@ const PERMISSIONS: PermissionMap = {
     group_capacity: [],
     renewals: [],
     holidays: [],
+    wallet: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -444,6 +451,7 @@ const PERMISSIONS: PermissionMap = {
     group_capacity: [],
     renewals: ['read'],
     holidays: ['read'],
+    wallet: ['create', 'read', 'approve'],
   },
   GUARDIAN: {
     students: [],
@@ -496,6 +504,7 @@ const PERMISSIONS: PermissionMap = {
     group_capacity: [],
     renewals: [],
     holidays: [],
+    wallet: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -552,6 +561,7 @@ const PERMISSIONS: PermissionMap = {
     group_capacity: [],
     renewals: ['read', 'update'],
     holidays: ['read'],
+    wallet: ['create', 'read'],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -609,6 +619,7 @@ const PERMISSIONS: PermissionMap = {
     group_capacity: ['approve'],
     renewals: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
+    wallet: ['create', 'read', 'approve'],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -664,6 +675,7 @@ const PERMISSIONS: PermissionMap = {
     group_capacity: [],
     renewals: [],
     holidays: [],
+    wallet: [],
   },
 }
 

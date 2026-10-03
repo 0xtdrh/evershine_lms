@@ -516,6 +516,8 @@ model Student {
   section       String?
   rollNumber    String?
   houseId       String?
+  /// Phase B: the parent chooses if the child sees the wallet in the student portal
+  walletVisibleToStudent Boolean @default(true)
   admissionDate DateTime          @default(now())
   firstSessionDate DateTime? // Set automatically the first time attendance is recorded for this student
   academicYear  String // "2024-2025"
@@ -3477,10 +3479,15 @@ model WalletTransaction {
   id          String   @id @default(cuid())
   studentId   String
   amount      Decimal  @db.Decimal(10, 2)
-  /// REFUND | PAYMENT | ADJUSTMENT
+  /// REFUND | PAYMENT | ADJUSTMENT | TOPUP | WITHDRAW | TRANSFER_IN | TRANSFER_OUT
   type        String   @db.VarChar(12)
   refundId    String?
   paymentId   String?
+  /// Phase B
+  topUpId     String?
+  withdrawalId String?
+  /// the other child in a sibling transfer
+  otherStudentId String?
   note        String?
   createdById String
   createdAt   DateTime @default(now())
@@ -3492,9 +3499,15 @@ model WalletTransaction {
 /// provider confirms it through the signed webhook (lib/payments/paymob.ts).
 model OnlinePayment {
   id              String   @id @default(cuid())
-  invoiceId       String
+  /// null for a wallet top-up (kind TOPUP)
+  invoiceId       String?
   studentId       String
   amount          Decimal  @db.Decimal(10, 2)
+  /// Phase B: INVOICE | TOPUP
+  kind            String   @default("INVOICE") @db.VarChar(8)
+  /// Paymob fee paid by the parent on top of amount (phase B)
+  fee             Decimal  @default(0) @db.Decimal(10, 2)
+  topUpId         String?
   /// PAYMOB
   provider        String   @default("PAYMOB") @db.VarChar(20)
   /// PENDING | PAID | FAILED | REVIEW (amount mismatch etc.)
@@ -3627,4 +3640,75 @@ model RenewalRequest {
   @@unique([classSectionId, studentId])
   @@index([status])
   @@index([studentId])
+}
+
+/// Phase B (docs/design-phase-b.md): money put in a student's wallet.
+/// source STAFF (cash/transfer at the branch) | PROOF (parent uploaded a receipt) | ONLINE (Paymob)
+/// | PAYMENT (money taken for an invoice: in and straight out again, so every payment passes the wallet).
+model WalletTopUp {
+  id             String    @id @default(cuid())
+  /// TN-TOPUP-YYYY-NNNNN, set when approved
+  topUpNumber    String?   @unique @db.VarChar(30)
+  studentId      String
+  amount         Decimal   @db.Decimal(10, 2)
+  fee            Decimal   @default(0) @db.Decimal(10, 2)
+  method         String    @db.VarChar(50)
+  source         String    @db.VarChar(10)
+  /// PENDING | APPROVED | REJECTED
+  status         String    @default("PENDING") @db.VarChar(10)
+  transactionId  String?   @db.VarChar(100)
+  proofUrl       String?   @db.Text
+  remarks        String?   @db.Text
+  invoiceId      String?
+  paymentId      String?
+  rejectedReason String?   @db.Text
+  createdById    String?
+  approvedById   String?
+  approvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([studentId, status])
+  @@index([status, createdAt])
+  @@index([approvedAt])
+}
+
+/// Phase B: money taken back out of a wallet (needs approval; fee by payout method).
+model WalletWithdrawal {
+  id               String    @id @default(cuid())
+  /// TN-WDRW-YYYY-NNNNN, set when approved
+  withdrawalNumber String?   @unique @db.VarChar(30)
+  studentId        String
+  amount           Decimal   @db.Decimal(10, 2)
+  fee              Decimal   @default(0) @db.Decimal(10, 2)
+  payoutMethod     String    @db.VarChar(50)
+  reason           String?   @db.Text
+  /// PENDING | APPROVED | REJECTED
+  status           String    @default("PENDING") @db.VarChar(10)
+  /// PARENT | STAFF
+  requestedVia     String    @db.VarChar(6)
+  requestedById    String
+  approvedById     String?
+  approvedAt       DateTime?
+  rejectedReason   String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([studentId, status])
+  @@index([status])
+}
+
+/// Phase B: wallet rules per scope. kind MIN_TOPUP (minAmount) | WITHDRAW (allowed).
+/// scopeType ALL | TRACK | COURSE | LEVEL | GROUP (+ scopeId); the most specific wins.
+model WalletRule {
+  id        String   @id @default(cuid())
+  kind      String   @db.VarChar(10)
+  scopeType String   @default("ALL") @db.VarChar(10)
+  scopeId   String?
+  minAmount Decimal? @db.Decimal(10, 2)
+  allowed   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
 }

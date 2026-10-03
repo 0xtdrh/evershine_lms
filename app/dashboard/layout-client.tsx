@@ -128,6 +128,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Grading Weights', href: '/dashboard/grading-config', icon: SlidersHorizontal, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Course Structure', href: '/dashboard/course-config', icon: GraduationCap, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Groups', href: '/dashboard/groups', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['class_sections', 'read']] },
+  { name: 'Wallet & Top-ups', href: '/dashboard/wallet', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['wallet', 'read']] },
   { name: 'Renewals', href: '/dashboard/renewals', icon: RefreshCcw, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['renewals', 'read']] },
   { name: 'Follow-ups', href: '/dashboard/follow-ups', icon: PhoneCall, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['contact_logs', 'read']] },
   { name: 'Holidays', href: '/dashboard/holidays', icon: CalendarOff, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['holidays', 'read']] },
