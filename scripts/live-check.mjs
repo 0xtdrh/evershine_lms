@@ -758,10 +758,11 @@ async function phaseCDemo(sa, base, run, phone) {
   const g = (await sa.json('GET', `/api/groups/${group}`)).data?.data
   const enr = Object.fromEntries((g?.enrollments ?? []).map((e) => [e.studentId ?? e.student?.id, e.id]))
   const rec = (sid, status) => ({ studentEnrollmentId: enr[sid], status })
-  for (const [day, statuses] of [[-3, ['PRESENT', 'PRESENT', 'ABSENT']], [-2, ['LATE', 'PRESENT', 'ABSENT']], [-1, ['PRESENT', 'PRESENT', 'PRESENT']]]) {
+  // Only 2 sessions, so the month still has sessions ahead to excuse (short levels have few sessions a month).
+  for (const [day, statuses] of [[-2, ['PRESENT', 'PRESENT', 'ABSENT']], [-1, ['LATE', 'PRESENT', 'ABSENT']]]) {
     await sa.json('POST', '/api/enrollment-attendance', { body: { classSectionId: group, attendanceDate: iso(day), records: [rec(bday.id, statuses[0]), rec(young.id, statuses[1]), rec(older.id, statuses[2])] } })
   }
-  check('3 sessions recorded: "Older" absent twice in a row (alert + follow-up), "Birthday" late once', !!enr[older.id])
+  check('2 sessions recorded: "Older" absent twice in a row (alert + follow-up), "Birthday" late once', !!enr[older.id])
 
   const guardianId = ((await sa.json('GET', `/api/students/${bday.id}`)).data?.data?.guardians ?? [])[0]?.id
   const temp = await sa.json('POST', `/api/students/${bday.id}/portal-password`, { body: { target: 'guardian', guardianId } })
@@ -769,8 +770,15 @@ async function phaseCDemo(sa, base, run, phone) {
   const signed = !!temp.data?.data?.password && (await parent.login(parentPhone, temp.data.data.password))
   check(`parent ${parentPhone} signs in`, signed)
   if (signed) {
-    const ex = await parent.json('POST', '/api/guardian-portal/excuses', { body: { studentId: older.id, classSectionId: group, sessionDate: iso(1), reason: 'DEMO: doctor appointment' } })
-    check(`parent sent an excuse for tomorrow (${ex.data?.data?.status ?? '-'})`, ex.data?.success, ex.data?.error?.message)
+    // Pick a real upcoming session from the list the parent sees (not "tomorrow", which may be after the month's last session).
+    const options = (await parent.json('GET', `/api/guardian-portal/excuses?studentId=${older.id}`)).data?.data?.sessions ?? []
+    const next = options.find((o) => o.classSectionId === group && !o.past)
+    if (!next) {
+      bad('no upcoming session left this month to excuse (the level has few sessions per month)')
+    } else {
+      const ex = await parent.json('POST', '/api/guardian-portal/excuses', { body: { studentId: older.id, classSectionId: group, sessionDate: next.date, reason: 'DEMO: doctor appointment' } })
+      check(`parent sent an excuse for the session on ${next.date} (${ex.data?.data?.status ?? '-'})`, ex.data?.success, ex.data?.error?.message)
+    }
     const r = (await parent.json('GET', '/api/ratings/parent')).data?.data
     const ys = r?.children?.find((c) => c.studentId === young.id)?.sessions?.[0]
     if (ys) {
@@ -778,7 +786,7 @@ async function phaseCDemo(sa, base, run, phone) {
       check('parent rated the 5-year-old\'s session 😀', rt.data?.success, rt.data?.error?.message)
     }
     const tl = (await parent.json('GET', `/api/students/${older.id}/attendance-timeline`)).data?.data
-    check(`portal attendance for "Older": ${tl?.overall?.pct ?? '-'}%`, tl?.overall?.sessions === 3)
+    check(`portal attendance for "Older": ${tl?.overall?.pct ?? '-'}%`, tl?.overall?.sessions === 2)
     const me = (await parent.json('GET', '/api/birthdays/me')).data?.data
     check('parent portal shows the birthday banner for "Birthday"', (me?.children ?? []).some((c) => c.studentId === bday.id))
   }
