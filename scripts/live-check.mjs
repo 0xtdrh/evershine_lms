@@ -4,6 +4,7 @@
  *
  *   node scripts/live-check.mjs            # run the checks, leave demo data to explore
  *   node scripts/live-check.mjs --cleanup  # remove ONLY the demo data
+ *   node scripts/live-check.mjs --transfer # only try moving students between groups (2026-10-03)
  *
  * Asks for the site address, the Super Admin email and password at run time.
  * The password is never printed, saved or sent anywhere except the login.
@@ -19,7 +20,7 @@
  *  "apply to current invoice?" · approval flow · report ·
  *  password change signs out old sessions · deactivated staff signed out ·
  *  parent uploads a payment proof · accountant approves it · receipt ·
- *  refund to the student wallet.
+ *  refund to the student wallet · moving a student to another group.
  */
 
 import readline from 'node:readline'
@@ -97,7 +98,8 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 
 async function main() {
   const cleanupOnly = process.argv.includes('--cleanup')
-  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : ''))
+  const transferOnly = process.argv.includes('--transfer')
+  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : ''))
   const base = ((await ask('Site address [https://evershine-lms-technova.vercel.app]: ')) || 'https://evershine-lms-technova.vercel.app').replace(/\/+$/, '')
   const email = await ask('Super Admin email: ')
   const password = await ask('Super Admin password (hidden): ', { hidden: true })
@@ -118,6 +120,11 @@ async function main() {
 
   const run = String(randomInt(1000, 9999))
   const phone = (n) => `0109990${run.slice(0, 2)}${String(n).padStart(2, '0')}`
+  if (transferOnly) {
+    try { await transferChecks(sa, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
+    console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
+    return finish()
+  }
   let originalRules = null
 
   try {
@@ -267,6 +274,8 @@ async function main() {
     const wal = await sa.json('GET', `/api/students/${s2.id}/wallet`)
     check(`wallet credited (${wal.data?.data?.balance ?? 0} EGP)`, (wal.data?.data?.balance ?? 0) >= refundAmount)
 
+    await transferChecks(sa, run, phone)
+
     // ── 9. security ─────────────────────────────────────────────────────────
     section('9. Security (waits about 70 seconds)')
     check('accountant session works', (await accC.json('GET', '/api/me/permissions')).status === 200)
@@ -292,6 +301,113 @@ async function main() {
   console.log(`\nDemo data left for you to explore: group "DEMO Group ${run}", students *-${run} DEMO-TEST.`)
   console.log('Remove it any time with:  node scripts/live-check.mjs --cleanup')
   return finish()
+}
+
+// ── moving a student to another group (docs/design-student-transfer.md) ─────
+// Own demo groups/students/discount type (all marked DEMO, removed by --cleanup).
+async function transferChecks(sa, run, phone) {
+  section('10. Move a student to another group')
+  const n = (v) => Number(v ?? 0)
+  const r2 = (v) => Math.round(v * 100) / 100
+  const near = (a, b) => Math.abs(n(a) - n(b)) < 0.02
+  const campuses = list((await sa.json('GET', '/api/campuses')).data)
+  const campus = campuses.find((c) => c.isActive !== false) ?? campuses[0]
+  const batch = list((await sa.json('GET', `/api/batches?campusId=${campus?.id}`)).data)[0]
+  const shift = list((await sa.json('GET', '/api/shifts')).data)[0]
+  const opts = (await sa.json('GET', '/api/discounts/options')).data?.data
+  const levels = opts?.levels ?? []
+  const fromLevel = levels[0]
+  const toLevel = levels.find((l) => l.subjectId !== fromLevel?.subjectId) ?? levels[1] ?? fromLevel
+  if (!campus || !batch || !shift || !fromLevel) return bad('branch, batch, shift and levels needed to try a move')
+  const mkGroup = async (name, levelId) => (await sa.json('POST', '/api/groups', {
+    body: { campusId: campus.id, batchId: batch.id, shiftId: shift.id, className: name, sectionName: 'M', levelId, installmentsAllowed: true },
+  })).data?.data?.id
+  const fromId = await mkGroup(`DEMO Move From ${run}`, fromLevel.id)
+  const toId = await mkGroup(`DEMO Move To ${run}`, toLevel.id)
+  check(`two demo groups: "DEMO Move From ${run}" (${fromLevel.name}) and "DEMO Move To ${run}" (${toLevel.name})`, fromId && toId)
+  if (!fromId || !toId) return
+
+  const year = new Date().getFullYear()
+  const mkStudent = async (first, k) => (await sa.json('POST', '/api/students', {
+    body: {
+      firstName: first, lastName: 'DEMO-TEST', fullNameAr: `تجربة ${first}`, fatherName: `Father ${first}`, fatherPhoneNumber: '', motherName: '',
+      parentStatus: 'BOTH_ALIVE', dateOfBirth: '2016-05-10T00:00:00.000Z', gender: 'MALE', nationality: 'Egyptian', address: '12 Demo St Hurghada',
+      city: 'Hurghada', phoneNumber: phone(k), emergencyContact: phone(k), email: '', hasSiblingAtAcademy: false, campusId: campus.id,
+      batchId: batch.id, rollNumber: '', totalFeeAmount: 0, academicYear: `${year}-${year + 1}`, guardianFirstName: 'Demo Parent', guardianLastName: '',
+      guardianPhone: phone(k + 40), guardianEmail: '', guardianRelationship: '',
+    },
+  })).data?.data
+  const a = await mkStudent(`MoveA-${run}`, 21)
+  const b = await mkStudent(`MoveB-${run}`, 22)
+  check('2 demo students created', a?.id && b?.id)
+  if (!a?.id || !b?.id) return
+  for (const s of [a, b]) await sa.json('POST', `/api/groups/${fromId}/students`, { body: { studentId: s.id } })
+
+  const invoiceIn = async (studentId, groupId) => {
+    const row = list((await sa.json('GET', `/api/fees?studentId=${studentId}&limit=50`)).data).find((i) => i.classSectionId === groupId && i.status !== 'CANCELLED')
+    return row ? (await sa.json('GET', `/api/fees/${row.id}`)).data?.data : null
+  }
+  const ia = await invoiceIn(a.id, fromId)
+  const ib = await invoiceIn(b.id, fromId)
+  check(`both got an invoice in the old group (${n(ia?.totalAmount)} EGP)`, ia && ib && n(ia.totalAmount) > 0, 'the level needs a price')
+  if (!ia || !ib || !(n(ia.totalAmount) > 0)) return
+  const payA = await sa.json('POST', `/api/fees/${ia.id}/payments`, { body: { amount: n(ia.totalAmount), paymentMethod: 'Cash' } })
+  const smallPay = r2(Math.min(100, n(ib.totalAmount) / 10))
+  const payB = await sa.json('POST', `/api/fees/${ib.id}/payments`, { body: { amount: smallPay, paymentMethod: 'Cash' } })
+  check(`student A paid everything, student B paid only ${smallPay} EGP`, payA.data?.success && payB.data?.success, payA.data?.error?.message ?? payB.data?.error?.message)
+
+  // attendance: A came once, B twice
+  const detail = (await sa.json('GET', `/api/groups/${fromId}`)).data?.data
+  const enr = (sid) => detail?.enrollments?.find((e) => e.student.id === sid)?.id
+  const day = (k) => new Date(Date.now() - k * 86400000).toISOString().slice(0, 10)
+  const att1 = await sa.json('POST', '/api/enrollment-attendance', { body: { classSectionId: fromId, attendanceDate: day(1), records: [{ studentEnrollmentId: enr(a.id), status: 'PRESENT' }, { studentEnrollmentId: enr(b.id), status: 'PRESENT' }] } })
+  const att2 = await sa.json('POST', '/api/enrollment-attendance', { body: { classSectionId: fromId, attendanceDate: day(0), records: [{ studentEnrollmentId: enr(a.id), status: 'ABSENT' }, { studentEnrollmentId: enr(b.id), status: 'PRESENT' }] } })
+  check('2 sessions recorded: A attended 1, B attended 2', att1.data?.success !== false && att2.data?.success !== false, att1.data?.error?.message ?? att2.data?.error?.message)
+
+  // a discount on A in the old group (manual type: never applied to anyone by itself)
+  const type = await sa.json('POST', '/api/discount-types', {
+    body: { name: `DEMO Move 10% ${run}`, kind: 'MANUAL', valueType: 'PERCENT', value: 10, duration: 'EVERY_CYCLE', autoApply: false, approvalMode: 'STAFF', stackable: true },
+  })
+  const asg = await sa.json('POST', '/api/discounts', { body: { discountTypeId: type.data?.data?.id, studentId: a.id, classSectionId: fromId, reason: 'demo move' } })
+  const asgId = asg.data?.data?.assignment?.id
+  check('discount "DEMO Move 10%" given to A in the old group', !!asgId, asg.data?.error?.message ?? type.data?.error?.message)
+
+  // preview
+  const pv = (await sa.json('GET', `/api/students/${a.id}/transfer?from=${fromId}&to=${toId}`)).data?.data
+  const inv = pv?.invoice
+  const expectedCredit = inv ? r2(Math.max(0, inv.netPaid - inv.consumed)) : NaN
+  check(`preview: paid ${inv?.netPaid}, ${inv?.sessionsCounted} session × ${inv?.perSession} = ${inv?.consumed}, credit ${inv?.credit} EGP`,
+    inv && inv.sessionsCounted === 1 && near(inv.consumed, Math.min(inv.perSession, n(ia.totalAmount))) && near(inv.credit, expectedCredit))
+  const dA = pv?.discounts?.find((d) => d.assignmentId === asgId)
+  check(`preview asks about the discount (suggests: ${dA?.suggested})`, dA?.suggested === 'MOVE')
+  const noAnswer = await sa.json('POST', `/api/students/${a.id}/transfer`, { body: { fromClassSectionId: fromId, toClassSectionId: toId, creditTo: 'NEW_INVOICE' } })
+  check('moving without answering about the discount is refused', noAnswer.data?.success === false)
+
+  // move A: credit onto the new invoice, discount moves with him
+  const mvA = (await sa.json('POST', `/api/students/${a.id}/transfer`, {
+    body: { fromClassSectionId: fromId, toClassSectionId: toId, creditTo: 'NEW_INVOICE', discountDecisions: [{ assignmentId: asgId, action: 'MOVE' }], reason: 'demo: another course' },
+  })).data
+  check(`A moved (credit ${mvA?.data?.credit} EGP, ${mvA?.data?.creditApplied} paid onto the new invoice)`, mvA?.success && near(mvA.data.credit, expectedCredit), mvA?.error?.message)
+  const oldA = (await sa.json('GET', `/api/fees/${ia.id}`)).data?.data
+  check(`old invoice: ${n(oldA?.refundedAmount)} EGP given back as credit, ${r2(n(oldA?.paidAmount) - n(oldA?.refundedAmount))} kept for the session`, near(oldA?.refundedAmount, expectedCredit))
+  const newA = await invoiceIn(a.id, toId)
+  check(`new invoice ${newA?.challanNumber ?? '-'} has the moved discount`, (newA?.discountLines ?? []).some((l) => l.label === `DEMO Move 10% ${run}`))
+  check(`credit paid on the new invoice with a receipt (${newA?.payments?.[0]?.receiptNumber ?? '-'})`, near(newA?.paidAmount, mvA?.data?.creditApplied) && !!newA?.payments?.[0]?.receiptNumber)
+  const walA = (await sa.json('GET', `/api/students/${a.id}/wallet`)).data?.data
+  check(`wallet holds only what the new invoice did not need (${walA?.balance} EGP)`, near(walA?.balance, mvA?.data?.creditLeftInWallet))
+  const hist = (await sa.json('GET', `/api/students/${a.id}/transfer`)).data?.data ?? []
+  check('move saved in the student history', hist.length === 1 && hist[0].to?.label?.startsWith('DEMO Move To'))
+  const again = await sa.json('POST', `/api/students/${a.id}/transfer`, { body: { fromClassSectionId: fromId, toClassSectionId: toId, creditTo: 'WALLET' } })
+  check('moving him again from the old group is refused', again.data?.success === false)
+
+  // move B: paid less than used -> no credit, old invoice cut to the sessions
+  const mvB = (await sa.json('POST', `/api/students/${b.id}/transfer`, { body: { fromClassSectionId: fromId, toClassSectionId: toId, creditTo: 'WALLET' } })).data
+  const oldB = (await sa.json('GET', `/api/fees/${ib.id}`)).data?.data
+  check(`B moved: no credit, ${mvB?.data?.oldInvoice?.owed} EGP still due, ${mvB?.data?.oldInvoice?.cancelled} EGP cancelled`, mvB?.success && n(mvB.data.credit) === 0, mvB?.error?.message)
+  check(`B's old invoice is now ${n(oldB?.totalAmount)} EGP (only the 2 sessions)`, near(n(oldB?.totalAmount), smallPay + n(mvB?.data?.oldInvoice?.owed)))
+  const newB = await invoiceIn(b.id, toId)
+  check(`B got a normal invoice in the new group (${n(newB?.totalAmount)} EGP)`, !!newB)
+  console.log(`  ↳ open the student "MoveA-${run} DEMO-TEST" → card "Groups & moves" to see it in the screen`)
 }
 
 function finish() {
