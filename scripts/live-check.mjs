@@ -6,6 +6,7 @@
  *   node scripts/live-check.mjs --cleanup  # remove ONLY the demo data
  *   node scripts/live-check.mjs --transfer # only try moving students between groups (2026-10-03)
  *   node scripts/live-check.mjs --schedule # only make demo data for the Groups calendar (2026-10-03)
+ *   node scripts/live-check.mjs --phase-a  # demo data for phase A: capacity/waiting, contact log, renewals
  *
  * Asks for the site address, the Super Admin email and password at run time.
  * The password is never printed, saved or sent anywhere except the login.
@@ -101,7 +102,8 @@ async function main() {
   const cleanupOnly = process.argv.includes('--cleanup')
   const transferOnly = process.argv.includes('--transfer')
   const scheduleOnly = process.argv.includes('--schedule')
-  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : scheduleOnly ? ' — demo data for the Groups calendar' : ''))
+  const phaseAOnly = process.argv.includes('--phase-a')
+  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : scheduleOnly ? ' — demo data for the Groups calendar' : phaseAOnly ? ' — demo data for phase A' : ''))
   const base = ((await ask('Site address [https://evershine-lms-technova.vercel.app]: ')) || 'https://evershine-lms-technova.vercel.app').replace(/\/+$/, '')
   const email = await ask('Super Admin email: ')
   const password = await ask('Super Admin password (hidden): ', { hidden: true })
@@ -122,6 +124,11 @@ async function main() {
 
   const run = String(randomInt(1000, 9999))
   const phone = (n) => `0109990${run.slice(0, 2)}${String(n).padStart(2, '0')}`
+  if (phaseAOnly) {
+    try { await phaseADemo(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
+    console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
+    return finish()
+  }
   if (scheduleOnly) {
     try { await scheduleDemo(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
     console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
@@ -530,6 +537,77 @@ async function scheduleDemo(sa, base, run, phone) {
   check('last session of a month flagged', mine.some((s) => s.isLastOfCycle))
   console.log(`  ↳ open Groups Schedule (Week / Month). Filter "All instructors" → ${tA.name} DEMO ${run} to see a clash.`)
   console.log(`  ↳ instructor view: sign in as ${tA.email} / ${tA.password} → My Calendar`)
+}
+
+// ── demo data for phase A (contact log, group capacity, renewals) ───────────
+// All DEMO-marked, removed by --cleanup. Real branches, holidays and your
+// discount rules are NOT changed (a holiday would move real groups' sessions).
+async function phaseADemo(sa, base, run, phone) {
+  section('12. Demo data for phase A')
+  const iso = (k) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() + k); return d.toISOString().slice(0, 10) }
+  const campuses = list((await sa.json('GET', '/api/campuses')).data)
+  const campus = campuses.find((c) => c.isActive !== false) ?? campuses[0]
+  const levels = (await sa.json('GET', '/api/discounts/options')).data?.data?.levels ?? []
+  const level = levels[0]
+  if (!campus || !level) return bad('a branch and a level are needed')
+  const year = new Date().getFullYear()
+  let k = 80
+  const mkStudent = async (first) => (await sa.json('POST', '/api/students', {
+    body: {
+      firstName: `${first}-${run}`, lastName: 'DEMO-TEST', fullNameAr: `تجربة ${first}`, fatherName: 'Father Demo', fatherPhoneNumber: '', motherName: '',
+      parentStatus: 'BOTH_ALIVE', dateOfBirth: '2015-05-10T00:00:00.000Z', gender: 'MALE', nationality: 'Egyptian', address: '12 Demo St Hurghada',
+      city: 'Hurghada', phoneNumber: phone(k), emergencyContact: phone(k), email: '', hasSiblingAtAcademy: false, campusId: campus.id,
+      rollNumber: '', totalFeeAmount: 0, academicYear: `${year}-${year + 1}`, guardianFirstName: 'Demo Parent', guardianLastName: '',
+      guardianPhone: phone(k++ + 10), guardianEmail: '', guardianRelationship: '',
+    },
+  })).data?.data
+  const mkGroup = async (name, extra = {}) => (await sa.json('POST', '/api/groups', { body: { campusId: campus.id, className: name, sectionName: 'A', levelId: level.id, ...extra } })).data?.data?.id
+
+  // capacity + waiting
+  const full = await mkGroup(`DEMO A Full ${run}`, { maxStudents: 2 })
+  const room = await mkGroup(`DEMO A Room ${run}`)
+  const [s1, s2, s3] = [await mkStudent('Seat1'), await mkStudent('Seat2'), await mkStudent('Waiting')]
+  check('demo groups and students created', full && room && s1?.id && s2?.id && s3?.id)
+  if (!full || !room || !s1?.id || !s2?.id || !s3?.id) return
+  for (const s of [s1, s2]) await sa.json('POST', `/api/groups/${full}/students`, { body: { studentId: s.id } })
+  const refused = await sa.json('POST', `/api/groups/${full}/students`, { body: { studentId: s3.id } })
+  check('group "DEMO A Full" (2/2) refuses a third student', refused.data?.error?.code === 'GROUP_FULL')
+  const waited = await sa.json('POST', `/api/groups/${full}/students`, { body: { studentId: s3.id, waitlist: true } })
+  check(`third student put on its waiting list (#${waited.data?.data?.position ?? '?'})`, waited.data?.data?.waitlisted === true)
+  const offered = (await sa.json('GET', `/api/groups/available?levelId=${level.id}&excludeId=${full}`)).data?.data ?? []
+  check('"DEMO A Room" is offered as another group with room', offered.some((g) => g.id === room))
+
+  // contact log + follow-ups
+  const now = new Date().toISOString()
+  const c1 = await sa.json('POST', '/api/contact-logs', { body: { studentId: s1.id, channel: 'CALL', reason: 'PAYMENT', summary: 'DEMO: asked about this month\'s invoice, will pay on Sunday.', followUpAt: now } })
+  const c2 = await sa.json('POST', '/api/contact-logs', { body: { studentId: s2.id, channel: 'WHATSAPP', direction: 'IN', reason: 'ABSENCE', summary: 'DEMO: parent said the child was ill yesterday.', followUpAt: `${iso(-1)}T09:00:00.000Z` } })
+  check('2 contacts logged (one follow-up today, one overdue)', c1.data?.success && c2.data?.success, c1.data?.error?.message ?? c2.data?.error?.message)
+
+  // renewals: a group close to its last session
+  const renew = await mkGroup(`DEMO A Renew ${run}`)
+  const [r1, r2] = [await mkStudent('RenewYes'), await mkStudent('RenewNo')]
+  for (const s of [r1, r2]) if (s?.id) await sa.json('POST', `/api/groups/${renew}/students`, { body: { studentId: s.id } })
+  const g = (await sa.json('GET', `/api/groups/${renew}`)).data?.data
+  const per = g?.ends?.sessionsPerCycle ?? 4
+  const before = (await sa.json('GET', '/api/renewals/settings')).data?.data?.sessionsBefore ?? 2
+  const toHold = Math.max(1, per - before)
+  const enr = (g?.enrollments ?? []).map((e) => e.id)
+  for (let i = toHold; i >= 1; i--) {
+    await sa.json('POST', '/api/enrollment-attendance', { body: { classSectionId: renew, attendanceDate: iso(-i), records: enr.map((id) => ({ studentEnrollmentId: id, status: 'PRESENT' })) } })
+  }
+  await sa.json('POST', `/api/groups/${renew}/extra-sessions`, { body: { date: iso(1), time: '19:00', reason: 'DEMO make-up session' } })
+  const rn = (await sa.json('GET', '/api/renewals')).data?.data
+  const mine = rn?.groups?.find((x) => x.id === renew)
+  check(`"DEMO A Renew": ${toHold} of ${per} sessions held → parents asked "continuing?"`, (mine?.students?.length ?? 0) === 2)
+  const no = mine?.students?.find((x) => x.studentId === r2?.id)
+  if (no) await sa.json('PATCH', `/api/renewals/${no.requestId}`, { body: { answer: 'NO', reason: 'TIME', note: 'DEMO: the time does not suit' } })
+  const yes = mine?.students?.find((x) => x.studentId === r1?.id)
+  if (yes) await sa.json('PATCH', `/api/renewals/${yes.requestId}`, { body: { answer: 'YES' } })
+  check('one answered "continuing", one "not continuing (time)"', !!no && !!yes)
+
+  console.log('  ↳ open: Groups → "DEMO A Full" (capacity + waiting + Other groups), "DEMO A Renew" (extra session, Advance cycle ticks)')
+  console.log('  ↳ open: Follow-ups, Renewals, the student "Seat1-' + run + ' DEMO-TEST" (Contact with parents), Campuses → Open branch profile')
+  console.log('  ↳ try yourself: add a holiday (Holidays page) on a day without real groups, then remove it')
 }
 
 function finish() {
