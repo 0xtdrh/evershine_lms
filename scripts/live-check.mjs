@@ -732,7 +732,8 @@ async function phaseCDemo(sa, base, run, phone) {
   if (!campus || !level) return bad('a branch and a level are needed')
   const year = new Date().getFullYear()
   const parentPhone = phone(70)
-  const today = iso(0)
+  // Birthdays are in Egypt time: between midnight and 2-3 AM Cairo the UTC date is still yesterday.
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
   let k = 71
   const mkStudent = async (first, dob) => (await sa.json('POST', '/api/students', {
     body: {
