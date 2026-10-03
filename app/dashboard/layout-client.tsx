@@ -497,6 +497,8 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
   )
 }
 
+interface Notif { id: string; title: string; message: string; type: string; isRead: boolean; relatedId?: string | null; createdAt: string }
+
 function NotificationBell() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -572,6 +574,9 @@ function NotificationBell() {
       COMPLAINT_SUBMITTED: { label: 'Complaints', className: 'bg-blue-50 text-blue-700 border-blue-100' },
       COMPLAINT_RESOLVED: { label: 'Complaints', className: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
       ANNOUNCEMENT: { label: 'Announcement', className: 'bg-sky-50 text-sky-700 border-sky-100' },
+      WALLET:         { label: 'Wallet', className: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+      WALLET_PAYMENT: { label: 'Wallet', className: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+      LOW_BALANCE:    { label: 'Wallet', className: 'bg-amber-50 text-amber-700 border-amber-100' },
     }
     const config = map[type] ?? { label: 'General', className: 'bg-slate-50 text-slate-700 border-slate-100' }
     return (
@@ -798,6 +803,11 @@ function NotificationBell() {
                         <p className={`text-xs mt-1.5 leading-relaxed whitespace-pre-wrap break-words ${!n.isRead ? 'text-slate-700 font-normal' : 'text-slate-500 font-normal'}`}>
                           {n.message}
                         </p>
+                        {n.type === 'WALLET_PAYMENT' && n.relatedId && (
+                          <a href={`/receipts/${n.relatedId}`} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-700 hover:underline font-semibold mt-1.5 mr-3 inline-block">
+                            Open receipt
+                          </a>
+                        )}
                         {!n.isRead && (
                           <button
                             onClick={() => markOneMutation.mutate(n.id)}

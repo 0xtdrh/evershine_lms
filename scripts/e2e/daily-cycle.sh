@@ -787,6 +787,7 @@ check "installments allowed: the new invoice is paid partly from the wallet (300
 api POST /api/groups/$WB/students "{\"studentId\":\"$W2\"}" >/dev/null
 api POST /api/wallet/topups "{\"studentId\":\"$W2\",\"amount\":2000,\"method\":\"Cash\"}" >/dev/null
 check "a big top-up pays every open invoice, oldest first (550 + 850), 600 left" "$(M "SELECT status FROM FeeInvoice WHERE id='$(invid $W2 $WB2)'")/$(M "SELECT status FROM FeeInvoice WHERE id='$(invid $W2 $WB)'")/$(bal $W2)" "PAID/PAID/600"
+check "parent notified of each automatic payment, with the receipt id" "$(M "SELECT COUNT(*) FROM Notification n JOIN Guardian g ON g.userId=n.userId JOIN FeePayment p ON p.id=n.relatedId WHERE g.phoneNumber='01066660099' AND n.type='WALLET_PAYMENT' AND p.source='WALLET'")" "3"
 # 5) minimum top-up
 api PUT /api/wallet/rules '{"rules":[{"kind":"MIN_TOPUP","scopeType":"ALL","minAmount":200}]}' >/dev/null
 check "below the minimum (100 < 200) refused" "$(api POST /api/wallet/topups "{\"studentId\":\"$W1\",\"amount\":100,\"method\":\"Cash\"}" | jq_ "d['success']")" "False"

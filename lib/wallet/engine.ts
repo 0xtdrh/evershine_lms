@@ -131,7 +131,29 @@ export async function autoPay(studentId: string, opts: { userId: string; preferI
   } catch (err) {
     console.error('[WALLET_AUTOPAY]', err)
   }
+  if (paid.length) await notifyAutoPaid(studentId, paid)
   return paid
+}
+
+/** Tells the parents that the wallet paid an invoice (type WALLET_PAYMENT, relatedId = paymentId → receipt link). Never throws. */
+async function notifyAutoPaid(studentId: string, paid: { invoiceId: string; paymentId: string; amount: number; receiptNumber: string }[]) {
+  try {
+    const s = await prisma.student.findUnique({ where: { id: studentId }, select: { firstName: true, lastName: true, guardians: { select: { userId: true } } } })
+    if (!s?.guardians.length) return
+    const invoices = await prisma.feeInvoice.findMany({ where: { id: { in: paid.map((p) => p.invoiceId) } }, select: { id: true, challanNumber: true, status: true, totalAmount: true, paidAmount: true } })
+    const byId = new Map(invoices.map((i) => [i.id, i]))
+    const balance = await walletBalance(studentId)
+    const name = `${s.firstName} ${s.lastName}`.trim()
+    const rows = paid.flatMap((p) => {
+      const inv = byId.get(p.invoiceId)
+      const left = inv ? round2(Number(inv.totalAmount) - Number(inv.paidAmount)) : 0
+      const message = `${p.amount} EGP was paid from ${name}'s wallet for invoice ${inv?.challanNumber ?? ''}${left > 0 ? ` (${left} EGP still due)` : ' (fully paid)'}. Receipt ${p.receiptNumber}. Wallet balance now ${balance} EGP.`
+      return s.guardians.map((g) => ({ userId: g.userId, title: 'Invoice paid from the wallet', message, type: 'WALLET_PAYMENT', relatedId: p.paymentId }))
+    })
+    await prisma.notification.createMany({ data: rows })
+  } catch (err) {
+    console.error('[WALLET_NOTIFY_AUTOPAY]', err)
+  }
 }
 
 // ── top-ups ─────────────────────────────────────────────────────────────────
