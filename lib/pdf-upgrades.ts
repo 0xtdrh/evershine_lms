@@ -656,10 +656,10 @@ export function generateRollNumberSlipPDF(options: RollNumberSlipPDFOptions): js
   printLabelVal(y, 'STUDENT NAME', options.studentName.toUpperCase(), true, 32, true, false)
   y += rowH
 
-  // Row 3: Class/Section & Shift
+  // Row 3: Class/Section & roll number (session shift is switched off for TechNova)
   drawBorderedRow(y)
   printLabelVal(y, 'CLASS / SECTION', `${options.className} — ${options.sectionName}`, true, 32, true, false)
-  printLabelVal(y, 'SHIFT', options.shiftName, false, 22, true, false)
+  printLabelVal(y, 'ROLL NO', options.rollNumber, false, 22, true, false)
   y += rowH
 
   // Row 4: Father Name & Gender

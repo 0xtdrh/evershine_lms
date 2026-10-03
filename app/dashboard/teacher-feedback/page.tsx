@@ -287,7 +287,7 @@ export default function FeedbackHubPage() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-500">
-                        {sub.placement.campus} · {sub.placement.section} · {sub.placement.shift}
+                        {sub.placement.campus} · {sub.placement.section}
                       </p>
                       <ul className="text-xs space-y-1">
                         {sub.answers.map((a, i) => (

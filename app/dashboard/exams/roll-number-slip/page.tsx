@@ -390,7 +390,7 @@ export default function RollNumberSlipPage() {
                     />
                     <TR
                       left={{ label: 'CLASS / SECTION', value: `${slip.section.className} — ${slip.section.sectionName}`, bold: true }}
-                      right={{ label: 'SHIFT', value: slip.section.shiftName, bold: true }}
+                      full
                     />
                     <TR
                       left={{ label: 'FATHER NAME', value: slip.student.fatherName, bold: true }}

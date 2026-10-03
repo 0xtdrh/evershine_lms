@@ -23,7 +23,6 @@ import {
 
 // WHY: Shift-aware labels for section dropdowns to distinguish same-name
 // classes across Morning/Evening/Night shifts.
-const SHIFT_ICONS: Record<string, string> = { MORNING: '🌅', EVENING: '🌆', NIGHT: '🌙' }
 const DAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 function formatApiFormError(error: Error, fallback: string): string {
@@ -115,21 +114,13 @@ type GradingSchemeRow = {
 
 type SectionLike = { className: string; sectionName: string; shift?: { name: string; code: string } | null }
 function sectionLabel(s: SectionLike): string {
-  const icon = s.shift?.code ? SHIFT_ICONS[s.shift.code] ?? '' : ''
-  return `${s.className}-${s.sectionName} · ${icon} ${s.shift?.name || 'Unassigned'}`
+  return `${s.className}-${s.sectionName}` // session shift is switched off (TechNova)
 }
 
 /** Group sections by shift for SelectGroup rendering */
 function groupByShift<T extends SectionLike & { id: string }>(items: T[]): { shiftCode: string; shiftLabel: string; sections: T[] }[] {
-  const groups: Record<string, { shiftCode: string; shiftLabel: string; sections: T[] }> = {}
-  for (const s of items) {
-    const code = s.shift?.code ?? 'NONE'
-    const label = s.shift?.code ? `${SHIFT_ICONS[s.shift.code] ?? ''} ${s.shift.name}` : 'No Shift'
-    if (!groups[code]) groups[code] = { shiftCode: code, shiftLabel: label, sections: [] }
-    groups[code].sections.push(s)
-  }
-  const order = ['MORNING', 'EVENING', 'NIGHT', 'NONE']
-  return Object.values(groups).sort((a, b) => order.indexOf(a.shiftCode) - order.indexOf(b.shiftCode))
+  // Session shift is switched off for TechNova (2026-10-03): one list, no shift headers.
+  return items.length ? [{ shiftCode: 'ALL', shiftLabel: 'Groups', sections: items }] : []
 }
 const VALID_TABS = [
   'years',
@@ -955,9 +946,7 @@ export default function AcademicEnginePage() {
               <TabsTrigger value="years" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
                 <Calendar className="w-4 h-4" />Academic Years
               </TabsTrigger>
-              <TabsTrigger value="shifts" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
-                <Clock className="w-4 h-4" />Shifts
-              </TabsTrigger>
+              {/* Shifts tab hidden: session shift is switched off for TechNova (2026-10-03). */}
               <TabsTrigger value="rooms" className="text-sm gap-2 data-[state=active]:bg-slate-100 data-[state=active]:shadow-sm">
                 <MapPin className="w-4 h-4" />Rooms
               </TabsTrigger>
@@ -1247,13 +1236,13 @@ export default function AcademicEnginePage() {
         <TabsContent value="sections" className="mt-0">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 mb-4">
             <p className="font-semibold text-slate-900">Class sections capture the academic structure.</p>
-            <p className="mt-1">Define branch, shift, class, section name, and curriculum mode before assigning course offerings.</p>
+            <p className="mt-1">Define branch, class, section name, and curriculum mode before assigning course offerings.</p>
           </div>
           <div className="grid lg:grid-cols-2 gap-6">
             <Card className="border-t-4 border-t-violet-500 shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Layers className="w-4 h-4 text-violet-500" />New Group</CardTitle>
-                <CardDescription>Choose the branch and shift to define the group.</CardDescription>
+                <CardDescription>Choose the branch to define the group.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -1270,20 +1259,6 @@ export default function AcademicEnginePage() {
                   </div>
                 </div>
                 
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Session Shift</Label>
-                    <Info className="w-3.5 h-3.5 text-gray-400" aria-label="Each section is linked to one shift. Students enroll in one section per shift per year." />
-                  </div>
-                  <Select value={sectionForm.shiftId} onValueChange={(v) => setSectionForm({ ...sectionForm, shiftId: v })}>
-                    <SelectTrigger className="border-gray-200"><SelectValue placeholder="Select Shift (e.g. Morning)" /></SelectTrigger>
-                    <SelectContent>
-                      {(shifts ?? []).map((s: { id: string; name: string }) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
@@ -1329,7 +1304,7 @@ export default function AcademicEnginePage() {
                   </div>
                 </div>
 
-                <Button onClick={() => createSection.mutate()} disabled={createSection.isPending || !sectionForm.shiftId} className="w-full bg-violet-600 hover:bg-violet-700">
+                <Button onClick={() => createSection.mutate()} disabled={createSection.isPending} className="w-full bg-violet-600 hover:bg-violet-700">
                   {createSection.isPending ? 'Creating...' : 'Create Class Section'}
                 </Button>
               </CardContent>
@@ -1392,7 +1367,6 @@ export default function AcademicEnginePage() {
                             </div>
                             <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 font-medium">
                               <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-gray-400" />{s.campus?.name}</span>
-                              <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-gray-400" />{s.shift?.name}</span>
                               <span className="flex items-center gap-1"><Layout className="w-3 h-3 text-gray-400" />{s.deliveryMode}</span>
                             </div>
                           </div>

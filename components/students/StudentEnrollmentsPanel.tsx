@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { GraduationCap, Plus, Loader2, Pencil, Trash2, RotateCcw, Check, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { notify } from '@/lib/notify'
-import { SESSION_SHIFT_BADGE_CLASS, SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
+import type { SessionShift } from '@/lib/validation/shift'
 import Link from 'next/link'
 
 export interface StudentEnrollmentRow {
@@ -277,7 +277,6 @@ export function StudentEnrollmentsPanel({
                     sections.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         <span className="font-semibold">{s.className}-{s.sectionName}</span>
-                        <span className="text-gray-500 ml-1.5">· {s.shift?.name || 'Standard'}</span>
                         <span className="text-indigo-600 font-mono ml-1.5">[{s.campus?.code || 'Campus'}]</span>
                       </SelectItem>
                     ))
@@ -323,7 +322,6 @@ export function StudentEnrollmentsPanel({
         ) : (
           <ul className="space-y-2">
             {active.map((e) => {
-              const shift     = e.classSection.shift.code
               const isEditing = editingId === e.id
               const isLocked  = e.academicYear.isLocked
 
@@ -346,9 +344,6 @@ export function StudentEnrollmentsPanel({
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${SESSION_SHIFT_BADGE_CLASS[shift]}`}>
-                        {SESSION_SHIFT_LABELS[shift]}
-                      </span>
                       <Badge variant="outline" className="text-[10px]">{e.status}</Badge>
                       {isLocked && <Badge variant="secondary" className="text-[10px]">Locked</Badge>}
                       <Link href={`/dashboard/attendance/sections?sectionId=${e.classSection.id}`}>
@@ -489,7 +484,7 @@ export function StudentEnrollmentsPanel({
                                 {sections.length > 0
                                   ? sections.map((s) => (
                                     <SelectItem key={s.id} value={s.id}>
-                                      {s.className}-{s.sectionName} · {s.shift.name}
+                                      {s.className}-{s.sectionName}
                                     </SelectItem>
                                   ))
                                   : <SelectItem value={e.classSection.id}>

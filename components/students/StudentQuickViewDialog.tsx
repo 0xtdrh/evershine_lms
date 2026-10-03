@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { GraduationCap, CreditCard, FileText, Pencil, MapPin, ShieldCheck, Sparkles, Phone } from 'lucide-react'
-import { SESSION_SHIFT_BADGE_CLASS, SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
+import type { SessionShift } from '@/lib/validation/shift'
 import type { StudentEnrollmentRow } from './StudentEnrollmentsPanel'
 
 interface StudentDetail {
@@ -146,14 +146,10 @@ export function StudentQuickViewDialog({
                 </div>
                 <div className="space-y-2">
                   {activeEnrollments.map((e) => {
-                    const shift = e.classSection.shift.code as SessionShift
                     return (
                       <div key={e.id} className="flex flex-col gap-1 rounded-2xl border border-white/70 bg-white/90 p-3 text-sm text-slate-700 sm:flex-row sm:items-center sm:justify-between">
                         <span className="font-medium">{e.classSection.className}-{e.classSection.sectionName}</span>
                         <span className="text-xs text-slate-500">Roll {e.rollNumber}</span>
-                        <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${SESSION_SHIFT_BADGE_CLASS[shift]}`}>
-                          {SESSION_SHIFT_LABELS[shift]}
-                        </span>
                       </div>
                     )
                   })}

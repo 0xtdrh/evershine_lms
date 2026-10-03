@@ -391,7 +391,7 @@ export default function TimetablePage() {
               {sessionShiftFormalLabel(studentShift)}
             </span>
           )}
-          {isTeacher && (uniqueShifts.length > 0 ? (
+          {false && isTeacher && (uniqueShifts.length > 0 ? ( /* session shift is switched off */
             <div className="flex flex-wrap gap-1.5 mt-2">
               {uniqueShifts.map((shiftCode) => (
                 <span key={shiftCode} className={`inline-flex text-[10px] font-bold px-2.5 py-1 rounded-full border ${SESSION_SHIFT_BADGE_CLASS[shiftCode as keyof typeof SESSION_SHIFT_BADGE_CLASS] || 'border-slate-200 bg-slate-50 text-slate-700'}`}>
@@ -556,9 +556,6 @@ export default function TimetablePage() {
                                       ? `${item.teacher?.firstName ?? ''} ${item.teacher?.lastName ?? ''}`.trim()
                                       : `${item.className ?? item.class?.name ?? ''}${item.sectionName ? ` - ${item.sectionName}` : ''}`}
                                   </div>
-                                  {item.shift && (
-                                    <div className="text-[9px] uppercase tracking-wide opacity-80 mt-1">{item.shift}</div>
-                                  )}
                                 </div>
                               )
                             })}
@@ -646,18 +643,7 @@ export default function TimetablePage() {
               </div>
             </div>
 
-            <div>
-              <Label className="text-xs font-bold text-gray-600 mb-1.5 block">Session Shift</Label>
-              <select
-                value={formShift}
-                onChange={(e) => setFormShift(e.target.value as SessionShift)}
-                className="w-full h-10 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-              >
-                <option value="MORNING">{SESSION_SHIFT_LABELS.MORNING}</option>
-                <option value="EVENING">{SESSION_SHIFT_LABELS.EVENING}</option>
-                <option value="NIGHT">{SESSION_SHIFT_LABELS.NIGHT}</option>
-              </select>
-            </div>
+            {/* Session shift is switched off for TechNova (2026-10-03). */}
 
             <div className="grid grid-cols-2 gap-4">
               <div>

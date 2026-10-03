@@ -493,7 +493,7 @@ export default function ExamsPage() {
         optionId: `section:${section.id}`,
         source: 'section',
         sourceLabel: 'Engine',
-        name: [section.className, section.sectionName, section.shift?.name].filter(Boolean).join(' - '),
+        name: [section.className, section.sectionName].filter(Boolean).join(' - '),
         grade: section.grade ?? 0,
         section: section.sectionName,
         shift: section.shift?.code as ClassRecord['shift'],

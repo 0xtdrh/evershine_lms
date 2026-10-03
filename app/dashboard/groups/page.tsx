@@ -21,7 +21,6 @@ import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, T
 import { TransferStudentDialog } from '@/components/groups/TransferStudentDialog'
 
 interface Campus { id: string; name: string }
-interface Shift { id: string; name: string }
 interface AcademicYear { id: string; name: string; isActive: boolean }
 interface Track { id: string; name: string }
 interface Course { id: string; name: string; code: string; track: { id: string; name: string } | null }
@@ -151,7 +150,6 @@ export default function GroupsPage() {
 
   // ── Reference data used by the create/edit forms ─────────────────────
   const { data: campuses = [] } = useQuery<Campus[]>({ queryKey: ['campuses'], queryFn: () => fetchApi('/api/campuses') })
-  const { data: shifts = [] } = useQuery<Shift[]>({ queryKey: ['shifts'], queryFn: () => fetchApi('/api/shifts') })
   const { data: tracks = [] } = useQuery<Track[]>({ queryKey: ['tracks'], queryFn: () => fetchApi('/api/tracks') })
   const { data: courses = [] } = useQuery<Course[]>({ queryKey: ['academic-subjects-for-config'], queryFn: () => fetchApi('/api/academic-subjects') })
   const { data: academicYears = [] } = useQuery<AcademicYear[]>({ queryKey: ['academic-years'], queryFn: () => fetchApi('/api/academic-years') })
@@ -226,7 +224,6 @@ export default function GroupsPage() {
         method: 'POST',
         body: JSON.stringify({
           campusId: createForm.campusId,
-          shiftId: createForm.shiftId,
           className: createForm.className,
           sectionName: createForm.sectionName,
           levelId: createForm.levelId || null,
@@ -995,10 +992,6 @@ export default function GroupsPage() {
                 <SelectContent>{campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             )}
-            <Select value={createForm.shiftId} onValueChange={(v) => setCreateForm({ ...createForm, shiftId: v })}>
-              <SelectTrigger><SelectValue placeholder="Shift" /></SelectTrigger>
-              <SelectContent>{shifts.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-            </Select>
             <div className="flex gap-3">
               <Input placeholder="Group name" value={createForm.className} onChange={(e) => setCreateForm({ ...createForm, className: e.target.value })} />
               <Input placeholder="Section (e.g. A)" value={createForm.sectionName} onChange={(e) => setCreateForm({ ...createForm, sectionName: e.target.value })} />
@@ -1040,7 +1033,7 @@ export default function GroupsPage() {
           </div>
           <DialogFooter>
             <Button
-              disabled={!createForm.campusId || !createForm.shiftId || !createForm.className || !createForm.sectionName || createGroupMutation.isPending}
+              disabled={!createForm.campusId || !createForm.className || !createForm.sectionName || createGroupMutation.isPending}
               onClick={() => createGroupMutation.mutate()}
             >
               {createGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create group'}

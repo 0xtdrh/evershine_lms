@@ -269,7 +269,6 @@ export default function DocumentsPage() {
       if (docScope.classId) url += `&classId=${docScope.classId}`
       if (docScope.houseId) url += `&houseId=${docScope.houseId}`
       if (docScope.campusId) url += `&campusId=${docScope.campusId}`
-      if (docScope.shift) url += `&shift=${docScope.shift}`
       url += '&includeEnrollments=true'
       return fetchPaginatedApi<Student>(url)
     },

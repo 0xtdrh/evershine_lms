@@ -10,7 +10,7 @@ import { fetchApi, ApiError } from '@/lib/api-client'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { createStudentSchema, CreateStudentInput } from '@/lib/validation/student'
 import type { z } from 'zod'
-import { SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
+import type { SessionShift } from '@/lib/validation/shift'
 import { MARKETING_SOURCES } from '@/app/admissions/apply/_components'
 
 import { Button } from '@/components/ui/button'
@@ -82,7 +82,6 @@ export default function AdmissionPage() {
   })
 
   const selectedCampusId = useWatch({ control, name: 'campusId' })
-  const selectedSectionId = useWatch({ control, name: 'classSectionId' })
   const hasSiblingAtAcademy = useWatch({ control, name: 'hasSiblingAtAcademy' })
 
   // ── Data Fetching ────────────────────────────────────────────────────────
@@ -586,7 +585,6 @@ export default function AdmissionPage() {
                   {sections.map((s: SectionData) => (
                     <SelectItem key={s.id} value={s.id}>
                       <span className="font-medium">{s.className}-{s.sectionName}</span>
-                      <span className="text-muted-foreground ml-2 text-xs">· {SESSION_SHIFT_LABELS[s.shift.code]}</span>
                       {s._count?.enrollments !== undefined && (
                         <span className="text-muted-foreground ml-2 text-xs">({s._count.enrollments} students)</span>
                       )}
@@ -615,21 +613,7 @@ export default function AdmissionPage() {
               <FieldError message={errors.rollNumber?.message} />
             </div>
 
-            {/* Session Shift — auto-filled when section selected */}
-            <div className="space-y-1.5">
-              <Label>Session Shift {selectedSectionId && <span className="text-xs text-muted-foreground">(auto-set from section)</span>}</Label>
-              <Select
-                onValueChange={(val) => setValue('shift', val as SessionShift)}
-                defaultValue="MORNING"
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(SESSION_SHIFT_LABELS) as SessionShift[]).map((code) => (
-                    <SelectItem key={code} value={code}>{SESSION_SHIFT_LABELS[code]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Session shift is switched off for TechNova (2026-10-03): set from the group when one is chosen. */}
 
             {/* Academic year: not used by TechNova — kept internally, hidden (owner, 2026-09-29) */}
             <div className="hidden">

@@ -8,7 +8,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { SESSION_SHIFT_LABELS } from '@/lib/validation/shift'
 import type { UseAcademicHierarchyReturn } from '@/hooks/useAcademicHierarchy'
 
 export interface AcademicScopeFiltersProps {
@@ -27,7 +26,7 @@ export interface AcademicScopeFiltersProps {
 }
 
 /**
- * Campus → Session → Class (Batch was switched off for TechNova, 2026-10-03).
+ * Branch → Class (Batch and Session were switched off for TechNova, 2026-10-03).
  */
 export function AcademicScopeFilters({
   hierarchy,
@@ -98,28 +97,7 @@ export function AcademicScopeFilters({
           </>
         )}
 
-        {showShift && (
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-gray-600">Session *</Label>
-            <Select
-              value={scope.shift}
-              disabled={classBlocked}
-              onValueChange={(v) => {
-                setShift(v as typeof scope.shift)
-                notify()
-              }}
-            >
-              <SelectTrigger className={compact ? 'h-9' : ''}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="MORNING">{SESSION_SHIFT_LABELS.MORNING}</SelectItem>
-                <SelectItem value="EVENING">{SESSION_SHIFT_LABELS.EVENING}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
+        {/* Session shift is switched off for TechNova (2026-10-03): the chosen class sets it. */}
         {showClass && (
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-gray-600">Class *</Label>

@@ -13,7 +13,6 @@ import { Users, ClipboardCheck, BarChart2, Calendar, CreditCard, Loader2, Downlo
 import { Button } from '@/components/ui/button'
 import { downloadPdf } from '@/lib/pdf'
 import { notify } from '@/lib/notify'
-import { SESSION_SHIFT_LABELS } from '@/lib/validation/shift'
 import Link from 'next/link'
 import { FeePaymentDialog } from '@/components/features/guardian/FeePaymentDialog'
 import { MonitoringReportPanel } from '@/components/academic/MonitoringReportPanel'
@@ -310,9 +309,7 @@ export default function MyChildrenPage() {
                 {(() => {
                   const selectedChild = (children ?? []).find((c) => c.id === childId)
                   const cInitials = selectedChild ? `${selectedChild.firstName[0]}${selectedChild.lastName[0]}`.toUpperCase() : ''
-                  const cShift = academic.enrollment?.classSection?.shift?.code
-                    ? SESSION_SHIFT_LABELS[academic.enrollment.classSection.shift.code as keyof typeof SESSION_SHIFT_LABELS]
-                    : null
+                  const cShift: string | null = null // session shift is switched off (TechNova)
                   return (
                     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 shadow-xl">
                       <div className="pointer-events-none absolute -top-8 -right-8 h-40 w-40 rounded-full bg-emerald-400/20 blur-3xl" />
@@ -574,7 +571,7 @@ export default function MyChildrenPage() {
                                   {sessionResult.examSessionLabel}
                                 </h4>
                                 <p className="text-xs text-slate-400 mt-0.5">
-                                  {sessionResult.sectionLabel}{sessionResult.shiftName ? ` · ${sessionResult.shiftName}` : ''}
+                                  {sessionResult.sectionLabel}
                                 </p>
                               </div>
                             </div>

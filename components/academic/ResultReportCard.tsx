@@ -331,7 +331,7 @@ export function ResultCardHeader({
             <span className="font-bold text-blue-200">Class:</span>
             <span className="font-semibold text-white">{sectionLabel}</span>
           </div>
-          {shiftName && (
+          {false && shiftName && ( /* session shift is switched off (TechNova) */
             <>
               <span className="text-white/20">|</span>
               <div className="flex items-center gap-1">

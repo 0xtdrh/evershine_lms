@@ -9,6 +9,7 @@
 
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
+import { resolveShiftId } from '@/lib/shifts/default-shift'
 import { prisma } from '@/lib/prisma'
 import { estimateGroupEnds } from '@/lib/groups/end-estimates'
 import { errors, successResponse } from '@/lib/api-response'
@@ -155,9 +156,25 @@ export async function PATCH(
     if (!level) return errors.notFound('Level')
   }
 
+  // Session shift follows the group's time when the schedule changes (shift is switched off in the UI).
+  let autoShiftId: string | undefined
+  if (parsed.data.scheduleSlots && parsed.data.shiftId === undefined) {
+    autoShiftId = await resolveShiftId(null, parsed.data.scheduleSlots)
+    const current = await prisma.classSection.findUnique({ where: { id }, select: { campusId: true, batchId: true, className: true, sectionName: true, shiftId: true } })
+    // Never collide with an older group that has the same name in that shift.
+    if (current && current.shiftId !== autoShiftId) {
+      const taken = await prisma.classSection.findFirst({
+        where: { id: { not: id }, campusId: current.campusId, batchId: current.batchId, shiftId: autoShiftId, className: current.className, sectionName: current.sectionName },
+        select: { id: true },
+      })
+      if (taken) autoShiftId = undefined
+    }
+  }
+
   const group = await prisma.classSection.update({
     where: { id },
     data: {
+      ...(autoShiftId && { shiftId: autoShiftId }),
       ...(parsed.data.campusId !== undefined && { campusId: parsed.data.campusId }),
       ...(parsed.data.batchId !== undefined && { batchId: parsed.data.batchId }),
       ...(parsed.data.shiftId !== undefined && { shiftId: parsed.data.shiftId }),

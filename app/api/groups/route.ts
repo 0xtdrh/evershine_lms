@@ -10,6 +10,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { resolveBatchId } from '@/lib/batches/default-batch'
+import { resolveShiftId } from '@/lib/shifts/default-shift'
 import { prisma } from '@/lib/prisma'
 import { estimateGroupEnds } from '@/lib/groups/end-estimates'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
@@ -91,7 +92,8 @@ const createGroupSchema = z.object({
   campusId: z.string().min(1),
   /** Batches are switched off: ignored unless an old screen sends one (lib/batches/default-batch.ts). */
   batchId: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional().nullable()),
-  shiftId: z.string().min(1),
+  /** Session shift is switched off: picked from the group's time (lib/shifts/default-shift.ts). */
+  shiftId: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional().nullable()),
   className: z.string().min(1).max(50),
   sectionName: z.string().min(1).max(10),
   levelId: z.string().min(1).optional().nullable(),
@@ -136,25 +138,25 @@ export async function POST(request: NextRequest) {
   if (!activeYear) return errors.conflict('No active academic year is set')
 
   const batchId = await resolveBatchId(effectiveCampusId, parsed.data.batchId)
+  const shiftId = await resolveShiftId(parsed.data.shiftId)
 
-  // Same branch + shift + name + section already exists -> clear 409
+  // Same branch + name + section already exists -> clear 409
   // (the unique-constraint error used to surface as an empty 500).
   const clash = await prisma.classSection.findFirst({
     where: {
       campusId: effectiveCampusId,
-      shiftId: parsed.data.shiftId,
       className: parsed.data.className,
       sectionName: parsed.data.sectionName,
     },
     select: { id: true },
   })
-  if (clash) return errors.conflict('A group with this name and section already exists in this branch/shift. Choose another name or section.')
+  if (clash) return errors.conflict('A group with this name and section already exists in this branch. Choose another name or section.')
 
   const group = await prisma.classSection.create({
     data: {
       campusId: effectiveCampusId,
       batchId,
-      shiftId: parsed.data.shiftId,
+      shiftId,
       className: parsed.data.className,
       sectionName: parsed.data.sectionName,
       levelId: parsed.data.levelId ?? null,

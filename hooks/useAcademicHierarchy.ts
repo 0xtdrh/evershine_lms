@@ -107,24 +107,22 @@ export function useAcademicHierarchy(
 
   const classesQueryKey =
     mode === 'teacher'
-      ? ['teacher-portal-classes', shift]
-      : ['classes', campusId, batchId, shift]
+      ? ['teacher-portal-classes']
+      : ['classes', campusId, batchId]
 
   const { data: classesRaw, isLoading: isLoadingClasses } = useQuery({
     queryKey: mode === 'teacher'
-      ? ['academic-hierarchy', 'teacher-classes', shift]
-      : ['academic-hierarchy', 'classes', campusId, batchId, shift],
+      ? ['academic-hierarchy', 'teacher-classes']
+      : ['academic-hierarchy', 'classes', campusId, batchId],
     queryFn: async () => {
       if (mode === 'teacher') {
-        const url = shift
-          ? `/api/teacher-portal/classes?shift=${shift}`
-          : '/api/teacher-portal/classes'
+        // Session shift is switched off (TechNova, 2026-10-03): every class is listed.
+        const url = '/api/teacher-portal/classes'
         return fetchApi<AcademicClassRecord[]>(url)
       }
       let url = '/api/classes?limit=200'
       if (campusId) url += `&campusId=${campusId}`
       if (batchId) url += `&batchId=${batchId}`
-      if (shift) url += `&shift=${shift}`
       const res = await fetchPaginatedApi<AcademicClassRecord>(url)
       return res.data
     },
@@ -140,12 +138,11 @@ export function useAcademicHierarchy(
         filterClassesByScope(list, {
           campusId: campusId || undefined,
           batchId: batchId || undefined,
-          shift,
         })
       )
     }
     return sortClasses(list)
-  }, [classesRaw, mode, campusId, batchId, shift])
+  }, [classesRaw, mode, campusId, batchId])
 
   const filteredClasses = allClasses
 
@@ -183,11 +180,13 @@ export function useAcademicHierarchy(
     [setScope]
   )
 
+  // The class's own session shift is used (the Session filter is switched off).
   const setClassId = useCallback(
     (id: string) => {
-      setScope((s) => ({ ...s, classId: id }))
+      const cls = allClasses.find((c) => c.id === id)
+      setScope((s) => ({ ...s, classId: id, ...(cls?.shift && { shift: cls.shift }) }))
     },
-    [setScope]
+    [setScope, allClasses]
   )
 
   const setHouseId = useCallback(

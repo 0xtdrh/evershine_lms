@@ -13,7 +13,6 @@ import { notify } from '@/lib/notify'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BookOpen, Calendar, CheckCircle2, Clock, Loader2, ClipboardCheck, BarChart2, Download, Target, TrendingUp, ArrowUpRight, Star, AlertTriangle, Trophy, Award, GraduationCap, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState as useLocalState } from 'react'
-import { SESSION_SHIFT_LABELS } from '@/lib/validation/shift'
 import { downloadPdf } from '@/lib/pdf'
 import ResultReportCard, { type ReportCardResult, type ReportCardStudent } from '@/components/academic/ResultReportCard'
 import { TaskMarksPanel, type TaskResultItem } from '@/components/academic/TaskMarksPanel'
@@ -476,7 +475,7 @@ function ResultsTabContent({
                         {sessionResult.examSessionLabel}
                       </h4>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {sessionResult.sectionLabel}{sessionResult.shiftName ? ` · ${sessionResult.shiftName}` : ''}
+                        {sessionResult.sectionLabel}
                       </p>
                     </div>
                   </div>
@@ -801,9 +800,6 @@ function StudentEnrollmentPageInner() {
   // Derived helpers
   const studentName = `${data?.student?.firstName ?? ''} ${data?.student?.lastName ?? ''}`.trim()
   const initials = [data?.student?.firstName?.[0], data?.student?.lastName?.[0]].filter(Boolean).join('').toUpperCase()
-  const shiftLabel = section?.shift?.code
-    ? SESSION_SHIFT_LABELS[section.shift.code as keyof typeof SESSION_SHIFT_LABELS]
-    : section?.shift?.name ?? '—'
 
   return (
     <div className="space-y-6">
@@ -845,12 +841,6 @@ function StudentEnrollmentPageInner() {
                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm border border-white/10">
                   <BookOpen className="h-3.5 w-3.5 text-indigo-300" />
                   {section.className}-{section.sectionName}
-                </span>
-              )}
-              {shiftLabel !== '—' && (
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm border border-white/10">
-                  <Clock className="h-3.5 w-3.5 text-amber-300" />
-                  {shiftLabel} Shift
                 </span>
               )}
               {data?.enrollment?.deliveryMode && (
@@ -909,8 +899,7 @@ function StudentEnrollmentPageInner() {
           <CardContent className="flex flex-wrap gap-2">
             {(data?.enrollments ?? []).map((enr: { id: string; rollNumber: string; classSection: { className: string; sectionName: string; shift?: { name: string; code: string } } }) => (
               <Badge key={enr.id} variant="outline" className="bg-white">
-                {enr.classSection.className}-{enr.classSection.sectionName} ·{' '}
-                {enr.classSection.shift?.name ?? 'Shift'} · Roll {enr.rollNumber}
+                {enr.classSection.className}-{enr.classSection.sectionName} · Roll {enr.rollNumber}
               </Badge>
             ))}
           </CardContent>
@@ -962,9 +951,8 @@ function StudentEnrollmentPageInner() {
             <div className="space-y-4">
               {slots.map((enr) => {
                 const subs = enr.subjectEnrollments ?? []
-                const shiftName = enr.classSection.shift?.name
-                const cardTitle = multiShift && shiftName
-                  ? `${enr.classSection.className}-${enr.classSection.sectionName} · ${shiftName} · Roll ${enr.rollNumber}`
+                const cardTitle = multiShift
+                  ? `${enr.classSection.className}-${enr.classSection.sectionName} · Roll ${enr.rollNumber}`
                   : 'My Subjects'
 
                 return (
@@ -1094,16 +1082,12 @@ function StudentEnrollmentPageInner() {
         ? data.timetablesByEnrollment
         : [{ studentEnrollmentId: 'default', classSection: section ?? { className: '', sectionName: '' }, shift: section?.shift, slots: data?.timetable ?? [] }]
       ).map((block) => {
-        const shiftLabel =
-          block.shift?.code && block.shift.code in SESSION_SHIFT_LABELS
-            ? SESSION_SHIFT_LABELS[block.shift.code as keyof typeof SESSION_SHIFT_LABELS]
-            : block.shift?.name ?? 'Session'
         return (
           <Card key={block.studentEnrollmentId}>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-indigo-600" />
-                {block.classSection.className} {block.classSection.sectionName} — {shiftLabel}
+                {block.classSection.className} {block.classSection.sectionName}
               </CardTitle>
               <CardDescription>Published timetable for this session (read-only).</CardDescription>
             </CardHeader>

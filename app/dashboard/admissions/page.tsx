@@ -411,7 +411,7 @@ export default function AdmissionsDashboard() {
                 <TableRow>
                   <TableHead>Applicant Name</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Preferred Shift</TableHead>
+                  <TableHead>Preferred time</TableHead>
                   <TableHead>Delivery Mode</TableHead>
                   <TableHead>Applied Date</TableHead>
                   <TableHead>Status</TableHead>
@@ -673,18 +673,7 @@ export default function AdmissionsDashboard() {
                   {/* Batch, performance house and legacy class are switched off for TechNova (2026-10-03). */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">2. Session Shift *</Label>
-                      <Select value={shift} onValueChange={(v) => setShift(v as typeof shift)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="MORNING">Morning (09:00–12:00)</SelectItem>
-                          <SelectItem value="EVENING">Evening (15:00–18:00)</SelectItem>
-                          <SelectItem value="NIGHT">Night (18:00–21:00)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">3. Class Mode *</Label>
+                      <Label className="text-blue-900 font-semibold">2. Class Mode *</Label>
                       <Select value={deliveryMode} onValueChange={(v) => setDeliveryMode(v as typeof deliveryMode)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -697,7 +686,7 @@ export default function AdmissionsDashboard() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>4. Group (optional)</Label>
+                    <Label>3. Group (optional)</Label>
                     <Select value={classSectionId} onValueChange={setClassSectionId} disabled={!campusId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Optional — or add the student to a group later" />
@@ -705,7 +694,7 @@ export default function AdmissionsDashboard() {
                       <SelectContent>
                         {classSections.map((s: { id: string; className: string; sectionName: string; shift?: { name: string }; deliveryMode: string }) => (
                           <SelectItem key={s.id} value={s.id}>
-                            {s.className}-{s.sectionName} · {s.shift?.name ?? ''} · {s.deliveryMode}
+                            {s.className}-{s.sectionName} · {s.deliveryMode}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -714,11 +703,11 @@ export default function AdmissionsDashboard() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">5. Roll Number *</Label>
+                      <Label className="text-blue-900 font-semibold">4. Roll Number *</Label>
                       <Input placeholder="e.g. 101, 6A-01" value={rollNumber} onChange={e => setRollNumber(e.target.value)} required />
                     </div>
                     <div className="space-y-2">
-                      <Label>6. Section (Legacy class)</Label>
+                      <Label>5. Section (Legacy class)</Label>
                       <Input placeholder="e.g. A, B, Boys-1" value={section} onChange={e => setSection(e.target.value)} />
                     </div>
                   </div>

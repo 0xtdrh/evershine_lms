@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { notify } from '@/lib/notify'
 import { downloadStudentsMasterExcel } from '@/lib/excel'
 import { StudentQuickViewDialog } from '@/components/students/StudentQuickViewDialog'
-import { SESSION_SHIFT_BADGE_CLASS, SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
+import type { SessionShift } from '@/lib/validation/shift'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -492,18 +492,6 @@ export default function StudentsListPage() {
                     <TableCell className="font-mono text-xs">{student.registrationNumber}</TableCell>
                     <TableCell>
                       <div className="text-sm text-gray-800">{formatSections(student) || <span className="text-gray-400 text-xs">Unassigned</span>}</div>
-                      {student.activeEnrollments && student.activeEnrollments.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {student.activeEnrollments.map((e) => {
-                            const code = e.classSection.shift.code
-                            return (
-                              <span key={e.id} className={`text-[9px] px-1.5 py-0 rounded border ${SESSION_SHIFT_BADGE_CLASS[code]}`}>
-                                {SESSION_SHIFT_LABELS[code]}
-                              </span>
-                            )
-                          })}
-                        </div>
-                      )}
                     </TableCell>
                     <TableCell className="text-sm">
                       <span className="font-bold text-blue-600 text-xs">{student.campus.code}</span>

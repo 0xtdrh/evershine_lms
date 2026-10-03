@@ -247,7 +247,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
   const activeEnrollment = invoice.student.enrollments?.[0]
   const enrolledClassName   = activeEnrollment?.classSection?.className   || invoice.student.class?.name || null
   const enrolledSectionName = activeEnrollment?.classSection?.sectionName || null
-  const enrolledShiftName   = activeEnrollment?.classSection?.shift?.name || null
+  const enrolledShiftName: string | null = null // session shift is switched off (TechNova)
 
   const classSectionDisplay = [
     enrolledClassName,

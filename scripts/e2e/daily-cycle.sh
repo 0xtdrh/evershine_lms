@@ -665,6 +665,16 @@ check "student got the default batch, no house" "$(M "SELECT CONCAT(b.name,'/',I
 BP=$(curl -s -D - -b "$JAR" $B/dashboard/batches)
 check "old Batches page sends you to Groups" "$(echo "$BP" | grep -qiE '^location: /dashboard/groups|url=/dashboard/groups|NEXT_REDIRECT;[a-z]*;/dashboard/groups' && echo yes)" "yes"
 check "no Batches link in the menu any more" "$(grep -c "href: '/dashboard/batches'" app/dashboard/layout-client.tsx)" "0"
+echo "== 24. session shift switched off (set from the group's time)"
+NOS=$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"className\":\"E2E No Shift\",\"sectionName\":\"S\",\"levelId\":\"$NLEVEL\"}")
+check "group created without choosing a shift" "$(echo "$NOS" | jq_ "d['success']")" "True"
+NOSID=$(M "SELECT id FROM ClassSection WHERE className='E2E No Shift'")
+check "no schedule yet: Morning" "$(M "SELECT s.code FROM ClassSection c JOIN Shift s ON s.id=c.shiftId WHERE c.id='$NOSID'")" "MORNING"
+api PATCH /api/groups/$NOSID '{"scheduleSlots":[{"dayOfWeek":1,"time":"19:00"},{"dayOfWeek":3,"time":"19:00"}]}' >/dev/null
+check "schedule at 19:00 -> shift follows: Night" "$(M "SELECT s.code FROM ClassSection c JOIN Shift s ON s.id=c.shiftId WHERE c.id='$NOSID'")" "NIGHT"
+api PATCH /api/groups/$NOSID '{"scheduleSlots":[{"dayOfWeek":1,"time":"16:30"}]}' >/dev/null
+check "schedule at 16:30 -> Evening" "$(M "SELECT s.code FROM ClassSection c JOIN Shift s ON s.id=c.shiftId WHERE c.id='$NOSID'")" "EVENING"
+check "same name in the branch refused even if the time differs" "$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"className\":\"E2E No Shift\",\"sectionName\":\"S\"}" | jq_ "d['error']['code']")" "CONFLICT"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

@@ -49,12 +49,7 @@ export function sessionShiftFormalLabel(shift: SessionShift): string {
   return labels[shift]
 }
 
-export function formatClassWithShift(name: string, shift?: SessionShift | null): string {
-  if (!shift) return name
-  const short: Record<SessionShift, string> = {
-    MORNING: 'Morning',
-    EVENING: 'Evening',
-    NIGHT: 'Night',
-  }
-  return `${name} · ${short[shift]}`
+/** Session shift is switched off for TechNova (2026-10-03): class names are shown without it. */
+export function formatClassWithShift(name: string, _shift?: SessionShift | null): string {
+  return name
 }

@@ -33,8 +33,7 @@ export function formatAcademicClassLabel(c: AcademicClassRecord): string {
   const shiftPart = formatClassWithShift(c.name, c.shift ?? undefined)
   const section = c.section ? ` · Sec ${c.section}` : ''
   const campus = c.campus?.name ? ` — ${c.campus.name}` : ''
-  const batch = c.batch?.name ? ` [${c.batch.name}]` : ''
-  return `${shiftPart}${section}${campus}${batch}`
+  return `${shiftPart}${section}${campus}` // batch / session shift are switched off
 }
 
 /** Client-side filter: campus → batch → session shift. */

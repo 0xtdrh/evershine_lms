@@ -23,7 +23,7 @@ import { AccessDenied } from '@/components/AccessDenied'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
-import { SESSION_SHIFT_BADGE_CLASS, SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
+import type { SessionShift } from '@/lib/validation/shift'
 
 const createClassSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -197,16 +197,6 @@ export default function ClassesPage() {
         </Select>
 
 
-        <Select value={filterShift} onValueChange={(v) => setFilterShift(v as 'ALL' | SessionShift)}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Session" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Sessions</SelectItem>
-            <SelectItem value="MORNING">{SESSION_SHIFT_LABELS.MORNING}</SelectItem>
-            <SelectItem value="EVENING">{SESSION_SHIFT_LABELS.EVENING}</SelectItem>
-          </SelectContent>
-        </Select>
       </motion.div>
 
       <motion.div variants={fadeUp(0.3)} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -228,13 +218,10 @@ export default function ClassesPage() {
                   <div>
                     <CardTitle className="text-lg text-blue-900">{cls.name}</CardTitle>
                     <CardDescription className="text-xs mt-1 font-semibold text-blue-600">
-                      Batch: {cls.batch?.name} | {cls.campus?.name}
+                      {cls.campus?.name}
                     </CardDescription>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${SESSION_SHIFT_BADGE_CLASS[cls.shift as SessionShift] ?? SESSION_SHIFT_BADGE_CLASS.MORNING}`}>
-                      {cls.shift === 'EVENING' ? 'Evening' : 'Morning'}
-                    </span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-green-100 text-green-700">
                       GRADE {cls.grade}
                     </span>
@@ -273,7 +260,7 @@ export default function ClassesPage() {
                          })
                        }
                      >
-                       <ArrowRightLeft className="w-3 h-3 mr-0.5" /> Shift
+                       <ArrowRightLeft className="w-3 h-3 mr-0.5" /> Move
                      </Button>
                      <Button
                        variant="ghost"
@@ -349,38 +336,7 @@ export default function ClassesPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Session Shift *</Label>
-              <Controller
-                control={form.control}
-                name="shift"
-                render={({ field }) => (
-                  <div className="flex gap-4">
-                    {(['MORNING', 'EVENING'] as const).map((s) => (
-                      <label
-                        key={s}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 cursor-pointer transition-colors ${
-                          field.value === s
-                            ? s === 'MORNING'
-                              ? 'border-amber-400 bg-amber-50 text-amber-900'
-                              : 'border-indigo-400 bg-indigo-50 text-indigo-900'
-                            : 'border-gray-200 hover:bg-gray-50'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          className="sr-only"
-                          checked={field.value === s}
-                          onChange={() => field.onChange(s)}
-                        />
-                        <span className="text-sm font-semibold">{SESSION_SHIFT_LABELS[s]}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              />
-            </div>
-
+            {/* Session shift is switched off for TechNova (2026-10-03): new classes are Morning. */}
             <div className="space-y-2">
               <Label>Room Number / Location</Label>
               <Input placeholder="Room 101, Floor 2" {...form.register('roomNumber')} />
