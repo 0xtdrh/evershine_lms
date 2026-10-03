@@ -132,7 +132,7 @@ export function StudentQuickViewDialog({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <InfoCard icon={<MapPin className="h-4 w-4" />} label="Campus & Batch" value={`${student.campus.name} · ${student.batch.name}`} accent="from-indigo-50 to-blue-50" />
+              <InfoCard icon={<MapPin className="h-4 w-4" />} label="Branch" value={student.campus.name} accent="from-indigo-50 to-blue-50" />
               <InfoCard icon={<GraduationCap className="h-4 w-4" />} label="Class" value={student.class?.name ?? 'Not assigned yet'} accent="from-emerald-50 to-green-50" />
               <InfoCard icon={<Phone className="h-4 w-4" />} label="Contact" value={student.phoneNumber} accent="from-amber-50 to-orange-50" />
               <InfoCard icon={<ShieldCheck className="h-4 w-4" />} label="Enrollment" value={student.enrollmentStatus.replace('_', ' ')} accent="from-violet-50 to-fuchsia-50" />

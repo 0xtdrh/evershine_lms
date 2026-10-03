@@ -135,12 +135,6 @@ export default function StudentsListPage() {
   })
   const campuses = Array.isArray(campusesRaw) ? campusesRaw : (campusesRaw as { data?: Array<{ id: string; name: string; code: string }> })?.data ?? []
 
-  const { data: batchesRaw } = useQuery({
-    queryKey: ['batches-list', campusFilter],
-    queryFn: () => fetchApi<Array<{ id: string; name: string; code: string }>>(`/api/batches?campusId=${campusFilter}`),
-    enabled: canViewStudents && showFilters && !!campusFilter,
-  })
-  const batches = Array.isArray(batchesRaw) ? batchesRaw : (batchesRaw as { data?: Array<{ id: string; name: string; code: string }> })?.data ?? []
 
   const { data: sectionsRaw } = useQuery({
     queryKey: ['sections-filter', campusFilter, batchFilter],
@@ -307,17 +301,7 @@ export default function StudentsListPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600">Batch</label>
-              <Select value={batchFilter || 'ALL'} onValueChange={(v) => { setBatchFilter(v === 'ALL' ? '' : v); setClassSectionFilter(''); setPage(1) }} disabled={!campusFilter}>
-                <SelectTrigger className="h-8 text-xs sm:text-sm"><SelectValue placeholder="All batches" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All batches</SelectItem>
-                  {batches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600">Class section (engine)</label>
+              <label className="text-xs font-medium text-gray-600">Group</label>
               <Select value={classSectionFilter || 'ALL'} onValueChange={(v) => { setClassSectionFilter(v === 'ALL' ? '' : v); setPage(1) }} disabled={!campusFilter}>
                 <SelectTrigger className="h-8 text-xs sm:text-sm"><SelectValue placeholder="All sections" /></SelectTrigger>
                 <SelectContent>
@@ -434,10 +418,6 @@ export default function StudentsListPage() {
                     <span className="text-gray-400 text-[10px] block uppercase">Campus</span>
                     <span className="font-bold text-blue-600">{student.campus.code}</span>
                   </div>
-                  <div>
-                    <span className="text-gray-400 text-[10px] block uppercase">Batch</span>
-                    <span className="text-gray-600">{student.batch.code}</span>
-                  </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-2 pt-1">
@@ -471,7 +451,7 @@ export default function StudentsListPage() {
               <TableRow className="bg-gray-50">
                 <TableHead>Student</TableHead>
                 <TableHead>Reg. #</TableHead>
-                <TableHead>Sections / Class</TableHead>
+                <TableHead>Groups</TableHead>
                 <TableHead>Campus</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Fee</TableHead>
@@ -527,8 +507,6 @@ export default function StudentsListPage() {
                     </TableCell>
                     <TableCell className="text-sm">
                       <span className="font-bold text-blue-600 text-xs">{student.campus.code}</span>
-                      <span className="text-gray-400 mx-1">·</span>
-                      <span className="text-gray-600 text-xs">{student.batch.code}</span>
                     </TableCell>
                     <TableCell>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ENROLLMENT_STATUS_STYLES[student.enrollmentStatus] ?? ''}`}>

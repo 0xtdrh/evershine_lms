@@ -86,7 +86,7 @@ export function useAcademicHierarchy(
       )
       return res.data
     },
-    enabled: enabled && !!campusId && mode === 'admin',
+    enabled: false, // batches are switched off (TechNova, 2026-10-03)
     staleTime: 5 * 60 * 1000,
   })
   const batches = Array.isArray(batchesRaw) ? batchesRaw : []
@@ -94,7 +94,7 @@ export function useAcademicHierarchy(
   const { data: housesRaw, isLoading: isLoadingHouses } = useQuery({
     queryKey: ['academic-hierarchy', 'houses', batchId],
     queryFn: () => fetchApi<AcademicHouse[]>(`/api/houses?batchId=${batchId}`),
-    enabled: enabled && !!batchId,
+    enabled: false, // houses are switched off (TechNova, 2026-10-03)
     staleTime: 5 * 60 * 1000,
   })
   const houses = Array.isArray(housesRaw) ? housesRaw : []
@@ -128,8 +128,8 @@ export function useAcademicHierarchy(
       const res = await fetchPaginatedApi<AcademicClassRecord>(url)
       return res.data
     },
-  // Admin: classes load only after campus + batch (houses load in parallel for the batch)
-    enabled: enabled && (mode === 'teacher' || (!!campusId && !!batchId)),
+  // Admin: classes load once the branch is chosen (batches are switched off)
+    enabled: enabled && (mode === 'teacher' || !!campusId),
     staleTime: 3 * 60 * 1000,
   })
 

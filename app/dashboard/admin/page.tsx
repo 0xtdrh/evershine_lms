@@ -73,7 +73,7 @@ const ADMIN_ACTIONS = [
   },
   {
     title: 'Configure Campuses & Classes',
-    description: 'Update campus details, batch configuration, and class groupings for the school.',
+    description: 'Update branch details and group settings.',
     href: '/dashboard/campuses',
     icon: Building,
     badge: 'Operations',
@@ -112,7 +112,7 @@ const ADMIN_OVERVIEW = [
   },
   {
     title: 'Operational Readiness',
-    description: 'Keep campuses, batches, and class schedules aligned with the academic calendar.',
+    description: 'Keep branches and group schedules aligned with the calendar.',
     icon: Building,
   },
   {
@@ -152,7 +152,7 @@ export default function AdminWorkspacePage() {
       })
       list.unshift({
         title: 'Initial Setup',
-        description: 'Main branch, tracks & levels, default batch — TechNova base data in one step.',
+        description: 'Main branch, tracks & levels — TechNova base data in one step.',
         href: '/dashboard/admin/setup',
         icon: Wand2,
         badge: 'Setup',
@@ -289,7 +289,7 @@ export default function AdminWorkspacePage() {
                 <p className="text-sm font-semibold text-slate-900">Operational checklist</p>
                 <ul className="mt-3 space-y-2 text-sm text-slate-600">
                   <li>• Validate attendance rules for the current term</li>
-                  <li>• Confirm campus and batch settings</li>
+                  <li>• Confirm branch settings</li>
                   <li>• Review overdue fee reconciliation</li>
                 </ul>
               </div>

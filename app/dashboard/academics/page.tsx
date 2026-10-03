@@ -327,9 +327,6 @@ export default function StudentAcademicsPage() {
               {profile?.class?.name && (
                 <span className="bg-white/15 border border-white/25 rounded-lg px-3 py-1 text-xs font-bold backdrop-blur">📚 {profile.class.name}</span>
               )}
-              {profile?.house?.name && (
-                <span className="rounded-lg px-3 py-1 text-xs font-black backdrop-blur border border-white/30" style={{ background: profile.house.color ? `${profile.house.color}55` : 'rgba(255,255,255,0.15)', color: 'white' }}>🏠 {profile.house.name}</span>
-              )}
               {(profile?.class?.shift || profile?.shift) && (
                 <span className="bg-white/15 border border-white/25 rounded-lg px-3 py-1 text-xs font-bold backdrop-blur">🕐 {(profile.class?.shift || profile.shift || '').replace('_', ' ')} Shift</span>
               )}

@@ -4,6 +4,7 @@ import { nextRegistrationNumber } from '@/lib/ids/sequence'
 import { auth } from '@/lib/auth'
 import { hash } from '@node-rs/argon2'
 import { z } from 'zod'
+import { resolveBatchId } from '@/lib/batches/default-batch'
 import { sendApprovalNotification } from '@/lib/notifications'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createYearEnrollmentForStudent } from '@/lib/academic/enrollment'
@@ -26,7 +27,7 @@ const optionalShortText = z.preprocess((value) => {
 
 const approveSchema = z.object({
   campusId: z.string().cuid('Invalid campus selection'),
-  batchId: z.string().cuid('Invalid batch selection'),
+  batchId: optionalCuid, // batches are off: the branch's default batch is used
   classId: optionalCuid,
   classSectionId: optionalCuid,
   section: optionalShortText,
@@ -57,7 +58,7 @@ export async function POST(
     const body = await req.json()
     const {
       campusId,
-      batchId,
+      batchId: requestedBatchId,
       classId,
       classSectionId,
       section,
@@ -82,6 +83,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Request is already processed' }, { status: 400 })
     }
 
+    const batchId = await resolveBatchId(campusId, requestedBatchId)
     const batch = await prisma.batch.findUnique({ where: { id: batchId }, select: { academicLevel: true, forceGenderSeparation: true } })
     const campus = await prisma.campus.findUnique({ where: { id: campusId }, select: { name: true, code: true } })
 
@@ -272,7 +274,7 @@ export async function POST(
           batchId,
           classId:          classId ?? undefined,
           section:          section ?? undefined,
-          houseId:          (batch.academicLevel === 'Secondary' || batch.academicLevel === 'HigherSecondary') ? (houseId ?? undefined) : undefined,
+          houseId:          undefined, // houses are switched off
           rollNumber,
           shift,
           deliveryMode,

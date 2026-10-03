@@ -120,7 +120,7 @@ export function MonthlyFeedbackGate({ children }: { children: React.ReactNode })
             <div className="rounded-lg border bg-blue-50 p-3 text-sm">
               <p className="font-semibold text-blue-900">{teacher.teacherName}</p>
               <p className="text-blue-800">
-                {teacher.campusName} · {teacher.batchName} · {teacher.classSectionLabel} ·{' '}
+                {teacher.campusName} · {teacher.classSectionLabel} ·{' '}
                 {teacher.shiftName} session
               </p>
               <p className="text-blue-700 text-xs mt-1">Subjects: {teacher.subjects.join(', ')}</p>

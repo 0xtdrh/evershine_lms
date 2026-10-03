@@ -131,7 +131,6 @@ export function downloadEnrolledStudentRecordsExcel(
     'Guardian Name',
     'Contact No',
     'Enrollment Type',
-    'Performance House',
   ]
 
   const rows = students.map((s, idx) => [
@@ -144,7 +143,6 @@ export function downloadEnrolledStudentRecordsExcel(
     s.guardianName,
     s.contactNo,
     s.enrollmentType,
-    s.houseName,
   ])
 
   const content = [

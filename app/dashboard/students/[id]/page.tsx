@@ -265,14 +265,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-indigo-200" />
-                  {student.campus.name} · {student.batch.name}
+                  {student.campus.name}
                 </div>
-                {student.house && (
-                  <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-full border border-white/40 flex-shrink-0" style={{ background: student.house.color }} />
-                    {student.house.name} House
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -374,7 +368,6 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             <CardContent>
               <dl className="space-y-3">
                 <InfoRow label="Campus" value={student.campus.name} />
-                <InfoRow label="Batch" value={student.batch.name} />
                 <InfoRow label="Class" value={student.class?.name} />
                 <InfoRow label="Section" value={student.section} />
                 <InfoRow label="Roll Number" value={student.rollNumber} />

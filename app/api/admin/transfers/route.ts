@@ -4,6 +4,7 @@
  */
 
 import { NextRequest } from 'next/server'
+import { defaultBatchId } from '@/lib/batches/default-batch'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
@@ -30,8 +31,10 @@ export async function POST(request: NextRequest) {
   const parsed = adminTransferSchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
 
-  const { entityType, entityId, targetCampusId, targetBatchId, targetClassId, targetHouseId, notifyUser } =
+  const { entityType, entityId, targetCampusId, targetBatchId: requestedBatchId, targetClassId, targetHouseId, notifyUser } =
     parsed.data
+  // Batches are switched off: moving to another branch uses that branch's default batch.
+  const targetBatchId = requestedBatchId || (targetCampusId ? await defaultBatchId(targetCampusId) : undefined)
 
   if (!targetCampusId && !targetBatchId && !targetClassId && targetHouseId === undefined) {
     return errors.validation({

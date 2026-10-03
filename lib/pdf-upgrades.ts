@@ -668,10 +668,10 @@ export function generateRollNumberSlipPDF(options: RollNumberSlipPDFOptions): js
   printLabelVal(y, 'GENDER', options.gender, false, 22, true, false)
   y += rowH
 
-  // Row 5: Campus & Batch/Program
+  // Row 5: Campus & registration number (batches are switched off for TechNova)
   drawBorderedRow(y)
   printLabelVal(y, 'CAMPUS', options.campus, true, 32, true, false)
-  printLabelVal(y, 'BATCH / PROGRAM', options.batch, false, 35, true, false)
+  printLabelVal(y, 'REG. NO', options.registrationNumber, false, 35, true, false)
   y += rowH
 
   // ── Examination Schedule Header ──────────────────────────────────────────────

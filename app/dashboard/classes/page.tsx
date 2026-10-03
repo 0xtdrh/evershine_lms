@@ -31,7 +31,7 @@ const createClassSchema = z.object({
   section: z.string().max(3).optional().default(''),
   shift: z.enum(['MORNING', 'EVENING']).default('MORNING'),
   campusId: z.string().min(1, "Campus is required"),
-  batchId: z.string().min(1, "Batch is required"),
+  batchId: z.string().optional(), // batches are off (default batch on the server)
   academicYear: z.string().regex(/^\d{4}-\d{4}$/, "Format: YYYY-YYYY"),
   capacity: z.coerce.number().int().min(1).max(100).default(40),
   roomNumber: z.string().optional(),
@@ -196,17 +196,6 @@ export default function ClassesPage() {
           </SelectContent>
         </Select>
 
-        <Select value={filterBatch} onValueChange={setFilterBatch} disabled={filterCampus === 'ALL'}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Filter by Batch" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Batches</SelectItem>
-            {batches.map((b: any) => (
-              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
 
         <Select value={filterShift} onValueChange={(v) => setFilterShift(v as 'ALL' | SessionShift)}>
           <SelectTrigger className="w-full sm:w-[180px]">
@@ -307,7 +296,7 @@ export default function ClassesPage() {
           <DialogHeader>
             <DialogTitle>Create New Class</DialogTitle>
             <DialogDescription>
-              Define a specific classroom/section for a batch.
+              Define a specific classroom/section.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -326,25 +315,6 @@ export default function ClassesPage() {
                       <SelectContent>
                         {campuses.map((c: any) => (
                           <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Batch *</Label>
-                <Controller
-                  control={form.control}
-                  name="batchId"
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!modalCampusId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={!modalCampusId ? "Select Campus first" : "Select batch"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {modalBatches.map((b: any) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

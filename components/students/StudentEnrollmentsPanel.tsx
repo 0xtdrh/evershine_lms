@@ -279,7 +279,6 @@ export function StudentEnrollmentsPanel({
                         <span className="font-semibold">{s.className}-{s.sectionName}</span>
                         <span className="text-gray-500 ml-1.5">· {s.shift?.name || 'Standard'}</span>
                         <span className="text-indigo-600 font-mono ml-1.5">[{s.campus?.code || 'Campus'}]</span>
-                        <span className="text-gray-400 ml-1.5">· Batch: {s.batch?.code || s.batch?.name || 'Main'}</span>
                       </SelectItem>
                     ))
                   )}
@@ -338,7 +337,7 @@ export function StudentEnrollmentsPanel({
                         <span className="text-gray-400 font-normal ml-1">· Roll {e.rollNumber}</span>
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {e.academicYear.name} · {e.classSection.campus.code} · {e.classSection.batch.name} · {e.deliveryMode}
+                        {e.academicYear.name} · {e.classSection.campus.code} · {e.deliveryMode}
                       </p>
                       {e.subjectEnrollments && e.subjectEnrollments.length > 0 && (
                         <p className="text-[10px] text-gray-400 mt-1">

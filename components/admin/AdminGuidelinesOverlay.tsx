@@ -30,7 +30,7 @@ const STEPS = [
   {
     step: '3',
     title: 'Create Class Sections',
-    description: 'Combine Campuses, Batches, and Shifts into Class Sections (e.g., Class 9-A). Choose Fixed or Elective curriculum mode.',
+    description: 'Combine branches and shifts into groups. Choose Fixed or Elective curriculum mode.',
     icon: <Layers className="w-4 h-4" />,
     color: 'text-violet-600',
     bg: 'bg-violet-50',

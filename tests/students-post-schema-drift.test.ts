@@ -28,6 +28,11 @@ vi.mock('@/lib/academic/engine', () => ({ getActiveAcademicYear: vi.fn() }))
 
 import { POST } from '../app/api/students/route'
 
+vi.mock('@/lib/batches/default-batch', () => ({
+  resolveBatchId: vi.fn(async (_campusId: string, batchId?: string | null) => batchId || 'clxdefaultbatch000000001'),
+  defaultBatchId: vi.fn(async () => 'clxdefaultbatch000000001'),
+}))
+
 const validPayload = {
   firstName: 'Ali',
   lastName: 'Hassan',

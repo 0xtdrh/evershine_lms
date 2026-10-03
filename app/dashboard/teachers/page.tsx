@@ -208,12 +208,6 @@ export default function TeachersPage() {
                     </TableCell>
                     <TableCell>
                       <span className="text-xs font-bold text-blue-600">{t.campus.code}</span>
-                      <span className="text-xs text-gray-400 ml-1">{t.batch?.name}</span>
-                      {t.house?.name && (
-                        <span className="ml-2 inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-100">
-                          {t.house.name}
-                        </span>
-                      )}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">{t.qualification}</TableCell>
                     <TableCell className="text-sm">{t.experienceYears}y</TableCell>
@@ -318,8 +312,8 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
         joiningDate: teacher.joiningDate,
         isActive: teacher.isActive,
         campusName: teacher.campus?.name,
-        batchName: teacher.batch?.name,
-        houseName: teacher.house?.name,
+        batchName: undefined, // batches / houses are switched off
+        houseName: undefined,
         classes: teacher.classes,
         photo: teacher.profilePicture,
       })
@@ -428,14 +422,6 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
                 <div>
                   <span className="text-gray-500 block font-medium">Campus</span>
                   <span className="font-bold text-gray-800">{teacher.campus?.name || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block font-medium">Batch</span>
-                  <span className="font-bold text-gray-800">{teacher.batch?.name || 'Regular'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block font-medium">Performance House</span>
-                  <span className="font-bold text-gray-800">{teacher.house?.name || '—'}</span>
                 </div>
               </div>
             </div>

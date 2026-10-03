@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { createClassSectionSchema } from '@/lib/validation/academic'
+import { resolveBatchId } from '@/lib/batches/default-batch'
 import { getTeacherByUserId, getTeacherClassSectionIds } from '@/lib/academic/teacher-scope'
 import type { Prisma, Role } from '@prisma/client'
 
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
 
   const data: Prisma.ClassSectionUncheckedCreateInput = {
     campusId: parsed.data.campusId!,
-    batchId: parsed.data.batchId!,
+    batchId: await resolveBatchId(parsed.data.campusId!, parsed.data.batchId),
     shiftId: parsed.data.shiftId!,
     className: parsed.data.className!.trim(),
     sectionName: parsed.data.sectionName!.trim(),

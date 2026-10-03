@@ -165,9 +165,9 @@ export default function AdmissionsDashboard() {
   })
 
   const { data: classSectionsData } = useQuery({
-    queryKey: ['class-sections', campusId, batchId],
-    queryFn: () => fetchApi<any[]>(`/api/class-sections?campusId=${campusId}&batchId=${batchId}`),
-    enabled: !!campusId && !!batchId,
+    queryKey: ['class-sections', campusId],
+    queryFn: () => fetchApi<any[]>(`/api/class-sections?campusId=${campusId}`),
+    enabled: !!campusId,
   })
 
   const requests = reqData?.data ?? []
@@ -212,7 +212,7 @@ export default function AdmissionsDashboard() {
 
   const campusSelectionHint = activeBatch
     ? genderSeparationHint(activeBatch, studentGender)
-    : 'Select a batch to see whether gender-specific campus placement is required.'
+    : ''
 
   // Reactive Class Filtering: If a batch is selected, show only relevant classes
   // PROFESSIONAL FILTERING & GROUPING
@@ -273,10 +273,8 @@ export default function AdmissionsDashboard() {
         method: 'POST',
         body: JSON.stringify({
           campusId,
-          batchId,
           classId: classId || undefined,
           section: section.trim() || undefined,
-          houseId: houseId || undefined,
           rollNumber: rollNumber.trim(),
           admissionFee,
           courseFee,
@@ -329,8 +327,8 @@ export default function AdmissionsDashboard() {
   })
 
   const handleApprove = () => {
-    if (!campusId || !batchId || !rollNumber) {
-      notify.error('Please assign Campus, Batch, and Roll Number before approving')
+    if (!campusId || !rollNumber) {
+      notify.error('Please choose the branch and a roll number before approving')
       return
     }
     if (admissionFee < 0) {
@@ -378,7 +376,7 @@ export default function AdmissionsDashboard() {
             </div>
             Admission Requests
           </h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium ml-11">Review online applications, map candidates to batches, and generate student profiles.</p>
+          <p className="text-sm text-slate-500 mt-1 font-medium ml-11">Review online applications, place candidates in a branch, and generate student profiles.</p>
         </div>
       </motion.div>
 
@@ -654,8 +652,8 @@ export default function AdmissionsDashboard() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">1. Assign Campus *</Label>
-                      <Select value={campusId} onValueChange={(val) => { setCampusId(val); setBatchId(''); setHouseId(''); setClassId(''); setClassSectionId('') }}>
+                      <Label className="text-blue-900 font-semibold">1. Branch *</Label>
+                      <Select value={campusId} onValueChange={(val) => { setCampusId(val); setClassId(''); setClassSectionId('') }}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select Campus" />
                         </SelectTrigger>
@@ -663,116 +661,19 @@ export default function AdmissionsDashboard() {
                           {campuses.map((c: any) => (
                             <SelectItem key={c.id} value={c.id} disabled={campusOptionDisabled(c)}>
                               {c.name}
-                              {campusOptionDisabled(c) ? ' — not compatible with selected batch' : ''}
-                            </SelectItem>
+                                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                       <p className="text-[10px] text-gray-500">{campusSelectionHint}</p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">
-                        2. Assign Batch *
-                      </Label>
-                      <Select value={batchId} onValueChange={(val) => { setBatchId(val); setHouseId(''); setClassId(''); setClassSectionId('') }} disabled={!campusId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={!campusId ? 'Select campus first' : 'Select batch'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {batches.map((b: any) => (
-                            <SelectItem key={b.id} value={b.id}>
-                              {b.name} <span className="text-gray-400 text-xs ml-1">({b.code})</span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[10px] text-gray-500">
-                        Showing all batches for the selected campus.
-                      </p>
-                    </div>
                   </div>
 
+                  {/* Batch, performance house and legacy class are switched off for TechNova (2026-10-03). */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">
-                        3. Performance House (Optional)
-                      </Label>
-                      <Select value={houseId} onValueChange={setHouseId} disabled={!batchId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={
-                            !batchId
-                              ? 'Select batch first'
-                              : houses.length === 0
-                                ? 'No houses for this batch'
-                                : 'Select house (Junoon, Parvaaz…)'
-                          } />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {houses.length === 0 ? (
-                            <SelectItem value="__none" disabled>No performance houses configured</SelectItem>
-                          ) : (
-                            houses.map((h: { id: string; name: string; color: string }) => (
-                              <SelectItem key={h.id} value={h.id}>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: h.color }} />
-                                  {h.name}
-                                </div>
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[10px] text-gray-500">
-                        Optional placement label. Leave blank when the batch does not require house placement.
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">4. Assign Class (Optional)</Label>
-                      <Select value={classId} onValueChange={setClassId} disabled={!campusId || !batchId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={
-                            !batchId
-                              ? 'Select batch first'
-                              : 'Select class (1–12)'
-                          } />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {isLoadingClasses ? (
-                            <div className="p-2 flex items-center justify-center gap-2 text-xs text-gray-500">
-                              <Loader2 className="w-3 h-3 animate-spin" /> Loading classes...
-                            </div>
-                          ) : grades.length > 0 ? (
-                            grades.map((grade) => (
-                              <SelectGroup key={grade}>
-                                <SelectLabel className="text-blue-600 bg-blue-50/50 px-2 py-1 text-[10px] uppercase font-bold tracking-wider">
-                                  Grade {grade}
-                                </SelectLabel>
-                                {classes.filter((c: { grade: number }) => c.grade === grade).map((c: { id: string; name: string; batch?: { name: string } }) => (
-                                  <SelectItem key={c.id} value={c.id} className="pl-6">
-                                    {c.name} {c.batch?.name ? <span className="text-gray-400 text-[10px] ml-1">({c.batch.name})</span> : ''}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            ))
-                          ) : (
-                            <SelectItem value="no-classes" disabled>No classes found for this batch</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <p className={`text-[10px] ${hasCompatible ? 'text-gray-500' : 'text-amber-600 font-bold italic'}`}>
-                        {batchId
-                          ? hasCompatible
-                            ? `Classes for ${activeBatch?.name ?? 'selected batch'}`
-                            : `No classes linked to ${activeBatch?.name} — create them under Classes`
-                          : 'Select batch to load classes'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">5. Session Shift *</Label>
+                      <Label className="text-blue-900 font-semibold">2. Session Shift *</Label>
                       <Select value={shift} onValueChange={(v) => setShift(v as typeof shift)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -783,7 +684,7 @@ export default function AdmissionsDashboard() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">6. Class Mode *</Label>
+                      <Label className="text-blue-900 font-semibold">3. Class Mode *</Label>
                       <Select value={deliveryMode} onValueChange={(v) => setDeliveryMode(v as typeof deliveryMode)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -796,10 +697,10 @@ export default function AdmissionsDashboard() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>7. Class Section (Academic Engine, Optional)</Label>
-                    <Select value={classSectionId} onValueChange={setClassSectionId} disabled={!campusId || !batchId}>
+                    <Label>4. Group (optional)</Label>
+                    <Select value={classSectionId} onValueChange={setClassSectionId} disabled={!campusId}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Optional — link to formal class section when available" />
+                        <SelectValue placeholder="Optional — or add the student to a group later" />
                       </SelectTrigger>
                       <SelectContent>
                         {classSections.map((s: { id: string; className: string; sectionName: string; shift?: { name: string }; deliveryMode: string }) => (
@@ -813,11 +714,11 @@ export default function AdmissionsDashboard() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">8. Roll Number *</Label>
+                      <Label className="text-blue-900 font-semibold">5. Roll Number *</Label>
                       <Input placeholder="e.g. 101, 6A-01" value={rollNumber} onChange={e => setRollNumber(e.target.value)} required />
                     </div>
                     <div className="space-y-2">
-                      <Label>9. Section (Legacy class)</Label>
+                      <Label>6. Section (Legacy class)</Label>
                       <Input placeholder="e.g. A, B, Boys-1" value={section} onChange={e => setSection(e.target.value)} />
                     </div>
                   </div>
@@ -951,7 +852,7 @@ export default function AdmissionsDashboard() {
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-xs text-amber-800 mt-6">
-                  <span className="font-bold">Note:</span> Approving will immediately generate a Student ID (Registration Number) and a User Account. Their default password will be their CNIC without hyphens. Timetables and subjects will automatically map based on the chosen Batch and Class.
+                  <span className="font-bold">Note:</span> Approving immediately creates the student profile and registration number. Then add the student to a group (Groups page) and give the parent portal access from the student page.
                 </div>
 
                 <DialogFooter className="mt-6 pt-4 border-t border-gray-100 flex justify-between sm:justify-between items-center w-full">

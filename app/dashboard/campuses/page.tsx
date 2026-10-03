@@ -335,12 +335,6 @@ export default function CampusesPage() {
                       {(campus._count?.teachers ?? 0).toLocaleString()}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-[9px] text-gray-400 font-black uppercase tracking-wider">Batches</p>
-                    <p className="font-black text-emerald-600 text-sm mt-0.5">
-                      {(campus._count?.batches ?? 0).toLocaleString()}
-                    </p>
-                  </div>
                 </div>
 
                 {/* Principal/Contact details */}

@@ -176,7 +176,7 @@ export function StudentPromotionPanel({
               <SelectContent>
                 {sections.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.className}-{s.sectionName} · {s.batch.code}
+                    {s.className}-{s.sectionName}
                   </SelectItem>
                 ))}
               </SelectContent>

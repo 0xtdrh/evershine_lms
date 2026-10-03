@@ -398,7 +398,7 @@ export default function RollNumberSlipPage() {
                     />
                     <TR
                       left={{ label: 'CAMPUS', value: slip.student.campus, bold: true }}
-                      right={{ label: 'BATCH / PROGRAM', value: slip.student.batch, bold: true }}
+                      right={{ label: 'REG. NO', value: slip.student.registrationNumber, bold: true }}
                     />
                   </tbody>
                 </table>

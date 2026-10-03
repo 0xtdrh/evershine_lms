@@ -336,7 +336,6 @@ export default function MyChildrenPage() {
                           </h2>
                           <p className="text-emerald-300 text-sm mt-0.5">
                             {academic.activeYear?.name ?? 'No active year'} · {academic.student.campus.name}
-                            {academic.student.batch ? ` · ${academic.student.batch.name}` : ''}
                           </p>
                           <div className="mt-3 flex flex-wrap gap-2">
                             {academic.enrollment && (

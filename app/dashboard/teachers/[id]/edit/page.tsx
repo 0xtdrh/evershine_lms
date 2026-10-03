@@ -411,10 +411,6 @@ export default function EditTeacherPage() {
       notify.error('Campus is required — please select a campus before saving.')
       return
     }
-    if (data.batchId && houseRequired && !data.houseId) {
-      notify.error('Performance house is required for this batch')
-      return
-    }
     setIsSaving(true)
     try {
       const payload = {

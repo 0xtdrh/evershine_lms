@@ -253,7 +253,7 @@ export default function FeedbackHubPage() {
                           </p>
                           <p className="text-xs text-gray-500">
                             {row.teacher.campus.name}
-                            {row.teacher.batch ? ` · ${row.teacher.batch.name}` : ''} · {row.feedbackCount} responses
+ · {row.feedbackCount} responses
                           </p>
                         </div>
                         <Badge className={sentimentClass(row.sentiment)}>{row.sentiment}</Badge>
@@ -287,7 +287,7 @@ export default function FeedbackHubPage() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-500">
-                        {sub.placement.campus} · {sub.placement.batch} · {sub.placement.section} · {sub.placement.shift}
+                        {sub.placement.campus} · {sub.placement.section} · {sub.placement.shift}
                       </p>
                       <ul className="text-xs space-y-1">
                         {sub.answers.map((a, i) => (

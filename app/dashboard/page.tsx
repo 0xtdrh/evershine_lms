@@ -314,10 +314,6 @@ export default function DashboardPage() {
                 <span className="text-sm text-gray-500">Class</span>
                 <span className="text-sm font-semibold">{studentProfile?.class?.name || 'Unassigned'}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                <span className="text-sm text-gray-500">Batch</span>
-                <span className="text-sm font-semibold">{studentProfile?.batch?.name || 'Regular'}</span>
-              </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-sm text-gray-500">Academic Year</span>
                 <span className="text-sm font-semibold">{studentProfile?.academicYear || '2026'}</span>
@@ -377,11 +373,7 @@ export default function DashboardPage() {
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center py-2 border-b border-gray-100">
                 <span className="text-xs text-gray-500 font-medium">Primary Campus</span>
-                <span className="text-xs font-bold text-gray-800">{teacherProfile?.campus?.name || 'Boys Campus'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-xs text-gray-500 font-medium">Assigned Batch</span>
-                <span className="text-xs font-bold text-gray-800">{teacherProfile?.batch?.name || 'Regular'}</span>
+                <span className="text-xs font-bold text-gray-800">{teacherProfile?.campus?.name || '—'}</span>
               </div>
               <div className="flex flex-col gap-1.5 py-1">
                 <span className="text-xs text-gray-500 font-medium">Assigned Classes</span>

@@ -46,7 +46,7 @@ export const createShiftSchema = z.object({
 
 export const createClassSectionSchema = z.object({
   campusId: z.string().cuid(),
-  batchId: z.string().cuid(),
+  batchId: z.preprocess((v) => (v === '' ? undefined : v), z.string().cuid().optional().nullable()), // batches are off (default batch)
   shiftId: z.string().cuid(),
   className: z.string().min(1).max(50),
   sectionName: z.string().min(1).max(10),

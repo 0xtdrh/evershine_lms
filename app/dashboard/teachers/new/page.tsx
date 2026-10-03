@@ -172,16 +172,10 @@ export default function NewTeacherPage() {
   }
 
   const onSubmit = async (data: TeacherForm) => {
-    // Non-teaching staff only need campus; teaching staff need campus + batch
-    if (!isNonTeachingDesignation(data.designation)) {
-      if (!isPlacementScopeReady(data.campusId, data.batchId ?? '', data.houseId ?? '', houses.length > 0)) {
-        notify.error(
-          houseRequired
-            ? 'Select campus, batch, and performance house'
-            : 'Select campus and batch'
-        )
-        return
-      }
+    // Only the branch is needed (batches and houses are switched off).
+    if (!data.campusId) {
+      notify.error('Select the branch')
+      return
     }
     setIsLoading(true)
     try {
@@ -408,7 +402,7 @@ export default function NewTeacherPage() {
 
             {isNonTeaching && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700 font-medium">
-                Support staff only require campus assignment. Batch, house, and class assignments are not applicable.
+                Support staff only need a branch.
               </div>
             )}
 

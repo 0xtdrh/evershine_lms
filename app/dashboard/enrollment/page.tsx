@@ -858,15 +858,6 @@ function StudentEnrollmentPageInner() {
                   {data.enrollment.deliveryMode}
                 </span>
               )}
-              {data?.student?.house && (
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm border border-white/10"
-                  style={{ backgroundColor: `${data.student.house.color}33` }}
-                >
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: data.student.house.color }} />
-                  {data.student.house.name} House
-                </span>
-              )}
             </div>
           </div>
 

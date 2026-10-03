@@ -14,6 +14,7 @@ import { nextRegistrationNumber, isUniqueConflictOn } from '@/lib/ids/sequence'
 import { checkPermission } from '@/lib/rbac'
 import { errors, errorResponse, createdResponse, paginatedResponse } from '@/lib/api-response'
 import { createStudentSchema, studentQuerySchema } from '@/lib/validation/student'
+import { resolveBatchId } from '@/lib/batches/default-batch'
 import { ensureActiveYearEnrollment } from '@/lib/students/enrollment-sync'
 import { linkGuardianToStudentDirect } from '@/lib/students/guardian-link'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
@@ -216,6 +217,8 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return errors.validation(parsed.error)
 
   const data = parsed.data
+  // Batches are switched off: the branch's default batch (lib/batches/default-batch.ts).
+  const batchId = await resolveBatchId(data.campusId, data.batchId)
 
   // Registration number: TN/YYYY/NNNN (highest used this year + 1; see lib/ids/sequence.ts)
   const year = new Date().getFullYear()
@@ -303,13 +306,13 @@ export async function POST(request: NextRequest) {
           siblingName: data.siblingName || null,
           siblingClass: data.siblingClass || null,
           campusId: data.campusId,
-          batchId: data.batchId,
+          batchId,
           classId: data.classId || null,
           section: data.section || null,
           rollNumber: data.rollNumber || null,
           shift: data.shift ?? 'MORNING',
           deliveryMode: data.deliveryMode ?? 'PHYSICAL',
-          houseId: data.houseId || null,
+          houseId: null, // houses are switched off
           academicYear: data.academicYear,
           totalFeeAmount: data.totalFeeAmount,
           dueAmount: data.totalFeeAmount,
@@ -405,7 +408,7 @@ export async function POST(request: NextRequest) {
         classId: data.classId,
         section: data.section,
         campusId: data.campusId,
-        batchId: data.batchId,
+        batchId,
         shift: data.shift,
         deliveryMode: data.deliveryMode,
       })

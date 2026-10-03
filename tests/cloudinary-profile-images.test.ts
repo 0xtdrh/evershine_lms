@@ -76,6 +76,11 @@ vi.mock('@/lib/email', () => ({ sendTeacherWelcomeEmail: mockSendTeacherWelcomeE
 import { POST as createStudent } from '../app/api/students/route'
 import { POST as createTeacher } from '../app/api/teachers/route'
 
+vi.mock('@/lib/batches/default-batch', () => ({
+  resolveBatchId: vi.fn(async (_campusId: string, batchId?: string | null) => batchId || 'clxdefaultbatch000000001'),
+  defaultBatchId: vi.fn(async () => 'clxdefaultbatch000000001'),
+}))
+
 const pngDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB'
 
 const studentPayload = {

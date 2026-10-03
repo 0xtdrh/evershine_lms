@@ -123,14 +123,14 @@ export function TransferEntityDialog({
             Transfer {entityType === 'STUDENT' ? 'Student' : entityType === 'TEACHER' ? 'Teacher' : 'Class'}
           </DialogTitle>
           <DialogDescription>
-            Move <strong>{entityLabel}</strong> to another campus, batch, or {entityType === 'STUDENT' ? 'class' : 'house'}.
+            Move <strong>{entityLabel}</strong> to another branch.
             The user will receive an in-app notification when applicable.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Target campus</Label>
+            <Label>Target branch</Label>
             <Select
               value={targetCampusId || undefined}
               onValueChange={(v) => {
@@ -151,63 +151,7 @@ export function TransferEntityDialog({
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Target batch</Label>
-            <Select
-              value={targetBatchId || undefined}
-              disabled={!targetCampusId}
-              onValueChange={(v) => {
-                setTargetBatchId(v)
-                setTargetClassId('')
-                setTargetHouseId('')
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={targetCampusId ? 'Select batch' : 'Select campus first'} />
-              </SelectTrigger>
-              <SelectContent>
-                {batches.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {entityType === 'STUDENT' && (
-            <div className="space-y-1.5">
-              <Label>Target class (optional)</Label>
-              <Select
-                value={targetClassId || undefined}
-                disabled={!targetBatchId}
-                onValueChange={setTargetClassId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select class" />
-                </SelectTrigger>
-                <SelectContent>
-                  {classes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {entityType !== 'CLASS' && houses.length > 0 && (
-            <div className="space-y-1.5">
-              <Label>Performance house (optional)</Label>
-              <Select value={targetHouseId || undefined} onValueChange={setTargetHouseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select house" />
-                </SelectTrigger>
-                <SelectContent>
-                  {houses.map((h) => (
-                    <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {/* Batch, class and performance house are switched off for TechNova (2026-10-03): the new branch's default batch is used. */}
         </div>
 
         <DialogFooter>

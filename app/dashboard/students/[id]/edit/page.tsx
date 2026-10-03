@@ -434,7 +434,7 @@ export default function EditStudentPage() {
               </div>
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-xs text-amber-800">
-                  <span className="font-bold">Note:</span> Changing Campus, Batch, or Class requires a formal transfer process. Contact IT support for administrative structure changes.
+                  <span className="font-bold">Note:</span> Changing the branch uses the Transfers tool; to change groups use “Move” on the student page.
                 </p>
               </div>
             </CardContent>

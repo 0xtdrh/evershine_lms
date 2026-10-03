@@ -4,6 +4,7 @@
  */
 
 import { NextRequest } from 'next/server'
+import { resolveBatchId } from '@/lib/batches/default-batch'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     section: parsed.data.section,
     shift: parsed.data.shift,
     campusId: parsed.data.campusId!,
-    batchId: parsed.data.batchId,
+    batchId: await resolveBatchId(parsed.data.campusId!, parsed.data.batchId), // batches are off: default batch
     academicYear: parsed.data.academicYear!,
     capacity: parsed.data.capacity,
     roomNumber: parsed.data.roomNumber,

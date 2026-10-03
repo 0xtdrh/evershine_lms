@@ -909,7 +909,7 @@ export default function DocumentsPage() {
                       onScopeChange={() => setSearch('')}
                     />
                     <p className="text-[9px] sm:text-[10px] text-gray-400 leading-tight">
-                      Select campus → batch → session → class to list, or search by name/roll.
+                      Select branch → session → class to list, or search by name/roll.
                     </p>
                     <div className="relative">
                       <Search className="absolute left-3 top-2 h-4 w-4 text-gray-400" />
@@ -1834,7 +1834,6 @@ export default function DocumentsPage() {
                             <div className="flex gap-1"><span className="font-bold uppercase w-24 shrink-0">Shift / Mode:</span><span className="font-bold underline uppercase">{getCanonicalStudentShift(selectedStudent)} / PHYSICAL</span></div>
                             
                             <div className="flex gap-1"><span className="font-bold uppercase w-24 shrink-0">Reg No:</span><span className="font-black underline font-mono text-[8.5px]">{selectedStudent.registrationNumber}</span></div>
-                            <div className="flex gap-1"><span className="font-bold uppercase w-24 shrink-0">Perf House:</span><span className="font-black underline uppercase" style={{ color: selectedStudent.house?.color || '#111827' }}>{selectedStudent.house?.name || '—'}</span></div>
                             
                             <div className="flex gap-1 col-span-2"><span className="font-bold uppercase w-24 shrink-0">Student Name:</span><span className="font-black underline">{selectedStudent.firstName} {selectedStudent.lastName}</span></div>
                             <div className="flex gap-1 col-span-2"><span className="font-bold uppercase w-24 shrink-0">Father Name:</span><span className="font-black underline">{selectedStudent.fatherName || '—'}</span></div>
@@ -1974,8 +1973,6 @@ export default function DocumentsPage() {
                   const attendanceVal = "N/A";
                   const sportsGrade = "N/A";
                   const conductGrade = "N/A";
-                  const houseColor = selectedStudent.house?.color || "#1e3a8a";
-                  const houseName = selectedStudent.house?.name || "Unassigned House";
 
                   return (
                     <div
@@ -2044,12 +2041,6 @@ export default function DocumentsPage() {
                             <div className="block w-[45%]">
                               <span className="font-bold text-gray-400 uppercase text-[9px] tracking-wider mb-1 block">Group</span>
                               <span className="font-bold text-gray-900 text-[13px] block">{selectedStudentClassSection}</span>
-                            </div>
-                            <div className="block w-[45%]">
-                              <span className="font-bold text-gray-400 uppercase text-[9px] tracking-wider mb-1 block">House Affiliation</span>
-                              <span className="text-white font-black text-[10px] uppercase rounded px-2 py-0.5 shadow-sm inline-block mt-0.5" style={{ backgroundColor: houseColor }}>
-                                {houseName}
-                              </span>
                             </div>
                           </div>
                         </div>
@@ -2817,7 +2808,7 @@ export default function DocumentsPage() {
                               <td colSpan={3} className="px-3 py-2 font-bold text-gray-900">{selectedStudent.firstName} {selectedStudent.lastName}</td>
                             </tr>
                             <tr className="border-b border-gray-300">
-                              <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">Class / Batch:</td>
+                              <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">Group:</td>
                               <td className="w-[22%] border-r border-gray-300 px-3 py-2 font-bold">{selectedStudentClassSection}</td>
                               <td className="w-[28%] border-r border-gray-300 px-3 py-2 font-bold uppercase">Date of Birth:</td>
                               <td className="w-[22%] px-3 py-2 font-bold">{selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString('en-GB') : '—'}</td>

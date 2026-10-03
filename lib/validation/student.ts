@@ -76,7 +76,7 @@ const createStudentSchemaBase = z.object({
 
   // ── Academic placement ─────────────────────────────────────────────────────
   campusId:       z.string().cuid('Invalid campus ID'),
-  batchId:        z.string().cuid('Invalid batch ID'),
+  batchId:        z.preprocess((v) => (v === '' ? undefined : v), z.string().cuid('Invalid batch ID').optional().nullable()), // batches are off: default batch used
   classId:        optionalCuid,
   classSectionId: optionalCuid,
   section:        z.string().max(5).optional(),
@@ -193,7 +193,7 @@ export const studentImportRowSchema = z.object({
   city: z.string().min(2),
   email: z.string().email().optional(),
   campusCode: z.string().min(1),
-  batchCode: z.string().min(1),
+  batchCode: z.string().optional(), // batches are off (default batch)
   className: z.string().optional(),
   sectionName: z.string().optional(),
   rollNumber: z.string().min(1).max(20),

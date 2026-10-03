@@ -106,7 +106,7 @@ export default function StudentImportPage() {
             Step 1 — Download template
           </CardTitle>
           <CardDescription>
-            Use exact column headers. Campus/batch codes must match your Academic Engine setup.
+            Use exact column headers. The campus code must match your branch (Campuses page).
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -32,7 +32,8 @@ export interface CampusBatchHouseFieldsProps {
 }
 
 /**
- * Standalone Campus → Batch → Performance House trio for forms (teachers, admissions).
+ * Campus field for forms (teachers). Batch / Performance House were removed (switched off for TechNova);
+ * the props stay so the callers compile unchanged.
  * Matches AcademicScopeFilters rules: batch required; house required when batch has houses.
  */
 export function CampusBatchHouseFields({
@@ -75,74 +76,7 @@ export function CampusBatchHouseFields({
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <Label>Batch *</Label>
-        <Select
-          value={batchId || undefined}
-          disabled={!campusId || isLoadingBatches}
-          onValueChange={onBatchChange}
-        >
-          <SelectTrigger className={batchError ? 'border-destructive' : ''}>
-            <SelectValue
-              placeholder={
-                !campusId
-                  ? 'Select campus first'
-                  : isLoadingBatches
-                    ? 'Loading batches…'
-                    : 'Select batch'
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {batches.map((b) => (
-              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {batchError && <p className="text-xs text-destructive">{batchError}</p>}
-      </div>
-
-      {batchId && (
-        <div className="space-y-1.5 md:col-span-2">
-          <Label>
-            Performance House {houseRequired ? '*' : ''}
-          </Label>
-          {isLoadingHouses ? (
-            <p className="text-xs text-gray-400">Loading performance houses…</p>
-          ) : hasHouses ? (
-            <Select
-              value={houseId || undefined}
-              onValueChange={onHouseChange}
-            >
-              <SelectTrigger className={houseError ? 'border-destructive' : ''}>
-                <SelectValue placeholder="Select performance house" />
-              </SelectTrigger>
-              <SelectContent>
-                {houses.map((h) => (
-                  <SelectItem key={h.id} value={h.id}>
-                    {h.color ? (
-                      <span className="inline-flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full border"
-                          style={{ backgroundColor: h.color }}
-                        />
-                        {h.name}
-                      </span>
-                    ) : (
-                      h.name
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <p className="text-xs text-gray-500 bg-gray-50 border rounded-lg px-3 py-2">
-              No performance houses are configured for this batch. You can continue without a house selection.
-            </p>
-          )}
-          {houseError && <p className="text-xs text-destructive">{houseError}</p>}
-        </div>
-      )}
+      {/* Batch and Performance House are switched off for TechNova (2026-10-03): the server uses the branch's default batch. */}
     </div>
   )
 }

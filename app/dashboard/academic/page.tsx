@@ -944,7 +944,7 @@ export default function AcademicEnginePage() {
             <div className="mt-4 space-y-2 text-sm text-slate-600">
               <p><span className="font-semibold text-slate-900">Foundation</span> starts with Academic Years, Shifts and Rooms.</p>
               <p><span className="font-semibold text-slate-900">Class Management</span> organizes Groups and Elective Groups.</p>
-              <p><span className="font-semibold text-slate-900">Enrollments & Courses</span> links students, houses and offerings.</p>
+              <p><span className="font-semibold text-slate-900">Enrollments & Courses</span> links students and offerings.</p>
               <p><span className="font-semibold text-slate-900">Operations</span> includes Timetable building and Grading.</p>
             </div>
           </div>
@@ -1247,13 +1247,13 @@ export default function AcademicEnginePage() {
         <TabsContent value="sections" className="mt-0">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 mb-4">
             <p className="font-semibold text-slate-900">Class sections capture the academic structure.</p>
-            <p className="mt-1">Define campus, batch, shift, class, section name, and curriculum mode before assigning subject offerings.</p>
+            <p className="mt-1">Define branch, shift, class, section name, and curriculum mode before assigning course offerings.</p>
           </div>
           <div className="grid lg:grid-cols-2 gap-6">
             <Card className="border-t-4 border-t-violet-500 shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Layers className="w-4 h-4 text-violet-500" />New Group</CardTitle>
-                <CardDescription>Combine campuses, batches, and shifts to define section rules.</CardDescription>
+                <CardDescription>Choose the branch and shift to define the group.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -1264,17 +1264,6 @@ export default function AcademicEnginePage() {
                       <SelectContent>
                         {(campuses ?? []).map((c: { id: string; name: string }) => (
                           <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Batch</Label>
-                    <Select value={sectionForm.batchId} onValueChange={(v) => setSectionForm({ ...sectionForm, batchId: v })}>
-                      <SelectTrigger className="border-gray-200"><SelectValue placeholder="Select Batch" /></SelectTrigger>
-                      <SelectContent>
-                        {(batches ?? []).map((b: { id: string; name: string }) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1403,7 +1392,6 @@ export default function AcademicEnginePage() {
                             </div>
                             <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 font-medium">
                               <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-gray-400" />{s.campus?.name}</span>
-                              <span className="flex items-center gap-1"><GraduationCap className="w-3 h-3 text-gray-400" />{s.batch?.name}</span>
                               <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-gray-400" />{s.shift?.name}</span>
                               <span className="flex items-center gap-1"><Layout className="w-3 h-3 text-gray-400" />{s.deliveryMode}</span>
                             </div>
@@ -1468,7 +1456,7 @@ export default function AcademicEnginePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Users className="w-4 h-4 text-emerald-500" />Group Roster</CardTitle>
                 <CardDescription>
-                  Select a group to see every student enrolled in it. House assignment below is optional (per batch — Shaheen, Parvaaz, Junoon, etc.).
+                  Select a group to see every student enrolled in it.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
@@ -1484,7 +1472,7 @@ export default function AcademicEnginePage() {
                           <SelectLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400">{group.shiftLabel}</SelectLabel>
                           {group.sections.map((s: { id: string; className: string; sectionName: string; batch?: { name: string }; shift?: { name: string; code: string } }) => (
                             <SelectItem key={s.id} value={s.id}>
-                              <span className="font-semibold">{s.className}-{s.sectionName}</span> <span className="text-gray-400">({s.batch?.name})</span>
+                              <span className="font-semibold">{s.className}-{s.sectionName}</span>
                             </SelectItem>
                           ))}
                         </SelectGroup>

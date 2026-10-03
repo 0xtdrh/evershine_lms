@@ -63,7 +63,7 @@ export default function SectionAttendancePage() {
   const { data: batches } = useQuery({
     queryKey: ['batches-att'],
     queryFn: () => fetchApi<any[]>('/api/batches'),
-    enabled: isAllowed,
+    enabled: false, // batches are switched off (TechNova)
   })
 
   const { data: shifts } = useQuery({
@@ -315,20 +315,6 @@ export default function SectionAttendancePage() {
           {/* Filter options */}
           {classSectionId && (
             <div className="grid sm:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border">
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-600">Filter by Batch</Label>
-                <Select value={batchId || 'all'} onValueChange={(v) => setBatchId(v === 'all' ? '' : v)}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="All batches" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All batches</SelectItem>
-                    {(batches ?? []).map((b: { id: string; name: string }) => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
               <div className="space-y-2">
                 <Label className="text-xs text-gray-600">Filter by Shift</Label>

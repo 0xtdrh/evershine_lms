@@ -27,8 +27,7 @@ export interface AcademicScopeFiltersProps {
 }
 
 /**
- * Campus → Batch → Session → Class
- * Batch is required wherever shown.
+ * Campus → Session → Class (Batch was switched off for TechNova, 2026-10-03).
  */
 export function AcademicScopeFilters({
   hierarchy,
@@ -74,7 +73,7 @@ export function AcademicScopeFilters({
         {showCampusBatch && (
           <>
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-gray-600">Campus *</Label>
+              <Label className="text-xs font-semibold text-gray-600">Branch *</Label>
               <Select
                 value={scope.campusId || undefined}
                 onValueChange={(v) => {
@@ -96,36 +95,6 @@ export function AcademicScopeFilters({
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-gray-600">Batch *</Label>
-              <Select
-                value={scope.batchId || undefined}
-                disabled={!scope.campusId || isLoadingBatches}
-                onValueChange={(v) => {
-                  setBatchId(v)
-                  notify()
-                }}
-              >
-                <SelectTrigger className={compact ? 'h-9' : ''}>
-                  <SelectValue
-                    placeholder={
-                      !scope.campusId
-                        ? 'Select campus first'
-                        : isLoadingBatches
-                          ? 'Loading batches…'
-                          : 'Select batch'
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {batchOptions.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </>
         )}
 
@@ -166,9 +135,7 @@ export function AcademicScopeFilters({
                 <SelectValue
                   placeholder={
                     classBlocked
-                      ? !scope.batchId
-                        ? 'Select batch first'
-                        : 'Complete campus & batch first'
+                      ? 'Select the branch first'
                       : isLoadingClasses
                         ? 'Loading classes…'
                         : classOptions.length === 0
@@ -182,7 +149,6 @@ export function AcademicScopeFilters({
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
                     {c.section ? ` (${c.section})` : ''}
-                    {c.batch?.name ? ` · ${c.batch.name}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -191,11 +157,6 @@ export function AcademicScopeFilters({
         )}
       </div>
 
-      {showCampusBatch && requireCampusForClass && scope.campusId && scope.batchId && (
-        <p className="text-[10px] text-gray-500">
-          Selecting a batch loads the classes available for that campus.
-        </p>
-      )}
     </div>
   )
 }

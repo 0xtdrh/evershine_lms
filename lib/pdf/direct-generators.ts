@@ -748,16 +748,8 @@ export async function generateTeacherProfileDirect(data: {
   drawSectionTitle('Academic Placement & Assignments', y)
   y += 10
 
-  printRow('Campus Name:', data.campusName || 'TechNova Company', 'Academic Batch:', data.batchName || 'Regular', y)
-  y += 8
-
-  // Performance House (optional)
-  pdf.setFont('helvetica', 'bold')
-  setTextColorC(pdf, 75, 85, 99, data.colorMode)
-  pdf.text('Performance House:', 20, y)
-  pdf.setFont('helvetica', 'normal')
-  setTextColorC(pdf, 17, 24, 39, data.colorMode)
-  pdf.text(data.houseName || '—', 55, y)
+  // Batches and performance houses are switched off for TechNova (2026-10-03).
+  printRow('Campus Name:', data.campusName || 'TechNova Company', 'Designation:', data.designation || '—', y)
   y += 10
 
   // Classes

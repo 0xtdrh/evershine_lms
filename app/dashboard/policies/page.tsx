@@ -219,7 +219,7 @@ export default function PoliciesPage() {
               <CardHeader>
                 <CardTitle className="text-base">New fee policy</CardTitle>
                 <CardDescription>
-                  Leave campus/batch empty for global default. Cron: <code className="text-xs">/api/cron/fee-penalties</code>
+                  Leave the branch empty for the global default. Cron: <code className="text-xs">/api/cron/fee-penalties</code>
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -240,23 +240,6 @@ export default function PoliciesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {feeForm.campusId && (
-                  <div>
-                    <Label>Batch (optional)</Label>
-                    <Select
-                      value={feeForm.batchId || 'all'}
-                      onValueChange={(v) => setFeeForm({ ...feeForm, batchId: v === 'all' ? '' : v })}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All batches</SelectItem>
-                        {(batches ?? []).map((b) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
                 <div><Label>Grace days after due date</Label><Input type="number" value={feeForm.graceDays} onChange={(e) => setFeeForm({ ...feeForm, graceDays: Number(e.target.value) })} /></div>
                 <div>
                   <Label>Penalty type</Label>
@@ -319,7 +302,6 @@ export default function PoliciesPage() {
                         <TableRow key={p.id}>
                           <TableCell className="text-sm">
                             {p.campus?.name ?? 'Global'}
-                            {p.batch ? ` · ${p.batch.name}` : ''}
                           </TableCell>
                           <TableCell>{p.graceDays}d</TableCell>
                           <TableCell>

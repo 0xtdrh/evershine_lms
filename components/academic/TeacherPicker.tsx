@@ -138,8 +138,6 @@ export function TeacherPicker({
                 {teachers.map((t) => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.firstName} {t.lastName} — {t.designation}
-                    {t.batch?.name ? ` · ${t.batch.name}` : ''}
-                    {t.house?.name ? ` · ${t.house.name}` : ''}
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -148,7 +146,7 @@ export function TeacherPicker({
         </Select>
         <p className="text-[10px] text-gray-500">
           {mode === 'scoped'
-            ? 'Teachers assigned to the selected class or matching campus/batch/house.'
+            ? 'Teachers assigned to the selected class or branch.'
             : 'All active teachers in the system (optionally filtered by campus above).'}
         </p>
       </div>

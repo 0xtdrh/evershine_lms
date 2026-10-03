@@ -67,7 +67,7 @@ export default function WipeTestDataPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-red-700"><AlertTriangle className="h-5 w-5" /> {data.totalToDelete} rows will be deleted</CardTitle>
               <CardDescription>
-                Kept: Super Admin accounts, TechNova Company + batch General, the 5 Nova tracks with their levels, and settings (permissions, certificate designs, feedback questions).
+                Kept: Super Admin accounts, TechNova Company, the 5 Nova tracks with their levels, and settings (permissions, certificate designs, feedback questions).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

@@ -653,6 +653,18 @@ TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.0.99
 TCAL=$(curl -s -b "$TJ" "$B/api/groups/schedule?from=$(D 0)&to=$(D 0)")
 check "teacher sees only his own groups in his calendar" "$(echo "$TCAL" | jq_ "sorted(set(s['groupId'] for s in d['data']['sessions']))==sorted(['$SG1','$SG2'])")" "True"
 rm -f "$TJ"
+echo "== 23. batches and houses switched off"
+NOB=$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"shiftId\":\"$SHIFT\",\"className\":\"E2E No Batch\",\"sectionName\":\"N\",\"levelId\":\"$NLEVEL\"}")
+check "group created without choosing a batch" "$(echo "$NOB" | jq_ "d['success']")" "True"
+check "it got the branch's default batch in the background" "$(M "SELECT b.name FROM ClassSection c JOIN Batch b ON b.id=c.batchId WHERE c.className='E2E No Batch'")" "General"
+check "same group name and section in the same branch/shift refused" "$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"shiftId\":\"$SHIFT\",\"className\":\"E2E No Batch\",\"sectionName\":\"N\"}" | jq_ "d['error']['code']")" "CONFLICT"
+check "empty batch from an old screen is accepted too" "$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"batchId\":\"\",\"shiftId\":\"$SHIFT\",\"className\":\"E2E No Batch 2\",\"sectionName\":\"N\"}" | jq_ "d['success']")" "True"
+NOBS=$(api POST /api/students "$(stu NoBatch 01066660041 '' '' | python -c "import sys,json;d=json.load(sys.stdin);d.pop('batchId',None);print(json.dumps(d))")")
+check "student created without a batch" "$(echo "$NOBS" | jq_ "d['success']")" "True"
+check "student got the default batch, no house" "$(M "SELECT CONCAT(b.name,'/',IFNULL(s.houseId,'none')) FROM Student s JOIN Batch b ON b.id=s.batchId WHERE s.firstName='NoBatch'")" "General/none"
+BP=$(curl -s -D - -b "$JAR" $B/dashboard/batches)
+check "old Batches page sends you to Groups" "$(echo "$BP" | grep -qiE '^location: /dashboard/groups|url=/dashboard/groups|NEXT_REDIRECT;[a-z]*;/dashboard/groups' && echo yes)" "yes"
+check "no Batches link in the menu any more" "$(grep -c "href: '/dashboard/batches'" app/dashboard/layout-client.tsx)" "0"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

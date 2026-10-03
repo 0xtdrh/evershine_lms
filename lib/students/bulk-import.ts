@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { defaultBatchId } from '@/lib/batches/default-batch'
 import { hash } from '@node-rs/argon2'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createYearEnrollmentForStudent } from '@/lib/academic/enrollment'
@@ -83,12 +84,8 @@ export async function importStudentsBulk(
         continue
       }
 
-      const batchId = await resolveBatchId(campusId, row.batchCode)
-      if (!batchId) {
-        results.push({ row: rowNum, success: false, error: `Batch not found: ${row.batchCode}` })
-        failed++
-        continue
-      }
+      // Batches are switched off: a known batch code is still honoured, otherwise the default batch.
+      const batchId = (row.batchCode ? await resolveBatchId(campusId, row.batchCode) : null) ?? (await defaultBatchId(campusId))
 
       const dup = await prisma.student.findFirst({ where: { phoneNumber: row.phoneNumber }, select: { id: true } })
       if (dup) {

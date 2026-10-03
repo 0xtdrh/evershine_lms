@@ -664,7 +664,7 @@ export default function ExamsPage() {
 
       <motion.div variants={fadeUp(0.2)} className="bg-white rounded-2xl border border-slate-200/60 shadow-soft-md p-4">
         <p className="text-xs text-slate-500 mb-3">
-          Narrow exams by campus, batch, and session. Schedule Exam lists Academic Engine sections first and reuses compatible legacy classes for results.
+          Narrow exams by branch and session. Schedule Exam lists Academic Engine sections first and reuses compatible legacy classes for results.
         </p>
         <AcademicScopeFilters
           hierarchy={listHierarchy}

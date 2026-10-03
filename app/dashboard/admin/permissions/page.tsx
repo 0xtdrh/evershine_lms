@@ -173,7 +173,8 @@ export default function PermissionsPage() {
     onError: (err) => notify.error(err instanceof Error ? err.message : 'Unable to save override.'),
   })
 
-  const sortedResources = useMemo(() => [...ACADEMIC_RESOURCES].sort(), [])
+  // Batches and houses are switched off for TechNova (2026-10-03): not shown.
+  const sortedResources = useMemo(() => [...ACADEMIC_RESOURCES].filter((r) => r !== 'batches' && r !== 'houses').sort(), [])
   const categories = useMemo(() => {
     const cats = new Set(sortedResources.map((r) => RESOURCE_META[r]?.category ?? 'Other'))
     return ['ALL', ...Array.from(cats).sort()]

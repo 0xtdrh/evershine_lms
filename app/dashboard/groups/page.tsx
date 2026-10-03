@@ -21,7 +21,6 @@ import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, T
 import { TransferStudentDialog } from '@/components/groups/TransferStudentDialog'
 
 interface Campus { id: string; name: string }
-interface Batch { id: string; name: string }
 interface Shift { id: string; name: string }
 interface AcademicYear { id: string; name: string; isActive: boolean }
 interface Track { id: string; name: string }
@@ -201,11 +200,6 @@ export default function GroupsPage() {
     requireFullPaymentToStart: false, partialPaymentCounts: false, installmentsAllowed: false,
   })
 
-  const { data: createBatches = [] } = useQuery<Batch[]>({
-    queryKey: ['batches', createForm.campusId],
-    queryFn: () => fetchApi(`/api/batches?campusId=${createForm.campusId}`),
-    enabled: !!createForm.campusId,
-  })
   const coursesForCreate = useMemo(
     () => courses.filter((c) => c.track?.id === createForm.trackId),
     [courses, createForm.trackId]
@@ -232,7 +226,6 @@ export default function GroupsPage() {
         method: 'POST',
         body: JSON.stringify({
           campusId: createForm.campusId,
-          batchId: createForm.batchId,
           shiftId: createForm.shiftId,
           className: createForm.className,
           sectionName: createForm.sectionName,
@@ -1002,10 +995,6 @@ export default function GroupsPage() {
                 <SelectContent>{campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             )}
-            <Select value={createForm.batchId} onValueChange={(v) => setCreateForm({ ...createForm, batchId: v })} disabled={!createForm.campusId}>
-              <SelectTrigger><SelectValue placeholder="Batch" /></SelectTrigger>
-              <SelectContent>{createBatches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
-            </Select>
             <Select value={createForm.shiftId} onValueChange={(v) => setCreateForm({ ...createForm, shiftId: v })}>
               <SelectTrigger><SelectValue placeholder="Shift" /></SelectTrigger>
               <SelectContent>{shifts.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
@@ -1051,7 +1040,7 @@ export default function GroupsPage() {
           </div>
           <DialogFooter>
             <Button
-              disabled={!createForm.campusId || !createForm.batchId || !createForm.shiftId || !createForm.className || !createForm.sectionName || createGroupMutation.isPending}
+              disabled={!createForm.campusId || !createForm.shiftId || !createForm.className || !createForm.sectionName || createGroupMutation.isPending}
               onClick={() => createGroupMutation.mutate()}
             >
               {createGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create group'}

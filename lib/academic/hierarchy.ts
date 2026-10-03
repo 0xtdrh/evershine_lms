@@ -3,17 +3,17 @@ import type { AcademicClassRecord, AcademicScopeState } from './types'
 
 export const ACADEMIC_NONE = '__none__'
 
-/** Performance house is mandatory whenever the selected batch has houses defined. */
-export function performanceHouseRequired(hasHouses: boolean): boolean {
-  return hasHouses
+/** Houses are switched off for TechNova (2026-10-03): never required. */
+export function performanceHouseRequired(_hasHouses: boolean): boolean {
+  return false
 }
 
-/** Admin scope is complete when campus + batch are set, and house when the batch has houses. */
+/** Admin scope is complete when the branch is set (batches and houses are switched off, 2026-10-03). */
 export function isAdminAcademicScopeReady(
   scope: Pick<AcademicScopeState, 'campusId' | 'batchId' | 'houseId'>,
   hasHouses: boolean
 ): boolean {
-  if (!scope.campusId || !scope.batchId) return false
+  if (!scope.campusId) return false
   if (performanceHouseRequired(hasHouses) && !scope.houseId) return false
   return true
 }

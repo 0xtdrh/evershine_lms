@@ -320,11 +320,6 @@ function MyShiftsSummary() {
                     <span className="font-medium text-slate-900">{sec.className}-{sec.sectionName}</span>
                     <span className="text-slate-400">·</span>
                     <span className="truncate max-w-[120px]">{sec.subject}</span>
-                    {sec.batchName && (
-                      <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
-                        {sec.batchName}
-                      </span>
-                    )}
                     {sec.deliveryMode !== 'PHYSICAL' && (
                       <span className="text-[9px] bg-cyan-100 text-cyan-700 px-1 py-0.5 rounded">
                         {sec.deliveryMode === 'ONLINE' ? '💻' : '🔄'}

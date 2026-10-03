@@ -34,7 +34,7 @@ export const createClassSchema = z.object({
   // WHY: Morning and Evening classes for the same grade/section are distinct entities
   shift: sessionShiftSchema.default('MORNING'),
   campusId: z.string().cuid(),
-  batchId: z.string().cuid().optional(),
+  batchId: z.preprocess((v) => (v === '' ? undefined : v), z.string().cuid().optional()), // batches are off
   academicYear: z.string().regex(/^\d{4}-\d{4}$/),
   capacity: z.number().int().min(1).max(100).default(40),
   roomNumber: z.string().optional(),

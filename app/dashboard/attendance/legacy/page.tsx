@@ -96,7 +96,7 @@ export default function AttendancePage() {
 
   const loadRoster = async () => {
     if (!selectedClassId) {
-      notify.error('Select campus, batch (optional), session, and class first')
+      notify.error('Select branch, session, and class first')
       return
     }
     setIsLoadingRoster(true)
@@ -290,7 +290,7 @@ export default function AttendancePage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Attendance</h1>
           <p className="text-sm text-gray-500">
-            Mark daily student attendance by campus, batch, session, and class.
+            Mark daily student attendance by branch, session, and class.
             {isTeacher ? ' Showing your assigned classes only.' : ''}
           </p>
         </div>
@@ -495,7 +495,7 @@ export default function AttendancePage() {
           <p className="font-medium text-gray-500">
             {isTeacher
               ? 'Select session and class, then click Load Roster'
-              : 'Select campus, batch, session, and class, then click Load Roster'}
+              : 'Select branch, session, and class, then click Load Roster'}
           </p>
           <p className="text-sm mt-1">You can mark attendance for today or any past date.</p>
         </div>

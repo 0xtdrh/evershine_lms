@@ -19,13 +19,10 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, AlertCircle, Loader2, UserPlus, Info } from 'lucide-react'
 import Link from 'next/link'
 
 type Campus = { id: string; name: string }
-type Batch = { id: string; name: string }
-type House = { id: string; name: string }
 type SectionData = {
   id: string
   className: string
@@ -85,7 +82,6 @@ export default function AdmissionPage() {
   })
 
   const selectedCampusId = useWatch({ control, name: 'campusId' })
-  const selectedBatchId = useWatch({ control, name: 'batchId' })
   const selectedSectionId = useWatch({ control, name: 'classSectionId' })
   const hasSiblingAtAcademy = useWatch({ control, name: 'hasSiblingAtAcademy' })
 
@@ -96,32 +92,18 @@ export default function AdmissionPage() {
   })
   const campuses = Array.isArray(campusesRaw) ? campusesRaw : campusesRaw?.data || []
 
-  const { data: batchesRaw } = useQuery<QueryResult<Batch[]>>({
-    queryKey: ['batches', selectedCampusId],
-    queryFn: () => fetchApi<Batch[]>(`/api/batches?campusId=${selectedCampusId}`),
-    enabled: !!selectedCampusId,
-  })
-  const batches = Array.isArray(batchesRaw) ? batchesRaw : batchesRaw?.data || []
-
   const { data: sectionsRaw, isLoading: sectionsLoading } = useQuery<QueryResult<SectionData[]>>({
-    queryKey: ['admission-sections', selectedCampusId, selectedBatchId],
+    queryKey: ['admission-sections', selectedCampusId],
     queryFn: () => {
       const p = new URLSearchParams()
       if (selectedCampusId) p.set('campusId', selectedCampusId)
-      if (selectedBatchId) p.set('batchId', selectedBatchId)
       return fetchApi<SectionData[]>(`/api/class-sections?${p}`)
     },
-    enabled: !!selectedCampusId && !!selectedBatchId,
+    enabled: !!selectedCampusId,
   })
 
   const sections = Array.isArray(sectionsRaw) ? sectionsRaw : sectionsRaw?.data ?? []
 
-  const { data: housesRaw } = useQuery<QueryResult<House[]>>({
-    queryKey: ['houses', selectedBatchId],
-    queryFn: () => fetchApi<House[]>(`/api/houses?batchId=${selectedBatchId}`),
-    enabled: !!selectedBatchId,
-  })
-  const houses = Array.isArray(housesRaw) ? housesRaw : housesRaw?.data ?? []
 
   // Default the academic year to the ACTIVE year in the system (not "this
   // calendar year" — in September that pointed at a year that isn't active).
@@ -556,9 +538,7 @@ export default function AdmissionPage() {
           <CardHeader>
             <CardTitle>Academic & Financial Placement</CardTitle>
             <CardDescription>
-              Selecting a Class Section will automatically create a{' '}
-              <Badge variant="secondary" className="text-xs">StudentEnrollment</Badge>{' '}
-              in the active academic year.
+              Choose the branch. You can pick a group now, or add the student to a group later from the Groups page.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -567,7 +547,7 @@ export default function AdmissionPage() {
             <div className="space-y-1.5">
               <RequiredLabel>Campus</RequiredLabel>
               <Select
-                onValueChange={(val) => { setValue('campusId', val); setValue('batchId', ''); setValue('classSectionId', '') }}
+                onValueChange={(val) => { setValue('campusId', val); setValue('classSectionId', '') }}
               >
                 <SelectTrigger className={errors.campusId ? 'border-destructive focus:ring-destructive' : ''}>
                   <SelectValue placeholder="Select campus" />
@@ -581,32 +561,13 @@ export default function AdmissionPage() {
               <FieldError message={errors.campusId?.message} />
             </div>
 
-            {/* Batch */}
-            <div className="space-y-1.5">
-              <RequiredLabel>Batch</RequiredLabel>
-              <Select
-                disabled={!selectedCampusId}
-                onValueChange={(val) => { setValue('batchId', val); setValue('classSectionId', ''); setValue('houseId', '') }}
-              >
-                <SelectTrigger className={errors.batchId ? 'border-destructive focus:ring-destructive' : ''}>
-                  <SelectValue placeholder={!selectedCampusId ? 'Select campus first' : 'Select batch'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {batches.map((b: { id: string; name: string }) => (
-                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldError message={errors.batchId?.message} />
-            </div>
-
             {/* Class Section — full width */}
             <div className="space-y-1.5 md:col-span-2">
               <Label>
-                Class Section <span className="text-muted-foreground text-xs">(optional — creates enrollment)</span>
+                Group <span className="text-muted-foreground text-xs">(optional — you can also add the student to a group later)</span>
               </Label>
               <Select
-                disabled={!selectedBatchId || sectionsLoading}
+                disabled={!selectedCampusId || sectionsLoading}
                 onValueChange={(val) => {
                   setValue('classSectionId', val)
                   const sec = sections.find((s: SectionData) => s.id === val)
@@ -615,10 +576,10 @@ export default function AdmissionPage() {
               >
                 <SelectTrigger>
                   <SelectValue placeholder={
-                    !selectedBatchId ? 'Select batch first' :
+                    !selectedCampusId ? 'Select the branch first' :
                     sectionsLoading ? 'Loading sections…' :
-                    sections.length === 0 ? 'No sections found for this batch/campus' :
-                    'Select class section'
+                    sections.length === 0 ? 'No groups found for this branch' :
+                    'Select a group'
                   } />
                 </SelectTrigger>
                 <SelectContent>
@@ -633,7 +594,7 @@ export default function AdmissionPage() {
                   ))}
                 </SelectContent>
               </Select>
-              {selectedBatchId && sections.length === 0 && !sectionsLoading && (
+              {selectedCampusId && sections.length === 0 && !sectionsLoading && (
                 <p className="flex items-center gap-1 text-xs text-amber-600 mt-1">
                   <Info className="w-3 h-3" />
                   No active class sections found. Create sections in Academic Engine first, or admit without a section.
@@ -665,20 +626,6 @@ export default function AdmissionPage() {
                 <SelectContent>
                   {(Object.keys(SESSION_SHIFT_LABELS) as SessionShift[]).map((code) => (
                     <SelectItem key={code} value={code}>{SESSION_SHIFT_LABELS[code]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* House */}
-            <div className="space-y-1.5">
-              <Label>House <span className="text-muted-foreground text-xs">(optional)</span></Label>
-              <Select onValueChange={(val) => setValue('houseId', val === 'NONE' ? undefined : val)}>
-                <SelectTrigger><SelectValue placeholder="No house" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NONE">None</SelectItem>
-                  {houses.map((h: { id: string; name: string }) => (
-                    <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

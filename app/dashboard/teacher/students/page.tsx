@@ -154,7 +154,7 @@ function RequestAdminDialog({ student, open, onClose }: RequestDialogProps) {
         body: JSON.stringify({
           type: 'OTHER',
           title: `${requestType === 'SUSPEND' ? 'Suspension' : requestType === 'RE_ENROLL' ? 'Re-Enrolment' : requestType === 'WITHDRAW' ? 'Withdrawal' : 'Student Action'} Request — ${student?.registrationNumber}`,
-          description: `Student: ${student?.firstName} ${student?.lastName} (${student?.registrationNumber})\nClass: ${student?.class?.name ?? 'N/A'} | Batch: ${student?.batch?.name}\nCampus: ${student?.campus?.name}\n\nReason:\n${reason}`,
+          description: `Student: ${student?.firstName} ${student?.lastName} (${student?.registrationNumber})\nClass: ${student?.class?.name ?? 'N/A'}\nCampus: ${student?.campus?.name}\n\nReason:\n${reason}`,
         }),
       }),
     onSuccess: () => {
@@ -287,15 +287,7 @@ function StudentDetailDialog({ student, open, onClose, onRequestAction }: Studen
             <InfoRow icon={<Hash className="w-3.5 h-3.5" />} label="Reg. No" value={student.registrationNumber} mono />
             <InfoRow icon={<Hash className="w-3.5 h-3.5" />} label="Roll No" value={getStudentRollNumber(student) ?? '—'} mono />
             <InfoRow icon={<GraduationCap className="w-3.5 h-3.5" />} label="Class" value={getStudentClassLabel(student)} />
-            <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Batch" value={`${student.batch.name} (${student.batch.code})`} />
             <InfoRow icon={<Building2 className="w-3.5 h-3.5" />} label="Campus" value={`${student.campus.name} — ${student.campus.city}`} />
-            {student.house && (
-              <div className="col-span-2 flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: student.house.color }} />
-                <span className="text-gray-500 text-xs">House:</span>
-                <span className="text-gray-800 font-medium text-xs">{student.house.name}</span>
-              </div>
-            )}
           </div>
 
           {/* Contact */}
@@ -610,10 +602,6 @@ export default function TeacherMyStudentsPage() {
                     <span className="text-gray-400 text-[10px] block uppercase">Campus</span>
                     <span className="font-semibold text-indigo-600">{student.campus.code}</span>
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-gray-400 text-[10px] block uppercase">Batch</span>
-                    <span className="text-gray-700 truncate block">{student.batch.code}</span>
-                  </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-2 pt-1">
@@ -654,9 +642,8 @@ export default function TeacherMyStudentsPage() {
               <TableRow className="bg-gray-50 text-xs uppercase tracking-wide">
                 <TableHead className="py-3">Student</TableHead>
                 <TableHead>Roll / Reg No.</TableHead>
-                <TableHead>Class & Batch</TableHead>
+                <TableHead>Class</TableHead>
                 <TableHead>Campus</TableHead>
-                <TableHead>House</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
@@ -666,7 +653,7 @@ export default function TeacherMyStudentsPage() {
                 <TableSkeleton />
               ) : students.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-36 text-center text-gray-400">
+                  <TableCell colSpan={6} className="h-36 text-center text-gray-400">
                     <div className="flex flex-col items-center gap-2">
                       <Users className="w-7 h-7 text-gray-300" />
                       <span className="text-sm">
@@ -716,12 +703,11 @@ export default function TeacherMyStudentsPage() {
                       )}
                     </TableCell>
 
-                    {/* Class & Batch */}
+                    {/* Class */}
                     <TableCell>
                       <p className="text-sm font-medium text-gray-800">
                         {getStudentClassLabel(student)}
                       </p>
-                      <p className="text-[11px] text-gray-400">{student.batch.name} · {student.batch.code}</p>
                     </TableCell>
 
                     {/* Campus */}
@@ -733,21 +719,6 @@ export default function TeacherMyStudentsPage() {
                           <p className="text-[10px] text-gray-400">{student.campus.city}</p>
                         </div>
                       </div>
-                    </TableCell>
-
-                    {/* House */}
-                    <TableCell>
-                      {student.house ? (
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ background: student.house.color }}
-                          />
-                          <span className="text-xs font-medium text-gray-700">{student.house.name}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-300 text-xs">—</span>
-                      )}
                     </TableCell>
 
                     {/* Status */}
