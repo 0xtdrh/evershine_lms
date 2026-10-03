@@ -10,6 +10,7 @@
  */
 
 import { NextRequest } from 'next/server'
+import { notifySeatFreed } from '@/lib/groups/capacity'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
@@ -178,6 +179,9 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       },
     })
   })
+
+  // Phase A: someone may be waiting for this seat.
+  await notifySeatFreed(existing.classSectionId)
 
   return successResponse(
     { id, studentId: existing.studentId },

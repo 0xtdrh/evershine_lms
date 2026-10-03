@@ -15,10 +15,13 @@
  *  SCHEDULED    upcoming session of a running group
  *  NOT_STARTED  upcoming session of a group that has not started yet
  *  CANCELLED    cancelled session (CancelledSession)
+ *  HOLIDAY      branch / company holiday: the session moves to the next slot (phase A)
+ * Extra sessions (ExtraSession, e.g. making up a holiday) count like normal ones.
  */
 
 export interface Slot { dayOfWeek: number; time: string }
-export type OccurrenceStatus = 'HELD' | 'MISSING' | 'SCHEDULED' | 'NOT_STARTED' | 'CANCELLED'
+export type OccurrenceStatus = 'HELD' | 'MISSING' | 'SCHEDULED' | 'NOT_STARTED' | 'CANCELLED' | 'HOLIDAY'
+export interface ExtraSlot { date: string; time: string }
 
 export interface GroupForCalendar {
   id: string
@@ -30,6 +33,10 @@ export interface GroupForCalendar {
   /** distinct attendance dates (YYYY-MM-DD) since cycleStart */
   heldDates: string[]
   cancelledDates: string[]
+  /** holiday dates for this group's branch (YYYY-MM-DD) */
+  holidayDates?: string[]
+  /** one-off extra sessions */
+  extras?: ExtraSlot[]
 }
 
 export interface Occurrence {
@@ -40,6 +47,7 @@ export interface Occurrence {
   sessionNumber: number | null
   totalSessions: number
   isLastOfCycle: boolean
+  isExtra?: boolean
 }
 
 const DAY_MS = 86_400_000
@@ -60,15 +68,22 @@ export function buildOccurrences(g: GroupForCalendar, from: string, to: string, 
   const held = [...new Set(g.heldDates)].sort()
   const heldNo = new Map(held.map((d, i) => [d, i + 1]))
   const cancelled = new Set(g.cancelledDates)
-  const slotsOn = (d: string) => g.slots.filter((s) => s.dayOfWeek === weekday(d))
+  const holidays = new Set(g.holidayDates ?? [])
+  const extraOn = (d: string) => (g.extras ?? []).filter((e) => e.date === d).map((e) => ({ dayOfWeek: weekday(d), time: e.time, extra: true }))
+  const weeklyOn = (d: string) => g.slots.filter((s) => s.dayOfWeek === weekday(d)).map((s) => ({ ...s, extra: false }))
+  const slotsOn = (d: string) => {
+    const all = [...weeklyOn(d), ...extraOn(d)]
+    return all.filter((s, i) => all.findIndex((x) => x.time === s.time) === i).sort((a, b) => a.time.localeCompare(b.time))
+  }
 
   // Upcoming sessions from today, numbered after what was held.
   const projected = new Map<string, number>() // `${date}|${time}` -> number
-  if (!g.completed && g.slots.length) {
+  if (!g.completed && (g.slots.length || (g.extras ?? []).length)) {
     let n = g.cycleStart ? held.length + 1 : 1 // held dates are all today or earlier
     for (let d = today, guard = 0; n <= per && d <= to && guard < 400; d = addDays(d, 1), guard++) {
       if (heldNo.has(d) || cancelled.has(d)) continue
       for (const s of slotsOn(d)) {
+        if (holidays.has(d) && !s.extra) continue
         if (n > per) break
         projected.set(`${d}|${s.time}`, n++)
       }
@@ -90,6 +105,10 @@ export function buildOccurrences(g: GroupForCalendar, from: string, to: string, 
     }
     if (g.completed) continue
     for (const s of daySlots) {
+      if (holidays.has(d) && !s.extra) {
+        out.push({ ...base, date: d, time: s.time, status: 'HOLIDAY', sessionNumber: null, isLastOfCycle: false })
+        continue
+      }
       if (d < today) {
         if (g.cycleStart && d >= g.cycleStart && held.length < per) {
           out.push({ ...base, date: d, time: s.time, status: 'MISSING', sessionNumber: null, isLastOfCycle: false })
@@ -98,7 +117,7 @@ export function buildOccurrences(g: GroupForCalendar, from: string, to: string, 
       }
       const n = projected.get(`${d}|${s.time}`)
       if (n === undefined) continue // after the cycle's last session
-      out.push({ ...base, date: d, time: s.time, status: g.cycleStart ? 'SCHEDULED' : 'NOT_STARTED', sessionNumber: n, isLastOfCycle: n === per })
+      out.push({ ...base, date: d, time: s.time, status: g.cycleStart ? 'SCHEDULED' : 'NOT_STARTED', sessionNumber: n, isLastOfCycle: n === per, ...(s.extra && { isExtra: true }) })
     }
   }
   return out
@@ -108,11 +127,42 @@ export function buildOccurrences(g: GroupForCalendar, from: string, to: string, 
 export function findConflicts<T extends { teacherId: string | null; date: string; time: string; status: OccurrenceStatus }>(rows: T[]): Set<number> {
   const seen = new Map<string, number[]>()
   rows.forEach((r, i) => {
-    if (!r.teacherId || !r.time || r.status === 'CANCELLED') return
+    if (!r.teacherId || !r.time || r.status === 'CANCELLED' || r.status === 'HOLIDAY') return
     const k = `${r.teacherId}|${r.date}|${r.time}`
     seen.set(k, [...(seen.get(k) ?? []), i])
   })
   const out = new Set<number>()
   for (const idx of seen.values()) if (idx.length > 1) idx.forEach((i) => out.add(i))
+  return out
+}
+
+/**
+ * The next `count` sessions from `from` (inclusive): weekly slots + extra
+ * sessions, skipping holidays (sessions move to the next slot), cancelled and
+ * already-held dates. Shared by remaining-session lists, end estimates and
+ * renewal reminders so they all agree with the calendar.
+ */
+export function upcomingSessions(opts: {
+  slots: Slot[]
+  from: string
+  count: number
+  holidays?: Iterable<string>
+  extras?: ExtraSlot[]
+  skipDates?: Iterable<string>
+  maxDays?: number
+}): ExtraSlot[] {
+  const holidays = new Set(opts.holidays ?? [])
+  const skip = new Set(opts.skipDates ?? [])
+  const out: ExtraSlot[] = []
+  if (opts.count <= 0) return out
+  for (let d = opts.from, guard = 0; out.length < opts.count && guard < (opts.maxDays ?? 800); d = addDays(d, 1), guard++) {
+    if (skip.has(d)) continue
+    const weekly = holidays.has(d) ? [] : opts.slots.filter((s) => s.dayOfWeek === weekday(d)).map((s) => s.time)
+    const extra = (opts.extras ?? []).filter((e) => e.date === d).map((e) => e.time)
+    for (const time of [...new Set([...weekly, ...extra])].sort()) {
+      if (out.length >= opts.count) break
+      out.push({ date: d, time })
+    }
+  }
   return out
 }

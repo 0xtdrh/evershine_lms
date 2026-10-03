@@ -14,7 +14,16 @@ export const createCampusSchema = z.object({
   principalName: z.string().min(3).trim(),
 })
 
-export const updateCampusSchema = createCampusSchema.partial()
+export const updateCampusSchema = createCampusSchema.partial().extend({
+  // Branch profile (phase A) — optional, empty = cleared
+  mapUrl: z.preprocess((v) => (v === '' ? null : v), z.string().url().max(500).nullable().optional()),
+  whatsapp: z.preprocess((v) => (v === '' ? null : v), z.string().regex(/^\+?[\d\s\-]{8,20}$/, 'Invalid WhatsApp number').nullable().optional()),
+  workingHours: z.preprocess((v) => (v === '' ? null : v), z.string().max(1000).nullable().optional()),
+  roomsCount: z.number().int().min(0).max(500).nullable().optional(),
+  maxStudents: z.number().int().min(0).max(100000).nullable().optional(),
+  managerUserId: z.preprocess((v) => (v === '' ? null : v), z.string().min(1).nullable().optional()),
+  profileNotes: z.preprocess((v) => (v === '' ? null : v), z.string().max(5000).nullable().optional()),
+})
 
 export const createBatchSchema = z.object({
   name: z.string().min(2).trim(),

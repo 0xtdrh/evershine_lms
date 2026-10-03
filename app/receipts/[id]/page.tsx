@@ -81,7 +81,19 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Print ({paper})</Button>
         {r.whatsappTo ? (
           <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-            <a href={`https://wa.me/${r.whatsappTo}?text=${encodeURIComponent(r.text)}`} target="_blank" rel="noopener noreferrer">
+            <a
+              href={`https://wa.me/${r.whatsappTo}?text=${encodeURIComponent(r.text)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => {
+                // Phase A: written to the student's contact log (staff only; ignored for parents).
+                fetch('/api/contact-logs', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ studentId: r.student.id, channel: 'WHATSAPP', reason: 'PAYMENT', summary: `Payment receipt sent on WhatsApp (${money(r.amount)}, invoice ${r.invoice.number}).`, auto: true }),
+                }).catch(() => undefined)
+              }}
+            >
               <MessageCircle className="mr-2 h-4 w-4" /> Send on WhatsApp
             </a>
           </Button>

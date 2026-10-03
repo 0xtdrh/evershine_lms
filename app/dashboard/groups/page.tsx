@@ -19,6 +19,9 @@ import {
 import { notify } from '@/lib/notify'
 import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, Trash2, CheckCircle2, X, Wallet, ArrowRightLeft } from 'lucide-react'
 import { TransferStudentDialog } from '@/components/groups/TransferStudentDialog'
+import { GroupCapacityPanel, type Seats, type WaitingRow } from '@/components/groups/GroupCapacityPanel'
+import { ExtraSessionsPanel, type ExtraSessionRow } from '@/components/groups/ExtraSessionsPanel'
+import { FullGroupDialog } from '@/components/groups/FullGroupDialog'
 
 interface Campus { id: string; name: string }
 interface AcademicYear { id: string; name: string; isActive: boolean }
@@ -68,6 +71,12 @@ interface GroupDetail extends Omit<GroupSummary, 'campus' | 'level'> {
       campus: { id: string; name: string }
     }
   }[]
+  // Phase A
+  maxStudents: number | null
+  seats: Seats
+  waiting: WaitingRow[]
+  renewals: { studentId: string; status: 'PENDING' | 'YES' | 'NO'; reason: string | null }[]
+  extraSessions: ExtraSessionRow[]
 }
 
 interface TeacherOption { id: string; firstName: string; lastName: string; isQualified?: boolean }
@@ -117,6 +126,7 @@ export default function GroupsPage() {
     enabled: !!session?.user?.role,
   })
   const canMoveStudents = !!myPerms?.permissions?.group_transfers?.includes('create')
+  const canEditGroups = !!myPerms?.permissions?.class_sections?.includes('update')
   const [moving, setMoving] = useState<{ studentId: string; name: string } | null>(null)
   const role = session?.user?.role as string | undefined
   const myCampusId = session?.user?.campusId as string | undefined
@@ -195,7 +205,7 @@ export default function GroupsPage() {
   const [createForm, setCreateForm] = useState({
     campusId: '', batchId: '', shiftId: '', className: '', sectionName: '',
     trackId: '', courseId: '', levelId: '', startDate: '',
-    requireFullPaymentToStart: false, partialPaymentCounts: false, installmentsAllowed: false,
+    requireFullPaymentToStart: false, partialPaymentCounts: false, installmentsAllowed: false, maxStudents: '',
   })
 
   const coursesForCreate = useMemo(
@@ -208,7 +218,7 @@ export default function GroupsPage() {
     enabled: !!createForm.courseId,
   })
 
-  const resetCreateForm = () => setCreateForm({ campusId: isCampusLocked ? (myCampusId ?? '') : '', batchId: '', shiftId: '', className: '', sectionName: '', trackId: '', courseId: '', levelId: '', startDate: '', requireFullPaymentToStart: false, partialPaymentCounts: false, installmentsAllowed: false })
+  const resetCreateForm = () => setCreateForm({ campusId: isCampusLocked ? (myCampusId ?? '') : '', batchId: '', shiftId: '', className: '', sectionName: '', trackId: '', courseId: '', levelId: '', startDate: '', requireFullPaymentToStart: false, partialPaymentCounts: false, installmentsAllowed: false, maxStudents: '' })
 
   // Branch-scoped roles never pick a campus — it's fixed to their own.
   useEffect(() => {
@@ -231,6 +241,7 @@ export default function GroupsPage() {
           requireFullPaymentToStart: createForm.requireFullPaymentToStart,
           partialPaymentCounts: createForm.partialPaymentCounts,
           installmentsAllowed: createForm.installmentsAllowed,
+          maxStudents: createForm.maxStudents ? Number(createForm.maxStudents) : null,
         }),
       }),
     onSuccess: () => {
@@ -337,7 +348,9 @@ export default function GroupsPage() {
 
   const openAdvanceDialog = () => {
     if (!detail) return
-    setContinuingIds(new Set(detail.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => e.student.id)))
+    // Phase A: parents who answered "not continuing" start unticked.
+    const saidNo = new Set((detail.renewals ?? []).filter((r) => r.status === 'NO').map((r) => r.studentId))
+    setContinuingIds(new Set(detail.enrollments.filter((e) => e.status === 'ACTIVE' && !saidNo.has(e.student.id)).map((e) => e.student.id)))
     setConfirmAdvance(true)
   }
 
@@ -477,8 +490,15 @@ export default function GroupsPage() {
       notify.success('Student added')
       setStudentQuery('')
     },
-    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to add student')),
+    onError: (err: unknown, studentId: string) => {
+      if (err instanceof ApiError && err.code === 'GROUP_FULL' && selectedGroupId) {
+        setFullTarget({ groupId: selectedGroupId, studentId, message: err.message })
+        return
+      }
+      notify.error(apiErrorMessage(err, 'Failed to add student'))
+    },
   })
+  const [fullTarget, setFullTarget] = useState<{ groupId: string; studentId: string; message: string } | null>(null)
 
   const removeStudentMutation = useMutation({
     mutationFn: (enrollmentId: string) => fetchApi(`/api/student-enrollments/${enrollmentId}`, { method: 'DELETE' }),
@@ -690,10 +710,14 @@ export default function GroupsPage() {
                 </Button>
               </div>
 
+              {detail.seats && (
+                <GroupCapacityPanel groupId={detail.id} levelId={detail.level?.id ?? null} seats={detail.seats} waiting={detail.waiting ?? []} canEdit={canEditGroups} />
+              )}
+              <ExtraSessionsPanel groupId={detail.id} rows={detail.extraSessions ?? []} canEdit={canEditGroups} />
               <div>
                 <p className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
                   <GraduationCap className="w-4 h-4 text-indigo-600" />
-                  Students ({detail.enrollments.filter((e) => e.status === 'ACTIVE').length})
+                  Students ({detail.enrollments.filter((e) => e.status === 'ACTIVE').length}{detail.maxStudents ? `/${detail.maxStudents}` : ''})
                 </p>
                 <div className="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-56 overflow-y-auto mb-2">
                   {detail.enrollments.filter((e) => e.status === 'ACTIVE').length === 0 ? (
@@ -956,6 +980,13 @@ export default function GroupsPage() {
                       Payment overdue
                     </span>
                   )}
+                  {(() => {
+                    const r = detail?.renewals?.find((x) => x.studentId === e.student.id)
+                    if (!r) return null
+                    const cls = r.status === 'YES' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : r.status === 'NO' ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                    const text = r.status === 'YES' ? 'Parent: continuing' : r.status === 'NO' ? `Parent: not continuing${r.reason ? ` (${r.reason.toLowerCase()})` : ''}` : 'No answer yet'
+                    return <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${cls}`}>{text}</span>
+                  })()}
                 </span>
                 <Checkbox
                   checked={continuingIds.has(e.student.id)}
@@ -996,6 +1027,7 @@ export default function GroupsPage() {
               <Input placeholder="Group name" value={createForm.className} onChange={(e) => setCreateForm({ ...createForm, className: e.target.value })} />
               <Input placeholder="Section (e.g. A)" value={createForm.sectionName} onChange={(e) => setCreateForm({ ...createForm, sectionName: e.target.value })} />
             </div>
+            <Input type="number" min={1} placeholder="Most students (empty = no limit)" value={createForm.maxStudents} onChange={(e) => setCreateForm({ ...createForm, maxStudents: e.target.value })} />
             <Select value={createForm.trackId} onValueChange={(v) => setCreateForm({ ...createForm, trackId: v, courseId: '', levelId: '' })}>
               <SelectTrigger><SelectValue placeholder="Track" /></SelectTrigger>
               <SelectContent>{tracks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
@@ -1142,6 +1174,8 @@ export default function GroupsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FullGroupDialog target={fullTarget} onClose={() => setFullTarget(null)} onDone={() => setStudentQuery('')} />
 
       {moving && selectedGroupId && (
         <TransferStudentDialog

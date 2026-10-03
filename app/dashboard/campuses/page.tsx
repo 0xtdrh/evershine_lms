@@ -298,8 +298,9 @@ export default function CampusesPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-lg font-black text-gray-900 tracking-tight leading-snug group-hover:text-indigo-600 transition-colors">
-                      {campus.name}
+                      <Link href={`/dashboard/campuses/${campus.id}`} className="hover:underline">{campus.name}</Link>
                     </CardTitle>
+                    <Link href={`/dashboard/campuses/${campus.id}`} className="text-[11px] font-semibold text-indigo-600 hover:underline">Open branch profile →</Link>
                     <CardDescription className="font-bold text-xs mt-1 text-indigo-500 font-mono tracking-wider">
                       CODE: {campus.code}
                     </CardDescription>

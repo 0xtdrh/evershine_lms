@@ -675,6 +675,92 @@ check "schedule at 19:00 -> shift follows: Night" "$(M "SELECT s.code FROM Class
 api PATCH /api/groups/$NOSID '{"scheduleSlots":[{"dayOfWeek":1,"time":"16:30"}]}' >/dev/null
 check "schedule at 16:30 -> Evening" "$(M "SELECT s.code FROM ClassSection c JOIN Shift s ON s.id=c.shiftId WHERE c.id='$NOSID'")" "EVENING"
 check "same name in the branch refused even if the time differs" "$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"className\":\"E2E No Shift\",\"sectionName\":\"S\"}" | jq_ "d['error']['code']")" "CONFLICT"
+echo "== 25. phase A: branch profile, contact log, group capacity, holidays, renewals"
+# A) branch profile
+api PATCH /api/campuses/$CAMPUS '{"whatsapp":"01011112222","workingHours":"Sat-Thu 10:00-21:00","roomsCount":5,"maxStudents":100}' >/dev/null
+BP=$(api GET /api/campuses/$CAMPUS/profile)
+check "branch profile: WhatsApp, hours, rooms, capacity saved" "$(echo "$BP" | jq_ "'%s|%s|%s|%s' % (d['data']['campus']['whatsapp'], d['data']['campus']['workingHours'], d['data']['campus']['roomsCount'], d['data']['campus']['maxStudents'])")" "01011112222|Sat-Thu 10:00-21:00|5|100"
+check "branch profile: live numbers (groups, students, fullness)" "$(echo "$BP" | jq_ "d['data']['stats']['activeGroups'] > 0 and d['data']['stats']['activeStudents'] > 0 and d['data']['stats']['fullness'] is not None")" "True"
+check "branch profile: bad map link refused" "$(api PATCH /api/campuses/$CAMPUS '{"mapUrl":"not a link"}' | jq_ "d['success']")" "False"
+
+# B) contact log + follow-ups + last contact
+CL=$(mkstu Contact 01066660051 Samy 01066660052)
+NOWISO=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+check "staff logs a call with a follow-up today" "$(api POST /api/contact-logs "{\"studentId\":\"$CL\",\"channel\":\"CALL\",\"reason\":\"PAYMENT\",\"summary\":\"Asked about the invoice\",\"followUpAt\":\"$NOWISO\"}" | jq_ "d['success']")" "True"
+CLID=$(M "SELECT id FROM ContactLog WHERE studentId='$CL' AND auto=0 LIMIT 1")
+check "student page shows the contact" "$(api GET /api/students/$CL/contacts | jq_ "len(d['data']['logs'])")" "1"
+check "it is in today's follow-ups" "$(api GET /api/contact-logs/follow-ups | jq_ "any(r['id']=='$CLID' for r in d['data']['today'])")" "True"
+check "students list shows the last contact" "$(api GET "/api/students?search=Contact&limit=5" | jq_ "any(s['id']=='$CL' and s['lastContactAt'] for s in d['data'])")" "True"
+api PATCH /api/contact-logs/$CLID '{"followUpDone":true}' >/dev/null
+check "follow-up marked done leaves the list" "$(api GET /api/contact-logs/follow-ups | jq_ "any(r['id']=='$CLID' for r in d['data']['today'])")" "False"
+check "not signed in: cannot write the contact log" "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d "{\"studentId\":\"$CL\",\"channel\":\"CALL\",\"reason\":\"OTHER\",\"summary\":\"x x\"}" $B/api/contact-logs)" "401"
+
+# C) group capacity + per-group waiting list
+CAP=$(mkgroup "E2E Cap" "$NLEVEL"); CAP2=$(mkgroup "E2E Cap Two" "$NLEVEL")
+api PATCH /api/groups/$CAP '{"maxStudents":1}' >/dev/null
+CA=$(mkstu CapA 01066660061 '' ''); CB=$(mkstu CapB 01066660062 '' ''); CC=$(mkstu CapC 01066660063 '' ''); CD=$(mkstu CapD 01066660064 '' '')
+check "first student fits (1/1)" "$(api POST /api/groups/$CAP/students "{\"studentId\":\"$CA\"}" | jq_ "d['success']")" "True"
+check "group full -> refused with GROUP_FULL" "$(api POST /api/groups/$CAP/students "{\"studentId\":\"$CB\"}" | jq_ "d['error']['code']")" "GROUP_FULL"
+check "put on this group's waiting list (#1)" "$(api POST /api/groups/$CAP/students "{\"studentId\":\"$CB\",\"waitlist\":true}" | jq_ "'%s/%s' % (d['data']['waitlisted'], d['data']['position'])")" "True/1"
+GD=$(api GET /api/groups/$CAP)
+check "group shows 1/1 full, 1 waiting" "$(echo "$GD" | jq_ "'%s/%s/%s/%s' % (d['data']['seats']['count'], d['data']['seats']['max'], d['data']['seats']['full'], len(d['data']['waiting']))")" "1/1/True/1"
+check "other groups of the same level with room are offered" "$(api GET "/api/groups/available?levelId=$NLEVEL&excludeId=$CAP" | jq_ "any(g['id']=='$CAP2' for g in d['data'])")" "True"
+api POST /api/groups/$CAP2/students "{\"studentId\":\"$CB\"}" >/dev/null
+check "placing the waiting student in the other group closes the wait" "$(M "SELECT status FROM WaitingListEntry WHERE studentId='$CB' AND classSectionId='$CAP'")" "PLACED"
+check "manager can add anyway (over the limit)" "$(api POST /api/groups/$CAP/students "{\"studentId\":\"$CC\",\"override\":true}" | jq_ "d['success']")" "True"
+api POST /api/groups/$CAP/students "{\"studentId\":\"$CD\",\"waitlist\":true}" >/dev/null
+for s in $CA $CC; do E=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$s' AND classSectionId='$CAP'"); api DELETE /api/student-enrollments/$E >/dev/null; done
+check "a seat frees up -> staff notified (someone is waiting)" "$(M "SELECT COUNT(*)>0 FROM Notification WHERE type='GROUP_SEAT_FREE' AND relatedId='$CAP'")" "1"
+check "a limit of 0 is refused (empty = no limit)" "$(api PATCH /api/groups/$CAP '{"maxStudents":0}' | jq_ "d['success']")" "False"
+
+# D) holidays + extra sessions (calendar keeps the numbering)
+PH=$(mkgroup "E2E Holiday" "$NLEVEL")
+M "UPDATE ClassSection SET scheduleSlots='$EVERYDAY' WHERE id='$PH'"
+PHS=$(mkstu Holiday 01066660071 '' ''); api POST /api/groups/$PH/students "{\"studentId\":\"$PHS\"}" >/dev/null
+PHE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$PHS' AND classSectionId='$PH'")
+sess $PH "$(D -1)" "$(rec $PHE PRESENT)" >/dev/null
+check "secretary cannot add a holiday" "$(secapi POST /api/holidays "{\"date\":\"$(D 1)\",\"name\":\"Test\"}" | jq_ "d['success']")" "False"
+check "company-wide holiday added" "$(api POST /api/holidays "{\"date\":\"$(D 1)\",\"name\":\"E2E holiday\"}" | jq_ "d['data']['added']")" "1"
+CAL=$(api GET "/api/groups/schedule?from=$(D -1)&to=$(D 5)")
+check "holiday: session moved, numbering kept (held 1, today 2, holiday, 3, 4 last)" "$(row $PH)" "$(D -1 | cut -c6-):HELD:1 $(D 0 | cut -c6-):SCHEDULED:2 $(D 1 | cut -c6-):HOLIDAY:- $(D 2 | cut -c6-):SCHEDULED:3 $(D 3 | cut -c6-):SCHEDULED:4"
+check "extra session added on the holiday evening" "$(api POST /api/groups/$PH/extra-sessions "{\"date\":\"$(D 1)\",\"time\":\"20:00\",\"reason\":\"make up\"}" | jq_ "d['success']")" "True"
+CAL=$(api GET "/api/groups/schedule?from=$(D -1)&to=$(D 5)")
+check "extra session counts: the month ends a day earlier" "$(echo "$CAL" | jq_ "[s['date'] for s in d['data']['sessions'] if s['groupId']=='$PH' and s['isLastOfCycle']]==['$(D 2)']")" "True"
+HID=$(M "SELECT id FROM Holiday WHERE name='E2E holiday' LIMIT 1")
+api DELETE /api/holidays/$HID >/dev/null
+check "holiday removed -> the day is a normal session again" "$(api GET "/api/groups/schedule?from=$(D 1)&to=$(D 1)" | jq_ "any(s['status']=='HOLIDAY' for s in d['data']['sessions'] if s['groupId']=='$PH')")" "False"
+
+# E) renewals: reminder, parent answers in the portal, early discount, churn reasons
+api PUT /api/renewals/settings '{"sessionsBefore":2}' >/dev/null
+T_EARLY=$(mktype '{"name":"Early renewal 5%","kind":"OTHER","valueType":"PERCENT","value":5,"duration":"ONE_TIME","approvalMode":"STAFF","stackable":true}')
+api PUT /api/discounts/rules "{\"allowStacking\":true,\"maxTotalPercent\":null,\"siblingAppliesTo\":\"ALL\",\"earlyRenewalTypeId\":\"$T_EARLY\"}" >/dev/null
+check "early renewal discount type set in Discounts > rules" "$(api GET /api/discounts/rules | jq_ "d['data']['earlyRenewalTypeId']")" "$T_EARLY"
+RN=$(mkgroup "E2E Renew" "$NLEVEL")
+R1=$(mkstu RenewOne 01066660081 Hoda 01066660082); R2=$(mkstu RenewTwo 01066660083 Omar 01066660084)
+for s in $R1 $R2; do api POST /api/groups/$RN/students "{\"studentId\":\"$s\"}" >/dev/null; done
+E1=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$R1' AND classSectionId='$RN'"); E2=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$R2' AND classSectionId='$RN'")
+sess $RN "$(D -3)" "$(rec $E1 PRESENT),$(rec $E2 PRESENT)" >/dev/null
+check "not asked yet (3 sessions left)" "$(M "SELECT COUNT(*) FROM RenewalRequest WHERE classSectionId='$RN'")" "0"
+sess $RN "$(D -2)" "$(rec $E1 PRESENT),$(rec $E2 PRESENT)" >/dev/null
+check "2 sessions before the end: every student asked" "$(M "SELECT COUNT(*) FROM RenewalRequest WHERE classSectionId='$RN' AND status='PENDING'")" "2"
+G1USER=$(M "SELECT userId FROM Guardian WHERE phoneNumber='01066660082'")
+check "parent notified in the portal" "$(M "SELECT COUNT(*) FROM Notification WHERE userId='$G1USER' AND type='RENEWAL_REQUEST'")" "1"
+check "reminder written to the contact log (system)" "$(M "SELECT COUNT(*) FROM ContactLog WHERE studentId='$R1' AND channel='SYSTEM' AND reason='RENEWAL'")" "1"
+api POST /api/users/reset-credentials "{\"userId\":\"$G1USER\",\"newPassword\":\"Renew2026A\"}" >/dev/null
+M "UPDATE User SET mustChangePassword=0 WHERE id='$G1USER'"
+RJ=$(mktemp); login_as 01066660082 Renew2026A "$RJ" >/dev/null
+RQ1=$(M "SELECT id FROM RenewalRequest WHERE studentId='$R1'"); RQ2=$(M "SELECT id FROM RenewalRequest WHERE studentId='$R2'")
+check "parent sees the question in the portal" "$(curl -s -b "$RJ" $B/api/guardian-portal/renewals | jq_ "[r['status'] for r in d['data']]")" "['PENDING']"
+check "parent cannot answer for another family's child" "$(curl -s -o /dev/null -w '%{http_code}' -b "$RJ" -X POST -H 'Content-Type: application/json' -d '{"answer":"YES"}' $B/api/guardian-portal/renewals/$RQ2)" "403"
+check "parent answers YES early -> early discount given" "$(curl -s -b "$RJ" -X POST -H 'Content-Type: application/json' -d '{"answer":"YES"}' $B/api/guardian-portal/renewals/$RQ1 | jq_ "d['data']['earlyDiscount']")" "True"
+check "the discount is waiting for next month's invoice" "$(M "SELECT CONCAT(status,'/',timesUsed) FROM DiscountAssignment WHERE studentId='$R1' AND discountTypeId='$T_EARLY'")" "ACTIVE/0"
+check "not continuing needs a reason" "$(api PATCH /api/renewals/$RQ2 '{"answer":"NO"}' | jq_ "d['success']")" "False"
+check "staff record 'not continuing (price)' from a phone call" "$(api PATCH /api/renewals/$RQ2 '{"answer":"NO","reason":"PRICE","note":"too expensive"}' | jq_ "d['success']")" "True"
+check "churn report counts the reason" "$(api GET /api/renewals | jq_ "d['data']['churn']['reasons'].get('PRICE', 0) >= 1")" "True"
+check "group details carry the answers for Advance cycle" "$(api GET /api/groups/$RN | jq_ "sorted(r['status'] for r in d['data']['renewals'])")" "['NO', 'YES']"
+curl -s -b "$RJ" -X POST -H 'Content-Type: application/json' -d '{"answer":"NO","reason":"TIME"}' $B/api/guardian-portal/renewals/$RQ1 >/dev/null
+check "parent changes to NO -> unused early discount taken back" "$(M "SELECT status FROM DiscountAssignment WHERE studentId='$R1' AND discountTypeId='$T_EARLY'")" "ENDED"
+rm -f "$RJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

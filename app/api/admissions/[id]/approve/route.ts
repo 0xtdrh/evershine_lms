@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth'
 import { hash } from '@node-rs/argon2'
 import { z } from 'zod'
 import { resolveBatchId } from '@/lib/batches/default-batch'
+import { groupSeats, waitForGroup } from '@/lib/groups/capacity'
 import { sendApprovalNotification } from '@/lib/notifications'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createYearEnrollmentForStudent } from '@/lib/academic/enrollment'
@@ -336,7 +337,10 @@ export async function POST(
           resolvedSectionId = sectionRow?.id
         }
       }
-      if (activeYear && resolvedSectionId) {
+      // Phase A: a full group puts the student on its waiting list instead.
+      if (resolvedSectionId && (await groupSeats(resolvedSectionId)).full) {
+        await waitForGroup(result.id, resolvedSectionId, session.user.id)
+      } else if (activeYear && resolvedSectionId) {
         await createYearEnrollmentForStudent({
           studentId: result.id,
           academicYearId: activeYear.id,

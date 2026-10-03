@@ -159,7 +159,12 @@ export async function afterPaymentRecorded(paymentId: string): Promise<void> {
     const { isAutoWhatsAppConfigured, sendWhatsAppText } = await import('@/lib/messaging/whatsapp')
     if (!isAutoWhatsAppConfigured()) return
     const r = await buildReceipt(paymentId)
-    if (r?.parent?.phone) await sendWhatsAppText(r.parent.phone, receiptText(r))
+    if (r?.parent?.phone) {
+      await sendWhatsAppText(r.parent.phone, receiptText(r))
+      // Phase A: also in the student's contact log.
+      const { logSystemContact } = await import('@/lib/contacts/contact-log')
+      await logSystemContact({ studentId: r.student.id, channel: 'WHATSAPP', reason: 'PAYMENT', summary: `Payment receipt ${r.receiptNumber} sent automatically on WhatsApp.` })
+    }
   } catch (err) {
     console.error('[RECEIPT_AUTO_SEND]', err)
   }

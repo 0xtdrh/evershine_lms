@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchApi } from '@/lib/api-client'
+import { fetchApi, ApiError } from '@/lib/api-client'
+import { FullGroupDialog } from '@/components/groups/FullGroupDialog'
 import { notify } from '@/lib/notify'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,7 +19,7 @@ import { Hourglass, Loader2, UserPlus, ListPlus, X } from 'lucide-react'
 // ── Types (match lib/waiting-list/build.ts) ─────────────────────────────────
 interface Ref { id: string; name: string }
 interface WStudent { id: string; name: string; registrationNumber: string; age: number | null; phone: string | null; campus: Ref; registeredAt: string }
-interface Wish { id: string; course: Ref; level: Ref | null; notes: string | null; createdAt: string; daysWaiting: number | null }
+interface Wish { id: string; course: Ref; level: Ref | null; notes: string | null; createdAt: string; daysWaiting: number | null; group?: { id: string; label: string } | null }
 interface WaitingData {
   byLevel: Array<{ course: Ref; level: Ref | null; wishes: number; finishedNext: number; upcomingStudents: number; upcomingGroups: number }>
   upcomingGroups: Array<{
@@ -36,7 +37,7 @@ interface WaitingData {
 }
 interface Course { id: string; name: string }
 interface Level { id: string; subjectId: string; name: string; order: number }
-interface GroupOption { id: string; label: string; campus: Ref; course: Ref | null; level: Ref | null; displayStatus: 'ACTIVE' | 'UPCOMING' | 'COMPLETED'; studentCount: number }
+interface GroupOption { id: string; label: string; campus: Ref; course: Ref | null; level: Ref | null; displayStatus: 'ACTIVE' | 'UPCOMING' | 'COMPLETED'; studentCount: number; maxStudents?: number | null }
 
 const days = (n: number | null) => (n == null ? '—' : n === 1 ? '1 day' : `${n} days`)
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-GB') : '—')
@@ -100,8 +101,15 @@ export default function WaitingListPage() {
       setGroupId('')
       refresh()
     },
-    onError: (err: Error) => notify.error(err.message || 'Could not add the student'),
+    onError: (err: Error) => {
+      if (err instanceof ApiError && err.code === 'GROUP_FULL') {
+        setFullTarget({ groupId, studentId: addTo!.student.id, message: err.message })
+        return
+      }
+      notify.error(err.message || 'Could not add the student')
+    },
   })
+  const [fullTarget, setFullTarget] = useState<{ groupId: string; studentId: string; message: string } | null>(null)
 
   // ── Add wish ──────────────────────────────────────────────────────────
   const [wishFor, setWishFor] = useState<WStudent | null>(null)
@@ -314,7 +322,7 @@ export default function WaitingListPage() {
                 <div key={w.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
                   <div className="min-w-0 space-y-1">
                     <StudentCell s={w.student} />
-                    <p className="text-xs"><strong>{courseLevel(w.course, w.level)}</strong> · {w.student.campus.name} · waiting {days(w.daysWaiting)}</p>
+                    <p className="text-xs"><strong>{courseLevel(w.course, w.level)}</strong> · {w.student.campus.name} · waiting {days(w.daysWaiting)}{w.group && <> · <span className="font-semibold text-amber-700">waiting for full group {w.group.label}</span></>}</p>
                     {w.notes && <p className="text-xs text-muted-foreground">{w.notes}</p>}
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -387,7 +395,7 @@ export default function WaitingListPage() {
               <SelectContent>
                 {groupChoices.map((g) => (
                   <SelectItem key={g.id} value={g.id}>
-                    {g.label} — {courseLevel(g.course, g.level)} ({g.displayStatus === 'UPCOMING' ? 'not started' : 'running'}, {g.studentCount})
+                    {g.label} — {courseLevel(g.course, g.level)} ({g.displayStatus === 'UPCOMING' ? 'not started' : 'running'}, {g.studentCount}{g.maxStudents ? `/${g.maxStudents}` : ''}{g.maxStudents && g.studentCount >= g.maxStudents ? ' · full' : ''})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -440,6 +448,7 @@ export default function WaitingListPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <FullGroupDialog target={fullTarget} onClose={() => setFullTarget(null)} onDone={() => { setAddTo(null); setGroupId(''); refresh() }} />
     </div>
   )
 }

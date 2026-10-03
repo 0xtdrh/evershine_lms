@@ -32,6 +32,7 @@ import { createWithInvoiceNumber } from '@/lib/fees/challan-number'
 import { invoiceDueDate, paymentAccountsSnapshot } from '@/lib/fees/payment-settings'
 import { computeForInvoice, recordInvoiceDiscounts } from '@/lib/discounts/engine'
 import { resolveCycleStart } from './cycle-start'
+import { ensureRenewalRequests } from './renewal'
 
 export interface SyncResult {
   checkedSessionsInCycle: number
@@ -153,6 +154,9 @@ export async function syncGroupProgress(classSectionId: string, _actingUserId: s
       }
     }
   }
+
+  // Phase A: close to the last session → ask parents "continuing next month?".
+  await ensureRenewalRequests(classSectionId)
 
   return {
     checkedSessionsInCycle: sessionsSoFar,

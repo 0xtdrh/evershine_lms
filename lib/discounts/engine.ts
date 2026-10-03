@@ -28,11 +28,14 @@ export interface DiscountRulesSettings {
   maxTotalPercent: number | null
   /** Sibling discount: every child except the first registered, or all of them. */
   siblingAppliesTo: 'SECOND_AND_LATER' | 'ALL'
+  /** Phase A: discount type given for confirming "continuing" before the last session (null = off). */
+  earlyRenewalTypeId: string | null
 }
 export const DISCOUNT_RULE_DEFAULTS: DiscountRulesSettings = {
   allowStacking: true,
   maxTotalPercent: 50,
   siblingAppliesTo: 'SECOND_AND_LATER',
+  earlyRenewalTypeId: null,
 }
 export const getDiscountRules = () => getSetting<DiscountRulesSettings>('discounts.rules', DISCOUNT_RULE_DEFAULTS)
 export const saveDiscountRules = (v: DiscountRulesSettings, userId: string) => setSetting('discounts.rules', v, userId)

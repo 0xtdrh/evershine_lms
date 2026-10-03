@@ -15,6 +15,8 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, errorResponse, createdResponse, paginatedResponse } from '@/lib/api-response'
 import { createStudentSchema, studentQuerySchema } from '@/lib/validation/student'
 import { resolveBatchId } from '@/lib/batches/default-batch'
+import { lastContactByStudent } from '@/lib/contacts/contact-log'
+import { groupSeats, waitForGroup } from '@/lib/groups/capacity'
 import { ensureActiveYearEnrollment } from '@/lib/students/enrollment-sync'
 import { linkGuardianToStudentDirect } from '@/lib/students/guardian-link'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
@@ -165,6 +167,12 @@ export async function GET(request: NextRequest) {
     }),
   ])
 
+  // Phase A: last contact with the parent (only for staff who can read the contact log).
+  const lastContact = checkPermission(session.user.role as Role, 'contact_logs', 'read')
+    ? await lastContactByStudent(students.map((s) => s.id))
+    : new Map<string, Date>()
+  const withContact = <T extends { id: string }>(s: T) => ({ ...s, lastContactAt: lastContact.get(s.id) ?? null })
+
   if (includeEnrollments && students.length > 0) {
     const activeYear = await getActiveAcademicYear()
     if (activeYear) {
@@ -188,14 +196,14 @@ export async function GET(request: NextRequest) {
         byStudent.set(e.studentId, list)
       }
       const enriched = students.map((s) => ({
-        ...s,
+        ...withContact(s),
         activeEnrollments: byStudent.get(s.id) ?? [],
       }))
       return paginatedResponse(enriched, { page, limit, total })
     }
   }
 
-  return paginatedResponse(students, { page, limit, total })
+  return paginatedResponse(students.map(withContact), { page, limit, total })
 }
 
 // ── POST /api/students ───────────────────────────────────────────────────────
@@ -399,7 +407,17 @@ export async function POST(request: NextRequest) {
   let enrollmentId: string | null = null
   let enrollmentNote: string | null = null
 
-  if (data.classSectionId) {
+  // Phase A: a full group puts the new student on its waiting list instead.
+  const chosenFull = data.classSectionId ? (await groupSeats(data.classSectionId)).full : false
+  if (data.classSectionId && chosenFull) {
+    try {
+      await waitForGroup(student.id, data.classSectionId, session.user.id)
+      enrollmentNote = 'The chosen group is full: the student was put on its waiting list.'
+    } catch (err) {
+      logStudentCreateFailure('enrollment', err)
+      enrollmentNote = 'The chosen group is full. Add the student to a group from the Groups or Waiting List page.'
+    }
+  } else if (data.classSectionId) {
     try {
       const result = await ensureActiveYearEnrollment({
         studentId: student.id,

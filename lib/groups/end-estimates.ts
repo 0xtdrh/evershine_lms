@@ -16,6 +16,8 @@
 import { prisma } from '@/lib/prisma'
 import { resolveCycleStart } from './cycle-start'
 import { cyclesInLevel, sessionsPerCycle } from './cycle-rules'
+import { cleanSlots, upcomingSessions } from './schedule-calendar'
+import { exceptionsForGroup } from './calendar-exceptions'
 
 export interface GroupForEstimate {
   id: string
@@ -44,22 +46,6 @@ function addMonths(d: Date, months: number) {
   const x = new Date(d)
   x.setUTCMonth(x.getUTCMonth() + months)
   return x
-}
-
-/** Date of the n-th upcoming session (n >= 1) on the weekly schedule, starting today. */
-function nthScheduledSession(slots: { dayOfWeek: number }[], n: number, from = new Date()): Date | null {
-  if (n <= 0 || slots.length === 0) return null
-  const cursor = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()))
-  let count = 0
-  for (let i = 0; i < 800; i++) {
-    const perDay = slots.filter((s) => s.dayOfWeek === cursor.getUTCDay()).length
-    if (perDay > 0) {
-      count += perDay
-      if (count >= n) return cursor
-    }
-    cursor.setUTCDate(cursor.getUTCDate() + 1)
-  }
-  return null
 }
 
 export async function estimateGroupEnds(group: GroupForEstimate): Promise<GroupEndEstimate> {
@@ -101,18 +87,23 @@ export async function estimateGroupEnds(group: GroupForEstimate): Promise<GroupE
 
   const remainingThisCycle = Math.max(0, per - done)
   const cyclesAfterThis = Math.max(0, totalCycles - group.currentCycleNumber)
-  const slots = Array.isArray(group.scheduleSlots)
-    ? (group.scheduleSlots as { dayOfWeek: number }[]).filter((s) => Number.isInteger(s?.dayOfWeek))
-    : []
+  const slots = cleanSlots(group.scheduleSlots)
 
   if (slots.length > 0) {
     const today = day(new Date())
-    const cycleEnd = remainingThisCycle > 0 ? nthScheduledSession(slots, remainingThisCycle) : null
-    const levelEnd = nthScheduledSession(slots, remainingThisCycle + cyclesAfterThis * per)
+    // Holidays postpone sessions, extra sessions count (phase A).
+    const { holidays, extras } = await exceptionsForGroup(group.id)
+    const nth = (n: number) => {
+      if (n <= 0) return null
+      const list = upcomingSessions({ slots, from: today, count: n, holidays, extras })
+      return list.length === n ? list[n - 1].date : null
+    }
+    const cycleEnd = remainingThisCycle > 0 ? nth(remainingThisCycle) : null
+    const levelEnd = nth(remainingThisCycle + cyclesAfterThis * per)
     return {
       ...base,
-      cycleEnd: cycleEnd ? day(cycleEnd) : today,
-      levelEnd: levelEnd ? day(levelEnd) : cycleEnd ? day(cycleEnd) : today,
+      cycleEnd: cycleEnd ?? today,
+      levelEnd: levelEnd ?? cycleEnd ?? today,
       basis: 'SCHEDULE',
     }
   }

@@ -373,6 +373,14 @@ model Campus {
   email         String
   principalName String
   isActive      Boolean  @default(true)
+  // Branch profile (phase A, 2026-10-03) — all optional
+  mapUrl        String?
+  whatsapp      String?
+  workingHours  String?  @db.Text
+  roomsCount    Int?
+  maxStudents   Int?
+  managerUserId String?
+  profileNotes  String?  @db.Text
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -1917,6 +1925,8 @@ model ClassSection {
   grade          Int?
   deliveryMode   ClassDeliveryMode @default(PHYSICAL)
   capacity       Int               @default(40)
+  /// Phase A: most students allowed in the group (null = no limit). Not the old template "capacity".
+  maxStudents    Int?
   curriculumMode CurriculumMode    @default(FIXED)
   isActive       Boolean           @default(true)
   createdAt      DateTime          @default(now())
@@ -3228,6 +3238,8 @@ model WaitingListEntry {
   status               WaitingListStatus @default(WAITING)
   placedClassSectionId String?
   placedAt             DateTime?
+  /// Phase A: waiting for this specific (full) group; null = any group of the course/level
+  classSectionId       String?
   createdById          String
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
@@ -3240,6 +3252,7 @@ model WaitingListEntry {
   @@index([subjectId, levelId, status])
   @@index([studentId, status])
   @@index([campusId, status])
+  @@index([classSectionId, status])
 }
 
 /// Failed sign-in attempts, used to slow down password guessing
@@ -3536,4 +3549,82 @@ model GroupTransfer {
   @@index([studentId])
   @@index([fromClassSectionId])
   @@index([toClassSectionId])
+}
+
+
+/// Phase A (docs/design-phase-a.md): every call / WhatsApp / meeting / visit with a parent,
+/// plus messages the system sent (channel SYSTEM / auto = true).
+model ContactLog {
+  id          String    @id @default(cuid())
+  studentId   String
+  guardianId  String?
+  campusId    String?
+  /// CALL | WHATSAPP | MEETING | VISIT | SYSTEM
+  channel     String    @db.VarChar(12)
+  /// OUT (we contacted them) | IN (they contacted us)
+  direction   String    @default("OUT") @db.VarChar(3)
+  /// PAYMENT | ABSENCE | BEHAVIOUR | LEVEL | RENEWAL | COMPLAINT | OTHER
+  reason      String    @db.VarChar(12)
+  summary     String    @db.Text
+  followUpAt  DateTime?
+  followUpDoneAt DateTime?
+  auto        Boolean   @default(false)
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([studentId, createdAt])
+  @@index([followUpAt, followUpDoneAt])
+  @@index([campusId])
+}
+
+/// Phase A: a day off for one branch (campusId) or the whole company (campusId null).
+/// Sessions falling on it are postponed to the next scheduled slot.
+model Holiday {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  campusId    String?
+  name        String
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+  @@index([campusId])
+}
+
+/// Phase A: a one-off extra session for a group (e.g. to make up a holiday).
+model ExtraSession {
+  id             String   @id @default(cuid())
+  classSectionId String
+  date           DateTime @db.Date
+  time           String   @db.VarChar(5)
+  reason         String?
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  @@unique([classSectionId, date])
+  @@index([date])
+}
+
+/// Phase A: "is your child continuing next month?" — one per student per group (= per cycle).
+model RenewalRequest {
+  id             String    @id @default(cuid())
+  classSectionId String
+  studentId      String
+  /// PENDING | YES | NO
+  status         String    @default("PENDING") @db.VarChar(8)
+  /// why not continuing: PRICE | TIME | LEVEL | TRAVEL | OTHER
+  reason         String?   @db.VarChar(10)
+  reasonNote     String?   @db.Text
+  /// PARENT | STAFF
+  respondedVia   String?   @db.VarChar(6)
+  respondedById  String?
+  respondedAt    DateTime?
+  /// early-renewal discount given (DiscountAssignment id)
+  discountAssignmentId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([classSectionId, studentId])
+  @@index([status])
+  @@index([studentId])
 }

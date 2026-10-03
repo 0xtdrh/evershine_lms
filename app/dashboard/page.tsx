@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { FollowUpsWidget } from '@/components/dashboard/FollowUpsWidget'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi, fetchPaginatedApi, PaginatedResult } from '@/lib/api-client'
@@ -236,6 +237,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <FollowUpsWidget />
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">

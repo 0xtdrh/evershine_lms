@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { sessionsPerCycle as cycleSessionCount } from '@/lib/groups/cycle-rules'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
+import { cleanSlots, upcomingSessions } from '@/lib/groups/schedule-calendar'
+import { exceptionsForGroup } from '@/lib/groups/calendar-exceptions'
 
 export interface ScheduledSession {
   classSectionId: string
@@ -122,29 +124,22 @@ export async function getRemainingCycleSessions(
   const remaining = Math.max(0, sessionsPerCycle - sessionsSoFar)
   if (remaining === 0) return []
 
-  const slots = Array.isArray(group.scheduleSlots) ? (group.scheduleSlots as { dayOfWeek: number; time: string }[]) : []
-  if (slots.length === 0) return []
+  const slots = cleanSlots(group.scheduleSlots)
+  // Holidays move sessions to the next slot; extra sessions count (phase A).
+  const { holidays, extras } = await exceptionsForGroup(classSectionId)
+  if (slots.length === 0 && extras.length === 0) return []
 
-  const results: RemainingSession[] = []
-  const cursor = new Date()
-  cursor.setHours(0, 0, 0, 0)
-  let sessionNum = sessionsSoFar + 1
-  let daysChecked = 0
-  while (results.length < remaining && daysChecked < 120) {
-    const dow = cursor.getDay()
-    const cursorDateStr = cursor.toISOString().slice(0, 10)
-    const matchingSlots = attendedDates.has(cursorDateStr)
-      ? []
-      : slots.filter((s) => s.dayOfWeek === dow).sort((a, b) => a.time.localeCompare(b.time))
-    for (const slot of matchingSlots) {
-      if (results.length >= remaining) break
-      results.push({ date: cursor.toISOString().slice(0, 10), time: slot.time, sessionNumber: sessionNum, totalSessions: sessionsPerCycle })
-      sessionNum++
-    }
-    cursor.setDate(cursor.getDate() + 1)
-    daysChecked++
-  }
-  return results
+  const cancelled = await prisma.cancelledSession.findMany({ where: { classSectionId }, select: { date: true } })
+  const next = upcomingSessions({
+    slots,
+    from: new Date().toISOString().slice(0, 10),
+    count: remaining,
+    holidays,
+    extras,
+    skipDates: [...attendedDates, ...cancelled.map((c) => c.date.toISOString().slice(0, 10))],
+    maxDays: 180,
+  })
+  return next.map((s, i) => ({ date: s.date, time: s.time, sessionNumber: sessionsSoFar + 1 + i, totalSessions: sessionsPerCycle }))
 }
 
 /**

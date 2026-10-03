@@ -45,7 +45,7 @@ interface Options {
   levels: { id: string; name: string; subjectId: string }[]
   groups: { id: string; name: string; detail: string }[]
 }
-interface Rules { allowStacking: boolean; maxTotalPercent: number | null; siblingAppliesTo: 'SECOND_AND_LATER' | 'ALL' }
+interface Rules { allowStacking: boolean; maxTotalPercent: number | null; siblingAppliesTo: 'SECOND_AND_LATER' | 'ALL'; earlyRenewalTypeId: string | null }
 interface Report { total: number; byType: Row[]; byGroup: Row[]; byStaff: Row[] }
 interface Row { name: string; amount: number; count: number }
 
@@ -433,6 +433,7 @@ function RulesTab({ canEdit }: { canEdit: boolean }) {
   const { data } = useQuery({ queryKey: ['discount-rules'], queryFn: () => fetchApi<Rules>('/api/discounts/rules') })
   const [r, setR] = useState<Rules | null>(null)
   useEffect(() => { if (data) setR(data) }, [data])
+  const { data: types } = useQuery({ queryKey: ['discount-types'], queryFn: () => fetchApi<TypeRow[]>('/api/discount-types') })
   const save = useMutation({
     mutationFn: (v: Rules) => fetchApi<Rules>('/api/discounts/rules', { method: 'PUT', body: JSON.stringify(v) }),
     onSuccess: () => { notify.success('Rules saved'); qc.invalidateQueries({ queryKey: ['discount-rules'] }) },
@@ -471,6 +472,20 @@ function RulesTab({ canEdit }: { canEdit: boolean }) {
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">Siblings = same parent phone, both in an active group now. Whether it is automatic is set on the sibling discount type.</p>
+        </div>
+        <div className="space-y-1 text-sm">
+          <Label>Early renewal discount</Label>
+          <Select value={r.earlyRenewalTypeId ?? 'none'} onValueChange={(v) => setR({ ...r, earlyRenewalTypeId: v === 'none' ? null : v })} disabled={!canEdit}>
+            <SelectTrigger className="max-w-md"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Off</SelectItem>
+              {(types ?? []).filter((t) => t.isActive).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            When a parent confirms “continuing next month” before the last session, the student gets this discount on next month&apos;s invoice.
+            Create the type in “Discount types” first (for example “Early renewal 5%”, duration “once”). Changing it later does not touch discounts already given.
+          </p>
         </div>
         {canEdit && <Button onClick={() => save.mutate(r)} disabled={save.isPending}>{save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save rules</Button>}
       </CardContent>

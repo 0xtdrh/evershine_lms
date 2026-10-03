@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildOccurrences, findConflicts, type GroupForCalendar } from '@/lib/groups/schedule-calendar'
+import { buildOccurrences, findConflicts, upcomingSessions, type GroupForCalendar } from '@/lib/groups/schedule-calendar'
 
 // 2026-10-04 is a Sunday. Group meets Sun 16:00 + Tue 18:00, 4 sessions per cycle.
 const g: GroupForCalendar = {
@@ -56,5 +56,28 @@ describe('groups calendar', () => {
       { teacherId: 't3', date: '2026-10-11', time: '16:00', status: 'SCHEDULED' as const },
     ]
     expect([...findConflicts(rows)].sort()).toEqual([0, 1])
+  })
+})
+
+describe('holidays and extra sessions (phase A)', () => {
+  it('a holiday moves the session to the next slot (number kept)', () => {
+    const o = buildOccurrences({ ...g, holidayDates: ['2026-10-11'] }, '2026-10-09', '2026-10-31', '2026-10-08')
+    expect(pick(o)).toEqual(['2026-10-11 16:00 HOLIDAY -', '2026-10-13 18:00 SCHEDULED 2', '2026-10-18 16:00 SCHEDULED 3', '2026-10-20 18:00 SCHEDULED 4 last'])
+  })
+  it('an extra session counts and brings the end forward', () => {
+    const o = buildOccurrences({ ...g, holidayDates: ['2026-10-11'], extras: [{ date: '2026-10-12', time: '17:00' }] }, '2026-10-09', '2026-10-31', '2026-10-08')
+    expect(pick(o)).toEqual(['2026-10-11 16:00 HOLIDAY -', '2026-10-12 17:00 SCHEDULED 2', '2026-10-13 18:00 SCHEDULED 3', '2026-10-18 16:00 SCHEDULED 4 last'])
+    expect(o.find((x) => x.date === '2026-10-12')?.isExtra).toBe(true)
+  })
+  it('upcomingSessions skips holidays, cancelled/held dates and adds extras', () => {
+    expect(upcomingSessions({ slots: g.slots, from: '2026-10-08', count: 3, holidays: ['2026-10-11'], extras: [{ date: '2026-10-09', time: '10:00' }], skipDates: ['2026-10-13'] }))
+      .toEqual([{ date: '2026-10-09', time: '10:00' }, { date: '2026-10-18', time: '16:00' }, { date: '2026-10-20', time: '18:00' }])
+  })
+  it('holidays are never a clash', () => {
+    const rows = [
+      { teacherId: 't1', date: '2026-10-11', time: '16:00', status: 'HOLIDAY' as const },
+      { teacherId: 't1', date: '2026-10-11', time: '16:00', status: 'SCHEDULED' as const },
+    ]
+    expect([...findConflicts(rows)]).toEqual([])
   })
 })

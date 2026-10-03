@@ -23,6 +23,7 @@ import { getTeacherByUserId } from '@/lib/academic/teacher-scope'
 import { pickGroupInstructorOffering } from '@/lib/groups/instructor'
 import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
 import { buildOccurrences, cleanSlots, findConflicts, toDay, type OccurrenceStatus } from '@/lib/groups/schedule-calendar'
+import { groupExceptions } from '@/lib/groups/calendar-exceptions'
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -107,6 +108,7 @@ export async function GET(request: NextRequest) {
       select: { teacherId: true, date: true, scope: true, classSectionId: true },
     }),
   ])
+  const exceptions = await groupExceptions(groups.map(({ g }) => ({ id: g.id, campusId: g.campusId })))
   const cancelledBy = new Map<string, { date: string; reason: string | null }[]>()
   for (const c of cancelledRows) cancelledBy.set(c.classSectionId, [...(cancelledBy.get(c.classSectionId) ?? []), { date: toDay(c.date), reason: c.reason }])
   const subOf = new Map(subs.map((s) => [`${s.classSectionId}|${toDay(s.date)}`, s]))
@@ -114,7 +116,7 @@ export async function GET(request: NextRequest) {
   const today = toDay(new Date())
   const sessions: {
     groupId: string; date: string; time: string; status: OccurrenceStatus; sessionNumber: number | null; totalSessions: number
-    isLastOfCycle: boolean; teacherId: string | null; teacherName: string | null
+    isLastOfCycle: boolean; isExtra?: boolean; teacherId: string | null; teacherName: string | null
     substitute: { name: string; confirmed: boolean } | null; teacherAbsent: boolean; cancelReason: string | null; conflict: boolean
   }[] = []
 
@@ -132,6 +134,8 @@ export async function GET(request: NextRequest) {
         sessionsPerCycle: g.level ? sessionsPerCycle(g.level) : 1,
         heldDates: cycleStart ? held.filter((d) => d >= cycleStart) : [],
         cancelledDates: cancelled.map((c) => c.date),
+        holidayDates: exceptions.get(g.id)?.holidays ?? [],
+        extras: exceptions.get(g.id)?.extras ?? [],
       },
       from, to, today
     )

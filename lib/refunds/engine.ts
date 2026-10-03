@@ -21,6 +21,7 @@ import { isUniqueConflictOn, nextInSequence } from '@/lib/ids/sequence'
 import { groupContext, type GroupContext } from '@/lib/discounts/engine'
 import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
 import { PaymentRefusedError, recordPayment } from '@/lib/fees/record-payment'
+import { notifySeatFreed } from '@/lib/groups/capacity'
 
 type Db = Prisma.TransactionClient | typeof prisma
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -244,9 +245,10 @@ export async function approveRefund(refundId: string, userId: string): Promise<R
           changes: { status: 'APPROVED', refundNumber, amount, method: r.method, invoiceId: r.invoiceId, withdrawStudent: r.withdrawStudent },
         },
       })
-      return { requestedById: r.requestedById, refundNumber }
+      return { requestedById: r.requestedById, refundNumber, withdrewFrom: r.withdrawStudent && inv.classSectionId ? inv.classSectionId : null }
     })
     if (out.requestedById !== userId) await notifyUser(out.requestedById, 'Refund approved', `Refund ${out.refundNumber} was approved`, refundId)
+    if (out.withdrewFrom) await notifySeatFreed(out.withdrewFrom)
     return { ok: true, refundId, status: 'APPROVED', refundNumber: out.refundNumber }
   } catch (err) {
     if (err instanceof RefundError) return { ok: false, status: err.status, message: err.message }

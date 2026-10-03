@@ -72,6 +72,11 @@ export type AcademicResource =
   | 'refunds'
   // Move a student to another group (docs/design-student-transfer.md)
   | 'group_transfers'
+  // Phase A (docs/design-phase-a.md)
+  | 'contact_logs'
+  | 'group_capacity'
+  | 'renewals'
+  | 'holidays'
 
 type Resource = AcademicResource
 
@@ -172,6 +177,10 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: ['read', 'approve'],
     refunds: ['create', 'read', 'approve'],
     group_transfers: ['create', 'read'],
+    contact_logs: ['create', 'read', 'update'],
+    group_capacity: ['approve'],
+    renewals: ['read', 'update'],
+    holidays: ['create', 'read', 'delete'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -220,6 +229,10 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: ['read', 'approve'],
     refunds: ['create', 'read', 'approve'],
     group_transfers: ['create', 'read'],
+    contact_logs: ['create', 'read', 'update'],
+    group_capacity: ['approve'],
+    renewals: ['read', 'update'],
+    holidays: ['create', 'read', 'delete'],
   },
   TEACHER: {
     students: ['read'],
@@ -269,6 +282,10 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: [],
     group_transfers: [],
+    contact_logs: [],
+    group_capacity: [],
+    renewals: [],
+    holidays: [],
   },
   STUDENT: {
     students: [],
@@ -317,6 +334,10 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: [],
     group_transfers: [],
+    contact_logs: [],
+    group_capacity: [],
+    renewals: [],
+    holidays: [],
   },
   PARENT: {
     students: [],
@@ -365,6 +386,10 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: [],
     group_transfers: [],
+    contact_logs: [],
+    group_capacity: [],
+    renewals: [],
+    holidays: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -415,6 +440,10 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: ['create', 'read'],
     group_transfers: ['read'],
+    contact_logs: ['create', 'read'],
+    group_capacity: [],
+    renewals: ['read'],
+    holidays: ['read'],
   },
   GUARDIAN: {
     students: [],
@@ -463,6 +492,10 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: [],
     group_transfers: [],
+    contact_logs: [],
+    group_capacity: [],
+    renewals: [],
+    holidays: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -515,6 +548,10 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: ['read'],
     group_transfers: ['create', 'read'],
+    contact_logs: ['create', 'read', 'update'],
+    group_capacity: [],
+    renewals: ['read', 'update'],
+    holidays: ['read'],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -568,6 +605,10 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: ['read', 'approve'],
     refunds: ['create', 'read', 'approve'],
     group_transfers: ['create', 'read'],
+    contact_logs: ['create', 'read', 'update'],
+    group_capacity: ['approve'],
+    renewals: ['read', 'update'],
+    holidays: ['create', 'read', 'delete'],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -619,6 +660,10 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: [],
     group_transfers: [],
+    contact_logs: [],
+    group_capacity: [],
+    renewals: [],
+    holidays: [],
   },
 }
 

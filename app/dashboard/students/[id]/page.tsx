@@ -23,6 +23,7 @@ import { StudentPortalAccessCard } from '@/components/students/StudentPortalAcce
 import { StudentDiscountsCard } from '@/components/students/StudentDiscountsCard'
 import { StudentWalletCard } from '@/components/students/StudentWalletCard'
 import { StudentTransferCard } from '@/components/students/StudentTransferCard'
+import { StudentContactLogCard } from '@/components/students/StudentContactLogCard'
 
 interface StudentDetail {
   id: string
@@ -419,6 +420,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               .filter((e) => e.status === 'ACTIVE' && e.classSection)
               .map((e) => ({ id: e.classSection.id, name: `${e.classSection.className} ${e.classSection.sectionName}`.trim() }))}
           />
+
+          <StudentContactLogCard studentId={student.id} />
 
           <StudentWalletCard studentId={student.id} />
 

@@ -23,6 +23,7 @@ import { nextRefundNumber, payFromWallet, resolveRefundRule } from '@/lib/refund
 import { sessionsPerCycle } from './cycle-rules'
 import { generateMissingCycleInvoices } from './generate-invoices'
 import { findGroupInstructorOffering } from './instructor'
+import { groupSeats, notifySeatFreed } from './capacity'
 import { computeTransferMoney, discountOptions, type DiscountAction, type TransferMoney } from './transfer-calc'
 
 type Db = Prisma.TransactionClient | typeof prisma
@@ -98,6 +99,8 @@ export interface TransferPreview {
   /** The student already has an invoice for the new group's current cycle (e.g. was in it before) */
   newGroupInvoice: { id: string; challanNumber: string; totalAmount: number; paidAmount: number } | null
   discounts: TransferDiscountItem[]
+  /** Seats in the new group (phase A capacity) */
+  toSeats: { max: number | null; count: number; free: number | null; full: boolean }
 }
 
 export type PreviewOutcome = { ok: true; preview: TransferPreview } | { ok: false; status: number; message: string }
@@ -210,6 +213,7 @@ export async function previewTransfer(studentId: string, fromId: string, toId: s
       invoice,
       newGroupInvoice: existingNew ? { id: existingNew.id, challanNumber: existingNew.challanNumber, totalAmount: Number(existingNew.totalAmount), paidAmount: Number(existingNew.paidAmount) } : null,
       discounts,
+      toSeats: await groupSeats(toId, db),
     },
   }
 }
@@ -223,6 +227,8 @@ export interface ExecuteTransferInput {
   discountDecisions: { assignmentId: string; action: DiscountAction }[]
   reason?: string | null
   userId: string
+  /** The new group is full: move anyway (the route checks group_capacity:approve) */
+  overrideCapacity?: boolean
 }
 
 export type ExecuteOutcome =
@@ -249,6 +255,9 @@ export async function executeTransfer(input: ExecuteTransferInput): Promise<Exec
   const pre = await previewTransfer(input.studentId, input.fromClassSectionId, input.toClassSectionId)
   if ('message' in pre) return { ok: false, status: pre.status, message: pre.message }
   const p = pre.preview
+  if (p.toSeats.full && !input.overrideCapacity) {
+    return { ok: false, status: 409, message: `The new group is full (${p.toSeats.count}/${p.toSeats.max}). Choose another group, or move anyway with the “Group capacity” permission.` }
+  }
 
   // Staff must have answered for every discount (the owner: "ask first").
   const decisions = new Map(input.discountDecisions.map((d) => [d.assignmentId, d.action]))
@@ -457,6 +466,7 @@ export async function executeTransfer(input: ExecuteTransferInput): Promise<Exec
   })
 
   await notifyTeachers(p, input.userId)
+  await notifySeatFreed(input.fromClassSectionId)
 
   return {
     ok: true,

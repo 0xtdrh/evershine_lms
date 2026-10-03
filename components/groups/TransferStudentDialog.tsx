@@ -40,6 +40,7 @@ interface Preview {
     cancelled: number
   } | null
   newGroupInvoice: { challanNumber: string; totalAmount: number; paidAmount: number } | null
+  toSeats: { max: number | null; count: number; free: number | null; full: boolean }
   discounts: {
     assignmentId: string
     typeName: string
@@ -87,9 +88,10 @@ export function TransferStudentDialog({
   const [creditTo, setCreditTo] = useState<'NEW_INVOICE' | 'WALLET' | ''>('')
   const [decisions, setDecisions] = useState<Record<string, Action>>({})
   const [reason, setReason] = useState('')
+  const [overrideCapacity, setOverrideCapacity] = useState(false)
 
   useEffect(() => {
-    if (!open) { setToId(''); setCreditTo(''); setDecisions({}); setReason('') }
+    if (!open) { setToId(''); setCreditTo(''); setDecisions({}); setReason(''); setOverrideCapacity(false) }
   }, [open])
 
   const { data: groups, isLoading: groupsLoading } = useQuery({
@@ -120,6 +122,7 @@ export function TransferStudentDialog({
           creditTo: hasCredit ? creditTo : 'WALLET',
           discountDecisions: Object.entries(decisions).map(([assignmentId, action]) => ({ assignmentId, action })),
           reason: reason.trim() || null,
+          overrideCapacity: overrideCapacity || undefined,
         }),
       }),
     onSuccess: (r) => {
@@ -137,7 +140,15 @@ export function TransferStudentDialog({
     onError: (err: Error) => notify.error(err.message || 'Could not move the student'),
   })
 
-  const ready = !!preview && (!hasCredit || !!creditTo) && preview.discounts.every((d) => decisions[d.assignmentId])
+  const { data: perms } = useQuery({
+    queryKey: ['my-permissions-transfer'],
+    queryFn: () => fetchApi<{ permissions: Record<string, string[]> }>('/api/me/permissions'),
+    staleTime: 60_000,
+    enabled: open,
+  })
+  const canOverride = !!perms?.permissions?.group_capacity?.includes('approve')
+  const full = !!preview?.toSeats?.full
+  const ready = !!preview && (!hasCredit || !!creditTo) && preview.discounts.every((d) => decisions[d.assignmentId]) && (!full || overrideCapacity)
   const inv = preview?.invoice
 
   return (
@@ -175,6 +186,16 @@ export function TransferStudentDialog({
                 <p className="text-xs text-slate-500">
                   {preview.to.course?.name} · {preview.to.level?.name}{preview.to.teacher ? ` · ${preview.to.teacher.name}` : ''} · price {money(preview.to.price)}
                 </p>
+                {preview.toSeats && (
+                  <p className={`mt-1 text-xs ${full ? 'font-semibold text-rose-700' : 'text-slate-500'}`}>
+                    {preview.toSeats.count}{preview.toSeats.max != null ? `/${preview.toSeats.max}` : ''} students{full ? ' · this group is full' : preview.toSeats.free != null ? ` · ${preview.toSeats.free} free` : ''}
+                  </p>
+                )}
+                {full && (canOverride ? (
+                  <label className="mt-1 flex items-center gap-2 text-xs text-rose-700"><input type="checkbox" checked={overrideCapacity} onChange={(e) => setOverrideCapacity(e.target.checked)} /> Move anyway (over the limit)</label>
+                ) : (
+                  <p className="mt-1 text-xs text-rose-700">Choose another group, or ask someone with the “Group capacity” permission.</p>
+                ))}
                 {preview.newGroupInvoice && (
                   <p className="mt-1 text-xs text-amber-700">The student already has invoice {preview.newGroupInvoice.challanNumber} in the new group; it is used instead of a new one.</p>
                 )}

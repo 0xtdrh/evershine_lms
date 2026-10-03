@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AcademyLogo } from '@/components/AcademyLogo'
 import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Printer } from 'lucide-react'
 
-type Status = 'HELD' | 'MISSING' | 'SCHEDULED' | 'NOT_STARTED' | 'CANCELLED'
+type Status = 'HELD' | 'MISSING' | 'SCHEDULED' | 'NOT_STARTED' | 'CANCELLED' | 'HOLIDAY'
 interface Group {
   id: string
   label: string
@@ -31,6 +31,7 @@ interface Session {
   sessionNumber: number | null
   totalSessions: number
   isLastOfCycle: boolean
+  isExtra?: boolean
   teacherId: string | null
   teacherName: string | null
   substitute: { name: string; confirmed: boolean } | null
@@ -62,6 +63,7 @@ const STATUS_STYLE: Record<Status, string> = {
   NOT_STARTED: 'border-dashed border-slate-300 bg-slate-50 text-slate-500',
   MISSING: 'border-amber-300 bg-amber-50 text-amber-900',
   CANCELLED: 'border-slate-200 bg-slate-100 text-slate-400 line-through',
+  HOLIDAY: 'border-sky-200 bg-sky-50 text-sky-700',
 }
 
 export default function GroupsSchedulePage() {
@@ -188,6 +190,7 @@ export default function GroupsSchedulePage() {
         <Legend className={STATUS_STYLE.NOT_STARTED} text="Group not started yet" />
         <Legend className={STATUS_STYLE.MISSING} text={`No attendance recorded${counts.missing ? ` (${counts.missing})` : ''}`} />
         <Legend className={STATUS_STYLE.CANCELLED} text="Cancelled" />
+        <Legend className={STATUS_STYLE.HOLIDAY} text="Holiday (session moved to the next day)" />
         <Legend className="border-rose-400 bg-rose-50 text-rose-700 ring-1 ring-rose-400" text={`Instructor clash${counts.clashes ? ` (${counts.clashes})` : ''}`} />
         <Legend className="border-indigo-600 bg-indigo-600 text-white" text={`Last session of the month${counts.last ? ` (${counts.last})` : ''}`} />
       </div>
@@ -250,6 +253,8 @@ function SessionCard({ s, g, compact, isTeacher }: { s: Session; g: Group | unde
       {s.substitute && <span className="text-violet-700">Sub: {s.substitute.name}{s.substitute.confirmed ? '' : ' (waiting)'}</span>}
       {s.teacherAbsent && !s.substitute?.confirmed && s.status !== 'CANCELLED' && <span className="text-rose-600">Instructor absent</span>}
       {s.status === 'CANCELLED' && s.cancelReason && <span className="inline-block">{s.cancelReason}</span>}
+      {s.status === 'HOLIDAY' && <span className="font-semibold">Holiday · moved</span>}
+      {s.isExtra && <span className="font-semibold text-indigo-700">Extra session</span>}
     </>
   )
   if (compact) {

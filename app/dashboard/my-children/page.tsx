@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { ParentRenewalsCard } from '@/components/portal/ParentRenewalsCard'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -240,6 +241,8 @@ export default function MyChildrenPage() {
           Monitor academic progress, attendance, results, and fee status for your linked students.
         </p>
       </div>
+
+      <ParentRenewalsCard />
 
       {loadingChildren ? (
         <div className="flex items-center gap-2 text-gray-500">

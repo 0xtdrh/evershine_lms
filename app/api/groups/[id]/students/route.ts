@@ -13,12 +13,20 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { generateMissingCycleInvoices } from '@/lib/groups/generate-invoices'
-import { errors, createdResponse } from '@/lib/api-response'
+import { errors, createdResponse, errorResponse } from '@/lib/api-response'
+import { checkPermission } from '@/lib/rbac'
+import { groupSeats, queuePosition, waitForGroup } from '@/lib/groups/capacity'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import type { Role } from '@prisma/client'
 
-const bodySchema = z.object({ studentId: z.string().min(1) })
+const bodySchema = z.object({
+  studentId: z.string().min(1),
+  /** Group is full: add anyway (needs group_capacity:approve) */
+  override: z.boolean().optional(),
+  /** Group is full: put the student on this group's waiting list instead */
+  waitlist: z.boolean().optional(),
+})
 
 export async function POST(
   request: NextRequest,
@@ -50,9 +58,25 @@ export async function POST(
     where: { studentId: parsed.data.studentId, classSectionId: id },
   })
 
+  if (existing?.status === 'ACTIVE') return errors.conflict('This student is already in the group')
+
+  // Capacity (phase A): a full group refuses unless "add anyway" (permission) or "wait".
+  const seats = await groupSeats(id)
+  if (seats.full) {
+    if (parsed.data.waitlist) {
+      const w = await waitForGroup(parsed.data.studentId, id, session.user.id)
+      return createdResponse({ waitlisted: true, entryId: w.id, position: await queuePosition(w.id) }, 'The group is full: the student is on its waiting list')
+    }
+    if (!parsed.data.override) {
+      return errorResponse('GROUP_FULL', `This group is full (${seats.count}/${seats.max}). Put the student on its waiting list, choose another group, or add anyway.`, 409)
+    }
+    if (!checkPermission(role, 'group_capacity', 'approve')) {
+      return errors.forbidden('Only someone with the “Group capacity” permission can add a student to a full group')
+    }
+  }
+
   let enrollment
   if (existing) {
-    if (existing.status === 'ACTIVE') return errors.conflict('This student is already in the group')
     enrollment = await prisma.studentEnrollment.update({
       where: { id: existing.id },
       data: { status: 'ACTIVE', withdrawalReason: null },

@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
       return t ? { id: t.id, name: `${t.firstName} ${t.lastName}` } : null
     })(),
     studentCount: g._count.enrollments,
+    maxStudents: g.maxStudents,
     startDate: g.startDate,
     expectedEndDate: g.expectedEndDate,
     scheduleSlots: g.scheduleSlots,
@@ -101,6 +102,7 @@ const createGroupSchema = z.object({
   requireFullPaymentToStart: z.boolean().optional(),
   partialPaymentCounts: z.boolean().optional(),
   installmentsAllowed: z.boolean().optional(),
+  maxStudents: z.number().int().min(1).max(500).nullable().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -164,6 +166,7 @@ export async function POST(request: NextRequest) {
       requireFullPaymentToStart: parsed.data.requireFullPaymentToStart ?? false,
       partialPaymentCounts: parsed.data.partialPaymentCounts ?? false,
       installmentsAllowed: parsed.data.installmentsAllowed ?? false,
+      maxStudents: parsed.data.maxStudents ?? null,
     },
   })
 

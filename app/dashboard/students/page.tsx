@@ -34,6 +34,8 @@ interface ActiveEnrollment {
 
 interface Student {
   id: string
+  /** Phase A: last contact with the parent (null = never / no permission) */
+  lastContactAt?: string | null
   firstName: string
   lastName: string
   fatherName: string
@@ -455,6 +457,7 @@ export default function StudentsListPage() {
                 <TableHead>Campus</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Fee</TableHead>
+                <TableHead>Last contact</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -463,7 +466,7 @@ export default function StudentsListPage() {
                 <TableSkeleton />
               ) : students.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-64">
+                  <TableCell colSpan={8} className="h-64">
                     <EmptyState 
                       icon={UserX}
                       title="No students found"
@@ -505,6 +508,12 @@ export default function StudentsListPage() {
                       <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${FEE_STATUS_STYLES[student.feeStatus] ?? ''}`}>
                         {student.feeStatus.replace('_', ' ')}
                       </span>
+                    </TableCell>
+                    <TableCell className="text-xs text-gray-500">
+                      {student.lastContactAt ? (() => {
+                        const days = Math.floor((Date.now() - new Date(student.lastContactAt).getTime()) / 86_400_000)
+                        return <span className={days > 30 ? 'text-amber-700' : ''}>{days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`}</span>
+                      })() : <span className="text-gray-300">never</span>}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">

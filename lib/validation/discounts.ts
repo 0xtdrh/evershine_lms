@@ -58,4 +58,6 @@ export const discountRulesSchema = z.object({
   allowStacking: z.boolean(),
   maxTotalPercent: z.number().min(0).max(100).nullable(),
   siblingAppliesTo: z.enum(['SECOND_AND_LATER', 'ALL']),
+  /** Phase A: discount type given when a parent confirms "continuing" early (null = off; missing = unchanged) */
+  earlyRenewalTypeId: z.string().min(1).nullable().optional(),
 })

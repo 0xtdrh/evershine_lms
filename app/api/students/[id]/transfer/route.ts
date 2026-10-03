@@ -10,6 +10,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { executeTransfer, listTransfers, previewTransfer, type ExecuteTransferInput } from '@/lib/groups/transfer'
@@ -46,6 +47,7 @@ const bodySchema = z.object({
   creditTo: z.enum(['NEW_INVOICE', 'WALLET']),
   discountDecisions: z.array(z.object({ assignmentId: z.string().min(1), action: z.enum(['MOVE', 'KEEP', 'END']) })).default([]),
   reason: z.string().trim().max(500).optional().nullable(),
+  overrideCapacity: z.boolean().optional(),
 })
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -68,6 +70,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (await outsideCampus(role, session.user.campusId, [d.fromClassSectionId, d.toClassSectionId])) {
     return errors.forbidden('That group is in another branch')
+  }
+  if (d.overrideCapacity && !checkPermission(role, 'group_capacity', 'approve')) {
+    return errors.forbidden('Only someone with the “Group capacity” permission can move a student into a full group')
   }
   const r = await executeTransfer({ ...(d as Omit<ExecuteTransferInput, 'studentId' | 'userId'>), studentId: id, userId: session.user.id })
   if ('message' in r) return errorFor(r.status, r.message)

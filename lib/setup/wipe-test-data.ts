@@ -43,6 +43,8 @@ function filteredDeletes(mainId: string): Record<string, string> {
     User: `role <> 'SUPER_ADMIN'`,
     Admin: `userId NOT IN (SELECT id FROM \`User\` WHERE role = 'SUPER_ADMIN')`,
     Campus: `id <> '${mainId}'`,
+    // Holidays are settings: keep company-wide ones and the main branch's (phase A).
+    Holiday: `campusId IS NOT NULL AND campusId <> '${mainId}'`,
     Batch: `NOT (name = 'General' AND campusId = '${mainId}')`,
     Track: `name NOT IN (${NOVA_TRACKS})`,
     AcademicSubject: `code NOT LIKE 'NOVA-%'`,

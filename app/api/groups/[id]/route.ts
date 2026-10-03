@@ -10,6 +10,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { resolveShiftId } from '@/lib/shifts/default-shift'
+import { groupSeats, notifySeatFreed } from '@/lib/groups/capacity'
 import { prisma } from '@/lib/prisma'
 import { estimateGroupEnds } from '@/lib/groups/end-estimates'
 import { errors, successResponse } from '@/lib/api-response'
@@ -86,8 +87,30 @@ export async function GET(
   const instructor = instructorOffering?.teacher ?? null
   const { subjectOfferings: _offerings, ...groupFields } = group
 
+  // Phase A: seats + this group's waiting queue, renewal answers, extra sessions.
+  const [seats, waitingRows, renewals, extraSessions] = await Promise.all([
+    groupSeats(id),
+    prisma.waitingListEntry.findMany({
+      where: { classSectionId: id, status: 'WAITING' },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, createdAt: true, notes: true, student: { select: { id: true, firstName: true, lastName: true, registrationNumber: true } } },
+    }),
+    prisma.renewalRequest.findMany({ where: { classSectionId: id }, select: { studentId: true, status: true, reason: true, respondedVia: true, respondedAt: true } }),
+    prisma.extraSession.findMany({ where: { classSectionId: id }, orderBy: { date: 'asc' }, select: { id: true, date: true, time: true, reason: true } }),
+  ])
+
   return successResponse({
     ...groupFields,
+    seats,
+    waiting: waitingRows.map((w, i) => ({
+      id: w.id,
+      position: i + 1,
+      since: w.createdAt,
+      notes: w.notes,
+      student: { id: w.student.id, name: `${w.student.firstName} ${w.student.lastName}`, registrationNumber: w.student.registrationNumber },
+    })),
+    renewals,
+    extraSessions: extraSessions.map((x) => ({ ...x, date: x.date.toISOString().slice(0, 10) })),
     teacher: instructor
       ? {
           id: instructor.id,
@@ -122,6 +145,8 @@ const updateGroupSchema = z.object({
   requireFullPaymentToStart: z.boolean().optional(),
   partialPaymentCounts: z.boolean().optional(),
   installmentsAllowed: z.boolean().optional(),
+  /** Phase A: most students allowed (null = no limit) */
+  maxStudents: z.number().int().min(1).max(500).nullable().optional(),
 })
 
 export async function PATCH(
@@ -189,11 +214,13 @@ export async function PATCH(
         completedAt: parsed.data.status === 'COMPLETED' ? new Date() : null,
       }),
       ...(parsed.data.requireFullPaymentToStart !== undefined && { requireFullPaymentToStart: parsed.data.requireFullPaymentToStart }),
+      ...(parsed.data.maxStudents !== undefined && { maxStudents: parsed.data.maxStudents }),
       ...(parsed.data.partialPaymentCounts !== undefined && { partialPaymentCounts: parsed.data.partialPaymentCounts }),
       ...(parsed.data.installmentsAllowed !== undefined && { installmentsAllowed: parsed.data.installmentsAllowed }),
     },
   })
 
+  if (parsed.data.maxStudents !== undefined) await notifySeatFreed(id)
   return successResponse(group)
 }
 

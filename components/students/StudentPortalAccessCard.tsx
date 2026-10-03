@@ -159,7 +159,19 @@ export function StudentPortalAccessCard({ studentId, studentName, guardians, has
                 </Button>
                 {issued.whatsappTo ? (
                   <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-                    <a href={`https://wa.me/${issued.whatsappTo}?text=${encodeURIComponent(issued.message)}`} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={`https://wa.me/${issued.whatsappTo}?text=${encodeURIComponent(issued.message)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => {
+                        // Phase A: contact log entry — never the password itself.
+                        fetch('/api/contact-logs', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ studentId, channel: 'WHATSAPP', reason: 'OTHER', summary: `Portal sign-in details sent on WhatsApp (${issued.target === 'guardian' ? 'parent' : 'student'} account).`, auto: true }),
+                        }).catch(() => undefined)
+                      }}
+                    >
                       <MessageCircle className="mr-2 h-4 w-4" /> Send on WhatsApp
                     </a>
                   </Button>

@@ -83,7 +83,7 @@ export async function buildWaitingList(opts: { campusId?: string; subjectId?: st
       waitingListEntries: {
         where: { status: 'WAITING' },
         select: {
-          id: true, notes: true, createdAt: true, campusId: true,
+          id: true, notes: true, createdAt: true, campusId: true, classSectionId: true,
           subject: { select: { id: true, name: true } },
           level: { select: { id: true, name: true } },
         },
@@ -91,6 +91,13 @@ export async function buildWaitingList(opts: { campusId?: string; subjectId?: st
     },
     orderBy: { admissionDate: 'asc' },
   })
+
+  // Phase A: labels of the groups some students wait for (full groups).
+  const waitedGroupIds = [...new Set(students.flatMap((s) => s.waitingListEntries.map((e) => e.classSectionId)).filter((x): x is string => !!x))]
+  const waitedGroups = waitedGroupIds.length
+    ? await prisma.classSection.findMany({ where: { id: { in: waitedGroupIds } }, select: { id: true, className: true, sectionName: true } })
+    : []
+  const groupLabels = new Map(waitedGroups.map((g) => [g.id, { id: g.id, label: `${g.className} ${g.sectionName}`.trim() }]))
 
   const now = Date.now()
   const shapeStudent = (s: (typeof students)[number]): WaitingStudent => ({
@@ -108,6 +115,8 @@ export async function buildWaitingList(opts: { campusId?: string; subjectId?: st
       course: e.subject,
       level: e.level,
       notes: e.notes,
+      /** Phase A: waiting for this specific (full) group */
+      group: e.classSectionId ? groupLabels.get(e.classSectionId) ?? null : null,
       createdAt: e.createdAt.toISOString(),
       daysWaiting: daysSince(e.createdAt),
     }))

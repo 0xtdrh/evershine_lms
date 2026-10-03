@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const db = vi.hoisted(() => ({
   enrollmentAttendanceRecord: { findMany: vi.fn(), findFirst: vi.fn() },
+  // holidays / extra sessions lookup (phase A): no group row -> no exceptions
+  classSection: { findUnique: vi.fn(async () => null) },
 }))
 vi.mock('@/lib/prisma', () => ({ prisma: db }))
 
