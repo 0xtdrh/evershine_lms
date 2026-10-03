@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { notifyFamilies } from '@/lib/notifications/events'
 import { errors, successResponse } from '@/lib/api-response'
 import { checkPermission } from '@/lib/rbac'
 import { getTeacherByUserId, teacherCanAccessClassSection } from '@/lib/academic/teacher-scope'
@@ -205,6 +206,23 @@ export async function POST(request: NextRequest) {
         },
       })
       certificateIssued = true
+    }
+  }
+
+  // Phase C: tell the family once, when the result is final for the first time.
+  if (passed != null && existing?.passed == null) {
+    const subjectName = (await prisma.academicSubject.findUnique({ where: { id: data.subjectId }, select: { name: true } }))?.name ?? 'the course'
+    await notifyFamilies([enrollment.studentId], 'RESULT_PUBLISHED', (s) => ({
+      title: 'Result ready',
+      message: `${s.firstName}'s result for ${subjectName} is ready in the portal.`,
+      relatedId: result.id,
+    }), { includeStudent: true })
+    if (isLevelActuallyComplete) {
+      await notifyFamilies([enrollment.studentId], 'REPORT_READY', (s) => ({
+        title: 'Level report ready',
+        message: `${s.firstName}'s level report for ${subjectName} is ready in the portal (Reports).`,
+        relatedId: enrollment.classSectionId,
+      }))
     }
   }
 

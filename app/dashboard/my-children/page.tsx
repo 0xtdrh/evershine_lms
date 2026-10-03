@@ -3,6 +3,11 @@
 import { useState, useRef } from 'react'
 import { ParentRenewalsCard } from '@/components/portal/ParentRenewalsCard'
 import { ParentWalletCard } from '@/components/portal/ParentWalletCard'
+import { ParentRatingsCard } from '@/components/portal/ParentRatingsCard'
+import { ChildExcusesCard } from '@/components/portal/ChildExcusesCard'
+import { AttendanceTimeline } from '@/components/attendance/AttendanceTimeline'
+import { StudentReportsList } from '@/components/reports/StudentReportsList'
+import { BirthdayBanner } from '@/components/birthdays/BirthdayBanner'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -169,11 +174,6 @@ export default function MyChildrenPage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const [showLeaveForm, setShowLeaveForm] = useState(false)
-  const [leaveType, setLeaveType] = useState('CASUAL')
-  const [leaveStart, setLeaveStart] = useState('')
-  const [leaveEnd, setLeaveEnd] = useState('')
-  const [leaveReason, setLeaveReason] = useState('')
   
   // Payment Proof Modal State
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
@@ -190,11 +190,7 @@ export default function MyChildrenPage() {
 
   const childId = selectedChildId || children?.[0]?.id || ''
 
-  const { data: childLeaves, isLoading: loadingChildLeaves } = useQuery({
-    queryKey: ['guardian-child-leaves', childId],
-    queryFn: () => fetchApi<ChildLeave[]>(`/api/guardian-portal/children/${childId}/leaves`),
-    enabled: !!childId && allowed,
-  })
+
 
   const { data: academic, isLoading: loadingAcademic } = useQuery({
     queryKey: ['guardian-child-academic', childId],
@@ -202,24 +198,6 @@ export default function MyChildrenPage() {
     enabled: !!childId && allowed,
   })
 
-
-  const submitLeave = useMutation({
-    mutationFn: (payload: { leaveType: string; startDate: string; endDate: string; reason: string }) =>
-      fetchApi(`/api/guardian-portal/children/${childId}/leaves`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }),
-    onSuccess: () => {
-      notify.success('Leave application submitted successfully!')
-      setShowLeaveForm(false)
-      setLeaveType('CASUAL')
-      setLeaveStart('')
-      setLeaveEnd('')
-      setLeaveReason('')
-      qc.invalidateQueries({ queryKey: ['guardian-child-leaves', childId] })
-    },
-    onError: (e: Error) => notify.error(e.message),
-  })
 
   if (status === 'loading') return null
   if (!allowed) {
@@ -243,6 +221,8 @@ export default function MyChildrenPage() {
         </p>
       </div>
 
+      <BirthdayBanner />
+      <ParentRatingsCard />
       <ParentRenewalsCard />
       <ParentWalletCard />
 
@@ -306,7 +286,8 @@ export default function MyChildrenPage() {
                 <TabsTrigger value="results">Results</TabsTrigger>
                 <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
                 <TabsTrigger value="fees">Fees</TabsTrigger>
-                <TabsTrigger value="leaves">Leaves</TabsTrigger>
+                <TabsTrigger value="excuses">Absence excuse</TabsTrigger>
+                <TabsTrigger value="reports">Reports</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="mt-4 space-y-4">
@@ -438,46 +419,7 @@ export default function MyChildrenPage() {
               </TabsContent>
 
               <TabsContent value="attendance" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <ClipboardCheck className="w-5 h-5 text-green-600" />
-                      Attendance
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-4 gap-3 mb-4 text-center text-sm">
-                      <div className="bg-green-50 rounded p-2">
-                        <p className="font-bold text-green-700">{academic.attendance.summary.present}</p>
-                        <p className="text-xs">Present</p>
-                      </div>
-                      <div className="bg-red-50 rounded p-2">
-                        <p className="font-bold text-red-700">{academic.attendance.summary.absent}</p>
-                        <p className="text-xs">Absent</p>
-                      </div>
-                      <div className="bg-yellow-50 rounded p-2">
-                        <p className="font-bold text-yellow-700">{academic.attendance.summary.late}</p>
-                        <p className="text-xs">Late</p>
-                      </div>
-                      <div className="bg-indigo-50 rounded p-2">
-                        <p className="font-bold text-indigo-700">
-                          {academic.attendance.summary.attendancePct != null
-                            ? `${academic.attendance.summary.attendancePct}%`
-                            : '—'}
-                        </p>
-                        <p className="text-xs">Rate</p>
-                      </div>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto text-sm">
-                      {academic.attendance.records.map((r, i) => (
-                        <div key={i} className="flex justify-between py-1 border-b">
-                          <span>{new Date(r.attendanceDate).toLocaleDateString('en-GB')}</span>
-                          <Badge variant="outline">{r.status}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                <AttendanceTimeline studentId={childId} />
               </TabsContent>
 
               <TabsContent value="results" className="mt-4 space-y-4">
@@ -782,134 +724,12 @@ export default function MyChildrenPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
-              <TabsContent value="leaves" className="mt-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-rose-600" /> Leave Requests
-                      </CardTitle>
-                      <CardDescription>
-                        Track and apply for leave requests for your child.
-                      </CardDescription>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => setShowLeaveForm(!showLeaveForm)}
-                      className="gap-1.5 bg-rose-600 hover:bg-rose-700"
-                    >
-                      <Plus className="w-4 h-4" /> Apply for Leave
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Leave Application Form */}
-                    {showLeaveForm && (
-                      <div className="rounded-2xl border-2 border-rose-200 bg-rose-50/50 p-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                        <h4 className="font-bold text-rose-800 text-sm">New Leave Application</h4>
-                        <div className="grid sm:grid-cols-3 gap-3">
-                          <div>
-                            <label className="text-xs font-semibold text-gray-600 block mb-1">Leave Type</label>
-                            <select
-                              value={leaveType}
-                              onChange={(e) => setLeaveType(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-rose-400 focus:border-rose-400"
-                            >
-                              <option value="CASUAL">Casual Leave</option>
-                              <option value="SICK">Sick Leave</option>
-                              <option value="EMERGENCY">Emergency</option>
-                              <option value="OTHER">Other</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-xs font-semibold text-gray-600 block mb-1">Start Date</label>
-                            <input
-                              type="date"
-                              value={leaveStart}
-                              onChange={(e) => setLeaveStart(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-rose-400 focus:border-rose-400"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs font-semibold text-gray-600 block mb-1">End Date</label>
-                            <input
-                              type="date"
-                              value={leaveEnd}
-                              onChange={(e) => setLeaveEnd(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-rose-400 focus:border-rose-400"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs font-semibold text-gray-600 block mb-1">Reason</label>
-                          <textarea
-                            rows={3}
-                            value={leaveReason}
-                            onChange={(e) => setLeaveReason(e.target.value)}
-                            placeholder="Please explain the reason for leave..."
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-rose-400 focus:border-rose-400"
-                          />
-                        </div>
-                        <div className="flex gap-2 justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowLeaveForm(false)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="gap-1.5 bg-rose-600 hover:bg-rose-700"
-                            disabled={submitLeave.isPending || !leaveStart || !leaveEnd || !leaveReason.trim()}
-                            onClick={() => submitLeave.mutate({
-                              leaveType,
-                              startDate: leaveStart,
-                              endDate: leaveEnd,
-                              reason: leaveReason.trim(),
-                            })}
-                          >
-                            {submitLeave.isPending ? (
-                              <><Loader2 className="w-3 h-3 animate-spin" /> Submitting...</>
-                            ) : (
-                              <><Send className="w-3 h-3" /> Submit Application</>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+              <TabsContent value="excuses" className="mt-4">
+                <ChildExcusesCard studentId={childId} childName={`${academic.student?.firstName ?? ''}`} />
+              </TabsContent>
 
-                    {/* Leave History */}
-                    {loadingChildLeaves ? (
-                      <div className="text-sm text-gray-500">Loading leave history…</div>
-                    ) : !childLeaves || childLeaves.length === 0 ? (
-                      <div className="text-sm text-gray-500 py-4 text-center">
-                        No leave requests found. Click &quot;Apply for Leave&quot; to submit a new request.
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {childLeaves.map((leave) => (
-                          <div key={leave.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                              <div>
-                                <p className="font-semibold text-slate-900">{new Date(leave.startDate).toLocaleDateString('en-GB')} — {new Date(leave.endDate).toLocaleDateString('en-GB')}</p>
-                                <p className="text-sm text-slate-600">{leave.reason}</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant={leave.status === 'APPROVED' ? 'default' : leave.status === 'REJECTED' ? 'destructive' : 'outline'}>
-                                  {leave.status}
-                                </Badge>
-                                <span className="text-xs text-slate-500">Applied {new Date(leave.createdAt).toLocaleDateString('en-GB')}</span>
-                              </div>
-                            </div>
-                            {leave.remarks && (
-                              <p className="mt-3 text-sm text-slate-500">Remarks: {leave.remarks}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+              <TabsContent value="reports" className="mt-4">
+                <StudentReportsList studentId={childId} />
               </TabsContent>
             </Tabs>
           ) : null}

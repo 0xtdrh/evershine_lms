@@ -23,6 +23,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { onCycleClosed } from '@/lib/groups/cycle-closed'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
@@ -226,6 +227,7 @@ export async function POST(
       newClassSectionId: newGroup.id,
     },
   })
+  await onCycleClosed(id)
 
   return successResponse({ action: cycleLogType, newGroupId: newGroup.id })
 }

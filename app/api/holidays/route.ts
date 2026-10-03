@@ -10,6 +10,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { notifyHoliday } from '@/lib/notifications/session-events'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
   const fresh = days.filter((x) => !taken.has(x))
   if (fresh.length) {
     await prisma.holiday.createMany({ data: fresh.map((x) => ({ date: day(x), campusId, name: d.name, createdById: session.user.id })) })
+    await notifyHoliday(campusId, fresh, d.name)
   }
   return createdResponse({ added: fresh.length, skipped: days.length - fresh.length }, fresh.length ? 'Holiday added' : 'Already a holiday')
 }

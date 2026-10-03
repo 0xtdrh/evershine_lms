@@ -3,6 +3,11 @@
 import { useEffect, useState } from 'react'
 import { FollowUpsWidget } from '@/components/dashboard/FollowUpsWidget'
 import { StudentPortalWalletCard } from '@/components/portal/StudentPortalWalletCard'
+import { StudentRatingCard } from '@/components/portal/StudentRatingCard'
+import { RoleInsights } from '@/components/dashboard/RoleInsights'
+import { BirthdayBanner } from '@/components/birthdays/BirthdayBanner'
+import { AttendanceTimeline } from '@/components/attendance/AttendanceTimeline'
+import { StudentReportsList } from '@/components/reports/StudentReportsList'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi, fetchPaginatedApi, PaginatedResult } from '@/lib/api-client'
@@ -238,8 +243,17 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <BirthdayBanner />
+      {role !== 'STUDENT' && <RoleInsights />}
       <FollowUpsWidget />
+      <StudentRatingCard />
       <StudentPortalWalletCard />
+      {role === 'STUDENT' && studentProfile?.id && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <AttendanceTimeline studentId={studentProfile.id} />
+          <StudentReportsList studentId={studentProfile.id} />
+        </div>
+      )}
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">

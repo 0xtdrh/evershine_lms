@@ -98,6 +98,16 @@ export async function createCycleInvoice(params: {
     await recordInvoiceDiscounts(tx, invoice.id, params.studentId, discounts, params.issuedBy)
     return invoice.id
   })
+  // Phase C: tell the parents (before the wallet pays it, so the order of notifications makes sense).
+  const inv = await prisma.feeInvoice.findUnique({ where: { id: invoiceId }, select: { challanNumber: true, totalAmount: true, status: true } })
+  if (inv && inv.status !== 'PAID') {
+    const { notifyFamilies } = await import('@/lib/notifications/events')
+    await notifyFamilies([params.studentId], 'INVOICE_NEW', () => ({
+      title: 'New invoice',
+      message: `Invoice ${inv.challanNumber}: ${params.label} — ${Number(inv.totalAmount)} EGP. If the wallet has enough balance it is paid automatically.`,
+      relatedId: invoiceId,
+    }))
+  }
   // Phase B (wallet-first): pay the new invoice from the wallet straight away.
   const { autoPay } = await import('@/lib/wallet/engine')
   await autoPay(params.studentId, { userId: params.issuedBy, preferInvoiceId: invoiceId })

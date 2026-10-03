@@ -273,6 +273,8 @@ model User {
   // Sessions that signed in before this moment are rejected (set when the
   // password changes or is reset). See lib/session-guard.ts.
   sessionsRevokedAt      DateTime?
+  /// Phase C: birthday for parents and non-teacher staff (students and teachers keep their own dateOfBirth).
+  dateOfBirth            DateTime? @db.Date
   lastLogin              DateTime?
   emailVerified          Boolean   @default(false)
   emailVerifiedAt        DateTime?
@@ -3711,4 +3713,86 @@ model WalletRule {
   updatedAt DateTime @updatedAt
 
   @@index([kind])
+}
+/// Phase C: a parent's excuse for one session (docs/design-phase-c.md).
+/// status PENDING | APPROVED | REJECTED | CANCELLED. Approved → the attendance is EXCUSED.
+model AbsenceExcuse {
+  id             String    @id @default(cuid())
+  studentId      String
+  classSectionId String
+  sessionDate    DateTime  @db.Date
+  reason         String    @db.VarChar(500)
+  status         String    @default("PENDING") @db.VarChar(10)
+  autoApproved   Boolean   @default(false)
+  submittedById  String
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionNote   String?   @db.VarChar(500)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([studentId, classSectionId, sessionDate])
+  @@index([classSectionId, sessionDate])
+  @@index([status])
+}
+
+/// Phase C: excuse settings per scope ALL | TRACK | COURSE | GROUP (+ scopeId); the most specific wins.
+/// autoApprove = accepted at once; daysAfter = how many days after the session a parent may still send it.
+model ExcuseRule {
+  id          String   @id @default(cuid())
+  scopeType   String   @default("ALL") @db.VarChar(10)
+  scopeId     String?
+  autoApprove Boolean  @default(true)
+  daysAfter   Int      @default(2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([scopeType, scopeId])
+}
+
+/// Phase C: "how was the session?" — rating 1..4 (🙁 😐 🙂 😀). byRole STUDENT | PARENT (parent answers for young children).
+model SessionFeedback {
+  id             String   @id @default(cuid())
+  studentId      String
+  classSectionId String
+  sessionDate    DateTime @db.Date
+  rating         Int
+  comment        String?  @db.VarChar(500)
+  byUserId       String
+  byRole         String   @db.VarChar(8)
+  createdAt      DateTime @default(now())
+
+  @@unique([studentId, classSectionId, sessionDate])
+  @@index([classSectionId])
+}
+
+/// Phase C: parent survey, kind MONTHLY (end of each month/group) | LEVEL (end of the level). Ratings 1..5.
+model ParentSurvey {
+  id             String   @id @default(cuid())
+  studentId      String
+  classSectionId String
+  kind           String   @db.VarChar(8)
+  teacherId      String?
+  sessionsRating Int
+  teacherRating  Int
+  companyRating  Int
+  comment        String?  @db.VarChar(1000)
+  byUserId       String
+  createdAt      DateTime @default(now())
+
+  @@unique([studentId, classSectionId, kind])
+  @@index([teacherId])
+  @@index([createdAt])
+}
+
+/// Phase C: one birthday greeting per person per year (the daily job may run more than once).
+/// personType STUDENT | GUARDIAN | TEACHER | STAFF (personId = Student/Guardian/Teacher id, or User id for STAFF).
+model BirthdayGreeting {
+  id         String   @id @default(cuid())
+  personType String   @db.VarChar(8)
+  personId   String
+  year       Int
+  createdAt  DateTime @default(now())
+
+  @@unique([personType, personId, year])
 }

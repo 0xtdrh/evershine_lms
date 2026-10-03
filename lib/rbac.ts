@@ -79,6 +79,11 @@ export type AcademicResource =
   | 'holidays'
   // Phase B: wallet (create = top up, approve = approve proof top-ups and withdrawals)
   | 'wallet'
+  // Phase C (docs/design-phase-c.md)
+  | 'absence_excuses'
+  | 'ratings'
+  | 'birthdays'
+  | 'notification_settings'
 
 type Resource = AcademicResource
 
@@ -184,6 +189,10 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
+    absence_excuses: ['create', 'read', 'update', 'approve'],
+    ratings: ['read'],
+    birthdays: ['read'],
+    notification_settings: ['read', 'update'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -237,6 +246,10 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
+    absence_excuses: ['create', 'read', 'update', 'approve'],
+    ratings: ['read'],
+    birthdays: ['read'],
+    notification_settings: ['read', 'update'],
   },
   TEACHER: {
     students: ['read'],
@@ -291,6 +304,10 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     holidays: [],
     wallet: [],
+    absence_excuses: ['read'],
+    ratings: [],
+    birthdays: ['read'],
+    notification_settings: [],
   },
   STUDENT: {
     students: [],
@@ -344,6 +361,10 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     holidays: [],
     wallet: [],
+    absence_excuses: [],
+    ratings: [],
+    birthdays: [],
+    notification_settings: [],
   },
   PARENT: {
     students: [],
@@ -397,6 +418,10 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     holidays: [],
     wallet: [],
+    absence_excuses: [],
+    ratings: [],
+    birthdays: [],
+    notification_settings: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -452,6 +477,10 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read'],
     holidays: ['read'],
     wallet: ['create', 'read', 'approve'],
+    absence_excuses: [],
+    ratings: [],
+    birthdays: [],
+    notification_settings: [],
   },
   GUARDIAN: {
     students: [],
@@ -505,6 +534,10 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     holidays: [],
     wallet: [],
+    absence_excuses: [],
+    ratings: [],
+    birthdays: [],
+    notification_settings: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -562,6 +595,10 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     holidays: ['read'],
     wallet: ['create', 'read'],
+    absence_excuses: ['create', 'read', 'approve'],
+    ratings: [],
+    birthdays: ['read'],
+    notification_settings: [],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -620,6 +657,10 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
+    absence_excuses: ['create', 'read', 'update', 'approve'],
+    ratings: ['read'],
+    birthdays: ['read'],
+    notification_settings: [],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -676,6 +717,10 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     holidays: [],
     wallet: [],
+    absence_excuses: [],
+    ratings: [],
+    birthdays: [],
+    notification_settings: [],
   },
 }
 

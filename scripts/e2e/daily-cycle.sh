@@ -62,7 +62,7 @@ async function main() {
 main()
 EOF
 SA_EMAIL=$(DATABASE_URL="$URL" npx tsx scripts/e2e/.tmp-sa.ts); rm -f scripts/e2e/.tmp-sa.ts
-DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" PAYMOB_HMAC_SECRET="e2e-paymob-hmac" CRON_SECRET="e2e-cron" npx next dev -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
+DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" PAYMOB_HMAC_SECRET="e2e-paymob-hmac" CRON_SECRET="e2e-cron" NODE_OPTIONS="--max-old-space-size=6144" npx next dev -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
 APP_PID=$!
 for i in $(seq 1 120); do [ "$(curl -s -o /dev/null -w '%{http_code}' $B/api/auth/csrf)" = "200" ] && break; sleep 3; done
 tok=$(curl -s -c "$JAR" -b "$JAR" $B/api/auth/csrf | jq_ "d['csrfToken']")
@@ -846,6 +846,90 @@ curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/wallet-alerts >/dev/null
 curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/wallet-alerts >/dev/null
 check "low-balance alert sent once to the parent (month ends soon, wallet < price)" "$(M "SELECT COUNT(*) FROM Notification n JOIN Guardian g ON g.userId=n.userId WHERE g.phoneNumber='01066660095' AND n.type='LOW_BALANCE'")" "1"
 check "only one place creates FeePayment (wallet uses recordPayment)" "$(grep -rn 'feePayment.create(' app lib --include=*.ts | wc -l | tr -d ' ')" "1"
+echo "== 27. phase C: notifications, excuses, attendance, ratings, reports, birthdays, dashboard"
+NOTIF() { M "SELECT COUNT(*) FROM Notification n JOIN Guardian g ON g.userId=n.userId WHERE g.phoneNumber='01066660099' AND n.type='$1'"; }
+check "notification settings list every event (on by default)" "$(api GET /api/notifications/settings | jq_ "all(e['on'] for e in d['data']['events']) and len(d['data']['events'])>=20")" "True"
+check "secretary cannot change notification settings" "$(secapi PUT /api/notifications/settings '{"switches":{"ATTENDANCE_LATE":false}}' | jq_ "d['success']")" "False"
+check "a new invoice notified the parent (INVOICE_NEW)" "$(python -c "print(int('$(NOTIF INVOICE_NEW)')>=1)")" "True"
+W1E=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$W1' AND classSectionId='$WB'")
+W2E=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$W2' AND classSectionId='$WB'")
+# 1) attendance notifications: lateness switched off, then on; absent twice in a row
+api PUT /api/notifications/settings '{"switches":{"ATTENDANCE_LATE":false}}' >/dev/null
+sess $WB "$(D -3)" "$(rec $W1E LATE),$(rec $W2E ABSENT)" >/dev/null
+check "absent → parent notified; late switched off → nothing" "$(NOTIF ATTENDANCE_ABSENT)/$(NOTIF ATTENDANCE_LATE)" "1/0"
+sess $WB "$(D -3)" "$(rec $W1E LATE),$(rec $W2E ABSENT)" >/dev/null
+check "saving the same sheet again does not notify twice" "$(NOTIF ATTENDANCE_ABSENT)" "1"
+api PUT /api/notifications/settings '{"switches":{"ATTENDANCE_LATE":true}}' >/dev/null
+sess $WB "$(D -2)" "$(rec $W1E LATE),$(rec $W2E ABSENT)" >/dev/null
+check "late switched on → parent notified" "$(NOTIF ATTENDANCE_LATE)" "1"
+check "absent twice in a row → staff alert + follow-up in the contact log" "$(M "SELECT COUNT(*) FROM Notification WHERE type='CONSECUTIVE_ABSENCE' AND relatedId='$W2'" | python -c "import sys;print(int(sys.stdin.read())>=1)")/$(M "SELECT COUNT(*) FROM ContactLog WHERE studentId='$W2' AND reason='ABSENCE' AND followUpAt IS NOT NULL")" "True/1"
+# 2) excuses
+WJ=$(mktemp); login_as 01066660099 Wallet2026A "$WJ" >/dev/null
+pget() { curl -s -b "$WJ" "$B$1"; }
+ppost() { curl -s -b "$WJ" -X "$1" -H 'Content-Type: application/json' -d "$3" "$B$2"; }
+check "parent sees today's session among the ones to excuse" "$(pget "/api/guardian-portal/excuses?studentId=$W1" | jq_ "any(s['classSectionId']=='$WB' and s['date']=='$(D 0)' for s in d['data']['sessions'])")" "True"
+check "no rule = accepted automatically" "$(ppost POST /api/guardian-portal/excuses "{\"studentId\":\"$W1\",\"classSectionId\":\"$WB\",\"sessionDate\":\"$(D 0)\",\"reason\":\"He has a cold\"}" | jq_ "d['data']['status']")" "APPROVED"
+check "the attendance sheet shows the excuse" "$(api GET "/api/enrollment-attendance/roster?classSectionId=$WB&date=$(D 0)" | jq_ "[e['excuse']['status'] for e in d['data']['enrollments'] if e['studentEnrollmentId']=='$W1E'][0]")" "APPROVED"
+sess $WB "$(D 0)" "$(rec $W1E ABSENT),$(rec $W2E PRESENT)" >/dev/null
+check "absent with an approved excuse is saved as EXCUSED" "$(M "SELECT status FROM EnrollmentAttendanceRecord WHERE studentEnrollmentId='$W1E' AND attendanceDate='$(D 0)'")" "EXCUSED"
+check "too late: 5 days after the session refused" "$(ppost POST /api/guardian-portal/excuses "{\"studentId\":\"$W1\",\"classSectionId\":\"$WB\",\"sessionDate\":\"$(D -5)\",\"reason\":\"late\"}" | jq_ "d['success']")" "False"
+check "parent cannot excuse another family's child" "$(ppost POST /api/guardian-portal/excuses "{\"studentId\":\"$W3\",\"classSectionId\":\"$WB\",\"sessionDate\":\"$(D 1)\",\"reason\":\"x\"}" | jq_ "d['success']")" "False"
+check "secretary cannot change excuse settings" "$(secapi PUT /api/absence-excuses/rules '{"rules":[]}' | jq_ "d['success']")" "False"
+check "settings: this group needs approval, 1 day after" "$(api PUT /api/absence-excuses/rules "{\"rules\":[{\"scopeType\":\"ALL\",\"autoApprove\":true,\"daysAfter\":2},{\"scopeType\":\"GROUP\",\"scopeId\":\"$WB\",\"autoApprove\":false,\"daysAfter\":1}]}" | jq_ "len(d['data']['rules'])")" "2"
+EX2=$(ppost POST /api/guardian-portal/excuses "{\"studentId\":\"$W2\",\"classSectionId\":\"$WB\",\"sessionDate\":\"$(D 1)\",\"reason\":\"Family trip\"}")
+EX2ID=$(echo "$EX2" | jq_ "d['data']['id']")
+check "now it waits for approval" "$(echo "$EX2" | jq_ "d['data']['status']")" "PENDING"
+check "staff told an excuse is waiting" "$(M "SELECT COUNT(*) FROM Notification WHERE type='EXCUSE_PENDING' AND relatedId='$EX2ID'" | python -c "import sys;print(int(sys.stdin.read())>=1)")" "True"
+check "the group's 1-day window applies (2 days after refused)" "$(ppost POST /api/guardian-portal/excuses "{\"studentId\":\"$W2\",\"classSectionId\":\"$WB\",\"sessionDate\":\"$(D -2)\",\"reason\":\"x\"}" | jq_ "d['success']")" "False"
+check "secretary approves; parent notified" "$(secapi PATCH /api/absence-excuses/$EX2ID '{"action":"approve"}' | jq_ "d['data']['status']")/$(NOTIF EXCUSE_DECIDED)" "APPROVED/1"
+check "parent withdraws the excuse of a future session" "$(curl -s -b "$WJ" -X DELETE "$B/api/guardian-portal/excuses/$EX2ID" | jq_ "d['data']['status']")" "CANCELLED"
+# 3) attendance in the portal (no instructor name)
+TL=$(pget /api/students/$W1/attendance-timeline)
+check "portal attendance: session numbers, statuses and the excuse reason" "$(echo "$TL" | jq_ "[(s['status'], s['excuseReason']) for g in d['data']['groups'] if g['classSectionId']=='$WB' for s in g['sessions']][-1]")" "('EXCUSED', 'He has a cold')"
+check "no instructor name in the portal attendance" "$(echo "$TL" | jq_ "'teacher' in json.dumps(d).lower()" 2>/dev/null || echo "$TL" | python -c "import sys;print('teacher' in sys.stdin.read().lower())")" "False"
+check "parent cannot read another family's attendance" "$(curl -s -o /dev/null -w '%{http_code}' -b "$WJ" $B/api/students/$W3/attendance-timeline)" "403"
+# 4) ratings
+M "UPDATE Student SET dateOfBirth='2021-03-03' WHERE id='$W1'"
+check "young child: the parent rates the session for them" "$(pget /api/ratings/parent | jq_ "[c['young'] and len(c['sessions'])>0 for c in d['data']['children'] if c['studentId']=='$W1'][0]")" "True"
+check "rating 🙁 → managers alerted + follow-up" "$(ppost POST /api/ratings/parent "{\"type\":\"session\",\"studentId\":\"$W1\",\"classSectionId\":\"$WB\",\"sessionDate\":\"$(D -2)\",\"rating\":1,\"comment\":\"too noisy\"}" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM Notification WHERE type='LOW_RATING' AND relatedId='$W1'" | python -c "import sys;print(int(sys.stdin.read())>=1)")/$(M "SELECT COUNT(*) FROM ContactLog WHERE studentId='$W1' AND reason='COMPLAINT'")" "True/True/1"
+check "the same session cannot be rated twice" "$(ppost POST /api/ratings/parent "{\"type\":\"session\",\"studentId\":\"$W1\",\"classSectionId\":\"$WB\",\"sessionDate\":\"$(D -2)\",\"rating\":4}" | jq_ "d['success']")" "False"
+M "UPDATE ClassSection SET status='COMPLETED', completedAt=NOW(3) WHERE id='$WB2'"
+check "month ended → the parent survey opens" "$(pget /api/ratings/parent | jq_ "any(s['classSectionId']=='$WB2' for c in d['data']['children'] for s in c['surveys'])")" "True"
+check "survey with a low answer → saved + managers alerted" "$(ppost POST /api/ratings/parent "{\"type\":\"survey\",\"studentId\":\"$W2\",\"classSectionId\":\"$WB2\",\"sessionsRating\":5,\"teacherRating\":4,\"companyRating\":2,\"comment\":\"prices\"}" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM ParentSurvey WHERE studentId='$W2'")" "True/1"
+check "managers see ratings with names; secretary does not" "$(api GET /api/ratings/overview | jq_ "d['data']['latestSurveys'][0]['student'].startswith('WalletTwo')")/$(secapi GET /api/ratings/overview | jq_ "d['success']")" "True/False"
+M "UPDATE ClassSection SET status='ACTIVE', completedAt=NULL WHERE id='$WB2'"
+# 5) reports
+M "UPDATE ClassSection SET status='COMPLETED', completedAt=NOW(3) WHERE id='$WB'"
+check "finished month → monthly report listed" "$(pget /api/students/$W2/reports | jq_ "any(r['kind']=='MONTHLY' and r['classSectionId']=='$WB' for r in d['data'])")" "True"
+check "monthly report: attendance session by session" "$(pget "/api/students/$W2/reports?kind=MONTHLY&group=$WB" | jq_ "(d['data']['stats']['sessions'], d['data']['stats']['absent'])")" "(3, 2)"
+check "printable report page opens" "$(curl -s -o /dev/null -w '%{http_code}' -b "$WJ" "$B/reports/student/$W2?kind=MONTHLY&group=$WB")" "200"
+M "UPDATE ClassSection SET status='ACTIVE', completedAt=NULL WHERE id='$WB'"
+# 6) birthdays (students, parents, staff) + birthday discount
+TODAYMD=$(date -u +%m-%d)
+GW=$(M "SELECT userId FROM Guardian WHERE phoneNumber='01066660099'")
+M "UPDATE Student SET dateOfBirth='2019-$TODAYMD' WHERE id='$W1'"
+M "UPDATE User SET dateOfBirth='1985-$TODAYMD' WHERE id='$GW'"
+check "secretary sets her own date of birth" "$(secapi PUT /api/users/date-of-birth "{\"dateOfBirth\":\"1990-$TODAYMD\"}" | jq_ "d['success']")" "True"
+BT=$(mktype '{"name":"Birthday gift","kind":"OTHER","valueType":"FIXED","value":50,"duration":"ONE_TIME","approvalMode":"STAFF","stackable":true}')
+api PUT /api/discounts/rules "{\"allowStacking\":true,\"maxTotalPercent\":50,\"siblingAppliesTo\":\"SECOND_AND_LATER\",\"birthdayTypeId\":\"$BT\"}" >/dev/null
+check "birthdays today: student, parent and staff" "$(api GET '/api/birthdays?range=today' | jq_ "sorted(set(p['kind'] for p in d['data']['people'] if p['name'].startswith(('WalletOne','Rania')) or p['kind']=='STAFF'))")" "['GUARDIAN', 'STAFF', 'STUDENT']"
+check "parent portal: big birthday banner for the child" "$(pget /api/birthdays/me | jq_ "[c['name'] for c in d['data']['children']]")" "['WalletOne']"
+check "daily cron refused without the secret" "$(curl -s -o /dev/null -w '%{http_code}' $B/api/cron/daily)" "401"
+DAILY=$(curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily)
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "daily job: birthday greeting to the student's family (once)" "$(NOTIF BIRTHDAY | python -c "import sys;print(int(sys.stdin.read()))")/$(M "SELECT COUNT(*) FROM BirthdayGreeting WHERE personType='STUDENT' AND personId='$W1'")" "2/1"
+check "birthday discount given (once)" "$(M "SELECT COUNT(*) FROM DiscountAssignment WHERE studentId='$W1' AND discountTypeId='$BT'")" "1"
+check "staff colleagues told about the staff birthday" "$(M "SELECT COUNT(*) FROM Notification WHERE type='BIRTHDAY_STAFF' AND title LIKE 'Colleague%'" | python -c "import sys;print(int(sys.stdin.read())>=1)")" "True"
+check "birthday certificate data for the parent" "$(curl -s -o /dev/null -w '%{http_code}' -b "$WJ" $B/api/students/$W1/birthday-card)" "200"
+# 7) dashboard numbers + morning summary
+check "manager dashboard numbers" "$(api GET /api/dashboard/insights | jq_ "[m['key'] for m in d['data']['metrics']][:4]")" "['income', 'collection', 'students', 'renewal']"
+check "secretary dashboard numbers" "$(secapi GET /api/dashboard/insights | jq_ "d['data']['metrics'][0]['key']")" "followups"
+check "morning summary sent once a day to the managers" "$(echo "$DAILY" | jq_ "d['morningSummary']['sent']>=1")/$(M "SELECT COUNT(*) FROM Notification WHERE type='MORNING_SUMMARY' AND userId='$SA_ID'")" "True/1"
+# 8) holiday → families told
+HOL=$(api POST /api/holidays "{\"date\":\"$(D 3)\",\"name\":\"E2E day off\",\"campusId\":\"$CAMPUS\"}")
+check "holiday on a session day → families told" "$(NOTIF HOLIDAY | python -c "import sys;print(int(sys.stdin.read())>=1)")" "True"
+M "DELETE FROM Holiday WHERE name='E2E day off'"
+rm -f "$WJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

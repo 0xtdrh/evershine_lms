@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { notifyFamilies } from '@/lib/notifications/events'
 import { errors, successResponse } from '@/lib/api-response'
 import { checkPermission } from '@/lib/rbac'
 import type { Role } from '@prisma/client'
@@ -84,6 +85,8 @@ export async function POST(request: NextRequest) {
   }
   // scope === 'all' leaves the where clause as just { isRevealed: !data.isRevealed }
 
+  // Phase C: who gets a "certificate ready" notification (only the ones being revealed now).
+  const revealing = data.isRevealed ? await prisma.certificate.findMany({ where, select: { studentId: true, title: true } }) : []
   const result = await prisma.certificate.updateMany({
     where,
     data: data.isRevealed
@@ -101,5 +104,8 @@ export async function POST(request: NextRequest) {
     },
   })
 
+  for (const c of revealing) {
+    await notifyFamilies([c.studentId], 'CERTIFICATE_ISSUED', (s) => ({ title: 'Certificate ready 🎓', message: `Congratulations ${s.firstName}! Your certificate "${c.title}" is ready in the portal.`, relatedId: null }), { includeStudent: true })
+  }
   return successResponse({ revealedCount: result.count })
 }

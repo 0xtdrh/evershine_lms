@@ -24,6 +24,8 @@ import { StudentDiscountsCard } from '@/components/students/StudentDiscountsCard
 import { StudentWalletCard } from '@/components/students/StudentWalletCard'
 import { StudentTransferCard } from '@/components/students/StudentTransferCard'
 import { StudentContactLogCard } from '@/components/students/StudentContactLogCard'
+import { GuardianBirthdaysCard } from '@/components/birthdays/DateOfBirthCards'
+import { StudentReportsList } from '@/components/reports/StudentReportsList'
 
 interface StudentDetail {
   id: string
@@ -397,6 +399,10 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             guardians={student.guardians ?? []}
             canManage={isAdmin}
           />
+
+          <GuardianBirthdaysCard guardians={student.guardians ?? []} canEdit={isAdmin || role === 'BRANCH_MANAGER' || role === 'SECRETARY'} />
+
+          <StudentReportsList studentId={student.id} />
 
           <StudentPortalAccessCard
             studentId={student.id}

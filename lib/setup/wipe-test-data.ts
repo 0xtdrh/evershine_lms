@@ -32,6 +32,8 @@ const KEEP_ALL = new Set([
   'AppSetting', 'PaymentAccount', 'PaymentMethod', 'DiscountType', 'RefundRule',
   // Phase B: wallet rules are settings too.
   'WalletRule',
+  // Phase C: excuse settings.
+  'ExcuseRule',
 ])
 
 type Tx = Prisma.TransactionClient | typeof prisma

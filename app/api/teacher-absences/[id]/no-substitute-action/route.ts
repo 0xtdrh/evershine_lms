@@ -10,6 +10,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { notifySessionCancelled } from '@/lib/notifications/session-events'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import type { Role } from '@prisma/client'
@@ -54,6 +55,7 @@ export async function POST(
       },
       update: {},
     })
+    await notifySessionCancelled(parsed.data.classSectionId, absence.date.toISOString().slice(0, 10))
     return successResponse({ action: 'CANCEL_SESSION', cancelledSession: cancelled })
   }
 

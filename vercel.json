@@ -5,8 +5,8 @@
       "schedule": "0 1 * * *"
     },
     {
-      "path": "/api/cron/wallet-alerts",
-      "schedule": "0 7 * * *"
+      "path": "/api/cron/daily",
+      "schedule": "0 6 * * *"
     }
   ]
 }

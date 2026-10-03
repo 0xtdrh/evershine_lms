@@ -18,6 +18,7 @@ import { prisma } from '@/lib/prisma'
 import { getSetting, setSetting } from '@/lib/settings/app-settings'
 import { getDiscountRules } from '@/lib/discounts/engine'
 import { logSystemContact } from '@/lib/contacts/contact-log'
+import { isEventOn } from '@/lib/notifications/events'
 import { sessionsPerCycle } from './cycle-rules'
 import { resolveCycleStart } from './cycle-start'
 
@@ -81,7 +82,7 @@ export async function ensureRenewalRequests(classSectionId: string): Promise<num
       }))
     )
     try {
-      if (notes.length) await prisma.notification.createMany({ data: notes })
+      if (notes.length && (await isEventOn('RENEWAL_REQUEST'))) await prisma.notification.createMany({ data: notes })
     } catch (err) {
       console.error('[RENEWAL_NOTIFY]', err)
     }

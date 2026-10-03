@@ -23,6 +23,7 @@ interface RosterRow {
   rollNumber: string
   student: { firstName: string; lastName: string }
   todayStatus: AttStatus | null
+  excuse?: { status: string; reason: string } | null
 }
 
 interface TeacherClassRecord {
@@ -150,7 +151,7 @@ export default function TeacherAttendancePage() {
     if (!roster?.enrollments?.length) { setStatusMap({}); return }
     const next: Record<string, AttStatus> = {}
     for (const row of roster.enrollments) {
-      next[row.studentEnrollmentId] = row.todayStatus ?? 'PRESENT'
+      next[row.studentEnrollmentId] = row.todayStatus ?? (row.excuse?.status === 'APPROVED' ? 'EXCUSED' : 'PRESENT')
     }
     setStatusMap(next)
   }, [roster])
@@ -437,6 +438,11 @@ export default function TeacherAttendancePage() {
                                 {row.student.firstName} {row.student.lastName}
                               </p>
                               <p className="text-xs text-gray-500">Roll #{row.rollNumber}</p>
+                              {row.excuse && (
+                                <p className={`mt-1 text-xs ${row.excuse.status === 'APPROVED' ? 'text-indigo-700' : 'text-amber-700'}`}>
+                                  {row.excuse.status === 'APPROVED' ? 'Excused' : 'Excuse waiting for approval'}: {row.excuse.reason}
+                                </p>
+                              )}
                             </div>
                             <div className="flex gap-1.5">
                               {(Object.keys(STATUS_CONFIG) as AttStatus[]).map(st => {

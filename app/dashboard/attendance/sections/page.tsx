@@ -24,6 +24,7 @@ interface RosterRow {
   student: { firstName: string; lastName: string }
   todayStatus: AttendanceStatus | null
   isWithdrawn?: boolean
+  excuse?: { status: string; reason: string } | null
 }
 
 const STATUS_BTNS: AttendanceStatus[] = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']
@@ -203,7 +204,7 @@ export default function SectionAttendancePage() {
     }
     const next: Record<string, AttendanceStatus> = {}
     for (const row of roster.enrollments) {
-      next[row.studentEnrollmentId] = row.todayStatus ?? 'PRESENT'
+      next[row.studentEnrollmentId] = row.todayStatus ?? (row.excuse?.status === 'APPROVED' ? 'EXCUSED' : 'PRESENT')
     }
     setStatusMap(next)
   }, [roster])
@@ -547,6 +548,11 @@ export default function SectionAttendancePage() {
                         )}
                       </p>
                       <p className="text-xs text-gray-500">Roll {row.rollNumber}</p>
+                      {row.excuse && (
+                        <p className={`mt-1 text-xs ${row.excuse.status === 'APPROVED' ? 'text-indigo-700' : 'text-amber-700'}`}>
+                          {row.excuse.status === 'APPROVED' ? 'Excused' : 'Excuse waiting for approval'}: {row.excuse.reason}
+                        </p>
+                      )}
                     </div>
                     <div className="flex gap-1">
                       {STATUS_BTNS.map((st) => (

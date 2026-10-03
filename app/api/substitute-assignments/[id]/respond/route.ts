@@ -8,6 +8,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { notifySubstitute } from '@/lib/notifications/session-events'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getTeacherByUserId } from '@/lib/academic/teacher-scope'
@@ -76,5 +77,6 @@ export async function POST(
     console.error('[SUBSTITUTE_RESPOND] notification failed:', notifErr)
   }
 
+  if (parsed.data.decision === 'ACCEPT') await notifySubstitute(updated.classSectionId, updated.date.toISOString().slice(0, 10))
   return successResponse(updated)
 }

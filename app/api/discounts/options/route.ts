@@ -15,7 +15,7 @@ export async function GET() {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
-  if (!checkPermission(role, 'discounts', 'read') && !checkPermission(role, 'discount_types', 'read') && !checkPermission(role, 'discounts', 'create')) {
+  if (!checkPermission(role, 'discounts', 'read') && !checkPermission(role, 'discount_types', 'read') && !checkPermission(role, 'discounts', 'create') && !checkPermission(role, 'absence_excuses', 'update')) {
     return errors.forbidden()
   }
   const [tracks, courses, levels, groups] = await Promise.all([

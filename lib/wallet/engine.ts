@@ -138,6 +138,8 @@ export async function autoPay(studentId: string, opts: { userId: string; preferI
 /** Tells the parents that the wallet paid an invoice (type WALLET_PAYMENT, relatedId = paymentId → receipt link). Never throws. */
 async function notifyAutoPaid(studentId: string, paid: { invoiceId: string; paymentId: string; amount: number; receiptNumber: string }[]) {
   try {
+    const { isEventOn } = await import('@/lib/notifications/events')
+    if (!(await isEventOn('WALLET_PAYMENT'))) return
     const s = await prisma.student.findUnique({ where: { id: studentId }, select: { firstName: true, lastName: true, guardians: { select: { userId: true } } } })
     if (!s?.guardians.length) return
     const invoices = await prisma.feeInvoice.findMany({ where: { id: { in: paid.map((p) => p.invoiceId) } }, select: { id: true, challanNumber: true, status: true, totalAmount: true, paidAmount: true } })
@@ -382,6 +384,8 @@ export async function notifyParents(studentId: string, title: string, message: s
  * per month (deduplicated by type + relatedId) and a contact-log line.
  */
 export async function lowBalanceAlerts(): Promise<{ checked: number; alerted: number }> {
+  const { isEventOn } = await import('@/lib/notifications/events')
+  if (!(await isEventOn('LOW_BALANCE'))) return { checked: 0, alerted: 0 }
   const s = await getWalletSettings()
   const days = Math.max(0, s.lowBalanceDays ?? 3)
   const { estimateGroupEnds } = await import('@/lib/groups/end-estimates')

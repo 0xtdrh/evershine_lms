@@ -40,11 +40,16 @@ export async function PUT(request: NextRequest) {
     const t = await prisma.discountType.findUnique({ where: { id: parsed.data.earlyRenewalTypeId }, select: { id: true } })
     if (!t) return errors.badRequest('Unknown discount type for the early renewal discount')
   }
+  if (parsed.data.birthdayTypeId) {
+    const t = await prisma.discountType.findUnique({ where: { id: parsed.data.birthdayTypeId }, select: { id: true } })
+    if (!t) return errors.badRequest('Unknown discount type for the birthday discount')
+  }
   const v = {
     allowStacking: !!parsed.data.allowStacking,
     maxTotalPercent: parsed.data.maxTotalPercent ?? null,
     siblingAppliesTo: parsed.data.siblingAppliesTo === 'ALL' ? ('ALL' as const) : ('SECOND_AND_LATER' as const),
     earlyRenewalTypeId: parsed.data.earlyRenewalTypeId === undefined ? current.earlyRenewalTypeId : parsed.data.earlyRenewalTypeId,
+    birthdayTypeId: parsed.data.birthdayTypeId === undefined ? current.birthdayTypeId ?? null : parsed.data.birthdayTypeId,
   }
   await saveDiscountRules(v, session.user.id)
   return successResponse(v, 'Saved')

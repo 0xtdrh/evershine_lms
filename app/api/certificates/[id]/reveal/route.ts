@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { notifyFamilies } from '@/lib/notifications/events'
 import { errors, successResponse } from '@/lib/api-response'
 import { checkPermission } from '@/lib/rbac'
 import type { Role } from '@prisma/client'
@@ -36,6 +37,7 @@ export async function PATCH(
   const parsed = toggleSchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
 
+  const wasRevealed = (await prisma.certificate.findUnique({ where: { id }, select: { isRevealed: true } }))?.isRevealed
   const updated = await prisma.certificate.update({
     where: { id },
     data: parsed.data.isRevealed
@@ -53,5 +55,8 @@ export async function PATCH(
     },
   })
 
+  if (parsed.data.isRevealed && !wasRevealed) {
+    await notifyFamilies([updated.studentId], 'CERTIFICATE_ISSUED', (s) => ({ title: 'Certificate ready 🎓', message: `Congratulations ${s.firstName}! Your certificate "${updated.title}" is ready in the portal.`, relatedId: null }), { includeStudent: true })
+  }
   return successResponse(updated)
 }

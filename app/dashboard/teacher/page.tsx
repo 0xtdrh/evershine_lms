@@ -13,6 +13,9 @@ import {
   ClipboardCheck, BarChart2, LineChart, Target,
 } from 'lucide-react'
 import Link from 'next/link'
+import { RoleInsights } from '@/components/dashboard/RoleInsights'
+import { BirthdayBanner } from '@/components/birthdays/BirthdayBanner'
+import { TeacherRatingsCard } from '@/components/dashboard/TeacherRatingsCard'
 
 const TEACHER_QUICK_LINKS = [
   {
@@ -112,6 +115,9 @@ export default function TeacherPortalIndexPage() {
 
   return (
     <div className="p-3.5 sm:p-6 max-w-6xl mx-auto space-y-4 sm:space-y-8">
+      <BirthdayBanner />
+      <RoleInsights />
+      <TeacherRatingsCard />
       {/* Header Banner */}
       <Card className="overflow-hidden rounded-2xl sm:rounded-[28px] bg-slate-950/95 text-white shadow-xl ring-1 ring-slate-900/10">
         <div className="p-5 sm:p-8 lg:p-10">

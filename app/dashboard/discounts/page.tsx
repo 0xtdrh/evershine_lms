@@ -45,7 +45,7 @@ interface Options {
   levels: { id: string; name: string; subjectId: string }[]
   groups: { id: string; name: string; detail: string }[]
 }
-interface Rules { allowStacking: boolean; maxTotalPercent: number | null; siblingAppliesTo: 'SECOND_AND_LATER' | 'ALL'; earlyRenewalTypeId: string | null }
+interface Rules { allowStacking: boolean; maxTotalPercent: number | null; siblingAppliesTo: 'SECOND_AND_LATER' | 'ALL'; earlyRenewalTypeId: string | null; birthdayTypeId?: string | null }
 interface Report { total: number; byType: Row[]; byGroup: Row[]; byStaff: Row[] }
 interface Row { name: string; amount: number; count: number }
 
@@ -485,6 +485,19 @@ function RulesTab({ canEdit }: { canEdit: boolean }) {
           <p className="text-xs text-muted-foreground">
             When a parent confirms “continuing next month” before the last session, the student gets this discount on next month&apos;s invoice.
             Create the type in “Discount types” first (for example “Early renewal 5%”, duration “once”). Changing it later does not touch discounts already given.
+          </p>
+        </div>
+        <div className="space-y-1 text-sm">
+          <Label>Birthday discount</Label>
+          <Select value={r.birthdayTypeId ?? 'none'} onValueChange={(v) => setR({ ...r, birthdayTypeId: v === 'none' ? null : v })} disabled={!canEdit}>
+            <SelectTrigger className="max-w-md"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Off</SelectItem>
+              {(types ?? []).filter((t) => t.isActive).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            On a student&apos;s birthday they get this discount on their next invoice (a gift). Create the type first (for example “Birthday gift 50 EGP”, duration “once”).
           </p>
         </div>
         {canEdit && <Button onClick={() => save.mutate(r)} disabled={save.isPending}>{save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save rules</Button>}

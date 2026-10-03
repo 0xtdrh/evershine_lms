@@ -9,6 +9,7 @@ import { getTeacherByUserId, getTeacherClassSectionIds, teacherCanAccessClassSec
 import type { Role } from '@prisma/client'
 import { createStudentAbsenceAssessment } from '@/lib/penalties/assessments'
 import { syncGroupProgress } from '@/lib/groups/sync-progress'
+import { applyExcuses, afterAttendanceSaved } from '@/lib/attendance/after-save'
 
 const ATTENDANCE_STATUSES = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'] as const
 
@@ -149,14 +150,23 @@ export async function POST(request: NextRequest) {
     if (inGroup !== ids.length) return errors.forbidden('Some students are not in this group')
 
     const markedBy = await resolveMarkedByTeacherId(session.user.id)
+    // Phase C: an approved parent excuse turns ABSENT into EXCUSED; remember the
+    // old statuses so parents are only notified about real changes.
+    const records = await applyExcuses(classSectionId, attendanceDate, submitted as {
+      studentEnrollmentId: string
+      status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
+      remarks?: string
+    }[])
+    const before = new Map(
+      (await prisma.enrollmentAttendanceRecord.findMany({
+        where: { studentEnrollmentId: { in: ids }, attendanceDate: new Date(attendanceDate) },
+        select: { studentEnrollmentId: true, status: true },
+      })).map((r) => [r.studentEnrollmentId, r.status as string])
+    )
 
     const results = await prisma.$transaction(async (tx) => {
       const out = []
-      for (const rec of body.records as {
-        studentEnrollmentId: string
-        status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
-        remarks?: string
-      }[]) {
+      for (const rec of records) {
         const row = await tx.enrollmentAttendanceRecord.upsert({
           where: {
             studentEnrollmentId_attendanceDate: {
@@ -197,6 +207,7 @@ export async function POST(request: NextRequest) {
     })
 
     await refreshGroupProgress(classSectionId, session.user.id)
+    await afterAttendanceSaved({ classSectionId, date: attendanceDate, before, after: records })
     return createdResponse(results, 'Attendance saved')
   }
 
@@ -215,6 +226,13 @@ export async function POST(request: NextRequest) {
   if (deniedSingle) return deniedSingle
 
   const markedBy = await resolveMarkedByTeacherId(session.user.id)
+  const [single] = await applyExcuses(target.classSectionId, parsed.data.attendanceDate!, [
+    { studentEnrollmentId: parsed.data.studentEnrollmentId!, status: parsed.data.status!, remarks: parsed.data.remarks ?? undefined },
+  ])
+  const previous = await prisma.enrollmentAttendanceRecord.findUnique({
+    where: { studentEnrollmentId_attendanceDate: { studentEnrollmentId: parsed.data.studentEnrollmentId!, attendanceDate: new Date(parsed.data.attendanceDate!) } },
+    select: { status: true },
+  })
 
   const record = await prisma.$transaction(async (tx) => {
     const row = await tx.enrollmentAttendanceRecord.upsert({
@@ -227,13 +245,13 @@ export async function POST(request: NextRequest) {
       create: {
         studentEnrollmentId: parsed.data.studentEnrollmentId!,
         attendanceDate: new Date(parsed.data.attendanceDate!),
-        status: parsed.data.status!,
-        remarks: parsed.data.remarks,
+        status: single.status,
+        remarks: single.remarks,
         markedByTeacherId: markedBy,
       },
       update: {
-        status: parsed.data.status!,
-        remarks: parsed.data.remarks,
+        status: single.status,
+        remarks: single.remarks,
         markedByTeacherId: markedBy,
       },
     })
@@ -246,5 +264,11 @@ export async function POST(request: NextRequest) {
   })
 
   await refreshGroupProgress(target.classSectionId, session.user.id)
+  await afterAttendanceSaved({
+    classSectionId: target.classSectionId,
+    date: parsed.data.attendanceDate!,
+    before: new Map(previous ? [[parsed.data.studentEnrollmentId!, previous.status as string]] : []),
+    after: [single],
+  })
   return createdResponse(record)
 }
