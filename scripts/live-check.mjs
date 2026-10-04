@@ -10,6 +10,7 @@
  *   node scripts/live-check.mjs --phase-b  # demo data for phase B: wallets, top-ups, auto-pay, siblings, withdrawal
  *   node scripts/live-check.mjs --phase-c  # demo data for phase C: excuses, attendance alerts, ratings, birthdays, reports
  *   node scripts/live-check.mjs --logins   # demo instructor + student + parent you can sign in with (printed once, removed by --cleanup)
+ *   node scripts/live-check.mjs --phase-d  # demo data for phase D: referral (code → new student → first payment), complaints
  *
  * Asks for the site address, the Super Admin email and password at run time.
  * The password is never printed, saved or sent anywhere except the login.
@@ -109,7 +110,8 @@ async function main() {
   const phaseBOnly = process.argv.includes('--phase-b')
   const phaseCOnly = process.argv.includes('--phase-c')
   const loginsOnly = process.argv.includes('--logins')
-  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : scheduleOnly ? ' — demo data for the Groups calendar' : phaseAOnly ? ' — demo data for phase A' : phaseBOnly ? ' — demo data for phase B (wallets)' : phaseCOnly ? ' — demo data for phase C' : loginsOnly ? ' — demo accounts to sign in with' : ''))
+  const phaseDOnly = process.argv.includes('--phase-d')
+  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : scheduleOnly ? ' — demo data for the Groups calendar' : phaseAOnly ? ' — demo data for phase A' : phaseBOnly ? ' — demo data for phase B (wallets)' : phaseCOnly ? ' — demo data for phase C' : loginsOnly ? ' — demo accounts to sign in with' : phaseDOnly ? ' — demo data for phase D' : ''))
   const base = ((await ask('Site address [https://evershine-lms-technova.vercel.app]: ')) || 'https://evershine-lms-technova.vercel.app').replace(/\/+$/, '')
   const email = await ask('Super Admin email: ')
   const password = await ask('Super Admin password (hidden): ', { hidden: true })
@@ -130,6 +132,11 @@ async function main() {
 
   const run = String(randomInt(1000, 9999))
   const phone = (n) => `0109990${run.slice(0, 2)}${String(n).padStart(2, '0')}`
+  if (phaseDOnly) {
+    try { await phaseDDemo(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
+    console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
+    return finish()
+  }
   if (loginsOnly) {
     try { await demoLogins(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
     console.log('\nThese are DEMO accounts only. Remove them (and all demo data) any time with:  node scripts/live-check.mjs --cleanup')
@@ -863,6 +870,78 @@ async function demoLogins(sa, base, run, phone) {
   console.log('  └─────────────┴──────────────────────────────────────────┴──────────────────────┘')
   console.log('  The parent and the student are asked to choose a new password at first sign-in.')
   console.log(`  The instructor sees the group "DEMO Logins ${run}" (2 sessions recorded, attendance, excuses, birthdays page).`)
+}
+
+async function phaseDDemo(sa, base, run, phone) {
+  section('16. Demo data for phase D (referral + complaints)')
+  const campuses = list((await sa.json('GET', '/api/campuses')).data)
+  const campus = campuses.find((c) => c.isActive !== false) ?? campuses[0]
+  const levels = (await sa.json('GET', '/api/discounts/options')).data?.data?.levels ?? []
+  const level = levels[0]
+  if (!campus || !level) return bad('a branch and a level are needed')
+  const year = new Date().getFullYear()
+  let k = 40
+  const mkStudent = async (first, guardianFirst, guardianPhone, extra = {}) => (await sa.json('POST', '/api/students', {
+    body: {
+      firstName: `${first}-${run}`, lastName: 'DEMO-TEST', fullNameAr: `تجربة ${first}`, fatherName: 'Father Demo', fatherPhoneNumber: '', motherName: '',
+      parentStatus: 'BOTH_ALIVE', dateOfBirth: '2015-05-10T00:00:00.000Z', gender: 'MALE', nationality: 'Egyptian', address: '12 Demo St Hurghada',
+      city: 'Hurghada', phoneNumber: phone(k), emergencyContact: phone(k++), email: '', hasSiblingAtAcademy: false, campusId: campus.id,
+      rollNumber: '', totalFeeAmount: 0, academicYear: `${year}-${year + 1}`, guardianFirstName: guardianFirst, guardianLastName: 'Demo',
+      guardianPhone, guardianEmail: '', guardianRelationship: '', ...extra,
+    },
+  })).data?.data
+  const settings = (await sa.json('GET', '/api/referrals/settings')).data?.data?.settings
+  console.log(`  ↳ referral reward is ${settings?.rewardEnabled ? `ON (${settings.rewardAmount} EGP)` : 'OFF — switch it on in Referrals to see the wallet reward'}; welcome discount ${settings?.welcomeEnabled ? 'ON' : 'OFF'}`)
+
+  // 1) the referring parent (has a child) and their code
+  const referrerPhone = phone(41)
+  const kid = await mkStudent('Referrer', 'Amira', referrerPhone)
+  const group = (await sa.json('POST', '/api/groups', { body: { campusId: campus.id, className: `DEMO D Group ${run}`, sectionName: 'A', levelId: level.id } })).data?.data?.id
+  check('demo group + the referring parent\'s child', !!group && !!kid?.id)
+  if (!group || !kid?.id) return
+  await sa.json('POST', `/api/groups/${group}/students`, { body: { studentId: kid.id } })
+  const guardianId = ((await sa.json('GET', `/api/students/${kid.id}`)).data?.data?.guardians ?? [])[0]?.id
+  const temp = (await sa.json('POST', `/api/students/${kid.id}/portal-password`, { body: { target: 'guardian', guardianId } })).data?.data
+  const parent = new Client(base)
+  const signed = !!temp?.password && (await parent.login(referrerPhone, temp.password))
+  check(`referring parent ${referrerPhone} signs in`, signed)
+  if (!signed) return
+  const code = (await parent.json('GET', '/api/referrals/mine')).data?.data?.code
+  check(`parent's referral code: ${code ?? '-'}`, !!code)
+
+  // 2) a friend's child registers with the code, then pays the first invoice
+  const friend = await mkStudent('Friend', 'Hoda', phone(43), { referralCode: code })
+  const ref = (await sa.json('GET', `/api/referrals?studentId=${friend?.id}`)).data?.data
+  check(`new student "Friend" linked to the code (${ref?.status ?? '-'})`, ref?.status === 'PENDING')
+  await sa.json('POST', `/api/groups/${group}/students`, { body: { studentId: friend.id } })
+  const inv = list((await sa.json('GET', `/api/fees?studentId=${friend.id}&limit=10`)).data).find((i) => i.classSectionId === group && i.status !== 'CANCELLED')
+  if (inv && Number(inv.totalAmount) > 0) {
+    const left = Number(inv.totalAmount) - Number(inv.paidAmount ?? 0)
+    const pay = await sa.json('POST', `/api/fees/${inv.id}/payments`, { body: { amount: left, paymentMethod: 'Cash' } })
+    check(`"Friend" paid the first invoice (${left} EGP)`, pay.data?.success, pay.data?.error?.message)
+    const after = (await sa.json('GET', `/api/referrals?studentId=${friend.id}`)).data?.data
+    check(`referral ${after?.status}${after?.reward ? ` — ${after.reward} EGP added to "Referrer"'s wallet` : ' (no reward: it is switched off)'}`, after?.status === 'REWARDED')
+  } else {
+    bad('no invoice for "Friend" (the first level needs a price)')
+  }
+
+  // 3) complaints: one solved end-to-end, one left for you to handle, one phone suggestion
+  const c1 = (await parent.json('POST', '/api/complaints', { body: { kind: 'COMPLAINT', topic: 'SCHEDULE', body: 'DEMO: the session started 15 minutes late today', studentId: kid.id } })).data?.data
+  check(`parent sent complaint ${c1?.number ?? '-'}`, !!c1?.id)
+  if (c1?.id) {
+    await sa.json('POST', `/api/complaints/${c1.id}`, { body: { body: 'DEMO: sorry! We spoke to the instructor; it will not happen again.' } })
+    await sa.json('PATCH', `/api/complaints/${c1.id}`, { body: { status: 'RESOLVED' } })
+    const ok = await parent.json('POST', `/api/complaints/${c1.id}/confirm`, { body: { satisfied: true, rating: 5 } })
+    check('staff replied → solved → parent confirmed with 5 stars (closed)', ok.data?.success, ok.data?.error?.message)
+  }
+  const c2 = (await parent.json('POST', '/api/complaints', { body: { kind: 'COMPLAINT', topic: 'PAYMENT', body: 'DEMO: I paid by transfer but the invoice still shows unpaid', studentId: kid.id } })).data?.data
+  check(`second complaint ${c2?.number ?? '-'} left NEW for you to handle`, !!c2?.id)
+  const s1 = await sa.json('POST', '/api/complaints', { body: { studentId: kid.id, from: 'PARENT', kind: 'SUGGESTION', topic: 'SCHEDULE', body: 'DEMO: please open a Friday group' } })
+  check('a phone suggestion recorded in the parent\'s name', s1.data?.success, s1.data?.error?.message)
+
+  console.log(`\n  ↳ open: Complaints (queue: the demo complaint to reply to, the phone suggestion), Referrals (who referred whom)`)
+  console.log(`  ↳ parent portal: phone ${referrerPhone}, temporary password ${temp.password} (asks for a new one at first sign-in)`)
+  console.log('    → My Children: "Invite a friend" card with the code; Complaints: the 3 messages and their stages')
 }
 
 function finish() {
