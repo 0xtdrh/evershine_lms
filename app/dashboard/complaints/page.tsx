@@ -1,394 +1,256 @@
 'use client'
 
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+/**
+ * Phase D complaints & suggestions (docs/design-phase-d.md).
+ * Students / parents: send a complaint, suggestion or thank-you and follow it.
+ * Staff with complaints permissions: the queue, phone complaints, the monthly report, settings.
+ */
+
+import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { fetchPaginatedApi, fetchApi } from '@/lib/api-client'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchApi } from '@/lib/api-client'
+import { notify } from '@/lib/notify'
+import { checkPermission } from '@/lib/rbac'
+import { AccessDenied } from '@/components/AccessDenied'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { notify } from '@/lib/notify'
-import { 
-  ShieldAlert, 
-  MessageSquare, 
-  CheckCircle, 
-  Trash2, 
-  Clock, 
-  Info, 
-  Plus, 
-  Inbox, 
-  Loader2,
-  Lock
-} from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { fadeUp, staggerContainer } from '@/lib/animations'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ComplaintThread, KIND_LABEL, STATUS_LABEL, TOPIC_LABEL } from '@/components/complaints/ComplaintThread'
+import { AlertOctagon, Loader2, MessageSquarePlus, Phone } from 'lucide-react'
 
-interface Complaint {
-  id: string
-  complainantId: string
-  complainantName: string
-  complainantRole: string
-  title: string
-  description: string
-  status: 'PENDING' | 'RESOLVED'
-  remarks: string | null
-  createdAt: string
+interface Row {
+  id: string; number: string | null; kind: string; topic: string | null; status: string; source: string; text: string; sender: string
+  student: string | null; group: string | null; assignedTo: string | null; overdue: boolean; escalated: boolean; satisfied: boolean | null; replies: number; createdAt: string
+}
+interface ListData { portal: boolean; complaints: Row[] }
+interface Child { id: string; firstName: string; lastName: string }
+
+const STATUS_CLS: Record<string, string> = {
+  NEW: 'bg-amber-50 text-amber-700 border-amber-200',
+  IN_PROGRESS: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  RESOLVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  CLOSED: 'bg-slate-50 text-slate-500 border-slate-200',
+}
+const KINDS = ['COMPLAINT', 'SUGGESTION', 'PRAISE'] as const
+const TOPICS = ['INSTRUCTOR', 'SCHEDULE', 'PAYMENT', 'PLACE', 'SESSION', 'OTHER'] as const
+
+function RowList({ rows, onOpen, staff }: { rows: Row[]; onOpen: (id: string) => void; staff: boolean }) {
+  if (!rows.length) return <p className="py-8 text-center text-sm text-slate-500">Nothing here.</p>
+  return (
+    <div className="space-y-2">
+      {rows.map((r) => (
+        <button key={r.id} type="button" onClick={() => onOpen(r.id)} className={`w-full rounded-lg border p-3 text-left text-sm transition hover:bg-slate-50 ${r.overdue ? 'border-rose-300' : 'border-slate-200'}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs text-slate-500">{r.number} · {KIND_LABEL[r.kind] ?? r.kind}{r.topic ? ` · ${TOPIC_LABEL[r.topic] ?? r.topic}` : ''} · {new Date(r.createdAt).toLocaleDateString('en-GB')}</span>
+            <span className="flex items-center gap-1.5">
+              {staff && r.overdue && <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white">LATE</span>}
+              {staff && r.escalated && <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">escalated</span>}
+              <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_CLS[r.status] ?? ''}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
+            </span>
+          </div>
+          {staff && <p className="mt-0.5 font-medium text-slate-800">{r.sender}{r.student ? ` · ${r.student}` : ''}{r.group ? ` · ${r.group}` : ''}</p>}
+          <p className="line-clamp-2 text-slate-700">{r.text}</p>
+          <p className="mt-0.5 text-[11px] text-slate-400">{r.replies} repl{r.replies === 1 ? 'y' : 'ies'}{staff ? ` · ${r.assignedTo ? `responsible: ${r.assignedTo}` : 'nobody responsible yet'}` : ''}</p>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function NewMessageForm({ portal, onDone }: { portal: boolean; onDone: () => void }) {
+  const [kind, setKind] = useState<(typeof KINDS)[number]>('COMPLAINT')
+  const [topic, setTopic] = useState<(typeof TOPICS)[number]>('OTHER')
+  const [body, setBody] = useState('')
+  const [studentId, setStudentId] = useState('')
+  const [from, setFrom] = useState<'PARENT' | 'STUDENT'>('PARENT')
+  const [search, setSearch] = useState('')
+  const { data: children } = useQuery({ queryKey: ['guardian-children'], queryFn: () => fetchApi<Child[]>('/api/guardian-portal/children'), enabled: portal })
+  const { data: found } = useQuery({
+    queryKey: ['complaint-student-search', search],
+    queryFn: () => fetchApi<Child[] | { items?: Child[] }>(`/api/students?search=${encodeURIComponent(search)}&limit=8`),
+    enabled: !portal && search.trim().length >= 2,
+  })
+  const foundList: (Child & { registrationNumber?: string })[] = Array.isArray(found) ? found : (found as { items?: Child[] })?.items ?? []
+  const send = useMutation({
+    mutationFn: () => fetchApi('/api/complaints', { method: 'POST', body: JSON.stringify(portal ? { kind, topic, body, studentId: studentId || null } : { kind, topic, body, studentId, from }) }),
+    onSuccess: () => { notify.success(portal ? 'Sent — we will reply soon' : 'Recorded'); setBody(''); onDone() },
+    onError: (e: Error) => notify.error(e.message),
+  })
+  const kids = children ?? []
+  return (
+    <div className="space-y-3 text-sm">
+      <div className="flex flex-wrap gap-2">
+        {KINDS.map((k) => (
+          <button key={k} type="button" onClick={() => setKind(k)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${kind === k ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600'}`}>
+            {k === 'COMPLAINT' ? '😟 Complaint' : k === 'SUGGESTION' ? '💡 Suggestion' : '🙏 Thank you'}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Select value={topic} onValueChange={(v) => setTopic(v as (typeof TOPICS)[number])}>
+          <SelectTrigger className="h-9 w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>{TOPICS.map((t) => <SelectItem key={t} value={t}>{TOPIC_LABEL[t]}</SelectItem>)}</SelectContent>
+        </Select>
+        {portal && kids.length > 1 && (
+          <Select value={studentId} onValueChange={setStudentId}>
+            <SelectTrigger className="h-9 w-48"><SelectValue placeholder="About which child?" /></SelectTrigger>
+            <SelectContent>{kids.map((c) => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}</SelectContent>
+          </Select>
+        )}
+        {!portal && (
+          <Select value={from} onValueChange={(v) => setFrom(v as 'PARENT' | 'STUDENT')}>
+            <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="PARENT">From the parent</SelectItem><SelectItem value="STUDENT">From the student</SelectItem></SelectContent>
+          </Select>
+        )}
+      </div>
+      {!portal && (
+        <div className="space-y-1">
+          <Input className="h-9" placeholder="Search the student (name or registration no.)" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="flex flex-wrap gap-1.5">
+            {foundList.map((s) => (
+              <button key={s.id} type="button" onClick={() => setStudentId(s.id)} className={`rounded-full border px-2.5 py-1 text-xs ${studentId === s.id ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200'}`}>
+                {s.firstName} {s.lastName}{s.registrationNumber ? ` · ${s.registrationNumber}` : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <textarea className="min-h-[100px] w-full rounded-md border border-slate-200 bg-white p-2" maxLength={5000} placeholder="Write the details…" value={body} onChange={(e) => setBody(e.target.value)} />
+      <p className="text-xs text-slate-500">{portal ? 'Your name is shown with the message. We reply here and you get a notification.' : 'Saved in the parent’s name as "recorded by phone", with an internal note that you recorded it.'}</p>
+      <Button className="gap-1.5" disabled={body.trim().length < 3 || (!portal && !studentId) || send.isPending} onClick={() => send.mutate()}>
+        {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : portal ? <MessageSquarePlus className="h-4 w-4" /> : <Phone className="h-4 w-4" />} {portal ? 'Send' : 'Record'}
+      </Button>
+    </div>
+  )
+}
+
+function ReportTab({ canEdit }: { canEdit: boolean }) {
+  const qc = useQueryClient()
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
+  const { data } = useQuery({
+    queryKey: ['complaints-report', month],
+    queryFn: () => fetchApi<{ report: { total: number; byKind: Record<string, number>; byTopic: Record<string, number>; byBranch: Record<string, number>; byStatus: Record<string, number>; escalated: number; avgHoursToResolve: number | null; solvedRate: number | null; avgHandlingRating: number | null }; settings: { replyHours: number; autoCloseDays: number } }>(`/api/complaints/report?month=${month}`),
+  })
+  const [s, setS] = useState({ replyHours: 24, autoCloseDays: 3 })
+  useEffect(() => { if (data) setS(data.settings) }, [data])
+  const save = useMutation({
+    mutationFn: () => fetchApi('/api/complaints/report', { method: 'PUT', body: JSON.stringify(s) }),
+    onSuccess: () => { notify.success('Saved'); qc.invalidateQueries({ queryKey: ['complaints-report'] }) },
+    onError: (e: Error) => notify.error(e.message),
+  })
+  const r = data?.report
+  const block = (title: string, m?: Record<string, number>, labels?: Record<string, string>) => (
+    <Card><CardHeader className="pb-1"><CardTitle className="text-sm">{title}</CardTitle></CardHeader><CardContent className="space-y-1 text-sm">
+      {m && Object.keys(m).length ? Object.entries(m).sort((a, b) => b[1] - a[1]).map(([k, v]) => <div key={k} className="flex justify-between"><span>{labels?.[k] ?? k}</span><span className="font-semibold">{v}</span></div>) : <p className="text-slate-400">—</p>}
+    </CardContent></Card>
+  )
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2"><Input type="month" className="h-9 w-44" value={month} onChange={(e) => setMonth(e.target.value)} /></div>
+      {!r ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-4">
+            {[['Messages', r.total], ['Escalated', r.escalated], ['Avg. hours to solve', r.avgHoursToResolve ?? '—'], ['Said "solved"', r.solvedRate == null ? '—' : `${r.solvedRate}%`]].map(([l, v]) => (
+              <Card key={l as string}><CardContent className="pt-4"><p className="text-xs text-slate-500">{l}</p><p className="text-2xl font-bold">{v}</p></CardContent></Card>
+            ))}
+          </div>
+          <div className="grid gap-3 md:grid-cols-4">
+            {block('By topic', r.byTopic, TOPIC_LABEL)}
+            {block('By branch', r.byBranch)}
+            {block('By type', r.byKind, KIND_LABEL)}
+            {block('By stage', r.byStatus, STATUS_LABEL)}
+          </div>
+        </>
+      )}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Settings</CardTitle><CardDescription>Unanswered complaints go to the branch manager after the reply time. Solved ones close by themselves if the sender does not answer.</CardDescription></CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-3 text-sm">
+          <label className="flex items-center gap-1.5">Reply within <Input type="number" min={1} max={240} className="h-8 w-20" value={s.replyHours} disabled={!canEdit} onChange={(e) => setS({ ...s, replyHours: Number(e.target.value) || 24 })} /> hours</label>
+          <label className="flex items-center gap-1.5">Close solved ones after <Input type="number" min={1} max={60} className="h-8 w-20" value={s.autoCloseDays} disabled={!canEdit} onChange={(e) => setS({ ...s, autoCloseDays: Number(e.target.value) || 3 })} /> days</label>
+          {canEdit && <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>Save</Button>}
+        </CardContent>
+      </Card>
+    </div>
+  )
 }
 
 export default function ComplaintsPage() {
   const { data: session } = useSession()
-  const queryClient = useQueryClient()
-  const userRole = session?.user?.role ?? ''
-
-  // Form State
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Resolve State
-  const [resolveId, setResolveId] = useState<string | null>(null)
-  const [remarks, setRemarks] = useState('')
-  const [isResolving, setIsResolving] = useState(false)
-
-  // Query Complaints
-  const { data: complaintsData, isLoading } = useQuery({
-    queryKey: ['complaints'],
-    queryFn: () => fetchPaginatedApi<Complaint>('/api/complaints?limit=100'),
-    enabled: !!session,
-  })
-
-  const complaints = complaintsData?.data ?? []
-
-  // Mutate Submit Complaint
-  const submitMutation = useMutation({
-    mutationFn: (data: any) => fetchApi('/api/complaints', { method: 'POST', body: JSON.stringify(data) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['complaints'] })
-      notify.success('Complaint Filed Successfully', {
-        description: 'Our administration has been notified and will review your file shortly.',
-      })
-      setTitle('')
-      setDescription('')
-    },
-    onError: (err: any) => {
-      notify.error('Submission failed', { description: err.message })
-    }
-  })
-
-  // Mutate Resolve Complaint
-  const resolveMutation = useMutation({
-    mutationFn: ({ id, remarks }: { id: string; remarks: string }) => 
-      fetchApi(`/api/complaints/${id}`, { method: 'PUT', body: JSON.stringify({ remarks }) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['complaints'] })
-      notify.success('Complaint Marked as Resolved', {
-        description: 'Case has been closed and the complainant has been updated.',
-      })
-      setResolveId(null)
-      setRemarks('')
-    },
-    onError: (err: any) => {
-      notify.error('Action failed', { description: err.message })
-    }
-  })
-
-  // Mutate Delete Complaint
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => fetchApi(`/api/complaints/${id}`, { method: 'DELETE' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['complaints'] })
-      notify.success('Complaint Record Removed', {
-        description: 'The complaint entry has been deleted from academic registers.',
-      })
-    },
-    onError: (err: any) => {
-      notify.error('Deletion failed', { description: err.message })
-    }
-  })
-
-
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!title || !description) {
-      notify.error('Fields Missing', { description: 'Please provide both title and description.' })
-      return
-    }
-
-    setIsSubmitting(true)
-    try {
-      await submitMutation.mutateAsync({ title, description })
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleResolveSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!resolveId || !remarks) {
-      notify.error('Remarks Needed', { description: 'Provide resolution details.' })
-      return
-    }
-
-    setIsResolving(true)
-    try {
-      await resolveMutation.mutateAsync({ id: resolveId, remarks })
-    } finally {
-      setIsResolving(false)
-    }
-  }
-
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to permanently delete this complaint record?')) {
-      deleteMutation.mutate(id)
-    }
-  }
-
-  const isAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN'
+  const role = session?.user?.role ?? ''
+  const portal = ['STUDENT', 'PARENT', 'GUARDIAN'].includes(role)
+  const staffRead = !!role && checkPermission(role, 'complaints', 'read')
+  const [open, setOpen] = useState<string | null>(null)
+  const [status, setStatus] = useState('OPEN')
+  const [kind, setKind] = useState('all')
+  const [extra, setExtra] = useState<'all' | 'mine' | 'overdue'>('all')
+  const [showForm, setShowForm] = useState(false)
+  const qc = useQueryClient()
+  const qs = portal ? '' : `?status=${status}${kind !== 'all' ? `&kind=${kind}` : ''}${extra === 'mine' ? '&mine=1' : extra === 'overdue' ? '&overdue=1' : ''}`
+  const { data, isLoading } = useQuery({ queryKey: ['complaints', qs], queryFn: () => fetchApi<ListData>(`/api/complaints${qs}`), enabled: portal || staffRead })
+  if (!role) return null
+  if (!portal && !staffRead) return <AccessDenied title="Complaints" message="You don't have access to complaints." />
+  const rows = data?.complaints ?? []
+  const refresh = () => qc.invalidateQueries({ queryKey: ['complaints'] })
 
   return (
-    <motion.div initial="initial" animate="animate" variants={staggerContainer} className="space-y-8 p-6 max-w-7xl mx-auto">
-      {/* Header Banner */}
-      <motion.div variants={fadeUp(0.1)} className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-700 via-rose-700 to-rose-800 p-8 shadow-xl">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.08),transparent)]" />
-        <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 border border-red-400/30 text-red-200 text-xs font-semibold mb-4">
-            <ShieldAlert className="w-3.5 h-3.5" />
-            Grievance Resolution Registry
-          </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight sm:text-4xl">
-            Complaints Portal
-          </h1>
-          <p className="mt-2 text-red-100 max-w-2xl text-sm leading-relaxed">
-            File formal concerns and audit organizational feedback. Super-admins and admins review, resolve, and maintain security logs for all entries.
-          </p>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><AlertOctagon className="h-7 w-7 text-rose-600" /> {portal ? 'Complaints & suggestions' : 'Complaints & suggestions'}</h1>
+          <p className="mt-1 text-sm text-slate-500">{portal ? 'Tell us what went wrong, what we can do better, or who did a great job. We reply here.' : 'Every message has a responsible person and a reply deadline; late ones go to the branch manager.'}</p>
         </div>
-      </motion.div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Side: Submit Complaint / Resolution Box */}
-        <motion.div variants={fadeUp(0.2)} className="lg:col-span-5 space-y-6">
-          {resolveId && (
-            <Card className="border-[2px] border-amber-500/40 bg-amber-50/50 shadow-md">
-              <CardHeader>
-                <CardTitle className="text-amber-800 text-lg flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-amber-600" />
-                  Resolve Complaint
-                </CardTitle>
-                <CardDescription className="text-amber-700/80">
-                  Document the audit action, communication response, or administrative resolution for this case.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleResolveSubmit} className="space-y-4">
-                  <div className="bg-white border border-amber-200/50 p-4 rounded-xl text-xs space-y-1">
-                    <p className="font-semibold text-slate-800">
-                      Case: {complaints.find(c => c.id === resolveId)?.title}
-                    </p>
-                    <p className="text-slate-500 italic">
-                      "{complaints.find(c => c.id === resolveId)?.description}"
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Resolution Remarks / Outcome
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="e.g. Discussed with parent. Classroom seating rearranged to support concentration."
-                      className="w-full text-sm rounded-lg border border-slate-300 p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Button 
-                      type="submit"
-                      disabled={isResolving}
-                      className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold"
-                    >
-                      {isResolving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Resolution'}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setResolveId(null)}
-                      className="border-slate-300"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Form Card */}
-          <Card className="border border-slate-200/80 shadow-md">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold text-slate-850 flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-rose-600" />
-                Register a Complaint
-              </CardTitle>
-              <CardDescription className="text-slate-500">
-                Guards, parents, and administrative staff can register structured reports or formal concerns.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Complaint Subject / Title
-                  </label>
-                  <Input
-                    placeholder="Enter short summary of the concern"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="border-slate-300/80 bg-white"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Detailed Account / Grievance Statement
-                  </label>
-                  <textarea
-                    rows={5}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe the incident, details, or request comprehensively..."
-                    className="w-full text-sm rounded-lg border border-slate-300/80 p-3 bg-white focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all"
-                    required
-                  />
-                </div>
-
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold py-2.5 shadow-md flex items-center justify-center gap-2 rounded-lg"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="w-4.5 h-4.5 animate-spin" />
-                  ) : (
-                    <>
-                      Register Report
-                      <Plus className="w-4 h-4" />
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Right Side: Ledger of Complaints */}
-        <motion.div variants={fadeUp(0.3)} className="lg:col-span-7">
-          <Card className="border border-slate-200/80 shadow-md">
-            <CardHeader className="border-b border-slate-100 pb-4">
-              <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-rose-600" />
-                Audit Logs & Registry
-              </CardTitle>
-              <CardDescription className="text-slate-500 text-xs">
-                History of logged grievances and official responses.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {isLoading ? (
-                <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
-                  <Loader2 className="w-8 h-8 animate-spin text-rose-600" />
-                  <p className="text-sm">Loading registers...</p>
-                </div>
-              ) : complaints.length === 0 ? (
-                <div className="py-16 text-center text-slate-400">
-                  <Inbox className="w-12 h-12 mx-auto mb-2 text-slate-300" />
-                  <p className="text-sm font-semibold">No complaints registered</p>
-                  <p className="text-xs">There are currently no active or filed concerns recorded.</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100">
-                  {complaints.map((c) => {
-                    const isResolved = c.status === 'RESOLVED'
-
-                    return (
-                      <div key={c.id} className="p-5 hover:bg-slate-50/50 transition-all space-y-3">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-slate-800 text-sm">
-                                {c.title}
-                              </span>
-                              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold text-slate-500">
-                                By {c.complainantName} ({c.complainantRole})
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-slate-400">
-                              Logged: {new Date(c.createdAt).toLocaleString()}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                              isResolved 
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                                : 'bg-amber-50 text-amber-700 border-amber-200'
-                            }`}>
-                              {isResolved ? <CheckCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                              {c.status}
-                            </span>
-
-                            {/* Admin Controls */}
-                            {isAdmin && (
-                              <div className="flex gap-1.5">
-                                {!isResolved && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-7 px-2 border-slate-300 bg-white hover:bg-slate-50 text-amber-600 hover:text-amber-700 font-bold"
-                                    onClick={() => {
-                                      setResolveId(c.id)
-                                      window.scrollTo({ top: 0, behavior: 'smooth' })
-                                    }}
-                                  >
-                                    Resolve
-                                  </Button>
-                                )}
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                                  onClick={() => handleDelete(c.id)}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs">
-                          <p className="text-slate-600 leading-relaxed font-medium">
-                            <strong className="text-slate-700">Account:</strong> "{c.description}"
-                          </p>
-                          {c.remarks && (
-                            <p className="mt-2 text-emerald-800 flex items-start gap-1 border-t border-slate-200/50 pt-2 font-semibold">
-                              <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                              <span>Resolution Note: "{c.remarks}"</span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
+        {portal && <Button className="gap-1.5" onClick={() => setShowForm(!showForm)}><MessageSquarePlus className="h-4 w-4" /> New message</Button>}
       </div>
-    </motion.div>
+
+      {portal ? (
+        <>
+          {showForm && <Card><CardContent className="pt-5"><NewMessageForm portal onDone={() => { setShowForm(false); refresh() }} /></CardContent></Card>}
+          {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : <RowList rows={rows} onOpen={setOpen} staff={false} />}
+        </>
+      ) : (
+        <Tabs defaultValue="queue">
+          <TabsList>
+            <TabsTrigger value="queue">Queue</TabsTrigger>
+            {checkPermission(role, 'complaints', 'create') && <TabsTrigger value="phone">Record by phone</TabsTrigger>}
+            {checkPermission(role, 'complaints', 'export') && <TabsTrigger value="report">Report</TabsTrigger>}
+          </TabsList>
+          <TabsContent value="queue" className="mt-4 space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OPEN">Open</SelectItem>
+                  {['NEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map((s) => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}
+                  <SelectItem value="ALL">All</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={kind} onValueChange={setKind}>
+                <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All types</SelectItem>{KINDS.map((k) => <SelectItem key={k} value={k}>{KIND_LABEL[k]}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={extra} onValueChange={(v) => setExtra(v as 'all' | 'mine' | 'overdue')}>
+                <SelectTrigger className="h-9 w-44"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="all">Everyone&apos;s</SelectItem><SelectItem value="mine">Responsible: me</SelectItem><SelectItem value="overdue">Late (no reply)</SelectItem></SelectContent>
+              </Select>
+            </div>
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : <RowList rows={rows} onOpen={setOpen} staff />}
+          </TabsContent>
+          <TabsContent value="phone" className="mt-4"><Card><CardContent className="pt-5"><NewMessageForm portal={false} onDone={refresh} /></CardContent></Card></TabsContent>
+          <TabsContent value="report" className="mt-4"><ReportTab canEdit={checkPermission(role, 'complaints', 'export')} /></TabsContent>
+        </Tabs>
+      )}
+
+      <Dialog open={!!open} onOpenChange={(o) => { if (!o) setOpen(null) }}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader><DialogTitle>{portal ? 'Your message' : 'Complaint'}</DialogTitle></DialogHeader>
+          {open && <ComplaintThread id={open} staff={!portal} />}
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

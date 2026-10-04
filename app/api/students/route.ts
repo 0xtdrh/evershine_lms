@@ -404,6 +404,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Phase D: link the parent who referred this student (before the first invoice, so a welcome discount applies).
+  let referralNote: string | null = null
+  if (data.referralCode?.trim()) {
+    try {
+      const { linkReferral } = await import('@/lib/referrals/engine')
+      const r = await linkReferral({ studentId: student.id, codeOrPhone: data.referralCode, userId: session.user.id })
+      if (!r.ok) referralNote = `Referral not linked: ${r.message}`
+    } catch (err) {
+      referralNote = `Referral not linked: ${getErrorMessage(err)}`
+    }
+  }
+
   let enrollmentId: string | null = null
   let enrollmentNote: string | null = null
 
@@ -450,6 +462,7 @@ export async function POST(request: NextRequest) {
       guardianId,
       ...(enrollmentNote && { enrollmentNote }),
       ...(guardianNote && { guardianNote }),
+      ...(referralNote && { referralNote }),
     },
     `Student ${data.firstName} ${data.lastName} admitted successfully`
   )

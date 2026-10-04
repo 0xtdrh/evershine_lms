@@ -14,6 +14,7 @@ import { notificationPanel, pulseRing, sidebarSlide } from '@/lib/animations'
 import { PageTransition } from '@/components/shared/page-transition'
 import {
   LayoutDashboard,
+  Gift,
   ClipboardX,
   Star,
   Cake,
@@ -108,7 +109,8 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Expense Ledger',  href: '/dashboard/accountant/expenses', icon: Wallet,     roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'], perm: [['expenses', 'read']] },
   { name: 'Financial Reports', href: '/dashboard/accountant/reports', icon: BarChart2, roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'], perm: [['financial_reports', 'read'], ['profit_loss', 'read']] },
   { name: 'Leaves',          href: '/dashboard/leaves',       icon: CalendarClock,   roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'STUDENT', 'BRANCH_MANAGER'], perm: [['leaves', 'create'], ['leaves', 'approve']] },
-  { name: 'Complaints',      href: '/dashboard/complaints',   icon: AlertOctagon,    roles: ['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'PARENT', 'GUARDIAN'] },
+  { name: 'Complaints',      href: '/dashboard/complaints',   icon: AlertOctagon,    roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'STUDENT', 'PARENT', 'GUARDIAN'] },
+  { name: 'Referrals',       href: '/dashboard/referrals',    icon: Gift,            roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT', 'MARKETING'], perm: [['referrals', 'read']] },
   { name: 'Academic Queries',href: '/dashboard/queries',      icon: HelpCircle,      roles: ['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'STUDENT'] },
   { name: 'Staff Salaries',  href: '/dashboard/salaries',     icon: Banknote,        roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER'], perm: [['salaries', 'read'], ['salaries', 'approve']] },
   { name: 'Attendance', href: '/dashboard/attendance/sections', icon: ClipboardCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['attendance', 'read']] },
@@ -606,6 +608,10 @@ function NotificationBell() {
       LOW_RATING:        { label: 'Follow-up', className: 'bg-rose-50 text-rose-700 border-rose-100' },
       MORNING_SUMMARY:   { label: 'Summary', className: 'bg-slate-50 text-slate-700 border-slate-100' },
       RENEWAL_REQUEST:   { label: 'Renewal', className: 'bg-sky-50 text-sky-700 border-sky-100' },
+      COMPLAINT_NEW:     { label: 'Complaints', className: 'bg-blue-50 text-blue-700 border-blue-100' },
+      COMPLAINT_UPDATE:  { label: 'Your message', className: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+      COMPLAINT_ESCALATED: { label: 'Escalated', className: 'bg-rose-50 text-rose-700 border-rose-100' },
+      REFERRAL_UPDATE:   { label: 'Referral', className: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
     }
     const config = map[type] ?? { label: 'General', className: 'bg-slate-50 text-slate-700 border-slate-100' }
     return (

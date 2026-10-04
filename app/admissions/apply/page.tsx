@@ -33,7 +33,7 @@ const INITIAL_ADMISSION_FORM_DATA = {
   fatherPhoneNumber: '', fatherOccupation: '', motherPhoneNumber: '', motherOccupation: '', parentStatus: 'BOTH_ALIVE',
   passportPhotoBase64: '',
   medicalNotes: '', hasSiblingAtAcademy: false, siblingName: '', siblingClass: '',
-  sourceOfInfo: '', termsAccepted: false,
+  sourceOfInfo: '', referralCode: '', termsAccepted: false,
   website: '', // anti-spam honeypot: hidden from people, filled only by bots
 }
 
@@ -644,6 +644,9 @@ export default function AdmissionFormPage() {
                             {MARKETING_SOURCES.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                           </SelectContent>
                         </Select>
+                      </FGroup>
+                      <FGroup full>
+                        <Input name="referralCode" value={formData.referralCode} onChange={handleChange} placeholder="Referral code from a friend (optional) — TN-REF-…" />
                       </FGroup>
                     </div>
 

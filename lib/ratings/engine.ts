@@ -17,7 +17,6 @@ import { cairoYmd, ageOn } from '@/lib/dates/cairo'
 import { sessionsPerCycle, cyclesInLevel } from '@/lib/groups/cycle-rules'
 import { pickGroupInstructorOffering } from '@/lib/groups/instructor'
 import { notifyUsers, managerUserIds } from '@/lib/notifications/events'
-import { logSystemContact } from '@/lib/contacts/contact-log'
 
 export interface FeedbackSettings { parentAnswersUnderAge: number; sessionDays: number; surveyDays: number }
 export const FEEDBACK_DEFAULTS: FeedbackSettings = { parentAnswersUnderAge: 8, sessionDays: 2, surveyDays: 21 }
@@ -50,11 +49,18 @@ export async function pendingSessionRatings(studentId: string) {
     .map((r) => ({ classSectionId: r.studentEnrollment.classSectionId, group: `${r.studentEnrollment.classSection.className} ${r.studentEnrollment.classSection.sectionName}`.trim(), date: day(r.attendanceDate) }))
 }
 
-async function lowRatingAlert(studentId: string, text: string) {
-  const s = await prisma.student.findUnique({ where: { id: studentId }, select: { firstName: true, lastName: true, campusId: true, guardians: { select: { id: true } } } })
+/**
+ * Low rating: managers are told, and (phase D) a complaint is opened in the sender's name so it is followed
+ * until closed (it also writes the contact log, reason COMPLAINT).
+ */
+async function lowRatingAlert(studentId: string, text: string, by: { userId: string; role: 'STUDENT' | 'PARENT'; topic: 'SESSION' | 'INSTRUCTOR' | 'OTHER'; classSectionId?: string | null }) {
+  const s = await prisma.student.findUnique({ where: { id: studentId }, select: { firstName: true, lastName: true, campusId: true } })
   if (!s) return
-  await notifyUsers(await managerUserIds(s.campusId), 'LOW_RATING', { title: 'Low rating', message: `${s.firstName} ${s.lastName}: ${text}. A follow-up was added.`, relatedId: studentId })
-  await logSystemContact({ studentId, guardianId: s.guardians[0]?.id ?? null, channel: 'SYSTEM', direction: 'IN', reason: 'COMPLAINT', summary: `Low rating: ${text}. Please call the parent.`, followUpAt: new Date() })
+  await notifyUsers(await managerUserIds(s.campusId), 'LOW_RATING', { title: 'Low rating', message: `${s.firstName} ${s.lastName}: ${text}. A complaint was opened to follow it up.`, relatedId: studentId })
+  const u = await prisma.user.findUnique({ where: { id: by.userId }, select: { displayName: true, email: true, guardian: { select: { firstName: true, lastName: true } } } })
+  const senderName = u?.guardian ? `${u.guardian.firstName} ${u.guardian.lastName}`.trim() : u?.displayName ?? `${s.firstName} ${s.lastName}`
+  const { createComplaint } = await import('@/lib/complaints/engine')
+  await createComplaint({ senderUserId: by.userId, senderName, senderRole: by.role, kind: 'COMPLAINT', topic: by.topic, body: `Low rating: ${text}`, studentId, classSectionId: by.classSectionId ?? null, source: 'AUTO_RATING' })
 }
 
 export interface FeedbackOutcome { ok: boolean; code?: number; message?: string }
@@ -67,7 +73,7 @@ export async function rateSession(input: { studentId: string; classSectionId: st
   await prisma.sessionFeedback.create({
     data: { studentId: input.studentId, classSectionId: input.classSectionId, sessionDate: new Date(`${input.sessionDate}T00:00:00.000Z`), rating: input.rating, comment: input.comment?.slice(0, 500) || null, byUserId: input.userId, byRole: input.byRole },
   })
-  if (input.rating <= 1) await lowRatingAlert(input.studentId, `session ${input.sessionDate} in ${g.group} rated ${SESSION_FACES[input.rating]}${input.comment ? ` — "${input.comment.slice(0, 200)}"` : ''}`)
+  if (input.rating <= 1) await lowRatingAlert(input.studentId, `session ${input.sessionDate} in ${g.group} rated ${SESSION_FACES[input.rating]}${input.comment ? ` — "${input.comment.slice(0, 200)}"` : ''}`, { userId: input.userId, role: input.byRole, topic: 'SESSION', classSectionId: input.classSectionId })
   return { ok: true }
 }
 
@@ -112,7 +118,7 @@ export async function pendingSurveys(studentId: string) {
   return out
 }
 
-export async function submitSurvey(input: { studentId: string; classSectionId: string; sessionsRating: number; teacherRating: number; companyRating: number; comment?: string | null; userId: string }): Promise<FeedbackOutcome> {
+export async function submitSurvey(input: { studentId: string; classSectionId: string; sessionsRating: number; teacherRating: number; companyRating: number; recommend?: number | null; comment?: string | null; userId: string }): Promise<FeedbackOutcome> {
   const ratings = [input.sessionsRating, input.teacherRating, input.companyRating]
   if (ratings.some((r) => !Number.isInteger(r) || r < 1 || r > 5)) return { ok: false, code: 400, message: 'Answer the three questions (1 to 5)' }
   const pending = (await pendingSurveys(input.studentId)).find((p) => p.classSectionId === input.classSectionId)
@@ -127,10 +133,11 @@ export async function submitSurvey(input: { studentId: string; classSectionId: s
       studentId: input.studentId, classSectionId: input.classSectionId, kind: pending.kind, teacherId,
       sessionsRating: input.sessionsRating, teacherRating: input.teacherRating, companyRating: input.companyRating,
       comment: input.comment?.slice(0, 1000) || null, byUserId: input.userId,
+      recommend: input.recommend != null && input.recommend >= 0 && input.recommend <= 10 ? Math.round(input.recommend) : null,
     },
   })
   if (ratings.some((r) => r <= 2)) {
-    await lowRatingAlert(input.studentId, `parent rated ${pending.group}: sessions ${input.sessionsRating}/5, instructor ${input.teacherRating}/5, TechNova ${input.companyRating}/5${input.comment ? ` — "${input.comment.slice(0, 200)}"` : ''}`)
+    await lowRatingAlert(input.studentId, `parent rated ${pending.group}: sessions ${input.sessionsRating}/5, instructor ${input.teacherRating}/5, TechNova ${input.companyRating}/5${input.comment ? ` — "${input.comment.slice(0, 200)}"` : ''}`, { userId: input.userId, role: 'PARENT', topic: input.teacherRating <= 2 ? 'INSTRUCTOR' : input.sessionsRating <= 2 ? 'SESSION' : 'OTHER', classSectionId: input.classSectionId })
   }
   return { ok: true }
 }

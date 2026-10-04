@@ -337,6 +337,12 @@ export async function POST(
           resolvedSectionId = sectionRow?.id
         }
       }
+      // Phase D: referral typed on the application (before the first invoice → welcome discount applies).
+      if (request.referralCode) {
+        const { linkReferral } = await import('@/lib/referrals/engine')
+        const ref = await linkReferral({ studentId: result.id, codeOrPhone: request.referralCode, userId: session.user.id }).catch(() => null)
+        if (ref && !ref.ok) console.warn('[ADMISSIONS_APPROVE] referral not linked:', ref.message)
+      }
       // Phase A: a full group puts the student on its waiting list instead.
       if (resolvedSectionId && (await groupSeats(resolvedSectionId)).full) {
         await waitForGroup(result.id, resolvedSectionId, session.user.id)

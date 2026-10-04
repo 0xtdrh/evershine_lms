@@ -654,6 +654,8 @@ model AdmissionRequest {
 
   // ── Declaration & Referral ───────────────────────────────────────────────
   sourceOfInfo String? // How did they hear about us
+  /// Phase D: referral code or the referring parent's phone typed on the form
+  referralCode String?
 
   // WHY: We store server-side confirmation that T&C was accepted; the boolean
   //      is set by the API only after the checkbox passes Zod validation.
@@ -848,6 +850,8 @@ model Guardian {
   phoneNumber  String   @unique
   email        String?
   relationship String
+  /// Phase D: the parent's referral code (TN-REF-…), created the first time it is shown
+  referralCode String?  @unique
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -1559,14 +1563,32 @@ model Complaint {
   complainantRole Role
   title           String
   description     String
-  status          String   @default("PENDING") // "PENDING", "RESOLVED"
+  status          String   @default("PENDING") // legacy "PENDING"/"RESOLVED"; phase D: NEW | IN_PROGRESS | RESOLVED | CLOSED
   remarks         String?
+  /// Phase D (docs/design-phase-d.md) — all optional / defaulted (additive)
+  number          String?   @unique
+  kind            String    @default("COMPLAINT") @db.VarChar(10) // COMPLAINT | SUGGESTION | PRAISE
+  topic           String?   @db.VarChar(12) // INSTRUCTOR | SCHEDULE | PAYMENT | PLACE | SESSION | OTHER
+  body            String?   @db.Text
+  studentId       String?
+  classSectionId  String?
+  campusId        String?
+  source          String    @default("PORTAL") @db.VarChar(12) // PORTAL | PHONE | AUTO_RATING
+  assignedToId    String?
+  dueAt           DateTime?
+  firstReplyAt    DateTime?
+  escalatedAt     DateTime?
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+  satisfied       Boolean?
+  handlingRating  Int?
   resolvedBy      String? // Admin User.id
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([complainantId])
   @@index([status])
+  @@index([campusId, status])
 }
 
 model StudentQuery {
@@ -3777,6 +3799,8 @@ model ParentSurvey {
   teacherRating  Int
   companyRating  Int
   comment        String?  @db.VarChar(1000)
+  /// Phase D: "Would you recommend TechNova to a friend?" 0..10 (end of level)
+  recommend      Int?
   byUserId       String
   createdAt      DateTime @default(now())
 
@@ -3795,4 +3819,36 @@ model BirthdayGreeting {
   createdAt  DateTime @default(now())
 
   @@unique([personType, personId, year])
+}
+
+/// Phase D: a staff / sender message on a complaint. internal = staff-only note.
+model ComplaintReply {
+  id          String   @id @default(cuid())
+  complaintId String
+  authorId    String
+  authorRole  String   @db.VarChar(16)
+  body        String   @db.Text
+  internal    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([complaintId])
+}
+
+/// Phase D: who referred whom. One referral per new student. status PENDING | REWARDED | CANCELLED.
+/// The reward (wallet credit to one of the referrer's children) is given when the new student pays the first invoice.
+model Referral {
+  id                  String    @id @default(cuid())
+  code                String
+  referrerGuardianId  String
+  referredStudentId   String    @unique
+  status              String    @default("PENDING") @db.VarChar(10)
+  rewardAmount        Decimal?  @db.Decimal(10, 2)
+  rewardStudentId     String?
+  welcomeAssignmentId String?
+  createdById         String
+  createdAt           DateTime  @default(now())
+  rewardedAt          DateTime?
+
+  @@index([referrerGuardianId])
+  @@index([status])
 }

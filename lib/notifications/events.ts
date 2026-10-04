@@ -14,6 +14,7 @@
 import { prisma } from '@/lib/prisma'
 import { getSetting, setSetting } from '@/lib/settings/app-settings'
 import { isAutoWhatsAppConfigured, sendWhatsAppText } from '@/lib/messaging/whatsapp'
+import { checkPermission } from '@/lib/rbac'
 
 export type Audience = 'PARENT' | 'STAFF'
 export interface EventDef { key: string; label: string; description: string; audience: Audience }
@@ -39,6 +40,10 @@ export const NOTIFICATION_EVENTS = [
   { key: 'CONSECUTIVE_ABSENCE', label: 'Absent twice in a row', description: 'Staff: a student missed two sessions in a row (a follow-up is added)', audience: 'STAFF' },
   { key: 'LOW_RATING', label: 'Low rating', description: 'Managers: a rating of 2 or less (a follow-up is added)', audience: 'STAFF' },
   { key: 'BIRTHDAY_STAFF', label: 'Birthdays today (staff)', description: 'Instructors and branch staff: whose birthday is today', audience: 'STAFF' },
+  { key: 'COMPLAINT_UPDATE', label: 'Complaint update', description: 'Parent / student: a reply or a new stage on their complaint', audience: 'PARENT' },
+  { key: 'REFERRAL_UPDATE', label: 'Referral', description: 'Parent: a friend registered with your code / you earned a referral reward', audience: 'PARENT' },
+  { key: 'COMPLAINT_NEW', label: 'New complaint', description: 'Complaint handlers: a new complaint, suggestion or praise', audience: 'STAFF' },
+  { key: 'COMPLAINT_ESCALATED', label: 'Complaint escalated', description: 'Managers: no reply before the deadline, or the sender says it is not solved', audience: 'STAFF' },
   { key: 'MORNING_SUMMARY', label: 'Morning summary', description: 'Managers: today\'s sessions, missing attendance, overdue invoices, items waiting', audience: 'STAFF' },
 ] as const satisfies readonly EventDef[]
 
@@ -121,6 +126,13 @@ export async function notifyFamilies(
 }
 
 const MANAGER_ROLES = ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] as const
+const ALL_STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT', 'MARKETING'] as const
+
+/** Staff (of that branch) whose role has this permission — e.g. complaint handlers. */
+export async function usersWithPermission(resource: Parameters<typeof checkPermission>[1], action: Parameters<typeof checkPermission>[2], campusId?: string | null): Promise<string[]> {
+  const roles = ALL_STAFF_ROLES.filter((r) => checkPermission(r, resource, action))
+  return roles.length ? staffUserIds([...roles], campusId) : []
+}
 const BRANCH_STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] as const
 
 /** Staff users who manage a branch: Super Admin / Admin everywhere, branch managers of that branch. */
@@ -141,7 +153,8 @@ async function staffUserIds(roles: string[], campusId?: string | null): Promise<
     .filter((u) => {
       if (u.role === 'SUPER_ADMIN' || !campusId) return true
       const own = u.admin?.campusId ?? u.branchManager?.campusId ?? u.secretary?.campusId ?? null
-      return u.role === 'ADMIN' ? !own || own === campusId : own === campusId
+      // No branch on the profile = works for all branches (same as campusScope).
+      return !own || own === campusId
     })
     .map((u) => u.id)
 }

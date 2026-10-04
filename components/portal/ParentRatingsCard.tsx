@@ -7,6 +7,7 @@ import { notify } from '@/lib/notify'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Star } from 'lucide-react'
+import { ParentReferralCard } from './ParentReferralCard'
 
 interface PendingSession { classSectionId: string; group: string; date: string }
 interface PendingSurvey { classSectionId: string; group: string; course: string | null; level: string | null; kind: 'MONTHLY' | 'LEVEL' }
@@ -35,11 +36,27 @@ function Stars({ value, onChange }: { value: number; onChange: (n: number) => vo
 function SurveyForm({ child, s, onDone }: { child: Child; s: PendingSurvey; onDone: () => void }) {
   const [r, setR] = useState({ sessionsRating: 0, teacherRating: 0, companyRating: 0 })
   const [comment, setComment] = useState('')
+  const [recommend, setRecommend] = useState<number | null>(null)
+  const [promoter, setPromoter] = useState(false)
   const send = useMutation({
-    mutationFn: () => fetchApi('/api/ratings/parent', { method: 'POST', body: JSON.stringify({ type: 'survey', studentId: child.studentId, classSectionId: s.classSectionId, ...r, comment: comment || null }) }),
-    onSuccess: () => { notify.success('Thank you for your rating!'); onDone() },
+    mutationFn: () => fetchApi('/api/ratings/parent', { method: 'POST', body: JSON.stringify({ type: 'survey', studentId: child.studentId, classSectionId: s.classSectionId, ...r, recommend, comment: comment || null }) }),
+    onSuccess: () => {
+      notify.success('Thank you for your rating!')
+      // Phase D: a parent who would recommend us (9–10) sees their referral code right away.
+      if (recommend != null && recommend >= 9) setPromoter(true)
+      else onDone()
+    },
     onError: (e: Error) => notify.error(e.message),
   })
+  if (promoter) {
+    return (
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-emerald-700">Thank you! 💚 Would you share TechNova with a friend?</p>
+        <ParentReferralCard compact />
+        <Button size="sm" variant="outline" onClick={onDone}>Done</Button>
+      </div>
+    )
+  }
   const q: [keyof typeof r, string][] = [['sessionsRating', 'How were the sessions?'], ['teacherRating', 'How is the instructor?'], ['companyRating', 'How is TechNova overall?']]
   return (
     <div className="space-y-2 rounded-lg border border-slate-200 p-3">
@@ -52,6 +69,16 @@ function SurveyForm({ child, s, onDone }: { child: Child; s: PendingSurvey; onDo
           <Stars value={r[k]} onChange={(n) => setR({ ...r, [k]: n })} />
         </div>
       ))}
+      {s.kind === 'LEVEL' && (
+        <div className="space-y-1 text-sm">
+          <span>Would you recommend TechNova to a friend? (0 = not at all, 10 = definitely)</span>
+          <div className="flex flex-wrap gap-1">
+            {Array.from({ length: 11 }, (_, n) => (
+              <button key={n} type="button" onClick={() => setRecommend(n)} className={`h-8 w-8 rounded-md border text-xs font-semibold ${recommend === n ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{n}</button>
+            ))}
+          </div>
+        </div>
+      )}
       <textarea className="min-h-[56px] w-full rounded-md border border-slate-200 bg-white p-2 text-sm" maxLength={1000} placeholder="Anything you'd like to tell us? (optional)" value={comment} onChange={(e) => setComment(e.target.value)} />
       <div className="flex justify-end"><Button size="sm" disabled={!r.sessionsRating || !r.teacherRating || !r.companyRating || send.isPending} onClick={() => send.mutate()}>Send</Button></div>
     </div>

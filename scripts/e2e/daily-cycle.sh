@@ -930,6 +930,74 @@ HOL=$(api POST /api/holidays "{\"date\":\"$(D 3)\",\"name\":\"E2E day off\",\"ca
 check "holiday on a session day → families told" "$(NOTIF HOLIDAY | python -c "import sys;print(int(sys.stdin.read())>=1)")" "True"
 M "DELETE FROM Holiday WHERE name='E2E day off'"
 rm -f "$WJ"
+echo "== 28. phase D: referrals, complaints & suggestions"
+WJ=$(mktemp); login_as 01066660099 Wallet2026A "$WJ" >/dev/null
+pget() { curl -s -b "$WJ" "$B$1"; }
+ppost() { curl -s -b "$WJ" -X "$1" -H 'Content-Type: application/json' -d "$3" "$B$2"; }
+RNOTIF() { M "SELECT COUNT(*) FROM Notification n JOIN Guardian g ON g.userId=n.userId WHERE g.phoneNumber='01066660099' AND n.type='$1'"; }
+# 1) referral settings + code
+WT=$(mktype '{"name":"Referral welcome","kind":"PROMO","valueType":"PERCENT","value":10,"duration":"FIRST_CYCLE","approvalMode":"STAFF","stackable":true}')
+check "secretary cannot change referral settings" "$(secapi PUT /api/referrals/settings "{\"rewardEnabled\":true,\"rewardAmount\":150,\"welcomeEnabled\":false,\"welcomeTypeId\":null,\"ambassadorAt\":3}" | jq_ "d['success']")" "False"
+check "reward 150 EGP + welcome discount switched on" "$(api PUT /api/referrals/settings "{\"rewardEnabled\":true,\"rewardAmount\":150,\"welcomeEnabled\":true,\"welcomeTypeId\":\"$WT\",\"ambassadorAt\":3}" | jq_ "d['success']")" "True"
+RCODE=$(pget /api/referrals/mine | jq_ "d['data']['code']")
+check "parent gets a referral code in the portal" "$(echo "$RCODE" | cut -c1-12)" "TN-REF-RANIA"
+check "the code stays the same" "$(pget /api/referrals/mine | jq_ "d['data']['code']")" "$RCODE"
+# 2) new student registered with the code
+W5=$(api POST /api/students "$(stu ReferredKid 01066660096 Mona 01066660097 | sed "s/}\$/,\"referralCode\":\"$(echo $RCODE | tr 'A-Z' 'a-z')\"}/")" | jq_ "d['data']['id']")
+check "admission with the code (any case) links the referral" "$(M "SELECT status FROM Referral WHERE referredStudentId='$W5'")" "PENDING"
+check "welcome discount given to the new student" "$(M "SELECT COUNT(*) FROM DiscountAssignment WHERE studentId='$W5' AND discountTypeId='$WT' AND status='ACTIVE'")" "1"
+check "referrer told a friend registered" "$(RNOTIF REFERRAL_UPDATE)" "1"
+check "a parent cannot refer their own child" "$(api POST /api/referrals "{\"studentId\":\"$W1\",\"codeOrPhone\":\"$RCODE\"}" | jq_ "d['success']")" "False"
+check "a student is linked only once" "$(api POST /api/referrals "{\"studentId\":\"$W5\",\"codeOrPhone\":\"01066660095\"}" | jq_ "d['success']")" "False"
+check "unknown code refused" "$(api POST /api/referrals "{\"studentId\":\"$W3\",\"codeOrPhone\":\"TN-REF-NOBODY1\"}" | jq_ "d['success']")" "False"
+# 3) first paid invoice → reward in the referrer's child's wallet
+api POST /api/groups/$WB/students "{\"studentId\":\"$W5\"}" >/dev/null
+W5INV=$(invid $W5 $WB)
+check "the new student's first invoice has the 10% welcome discount" "$(M "SELECT CAST(discount AS DOUBLE)>0 FROM FeeInvoice WHERE id='$W5INV'")" "1"
+W5HALF=$(M "SELECT CAST(totalAmount AS DOUBLE)/2 FROM FeeInvoice WHERE id='$W5INV'")
+M "UPDATE ClassSection SET installmentsAllowed=1 WHERE id='$WB'"
+api POST /api/fees/$W5INV/payments "{\"amount\":$W5HALF,\"paymentMethod\":\"Cash\"}" >/dev/null
+check "half paid → no reward yet" "$(M "SELECT status FROM Referral WHERE referredStudentId='$W5'")" "PENDING"
+W5LEFT=$(M "SELECT CAST(totalAmount-paidAmount AS DOUBLE) FROM FeeInvoice WHERE id='$W5INV'")
+api POST /api/fees/$W5INV/payments "{\"amount\":$W5LEFT,\"paymentMethod\":\"Cash\"}" >/dev/null
+M "UPDATE ClassSection SET installmentsAllowed=0 WHERE id='$WB'"
+check "first invoice PAID → referral rewarded" "$(M "SELECT CONCAT(status,'/',CAST(rewardAmount AS DOUBLE)) FROM Referral WHERE referredStudentId='$W5'")" "REWARDED/150"
+check "150 EGP added to the referrer's child's wallet" "$(M "SELECT COUNT(*) FROM WalletTransaction WHERE type='REFERRAL' AND CAST(amount AS DOUBLE)=150 AND studentId IN ('$W1','$W2')")" "1"
+check "referrer told about the reward" "$(RNOTIF REFERRAL_UPDATE)" "2"
+check "portal shows the friend and the reward" "$(pget /api/referrals/mine | jq_ "(d['data']['rewardedCount'], d['data']['totalReward'], d['data']['ambassador'])")" "(1, 150, False)"
+check "referrals report (managers)" "$(api GET /api/referrals | jq_ "d['data']['totals']['rewarded']>=1")" "True"
+# 4) complaints: parent sends, secretary handles
+check "low rating (section 27) opened a complaint automatically" "$(M "SELECT COUNT(*) FROM Complaint WHERE studentId='$W1' AND source='AUTO_RATING'")" "1"
+C1=$(ppost POST /api/complaints "{\"kind\":\"COMPLAINT\",\"topic\":\"INSTRUCTOR\",\"body\":\"The instructor is late every session\",\"studentId\":\"$W1\"}")
+C1ID=$(echo "$C1" | jq_ "d['data']['id']")
+check "parent sends a complaint → numbered TN-CMP" "$(echo "$C1" | jq_ "d['data']['number'][:11]")/$(M "SELECT status FROM Complaint WHERE id='$C1ID'")" "TN-CMP-$(date +%Y)/NEW"
+check "handlers (secretary) told" "$(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.email='sec@e2e.local' AND n.type='COMPLAINT_NEW' AND n.relatedId='$C1ID'")" "1"
+check "parent cannot write about another family's child" "$(ppost POST /api/complaints "{\"kind\":\"COMPLAINT\",\"topic\":\"OTHER\",\"body\":\"test test\",\"studentId\":\"$W3\"}" | jq_ "d['success']")" "False"
+check "secretary sees it in the queue" "$(secapi GET /api/complaints | jq_ "any(c['id']=='$C1ID' for c in d['data']['complaints'])")" "True"
+RUSER=$(M "SELECT userId FROM Guardian WHERE phoneNumber='01066660099'")
+check "parent sees only their own messages" "$(pget /api/complaints | jq_ "(len(d['data']['complaints']), d['data']['portal'])")" "($(M "SELECT COUNT(*) FROM Complaint WHERE complainantId='$RUSER'"), True)"
+# escalation after the deadline
+M "UPDATE Complaint SET dueAt=DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 HOUR) WHERE id='$C1ID'"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "no reply before the deadline → escalated to the managers" "$(M "SELECT escalatedAt IS NOT NULL FROM Complaint WHERE id='$C1ID'")/$(M "SELECT COUNT(*)>0 FROM Notification WHERE type='COMPLAINT_ESCALATED' AND relatedId='$C1ID'")" "1/1"
+secapi POST /api/complaints/$C1ID '{"body":"Checked with the manager, internal","internal":true}' >/dev/null
+check "secretary replies → In progress, parent notified" "$(secapi POST /api/complaints/$C1ID '{"body":"We spoke to the instructor, sorry!"}' | jq_ "d['success']")/$(M "SELECT status FROM Complaint WHERE id='$C1ID'")/$(RNOTIF COMPLAINT_UPDATE)" "True/IN_PROGRESS/1"
+check "parent never sees internal notes" "$(pget /api/complaints/$C1ID | jq_ "[r['internal'] for r in d['data']['replies']]")" "[False]"
+check "parent cannot change the stage" "$(ppost PATCH /api/complaints/$C1ID '{"status":"CLOSED"}' | jq_ "d['success']")" "False"
+secapi PATCH /api/complaints/$C1ID '{"status":"RESOLVED"}' >/dev/null
+check "marked solved → parent asked; 'not yet' sends it back" "$(ppost POST /api/complaints/$C1ID/confirm '{"satisfied":false}' | jq_ "d['success']")/$(M "SELECT status FROM Complaint WHERE id='$C1ID'")" "True/IN_PROGRESS"
+secapi PATCH /api/complaints/$C1ID '{"status":"RESOLVED"}' >/dev/null
+check "'yes, solved' + 5 stars → closed" "$(ppost POST /api/complaints/$C1ID/confirm '{"satisfied":true,"rating":5}' | jq_ "d['success']")/$(M "SELECT CONCAT(status,'/',handlingRating) FROM Complaint WHERE id='$C1ID'")" "True/CLOSED/5"
+check "no replies on a closed complaint" "$(secapi POST /api/complaints/$C1ID '{"body":"x"}' | jq_ "d['success']")" "False"
+# phone complaint + auto-close
+check "secretary records a phone suggestion in the parent's name" "$(secapi POST /api/complaints "{\"studentId\":\"$W2\",\"from\":\"PARENT\",\"kind\":\"SUGGESTION\",\"topic\":\"SCHEDULE\",\"body\":\"Please add a Friday group\"}" | jq_ "d['success']")/$(M "SELECT CONCAT(source,'/',complainantRole) FROM Complaint WHERE studentId='$W2' AND kind='SUGGESTION'")" "True/PHONE/PARENT"
+C2ID=$(ppost POST /api/complaints "{\"kind\":\"PRAISE\",\"topic\":\"INSTRUCTOR\",\"body\":\"Great instructor, thank you\",\"studentId\":\"$W2\"}" | jq_ "d['data']['id']")
+secapi PATCH /api/complaints/$C2ID '{"status":"RESOLVED"}' >/dev/null
+M "UPDATE Complaint SET resolvedAt=DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 5 DAY) WHERE id='$C2ID'"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "solved and no answer for 3 days → closed by itself" "$(M "SELECT status FROM Complaint WHERE id='$C2ID'")" "CLOSED"
+check "monthly report (managers only)" "$(api GET /api/complaints/report | jq_ "d['data']['report']['total']>=4")/$(secapi GET /api/complaints/report | jq_ "d['success']")" "True/False"
+rm -f "$WJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

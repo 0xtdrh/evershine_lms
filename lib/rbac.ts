@@ -84,6 +84,9 @@ export type AcademicResource =
   | 'ratings'
   | 'birthdays'
   | 'notification_settings'
+  // Phase D (docs/design-phase-d.md): complaints = handle (update) the complaints queue; referrals = report + settings
+  | 'complaints'
+  | 'referrals'
 
 type Resource = AcademicResource
 
@@ -193,6 +196,8 @@ const PERMISSIONS: PermissionMap = {
     ratings: ['read'],
     birthdays: ['read'],
     notification_settings: ['read', 'update'],
+    complaints: ['create', 'read', 'update', 'export'],
+    referrals: ['create', 'read', 'update'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -250,6 +255,8 @@ const PERMISSIONS: PermissionMap = {
     ratings: ['read'],
     birthdays: ['read'],
     notification_settings: ['read', 'update'],
+    complaints: ['create', 'read', 'update', 'export'],
+    referrals: ['create', 'read', 'update'],
   },
   TEACHER: {
     students: ['read'],
@@ -308,6 +315,8 @@ const PERMISSIONS: PermissionMap = {
     ratings: [],
     birthdays: ['read'],
     notification_settings: [],
+    complaints: [],
+    referrals: [],
   },
   STUDENT: {
     students: [],
@@ -365,6 +374,8 @@ const PERMISSIONS: PermissionMap = {
     ratings: [],
     birthdays: [],
     notification_settings: [],
+    complaints: [],
+    referrals: [],
   },
   PARENT: {
     students: [],
@@ -422,6 +433,8 @@ const PERMISSIONS: PermissionMap = {
     ratings: [],
     birthdays: [],
     notification_settings: [],
+    complaints: [],
+    referrals: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -481,6 +494,8 @@ const PERMISSIONS: PermissionMap = {
     ratings: [],
     birthdays: [],
     notification_settings: [],
+    complaints: [],
+    referrals: ['read'],
   },
   GUARDIAN: {
     students: [],
@@ -538,6 +553,8 @@ const PERMISSIONS: PermissionMap = {
     ratings: [],
     birthdays: [],
     notification_settings: [],
+    complaints: [],
+    referrals: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -599,6 +616,8 @@ const PERMISSIONS: PermissionMap = {
     ratings: [],
     birthdays: ['read'],
     notification_settings: [],
+    complaints: ['create', 'read', 'update'],
+    referrals: ['create', 'read'],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -661,6 +680,8 @@ const PERMISSIONS: PermissionMap = {
     ratings: ['read'],
     birthdays: ['read'],
     notification_settings: [],
+    complaints: ['create', 'read', 'update', 'export'],
+    referrals: ['create', 'read', 'update'],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -721,6 +742,8 @@ const PERMISSIONS: PermissionMap = {
     ratings: [],
     birthdays: [],
     notification_settings: [],
+    complaints: [],
+    referrals: ['read'],
   },
 }
 

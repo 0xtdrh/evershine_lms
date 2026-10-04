@@ -695,6 +695,11 @@ export default function AdmissionPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Referral code or referring parent&apos;s phone (optional)</Label>
+              <Input {...register('referralCode')} placeholder="TN-REF-… or 01…" />
+              <p className="text-xs text-muted-foreground">The parent who recommended TechNova gets their referral reward when this student pays the first invoice.</p>
+            </div>
           </CardContent>
         </Card>
 

@@ -6,7 +6,7 @@ export interface LedgerRow { id: string; type: string; amount: number; note: str
 
 export const WALLET_TYPE: Record<string, string> = {
   TOPUP: 'Top-up', PAYMENT: 'Invoice payment', REFUND: 'Refund credit', WITHDRAW: 'Withdrawal',
-  TRANSFER_IN: 'From a sibling', TRANSFER_OUT: 'To a sibling', ADJUSTMENT: 'Adjustment',
+  TRANSFER_IN: 'From a sibling', TRANSFER_OUT: 'To a sibling', ADJUSTMENT: 'Adjustment', REFERRAL: 'Referral reward',
 }
 
 /** Wallet movements with links to the top-up / payment receipts (phase B). */

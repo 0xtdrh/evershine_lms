@@ -1,144 +1,90 @@
+/**
+ * Phase D: one complaint.
+ * GET   — the conversation (senders never see internal staff notes); staff also get the list of handlers
+ * POST  — reply { body, internal? } (internal notes: staff only)
+ * PATCH — staff: { status?, assignedToId? }
+ */
+
 import { NextRequest } from 'next/server'
-import { auth } from '@/lib/auth'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { logAudit } from '@/lib/audit-logger'
+import { auth } from '@/lib/auth'
 import { errors, successResponse } from '@/lib/api-response'
-import { z, ZodError, ZodIssueCode } from 'zod'
-import type { Role } from '@prisma/client'
+import { COMPLAINT_STATUSES, addReply, normStatus, updateComplaint } from '@/lib/complaints/engine'
+import { isPortal, staffScope, staffSees } from '@/lib/complaints/access'
+import { usersWithPermission } from '@/lib/notifications/events'
 
-const resolveComplaintSchema = z.object({
-  remarks: z.string().min(2).max(1000),
-})
+export const dynamic = 'force-dynamic'
 
-export async function PUT(
-  request: NextRequest,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params
+async function load(id: string, user: { id: string; role: string; campusId?: string | null }) {
+  const c = await prisma.complaint.findUnique({ where: { id } })
+  if (!c) return { err: errors.notFound('Complaint') }
+  if (isPortal(user.role)) {
+    if (c.complainantId !== user.id) return { err: errors.notFound('Complaint') }
+    return { c, staff: false }
+  }
+  const scope = staffScope(user)
+  if (!scope.canRead || !staffSees(scope, c)) return { err: errors.forbidden() }
+  return { c, staff: true, scope }
+}
+
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
-
-  const userRole = session.user.role as Role
-  if (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN') {
-    return errors.forbidden()
-  }
-
-  const complaintId = params.id
-  const complaint = await prisma.complaint.findUnique({
-    where: { id: complaintId },
-  })
-
-  if (!complaint) return errors.notFound('Complaint')
-
-  if (complaint.status === 'RESOLVED') {
-    return errors.validation(new ZodError([{ code: ZodIssueCode.custom, path: ['status'], message: 'This complaint is already resolved.' }]))
-  }
-
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return errors.validation(new ZodError([{ code: ZodIssueCode.custom, path: [], message: 'Invalid JSON' }]))
-  }
-
-  const parsed = resolveComplaintSchema.safeParse(body)
-  if (!parsed.success) return errors.validation(parsed.error)
-
-  const { remarks } = parsed.data
-  const resolverName = session.user.name ?? session.user.email ?? 'Administration'
-
-  // Atomic: update complaint + notify complainant
-  const [updatedComplaint] = await prisma.$transaction(async (tx) => {
-    const updated = await tx.complaint.update({
-      where: { id: complaintId },
-      data: {
-        status: 'RESOLVED',
-        remarks,
-        resolvedBy: session.user.id,
-      },
-    })
-
-    await logAudit({
-      prismaClient: tx,
-      userId: session.user.id,
-      action: 'UPDATE',
-      entityType: 'Complaint',
-      entityId: complaintId,
-      changes: {
-        status: 'RESOLVED',
-        remarks,
-        resolvedBy: session.user.id,
-      },
-      request,
-    })
-
-    // Dispatch a professional in-app notification to the complainant
-    await tx.notification.create({
-      data: {
-        userId: complaint.complainantId,
-        title: '✅ Your Complaint Has Been Resolved',
-        message: `Your complaint titled "${complaint.title}" has been reviewed and resolved by ${resolverName}. Administrative response: "${remarks}"`,
-        type: 'COMPLAINT_RESOLVED',
-        relatedId: complaintId,
-        isRead: false,
-      },
-    })
-
-    return [updated]
-  })
-
-  return successResponse(updatedComplaint, {
-    message: 'Complaint resolved and complainant notified.',
+  const { id } = await params
+  const l = await load(id, session.user)
+  if (l.err) return l.err
+  const c = l.c!
+  const replies = await prisma.complaintReply.findMany({ where: { complaintId: c.id, ...(!l.staff && { internal: false }) }, orderBy: { createdAt: 'asc' } })
+  const authors = await prisma.user.findMany({ where: { id: { in: [...new Set(replies.map((r) => r.authorId))] } }, select: { id: true, displayName: true, email: true } })
+  const aName = new Map(authors.map((u) => [u.id, u.displayName ?? u.email]))
+  const [student, group, handlers] = await Promise.all([
+    c.studentId ? prisma.student.findUnique({ where: { id: c.studentId }, select: { id: true, firstName: true, lastName: true, registrationNumber: true } }) : null,
+    c.classSectionId ? prisma.classSection.findUnique({ where: { id: c.classSectionId }, select: { className: true, sectionName: true } }) : null,
+    l.staff ? usersWithPermission('complaints', 'update', c.campusId).then((ids) => prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, displayName: true, email: true } })) : Promise.resolve([]),
+  ])
+  return successResponse({
+    id: c.id, number: c.number, kind: c.kind, topic: c.topic, status: normStatus(c.status), source: c.source,
+    text: c.body ?? c.description, sender: c.complainantName, senderRole: c.complainantRole,
+    student: student ? { id: student.id, name: `${student.firstName} ${student.lastName}`, registrationNumber: student.registrationNumber } : null,
+    group: group ? `${group.className} ${group.sectionName}`.trim() : null,
+    assignedToId: c.assignedToId, dueAt: c.dueAt, escalatedAt: c.escalatedAt, resolvedAt: c.resolvedAt, closedAt: c.closedAt,
+    satisfied: c.satisfied, handlingRating: c.handlingRating, createdAt: c.createdAt,
+    legacyRemarks: c.remarks,
+    replies: replies.map((r) => ({ id: r.id, body: r.body, internal: r.internal, fromStaff: r.authorRole === 'STAFF', author: r.authorRole === 'STAFF' ? (l.staff ? aName.get(r.authorId) ?? 'Staff' : 'TechNova team') : c.complainantName, createdAt: r.createdAt })),
+    handlers: handlers.map((u) => ({ id: u.id, name: u.displayName ?? u.email })),
+    canHandle: l.staff ? l.scope!.canHandle : false,
   })
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
+  const { id } = await params
+  const l = await load(id, session.user)
+  if (l.err) return l.err
+  if (l.staff && !l.scope!.canHandle) return errors.forbidden()
+  let body: unknown
+  try { body = await request.json() } catch { return errors.badRequest('Invalid JSON') }
+  const parsed = z.object({ body: z.string().trim().min(1).max(5000), internal: z.boolean().optional() }).safeParse(body)
+  if (!parsed.success) return errors.validation(parsed.error)
+  const r = await addReply({ id, userId: session.user.id, role: session.user.role, body: parsed.data.body!, internal: parsed.data.internal, asStaff: !!l.staff })
+  if (!r.ok) return r.code === 409 ? errors.conflict(r.message!) : errors.badRequest(r.message!)
+  return successResponse(r, 'Sent')
+}
 
-  const userRole = session.user.role as Role
-  if (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN') {
-    return errors.forbidden()
-  }
-
-  const complaintId = params.id
-  const complaint = await prisma.complaint.findUnique({
-    where: { id: complaintId },
-  })
-
-  if (!complaint) return errors.notFound('Complaint')
-
-  // Delete complaint and notify complainant
-  await prisma.$transaction(async (tx) => {
-    await tx.complaint.delete({ where: { id: complaintId } })
-
-    await logAudit({
-      prismaClient: tx,
-      userId: session.user.id,
-      action: 'DELETE',
-      entityType: 'Complaint',
-      entityId: complaintId,
-      changes: {
-        reason: 'administrative delete',
-      },
-      request: _request,
-    })
-
-    await tx.notification.create({
-      data: {
-        userId: complaint.complainantId,
-        title: 'Complaint Record Administratively Removed',
-        message: `Your complaint titled "${complaint.title}" has been administratively closed and removed from the registry. For further queries, please contact the administration directly.`,
-        type: 'INFO',
-        relatedId: complaintId,
-        isRead: false,
-      },
-    })
-  })
-
-  return successResponse({ id: complaintId }, { message: 'Complaint deleted and complainant notified.' })
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session?.user) return errors.unauthorized()
+  const { id } = await params
+  const l = await load(id, session.user)
+  if (l.err) return l.err
+  if (!l.staff || !l.scope!.canHandle) return errors.forbidden()
+  let body: unknown
+  try { body = await request.json() } catch { return errors.badRequest('Invalid JSON') }
+  const parsed = z.object({ status: z.enum(COMPLAINT_STATUSES).optional(), assignedToId: z.string().min(1).nullable().optional() }).safeParse(body)
+  if (!parsed.success) return errors.validation(parsed.error)
+  const r = await updateComplaint({ id, userId: session.user.id, status: parsed.data.status, assignedToId: parsed.data.assignedToId })
+  if (!r.ok) return r.code === 409 ? errors.conflict(r.message!) : errors.notFound('Complaint')
+  return successResponse(r, 'Saved')
 }

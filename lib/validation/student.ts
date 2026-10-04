@@ -95,6 +95,8 @@ const createStudentSchemaBase = z.object({
 
   // ── Marketing / referral (also used standalone below) ───────────────────────
   sourceOfInfo: z.string().optional(),
+  /** Phase D: referral code (TN-REF-…) or the referring parent's phone */
+  referralCode: z.string().trim().max(40).optional(),
 
   // Parent/Guardian details (for new admission; creates Guardian account)
   parentEmail: optionalText(z.string().trim().email()),

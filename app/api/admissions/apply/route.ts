@@ -60,6 +60,7 @@ const applySchema = z.object({
 
   // ── Referral ─────────────────────────────────────────────────────────────
   sourceOfInfo:    z.string().optional(),
+  referralCode:    z.string().trim().max(40).optional(),
 
   // ── Declaration ──────────────────────────────────────────────────────────
   // WHY: Terms acceptance is a hard server-side requirement, not just UI.
@@ -212,6 +213,7 @@ export async function POST(req: Request) {
 
         // Referral
         sourceOfInfo: validated.sourceOfInfo || null,
+        referralCode: validated.referralCode || null,
 
         // Declaration — server-side timestamp
         termsAccepted:   true,

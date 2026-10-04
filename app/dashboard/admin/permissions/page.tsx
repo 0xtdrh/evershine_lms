@@ -41,6 +41,8 @@ const RESOURCE_META: Record<string, { label: string; description: string; catego
   ratings:               { label: 'Ratings',             description: 'Session and monthly ratings by students and parents, with names (instructors only see their own averages)', category: 'Operations' },
   birthdays:             { label: 'Birthdays',           description: 'Birthdays page: students, parents and staff (instructors: their own students)', category: 'Operations' },
   notification_settings: { label: 'Notification settings', description: 'Switch each notification type on or off for everyone', category: 'Operations' },
+  complaints:            { label: 'Complaints',          description: 'Handle complaints and suggestions (update), record a phone complaint (create), monthly report (export)', category: 'Operations' },
+  referrals:             { label: 'Referrals',           description: 'Who referred whom, rewards; link a referral (create); referral settings (update)', category: 'Operations' },
   teachers:              { label: 'Teachers',            description: 'Staff profiles, designations, and class assignments',     category: 'People'     },
   users:                 { label: 'User Accounts',       description: 'View the list of system users',                          category: 'People'     },
   account_management:    { label: 'Account Management',  description: 'Reset passwords/emails, change role or suspend accounts', category: 'People'     },

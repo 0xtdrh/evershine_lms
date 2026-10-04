@@ -192,6 +192,15 @@ export async function recordPayment(input: RecordPaymentInput): Promise<RecordPa
     })
     await refreshGroupAfterPayment(invoice.classSectionId, input.receivedBy)
     await afterPaymentRecorded(result.id) // automatic WhatsApp receipt, if switched on
+    // Phase D: the first paid invoice of a referred student earns the referrer's reward. Never breaks the payment.
+    if (invoiceStatus === 'PAID') {
+      try {
+        const { rewardReferralIfDue } = await import('@/lib/referrals/engine')
+        await rewardReferralIfDue(invoice.studentId, input.receivedBy)
+      } catch (err) {
+        console.error('[REFERRAL_REWARD]', err)
+      }
+    }
     return {
       ok: true,
       payment: result,

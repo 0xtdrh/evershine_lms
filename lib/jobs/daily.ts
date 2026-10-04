@@ -61,5 +61,6 @@ export async function runDailyJobs(opts: { forceSummary?: boolean } = {}) {
   await step('walletAlerts', () => lowBalanceAlerts())
   await step('birthdays', () => runBirthdayJob())
   await step('morningSummary', () => morningSummary(opts.forceSummary))
+  await step('complaints', async () => (await import('@/lib/complaints/engine')).sweepComplaints(true))
   return out
 }

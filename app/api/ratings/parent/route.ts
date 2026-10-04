@@ -47,6 +47,7 @@ const surveySchema = z.object({
   sessionsRating: z.number().int().min(1).max(5),
   teacherRating: z.number().int().min(1).max(5),
   companyRating: z.number().int().min(1).max(5),
+  recommend: z.number().int().min(0).max(10).optional().nullable(),
   comment: z.string().trim().max(1000).optional().nullable(),
 })
 
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
     r = await rateSession({ studentId: s.studentId!, classSectionId: s.classSectionId!, sessionDate: s.sessionDate!, rating: s.rating!, comment: s.comment, userId: session.user.id, byRole: 'PARENT' })
   } else {
     const s = d as z.infer<typeof surveySchema>
-    r = await submitSurvey({ studentId: s.studentId!, classSectionId: s.classSectionId!, sessionsRating: s.sessionsRating!, teacherRating: s.teacherRating!, companyRating: s.companyRating!, comment: s.comment, userId: session.user.id })
+    r = await submitSurvey({ studentId: s.studentId!, classSectionId: s.classSectionId!, sessionsRating: s.sessionsRating!, teacherRating: s.teacherRating!, companyRating: s.companyRating!, recommend: s.recommend, comment: s.comment, userId: session.user.id })
   }
   if (!r.ok) return r.code === 400 ? errors.badRequest(r.message) : errors.conflict(r.message)
   return createdResponse({ ok: true }, 'Thank you!')

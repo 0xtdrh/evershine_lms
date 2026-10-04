@@ -135,6 +135,11 @@ export async function removeDemoData(): Promise<Record<string, number>> {
           if (t === 'FeeInvoice' && c === 'classSectionId') continue // handled by id below
           await del(t, c, byColumn[c] ?? [])
         }
+        // Phase D: referrals point at students/parents through their own column names; complaint replies at complaints.
+        await del('Referral', 'referredStudentId', ids.students)
+        await del('Referral', 'referrerGuardianId', ids.guardians)
+        await del('Complaint', 'complainantId', ids.users)
+        await tx.$executeRawUnsafe('DELETE FROM `ComplaintReply` WHERE `complaintId` NOT IN (SELECT `id` FROM `Complaint`)')
         await del('_GuardianToStudent', 'A', ids.guardians)
         await del('_GuardianToStudent', 'B', ids.students)
         await del('StudentEnrollment', 'id', ids.enrollments)

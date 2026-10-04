@@ -24,6 +24,16 @@ export async function GET() {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
 
+  // Phase D: staff browsers poll this every ~30 s, so overdue complaints get escalated (and solved
+  // ones auto-closed) within minutes even though the host only allows a daily cron. Throttled to 5 min.
+  if (!['STUDENT', 'PARENT', 'GUARDIAN'].includes(session.user.role)) {
+    try {
+      await (await import('@/lib/complaints/engine')).sweepComplaints()
+    } catch {
+      /* never break the badge counts */
+    }
+  }
+
   // Fetch all unread notifications for this user — only type is needed.
   // WHY not load full rows: badges only need type values, and the composite
   // (userId, isRead) index keeps this narrow unread lookup cheap.

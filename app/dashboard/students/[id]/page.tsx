@@ -26,6 +26,7 @@ import { StudentTransferCard } from '@/components/students/StudentTransferCard'
 import { StudentContactLogCard } from '@/components/students/StudentContactLogCard'
 import { GuardianBirthdaysCard } from '@/components/birthdays/DateOfBirthCards'
 import { StudentReportsList } from '@/components/reports/StudentReportsList'
+import { StudentReferralCard } from '@/components/students/StudentReferralCard'
 
 interface StudentDetail {
   id: string
@@ -403,6 +404,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           <GuardianBirthdaysCard guardians={student.guardians ?? []} canEdit={isAdmin || role === 'BRANCH_MANAGER' || role === 'SECRETARY'} />
 
           <StudentReportsList studentId={student.id} />
+
+          <StudentReferralCard studentId={student.id} canLink={isAdmin || role === 'BRANCH_MANAGER' || role === 'SECRETARY'} />
 
           <StudentPortalAccessCard
             studentId={student.id}

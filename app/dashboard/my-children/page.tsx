@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { ParentRenewalsCard } from '@/components/portal/ParentRenewalsCard'
 import { ParentWalletCard } from '@/components/portal/ParentWalletCard'
 import { ParentRatingsCard } from '@/components/portal/ParentRatingsCard'
+import { ParentReferralCard } from '@/components/portal/ParentReferralCard'
 import { ChildExcusesCard } from '@/components/portal/ChildExcusesCard'
 import { AttendanceTimeline } from '@/components/attendance/AttendanceTimeline'
 import { StudentReportsList } from '@/components/reports/StudentReportsList'
@@ -228,6 +229,7 @@ export default function MyChildrenPage() {
       <ParentRatingsCard />
       <ParentRenewalsCard />
       <ParentWalletCard />
+      <ParentReferralCard />
 
       {loadingChildren ? (
         <div className="flex items-center gap-2 text-gray-500">
