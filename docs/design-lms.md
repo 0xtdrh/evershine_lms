@@ -1,6 +1,6 @@
 # TechNova LMS — full plan (draft 2026-10-05)
 
-Status: DRAFT. The owner chose **way 3** (2026-10-05): a TechNova LMS built inside the system, plus H5P for interactive
+Status: DRAFT — superseded by the master plan `docs/plan-learning-platform.md`. The owner chose **way 3** (2026-10-05): a TechNova LMS built inside the system, plus H5P for interactive
 content, plus external tools by link / LTI. **No Moodle.** Order chosen by Claude (the owner delegated the choice):
 **LMS → session reports (C2) → phase E (Passport / Profile / gamification) → phase F (branches M0 + partners)**.
 M0 must still be done before the system is used by several branches for real. Needs the answers in §11 and «ابدأ».
