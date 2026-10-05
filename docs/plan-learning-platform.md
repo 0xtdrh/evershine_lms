@@ -343,3 +343,30 @@ Built automatically after each session. No typing, except optional instructor ex
 4. Projects: may older students upload their own (with approval)? (proposed yes)
 5. Paper passport for events? (proposed yes)
 6. Session report: send automatically, or after the instructor confirms? (proposed: automatically after a short window)
+
+## 10. Owner answers (2026-10-05) — these override the sections above
+- **Age modes are customizable.** Settings define the age bands (from–to) and, per band, the UI mode (pictures +
+  audio + stars / guided / full) and the grading style (stars / points). The 4–7 / 8–12 / 13+ split is only the
+  default.
+- **Block visibility.** Every content block has "shown to": instructor only / students only / both (parents follow
+  the student view). The instructor's lesson plan = instructor-only blocks + shared blocks.
+- **Gated progress (setting).** The next session can stay locked until the required homework and / or quiz of the
+  previous session are done (or passed). Configurable per level / group / session; not always on.
+- **Profile merged into the Passport.** ONE "TechNova Passport" holding:
+  - identity, stamps, certificates;
+  - **achievements / badges, competitions, instructor quotes, projects gallery, tasks, skills**;
+  - plus the map, goals, diary, "first times", people, portfolio PDF and year recap from §5.
+  §4 and §5 are now one module (P1 + P2 → the Passport).
+- **Badges:** a large built-in set + the admin can add new ones (badge builder).
+- Decisions:
+  1. Video: **Bunny Stream** ✅.
+  2. Online classes: **Zoom now, BigBlueButton later** ✅.
+  3. Gamification:
+     - **two currencies** ✅;
+     - **no "star of the session"** (removed from the rules and the instructor tools);
+     - store discount rewards: decided per reward by the owner, details when we reach G3;
+     - names OK (Nova coins; Cadet → Explorer → Engineer → Inventor → Master) ✅.
+  4. Students uploading their own projects: **a setting** (with instructor approval).
+  5. Paper passport: ✅, printable from the system.
+  6. Session report sending: **a setting** (automatic after a short window / after the instructor confirms).
+- Status: plan agreed; waiting for «ابدأ» to start L1.
