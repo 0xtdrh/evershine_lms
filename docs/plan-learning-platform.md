@@ -507,3 +507,22 @@ Built automatically after each session. No typing, except optional instructor ex
 4. **Editable message templates** (AR / EN) for every notification / WhatsApp text, in settings.
 5. **Dynamic roles** (add / remove roles from the UI) in phase F with partners.
 6. **Partner co-branding** on reports / transcripts: switchable per partner (on / off).
+
+## 16. Agreements the parent must accept (owner, 2026-10-08)
+- At the parent's FIRST portal login (and whenever a document changes) a full-screen step blocks the portal until the
+  parent accepts the mandatory agreements.
+- **Agreements centre (settings):** the admin writes and edits each agreement (AR / EN): company rules for parents,
+  privacy policy, media consent, platform-fee terms, …
+  - each has a **version**;
+  - a "mandatory" flag;
+  - a target audience (parents / students / staff).
+- **Media consent:** the parent must actively CHOOSE an option per child (only us / group / all TechNova /
+  marketing + share link); there is no skipping. They can change it later from the portal.
+- **New version published** → the parent must accept again at the next login (optionally a short grace period).
+- **Proof is stored:** who accepted, which version, date / time, device.
+- **Staff screens:**
+  - who accepted / who is still pending;
+  - reminders;
+  - export.
+- The existing student rules blocker (`RulesAgreementBlocker`, template) is replaced by / merged into this.
+- Built with the foundations at the start (with the Arabic portal), so it exists before any photo is uploaded.
