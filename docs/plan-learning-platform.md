@@ -467,3 +467,13 @@ Built automatically after each session. No typing, except optional instructor ex
 - Platform fee + add-ons + treasury / cash flow → a new **FIN** stage after gamification, before phase F (all needed
   before launch).
 - AI → after launch, starting with the instructor and curriculum helpers (proposed; owner to confirm).
+
+## 13. Owner answers (2026-10-08, b)
+- **Platform fee, unpaid:**
+  - grace period with warnings + notifications;
+  - the reaction after the grace period is a setting: read-only portal / portal closed with a "please pay the platform
+    fee" message / other options (e.g. LMS locked but finance pages open).
+- **Treasury accounts:** fully configurable in settings (add / remove cash boxes, banks, e-wallets, gateways).
+- **AI:** after launch.
+- **Order:** confirmed (code editor in L3 / L5, usage analytics with R2, FIN stage after gamification and before
+  phase F, AI after launch).
