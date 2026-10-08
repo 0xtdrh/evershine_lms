@@ -477,3 +477,20 @@ Built automatically after each session. No typing, except optional instructor ex
 - **AI:** after launch.
 - **Order:** confirmed (code editor in L3 / L5, usage analytics with R2, FIN stage after gamification and before
   phase F, AI after launch).
+
+## 14. Foundations agreed before starting (owner, 2026-10-08)
+1. **Arabic portal UI (RTL) + EN switch.** Built into L1 so every new screen is bilingual from the start; the existing
+   portal screens are translated as they are touched.
+2. **Media consent:** the PARENT approves, per child, where photos / videos / projects may be shown (group only /
+   inside TechNova / marketing), plus a privacy policy.
+3. **Pilot level:** write one full level (e.g. Robotics Level 1) right after L1 + L2 and run it with one real group
+   before mass content writing.
+4. **One settings centre** with sections. The whole system and the dashboard will be reorganised later (owner).
+5. **Master switches** per big module: LMS, gamification, passport, platform fee, …
+6. **Soft launch** with a small number of families for ~2 weeks before the full launch.
+7. **In-app help:**
+   - a first-time tour per screen;
+   - short "how to" videos;
+   - a **system guide document**;
+   - **rules** (company rules + clearly explained rules for parents, accepted in the portal).
+8. **File backups** (videos / PDFs / submissions), not only the database.
