@@ -526,3 +526,12 @@ Built automatically after each session. No typing, except optional instructor ex
   - export.
 - The existing student rules blocker (`RulesAgreementBlocker`, template) is replaced by / merged into this.
 - Built with the foundations at the start (with the Arabic portal), so it exists before any photo is uploaded.
+
+## 17. Media consent = mandatory, no choice (owner, 2026-10-08) — overrides §14.2 and §16
+- The media agreement is ONE mandatory text: TechNova films / photographs sessions and may use the material in the
+  passport, galleries, reports and marketing. The parent must accept it to use the portal. There are no per-child
+  options and no opt-out choice for the parent.
+- Kept from §16: versioning, re-acceptance on change, proof (who / version / time / device), pending list, reminders.
+- Proposed (owner to confirm): a staff-only flag per child "do not use in marketing" for rare exceptions agreed
+  offline; the agreement text reviewed by a lawyer (Egypt personal data law 151/2020; children's data needs the
+  guardian's consent).
