@@ -388,3 +388,82 @@ Built automatically after each session. No typing, except optional instructor ex
   - make-up sessions, trial session, instructor performance;
   - Hostinger, events, inventory, accounting exports, template clean-up, periodic security review.
 - **Launch setup:** ONE main branch + partner academies. So phase F (M0 + partners) must be done before launch.
+
+## 12. New requirements (owner, 2026-10-08)
+
+### 12.1 In-system code editor (L3 / L5)
+- Students submit code in an editor inside TechNova (syntax colouring, AR / EN UI). Code is a new submission type and
+  quiz block.
+- **Run it in the browser (free, sandboxed, nothing runs on our server):**
+  - Python (Pyodide);
+  - JavaScript / HTML (sandboxed iframe);
+  - Blocks (Blockly) for young kids.
+- **Robotics / electronics:**
+  - **Syntax check** for Arduino C/C++ and MicroPython (micro:bit) inside the editor (a parser running in the browser
+    marks errors with line numbers);
+  - **full compile** check with `arduino-cli` on our own server after the move to Hostinger;
+  - **simulation** through Wokwi (tools library) where needed.
+- The instructor sees the code, the output / errors and the run history, then grades with a rubric.
+- Auto-tests (optional per exercise): expected output → automatic score.
+
+### 12.2 AI in several forms (later stage; each switchable, with a usage budget and cost cap)
+- **Students:** a tutor that gives hints, not answers, grounded in the lesson and age-safe; a code-error explainer;
+  practice-question generator.
+- **Instructors:** draft quiz questions from a lesson; suggested rubric grades + feedback (the instructor confirms);
+  session-report comment drafts.
+- **Curriculum team:** AR ↔ EN translation; lesson / H5P drafts; simplify a text for an age band.
+- **Staff:** complaint summaries + suggested replies; reply drafts to parents; churn-risk students.
+- **Management:** ask questions about the data in plain Arabic ("how much did branch X collect last month?").
+- **Parents:** a weekly summary of the child's progress in simple Arabic.
+- **Rules:**
+  - minimum personal data sent;
+  - logs of every AI call;
+  - per-feature on/off;
+  - a monthly cost cap;
+  - a human confirms anything sent to parents or any grade.
+- **Provider:** Claude API (paid per use); a small free / low-cost trial first.
+
+### 12.3 Platform subscription fee (finance)
+- Setting on/off. A fixed monthly fee per student ("platform fee"). When ON it is mandatory for every active student.
+- Billed monthly; paid through the wallet like everything else.
+- Unpaid → after a grace period the portal turns read-only (proposed). Exemptions / discounts via the existing
+  discounts.
+
+### 12.4 Add-ons the parent / student can buy
+- An add-ons catalog: event / party tickets, extra session, kit, printed certificate / passport, camp, …
+- Bought in the portal with the wallet or online payment; staff manage items, stock and dates.
+- Later, in the Events system: public bookings by people who are not students.
+
+### 12.5 Usage analytics
+- Per student / parent / instructor:
+  - logins count;
+  - session time;
+  - last login;
+  - most-used pages;
+  - LMS time on lessons;
+  - device type.
+- Periods: today · last 3 days · this week · last 2 weeks · this month · last 3 / 6 / 12 months.
+- Lists: most active / inactive (e.g. parents who never opened the portal, instructors not logging in), per branch /
+  group.
+- Tracking: a login event + a light activity "heartbeat" while the page is open. Stored compactly. Retention period in
+  settings.
+
+### 12.6 Treasury, cash flow and budget (linked to accounting)
+- **Money accounts:** cash box per branch, each bank account, e-wallets (Vodafone Cash / InstaPay …), the online
+  gateway balance (Paymob).
+- **Student wallets are shown separately as money owed to customers** (a liability): not the company's own cash.
+- **Every movement posts to an account automatically:** payment (into the account it was received in), refund,
+  expense, salary, wallet withdrawal.
+- **Transfers between accounts** (e.g. branch cash → bank deposit, gateway → bank) with approval and attachment.
+- **Balances now**, cash-flow statement (in / out by period, by category / branch), reconciliation (counted cash vs
+  system).
+- **Budget:** planned vs actual per category / branch / month.
+- **"Where is every pound":** one page that adds up every account + the wallet liability.
+- Linked to the existing expenses, salaries, P&L and financial reports.
+
+### Proposed place in the order
+- Code editor → inside L3 (submissions) and L5 (run / syntax / simulation).
+- Usage analytics → with R2.
+- Platform fee + add-ons + treasury / cash flow → a new **FIN** stage after gamification, before phase F (all needed
+  before launch).
+- AI → after launch, starting with the instructor and curriculum helpers (proposed; owner to confirm).
