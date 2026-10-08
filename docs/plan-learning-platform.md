@@ -494,3 +494,16 @@ Built automatically after each session. No typing, except optional instructor ex
    - a **system guide document**;
    - **rules** (company rules + clearly explained rules for parents, accepted in the portal).
 8. **File backups** (videos / PDFs / submissions), not only the database.
+
+## 15. Pre-launch extras (owner, 2026-10-08)
+1. **Own TechNova domain** for the portal (+ emails / messages from the domain) before launch.
+2. **Monitoring** (free tiers):
+   - uptime alerts;
+   - error tracking.
+   Users NEVER see technical errors, only a friendly message. Details go only to the monitoring / admin.
+3. **Data migration** of current students + history (finished levels, old certificates, attendance if available)
+   before launch, so the passport is complete from day one. Source to be confirmed by the owner (Excel / paper /
+   another system).
+4. **Editable message templates** (AR / EN) for every notification / WhatsApp text, in settings.
+5. **Dynamic roles** (add / remove roles from the UI) in phase F with partners.
+6. **Partner co-branding** on reports / transcripts: switchable per partner (on / off).
