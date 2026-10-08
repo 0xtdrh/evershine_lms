@@ -370,3 +370,21 @@ Built automatically after each session. No typing, except optional instructor ex
   5. Paper passport: ✅, printable from the system.
   6. Session report sending: **a setting** (automatic after a short window / after the instructor confirms).
 - Status: plan agreed; waiting for «ابدأ» to start L1.
+
+## 11. Owner answers (2026-10-08)
+- **Free first, paid later.** Every external service sits behind an adapter / setting, so switching does not need a
+  rebuild:
+  - video: Cloudinary free (signed adaptive streaming + our watermark) → Bunny Stream later;
+  - online classes: Jitsi link in a new tab (free) → Zoom (embedded + cloud recording) later → BigBlueButton after the
+    own server;
+  - files: Cloudinary free → own server after Hostinger;
+  - H5P / Lumi / Scratch / Tinkercad are free.
+  Free-tier limits must be re-checked when each batch is built.
+- **External tools library:** the admin adds ANY tool (name, icon, URL, integration level embed / LTI / link,
+  allowed domain); authors pick tools from the library. Scratch / Tinkercad are only examples.
+- **Launch waits until the LMS is finished.** Order: L1–L4 → L5 + R1 + R2 → Passport → Gamification → phase F
+  (M0 + partners) → full pre-launch test → launch. Then the post-launch list in the chat of 2026-10-08:
+  - WhatsApp API, Paymob live, PWA;
+  - make-up sessions, trial session, instructor performance;
+  - Hostinger, events, inventory, accounting exports, template clean-up, periodic security review.
+- **Launch setup:** ONE main branch + partner academies. So phase F (M0 + partners) must be done before launch.
