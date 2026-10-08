@@ -535,3 +535,5 @@ Built automatically after each session. No typing, except optional instructor ex
 - Proposed (owner to confirm): a staff-only flag per child "do not use in marketing" for rare exceptions agreed
   offline; the agreement text reviewed by a lawyer (Egypt personal data law 151/2020; children's data needs the
   guardian's consent).
+- Owner accepted (2026-10-08): the staff-only "do not use in marketing" flag per child is in. **Do NOT start any
+  implementation until the owner explicitly says so** (plan complete, work on hold).
