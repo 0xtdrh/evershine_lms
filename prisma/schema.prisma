@@ -1955,6 +1955,8 @@ model ClassSection {
   capacity       Int               @default(40)
   /// Phase A: most students allowed in the group (null = no limit). Not the old template "capacity".
   maxStudents    Int?
+  /// LMS (L1): the curriculum version this group follows (pinned when it starts; null = newest published)
+  curriculumEditionId String?
   curriculumMode CurriculumMode    @default(FIXED)
   isActive       Boolean           @default(true)
   createdAt      DateTime          @default(now())
@@ -3891,4 +3893,85 @@ model AgreementAcceptance {
 
   @@unique([agreementId, version, userId])
   @@index([userId])
+}
+
+/// LMS L1 (docs/plan-learning-platform.md §2): skills list of a course (tags for lessons / questions → skills radar).
+model CourseSkill {
+  id        String   @id @default(cuid())
+  subjectId String
+  nameEn    String   @db.VarChar(80)
+  nameAr    String   @db.VarChar(80)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([subjectId])
+}
+
+/// LMS L1: a versioned curriculum of one level. status DRAFT | IN_REVIEW | PUBLISHED | ARCHIVED.
+/// Running groups stay on the version they started with; new groups take the newest published one.
+model CurriculumEdition {
+  id            String    @id @default(cuid())
+  levelId       String
+  number        Int
+  status        String    @default("DRAFT") @db.VarChar(10)
+  notes         String?   @db.Text
+  copiedFromId  String?
+  createdById   String
+  submittedAt   DateTime?
+  publishedAt   DateTime?
+  publishedById String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([levelId, number])
+  @@index([levelId, status])
+}
+
+/// LMS L1: one session (lesson) of an edition. Bilingual texts; instructor notes are never shown to students.
+model CurriculumSession {
+  id              String   @id @default(cuid())
+  editionId       String
+  number          Int
+  titleEn         String   @default("") @db.VarChar(200)
+  titleAr         String   @default("") @db.VarChar(200)
+  objectivesEn    String?  @db.Text
+  objectivesAr    String?  @db.Text
+  materialsEn     String?  @db.Text
+  materialsAr     String?  @db.Text
+  instructorNotes String?  @db.Text
+  durationMin     Int?
+  skillIds        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([editionId, number])
+}
+
+/// LMS L1: a content block of a session. type TEXT | IMAGE | VIDEO | FILE | LINK | CODE | EMBED | H5P | QUIZ |
+/// ASSIGNMENT | TOOL. audience BOTH | INSTRUCTOR | STUDENT. data = type-specific JSON (texts AR/EN, media ids, url…).
+model CurriculumBlock {
+  id        String   @id @default(cuid())
+  sessionId String
+  order     Int      @default(0)
+  type      String   @db.VarChar(12)
+  audience  String   @default("BOTH") @db.VarChar(10)
+  titleEn   String?  @db.VarChar(200)
+  titleAr   String?  @db.VarChar(200)
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId, order])
+}
+
+/// LMS L1: review comments on a session while an edition is reviewed.
+model CurriculumComment {
+  id        String   @id @default(cuid())
+  sessionId String
+  authorId  String
+  body      String   @db.Text
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
 }

@@ -369,7 +369,24 @@ Built automatically after each session. No typing, except optional instructor ex
   4. Students uploading their own projects: **a setting** (with instructor approval).
   5. Paper passport: ✅, printable from the system.
   6. Session report sending: **a setting** (automatic after a short window / after the instructor confirms).
-- Status: plan agreed; waiting for «ابدأ» to start L1.
+- Status: foundations done (2026-10-08); **L1 built (2026-10-09)**, see "L1 as built" below.
+
+### L1 as built (2026-10-09)
+- Tables: `CurriculumEdition`, `CurriculumSession`, `CurriculumBlock`, `CurriculumComment`, `CourseSkill`,
+  `ClassSection.curriculumEditionId` (pinning is used from L2/L3; null = newest published).
+- Code: `lib/curriculum/blocks.ts` (pure rules: block types + zod per type, embed allow-list, YouTube/Vimeo → embed,
+  status machine, tests in `tests/curriculum-blocks.test.ts`), `lib/curriculum/engine.ts` (tree, editions, sessions,
+  blocks, comments, export/import, `editionForGroup`), APIs under `/api/curriculum/*`.
+- Pages: `/dashboard/curriculum` (tree), `/dashboard/curriculum/level/[levelId]` (versions, publish, export/import,
+  course skills), `/dashboard/curriculum/session/[id]` (editor, instructor / student preview, review comments).
+- Rules: only DRAFT is editable; submit needs a title on every session; publish archives the previous published
+  version; instructors (curriculum:read) see only published / archived versions of the levels they teach, substitute
+  in or are qualified for; instructor notes + instructor-only blocks never reach the student view.
+- Media: uploaded straight to Cloudinary as `authenticated` (private) in folder `<base>/curriculum`; the server adds a
+  signed link only for viewers allowed to see the session. Video download / right-click off. Watermark = L2.
+- Authoring works while the `lms` module is OFF (staff prepare content); the module will gate the portal in L2/L3.
+- Not in L1 (later stages): QUIZ (L4), ASSIGNMENT (L3), H5P / TOOL (L5) are placeholders; age-band preview comes with
+  the age modes; drag-and-drop reorder is up / down buttons for now.
 
 ## 11. Owner answers (2026-10-08)
 - **Free first, paid later.** Every external service sits behind an adapter / setting, so switching does not need a

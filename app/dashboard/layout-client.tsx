@@ -142,6 +142,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Academic Engine', href: '/dashboard/academic',     icon: ClipboardList,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Grading Weights', href: '/dashboard/grading-config', icon: SlidersHorizontal, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Course Structure', href: '/dashboard/course-config', icon: GraduationCap, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
+  { name: 'Curriculum',      href: '/dashboard/curriculum',   icon: BookOpen,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'TEACHER'], perm: [['curriculum', 'read']] },
   { name: 'Groups', href: '/dashboard/groups', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['class_sections', 'read']] },
   { name: 'Wallet & Top-ups', href: '/dashboard/wallet', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['wallet', 'read']] },
   { name: 'Renewals', href: '/dashboard/renewals', icon: RefreshCcw, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['renewals', 'read']] },
@@ -631,6 +632,7 @@ function NotificationBell() {
       COMPLAINT_NEW:     { label: 'Complaints', className: 'bg-blue-50 text-blue-700 border-blue-100' },
       COMPLAINT_UPDATE:  { label: 'Your message', className: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
       COMPLAINT_ESCALATED: { label: 'Escalated', className: 'bg-rose-50 text-rose-700 border-rose-100' },
+      CURRICULUM_REVIEW: { label: 'Curriculum', className: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
       REFERRAL_UPDATE:   { label: 'Referral', className: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
     }
     const config = map[type] ?? { label: 'General', className: 'bg-slate-50 text-slate-700 border-slate-100' }

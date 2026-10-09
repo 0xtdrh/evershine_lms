@@ -60,6 +60,7 @@ const en = {
   'cur.submitReview': 'Send for review',
   'cur.publish': 'Publish',
   'cur.duplicate': 'Duplicate',
+  'cur.coming': 'coming in a later stage',
 } as const
 
 export type MessageKey = keyof typeof en
@@ -113,6 +114,7 @@ const ar: Partial<Record<MessageKey, string>> = {
   'cur.submitReview': 'إرسال للمراجعة',
   'cur.publish': 'نشر',
   'cur.duplicate': 'نسخ',
+  'cur.coming': 'يتم إضافته في مرحلة لاحقة',
 }
 
 export const MESSAGES: Record<Locale, Partial<Record<MessageKey, string>>> = { en, ar }

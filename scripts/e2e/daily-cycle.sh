@@ -1024,6 +1024,61 @@ check "staff-only 'no marketing' flag on a student" "$(api PUT /api/students/$W1
 check "a parent cannot read the marketing flag" "$(curl -s -o /dev/null -w '%{http_code}' -b "$AWJ" $B/api/students/$W1/marketing)" "403"
 rm -f "$AWJ"
 
+echo "== 30. LMS L1: curriculum library (versions, sessions, blocks, review, publish, export/import)"
+CL=$NLEVEL
+CLN=$(M "SELECT numberOfSessions FROM Level WHERE id='$CL'")
+check "secretary cannot write curriculum" "$(secapi POST /api/curriculum/levels/$CL '{}' | jq_ "d['success']")" "False"
+E1=$(api POST /api/curriculum/levels/$CL '{"notes":"first"}' | jq_ "d['data']['id']")
+check "new blank version = v1 draft with one empty session per planned session" "$(M "SELECT CONCAT(number,'/',status) FROM CurriculumEdition WHERE id='$E1'")/$(M "SELECT COUNT(*) FROM CurriculumSession WHERE editionId='$E1'")" "1/DRAFT/$CLN"
+check "tree shows the level with a draft" "$(api GET /api/curriculum/tree | jq_ "[l['draftCount'] for t in d['data']['tree'] for c in t['courses'] for l in c['levels'] if l['id']=='$CL'][0]")" "1"
+S1=$(M "SELECT id FROM CurriculumSession WHERE editionId='$E1' AND number=1")
+check "text block added" "$(api POST /api/curriculum/sessions/$S1/blocks '{"type":"TEXT","data":{"textEn":"# Hello\n**robots**","textAr":"مرحبا"}}' | jq_ "d['success']")" "True"
+check "instructor-only block added" "$(api POST /api/curriculum/sessions/$S1/blocks '{"type":"CODE","audience":"INSTRUCTOR","data":{"language":"python","code":"print(1)"}}' | jq_ "d['success']")" "True"
+check "video by YouTube link accepted" "$(api POST /api/curriculum/sessions/$S1/blocks '{"type":"VIDEO","data":{"url":"https://youtu.be/dQw4w9WgXcQ"}}' | jq_ "d['success']")" "True"
+check "embed from a site outside the allow-list refused" "$(api POST /api/curriculum/sessions/$S1/blocks '{"type":"EMBED","data":{"url":"https://evil.example.com/x"}}' | jq_ "d['success']")" "False"
+check "javascript: link refused" "$(api POST /api/curriculum/sessions/$S1/blocks '{"type":"LINK","data":{"url":"javascript:alert(1)"}}' | jq_ "d['success']")" "False"
+api PATCH /api/curriculum/sessions/$S1 '{"titleEn":"Meet the robot","titleAr":"تعرف على الروبوت","instructorNotes":"secret tip"}' >/dev/null
+check "student preview hides instructor notes and instructor-only blocks" "$(api GET "/api/curriculum/sessions/$S1?as=STUDENT" | jq_ "(len(d['data']['blocks']), d['data']['session']['instructorNotes'])")" "(2, None)"
+check "instructor view shows everything" "$(api GET "/api/curriculum/sessions/$S1" | jq_ "(len(d['data']['blocks']), d['data']['session']['instructorNotes'])")" "(3, 'secret tip')"
+REV=$(api GET /api/curriculum/sessions/$S1 | jq_ "','.join('\"%s\"' % b['id'] for b in reversed(d['data']['blocks']))")
+api PUT /api/curriculum/sessions/$S1/blocks "{\"ids\":[$REV]}" >/dev/null
+check "blocks reordered" "$(api GET /api/curriculum/sessions/$S1 | jq_ "d['data']['blocks'][0]['type']")" "VIDEO"
+check "send for review refused while sessions have no title" "$(api PATCH /api/curriculum/editions/$E1 '{"action":"submit"}' | jq_ "d['error']['code']")" "INCOMPLETE"
+M "UPDATE CurriculumSession SET titleEn=CONCAT('Lesson ',number) WHERE editionId='$E1' AND titleEn=''"
+check "sent for review" "$(api PATCH /api/curriculum/editions/$E1 '{"action":"submit"}' | jq_ "d['data']['status']")" "IN_REVIEW"
+check "a version in review is locked" "$(api PATCH /api/curriculum/sessions/$S1 '{"titleEn":"x"}' | jq_ "d['error']['code']")" "LOCKED"
+check "review comment added" "$(api POST /api/curriculum/sessions/$S1/comments '{"body":"Add a picture of the kit"}' | jq_ "d['success']")" "True"
+TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.30
+check "instructor cannot see a version that is not published" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ" $B/api/curriculum/editions/$E1)" "404"
+check "published" "$(api PATCH /api/curriculum/editions/$E1 '{"action":"publish"}' | jq_ "d['data']['status']")" "PUBLISHED"
+check "instructor of this level reads the published session (with notes)" "$(curl -s -b "$TJ" $B/api/curriculum/sessions/$S1 | jq_ "(d['data']['session']['instructorNotes'], d['data']['editable'])")" "('secret tip', False)"
+check "instructor cannot write curriculum" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d '{}' $B/api/curriculum/levels/$CL | jq_ "d['success']")" "False"
+TTREE=$(curl -s -b "$TJ" $B/api/curriculum/tree)
+check "instructor's tree has his group's level" "$(echo "$TTREE" | jq_ "'$CL' in [l['id'] for t in d['data']['tree'] for c in t['courses'] for l in c['levels']]")" "True"
+ALLLV=$(api GET /api/curriculum/tree | jq_ "sum(len(c['levels']) for t in d['data']['tree'] for c in t['courses'])"); TLV=$(echo "$TTREE" | jq_ "sum(len(c['levels']) for t in d['data']['tree'] for c in t['courses'])")
+check "instructor sees fewer levels than the admin" "$([ "$TLV" -lt "$ALLLV" ] && echo yes || echo "no ($TLV vs $ALLLV)")" "yes"
+rm -f "$TJ"
+E2=$(api POST /api/curriculum/levels/$CL "{\"copyFromId\":\"$E1\"}" | jq_ "d['data']['id']")
+check "new version copies sessions and blocks" "$(M "SELECT number FROM CurriculumEdition WHERE id='$E2'")/$(M "SELECT COUNT(*) FROM CurriculumBlock b JOIN CurriculumSession s ON s.id=b.sessionId WHERE s.editionId='$E2'")" "2/3"
+api PATCH /api/curriculum/editions/$E2 '{"action":"publish"}' >/dev/null
+check "publishing v2 archives v1 (still readable)" "$(M "SELECT status FROM CurriculumEdition WHERE id='$E1'")/$(api GET /api/curriculum/editions/$E1 | jq_ "d['success']")" "ARCHIVED/True"
+check "a published version cannot be deleted" "$(api DELETE /api/curriculum/editions/$E2 | jq_ "d['success']")" "False"
+EXP=$(curl -s -b "$JAR" $B/api/curriculum/editions/$E2/export)
+check "export file" "$(echo "$EXP" | jq_ "(d['format'], len(d['sessions']))")" "('technova-curriculum-v1', $CLN)"
+E3=$(api POST /api/curriculum/levels/$CL/import "$EXP" | jq_ "d['data']['id']")
+check "import = new draft with the same content" "$(M "SELECT CONCAT(number,'/',status) FROM CurriculumEdition WHERE id='$E3'")/$(M "SELECT COUNT(*) FROM CurriculumBlock b JOIN CurriculumSession s ON s.id=b.sessionId WHERE s.editionId='$E3'")" "3/DRAFT/3"
+check "a file that is not a curriculum is refused" "$(api POST /api/curriculum/levels/$CL/import '{"format":"x","sessions":[]}' | jq_ "d['success']")" "False"
+S3=$(M "SELECT id FROM CurriculumSession WHERE editionId='$E3' AND number=1")
+api DELETE /api/curriculum/sessions/$S3 >/dev/null
+check "removing a session renumbers the rest" "$(M "SELECT CONCAT(COUNT(*),'/',MIN(number),'/',MAX(number)) FROM CurriculumSession WHERE editionId='$E3'")" "$((CLN-1))/1/$((CLN-1))"
+check "duplicate a session = copy right after it" "$(api POST /api/curriculum/sessions/$(M "SELECT id FROM CurriculumSession WHERE editionId='$E3' AND number=1") | jq_ "d['success']")/$(M "SELECT CONCAT(COUNT(*),'/',MAX(number)) FROM CurriculumSession WHERE editionId='$E3'")/$(M "SELECT titleEn LIKE '%(copy)' FROM CurriculumSession WHERE editionId='$E3' AND number=2")" "True/$CLN/$CLN/1"
+check "secretary cannot delete a draft" "$(secapi DELETE /api/curriculum/editions/$E3 | jq_ "d['success']")" "False"
+check "draft deleted with its content" "$(api DELETE /api/curriculum/editions/$E3 | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM CurriculumSession WHERE editionId='$E3'")" "True/0"
+SUBJ=$(M "SELECT subjectId FROM Level WHERE id='$CL'")
+check "course skill added" "$(api POST /api/curriculum/skills "{\"subjectId\":\"$SUBJ\",\"nameEn\":\"Sensors\",\"nameAr\":\"الحساسات\"}" | jq_ "d['data']['nameEn']")" "Sensors"
+check "secretary cannot add skills" "$(secapi POST /api/curriculum/skills "{\"subjectId\":\"$SUBJ\",\"nameEn\":\"X\"}" | jq_ "d['success']")" "False"
+check "upload signature only for authors" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" -X POST $B/api/curriculum/media/sign)" "403"
+
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

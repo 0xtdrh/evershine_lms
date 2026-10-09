@@ -291,3 +291,30 @@ export async function runCloudinaryDiagnosticUpload() {
     }
   }
 }
+
+/**
+ * LMS L1: signed direct upload for curriculum media. Files are stored as `authenticated` (not public): they open only
+ * through signed links that the server makes for people allowed to see the lesson (curriculumMediaUrl).
+ */
+export function generateCurriculumUploadSignature(allowedFormats: string) {
+  const config = getRequiredCloudinaryConfig()
+  const folder = normalizeFolderPath(`${getBaseUploadFolder()}/curriculum`)
+  const timestamp = Math.round(Date.now() / 1000)
+  const type = 'authenticated'
+  const signature = cloudinary.utils.api_sign_request(
+    { allowed_formats: allowedFormats, folder, timestamp, type },
+    config.apiSecret
+  )
+  return { timestamp, signature, cloudName: config.cloudName, apiKey: config.apiKey, folder, allowedFormats, type }
+}
+
+/** Signed delivery link of an authenticated curriculum file (only call it for viewers allowed to see it). */
+export function curriculumMediaUrl(publicId: string, resourceType: 'image' | 'video' | 'raw', format?: string) {
+  return cloudinary.url(publicId, {
+    type: 'authenticated',
+    resource_type: resourceType,
+    sign_url: true,
+    secure: true,
+    ...(format && resourceType !== 'raw' ? { format } : {}),
+  })
+}

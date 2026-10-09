@@ -44,6 +44,7 @@ export const NOTIFICATION_EVENTS = [
   { key: 'REFERRAL_UPDATE', label: 'Referral', description: 'Parent: a friend registered with your code / you earned a referral reward', audience: 'PARENT' },
   { key: 'COMPLAINT_NEW', label: 'New complaint', description: 'Complaint handlers: a new complaint, suggestion or praise', audience: 'STAFF' },
   { key: 'COMPLAINT_ESCALATED', label: 'Complaint escalated', description: 'Managers: no reply before the deadline, or the sender says it is not solved', audience: 'STAFF' },
+  { key: 'CURRICULUM_REVIEW', label: 'Curriculum to review', description: 'Approvers: a curriculum version was sent for review', audience: 'STAFF' },
   { key: 'MORNING_SUMMARY', label: 'Morning summary', description: 'Managers: today\'s sessions, missing attendance, overdue invoices, items waiting', audience: 'STAFF' },
 ] as const satisfies readonly EventDef[]
 

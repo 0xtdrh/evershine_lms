@@ -41,6 +41,9 @@ const KEEP_ALL = new Set([
 type Tx = Prisma.TransactionClient | typeof prisma
 
 const NOVA_TRACKS = TRACKS.map((t) => `'${t.name}'`).join(',')
+const NOVA_LEVELS = "SELECT l.id FROM `Level` l JOIN `AcademicSubject` s ON s.id = l.subjectId WHERE s.code LIKE 'NOVA-%'"
+const NOVA_EDITIONS = `SELECT id FROM \`CurriculumEdition\` WHERE levelId IN (${NOVA_LEVELS})`
+const NOVA_SESSIONS = `SELECT id FROM \`CurriculumSession\` WHERE editionId IN (${NOVA_EDITIONS})`
 const q = (name: string) => '`' + name.replace(/`/g, '``') + '`'
 
 /** WHERE clause selecting the rows to DELETE in a partially kept table. */
@@ -55,6 +58,12 @@ function filteredDeletes(mainId: string): Record<string, string> {
     Track: `name NOT IN (${NOVA_TRACKS})`,
     AcademicSubject: `code NOT LIKE 'NOVA-%'`,
     Level: `subjectId NOT IN (SELECT id FROM \`AcademicSubject\` WHERE code LIKE 'NOVA-%')`,
+    // LMS L1: the curriculum of the kept (NOVA) courses is company content, not test data.
+    CourseSkill: `subjectId NOT IN (SELECT id FROM \`AcademicSubject\` WHERE code LIKE 'NOVA-%')`,
+    CurriculumEdition: `levelId NOT IN (${NOVA_LEVELS})`,
+    CurriculumSession: `editionId NOT IN (${NOVA_EDITIONS})`,
+    CurriculumBlock: `sessionId NOT IN (${NOVA_SESSIONS})`,
+    CurriculumComment: `sessionId NOT IN (${NOVA_SESSIONS})`,
   }
 }
 
