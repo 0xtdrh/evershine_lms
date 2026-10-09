@@ -61,6 +61,8 @@ export async function resolveEdition(g: Group) {
 export interface GroupLessons {
   group: { id: string; label: string; status: string; cycleNumber: number; levelId: string | null; levelName: string; courseName: string }
   edition: { id: string; number: number } | null
+  /** newest published version of the level when it is newer than the group's (managers can move the group) */
+  newerEdition?: { id: string; number: number } | null
   mode: UnlockMode
   modeSource: 'GROUP' | 'LEVEL' | 'COMPANY'
   /** what the group gets without its own choice (level or company) */
@@ -116,6 +118,10 @@ export async function groupLessons(groupId: string, opts: { studentId?: string }
   return {
     ...base,
     edition: { id: edition.id, number: edition.number },
+    newerEdition: await (async () => {
+      const latest = await prisma.curriculumEdition.findFirst({ where: { levelId: g.levelId!, status: 'PUBLISHED' }, orderBy: { number: 'desc' }, select: { id: true, number: true } })
+      return latest && latest.number > edition.number ? latest : null
+    })(),
     range: { from: offset + 1, to: Math.min(sessions.length, offset + perCycle) },
     heldCount,
     sessions: sessions.map((s, i) => ({
@@ -173,6 +179,42 @@ export async function setLessonOverride(groupId: string, sessionNumber: number, 
     })
   }
   return { ok: true }
+}
+
+/**
+ * Moves a running group to the newest published version of its level (owner 2026-10-09). Instructor open / lock and
+ * group notes are by session number, so they stay. Students' ticks are carried to the matching items of the new
+ * version (same session, same position and type); items that no longer exist simply have no tick.
+ */
+export async function moveGroupToLatest(groupId: string): Promise<Outcome<{ number: number; ticksMoved: number }>> {
+  const g = await loadGroup(groupId)
+  if (!g?.levelId) return fail('NOT_FOUND', 'Group not found')
+  const latest = await prisma.curriculumEdition.findFirst({ where: { levelId: g.levelId, status: 'PUBLISHED' }, orderBy: { number: 'desc' } })
+  if (!latest) return fail('NONE', 'This level has no published curriculum')
+  if (latest.id === g.curriculumEditionId) return fail('SAME', 'The group already uses the newest version')
+  let ticksMoved = 0
+  await prisma.$transaction(async (tx) => {
+    if (g.curriculumEditionId) {
+      const key = (b: { number: number; order: number; type: string }) => `${b.number}|${b.order}|${b.type}`
+      const blocksOf = async (editionId: string) => {
+        const sessions = await tx.curriculumSession.findMany({ where: { editionId }, select: { id: true, number: true } })
+        const blocks = await tx.curriculumBlock.findMany({ where: { sessionId: { in: sessions.map((x) => x.id) } }, select: { id: true, sessionId: true, order: true, type: true } })
+        return blocks.map((b) => ({ ...b, number: sessions.find((x) => x.id === b.sessionId)!.number }))
+      }
+      const [oldBlocks, newBlocks] = await Promise.all([blocksOf(g.curriculumEditionId), blocksOf(latest.id)])
+      const newByKey = new Map(newBlocks.map((b) => [key(b), b]))
+      const oldById = new Map(oldBlocks.map((b) => [b.id, b]))
+      const ticks = await tx.lessonProgress.findMany({ where: { classSectionId: groupId, blockId: { in: oldBlocks.map((b) => b.id) } } })
+      for (const t of ticks) {
+        const nb = newByKey.get(key(oldById.get(t.blockId)!))
+        if (!nb) continue
+        const exists = await tx.lessonProgress.findUnique({ where: { studentId_blockId: { studentId: t.studentId, blockId: nb.id } } })
+        if (!exists) { await tx.lessonProgress.create({ data: { studentId: t.studentId, blockId: nb.id, sessionId: nb.sessionId, classSectionId: groupId, completedAt: t.completedAt } }); ticksMoved++ }
+      }
+    }
+    await tx.classSection.update({ where: { id: groupId }, data: { curriculumEditionId: latest.id } })
+  })
+  return { ok: true, value: { number: latest.number, ticksMoved } }
 }
 
 export async function setGroupMode(groupId: string, mode: string | null): Promise<Outcome> {

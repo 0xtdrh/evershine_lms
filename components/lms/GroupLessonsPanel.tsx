@@ -24,7 +24,7 @@ interface Sess {
   open: boolean; current: boolean; inThisGroup: boolean; override: 'OPEN' | 'LOCKED' | null; scheduledAt: string | null; reason?: string
 }
 interface Data {
-  edition: { id: string; number: number } | null; mode: string; defaultMode: string; modeSource: 'GROUP' | 'LEVEL' | 'COMPANY'
+  edition: { id: string; number: number } | null; newerEdition?: { id: string; number: number } | null; mode: string; defaultMode: string; modeSource: 'GROUP' | 'LEVEL' | 'COMPANY'
   range: { from: number; to: number }; heldCount: number; sessions: Sess[]
   notes: { id: string; sessionNumber: number; body: string; url: string | null }[]
   portalOn: boolean; canChangeMode: boolean; modes: string[]
@@ -78,6 +78,16 @@ export function GroupLessonsPanel({ groupId }: { groupId: string }) {
             </Select>
           ) : <span className="text-xs font-normal text-slate-500">{MODE_LABELS[data.mode]}</span>}
         </CardTitle>
+        {data.newerEdition && (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50 p-2 text-xs text-sky-800">
+            <span>A newer curriculum (v{data.newerEdition.number}) is published. This group still uses v{data.edition.number}.</span>
+            {data.canChangeMode && (
+              <Button size="sm" className="h-7 text-xs" disabled={act.isPending} onClick={() => { if (confirm(`Move this group to version ${data.newerEdition!.number}? Students' ticks move to the matching items; open/lock and notes stay.`)) act.mutate({ useLatest: true }) }}>
+                Move group to v{data.newerEdition.number}
+              </Button>
+            )}
+          </div>
+        )}
         {!data.portalOn && <p className="text-xs text-amber-700">Students don&apos;t see lessons yet — the LMS is switched off in Platform.</p>}
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
