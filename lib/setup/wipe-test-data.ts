@@ -34,6 +34,8 @@ const KEEP_ALL = new Set([
   'WalletRule',
   // Phase C: excuse settings.
   'ExcuseRule',
+  // Foundations: the agreement texts are settings (acceptances are data and are wiped).
+  'Agreement',
 ])
 
 type Tx = Prisma.TransactionClient | typeof prisma

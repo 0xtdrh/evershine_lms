@@ -15,6 +15,9 @@ import { PageTransition } from '@/components/shared/page-transition'
 import {
   LayoutDashboard,
   Gift,
+  Settings2,
+  Power,
+  FileSignature,
   ClipboardX,
   Star,
   Cake,
@@ -71,11 +74,12 @@ import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { isAcademicEnginePrimary } from '@/lib/academic/config'
 import { CompulsoryFeedbackBlocker } from '@/components/student/CompulsoryFeedbackBlocker'
-import { RulesAgreementBlocker } from '@/components/student/RulesAgreementBlocker'
 import { GuardianFeedbackModal } from '@/components/feedback/GuardianFeedbackModal'
 import { FeeOverdueModal } from '@/components/student/FeeOverdueModal'
 import { getNotificationModuleForNavLabel, type NotificationCounts } from '@/lib/notifications/module-map'
 import { BirthdayCelebration, useBirthdayToday } from '@/components/birthdays/BirthdayCelebration'
+import { AgreementsGate } from '@/components/agreements/AgreementsGate'
+import { I18nProvider, LanguageSwitch } from '@/lib/i18n/client'
 
 // ─── Role-gated nav items ─────────────────────────────────────────────────────
 interface NavItem {
@@ -93,6 +97,9 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Admin Workspace', href: '/dashboard/admin',        icon: ShieldCheck,     roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Permissions',     href: '/dashboard/admin/permissions',      icon: ShieldCheck,     roles: ['SUPER_ADMIN'] },
   { name: 'Notifications',   href: '/dashboard/admin/notifications',    icon: BellRing,        roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { name: 'Settings Centre', href: '/dashboard/settings-center',        icon: Settings2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY'] },
+  { name: 'Platform',        href: '/dashboard/admin/platform',         icon: Power,           roles: ['SUPER_ADMIN', 'ADMIN'], perm: [['platform_settings', 'read']] },
+  { name: 'Agreements',      href: '/dashboard/admin/agreements',       icon: FileSignature,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['agreements', 'read']] },
   { name: 'Role Assumptions', href: '/dashboard/admin/role-assumptions', icon: KeyRound,    roles: ['SUPER_ADMIN', 'ADMIN'] },
   { name: 'Credential Management', href: '/dashboard/admin/credential-management', icon: KeyRound, roles: ['SUPER_ADMIN'] },
   { name: 'Backups',         href: '/dashboard/admin/backups',          icon: DatabaseBackup,  roles: ['SUPER_ADMIN'] },
@@ -197,7 +204,19 @@ function isNavItemVisible(item: NavItem, role: string, effective?: EffectivePerm
   })
 }
 
+/** Language provider around the dashboard; defaults come from Platform settings. */
 export default function DashboardLayoutClient({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession()
+  const { data: platform } = useQuery({
+    queryKey: ['platform-settings'],
+    queryFn: () => fetchApi<{ language: { staff: 'en' | 'ar'; portal: 'en' | 'ar' }; modules: Record<string, boolean> }>('/api/platform/settings'),
+    enabled: !!session?.user,
+    staleTime: 5 * 60 * 1000,
+  })
+  return <I18nProvider defaults={platform?.language}><DashboardShell>{children}</DashboardShell></I18nProvider>
+}
+
+function DashboardShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
@@ -456,6 +475,7 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageSwitch />
             <ThemeToggle />
             <NotificationBell />
             <div className="hidden sm:flex items-center gap-3 pl-3 border-l border-gray-200">
@@ -486,9 +506,9 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
         <div className="flex-1 overflow-auto p-4 pb-24 sm:p-6 md:pb-6 relative bg-slate-50/50" style={{ paddingBottom: 'clamp(6rem, calc(6rem + env(safe-area-inset-bottom, 0px)), 8rem)' }}>
           <PageTransition>
             <BirthdayCelebration />
+            <AgreementsGate />
             {role === 'STUDENT' && (
               <>
-                <RulesAgreementBlocker />
                 <CompulsoryFeedbackBlocker />
                 <FeeOverdueModal />
               </>

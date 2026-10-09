@@ -998,6 +998,32 @@ curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
 check "solved and no answer for 3 days → closed by itself" "$(M "SELECT status FROM Complaint WHERE id='$C2ID'")" "CLOSED"
 check "monthly report (managers only)" "$(api GET /api/complaints/report | jq_ "d['data']['report']['total']>=4")/$(secapi GET /api/complaints/report | jq_ "d['success']")" "True/False"
 rm -f "$WJ"
+echo "== 29. foundations: platform switches, language, agreements, marketing flag"
+check "platform settings readable by any staff (modules start OFF, agreements ON)" "$(secapi GET /api/platform/settings | jq_ "(d['data']['modules']['lms'], d['data']['modules']['agreements'], d['data']['language']['portal'])")" "(False, True, 'en')"
+check "secretary cannot change platform settings" "$(secapi PUT /api/platform/settings '{"modules":{"lms":true}}' | jq_ "d['success']")" "False"
+check "admin switches LMS on and portal language to Arabic" "$(api PUT /api/platform/settings '{"modules":{"lms":true},"language":{"staff":"en","portal":"ar"}}' | jq_ "(d['data']['modules']['lms'], d['data']['language']['portal'])")" "(True, 'ar')"
+check "agreements: 5 draft texts created switched off" "$(api GET /api/agreements | jq_ "(len(d['data']), any(a['isActive'] for a in d['data']))")" "(5, False)"
+AWJ=$(mktemp); login_as 01066660099 Wallet2026A "$AWJ" >/dev/null
+apend() { curl -s -b "$AWJ" "$B/api/agreements/pending"; }
+check "nothing to accept while every agreement is off" "$(apend | jq_ "len(d['data'])")" "0"
+PR=$(M "SELECT id FROM Agreement WHERE \`key\`='parent-rules'"); MC=$(M "SELECT id FROM Agreement WHERE \`key\`='media-consent'")
+api PATCH /api/agreements/$PR '{"isActive":true}' >/dev/null; api PATCH /api/agreements/$MC '{"isActive":true}' >/dev/null
+check "switched on → the parent must accept 2 (blocking)" "$(apend | jq_ "(len(d['data']), all(a['blocking'] for a in d['data']))")" "(2, True)"
+check "accepting an old version is refused" "$(curl -s -b "$AWJ" -X POST -H 'Content-Type: application/json' -d "{\"agreementId\":\"$PR\",\"version\":99}" $B/api/agreements/pending | jq_ "d['success']")" "False"
+for A in $PR $MC; do curl -s -b "$AWJ" -X POST -H 'Content-Type: application/json' -d "{\"agreementId\":\"$A\",\"version\":1}" $B/api/agreements/pending >/dev/null; done
+check "accepted both → nothing pending; proof stored (version + device)" "$(apend | jq_ "len(d['data'])")/$(M "SELECT COUNT(*) FROM AgreementAcceptance a JOIN Guardian g ON g.userId=a.userId WHERE g.phoneNumber='01066660099' AND a.version=1 AND a.userAgent IS NOT NULL")" "0/2"
+check "editing the text publishes version 2" "$(api PATCH /api/agreements/$PR '{"bodyEn":"New rules text v2 for the e2e test.","graceDays":0}' | jq_ "d['data']['version']")" "2"
+check "the parent must accept version 2 again" "$(apend | jq_ "[(a['key'], a['updated'], a['blocking']) for a in d['data']]")" "[('parent-rules', True, True)]"
+api PATCH /api/agreements/$PR '{"graceDays":3,"bodyEn":"New rules text v3 for the e2e test."}' >/dev/null
+check "with grace days a new version only reminds (not blocking)" "$(apend | jq_ "[(a['version'], a['blocking']) for a in d['data']]")" "[(3, False)]"
+check "who accepted / pending + CSV export" "$(api GET /api/agreements/$MC | jq_ "d['data']['accepted']>=1")/$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$B/api/agreements/$MC?format=csv")" "True/200"
+check "secretary cannot edit agreements" "$(secapi PATCH /api/agreements/$PR '{"isActive":false}' | jq_ "d['success']")" "False"
+api PATCH /api/agreements/$PR '{"isActive":false}' >/dev/null; api PATCH /api/agreements/$MC '{"isActive":false}' >/dev/null
+api PUT /api/platform/settings '{"modules":{"lms":false},"language":{"staff":"en","portal":"en"}}' >/dev/null
+check "staff-only 'no marketing' flag on a student" "$(api PUT /api/students/$W1/marketing '{"noMarketing":true}' | jq_ "d['data']['noMarketing']")/$(M "SELECT noMarketing FROM Student WHERE id='$W1'")" "True/1"
+check "a parent cannot read the marketing flag" "$(curl -s -o /dev/null -w '%{http_code}' -b "$AWJ" $B/api/students/$W1/marketing)" "403"
+rm -f "$AWJ"
+
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

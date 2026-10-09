@@ -87,6 +87,10 @@ export type AcademicResource =
   // Phase D (docs/design-phase-d.md): complaints = handle (update) the complaints queue; referrals = report + settings
   | 'complaints'
   | 'referrals'
+  // Foundations + LMS (docs/plan-learning-platform.md): platform settings (modules, language), agreements, curriculum
+  | 'platform_settings'
+  | 'agreements'
+  | 'curriculum'
 
 type Resource = AcademicResource
 
@@ -198,6 +202,9 @@ const PERMISSIONS: PermissionMap = {
     notification_settings: ['read', 'update'],
     complaints: ['create', 'read', 'update', 'export'],
     referrals: ['create', 'read', 'update'],
+    platform_settings: ['read', 'update'],
+    agreements: ['create', 'read', 'update'],
+    curriculum: ['create', 'read', 'update', 'delete', 'approve'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -257,6 +264,9 @@ const PERMISSIONS: PermissionMap = {
     notification_settings: ['read', 'update'],
     complaints: ['create', 'read', 'update', 'export'],
     referrals: ['create', 'read', 'update'],
+    platform_settings: ['read', 'update'],
+    agreements: ['create', 'read', 'update'],
+    curriculum: ['create', 'read', 'update', 'delete', 'approve'],
   },
   TEACHER: {
     students: ['read'],
@@ -317,6 +327,9 @@ const PERMISSIONS: PermissionMap = {
     notification_settings: [],
     complaints: [],
     referrals: [],
+    platform_settings: [],
+    agreements: [],
+    curriculum: ['read'],
   },
   STUDENT: {
     students: [],
@@ -376,6 +389,9 @@ const PERMISSIONS: PermissionMap = {
     notification_settings: [],
     complaints: [],
     referrals: [],
+    platform_settings: [],
+    agreements: [],
+    curriculum: [],
   },
   PARENT: {
     students: [],
@@ -435,6 +451,9 @@ const PERMISSIONS: PermissionMap = {
     notification_settings: [],
     complaints: [],
     referrals: [],
+    platform_settings: [],
+    agreements: [],
+    curriculum: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -496,6 +515,9 @@ const PERMISSIONS: PermissionMap = {
     notification_settings: [],
     complaints: [],
     referrals: ['read'],
+    platform_settings: [],
+    agreements: [],
+    curriculum: [],
   },
   GUARDIAN: {
     students: [],
@@ -555,6 +577,9 @@ const PERMISSIONS: PermissionMap = {
     notification_settings: [],
     complaints: [],
     referrals: [],
+    platform_settings: [],
+    agreements: [],
+    curriculum: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -618,6 +643,9 @@ const PERMISSIONS: PermissionMap = {
     notification_settings: [],
     complaints: ['create', 'read', 'update'],
     referrals: ['create', 'read'],
+    platform_settings: [],
+    agreements: ['read'],
+    curriculum: [],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -682,6 +710,9 @@ const PERMISSIONS: PermissionMap = {
     notification_settings: [],
     complaints: ['create', 'read', 'update', 'export'],
     referrals: ['create', 'read', 'update'],
+    platform_settings: [],
+    agreements: ['read'],
+    curriculum: ['read'],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -744,6 +775,9 @@ const PERMISSIONS: PermissionMap = {
     notification_settings: [],
     complaints: [],
     referrals: ['read'],
+    platform_settings: [],
+    agreements: [],
+    curriculum: [],
   },
 }
 

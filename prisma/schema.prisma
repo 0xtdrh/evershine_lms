@@ -520,6 +520,8 @@ model Student {
   houseId       String?
   /// Phase B: the parent chooses if the child sees the wallet in the student portal
   walletVisibleToStudent Boolean @default(true)
+  /// Foundations (2026-10-09): staff-only exception — do not use this child in marketing (agreed offline with the parent)
+  noMarketing Boolean @default(false)
   admissionDate DateTime          @default(now())
   firstSessionDate DateTime? // Set automatically the first time attendance is recorded for this student
   academicYear  String // "2024-2025"
@@ -3851,4 +3853,42 @@ model Referral {
 
   @@index([referrerGuardianId])
   @@index([status])
+}
+
+/// Foundations (2026-10-09, docs/plan-learning-platform.md §16–17): agreements the user must accept.
+/// audience PARENT | STUDENT | STAFF. Editing the text publishes a new version; mandatory ones block the portal
+/// until the current version is accepted.
+model Agreement {
+  id          String    @id @default(cuid())
+  key         String    @unique @db.VarChar(40)
+  titleEn     String    @db.VarChar(160)
+  titleAr     String    @db.VarChar(160)
+  bodyEn      String    @db.Text
+  bodyAr      String    @db.Text
+  audience    String    @db.VarChar(8)
+  mandatory   Boolean   @default(true)
+  isActive    Boolean   @default(true)
+  version     Int       @default(1)
+  sortOrder   Int       @default(0)
+  graceDays   Int       @default(0)
+  publishedAt DateTime  @default(now())
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([audience, isActive])
+}
+
+/// Proof of acceptance: who, which version, when, from which device.
+model AgreementAcceptance {
+  id          String   @id @default(cuid())
+  agreementId String
+  version     Int
+  userId      String
+  acceptedAt  DateTime @default(now())
+  ip          String?  @db.VarChar(64)
+  userAgent   String?  @db.VarChar(300)
+
+  @@unique([agreementId, version, userId])
+  @@index([userId])
 }
