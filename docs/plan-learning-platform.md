@@ -73,6 +73,7 @@ Decisions are from the owner (chat 2026-10-03 → 2026-10-05) unless marked "pro
   - when attendance is recorded;
   - by the instructor;
   - after the previous session / quiz is completed or passed.
+  - **Owner decision (2026-10-09): default = when attendance is recorded** (changeable per level / group).
 - **Kid mode (4–7):** big pictures, audio button for instructions, one thing per screen, no typing.
 - **Devices:**
   - home (normal login, mobile-friendly);
