@@ -11,6 +11,7 @@
  *   node scripts/live-check.mjs --phase-c  # demo data for phase C: excuses, attendance alerts, ratings, birthdays, reports
  *   node scripts/live-check.mjs --logins   # demo instructor + student + parent you can sign in with (printed once, removed by --cleanup)
  *   node scripts/live-check.mjs --phase-d  # demo data for phase D: referral (code → new student → first payment), complaints
+ *   node scripts/live-check.mjs --lms      # LMS L1: demo curriculum version, every content type, private upload, review, publish, export/import
  *
  * Asks for the site address, the Super Admin email and password at run time.
  * The password is never printed, saved or sent anywhere except the login.
@@ -111,7 +112,8 @@ async function main() {
   const phaseCOnly = process.argv.includes('--phase-c')
   const loginsOnly = process.argv.includes('--logins')
   const phaseDOnly = process.argv.includes('--phase-d')
-  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : scheduleOnly ? ' — demo data for the Groups calendar' : phaseAOnly ? ' — demo data for phase A' : phaseBOnly ? ' — demo data for phase B (wallets)' : phaseCOnly ? ' — demo data for phase C' : loginsOnly ? ' — demo accounts to sign in with' : phaseDOnly ? ' — demo data for phase D' : ''))
+  const lmsOnly = process.argv.includes('--lms')
+  console.log('TechNova live check' + (cleanupOnly ? ' — remove demo data' : transferOnly ? ' — moving students between groups' : scheduleOnly ? ' — demo data for the Groups calendar' : phaseAOnly ? ' — demo data for phase A' : phaseBOnly ? ' — demo data for phase B (wallets)' : phaseCOnly ? ' — demo data for phase C' : loginsOnly ? ' — demo accounts to sign in with' : phaseDOnly ? ' — demo data for phase D' : lmsOnly ? ' — LMS L1 curriculum library' : ''))
   const base = ((await ask('Site address [https://evershine-lms-technova.vercel.app]: ')) || 'https://evershine-lms-technova.vercel.app').replace(/\/+$/, '')
   const email = await ask('Super Admin email: ')
   const password = await ask('Super Admin password (hidden): ', { hidden: true })
@@ -132,6 +134,11 @@ async function main() {
 
   const run = String(randomInt(1000, 9999))
   const phone = (n) => `0109990${run.slice(0, 2)}${String(n).padStart(2, '0')}`
+  if (lmsOnly) {
+    try { await lmsDemo(sa, base, run) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
+    console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
+    return finish()
+  }
   if (phaseDOnly) {
     try { await phaseDDemo(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
     console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
@@ -942,6 +949,131 @@ async function phaseDDemo(sa, base, run, phone) {
   console.log(`\n  ↳ open: Complaints (queue: the demo complaint to reply to, the phone suggestion), Referrals (who referred whom)`)
   console.log(`  ↳ parent portal: phone ${referrerPhone}, temporary password ${temp.password} (asks for a new one at first sign-in)`)
   console.log('    → My Children: "Invite a friend" card with the code; Complaints: the 3 messages and their stages')
+}
+
+// ── LMS L1: curriculum library (2026-10-09) ────────────────────────────────
+// Makes a DEMO curriculum version (notes start with "DEMO ") on one level and walks the whole flow:
+// sessions, content of every kind (incl. a real private image upload), student preview, review, publish,
+// copy, export / import, duplicate / remove session, course skill. Publishing is only tried on a level that has
+// NO published curriculum yet, so your real curricula are never archived. Removed by --cleanup.
+async function lmsDemo(sa, base, run) {
+  section('17. LMS L1 — curriculum library')
+  const tree = (await sa.json('GET', '/api/curriculum/tree')).data?.data?.tree ?? []
+  const levels = tree.flatMap((t) => t.courses.flatMap((c) => c.levels.map((l) => ({ ...l, course: c.name, courseId: c.id }))))
+  check(`curriculum tree opens (${levels.length} levels)`, levels.length > 0)
+  if (!levels.length) return bad('no active levels — add one in Course Structure first')
+  const level = levels.find((l) => !l.publishedNumber && !l.draftCount && !l.reviewCount) ?? levels[0]
+  const canPublish = !level.publishedNumber
+  console.log(`  ↳ using ${level.course} — ${level.name} (${level.numberOfSessions} sessions)${canPublish ? '' : ' — it already has a published curriculum, so publishing is skipped'}`)
+
+  const created = await sa.json('POST', `/api/curriculum/levels/${level.id}`, { body: { notes: `DEMO version ${run}` } })
+  const e1 = created.data?.data?.id
+  check('new version = draft with one empty session per planned session', !!e1, created.data?.error?.message)
+  if (!e1) return
+  let ed = (await sa.json('GET', `/api/curriculum/editions/${e1}`)).data?.data
+  check(`${ed?.sessions?.length} sessions created (status ${ed?.edition?.status})`, ed?.sessions?.length === level.numberOfSessions && ed?.edition?.status === 'DRAFT')
+  const s1 = ed.sessions[0].id
+
+  const patch = await sa.json('PATCH', `/api/curriculum/sessions/${s1}`, {
+    body: { titleEn: `DEMO Meet the robot ${run}`, titleAr: 'تعرف على الروبوت (تجربة)', objectivesEn: '- Name the robot parts\n- Make it move', objectivesAr: '- يعرف أجزاء الروبوت\n- يحركه', materialsEn: 'Robot kit, laptop', instructorNotes: 'DEMO secret tip for the instructor', durationMin: 90 },
+  })
+  check('session texts saved (AR / EN, objectives, kit, instructor notes, duration)', patch.data?.success, patch.data?.error?.message)
+
+  const add = (body) => sa.json('POST', `/api/curriculum/sessions/${s1}/blocks`, { body })
+  check('text block (markdown)', (await add({ type: 'TEXT', data: { textEn: '## Welcome\nToday we build a **robot**.', textAr: '## أهلاً\nالنهارده هنبني **روبوت**.' } })).data?.success)
+  check('YouTube video block', (await add({ type: 'VIDEO', titleEn: 'Intro video', data: { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' } })).data?.success)
+  check('code block (instructor only)', (await add({ type: 'CODE', audience: 'INSTRUCTOR', titleEn: 'Solution', data: { language: 'python', code: 'print("hello robot")' } })).data?.success)
+  check('link block', (await add({ type: 'LINK', titleEn: 'Robot parts', data: { url: 'https://www.tinkercad.com' } })).data?.success)
+  check('embedded Scratch project', (await add({ type: 'EMBED', data: { url: 'https://scratch.mit.edu/projects/10128407/embed', height: 420 } })).data?.success)
+  check('quiz placeholder (built in L4)', (await add({ type: 'QUIZ', data: { note: 'DEMO quiz later' } })).data?.success)
+  check('embed from an unknown site is refused', (await add({ type: 'EMBED', data: { url: 'https://evil.example.com/x' } })).data?.success === false)
+  check('javascript: link is refused', (await add({ type: 'LINK', data: { url: 'javascript:alert(1)' } })).data?.success === false)
+
+  // real private upload to Cloudinary (tiny PNG) + signed link check
+  const sign = (await sa.json('POST', '/api/curriculum/media/sign')).data?.data
+  if (!sign?.signature) bad('upload signature', 'Cloudinary is not configured on the site')
+  else {
+    const fd = new FormData()
+    fd.append('file', new Blob([PNG], { type: 'image/png' }), 'demo.png')
+    for (const [k, v] of Object.entries({ api_key: sign.apiKey, timestamp: String(sign.timestamp), signature: sign.signature, folder: sign.folder, allowed_formats: sign.allowedFormats, type: sign.type })) fd.append(k, v)
+    const up = await fetch(`https://api.cloudinary.com/v1_1/${sign.cloudName}/auto/upload`, { method: 'POST', body: fd })
+    const j = await up.json().catch(() => ({}))
+    check('image uploaded to Cloudinary as PRIVATE (authenticated)', up.ok && j.type === 'authenticated', j?.error?.message)
+    if (up.ok) {
+      const img = await add({ type: 'IMAGE', titleEn: 'The kit', data: { media: { publicId: j.public_id, resourceType: j.resource_type, format: j.format, bytes: j.bytes, originalName: 'demo.png' }, captionEn: 'DEMO picture' } })
+      check('image block saved', img.data?.success, img.data?.error?.message)
+      const plain = `https://res.cloudinary.com/${sign.cloudName}/image/authenticated/${j.public_id}.${j.format}`
+      const direct = await fetch(plain)
+      check('the file does NOT open without the signed link', !direct.ok, `status ${direct.status}`)
+    }
+  }
+
+  let view = (await sa.json('GET', `/api/curriculum/sessions/${s1}`)).data?.data
+  const imgBlock = view?.blocks?.find((b) => b.type === 'IMAGE')
+  if (imgBlock) {
+    const r = await fetch(imgBlock.data.mediaUrl)
+    check('the signed link made by the site opens the image', r.ok, `status ${r.status}`)
+  }
+  const stu = (await sa.json('GET', `/api/curriculum/sessions/${s1}?as=STUDENT`)).data?.data
+  check(`student preview hides instructor notes + instructor-only content (${view?.blocks?.length} → ${stu?.blocks?.length} items)`, stu && stu.session.instructorNotes === null && !stu.blocks.some((b) => b.audience === 'INSTRUCTOR') && stu.blocks.length === view.blocks.length - 1)
+
+  const ids = view.blocks.map((b) => b.id)
+  const reordered = await sa.json('PUT', `/api/curriculum/sessions/${s1}/blocks`, { body: { ids: [...ids].reverse() } })
+  view = (await sa.json('GET', `/api/curriculum/sessions/${s1}`)).data?.data
+  check('content reordered', reordered.data?.success && view.blocks[0].id === ids[ids.length - 1])
+
+  const dup = await sa.json('POST', `/api/curriculum/sessions/${s1}`)
+  ed = (await sa.json('GET', `/api/curriculum/editions/${e1}`)).data?.data
+  check('session duplicated right after itself', dup.data?.success && ed.sessions[1]?.id === dup.data?.data?.id && ed.sessions.length === level.numberOfSessions + 1)
+  const rm = await sa.json('DELETE', `/api/curriculum/sessions/${dup.data?.data?.id}`)
+  ed = (await sa.json('GET', `/api/curriculum/editions/${e1}`)).data?.data
+  check('session removed, the rest renumbered', rm.data?.success && ed.sessions.map((x) => x.number).join(',') === ed.sessions.map((_, i) => i + 1).join(','))
+
+  const early = await sa.json('PATCH', `/api/curriculum/editions/${e1}`, { body: { action: 'submit' } })
+  check('send for review refused while some sessions have no title', early.data?.error?.code === 'INCOMPLETE', early.data?.error?.message)
+  for (const x of ed.sessions.slice(1)) await sa.json('PATCH', `/api/curriculum/sessions/${x.id}`, { body: { titleEn: `DEMO Lesson ${x.number}`, titleAr: `درس ${x.number} (تجربة)` } })
+  const sub = await sa.json('PATCH', `/api/curriculum/editions/${e1}`, { body: { action: 'submit' } })
+  check('sent for review', sub.data?.data?.status === 'IN_REVIEW', sub.data?.error?.message)
+  const locked = await sa.json('PATCH', `/api/curriculum/sessions/${s1}`, { body: { titleEn: 'x' } })
+  check('a version in review cannot be edited', locked.data?.error?.code === 'LOCKED')
+  check('review comment added', (await sa.json('POST', `/api/curriculum/sessions/${s1}/comments`, { body: { body: 'DEMO: please add a picture of the wiring' } })).data?.success)
+
+  if (canPublish) {
+    const pub = await sa.json('PATCH', `/api/curriculum/editions/${e1}`, { body: { action: 'publish' } })
+    check('published', pub.data?.data?.status === 'PUBLISHED', pub.data?.error?.message)
+    check('a published version cannot be deleted', (await sa.json('DELETE', `/api/curriculum/editions/${e1}`)).data?.success === false)
+  } else {
+    const back = await sa.json('PATCH', `/api/curriculum/editions/${e1}`, { body: { action: 'reject' } })
+    check('sent back to draft by the reviewer', back.data?.data?.status === 'DRAFT', back.data?.error?.message)
+  }
+
+  const copy = await sa.json('POST', `/api/curriculum/levels/${level.id}`, { body: { copyFromId: e1, notes: `DEMO copy ${run}` } })
+  const e2 = copy.data?.data?.id
+  const ed2 = e2 ? (await sa.json('GET', `/api/curriculum/editions/${e2}`)).data?.data : null
+  check('new version copied from the first one (same sessions + content)', ed2?.sessions?.length === ed.sessions.length && ed2.sessions[0].blockCount === view.blocks.length)
+
+  const exp = await sa.raw('GET', `/api/curriculum/editions/${e1}/export`)
+  const file = await exp.json().catch(() => null)
+  check(`export file downloaded (${file?.sessions?.length} sessions)`, file?.format === 'technova-curriculum-v1')
+  if (file) {
+    file.notes = `DEMO import ${run}`
+    const imp = await sa.json('POST', `/api/curriculum/levels/${level.id}/import`, { body: file })
+    check('import → a new draft', imp.data?.success, imp.data?.error?.message)
+  }
+  check('not-a-curriculum file is refused', (await sa.json('POST', `/api/curriculum/levels/${level.id}/import`, { body: { format: 'x', sessions: [] } })).data?.success === false)
+
+  const skill = await sa.json('POST', '/api/curriculum/skills', { body: { subjectId: level.courseId, nameEn: `DEMO Sensors ${run}`, nameAr: 'حساسات (تجربة)' } })
+  check('course skill added', skill.data?.success, skill.data?.error?.message)
+  if (skill.data?.data?.id) {
+    const tag = await sa.json('PATCH', `/api/curriculum/sessions/${ed2?.sessions?.[0]?.id}`, { body: { skillIds: [skill.data.data.id] } })
+    check('skill tagged on a lesson', tag.data?.success, tag.data?.error?.message)
+  }
+
+  const anon = await fetch(`${base}/api/curriculum/tree`)
+  check('not signed in → curriculum refused', anon.status === 401, `status ${anon.status}`)
+
+  console.log(`  ↳ open Curriculum → ${level.course} → ${level.name}: versions "DEMO …" (v${ed.edition.number}${e2 ? ` + copy` : ''} + import).`)
+  console.log('  ↳ open session 1 → try "Preview as a student" and "Instructor view"; the copy is a draft you can edit.')
 }
 
 function finish() {

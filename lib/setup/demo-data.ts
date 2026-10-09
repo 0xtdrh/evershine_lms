@@ -8,6 +8,7 @@
  *  - groups: className starting "DEMO "
  *  - discount types / payment accounts: name / label starting "DEMO "
  *  - staff accounts: email ending @demo.technova.local
+ *  - curriculum versions: notes starting "DEMO "; course skills: English name starting "DEMO "
  * Removal runs in one transaction and checks every foreign key at the end
  * (any broken reference rolls everything back), like the test-data wipe.
  */
@@ -36,6 +37,8 @@ export interface DemoIds {
   accounts: string[]
   assignments: string[]
   enrollments: string[]
+  curricula: string[]
+  skills: string[]
 }
 
 export async function findDemoIds(db: Tx = prisma): Promise<DemoIds> {
@@ -65,6 +68,8 @@ export async function findDemoIds(db: Tx = prisma): Promise<DemoIds> {
     where: { OR: [{ studentId: { in: studentIds } }, { classSectionId: { in: groupIds } }] },
     select: { id: true },
   })
+  const curricula = await db.curriculumEdition.findMany({ where: { notes: { startsWith: DEMO.namePrefix } }, select: { id: true } })
+  const skills = await db.courseSkill.findMany({ where: { nameEn: { startsWith: DEMO.namePrefix } }, select: { id: true } })
   return {
     students: studentIds,
     guardians: guardians.map((g) => g.id),
@@ -75,6 +80,8 @@ export async function findDemoIds(db: Tx = prisma): Promise<DemoIds> {
     accounts: accounts.map((a) => a.id),
     assignments: assignments.map((a) => a.id),
     enrollments: enrollments.map((e) => e.id),
+    curricula: curricula.map((c) => c.id),
+    skills: skills.map((k) => k.id),
   }
 }
 
@@ -140,6 +147,15 @@ export async function removeDemoData(): Promise<Record<string, number>> {
         await del('Referral', 'referrerGuardianId', ids.guardians)
         await del('Complaint', 'complainantId', ids.users)
         await tx.$executeRawUnsafe('DELETE FROM `ComplaintReply` WHERE `complaintId` NOT IN (SELECT `id` FROM `Complaint`)')
+        // LMS L1: demo curriculum versions with their sessions, content and comments; demo course skills.
+        if (ids.curricula.length) {
+          const sessionIds = (await tx.curriculumSession.findMany({ where: { editionId: { in: ids.curricula } }, select: { id: true } })).map((x) => x.id)
+          await del('CurriculumBlock', 'sessionId', sessionIds)
+          await del('CurriculumComment', 'sessionId', sessionIds)
+          await del('CurriculumSession', 'id', sessionIds)
+          await del('CurriculumEdition', 'id', ids.curricula)
+        }
+        await del('CourseSkill', 'id', ids.skills)
         await del('_GuardianToStudent', 'A', ids.guardians)
         await del('_GuardianToStudent', 'B', ids.students)
         await del('StudentEnrollment', 'id', ids.enrollments)
