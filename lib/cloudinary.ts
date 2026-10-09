@@ -309,12 +309,17 @@ export function generateCurriculumUploadSignature(allowedFormats: string) {
 }
 
 /** Signed delivery link of an authenticated curriculum file (only call it for viewers allowed to see it). */
-export function curriculumMediaUrl(publicId: string, resourceType: 'image' | 'video' | 'raw', format?: string) {
+export function curriculumMediaUrl(publicId: string, resourceType: 'image' | 'video' | 'raw', format?: string, watermarkText?: string) {
+  // LMS L2: images for a student carry their name burned into the picture (a screenshot still shows who leaked it).
+  const mark = watermarkText && resourceType === 'image'
+    ? { transformation: [{ overlay: { font_family: 'Arial', font_size: 26, font_weight: 'bold', text: watermarkText.replace(/[,/\\]/g, ' ').slice(0, 60) }, color: '#ffffff', opacity: 45, gravity: 'south_east', x: 12, y: 12 }] }
+    : {}
   return cloudinary.url(publicId, {
     type: 'authenticated',
     resource_type: resourceType,
     sign_url: true,
     secure: true,
     ...(format && resourceType !== 'raw' ? { format } : {}),
+    ...mark,
   })
 }

@@ -39,7 +39,7 @@ cleanup() {
   [ -n "${APP_PID:-}" ] && taskkill //PID "$APP_PID" //T //F >/dev/null 2>&1
   powershell -NoProfile -Command "(Get-NetTCPConnection -LocalPort $APP_PORT -State Listen -ErrorAction SilentlyContinue).OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id \$_ -Force -ErrorAction SilentlyContinue }" >/dev/null 2>&1
   "$MYSQL_DIR/bin/mysqladmin.exe" --no-defaults -h 127.0.0.1 -P $DB_PORT -u root shutdown >/dev/null 2>&1
-  sleep 3; rm -rf "$DATA_DIR" "$JAR" /d/tn-e2e-restore.sql /d/tn-e2e-app.log /d/tn-e2e-p*.txt
+  sleep 3; cp -f /d/tn-e2e-app.log /d/tn-e2e-app-last.log 2>/dev/null; rm -rf "$DATA_DIR" "$JAR" /d/tn-e2e-restore.sql /d/tn-e2e-app.log /d/tn-e2e-p*.txt
 }
 trap cleanup EXIT
 
@@ -62,7 +62,15 @@ async function main() {
 main()
 EOF
 SA_EMAIL=$(DATABASE_URL="$URL" npx tsx scripts/e2e/.tmp-sa.ts); rm -f scripts/e2e/.tmp-sa.ts
+# E2E_PROD=1: build once and run `next start` (steadier and lighter than the dev server, which can run out of memory
+# compiling routes on demand on a busy machine). Default: `next dev`.
+if [ "${E2E_PROD:-}" = 1 ]; then
+  echo "building the app (E2E_PROD=1)…"
+  npx next build > /d/tn-e2e-build.log 2>&1 || { echo "build failed"; tail -20 /d/tn-e2e-build.log; exit 1; }
+  DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" AUTH_TRUST_HOST=true PAYMOB_HMAC_SECRET="e2e-paymob-hmac" CRON_SECRET="e2e-cron" npx next start -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
+else
 DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" PAYMOB_HMAC_SECRET="e2e-paymob-hmac" CRON_SECRET="e2e-cron" NODE_OPTIONS="--max-old-space-size=6144" npx next dev -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
+fi
 APP_PID=$!
 for i in $(seq 1 120); do [ "$(curl -s -o /dev/null -w '%{http_code}' $B/api/auth/csrf)" = "200" ] && break; sleep 3; done
 tok=$(curl -s -c "$JAR" -b "$JAR" $B/api/auth/csrf | jq_ "d['csrfToken']")
@@ -1078,6 +1086,66 @@ SUBJ=$(M "SELECT subjectId FROM Level WHERE id='$CL'")
 check "course skill added" "$(api POST /api/curriculum/skills "{\"subjectId\":\"$SUBJ\",\"nameEn\":\"Sensors\",\"nameAr\":\"الحساسات\"}" | jq_ "d['data']['nameEn']")" "Sensors"
 check "secretary cannot add skills" "$(secapi POST /api/curriculum/skills "{\"subjectId\":\"$SUBJ\",\"nameEn\":\"X\"}" | jq_ "d['success']")" "False"
 check "upload signature only for authors" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" -X POST $B/api/curriculum/media/sign)" "403"
+
+echo "== 31. LMS L2: lessons open for students (attendance / instructor / modes), protection log, parent summary"
+LG=$(mkgroup "E2E Lessons" "$CL")
+api POST /api/groups/$LG/instructor "{\"teacherId\":\"$CALT\"}" >/dev/null
+LK=$(mkstu LessonKid 01066660111 Huda 01066660119); LO=$(mkstu LessonOther 01066660112 Huda2 01066660118)
+api POST /api/groups/$LG/students "{\"studentId\":\"$LK\"}" >/dev/null
+LKR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); LKJ=$(mktemp)
+login_jar "$(echo "$LKR" | jq_ "d['data']['loginId']")" "$(echo "$LKR" | jq_ "d['data']['password']")" "$LKJ" 10.0.1.41
+LOR=$(api POST /api/students/$LO/portal-password '{"target":"student"}'); LOJ=$(mktemp)
+login_jar "$(echo "$LOR" | jq_ "d['data']['loginId']")" "$(echo "$LOR" | jq_ "d['data']['password']")" "$LOJ" 10.0.1.42
+LGU=$(M "SELECT id FROM Guardian WHERE phoneNumber='01066660119'")
+LPW=$(api POST /api/students/$LK/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$LGU\"}" | jq_ "d['data']['password']"); LPJ=$(mktemp)
+login_jar 01066660119 "$LPW" "$LPJ" 10.0.1.43
+TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.44
+kget() { curl -s -b "$LKJ" "$B$1"; }
+OPEN() { kget /api/lessons/my | jq_ "[s['number'] for g in d['data']['groups'] for s in g['sessions'] if s['open']]"; }
+check "lessons are off for students while the LMS module is off" "$(kget /api/lessons/my | jq_ "d['error']['code']")" "MODULE_OFF"
+api PUT /api/platform/settings '{"modules":{"lms":true}}' >/dev/null
+check "student sees his group with the published curriculum (v2), nothing open before any session" "$(kget /api/lessons/my | jq_ "(len(d['data']['groups']), d['data']['groups'][0]['edition']['number'], d['data']['kidMode'])")/$(OPEN)" "(1, 2, False)/[]"
+check "instructor gets the group's lesson plan" "$(curl -s -b "$TJ" $B/api/groups/$LG/lessons | jq_ "(d['data']['mode'], d['data']['range']['from'])")" "('ATTENDANCE', 1)"
+check "secretary gets no lesson plan (attendance only)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/groups/$LG/lessons)" "403"
+LKE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$LK' AND classSectionId='$LG'")
+sess $LG "$(D -1)" "$(rec $LKE PRESENT)" >/dev/null
+check "attendance recorded → lesson 1 opens" "$(OPEN)" "[1]"
+check "group pinned to the version it started with" "$(M "SELECT curriculumEditionId FROM ClassSection WHERE id='$LG'")" "$E2"
+L1=$(M "SELECT id FROM CurriculumSession WHERE editionId='$E2' AND number=1"); L2=$(M "SELECT id FROM CurriculumSession WHERE editionId='$E2' AND number=2")
+LES=$(kget "/api/lessons/$L1?g=$LG")
+check "student opens lesson 1: student view only + his name as watermark" "$(echo "$LES" | jq_ "(len(d['data']['blocks']), 'instructorNotes' in d['data']['session'], any(b['audience']=='INSTRUCTOR' for b in d['data']['blocks']), 'LessonKid' in d['data']['watermark'])")" "(2, False, False, True)"
+check "opening is logged (who / what / when)" "$(M "SELECT COUNT(*) FROM LessonView WHERE sessionId='$L1' AND kind='SESSION' AND studentId='$LK'")" "1"
+check "lesson 2 still locked" "$(kget "/api/lessons/$L2?g=$LG" | jq_ "d['error']['code']")" "LOCKED"
+curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d '{"sessionNumber":2,"action":"open"}' $B/api/groups/$LG/lessons >/dev/null
+check "instructor opens lesson 2 early" "$(OPEN)" "[1, 2]"
+curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d '{"sessionNumber":1,"action":"lock"}' $B/api/groups/$LG/lessons >/dev/null
+check "instructor locks lesson 1" "$(OPEN)/$(kget "/api/lessons/$L1?g=$LG" | jq_ "d['error']['code']")" "[2]/LOCKED"
+curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d '{"sessionNumber":1,"action":"auto"}' $B/api/groups/$LG/lessons >/dev/null
+curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d '{"sessionNumber":2,"action":"auto"}' $B/api/groups/$LG/lessons >/dev/null
+check "back to automatic" "$(OPEN)" "[1]"
+LB=$(echo "$LES" | jq_ "d['data']['blocks'][0]['id']")
+IB=$(M "SELECT b.id FROM CurriculumBlock b WHERE b.sessionId='$L1' AND b.audience='INSTRUCTOR' LIMIT 1")
+check "student ticks an item as done" "$(curl -s -b "$LKJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\",\"blockId\":\"$LB\",\"done\":true}" $B/api/lessons/progress | jq_ "d['success']")/$(kget /api/lessons/my | jq_ "[s['done'] for g in d['data']['groups'] for s in g['sessions'] if s['number']==1][0]")" "True/1"
+check "an instructor-only item cannot be ticked / reached" "$(curl -s -b "$LKJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\",\"blockId\":\"$IB\",\"done\":true}" $B/api/lessons/progress | jq_ "d['success']")" "False"
+check "a student of another group cannot open the lesson" "$(curl -s -b "$LOJ" "$B/api/lessons/$L1?g=$LG" | jq_ "d['success']")" "False"
+curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d '{"sessionNumber":1,"body":"Bring your kit next time"}' $B/api/groups/$LG/lessons/notes >/dev/null
+check "group note from the instructor shows in the lesson" "$(kget "/api/lessons/$L1?g=$LG" | jq_ "[n['body'] for n in d['data']['notes']]")" "['Bring your kit next time']"
+check "instructor cannot change how lessons open (managers only)" "$(curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d '{"mode":"ALL"}' $B/api/groups/$LG/lessons | jq_ "d['success']")" "False"
+api PATCH /api/groups/$LG/lessons '{"mode":"ALL"}' >/dev/null
+check "admin sets this group to 'all at once'" "$(OPEN | python -c "import sys,ast;print(len(ast.literal_eval(sys.stdin.read())))")" "$CLN"
+api PATCH /api/groups/$LG/lessons '{"mode":null}' >/dev/null
+api PUT /api/lessons/settings '{"settings":{"unlockMode":"MANUAL","watermark":true,"kidModeMaxAge":7}}' >/dev/null
+check "company default 'instructor opens' → nothing open by itself" "$(OPEN)" "[]"
+api PUT /api/lessons/settings "{\"level\":{\"id\":\"$CL\",\"mode\":\"ATTENDANCE\"}}" >/dev/null
+check "level's own mode wins over the company default" "$(OPEN)" "[1]"
+api PUT /api/lessons/settings "{\"level\":{\"id\":\"$CL\",\"mode\":null},\"settings\":{\"unlockMode\":\"ATTENDANCE\",\"watermark\":true,\"kidModeMaxAge\":7}}" >/dev/null
+check "secretary cannot change LMS settings" "$(secapi PUT /api/lessons/settings '{"settings":{"unlockMode":"ALL","watermark":false,"kidModeMaxAge":7}}' | jq_ "d['success']")" "False"
+check "parent sees what was learned (titles), read-only" "$(curl -s -b "$LPJ" "$B/api/lessons/my?s=$LK" | jq_ "(d['data']['mode'], [s['number'] for g in d['data']['groups'] for s in g['sessions']])")" "('PARENT', [1])"
+check "parent cannot open the lesson content itself" "$(curl -s -b "$LPJ" "$B/api/lessons/$L1?g=$LG&s=$LK" | jq_ "d['success']")" "False"
+check "parent cannot read another family's child" "$(curl -s -b "$LPJ" "$B/api/lessons/my?s=$LO" | jq_ "d['success']")" "False"
+check "staff do not use the student lesson pages" "$(api GET /api/lessons/my | jq_ "d['success']")" "False"
+api PUT /api/platform/settings '{"modules":{"lms":false}}' >/dev/null
+rm -f "$LKJ" "$LOJ" "$LPJ" "$TJ"
 
 echo
 echo "RESULT: $PASS passed, $FAIL failed"

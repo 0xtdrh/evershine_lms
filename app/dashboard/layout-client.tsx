@@ -90,6 +90,8 @@ interface NavItem {
   legacy?: boolean
   /** Shown only if the role has ANY of these permissions (Permissions page aware). */
   perm?: Array<[AcademicResource, Action]>
+  /** Shown only while this Platform module is switched on. */
+  module?: string
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -143,6 +145,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Grading Weights', href: '/dashboard/grading-config', icon: SlidersHorizontal, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Course Structure', href: '/dashboard/course-config', icon: GraduationCap, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Curriculum',      href: '/dashboard/curriculum',   icon: BookOpen,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'TEACHER'], perm: [['curriculum', 'read']] },
+  { name: 'LMS Settings',    href: '/dashboard/admin/lms',    icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN'], perm: [['curriculum', 'approve']] },
   { name: 'Groups', href: '/dashboard/groups', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['class_sections', 'read']] },
   { name: 'Wallet & Top-ups', href: '/dashboard/wallet', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['wallet', 'read']] },
   { name: 'Renewals', href: '/dashboard/renewals', icon: RefreshCcw, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['renewals', 'read']] },
@@ -161,6 +164,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Promotions',      href: '/dashboard/promotions',   icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Report Cards',    href: '/dashboard/report-cards', icon: FileText,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'My Children',     href: '/dashboard/my-children',  icon: Users,           roles: ['PARENT', 'GUARDIAN'] },
+  { name: 'My Lessons',      href: '/dashboard/my-lessons',   icon: BookOpen,        roles: ['STUDENT', 'PARENT', 'GUARDIAN'], module: 'lms' },
   { name: 'Certificates',    href: '/dashboard/certificates', icon: Award,           roles: ['STUDENT', 'PARENT', 'GUARDIAN'] },
   { name: 'Settings',        href: '/dashboard/settings',     icon: Settings },
 ]
@@ -224,6 +228,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const { sidebarOpen, setSidebarOpen, setUser } = useAppStore()
   const role = (session?.user?.role as string) ?? ''
   const { active: birthdayToday } = useBirthdayToday()
+  const { data: platformData } = useQuery({
+    queryKey: ['platform-settings'],
+    queryFn: () => fetchApi<{ language: { staff: 'en' | 'ar'; portal: 'en' | 'ar' }; modules: Record<string, boolean> }>('/api/platform/settings'),
+    enabled: !!session?.user,
+    staleTime: 5 * 60 * 1000,
+  })
+  const platformModules = platformData?.modules
 
   useEffect(() => {
     if (status === 'authenticated' && !role) {
@@ -301,7 +312,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const enginePrimary = isAcademicEnginePrimary()
   const visibleNav = NAV_ITEMS.filter(
-    (item) => isNavItemVisible(item, role, myPermissions?.permissions) && (!enginePrimary || !item.legacy)
+    (item) => isNavItemVisible(item, role, myPermissions?.permissions) && (!enginePrimary || !item.legacy) && (!item.module || !!platformModules?.[item.module])
   )
   const isTeacher   = role === 'TEACHER'
 

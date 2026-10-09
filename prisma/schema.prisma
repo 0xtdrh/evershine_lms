@@ -1957,6 +1957,8 @@ model ClassSection {
   maxStudents    Int?
   /// LMS (L1): the curriculum version this group follows (pinned when it starts; null = newest published)
   curriculumEditionId String?
+  /// LMS L2: how lessons open for this group (ALL | SCHEDULE | ATTENDANCE | MANUAL | PREVIOUS); null = the level's / company default
+  lessonUnlockMode    String?           @db.VarChar(12)
   curriculumMode CurriculumMode    @default(FIXED)
   isActive       Boolean           @default(true)
   createdAt      DateTime          @default(now())
@@ -2176,6 +2178,8 @@ model Level {
   order            Int // display/progression order within the course
   numberOfMonths   Int
   numberOfSessions Int
+  /// LMS L2: default way lessons open for groups of this level; null = company default (lms.settings)
+  lessonUnlockMode String?           @db.VarChar(12)
   pricingType      LevelPricingType  @default(MONTHLY)
   monthlyPrice     Float?
   fullLevelPrice   Float?
@@ -3974,4 +3978,61 @@ model CurriculumComment {
   createdAt DateTime @default(now())
 
   @@index([sessionId])
+}
+
+/// LMS L2: the instructor opened (OPEN) or closed (LOCKED) one curriculum session for a group by hand.
+/// sessionNumber = the curriculum session number in the level (not the session number inside the month).
+model LessonUnlock {
+  id             String   @id @default(cuid())
+  classSectionId String
+  sessionNumber  Int
+  state          String   @db.VarChar(8)
+  byUserId       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([classSectionId, sessionNumber])
+}
+
+/// LMS L2: an extra note / link for ONE group and one session (does not change the curriculum).
+model GroupLessonNote {
+  id             String   @id @default(cuid())
+  classSectionId String
+  sessionNumber  Int
+  body           String   @db.Text
+  url            String?  @db.VarChar(1000)
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  @@index([classSectionId, sessionNumber])
+}
+
+/// LMS L2: a student ticked a content block as done.
+model LessonProgress {
+  id             String   @id @default(cuid())
+  studentId      String
+  blockId        String
+  sessionId      String
+  classSectionId String
+  completedAt    DateTime @default(now())
+
+  @@unique([studentId, blockId])
+  @@index([studentId, sessionId])
+}
+
+/// LMS L2: who opened which lesson / file and when (to trace leaks). kind SESSION | MEDIA.
+model LessonView {
+  id             String   @id @default(cuid())
+  userId         String
+  studentId      String?
+  classSectionId String?
+  sessionId      String
+  blockId        String?
+  kind           String   @db.VarChar(8)
+  ip             String?  @db.VarChar(64)
+  userAgent      String?  @db.VarChar(300)
+  createdAt      DateTime @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([userId, createdAt])
 }

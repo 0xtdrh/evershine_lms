@@ -157,6 +157,9 @@ export async function POST(
       requireFullPaymentToStart: group.requireFullPaymentToStart,
       partialPaymentCounts: group.partialPaymentCounts,
       installmentsAllowed: group.installmentsAllowed,
+      // LMS L2: the next month of the SAME level keeps reading the same curriculum version and the same way of
+      // opening lessons; a new level starts fresh (pinned to its newest published version when it starts).
+      ...(nextLevel.id === group.levelId && { curriculumEditionId: group.curriculumEditionId, lessonUnlockMode: group.lessonUnlockMode }),
     },
   })
 

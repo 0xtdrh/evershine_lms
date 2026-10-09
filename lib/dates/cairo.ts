@@ -65,3 +65,16 @@ export function daysUntilBirthday(dob: Date | null | undefined, from: Ymd, days:
   for (let i = 0; i <= days; i++) if (isBirthdayOn(dob, addDays(from, i))) return i
   return null
 }
+
+/** The real moment of a Cairo wall-clock date + time ("2026-10-09", "16:30"), DST aware. */
+export function cairoDateTimeToUtc(date: string, time: string): Date {
+  const [y, m, d] = date.split('-').map(Number)
+  const [hh, mm] = (time || '00:00').split(':').map(Number)
+  const guess = Date.UTC(y, m - 1, d, hh || 0, mm || 0)
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date(guess)).map((p) => [p.type, p.value])
+  )
+  const shown = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute))
+  return new Date(guess - (shown - guess))
+}

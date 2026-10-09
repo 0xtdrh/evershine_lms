@@ -10,6 +10,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useI18n } from '@/lib/i18n/client'
 import { videoEmbedUrl } from '@/lib/curriculum/blocks'
+import { Watermark } from './Watermark'
 import { useEffect, useRef, useState } from 'react'
 import { ExternalLink, FileText, Hourglass, Maximize2, X, ZoomIn, ZoomOut } from 'lucide-react'
 
@@ -33,7 +34,7 @@ const noMenu = (e: React.MouseEvent) => e.preventDefault()
 const FILL_TYPES = ['VIDEO', 'EMBED', 'FILE']
 const ZOOM_TYPES = ['TEXT', 'CODE', 'IMAGE']
 
-export function BlockView({ block }: { block: Block }) {
+export function BlockView({ block, watermark }: { block: Block; watermark?: string | null }) {
   const { pick, t } = useI18n()
   const [full, setFull] = useState(false)
   const [zoom, setZoom] = useState(1)
@@ -86,7 +87,7 @@ export function BlockView({ block }: { block: Block }) {
       break
     }
     case 'FILE': {
-      const m = d.media as { originalName?: string; format?: string } | undefined
+      const m = { ...(d.media as { originalName?: string; format?: string } | undefined), ...(d.mediaFormat ? { format: d.mediaFormat as string } : {}) }
       const name = m?.originalName || title || 'File'
       body = d.mediaUrl ? (
         m?.format === 'pdf' && !d.downloadable
@@ -107,7 +108,7 @@ export function BlockView({ block }: { block: Block }) {
     default:
       body = <p className="flex items-center gap-2 rounded-lg border border-dashed border-slate-200 p-3 text-xs text-slate-500"><Hourglass className="h-4 w-4" /> {block.type} — {t('cur.coming')}</p>
   }
-  const canExpand = !['LINK', 'H5P', 'QUIZ', 'ASSIGNMENT', 'TOOL'].includes(block.type) && !(block.type === 'FILE' && !(d.media as { format?: string } | undefined)?.format?.match(/^pdf$/))
+  const canExpand = !['LINK', 'H5P', 'QUIZ', 'ASSIGNMENT', 'TOOL'].includes(block.type) && !(block.type === 'FILE' && ((d.media as { format?: string } | undefined)?.format ?? d.mediaFormat) !== 'pdf')
   const btn = 'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
 
   if (full) {
@@ -127,7 +128,7 @@ export function BlockView({ block }: { block: Block }) {
           </span>
         </div>
         <div className={`flex-1 overflow-auto p-4 ${fill ? 'flex' : ''}`}>
-          <div className={fill ? 'flex-1' : 'mx-auto max-w-5xl text-base'} style={ZOOM_TYPES.includes(block.type) ? { zoom } : undefined}>{body}</div>
+          <div className={fill ? 'flex-1' : 'mx-auto max-w-5xl text-base'} style={ZOOM_TYPES.includes(block.type) ? { zoom } : undefined}><div className={`relative ${fill ? 'h-full' : ''}`}>{body}{watermark && <Watermark text={watermark} moving={FILL_TYPES.includes(block.type)} />}</div></div>
         </div>
       </div>
     )
@@ -140,7 +141,7 @@ export function BlockView({ block }: { block: Block }) {
           {canExpand && <button type="button" className={btn} onClick={open} aria-label="Full screen" title="Full screen"><Maximize2 className="h-4 w-4" /></button>}
         </div>
       ) : null}
-      {body}
+      <div className="relative">{body}{watermark && <Watermark text={watermark} moving={FILL_TYPES.includes(block.type)} />}</div>
     </div>
   )
 }

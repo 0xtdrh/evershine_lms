@@ -389,6 +389,31 @@ Built automatically after each session. No typing, except optional instructor ex
 - Not in L1 (later stages): QUIZ (L4), ASSIGNMENT (L3), H5P / TOOL (L5) are placeholders; age-band preview comes with
   the age modes; drag-and-drop reorder is up / down buttons for now.
 
+### L2 as built (2026-10-09)
+- Tables (additive): `LessonUnlock` (instructor OPEN / LOCKED per group + curriculum session number), `GroupLessonNote`,
+  `LessonProgress` (student ticks per block), `LessonView` (log: SESSION / MEDIA, ip, device),
+  `Level.lessonUnlockMode`, `ClassSection.lessonUnlockMode` (null = level / company default). Settings `lms.settings`
+  (unlockMode default ATTENDANCE, watermark on, kidModeMaxAge 7).
+- Numbering: a MONTHLY level is several groups; this group's curriculum sessions are (cycle-1) × perCycle + 1 …;
+  earlier months stay open (revision), later months locked. Held count = same maths as the calendar (occurrencesFor).
+- Pure rules `lib/lms/unlock.ts` (tests `tests/lms-unlock.test.ts`), engine `lib/lms/engine.ts`. The group's curriculum
+  version is pinned when it has started; advance-cycle copies the pin + mode to the next month of the same level.
+- Staff: lesson panel inside both attendance screens (`components/lms/GroupLessonsPanel.tsx`, API
+  `/api/groups/[id]/lessons` + `/notes`): next lesson + link to the full plan, open / lock / automatic per lesson,
+  group-only notes, mode per group (managers). Instructor, confirmed substitute, branch manager, admins only —
+  **secretaries get nothing (owner: attendance only)**. Settings page `/dashboard/admin/lms` (company + per level).
+- Students: `/dashboard/my-lessons` (+ `/[sessionId]?g=`), APIs `/api/lessons/my`, `/api/lessons/[sessionId]`,
+  `/api/lessons/progress`, `/api/lessons/media/[blockId]` (checks access, logs, redirects to a signed private link;
+  images get the student's name burned in by Cloudinary). Only while the `lms` module is ON (menu item hidden too).
+- Protection: watermark with name + registration number (moving on video / embeds / PDF, repeated on text / images),
+  right-click / copy / drag / Ctrl+S/P/C/U blocked, nothing printed, instructor-only content never sent.
+  Limits (said honestly): Cloudinary free has no expiring links, so a copied file link keeps working; phone cameras
+  cannot be stopped — the watermark + view log make leaks traceable.
+- Kid mode (age ≤ setting): bigger text, one item per screen with Next / Back, read-aloud button (browser voice).
+- Parent: `/dashboard/my-lessons` → choose child → what was learned (titles + objectives + progress), read-only.
+- Left for L2b: quick QR sign-in on branch tablets (needs a registered-tablet design), a staff page to browse the
+  view log, homework list for parents (comes with L3).
+
 ## 11. Owner answers (2026-10-08)
 - **Free first, paid later.** Every external service sits behind an adapter / setting, so switching does not need a
   rebuild:

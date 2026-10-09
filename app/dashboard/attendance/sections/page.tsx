@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { GroupLessonsPanel } from '@/components/lms/GroupLessonsPanel'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -107,6 +108,7 @@ export default function SectionAttendancePage() {
       // save above — read-only refresh only, doesn't touch the save itself.
       queryClient.invalidateQueries({ queryKey: ['group-session-progress', classSectionId] })
       queryClient.invalidateQueries({ queryKey: ['group-session-history', classSectionId] })
+      queryClient.invalidateQueries({ queryKey: ['group-lessons', classSectionId] })
     },
     onError: (e: Error) => notify.error(e.message),
   })
@@ -451,6 +453,9 @@ export default function SectionAttendancePage() {
           </Card>
         </motion.div>
       )}
+
+      {/* LMS L2: lesson plan — only for the instructor / managers (hidden for secretaries) */}
+      {classSectionId && <GroupLessonsPanel groupId={classSectionId} />}
 
       {/* Export Card */}
       {classSectionId && (

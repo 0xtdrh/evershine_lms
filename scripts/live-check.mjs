@@ -11,7 +11,8 @@
  *   node scripts/live-check.mjs --phase-c  # demo data for phase C: excuses, attendance alerts, ratings, birthdays, reports
  *   node scripts/live-check.mjs --logins   # demo instructor + student + parent you can sign in with (printed once, removed by --cleanup)
  *   node scripts/live-check.mjs --phase-d  # demo data for phase D: referral (code → new student → first payment), complaints
- *   node scripts/live-check.mjs --lms      # LMS L1: demo curriculum version, every content type, private upload, review, publish, export/import
+ *   node scripts/live-check.mjs --lms      # LMS L1 + L2: demo curriculum (every content type, private upload, review, publish,
+ *                                          # export/import) + a demo student/parent: lessons open after attendance, ticks, watermark
  *
  * Asks for the site address, the Super Admin email and password at run time.
  * The password is never printed, saved or sent anywhere except the login.
@@ -136,6 +137,7 @@ async function main() {
   const phone = (n) => `0109990${run.slice(0, 2)}${String(n).padStart(2, '0')}`
   if (lmsOnly) {
     try { await lmsDemo(sa, base, run) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
+    try { await lmsStudentDemo(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
     console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
     return finish()
   }
@@ -1074,6 +1076,86 @@ async function lmsDemo(sa, base, run) {
 
   console.log(`  ↳ open Curriculum → ${level.course} → ${level.name}: versions "DEMO …" (v${ed.edition.number}${e2 ? ` + copy` : ''} + import).`)
   console.log('  ↳ open session 1 → try "Preview as a student" and "Instructor view"; the copy is a draft you can edit.')
+}
+
+// ── LMS L2: lessons reach the students (2026-10-09) ────────────────────────
+// A DEMO group on a level that has a published curriculum, a DEMO student + parent (temporary passwords printed
+// once), attendance → lesson 1 opens, instructor-style open / lock, ticks, watermark, parent summary.
+// The LMS module is switched on only for the test and put back as it was. Removed by --cleanup.
+async function lmsStudentDemo(sa, base, run, phone) {
+  section('18. LMS L2 — lessons for students')
+  const iso = (k) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() + k); return d.toISOString().slice(0, 10) }
+  const tree = (await sa.json('GET', '/api/curriculum/tree')).data?.data?.tree ?? []
+  const level = tree.flatMap((t) => t.courses.flatMap((c) => c.levels.map((l) => ({ ...l, course: c.name })))).find((l) => l.publishedNumber)
+  if (!level) return bad('no level has a published curriculum yet — publish one (Curriculum page) and run again')
+  const campuses = list((await sa.json('GET', '/api/campuses')).data)
+  const campus = campuses.find((c) => c.isActive !== false) ?? campuses[0]
+  const platform = (await sa.json('GET', '/api/platform/settings')).data?.data
+  const wasOn = !!platform?.modules?.lms
+  if (!wasOn) await sa.json('PUT', '/api/platform/settings', { body: { modules: { lms: true } } })
+  console.log(`  ↳ using ${level.course} — ${level.name} (curriculum v${level.publishedNumber})${wasOn ? '' : '; LMS switched ON for the test only'}`)
+  try {
+    const group = (await sa.json('POST', '/api/groups', { body: { campusId: campus.id, className: `DEMO Lessons ${run}`, sectionName: 'A', levelId: level.id } })).data?.data?.id
+    const year = new Date().getFullYear()
+    const s = (await sa.json('POST', '/api/students', {
+      body: {
+        firstName: `Lesson-${run}`, lastName: 'DEMO-TEST', fullNameAr: 'طالب دروس تجربة', fatherName: 'Father Demo', fatherPhoneNumber: '', motherName: '',
+        parentStatus: 'BOTH_ALIVE', dateOfBirth: '2019-05-10T00:00:00.000Z', gender: 'MALE', nationality: 'Egyptian', address: '12 Demo St Hurghada',
+        city: 'Hurghada', phoneNumber: phone(96), emergencyContact: phone(96), email: '', hasSiblingAtAcademy: false, campusId: campus.id,
+        rollNumber: '', totalFeeAmount: 0, academicYear: `${year}-${year + 1}`, guardianFirstName: 'Demo Lessons Parent', guardianLastName: '',
+        guardianPhone: phone(97), guardianEmail: '', guardianRelationship: '',
+      },
+    })).data?.data
+    check('demo group + a 7-year-old demo student (kid mode)', !!group && !!s?.id)
+    if (!group || !s?.id) return
+    await sa.json('POST', `/api/groups/${group}/students`, { body: { studentId: s.id } })
+    const enr = ((await sa.json('GET', `/api/groups/${group}`)).data?.data?.enrollments ?? [])[0]?.id
+    const sp = (await sa.json('POST', `/api/students/${s.id}/portal-password`, { body: { target: 'student' } })).data?.data
+    const guardianId = ((await sa.json('GET', `/api/students/${s.id}`)).data?.data?.guardians ?? [])[0]?.id
+    const pp = (await sa.json('POST', `/api/students/${s.id}/portal-password`, { body: { target: 'guardian', guardianId } })).data?.data
+    const stu = new Client(base)
+    check('demo student signs in', sp?.password && (await stu.login(sp.loginId, sp.password)))
+    const openNos = async () => ((await stu.json('GET', '/api/lessons/my')).data?.data?.groups ?? []).flatMap((g) => g.sessions.filter((x) => x.open).map((x) => x.number))
+    const my = (await stu.json('GET', '/api/lessons/my')).data?.data
+    check(`"My lessons" shows the group (kid mode ${my?.kidMode ? 'ON' : 'off'}), nothing open before the first session`, my?.groups?.length === 1 && (await openNos()).length === 0, JSON.stringify(my?.groups?.map((g) => g.sessions.filter((x) => x.open).length)))
+    const lessons = (await sa.json('GET', `/api/groups/${group}/lessons`)).data?.data
+    check(`lesson plan for staff (opens: ${lessons?.mode})`, !!lessons?.edition)
+    await sa.json('POST', '/api/enrollment-attendance', { body: { classSectionId: group, attendanceDate: iso(-1), records: [{ studentEnrollmentId: enr, status: 'PRESENT' }] } })
+    check('attendance recorded → lesson 1 open for the student', JSON.stringify(await openNos()) === '[1]', JSON.stringify(await openNos()))
+    const s1 = lessons.sessions[0], s2 = lessons.sessions[1]
+    const l1 = await stu.json('GET', `/api/lessons/${s1.id}?g=${group}`)
+    check('student opens lesson 1 (student view, his name as watermark)', l1.data?.success && (l1.data.data.watermark ?? '').includes(`Lesson-${run}`) && !('instructorNotes' in l1.data.data.session), l1.data?.error?.message)
+    if (s2) {
+      check('lesson 2 is still locked', (await stu.json('GET', `/api/lessons/${s2.id}?g=${group}`)).data?.error?.code === 'LOCKED')
+      await sa.json('PATCH', `/api/groups/${group}/lessons`, { body: { sessionNumber: 2, action: 'open' } })
+      check('opened by hand → the student can open lesson 2', (await stu.json('GET', `/api/lessons/${s2.id}?g=${group}`)).data?.success)
+      await sa.json('PATCH', `/api/groups/${group}/lessons`, { body: { sessionNumber: 2, action: 'auto' } })
+    }
+    const block = l1.data?.data?.blocks?.[0]
+    if (block) {
+      const tk = await stu.json('POST', '/api/lessons/progress', { body: { groupId: group, blockId: block.id, done: true } })
+      check('student ticks an item as done', tk.data?.success, tk.data?.error?.message)
+      const media = l1.data.data.blocks.find((b) => b.data?.mediaUrl)
+      if (media) {
+        const r = await stu.raw('GET', media.data.mediaUrl)
+        check('a lesson file opens through the checked + logged link (private Cloudinary)', r.status === 302 && (r.headers.get('location') ?? '').includes('/authenticated/'), `status ${r.status}`)
+      }
+    } else console.log('  ↳ lesson 1 has no content yet — add some in Curriculum to see ticks / files')
+    await sa.json('POST', `/api/groups/${group}/lessons/notes`, { body: { sessionNumber: 1, body: `DEMO note ${run}: bring your kit` } })
+    check('group note shows inside the lesson', ((await stu.json('GET', `/api/lessons/${s1.id}?g=${group}`)).data?.data?.notes ?? []).length === 1)
+    const par = new Client(base)
+    if (pp?.password && (await par.login(pp.loginId ?? phone(97), pp.password))) {
+      const sum = (await par.json('GET', `/api/lessons/my?s=${s.id}`)).data?.data
+      check('parent sees what was learned (read-only)', sum?.mode === 'PARENT' && sum.groups?.[0]?.sessions?.length === 1)
+      check('parent cannot open the lesson content itself', (await par.json('GET', `/api/lessons/${s1.id}?g=${group}&s=${s.id}`)).data?.success === false)
+    } else bad('demo parent signs in')
+    console.log(`\n  Look at it in the browser (temporary passwords, not saved anywhere; the LMS must be ON in Platform):`)
+    console.log(`  Student: ${sp?.loginId}  /  ${sp?.password}`)
+    console.log(`  Parent:  ${pp?.loginId ?? phone(97)}  /  ${pp?.password}`)
+    console.log(`  Staff: Attendance → group "DEMO Lessons ${run}" → the "Lesson plan" card.`)
+  } finally {
+    if (!wasOn) { await sa.json('PUT', '/api/platform/settings', { body: { modules: { lms: false } } }); console.log('  ↳ LMS switched back OFF (as it was)') }
+  }
 }
 
 function finish() {
