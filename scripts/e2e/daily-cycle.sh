@@ -1152,6 +1152,68 @@ check "staff do not use the student lesson pages" "$(api GET /api/lessons/my | j
 api PUT /api/platform/settings '{"modules":{"lms":false}}' >/dev/null
 rm -f "$LKJ" "$LOJ" "$LPJ" "$TJ"
 
+echo "== 32. LMS L3: homework — auto questions, rubric grading, return + resubmit, in class, late penalty, level scores"
+RUB=$(api POST /api/rubrics '{"nameEn":"E2E Project rubric","criteria":[{"id":"idea","titleEn":"Idea","levels":[{"labelEn":"Great","points":4},{"labelEn":"OK","points":2}]},{"id":"build","titleEn":"Build","levels":[{"labelEn":"Works","points":6},{"labelEn":"Partly","points":3}]}]}' | jq_ "d['data']['id']")
+check "rubric saved in the library (max 10)" "$(api GET /api/rubrics | jq_ "[r['maxPoints'] for r in d['data'] if r['id']=='$RUB']")" "[10]"
+check "secretary cannot write rubrics" "$(secapi POST /api/rubrics '{"nameEn":"x","criteria":[{"id":"a","levels":[{"points":1}]}]}' | jq_ "d['success']")" "False"
+E4=$(api POST /api/curriculum/levels/$CL "{\"copyFromId\":\"$E3N\"}" | jq_ "d['data']['id']")
+S41=$(M "SELECT id FROM CurriculumSession WHERE editionId='$E4' AND number=1")
+check "automatic grading without questions is refused" "$(api POST /api/curriculum/sessions/$S41/blocks '{"type":"ASSIGNMENT","data":{"kinds":["PHOTO"],"gradingMode":"AUTO"}}' | jq_ "d['success']")" "False"
+A1=$(api POST /api/curriculum/sessions/$S41/blocks '{"type":"ASSIGNMENT","titleEn":"Quick check","data":{"kinds":[],"gradingMode":"AUTO","questions":[{"id":"q1","type":"SINGLE","textEn":"Which pin?","options":[{"id":"a","textEn":"13"},{"id":"b","textEn":"7"}],"correct":["a"],"points":2},{"id":"q2","type":"NUMBER","textEn":"How many LEDs?","correct":[3],"points":2}]}}' | jq_ "d['data']['id']")
+A2=$(api POST /api/curriculum/sessions/$S41/blocks "{\"type\":\"ASSIGNMENT\",\"titleEn\":\"Explain your robot\",\"data\":{\"kinds\":[\"TEXT\",\"LINK\"],\"scale\":\"RUBRIC\",\"rubricId\":\"$RUB\",\"rubric\":{\"nameEn\":\"E2E Project rubric\",\"criteria\":[{\"id\":\"idea\",\"titleEn\":\"Idea\",\"levels\":[{\"labelEn\":\"Great\",\"points\":4},{\"labelEn\":\"OK\",\"points\":2}]},{\"id\":\"build\",\"titleEn\":\"Build\",\"levels\":[{\"labelEn\":\"Works\",\"points\":6},{\"labelEn\":\"Partly\",\"points\":3}]}]}}}" | jq_ "d['data']['id']")
+A3=$(api POST /api/curriculum/sessions/$S41/blocks '{"type":"ASSIGNMENT","titleEn":"Wire it in class","data":{"kinds":["IN_CLASS"],"maxPoints":5}}' | jq_ "d['data']['id']")
+FP=$(api POST /api/curriculum/sessions/$S41/blocks '{"type":"ASSIGNMENT","titleEn":"Final project","data":{"kinds":["LINK"],"maxPoints":10,"finalProject":true}}' | jq_ "d['data']['id']")
+check "4 assignments added to the lesson" "$(M "SELECT COUNT(*) FROM CurriculumBlock WHERE sessionId='$S41' AND type='ASSIGNMENT'")" "4"
+api PATCH /api/curriculum/editions/$E4 '{"action":"publish"}' >/dev/null
+api PATCH /api/groups/$LG/lessons '{"useLatest":true}' >/dev/null
+api PUT /api/platform/settings '{"modules":{"lms":true}}' >/dev/null
+LKR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); LKJ=$(mktemp)
+login_jar "$(echo "$LKR" | jq_ "d['data']['loginId']")" "$(echo "$LKR" | jq_ "d['data']['password']")" "$LKJ" 10.0.1.51
+LPW=$(api POST /api/students/$LK/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$LGU\"}" | jq_ "d['data']['password']"); LPJ=$(mktemp); login_jar 01066660119 "$LPW" "$LPJ" 10.0.1.52
+TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.53
+kput() { curl -s -b "$LKJ" -X PUT -H 'Content-Type: application/json' -d "$1" $B/api/assignments/item; }
+tpost() { curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d "$2" $B/api/assignments/submissions/$1; }
+SUBID() { M "SELECT id FROM AssignmentSubmission WHERE blockId='$1' AND studentId='$LK'"; }
+check "student's homework list: the 4 assignments of the open lesson, all to do" "$(curl -s -b "$LKJ" $B/api/assignments/my | jq_ "(sorted(set(i['status'] for g in d['data']['groups'] for i in g['items'])), sum(len(g['items']) for g in d['data']['groups']))")" "(['TODO'], 4)"
+check "questions reach the student without the correct answers" "$(curl -s -b "$LKJ" "$B/api/assignments/item?g=$LG&b=$A1" | jq_ "any('correct' in q for q in d['data']['assignment']['questions'])")" "False"
+check "draft saved automatically" "$(kput "{\"groupId\":\"$LG\",\"blockId\":\"$A2\",\"text\":\"My robot follows a line\",\"submit\":false}" | jq_ "d['data']['status']")" "DRAFT"
+check "a file from someone else's folder is refused" "$(kput "{\"groupId\":\"$LG\",\"blockId\":\"$FP\",\"links\":[\"https://scratch.mit.edu/projects/1\"],\"files\":[{\"publicId\":\"x/other/file\",\"resourceType\":\"image\"}],\"submit\":true}" | jq_ "d['success']")" "False"
+check "an http (not https) link is refused" "$(kput "{\"groupId\":\"$LG\",\"blockId\":\"$FP\",\"links\":[\"http://x.com\"],\"submit\":true}" | jq_ "d['success']")" "False"
+check "automatic questions graded at once (1 right, 1 wrong = 2/4)" "$(kput "{\"groupId\":\"$LG\",\"blockId\":\"$A1\",\"answers\":{\"q1\":\"a\",\"q2\":\"4\"},\"submit\":true}" | jq_ "(d['data']['status'], float(d['data']['score']))")" "('GRADED', 2.0)"
+check "student hands in the written + link homework" "$(kput "{\"groupId\":\"$LG\",\"blockId\":\"$A2\",\"text\":\"My robot follows a line\",\"links\":[\"https://scratch.mit.edu/projects/123\"],\"submit\":true}" | jq_ "d['data']['status']")" "SUBMITTED"
+check "lesson item counts as done after handing in" "$(M "SELECT COUNT(*) FROM LessonProgress WHERE studentId='$LK' AND blockId='$A2'")" "1"
+check "secretary gets no gradebook" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/groups/$LG/assignments)" "403"
+check "instructor's gradebook shows 1 to grade" "$(curl -s -b "$TJ" $B/api/groups/$LG/assignments | jq_ "[a['toGrade'] for a in d['data']['assignments'] if a['blockId']=='$A2'][0]")" "1"
+S2=$(SUBID $A2)
+check "sending back needs a note" "$(tpost $S2 '{"action":"return"}' | jq_ "d['success']")" "False"
+check "instructor sends it back for changes" "$(tpost $S2 '{"action":"return","feedback":"Add a photo of the line"}' | jq_ "d['data']['status']")" "RETURNED"
+check "student hands in again (try 2)" "$(kput "{\"groupId\":\"$LG\",\"blockId\":\"$A2\",\"text\":\"Now with more detail\",\"links\":[\"https://scratch.mit.edu/projects/123\"],\"submit\":true}" | jq_ "d['data']['status']")/$(M "SELECT attempt FROM AssignmentSubmission WHERE id='$S2'")" "SUBMITTED/2"
+check "rubric needs every line" "$(tpost $S2 '{"action":"grade","rubricPicks":{"idea":0}}' | jq_ "d['success']")" "False"
+check "graded with the rubric (4 + 3 = 7)" "$(tpost $S2 '{"action":"grade","rubricPicks":{"idea":0,"build":1},"feedback":"Nice idea"}' | jq_ "float(d['data']['score'])")" "7.0"
+check "no third try (max 2)" "$(kput "{\"groupId\":\"$LG\",\"blockId\":\"$A2\",\"text\":\"again\",\"submit\":true}" | jq_ "d['error']['code']")" "NO_ATTEMPTS"
+check "done in class — full marks for the group" "$(curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d "{\"blockId\":\"$A3\",\"inClass\":[\"$LK\"],\"fullMarks\":true}" $B/api/groups/$LG/assignments | jq_ "d['success']")/$(M "SELECT CONCAT(status,'/',score) FROM AssignmentSubmission WHERE blockId='$A3' AND studentId='$LK'")" "True/GRADED/5"
+api PUT /api/assignments/policies '{"company":{"late":"MARK_LATE","latePenaltyPct":20,"resubmit":true,"maxAttempts":2,"excuseExtensionDays":7,"parentCanSubmit":true}}' >/dev/null
+curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d "{\"blockId\":\"$FP\",\"dueAt\":\"$(D -2)T10:00:00.000Z\"}" $B/api/groups/$LG/assignments >/dev/null
+check "late hand-in is marked late with the 20% penalty" "$(kput "{\"groupId\":\"$LG\",\"blockId\":\"$FP\",\"links\":[\"https://scratch.mit.edu/projects/999\"],\"submit\":true}" | jq_ "d['success']")/$(M "SELECT CONCAT(late,'/',CAST(latePenaltyPct AS SIGNED)) FROM AssignmentSubmission WHERE blockId='$FP' AND studentId='$LK'")" "True/1/20"
+check "10 points minus 20% = 8" "$(tpost $(SUBID $FP) '{"action":"grade","points":10}' | jq_ "float(d['data']['score'])")" "8.0"
+check "changing the automatic score needs a reason" "$(tpost $(SUBID $A1) '{"action":"grade","autoOverride":4}' | jq_ "d['success']")" "False"
+check "automatic score changed with a reason" "$(tpost $(SUBID $A1) '{"action":"grade","autoOverride":4,"overrideReason":"q2 photo shows 4 LEDs, question was unclear"}' | jq_ "float(d['data']['score'])")" "4.0"
+check "parent sees grades and feedback" "$(curl -s -b "$LPJ" "$B/api/assignments/my?s=$LK" | jq_ "sorted((i['status'], float(i['score'])) for g in d['data']['groups'] for i in g['items'])")" "[('GRADED', 4.0), ('GRADED', 5.0), ('GRADED', 7.0), ('GRADED', 8.0)]"
+check "parent cannot hand in for an older child" "$(curl -s -b "$LPJ" -X PUT -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\",\"blockId\":\"$A2\",\"studentId\":\"$LK\",\"text\":\"x\",\"submit\":true}" $B/api/assignments/item | jq_ "d['success']")" "False"
+check "level result gets homework 90% (4/4, 7/10, 5/5) and project 80% from the LMS" "$(api GET "/api/level-results?classSectionId=$LG&subjectId=$SUBJ" | jq_ "[(float(r['lms']['homework']), float(r['lms']['project'])) for r in d['data']['rows'] if r['student']['id']=='$LK'][0]")" "(90.0, 80.0)"
+curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d '{"policy":{"late":"CLOSED","latePenaltyPct":0,"resubmit":true,"maxAttempts":3,"excuseExtensionDays":0,"parentCanSubmit":false}}' $B/api/groups/$LG/assignments >/dev/null
+check "instructor cannot change the group's homework rules (managers only)" "$(M "SELECT COUNT(*) FROM AppSetting WHERE \`key\`='lms.assignments' AND CAST(value AS CHAR) LIKE '%$LG%'")" "0"
+api PATCH /api/groups/$LG/assignments '{"policy":{"late":"CLOSED","latePenaltyPct":0,"resubmit":true,"maxAttempts":3,"excuseExtensionDays":0,"parentCanSubmit":false}}' >/dev/null
+check "group rule 'closed after the due date' stops a late hand-in" "$(kput "{\"groupId\":\"$LG\",\"blockId\":\"$FP\",\"links\":[\"https://scratch.mit.edu/projects/1000\"],\"submit\":true}" | jq_ "d['error']['code']")" "CLOSED"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "daily job sent 'new homework' once per assignment" "$(M "SELECT COUNT(*) FROM AssignmentNotice WHERE classSectionId='$LG' AND kind='NEW'")" "4"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "running the job again sends nothing twice" "$(M "SELECT COUNT(*) FROM AssignmentNotice WHERE classSectionId='$LG' AND kind='NEW'")" "4"
+api PATCH /api/groups/$LG/assignments '{"policy":null}' >/dev/null
+api PUT /api/assignments/policies '{"company":{"late":"MARK_LATE","latePenaltyPct":0,"resubmit":true,"maxAttempts":2,"excuseExtensionDays":7,"parentCanSubmit":true}}' >/dev/null
+api PUT /api/platform/settings '{"modules":{"lms":false}}' >/dev/null
+rm -f "$LKJ" "$LPJ" "$TJ"
+
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

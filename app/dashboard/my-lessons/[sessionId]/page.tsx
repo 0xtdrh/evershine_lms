@@ -13,6 +13,7 @@ import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { useI18n } from '@/lib/i18n/client'
 import { BlockView, Markdown, type Block } from '@/components/curriculum/BlockView'
+import { AssignmentWork } from '@/components/assignments/AssignmentWork'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, ArrowRight, Check, Loader2, MessageSquareText, PartyPopper, Volume2 } from 'lucide-react'
 
@@ -97,6 +98,8 @@ export default function LessonPage() {
       <div className="space-y-3">
         {shown.map((b) => {
           const isDone = data.done.includes(b.id)
+          // L3: homework is handed in (that marks it done), not ticked
+          if (b.type === 'ASSIGNMENT') return <AssignmentWork key={b.id} groupId={groupId} blockId={b.id} />
           return (
             <div key={b.id} className={`rounded-2xl border bg-white ${kid ? 'p-6' : 'p-4'} ${isDone ? 'border-emerald-200' : 'border-slate-200'}`}>
               <BlockView block={b} watermark={data.watermark} />

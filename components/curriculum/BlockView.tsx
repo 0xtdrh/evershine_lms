@@ -12,7 +12,7 @@ import { useI18n } from '@/lib/i18n/client'
 import { videoEmbedUrl } from '@/lib/curriculum/blocks'
 import { Watermark } from './Watermark'
 import { useEffect, useRef, useState } from 'react'
-import { ExternalLink, FileText, Hourglass, Maximize2, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { ClipboardList, ExternalLink, FileText, Hourglass, Maximize2, X, ZoomIn, ZoomOut } from 'lucide-react'
 
 export interface Block {
   id: string; type: string; audience: string; titleEn: string | null; titleAr: string | null
@@ -105,6 +105,17 @@ export function BlockView({ block, watermark }: { block: Block; watermark?: stri
     case 'EMBED':
       body = <iframe src={d.url as string} style={fill ? undefined : { height: Number(d.height) || 480 }} className={`w-full rounded-lg border border-slate-200 ${fill ? 'h-full' : ''}`} sandbox="allow-scripts allow-same-origin allow-popups allow-forms" allow="fullscreen" allowFullScreen title={title || 'embed'} />
       break
+    case 'ASSIGNMENT': {
+      const qs = (d.questions as unknown[] | undefined)?.length ?? 0
+      body = (
+        <div className="space-y-2 rounded-lg border border-violet-100 bg-violet-50/40 p-3">
+          <p className="flex items-center gap-1 text-xs font-semibold uppercase text-violet-700"><ClipboardList className="h-4 w-4" /> {t('hw.homework')}{d.finalProject ? ` · ${t('hw.finalProject')}` : ''}</p>
+          <Markdown text={pick(d.instructionsEn as string, d.instructionsAr as string)} />
+          <p className="text-xs text-slate-500">{[(d.kinds as string[] | undefined)?.join(', '), qs ? `${qs} question(s)` : '', d.gradingMode as string].filter(Boolean).join(' · ')}</p>
+        </div>
+      )
+      break
+    }
     default:
       body = <p className="flex items-center gap-2 rounded-lg border border-dashed border-slate-200 p-3 text-xs text-slate-500"><Hourglass className="h-4 w-4" /> {block.type} — {t('cur.coming')}</p>
   }

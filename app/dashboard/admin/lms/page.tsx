@@ -15,9 +15,41 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GraduationCap, Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { PolicyForm, type Policy } from '@/components/assignments/PolicyForm'
 
 interface Settings { unlockMode: string; watermark: boolean; kidModeMaxAge: number }
 interface Data { settings: Settings; modes: string[]; levels: { id: string; name: string; mode: string | null }[] }
+
+function HomeworkRules({ canEdit, levels }: { canEdit: boolean; levels: { id: string; name: string }[] }) {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['hw-policies'], queryFn: () => fetchApi<{ company: Policy; levels: Record<string, Policy> }>('/api/assignments/policies') })
+  const [level, setLevel] = useState<string>('')
+  const save = useMutation({
+    mutationFn: (b: object) => fetchApi('/api/assignments/policies', { method: 'PUT', body: JSON.stringify(b) }),
+    onSuccess: () => { notify.success('Saved'); qc.invalidateQueries({ queryKey: ['hw-policies'] }) },
+    onError: (e: Error) => notify.error(e.message),
+  })
+  if (!data) return <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+  return (
+    <Card>
+      <CardHeader className="pb-2"><CardTitle className="text-base">Homework rules</CardTitle><CardDescription>Late hand-ins, penalty, handing in again, extra days after an excused absence. A level or a single group (Grade homework page) can have its own.</CardDescription></CardHeader>
+      <CardContent className="space-y-4">
+        {canEdit ? <PolicyForm key={JSON.stringify(data.company)} value={data.company} onSave={(p) => save.mutate({ company: p })} /> : <p className="text-sm text-slate-500">{JSON.stringify(data.company)}</p>}
+        {canEdit && (
+          <div className="space-y-2 border-t border-slate-100 pt-3">
+            <Select value={level} onValueChange={setLevel}>
+              <SelectTrigger className="h-9 w-80"><SelectValue placeholder="Own rules for one level…" /></SelectTrigger>
+              <SelectContent>{levels.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}{data.levels[l.id] ? ' (own rules)' : ''}</SelectItem>)}</SelectContent>
+            </Select>
+            {level && <PolicyForm key={level} value={data.levels[level] ?? data.company} onSave={(p) => save.mutate({ level: { id: level, policy: p } })} onReset={data.levels[level] ? () => save.mutate({ level: { id: level, policy: null } }) : undefined} />}
+          </div>
+        )}
+        <Link href="/dashboard/admin/rubrics" className="text-sm text-indigo-600 underline">Rubric library →</Link>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function LmsSettingsPage() {
   const { data: session } = useSession()
@@ -74,6 +106,7 @@ export default function LmsSettingsPage() {
               ))}
             </CardContent>
           </Card>
+          <HomeworkRules canEdit={canEdit} levels={data.levels} />
         </>
       )}
     </div>

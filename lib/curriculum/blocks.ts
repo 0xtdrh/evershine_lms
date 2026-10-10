@@ -5,11 +5,12 @@
  */
 
 import { z } from 'zod'
+import { assignmentDataSchema } from '@/lib/assignments/rules'
 
 export const BLOCK_TYPES = ['TEXT', 'IMAGE', 'VIDEO', 'FILE', 'LINK', 'CODE', 'EMBED', 'H5P', 'QUIZ', 'ASSIGNMENT', 'TOOL'] as const
 export type BlockType = (typeof BLOCK_TYPES)[number]
 /** Types that are built in later stages (L2 / L4): they can be added as placeholders only. */
-export const COMING_TYPES: BlockType[] = ['H5P', 'QUIZ', 'ASSIGNMENT', 'TOOL']
+export const COMING_TYPES: BlockType[] = ['H5P', 'QUIZ', 'TOOL']
 export const AUDIENCES = ['BOTH', 'INSTRUCTOR', 'STUDENT'] as const
 export type Audience = (typeof AUDIENCES)[number]
 export const EDITION_STATUSES = ['DRAFT', 'IN_REVIEW', 'PUBLISHED', 'ARCHIVED'] as const
@@ -70,7 +71,7 @@ export const blockDataSchemas: Record<BlockType, z.ZodTypeAny> = {
   EMBED: z.object({ url: httpsUrl.refine((u) => hostAllowed(u), 'This site is not in the allowed list'), height: z.number().int().min(200).max(1200).default(480) }),
   H5P: z.object({ note: z.string().max(500).optional() }).passthrough(),
   QUIZ: z.object({ note: z.string().max(500).optional() }).passthrough(),
-  ASSIGNMENT: z.object({ note: z.string().max(500).optional() }).passthrough(),
+  ASSIGNMENT: assignmentDataSchema,
   TOOL: z.object({ note: z.string().max(500).optional() }).passthrough(),
 }
 

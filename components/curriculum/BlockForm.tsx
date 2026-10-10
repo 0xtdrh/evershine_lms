@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, Upload } from 'lucide-react'
 import { Markdown } from './BlockView'
+import { AssignmentForm, blankAssignment } from '@/components/assignments/AssignmentForm'
 
 interface Sign { timestamp: number; signature: string; cloudName: string; apiKey: string; folder: string; allowedFormats: string; type: string }
 export interface Media { publicId: string; resourceType: 'image' | 'video' | 'raw'; format?: string; bytes?: number; originalName?: string }
@@ -48,12 +49,13 @@ export function blankData(type: BlockType): Record<string, unknown> {
   if (type === 'EMBED') return { url: '', height: 480 }
   if (type === 'LINK') return { url: '' }
   if (type === 'FILE') return { downloadable: false }
+  if (type === 'ASSIGNMENT') return blankAssignment()
   return {}
 }
 
 const area = 'min-h-[160px] w-full rounded-md border border-slate-200 bg-white p-2 text-sm'
 
-export function BlockForm({ value, onChange }: { value: BlockDraft; onChange: (v: BlockDraft) => void }) {
+export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; onChange: (v: BlockDraft) => void; subjectId?: string }) {
   const [uploading, setUploading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const d = value.data
@@ -150,6 +152,7 @@ export function BlockForm({ value, onChange }: { value: BlockDraft; onChange: (v
           <p className="text-xs text-slate-400">Allowed sites: {EMBED_HOSTS.join(', ')}</p>
         </>
       )}
+      {value.type === 'ASSIGNMENT' && <AssignmentForm data={d} onChange={(nd) => onChange({ ...value, data: nd })} subjectId={subjectId} />}
       {COMING_TYPES.includes(value.type) && (
         <>
           <p className="rounded bg-amber-50 p-2 text-xs text-amber-800">This type is built in a later stage. You can add a placeholder now (with a note) and fill it later.</p>

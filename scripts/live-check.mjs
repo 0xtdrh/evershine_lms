@@ -136,8 +136,9 @@ async function main() {
   const run = String(randomInt(1000, 9999))
   const phone = (n) => `0109990${run.slice(0, 2)}${String(n).padStart(2, '0')}`
   if (lmsOnly) {
-    try { await lmsDemo(sa, base, run) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
-    try { await lmsStudentDemo(sa, base, run, phone) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
+    let demoLevel = null
+    try { demoLevel = await lmsDemo(sa, base, run) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
+    try { await lmsStudentDemo(sa, base, run, phone, demoLevel) } catch (err) { bad('the check stopped unexpectedly', err?.message ?? String(err)) }
     console.log('\nDemo data left for you to explore. Remove it any time with:  node scripts/live-check.mjs --cleanup')
     return finish()
   }
@@ -988,6 +989,12 @@ async function lmsDemo(sa, base, run) {
   check('link block', (await add({ type: 'LINK', titleEn: 'Robot parts', data: { url: 'https://www.tinkercad.com' } })).data?.success)
   check('embedded Scratch project', (await add({ type: 'EMBED', data: { url: 'https://scratch.mit.edu/projects/10128407/embed', height: 420 } })).data?.success)
   check('quiz placeholder (built in L4)', (await add({ type: 'QUIZ', data: { note: 'DEMO quiz later' } })).data?.success)
+  // L3 homework: automatic questions + a hand-in the instructor grades
+  check('homework with automatic questions', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO quick check', data: { kinds: [], gradingMode: 'AUTO', questions: [
+    { id: 'q1', type: 'SINGLE', textEn: 'Which part is the robot brain?', textAr: 'أنهي جزء هو مخ الروبوت؟', options: [{ id: 'a', textEn: 'Controller', textAr: 'المتحكم' }, { id: 'b', textEn: 'Wheel', textAr: 'العجلة' }], correct: ['a'], points: 2 },
+    { id: 'q2', type: 'TRUE_FALSE', textEn: 'An LED makes light', textAr: 'الـ LED بيطلع نور', correct: ['true'], points: 1 },
+  ] } })).data?.success)
+  check('homework the instructor grades (photo / link, out of 10)', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO show your robot', data: { kinds: ['PHOTO', 'LINK', 'TEXT'], maxPoints: 10, instructionsEn: 'Take a photo of your robot and explain it.', instructionsAr: 'صوّر الروبوت بتاعك واشرحه.' } })).data?.success)
   check('embed from an unknown site is refused', (await add({ type: 'EMBED', data: { url: 'https://evil.example.com/x' } })).data?.success === false)
   check('javascript: link is refused', (await add({ type: 'LINK', data: { url: 'javascript:alert(1)' } })).data?.success === false)
 
@@ -1076,17 +1083,19 @@ async function lmsDemo(sa, base, run) {
 
   console.log(`  ↳ open Curriculum → ${level.course} → ${level.name}: versions "DEMO …" (v${ed.edition.number}${e2 ? ` + copy` : ''} + import).`)
   console.log('  ↳ open session 1 → try "Preview as a student" and "Instructor view"; the copy is a draft you can edit.')
+  return canPublish ? level.id : null
 }
 
 // ── LMS L2: lessons reach the students (2026-10-09) ────────────────────────
 // A DEMO group on a level that has a published curriculum, a DEMO student + parent (temporary passwords printed
 // once), attendance → lesson 1 opens, instructor-style open / lock, ticks, watermark, parent summary.
 // The LMS module is switched on only for the test and put back as it was. Removed by --cleanup.
-async function lmsStudentDemo(sa, base, run, phone) {
+async function lmsStudentDemo(sa, base, run, phone, preferLevelId = null) {
   section('18. LMS L2 — lessons for students')
   const iso = (k) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() + k); return d.toISOString().slice(0, 10) }
   const tree = (await sa.json('GET', '/api/curriculum/tree')).data?.data?.tree ?? []
-  const level = tree.flatMap((t) => t.courses.flatMap((c) => c.levels.map((l) => ({ ...l, course: c.name })))).find((l) => l.publishedNumber)
+  const level = tree.flatMap((t) => t.courses.flatMap((c) => c.levels.map((l) => ({ ...l, course: c.name }))))
+    .sort((a, b) => (b.id === preferLevelId) - (a.id === preferLevelId)).find((l) => l.publishedNumber)
   if (!level) return bad('no level has a published curriculum yet — publish one (Curriculum page) and run again')
   const campuses = list((await sa.json('GET', '/api/campuses')).data)
   const campus = campuses.find((c) => c.isActive !== false) ?? campuses[0]
@@ -1141,6 +1150,25 @@ async function lmsStudentDemo(sa, base, run, phone) {
         check('a lesson file opens through the checked + logged link (private Cloudinary)', r.status === 302 && (r.headers.get('location') ?? '').includes('/authenticated/'), `status ${r.status}`)
       }
     } else console.log('  ↳ lesson 1 has no content yet — add some in Curriculum to see ticks / files')
+    // L3 homework (only when lesson 1 has homework, e.g. the DEMO curriculum made above)
+    const hw = ((await stu.json('GET', '/api/assignments/my')).data?.data?.groups ?? []).flatMap((g) => g.items)
+    if (hw.length) {
+      check(`"My homework" lists ${hw.length} homework(s)`, true)
+      const auto = hw.find((i) => (i.titleEn ?? '').startsWith('DEMO quick check'))
+      if (auto) {
+        const r = await stu.json('PUT', '/api/assignments/item', { body: { groupId: group, blockId: auto.blockId, answers: { q1: 'a', q2: 'false' }, submit: true } })
+        check(`automatic questions graded at once (${r.data?.data?.score} / 3)`, r.data?.data?.status === 'GRADED' && r.data?.data?.score === 2, r.data?.error?.message)
+      }
+      const manual = hw.find((i) => (i.titleEn ?? '').startsWith('DEMO show your robot'))
+      if (manual) {
+        const r = await stu.json('PUT', '/api/assignments/item', { body: { groupId: group, blockId: manual.blockId, text: 'My robot follows a black line.', links: ['https://scratch.mit.edu/projects/10128407'], submit: true } })
+        check('student hands in the photo / link homework', r.data?.data?.status === 'SUBMITTED', r.data?.error?.message)
+        const book = (await sa.json('GET', `/api/groups/${group}/assignments`)).data?.data
+        const cell = book?.cells?.find((c) => c.blockId === manual.blockId)
+        const g = cell ? await sa.json('POST', `/api/assignments/submissions/${cell.id}`, { body: { action: 'grade', points: 9, feedback: 'DEMO: great work!' } }) : null
+        check('graded from the gradebook (9 / 10 + feedback)', g?.data?.data?.score === 9, g?.data?.error?.message)
+      }
+    } else console.log('  ↳ lesson 1 has no homework (the level already had a published curriculum) — add one in Curriculum to try homework')
     await sa.json('POST', `/api/groups/${group}/lessons/notes`, { body: { sessionNumber: 1, body: `DEMO note ${run}: bring your kit` } })
     check('group note shows inside the lesson', ((await stu.json('GET', `/api/lessons/${s1.id}?g=${group}`)).data?.data?.notes ?? []).length === 1)
     const par = new Client(base)
@@ -1152,7 +1180,7 @@ async function lmsStudentDemo(sa, base, run, phone) {
     console.log(`\n  Look at it in the browser (temporary passwords, not saved anywhere; the LMS must be ON in Platform):`)
     console.log(`  Student: ${sp?.loginId}  /  ${sp?.password}`)
     console.log(`  Parent:  ${pp?.loginId ?? phone(97)}  /  ${pp?.password}`)
-    console.log(`  Staff: Attendance → group "DEMO Lessons ${run}" → the "Lesson plan" card.`)
+    console.log(`  Staff: Attendance → group "DEMO Lessons ${run}" → the "Lesson plan" card; Grade Homework → the same group.`)
   } finally {
     if (!wasOn) { await sa.json('PUT', '/api/platform/settings', { body: { modules: { lms: false } } }); console.log('  ↳ LMS switched back OFF (as it was)') }
   }

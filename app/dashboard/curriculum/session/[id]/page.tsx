@@ -241,7 +241,7 @@ export default function CurriculumSessionPage() {
           <DialogHeader><DialogTitle>{editing ? `${editing.id ? 'Edit' : 'Add'}: ${TYPE_LABELS[editing.draft.type]}` : ''}</DialogTitle></DialogHeader>
           {editing && (
             <>
-              <BlockForm value={editing.draft} onChange={(d) => setEditing({ ...editing, draft: d })} />
+              <BlockForm value={editing.draft} onChange={(d) => setEditing({ ...editing, draft: d })} subjectId={data.level?.subjectId} />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setEditing(null)}>{t('common.cancel')}</Button>
                 <Button onClick={() => saveBlock.mutate(editing)} disabled={saveBlock.isPending}>{saveBlock.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}{t('common.save')}</Button>

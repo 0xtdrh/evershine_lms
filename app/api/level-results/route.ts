@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { lmsLevelScores } from '@/lib/assignments/engine'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -54,12 +55,17 @@ export async function GET(request: NextRequest) {
   })
 
   const config = await resolveGradingConfig(subjectId)
+  // LMS L3: homework / project % from graded assignments of this level (shown next to the inputs, the instructor confirms)
+  const group = await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { levelId: true } })
+  const lmsBy = new Map<string, { homework: number | null; project: number | null }>()
+  if (group?.levelId) for (const e of enrollments) lmsBy.set(e.id, await lmsLevelScores(e.student.id, group.levelId))
 
   const rows = enrollments.map((e) => {
     const result = e.levelResults[0] ?? null
     return {
       studentEnrollmentId: e.id,
       student: e.student,
+      lms: lmsBy.get(e.id) ?? null,
       result: result ? {
         id: result.id,
         homeworkScore: result.homeworkScore,
@@ -67,6 +73,8 @@ export async function GET(request: NextRequest) {
         instructorScore: result.instructorScore,
         projectScore: result.projectScore,
         mcqScore: result.mcqScore,
+        homeworkSource: result.homeworkSource,
+        projectSource: result.projectSource,
         finalScore: result.finalScore,
         passed: result.passed,
         instructorFeedback: result.instructorFeedback,
@@ -86,6 +94,8 @@ const scoreSchema = z.object({
   projectScore: z.number().min(0).max(100).nullable().optional(),
   mcqScore: z.number().min(0).max(100).nullable().optional(),
   instructorFeedback: z.string().optional(),
+  homeworkSource: z.enum(['MANUAL', 'LMS']).optional(),
+  projectSource: z.enum(['MANUAL', 'LMS']).optional(),
 })
 
 /**
@@ -146,6 +156,10 @@ export async function POST(request: NextRequest) {
     mcqScore: data.mcqScore ?? existing?.mcqScore ?? null,
   }
 
+  const sources = {
+    ...(data.homeworkSource && data.homeworkScore !== undefined ? { homeworkSource: data.homeworkSource } : {}),
+    ...(data.projectSource && data.projectScore !== undefined ? { projectSource: data.projectSource } : {}),
+  }
   const finalScore = computeFinalScore(merged, config)
   const passed = finalScore != null ? finalScore >= config.passThreshold : null
 
@@ -155,6 +169,7 @@ export async function POST(request: NextRequest) {
       studentEnrollmentId: data.studentEnrollmentId,
       subjectId: data.subjectId,
       ...merged,
+      ...sources,
       instructorFeedback: data.instructorFeedback ?? null,
       finalScore,
       passed,
@@ -162,6 +177,7 @@ export async function POST(request: NextRequest) {
     },
     update: {
       ...merged,
+      ...sources,
       instructorFeedback: data.instructorFeedback ?? existing?.instructorFeedback ?? null,
       finalScore,
       passed,

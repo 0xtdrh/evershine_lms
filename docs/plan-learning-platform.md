@@ -412,6 +412,42 @@ Built automatically after each session. No typing, except optional instructor ex
 - Kid mode (age ≤ setting): bigger text, one item per screen with Next / Back, read-aloud button (browser voice).
 - Parent: `/dashboard/my-lessons` → choose child → what was learned (titles + objectives + progress), read-only.
 - Left for L2b: quick QR sign-in on branch tablets (needs a registered-tablet design), a staff page to browse the
+
+### L3 decisions (owner, 2026-10-10)
+- Each part of a homework says how it is graded: automatic (questions, later code / tool checks), the instructor,
+  or both (automatic score = a suggestion the instructor confirms). Auto-check can be switched on / off per homework.
+- Auto-check conditions: a fixed correct answer or a measurable result defined in advance (answers + accepted
+  alternatives + number tolerance; code test cases; tool checklists); same result every time; anything needing
+  judgement goes to the instructor.
+- Code editor: Python + JavaScript run and auto-graded in the browser (Pyodide / sandbox, default "auto + review");
+  Arduino = syntax check. Auto-check of tool projects: Scratch (link / .sb3), MakeCode, App Inventor (.aia), Snap!,
+  GitHub; Tinkercad / Wokwi / Code.org = instructor. A separate isolated runner (Judge0) may come after launch.
+- Late rule, late penalty %, handing in again: settings (company > level > group). Late hand-ins still count.
+- Final project = a normal homework flagged "final project" (fills the level's project score); a special page later
+  with the passport.
+- Projects gallery: approved by the instructor; visibility own / group / all; first name only; emoji reactions only;
+  "no marketing" students never outside their group.
+- Extras accepted: parents hand in for young children, voice feedback, rubric library, code-similarity alert,
+  instructor reminder after 48 h, excused absence extends the due date, autosave.
+- Delivery in two batches: batch 1 = homework, hand-in, instructor grading + rubrics, settings, notifications,
+  level scores; batch 2 = code editor, tool auto-checks, gallery, similarity, voice feedback.
+
+### L3 batch 1 as built (2026-10-10)
+- ASSIGNMENT block = the homework (`lib/assignments/rules.ts`: zod schema, question grading, rubric, late / resubmit
+  policy, tests `tests/assignments-rules.test.ts`; `lib/assignments/engine.ts`). Tables `AssignmentSubmission`
+  (DRAFT / SUBMITTED / RETURNED / GRADED, attempts + history), `AssignmentDue`, `Rubric`, `AssignmentNotice`.
+- Hand-in kinds: written answer, files, photos (camera on phones), video, links, done in class, + questions
+  (single / multi / true-false / number ± tolerance / short answer with Arabic normalisation). Correct answers never
+  reach the browser. Files are private Cloudinary uploads signed into the student's own folder.
+- Grading: points, rubric (copy kept in the homework), or stars; automatic score change needs a written reason;
+  "send back for changes" with a note; late penalty applied automatically.
+- Due date: group date or start of the next session; excused absence adds `excuseExtensionDays`. Policy settings
+  AppSetting `lms.assignments` (company / levels / groups).
+- Pages: student / parent `/dashboard/my-assignments` (+ inside each lesson), staff `/dashboard/assignments`
+  (gradebook, grade & next, due date, done in class, group rules for managers — not secretaries), rubric library
+  `/dashboard/admin/rubrics`, homework rules in LMS settings.
+- Notifications (daily job, never repeated): new homework, due within a day, graded / sent back, instructor reminder
+  after 48 h. Level results: LMS homework % and project % next to the inputs ("use"), source saved as LMS.
   view log, homework list for parents (comes with L3).
 
 ## 11. Owner answers (2026-10-08)

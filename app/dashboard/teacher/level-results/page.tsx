@@ -21,6 +21,8 @@ interface SubjectOffering {
 interface ResultRow {
   studentEnrollmentId: string
   student: { id: string; firstName: string; lastName: string; fullNameAr?: string; profilePicture: string | null }
+  /** LMS L3: % from graded homework / final project of this level */
+  lms?: { homework: number | null; project: number | null } | null
   result: {
     id: string
     homeworkScore: number | null
@@ -109,6 +111,8 @@ export default function LevelResultsPage() {
           taskScore: toNum(d?.taskScore),
           instructorScore: toNum(d?.instructorScore),
           projectScore: toNum(d?.projectScore),
+          homeworkSource: row.lms?.homework != null && toNum(d?.homeworkScore) === row.lms.homework ? 'LMS' : 'MANUAL',
+          projectSource: row.lms?.project != null && toNum(d?.projectScore) === row.lms.project ? 'LMS' : 'MANUAL',
           mcqScore: toNum(d?.mcqScore),
           instructorFeedback: d?.instructorFeedback,
         }),
@@ -187,6 +191,7 @@ export default function LevelResultsPage() {
                       <div className="space-y-1">
                         <label className="text-[10px] uppercase font-bold text-slate-400">Homework</label>
                         <Input type="number" min={0} max={100} value={getDraftValue(row, 'homeworkScore')} onChange={(e) => updateDraft(row.studentEnrollmentId, 'homeworkScore', e.target.value)} />
+                        {row.lms?.homework != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'homeworkScore', String(row.lms!.homework))}>LMS: {row.lms.homework}% · use</button>}
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] uppercase font-bold text-slate-400">Tasks</label>
@@ -199,6 +204,7 @@ export default function LevelResultsPage() {
                       <div className="space-y-1">
                         <label className="text-[10px] uppercase font-bold text-slate-400">Project</label>
                         <Input type="number" min={0} max={100} value={getDraftValue(row, 'projectScore')} onChange={(e) => updateDraft(row.studentEnrollmentId, 'projectScore', e.target.value)} />
+                        {row.lms?.project != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'projectScore', String(row.lms!.project))}>LMS: {row.lms.project}% · use</button>}
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] uppercase font-bold text-slate-400">MCQ</label>

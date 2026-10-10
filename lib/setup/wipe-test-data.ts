@@ -36,6 +36,8 @@ const KEEP_ALL = new Set([
   'ExcuseRule',
   // Foundations: the agreement texts are settings (acceptances are data and are wiped).
   'Agreement',
+  // LMS L3: the rubric library is settings (hand-ins are data and are wiped).
+  'Rubric',
 ])
 
 type Tx = Prisma.TransactionClient | typeof prisma

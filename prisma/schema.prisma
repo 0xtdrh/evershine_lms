@@ -4036,3 +4036,82 @@ model LessonView {
   @@index([sessionId, createdAt])
   @@index([userId, createdAt])
 }
+
+/// LMS L3: one student's work on one assignment (an ASSIGNMENT block of the curriculum) in one group.
+/// status DRAFT | SUBMITTED | RETURNED (needs changes) | GRADED. Earlier tries are kept in `history`.
+model AssignmentSubmission {
+  id                String    @id @default(cuid())
+  blockId           String
+  sessionId         String
+  classSectionId    String
+  studentId         String
+  status            String    @default("DRAFT") @db.VarChar(10)
+  attempt           Int       @default(0)
+  text              String?   @db.Text
+  links             Json?
+  files             Json?
+  answers           Json?
+  inClass           Boolean   @default(false)
+  autoScore         Float?
+  autoDetail        Json?
+  score             Float?
+  maxScore          Float?
+  rubricScores      Json?
+  feedback          String?   @db.Text
+  late              Boolean   @default(false)
+  latePenaltyPct    Float?
+  history           Json?
+  submittedAt       DateTime?
+  submittedByUserId String?
+  gradedAt          DateTime?
+  gradedById        String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([blockId, studentId, classSectionId])
+  @@index([classSectionId, status])
+  @@index([studentId])
+}
+
+/// LMS L3: a group-specific due date for one assignment (the default is the start of the next session).
+model AssignmentDue {
+  id             String   @id @default(cuid())
+  classSectionId String
+  blockId        String
+  dueAt          DateTime
+  setById        String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([classSectionId, blockId])
+}
+
+/// LMS L3: reusable grading table (criteria × levels with points). subjectId null = for every course.
+/// criteria = [{ id, titleEn, titleAr, levels: [{ labelEn, labelAr, points, descEn, descAr }] }]
+model Rubric {
+  id          String   @id @default(cuid())
+  subjectId   String?
+  nameEn      String   @db.VarChar(120)
+  nameAr      String   @default("") @db.VarChar(120)
+  criteria    Json
+  kidStars    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subjectId])
+}
+
+/// LMS L3: notifications already sent for an assignment (so the daily job never repeats one).
+/// kind NEW | DUE_SOON | UNGRADED; studentId null = for the whole group / the instructor.
+model AssignmentNotice {
+  id             String   @id @default(cuid())
+  classSectionId String
+  blockId        String
+  kind           String   @db.VarChar(10)
+  studentId      String   @default("")
+  createdAt      DateTime @default(now())
+
+  @@unique([classSectionId, blockId, kind, studentId])
+}

@@ -297,8 +297,13 @@ export async function runCloudinaryDiagnosticUpload() {
  * through signed links that the server makes for people allowed to see the lesson (curriculumMediaUrl).
  */
 export function generateCurriculumUploadSignature(allowedFormats: string) {
+  return generateAuthenticatedUploadSignature(`${getBaseUploadFolder()}/curriculum`, allowedFormats)
+}
+
+/** LMS L3: private (`authenticated`) signed upload into one folder, e.g. a student's own submissions folder. */
+export function generateAuthenticatedUploadSignature(folderPath: string, allowedFormats: string) {
   const config = getRequiredCloudinaryConfig()
-  const folder = normalizeFolderPath(`${getBaseUploadFolder()}/curriculum`)
+  const folder = normalizeFolderPath(folderPath)
   const timestamp = Math.round(Date.now() / 1000)
   const type = 'authenticated'
   const signature = cloudinary.utils.api_sign_request(
