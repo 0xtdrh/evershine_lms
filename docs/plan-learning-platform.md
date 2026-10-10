@@ -140,6 +140,18 @@ Decisions are from the owner (chat 2026-10-03 → 2026-10-05) unless marked "pro
   - Fail → the level report says "repeat"; pass + feedback + last month → certificate (existing rule).
 - **Item analysis** for managers: hardest questions, the most-chosen wrong answer.
 
+### L4 decisions (owner, 2026-10-10)
+- End-of-level exam: in the last session, opened by the instructor in class. **Or** a paper exam: the instructor types
+  the score by hand and uploads a scan of the paper (kept private, visible to the student / parent / staff).
+- The final project keeps its own grade (L3 "final project" homework → project score), separate from the exam.
+- Default attempts: session quiz 2 (best score), final exam 1 — changeable in settings.
+- A quiz is a block in the curriculum (like homework); a question bank page per course / level; a quiz can draw N
+  random questions from the bank.
+- Code questions: what does it print, variable value at the end, find the buggy line, fill the blank, order the
+  lines (Parsons), choose the right code, match code ↔ output, error message meaning, Arduino + circuit picture,
+  picture blocks for young children (all graded on the server); "write the code" with tests (browser + instructor
+  confirms, or instructor only in the final exam). Code shown with syntax colours and line numbers.
+
 ### L5 — Interactive content, external tools, video, online classes
 - **H5P:**
   - Authored with the free Lumi editor (or h5p.org), giving a `.h5p` file; uploaded into a block.
