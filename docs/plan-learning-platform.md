@@ -448,6 +448,10 @@ Built automatically after each session. No typing, except optional instructor ex
   `/dashboard/admin/rubrics`, homework rules in LMS settings.
 - Notifications (daily job, never repeated): new homework, due within a day, graded / sent back, instructor reminder
   after 48 h. Level results: LMS homework % and project % next to the inputs ("use"), source saved as LMS.
+- Release settings (owner 2026-10-10, in the homework rules): correct answers shown never / after handing in / after
+  the due date / after the next session (default after the due date); grade + feedback shown as soon as graded /
+  after the due date / after the next session (default at once). Hidden results say "result on …"; the family is
+  notified when the result becomes visible (daily job, notice kind RESULT). Unknown dates = shown, never hidden forever.
   view log, homework list for parents (comes with L3).
 
 ## 11. Owner answers (2026-10-08)

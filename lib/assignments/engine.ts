@@ -22,7 +22,7 @@ import { getLmsSettings } from '@/lib/lms/settings'
 import { ageOn, cairoYmd } from '@/lib/dates/cairo'
 import {
   assignmentDataSchema, canSubmit, finalScore, gradeQuestions, manualKinds, manualMax, penaltyFor, percentOf,
-  questionsMax, resolvePolicy, rubricScore, stripForStudent, totalMax, POLICY_DEFAULTS,
+  questionsMax, resolvePolicy, rubricScore, stripForStudent, totalMax, POLICY_DEFAULTS, released, releaseAt,
   type AssignmentData, type AssignmentPolicy, type Answers, type SubmitCheck,
 } from './rules'
 
@@ -54,6 +54,8 @@ interface GroupAssignment {
   blockId: string; sessionId: string; sessionNumber: number; open: boolean
   titleEn: string | null; titleAr: string | null; sessionTitleEn: string; sessionTitleAr: string
   data: AssignmentData; dueAt: Date | null
+  /** end of the session after the homework's lesson (start + its duration, 90 min if unknown) */
+  nextSessionAt: Date | null
 }
 
 /** Every assignment of a group's curriculum (with open state for the student, and the group due date). */
@@ -77,6 +79,7 @@ export async function groupAssignments(groupId: string, opts: { studentId?: stri
       blockId: b.id, sessionId: s.id, sessionNumber: s.number, open: s.open,
       titleEn: b.titleEn, titleAr: b.titleAr, sessionTitleEn: s.titleEn, sessionTitleAr: s.titleAr, data,
       dueAt: own ?? (next?.scheduledAt ? new Date(next.scheduledAt) : null),
+      nextSessionAt: next?.scheduledAt ? new Date(new Date(next.scheduledAt).getTime() + (next.durationMin || 90) * 60_000) : null,
     })
   }
   return out.sort((a, b) => a.sessionNumber - b.sessionNumber)
@@ -93,6 +96,18 @@ async function studentDue(groupId: string, studentId: string, a: GroupAssignment
     where: { attendanceDate: day, status: 'EXCUSED', studentEnrollment: { studentId, classSectionId: groupId } },
   })
   return excused ? new Date(a.dueAt.getTime() + policy.excuseExtensionDays * DAY) : a.dueAt
+}
+
+/** What the student / parent may see now (owner 2026-10-10: answers and grades can wait, e.g. until after the next session). */
+export function visibility(policy: AssignmentPolicy, a: { dueAt: Date | null; nextSessionAt: Date | null }, sub: { status: string } | null, now = new Date()) {
+  const submitted = !!sub && sub.status !== 'DRAFT'
+  const o = { now, submitted, dueAt: a.dueAt, nextSessionAt: a.nextSessionAt }
+  return {
+    grades: released(policy.showGrades, o),
+    answers: submitted && released(policy.showAnswers, o),
+    gradesAt: releaseAt(policy.showGrades, a),
+    answersAt: releaseAt(policy.showAnswers, a),
+  }
 }
 
 const submissionView = (s: Prisma.AssignmentSubmissionGetPayload<object> | null) => s && {
@@ -122,8 +137,15 @@ export async function studentAssignments(studentId: string) {
         blockId: a.blockId, sessionId: a.sessionId, sessionNumber: a.sessionNumber, titleEn: a.titleEn, titleAr: a.titleAr,
         sessionTitleEn: a.sessionTitleEn, sessionTitleAr: a.sessionTitleAr, finalProject: a.data.finalProject,
         dueAt: await studentDue(gid, studentId, a, policy), maxScore: totalMax(a.data),
-        status: sub?.status ?? 'TODO', score: sub?.status === 'GRADED' ? sub.score : null, late: sub?.late ?? false,
-        feedback: sub?.status === 'GRADED' || sub?.status === 'RETURNED' ? sub.feedback : null,
+        status: sub?.status ?? 'TODO', late: sub?.late ?? false,
+        ...(() => {
+          const vis = visibility(policy, a, sub)
+          return {
+            score: sub?.status === 'GRADED' && vis.grades ? sub.score : null,
+            feedback: sub?.status === 'RETURNED' || (sub?.status === 'GRADED' && vis.grades) ? sub.feedback : null,
+            resultsAt: sub?.status === 'GRADED' && !vis.grades ? vis.gradesAt : null,
+          }
+        })(),
       })
     }
     out.push({ group: { id: gid, label: `${g?.className ?? ''} ${g?.sectionName ?? ''}`.trim(), courseName: g?.level?.subject?.name ?? '', levelName: g?.level?.name ?? '' }, items })
@@ -149,12 +171,19 @@ export async function studentAssignment(studentId: string, groupId: string, bloc
   const dueAt = await studentDue(groupId, studentId, a, policy)
   const check = canSubmit({ now: new Date(), dueAt, policy, status: sub?.status ?? null, attempt: sub?.attempt ?? 0 })
   const age = student?.dateOfBirth ? ageOn(student.dateOfBirth, cairoYmd()) : null
+  const vis = visibility(policy, { dueAt, nextSessionAt: a.nextSessionAt }, sub)
+  let view = submissionView(sub)
+  // grade, feedback, rubric choices and question ticks stay hidden until their release time
+  if (view && view.status === 'GRADED' && !vis.grades) view = { ...view, score: null, autoScore: null, autoDetail: null, rubricScores: null, feedback: null }
+  const answerKey = vis.answers ? Object.fromEntries(data.questions.map((q) => [q.id, { correct: q.correct, tolerance: q.tolerance ?? null }])) : null
   return {
     ok: true,
     value: {
       blockId, sessionId: b.sessionId, groupId, titleEn: b.titleEn, titleAr: b.titleAr,
       assignment: { ...stripForStudent(data), maxScore: totalMax(data), questionsMax: questionsMax(data.questions), manualMax: manualMax(data) },
-      submission: submissionView(sub), dueAt, policy, canSubmit: check,
+      submission: view, dueAt, policy, canSubmit: check,
+      answerKey, gradesHiddenUntil: view?.status === 'GRADED' && !vis.grades ? vis.gradesAt : null,
+      answersAt: !vis.answers && data.questions.length && policy.showAnswers !== 'NEVER' ? vis.answersAt : null,
       parentMaySubmit: policy.parentCanSubmit && age !== null && age <= settings.kidModeMaxAge,
       uploadFolder: submissionsFolder(studentId),
     },
@@ -177,7 +206,7 @@ export interface HandIn {
 export async function saveSubmission(studentId: string, groupId: string, blockId: string, input: HandIn, submit: boolean, byUserId: string): Promise<Outcome<{ status: string; score: number | null }>> {
   const loaded = await studentAssignment(studentId, groupId, blockId)
   if (!loaded.ok) return fail((loaded as Outcome).code!, (loaded as Outcome).message!)
-  const ctx = (loaded as unknown as { value: { sessionId: string; canSubmit: SubmitCheck; policy: AssignmentPolicy } }).value
+  const ctx = (loaded as unknown as { value: { sessionId: string; canSubmit: SubmitCheck; policy: AssignmentPolicy; dueAt: Date | null } }).value
   const b = await prisma.curriculumBlock.findUnique({ where: { id: blockId } })
   const data = parseAssignment(b!.data)!
   const kinds = manualKinds(data.kinds)
@@ -245,7 +274,9 @@ export async function saveSubmission(studentId: string, groupId: string, blockId
     create: { studentId, blockId, sessionId: ctx.sessionId, classSectionId: groupId },
     update: {},
   }).catch(() => undefined)
-  return { ok: true, value: { status: saved.status, score: saved.score } }
+  const showNow = ctx.policy.showGrades === 'IMMEDIATE' || (ctx.policy.showGrades === 'AFTER_DUE' && !!ctx.dueAt && Date.now() >= ctx.dueAt.getTime())
+  if (onlyAuto && showNow) await prisma.assignmentNotice.create({ data: { classSectionId: groupId, blockId, kind: 'RESULT', studentId } }).catch(() => undefined)
+  return { ok: true, value: { status: saved.status, score: showNow ? saved.score : null } }
 }
 
 // ───────────────────────── staff: gradebook & grading ─────────────────────────
@@ -354,8 +385,19 @@ export async function gradeSubmission(user: { id: string; role: string; campusId
     where: { id: s.id },
     data: { status: 'GRADED', score, maxScore: totalMax(data), autoScore: auto, autoDetail, rubricScores, feedback, gradedAt: new Date(), gradedById: user.id },
   })
-  await notifyGraded(s.studentId, b?.titleEn || 'Homework', `graded: ${score} / ${totalMax(data)}`)
+  // tell the family now, or later from the daily job when the grade's release time comes
+  if (await resultVisibleNow(s.classSectionId, s.blockId, s.studentId)) {
+    await prisma.assignmentNotice.deleteMany({ where: { classSectionId: s.classSectionId, blockId: s.blockId, kind: 'RESULT', studentId: s.studentId } })
+    await prisma.assignmentNotice.create({ data: { classSectionId: s.classSectionId, blockId: s.blockId, kind: 'RESULT', studentId: s.studentId } }).catch(() => undefined)
+    await notifyGraded(s.studentId, b?.titleEn || 'Homework', `graded: ${score} / ${totalMax(data)}`)
+  }
   return { ok: true, value: { score, status: 'GRADED' } }
+}
+
+async function resultVisibleNow(groupId: string, blockId: string, studentId: string): Promise<boolean> {
+  const [policy, a] = await Promise.all([policyForGroup(groupId), groupAssignments(groupId).then((l) => l.find((x) => x.blockId === blockId))])
+  if (!a) return true
+  return visibility(policy, a, { status: 'GRADED' }).grades
 }
 
 async function notifyGraded(studentId: string, title: string, what: string) {
@@ -419,7 +461,7 @@ export async function lmsLevelScores(studentId: string, levelId: string): Promis
 // ───────────────────────── daily job: new / due soon / waiting to be graded ─────────────────────────
 
 export async function assignmentReminders(now = new Date()) {
-  const out = { newSent: 0, dueSent: 0, ungradedSent: 0 }
+  const out = { newSent: 0, dueSent: 0, ungradedSent: 0, resultsSent: 0 }
   const { notifyFamilies, notifyUsers } = await import('@/lib/notifications/events')
   const groups = await prisma.classSection.findMany({ where: { status: 'ACTIVE', isActive: true, levelId: { not: null }, curriculumEditionId: { not: null } }, select: { id: true } })
   for (const g of groups) {
@@ -440,6 +482,16 @@ export async function assignmentReminders(now = new Date()) {
         for (const sid of students.filter((x) => !handed.has(x))) {
           if (await notice('DUE_SOON', sid)) out.dueSent += await notifyFamilies([sid], 'ASSIGNMENT_DUE', (st) => ({ title: 'Homework due soon', message: `${st.firstName}: "${title}" is due ${a.dueAt!.toISOString().slice(0, 10)}.`, relatedId: null }), { includeStudent: true })
         }
+      }
+    }
+    // grades whose release time has come (e.g. after the next session): tell the family once
+    const policy = await policyForGroup(g.id)
+    for (const a of list) {
+      if (!visibility(policy, a, { status: 'GRADED' }, now).grades) continue
+      const graded = await prisma.assignmentSubmission.findMany({ where: { classSectionId: g.id, blockId: a.blockId, status: 'GRADED' }, select: { studentId: true, score: true, maxScore: true } })
+      for (const sub of graded) {
+        const fresh = await prisma.assignmentNotice.create({ data: { classSectionId: g.id, blockId: a.blockId, kind: 'RESULT', studentId: sub.studentId } }).then(() => true).catch(() => false)
+        if (fresh) out.resultsSent += await notifyFamilies([sub.studentId], 'ASSIGNMENT_GRADED', (st) => ({ title: 'Homework', message: `${st.firstName}: "${a.titleEn || 'Homework'}" graded: ${sub.score} / ${sub.maxScore}.`, relatedId: null }), { includeStudent: true })
       }
     }
     // instructor: hand-ins waiting more than 48 h

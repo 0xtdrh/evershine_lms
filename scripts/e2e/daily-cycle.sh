@@ -1205,6 +1205,13 @@ curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d '{"policy":{"la
 check "instructor cannot change the group's homework rules (managers only)" "$(M "SELECT COUNT(*) FROM AppSetting WHERE \`key\`='lms.assignments' AND CAST(value AS CHAR) LIKE '%$LG%'")" "0"
 api PATCH /api/groups/$LG/assignments '{"policy":{"late":"CLOSED","latePenaltyPct":0,"resubmit":true,"maxAttempts":3,"excuseExtensionDays":0,"parentCanSubmit":false}}' >/dev/null
 check "group rule 'closed after the due date' stops a late hand-in" "$(kput "{\"groupId\":\"$LG\",\"blockId\":\"$FP\",\"links\":[\"https://scratch.mit.edu/projects/1000\"],\"submit\":true}" | jq_ "d['error']['code']")" "CLOSED"
+api PATCH /api/groups/$LG/assignments '{"policy":{"late":"MARK_LATE","latePenaltyPct":0,"resubmit":true,"maxAttempts":3,"excuseExtensionDays":0,"parentCanSubmit":false,"showAnswers":"AFTER_SUBMIT","showGrades":"AFTER_DUE"}}' >/dev/null
+curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d "{\"blockId\":\"$A2\",\"dueAt\":\"$(D 3)T10:00:00.000Z\"}" $B/api/groups/$LG/assignments >/dev/null
+check "grade hidden until the due date (parent sees 'result on …')" "$(curl -s -b "$LPJ" "$B/api/assignments/my?s=$LK" | jq_ "[(i['score'], i['resultsAt'] is not None) for g in d['data']['groups'] for i in g['items'] if i['blockId']=='$A2'][0]")" "(None, True)"
+check "grade + feedback hidden inside the homework too" "$(curl -s -b "$LKJ" "$B/api/assignments/item?g=$LG&b=$A2" | jq_ "(d['data']['submission']['score'], d['data']['submission']['feedback'], d['data']['gradesHiddenUntil'] is not None)")" "(None, None, True)"
+check "correct answers shown after handing in (setting)" "$(curl -s -b "$LKJ" "$B/api/assignments/item?g=$LG&b=$A1" | jq_ "d['data']['answerKey']['q2']['correct']")" "[3]"
+api PATCH /api/groups/$LG/assignments '{"policy":{"late":"MARK_LATE","latePenaltyPct":0,"resubmit":true,"maxAttempts":3,"excuseExtensionDays":0,"parentCanSubmit":false,"showAnswers":"NEVER","showGrades":"IMMEDIATE"}}' >/dev/null
+check "'never' keeps the answers hidden; grade shows again" "$(curl -s -b "$LKJ" "$B/api/assignments/item?g=$LG&b=$A1" | jq_ "d['data']['answerKey']")/$(curl -s -b "$LKJ" "$B/api/assignments/item?g=$LG&b=$A2" | jq_ "float(d['data']['submission']['score'])")" "None/7.0"
 curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
 check "daily job sent 'new homework' once per assignment" "$(M "SELECT COUNT(*) FROM AssignmentNotice WHERE classSectionId='$LG' AND kind='NEW'")" "4"
 curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null

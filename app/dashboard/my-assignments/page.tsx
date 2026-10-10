@@ -11,7 +11,7 @@ import { useI18n } from '@/lib/i18n/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ClipboardList, Loader2 } from 'lucide-react'
 
-interface Item { blockId: string; sessionNumber: number; titleEn: string | null; titleAr: string | null; sessionTitleEn: string; sessionTitleAr: string; finalProject: boolean; dueAt: string | null; maxScore: number; status: string; score: number | null; late: boolean; feedback: string | null }
+interface Item { blockId: string; sessionNumber: number; titleEn: string | null; titleAr: string | null; sessionTitleEn: string; sessionTitleAr: string; finalProject: boolean; dueAt: string | null; maxScore: number; status: string; score: number | null; late: boolean; feedback: string | null; resultsAt?: string | null }
 interface Data { asParent: boolean; studentId: string; groups: { group: { id: string; label: string; courseName: string; levelName: string }; items: Item[] }[] }
 interface Child { id: string; firstName: string }
 
@@ -58,7 +58,8 @@ export default function MyAssignmentsPage() {
                   <span className="flex items-center gap-1 text-xs">
                     {i.late && <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">{t('hw.late')}</span>}
                     <span className={`rounded-full border px-2 py-0.5 ${STYLE[i.status]}`}>{t(`hw.status.${i.status}` as 'hw.status.TODO')}</span>
-                    {i.status === 'GRADED' && <span className="font-bold text-emerald-700">{i.score} / {i.maxScore}</span>}
+                    {i.status === 'GRADED' && i.score !== null && <span className="font-bold text-emerald-700">{i.score} / {i.maxScore}</span>}
+                    {i.status === 'GRADED' && i.score === null && <span className="text-slate-500">{i.resultsAt ? t('hw.resultsOn', { date: new Date(i.resultsAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB') }) : t('hw.resultsLater')}</span>}
                   </span>
                 </Link>
               ))}

@@ -136,6 +136,10 @@ export const percentOf = (score: number | null | undefined, max: number | null |
 // ───────────────────────── policy (LMS settings: company > level > group) ─────────────────────────
 
 export const LATE_RULES = ['ALLOWED', 'MARK_LATE', 'CLOSED'] as const
+/** When students (and parents) see the correct answers of the questions. */
+export const ANSWER_RELEASE = ['NEVER', 'AFTER_SUBMIT', 'AFTER_DUE', 'AFTER_NEXT_SESSION'] as const
+/** When they see the grade + feedback (owner 2026-10-10: e.g. after the session that follows the homework). */
+export const GRADE_RELEASE = ['IMMEDIATE', 'AFTER_DUE', 'AFTER_NEXT_SESSION'] as const
 export interface AssignmentPolicy {
   late: (typeof LATE_RULES)[number]
   latePenaltyPct: number
@@ -145,11 +149,14 @@ export interface AssignmentPolicy {
   excuseExtensionDays: number
   /** parents may hand in for young children (kid mode age) */
   parentCanSubmit: boolean
+  showAnswers: (typeof ANSWER_RELEASE)[number]
+  showGrades: (typeof GRADE_RELEASE)[number]
 }
-export const POLICY_DEFAULTS: AssignmentPolicy = { late: 'MARK_LATE', latePenaltyPct: 0, resubmit: true, maxAttempts: 2, excuseExtensionDays: 7, parentCanSubmit: true }
+export const POLICY_DEFAULTS: AssignmentPolicy = { late: 'MARK_LATE', latePenaltyPct: 0, resubmit: true, maxAttempts: 2, excuseExtensionDays: 7, parentCanSubmit: true, showAnswers: 'AFTER_DUE', showGrades: 'IMMEDIATE' }
 export const policySchema = z.object({
   late: z.enum(LATE_RULES), latePenaltyPct: z.number().min(0).max(100), resubmit: z.boolean(),
   maxAttempts: z.number().int().min(1).max(10), excuseExtensionDays: z.number().int().min(0).max(60), parentCanSubmit: z.boolean(),
+  showAnswers: z.enum(ANSWER_RELEASE).default('AFTER_DUE'), showGrades: z.enum(GRADE_RELEASE).default('IMMEDIATE'),
 })
 
 export function resolvePolicy(company?: Partial<AssignmentPolicy> | null, level?: Partial<AssignmentPolicy> | null, group?: Partial<AssignmentPolicy> | null): AssignmentPolicy {
@@ -175,3 +182,22 @@ export function canSubmit(opts: { now: Date; dueAt: Date | null; policy: Assignm
 
 /** Penalty that applies to this hand-in. */
 export const penaltyFor = (late: boolean, policy: AssignmentPolicy) => (late && policy.late !== 'ALLOWED' ? policy.latePenaltyPct : 0)
+
+/**
+ * Is it time to show answers / grades? `nextSessionAt` = start of the session after the homework's lesson;
+ * when the needed date is unknown (no due date / no schedule) we show at once rather than never.
+ */
+export function released(rule: string, o: { now: Date; submitted: boolean; dueAt: Date | null; nextSessionAt: Date | null }): boolean {
+  if (rule === 'NEVER') return false
+  if (rule === 'IMMEDIATE') return true
+  if (rule === 'AFTER_SUBMIT') return o.submitted
+  const at = rule === 'AFTER_DUE' ? o.dueAt : o.nextSessionAt
+  return !at || o.now.getTime() >= at.getTime()
+}
+
+/** When a hidden result becomes visible (for "results on …" texts and the daily notification). */
+export function releaseAt(rule: string, o: { dueAt: Date | null; nextSessionAt: Date | null }): Date | null {
+  if (rule === 'AFTER_DUE') return o.dueAt
+  if (rule === 'AFTER_NEXT_SESSION') return o.nextSessionAt
+  return null
+}

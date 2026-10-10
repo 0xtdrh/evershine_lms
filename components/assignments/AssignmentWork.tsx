@@ -25,6 +25,8 @@ interface Data {
   assignment: { instructionsEn: string; instructionsAr: string; kinds: string[]; questions: QView[]; scale: string; maxPoints: number; rubric: { criteria: Crit[]; kidStars: boolean } | null; gradingMode: string; finalProject: boolean; maxScore: number }
   submission: null | { status: string; attempt: number; text: string | null; links: string[] | null; files: FileRef[]; answers: Record<string, Ans> | null; score: number | null; maxScore: number | null; feedback: string | null; late: boolean; rubricScores: Record<string, number> | null; autoDetail: { id: string; correct: boolean }[] | { items?: { id: string; correct: boolean }[] } | null }
   dueAt: string | null; policy: { maxAttempts: number; resubmit: boolean }; canSubmit: { ok: boolean; late: boolean; message?: string }
+  answerKey: Record<string, { correct: (string | number)[]; tolerance: number | null }> | null
+  gradesHiddenUntil: string | null; answersAt: string | null
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -95,6 +97,14 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
   const accept = [kinds.includes('PHOTO') && 'image/*', kinds.includes('VIDEO') && 'video/*', kinds.includes('FILE') && '.pdf,.docx,.pptx,.xlsx,.txt,.zip,.sb3,.aia,.ino,.py,.stl,.mp3,.m4a,image/*'].filter(Boolean).join(',')
   const detail = Array.isArray(sub?.autoDetail) ? sub!.autoDetail : (sub?.autoDetail as { items?: { id: string; correct: boolean }[] } | null)?.items ?? []
   const okOf = (qid: string) => detail.find((d) => d.id === qid)?.correct
+  const fmt = (iso: string) => new Date(iso).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+  const keyText = (q: QView) => {
+    const k = data.answerKey?.[q.id]
+    if (!k) return null
+    if (q.type === 'SINGLE' || q.type === 'MULTI') return k.correct.map((id) => { const o = q.options.find((x) => x.id === id); return o ? pick(o.textEn, o.textAr) : String(id) }).join(' / ')
+    if (q.type === 'TRUE_FALSE') return t(String(k.correct[0]) === 'true' ? 'hw.true' : 'hw.false')
+    return k.correct.join(' / ') + (k.tolerance ? ` (±${k.tolerance})` : '')
+  }
 
   const pickFiles = (capture?: boolean) => {
     const input = document.createElement('input')
@@ -122,7 +132,11 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
 
       {(a.instructionsEn || a.instructionsAr) && <Markdown text={pick(a.instructionsEn, a.instructionsAr)} />}
 
-      {status === 'GRADED' && sub && (
+      {status === 'GRADED' && sub && sub.score === null && (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">{data.gradesHiddenUntil ? t('hw.resultsOn', { date: fmt(data.gradesHiddenUntil) }) : t('hw.resultsLater')}</div>
+      )}
+      {data.answersAt && status !== 'TODO' && status !== 'DRAFT' && <p className="text-xs text-slate-500">{t('hw.answersOn', { date: fmt(data.answersAt) })}</p>}
+      {status === 'GRADED' && sub && sub.score !== null && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm">
           <p className="font-bold text-emerald-800">{t('hw.score')}: {a.scale === 'STARS' && !a.questions.length ? '⭐'.repeat(Math.round(sub.score ?? 0)) || '—' : `${sub.score} / ${sub.maxScore}`}</p>
           {sub.feedback && <p className="mt-1 whitespace-pre-wrap text-emerald-900"><span className="font-semibold">{t('hw.feedback')}:</span> {sub.feedback}</p>}
@@ -175,6 +189,7 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
                 {q.type === 'TRUE_FALSE' && (['true', 'false'] as const).map((tf) => (
                   <label key={tf} className="me-4 inline-flex items-center gap-1"><input type="radio" name={`a-${q.id}`} disabled={!editable} checked={v === tf} onChange={() => setA(tf)} /> {t(tf === 'true' ? 'hw.true' : 'hw.false')}</label>
                 ))}
+                {keyText(q) && ok !== true && <p className="text-xs text-emerald-700">{t('hw.correctIs', { a: keyText(q)! })}</p>}
                 {(q.type === 'NUMBER' || q.type === 'SHORT') && <Input className="h-9 max-w-xs" inputMode={q.type === 'NUMBER' ? 'decimal' : 'text'} disabled={!editable} value={(v as string | number | null) ?? ''} onChange={(e) => setA(e.target.value)} />}
               </div>
             )

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   assignmentDataSchema, canSubmit, finalScore, gradeQuestion, gradeQuestions, manualMax, normalizeText, penaltyFor,
-  resolvePolicy, rubricScore, stripForStudent, totalMax, POLICY_DEFAULTS, type Question,
+  resolvePolicy, rubricScore, stripForStudent, totalMax, POLICY_DEFAULTS, released, releaseAt, type Question,
 } from '@/lib/assignments/rules'
 
 const q = (over: Partial<Question>): Question => ({ id: 'q', type: 'SINGLE', textEn: '', textAr: '', options: [], correct: [], points: 1, ...over })
@@ -93,5 +93,25 @@ describe('LMS L3 — handing in rules', () => {
     expect(canSubmit({ now, dueAt: null, policy: POLICY_DEFAULTS, status: 'GRADED', attempt: 2 }).code).toBe('NO_ATTEMPTS')
     expect(canSubmit({ now, dueAt: null, policy: { ...POLICY_DEFAULTS, resubmit: false }, status: 'GRADED', attempt: 1 }).code).toBe('NO_RESUBMIT')
     expect(canSubmit({ now, dueAt: null, policy: { ...POLICY_DEFAULTS, resubmit: false }, status: 'RETURNED', attempt: 5 }).ok).toBe(true)
+  })
+})
+
+describe('LMS L3 — when answers and grades are shown', () => {
+  const now = new Date('2026-10-10T12:00:00Z')
+  const before = new Date('2026-10-09T12:00:00Z'), after = new Date('2026-10-11T12:00:00Z')
+  it('answers: never / after handing in / after the due date / after the next session', () => {
+    expect(released('NEVER', { now, submitted: true, dueAt: null, nextSessionAt: null })).toBe(false)
+    expect(released('AFTER_SUBMIT', { now, submitted: false, dueAt: null, nextSessionAt: null })).toBe(false)
+    expect(released('AFTER_SUBMIT', { now, submitted: true, dueAt: null, nextSessionAt: null })).toBe(true)
+    expect(released('AFTER_DUE', { now, submitted: true, dueAt: after, nextSessionAt: null })).toBe(false)
+    expect(released('AFTER_DUE', { now, submitted: true, dueAt: before, nextSessionAt: null })).toBe(true)
+    expect(released('AFTER_NEXT_SESSION', { now, submitted: true, dueAt: null, nextSessionAt: after })).toBe(false)
+    expect(released('AFTER_NEXT_SESSION', { now, submitted: true, dueAt: null, nextSessionAt: before })).toBe(true)
+  })
+  it('unknown dates show at once (never hidden forever); grades immediate by default', () => {
+    expect(released('AFTER_NEXT_SESSION', { now, submitted: true, dueAt: null, nextSessionAt: null })).toBe(true)
+    expect(released(POLICY_DEFAULTS.showGrades, { now, submitted: true, dueAt: after, nextSessionAt: after })).toBe(true)
+    expect(releaseAt('AFTER_DUE', { dueAt: after, nextSessionAt: null })).toBe(after)
+    expect(releaseAt('IMMEDIATE', { dueAt: after, nextSessionAt: null })).toBeNull()
   })
 })
