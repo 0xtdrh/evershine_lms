@@ -38,6 +38,7 @@ const GROUPS: { name: string; items: Item[] }[] = [
       { title: 'Renewals', titleAr: 'التجديد', desc: 'When parents are asked "continuing?"', href: '/dashboard/renewals', perm: ['renewals', 'read'] },
       { title: 'Complaints', titleAr: 'الشكاوى', desc: 'Reply deadline, auto-close', href: '/dashboard/complaints', perm: ['complaints', 'export'] },
       { title: 'Curriculum', titleAr: 'المنهج', desc: 'Lessons for every level', href: '/dashboard/curriculum', perm: ['curriculum', 'read'] },
+      { title: 'Question bank', titleAr: 'بنك الأسئلة', desc: 'Questions per course / level for quizzes', href: '/dashboard/question-bank', perm: ['curriculum', 'read'] },
       { title: 'Rubrics', titleAr: 'جداول التصحيح', desc: 'Reusable grading tables for homework', href: '/dashboard/admin/rubrics', perm: ['curriculum', 'read'] },
       { title: 'LMS', titleAr: 'المنصة التعليمية', desc: 'How lessons open, watermark, kid mode', href: '/dashboard/admin/lms', perm: ['curriculum', 'read'] },
     ],

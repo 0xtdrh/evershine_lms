@@ -66,6 +66,8 @@ function filteredDeletes(mainId: string): Record<string, string> {
     CurriculumSession: `editionId NOT IN (${NOVA_EDITIONS})`,
     CurriculumBlock: `sessionId NOT IN (${NOVA_SESSIONS})`,
     CurriculumComment: `sessionId NOT IN (${NOVA_SESSIONS})`,
+    // LMS L4: the question bank of the kept courses is company content too.
+    Question: `subjectId NOT IN (SELECT id FROM \`AcademicSubject\` WHERE code LIKE 'NOVA-%')`,
   }
 }
 

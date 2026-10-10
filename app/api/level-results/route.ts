@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { lmsLevelScores } from '@/lib/assignments/engine'
+import { quizLevelScores } from '@/lib/quizzes/engine'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -57,8 +58,8 @@ export async function GET(request: NextRequest) {
   const config = await resolveGradingConfig(subjectId)
   // LMS L3: homework / project % from graded assignments of this level (shown next to the inputs, the instructor confirms)
   const group = await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { levelId: true } })
-  const lmsBy = new Map<string, { homework: number | null; project: number | null }>()
-  if (group?.levelId) for (const e of enrollments) lmsBy.set(e.id, await lmsLevelScores(e.student.id, group.levelId))
+  const lmsBy = new Map<string, { homework: number | null; project: number | null; task: number | null; mcq: number | null }>()
+  if (group?.levelId) for (const e of enrollments) lmsBy.set(e.id, { ...(await lmsLevelScores(e.student.id, group.levelId)), ...(await quizLevelScores(e.student.id, group.levelId)) })
 
   const rows = enrollments.map((e) => {
     const result = e.levelResults[0] ?? null
@@ -96,6 +97,8 @@ const scoreSchema = z.object({
   instructorFeedback: z.string().optional(),
   homeworkSource: z.enum(['MANUAL', 'LMS']).optional(),
   projectSource: z.enum(['MANUAL', 'LMS']).optional(),
+  taskSource: z.enum(['MANUAL', 'LMS']).optional(),
+  mcqSource: z.enum(['MANUAL', 'LMS']).optional(),
 })
 
 /**
@@ -159,6 +162,8 @@ export async function POST(request: NextRequest) {
   const sources = {
     ...(data.homeworkSource && data.homeworkScore !== undefined ? { homeworkSource: data.homeworkSource } : {}),
     ...(data.projectSource && data.projectScore !== undefined ? { projectSource: data.projectSource } : {}),
+    ...(data.taskSource && data.taskScore !== undefined ? { taskSource: data.taskSource } : {}),
+    ...(data.mcqSource && data.mcqScore !== undefined ? { mcqSource: data.mcqSource } : {}),
   }
   const finalScore = computeFinalScore(merged, config)
   const passed = finalScore != null ? finalScore >= config.passThreshold : null

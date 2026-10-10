@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Upload } from 'lucide-react'
 import { Markdown } from './BlockView'
 import { AssignmentForm, blankAssignment } from '@/components/assignments/AssignmentForm'
+import { QuizForm, blankQuiz } from '@/components/quizzes/QuizForm'
 
 interface Sign { timestamp: number; signature: string; cloudName: string; apiKey: string; folder: string; allowedFormats: string; type: string }
 export interface Media { publicId: string; resourceType: 'image' | 'video' | 'raw'; format?: string; bytes?: number; originalName?: string }
@@ -50,6 +51,7 @@ export function blankData(type: BlockType): Record<string, unknown> {
   if (type === 'LINK') return { url: '' }
   if (type === 'FILE') return { downloadable: false }
   if (type === 'ASSIGNMENT') return blankAssignment()
+  if (type === 'QUIZ') return blankQuiz()
   return {}
 }
 
@@ -152,6 +154,7 @@ export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; o
           <p className="text-xs text-slate-400">Allowed sites: {EMBED_HOSTS.join(', ')}</p>
         </>
       )}
+      {value.type === 'QUIZ' && <QuizForm data={d} onChange={(nd) => onChange({ ...value, data: nd })} />}
       {value.type === 'ASSIGNMENT' && <AssignmentForm data={d} onChange={(nd) => onChange({ ...value, data: nd })} subjectId={subjectId} />}
       {COMING_TYPES.includes(value.type) && (
         <>

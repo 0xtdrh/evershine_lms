@@ -22,7 +22,7 @@ interface ResultRow {
   studentEnrollmentId: string
   student: { id: string; firstName: string; lastName: string; fullNameAr?: string; profilePicture: string | null }
   /** LMS L3: % from graded homework / final project of this level */
-  lms?: { homework: number | null; project: number | null } | null
+  lms?: { homework: number | null; project: number | null; task?: number | null; mcq?: number | null } | null
   result: {
     id: string
     homeworkScore: number | null
@@ -113,6 +113,8 @@ export default function LevelResultsPage() {
           projectScore: toNum(d?.projectScore),
           homeworkSource: row.lms?.homework != null && toNum(d?.homeworkScore) === row.lms.homework ? 'LMS' : 'MANUAL',
           projectSource: row.lms?.project != null && toNum(d?.projectScore) === row.lms.project ? 'LMS' : 'MANUAL',
+          taskSource: row.lms?.task != null && toNum(d?.taskScore) === row.lms.task ? 'LMS' : 'MANUAL',
+          mcqSource: row.lms?.mcq != null && toNum(d?.mcqScore) === row.lms.mcq ? 'LMS' : 'MANUAL',
           mcqScore: toNum(d?.mcqScore),
           instructorFeedback: d?.instructorFeedback,
         }),
@@ -196,6 +198,7 @@ export default function LevelResultsPage() {
                       <div className="space-y-1">
                         <label className="text-[10px] uppercase font-bold text-slate-400">Tasks</label>
                         <Input type="number" min={0} max={100} value={getDraftValue(row, 'taskScore')} onChange={(e) => updateDraft(row.studentEnrollmentId, 'taskScore', e.target.value)} />
+                        {row.lms?.task != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'taskScore', String(row.lms!.task))}>LMS: {row.lms.task}% · use</button>}
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] uppercase font-bold text-slate-400">Instructor</label>
@@ -209,6 +212,7 @@ export default function LevelResultsPage() {
                       <div className="space-y-1">
                         <label className="text-[10px] uppercase font-bold text-slate-400">MCQ</label>
                         <Input type="number" min={0} max={100} value={getDraftValue(row, 'mcqScore')} onChange={(e) => updateDraft(row.studentEnrollmentId, 'mcqScore', e.target.value)} />
+                        {row.lms?.mcq != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'mcqScore', String(row.lms!.mcq))}>LMS: {row.lms.mcq}% · use</button>}
                       </div>
                     </div>
                     <div className="mt-3 space-y-1">

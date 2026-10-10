@@ -1264,6 +1264,64 @@ api PATCH /api/groups/$LG/assignments '{"policy":null}' >/dev/null
 api PUT /api/platform/settings '{"modules":{"lms":false}}' >/dev/null
 rm -f "$LKJ" "$LOJ" "$TJ" "$WPJ"
 
+echo "== 34. LMS L4: quizzes — code questions, tries, server timer, bank draw, final exam opened in class, code review, paper exam, level scores"
+for i in 1 2 3; do api POST /api/questions "{\"subjectId\":\"$SUBJ\",\"levelId\":\"$CL\",\"difficulty\":1,\"question\":{\"id\":\"x\",\"type\":\"TRUE_FALSE\",\"textEn\":\"Bank question $i\",\"correct\":[\"true\"],\"points\":1}}" >/dev/null; done
+check "question bank: 3 questions saved" "$(api GET "/api/questions?subjectId=$SUBJ&levelId=$CL" | jq_ "len(d['data'])")" "3"
+check "secretary cannot write bank questions" "$(secapi POST /api/questions "{\"subjectId\":\"$SUBJ\",\"question\":{\"id\":\"x\",\"type\":\"SHORT\"}}" | jq_ "d['success']")" "False"
+E6=$(api POST /api/curriculum/levels/$CL "{\"copyFromId\":\"$E5\"}" | jq_ "d['data']['id']")
+S61=$(M "SELECT id FROM CurriculumSession WHERE editionId='$E6' AND number=1")
+QZ=$(api POST /api/curriculum/sessions/$S61/blocks '{"type":"QUIZ","titleEn":"Loops quiz","data":{"kind":"SESSION","timeLimitMin":10,"showAnswers":"AFTER_SUBMIT","shuffleQuestions":false,"questions":[
+ {"id":"q1","type":"CODE_OUTPUT","textEn":"Output?","code":"for i in range(3):\n  print(i*2)","correct":["0\n2\n4"],"points":2},
+ {"id":"q2","type":"FIND_BUG","textEn":"Bug?","code":"a = 1\nprint(b)","correct":[2],"points":2},
+ {"id":"q3","type":"FILL_BLANK","textEn":"Fill","code":"for i in ___(5):\n  ___(i)","correct":["range","print"],"points":2},
+ {"id":"q4","type":"PARSONS","textEn":"Order","items":[{"id":"a","textEn":"x = 1"},{"id":"b","textEn":"x += 1"},{"id":"c","textEn":"print(x)"}],"points":2},
+ {"id":"q5","type":"MATCH_CODE","textEn":"Match","pairs":[{"id":"m1","left":"print(1)","right":"1"},{"id":"m2","left":"print(2)","right":"2"}],"points":2},
+ {"id":"q6","type":"TRUE_FALSE","textEn":"Python counts from 0","correct":["true"],"points":1}]}}' | jq_ "d['data']['id']")
+QB=$(api POST /api/curriculum/sessions/$S61/blocks '{"type":"QUIZ","titleEn":"Bank quiz","data":{"kind":"SESSION","timeLimitMin":5,"bank":{"count":2,"levelOnly":true}}}' | jq_ "d['data']['id']")
+QF=$(api POST /api/curriculum/sessions/$S61/blocks '{"type":"QUIZ","titleEn":"Final exam","data":{"kind":"FINAL","questions":[
+ {"id":"w1","type":"WRITE_CODE","textEn":"Write add(a,b)","points":4,"tests":[{"id":"t1","input":"","expected":"3","points":1}]},
+ {"id":"s1","type":"SINGLE","textEn":"Which loop repeats forever?","options":[{"id":"o1","textEn":"while True"},{"id":"o2","textEn":"for i in range(3)"}],"correct":["o1"],"points":1}]}}' | jq_ "d['data']['id']")
+check "a quiz without questions is refused" "$(api POST /api/curriculum/sessions/$S61/blocks '{"type":"QUIZ","data":{"questions":[]}}' | jq_ "d['success']")" "False"
+api PATCH /api/curriculum/editions/$E6 '{"action":"publish"}' >/dev/null
+api PATCH /api/groups/$LG/lessons '{"useLatest":true}' >/dev/null
+api PUT /api/platform/settings '{"modules":{"lms":true}}' >/dev/null
+LKR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); LKJ=$(mktemp); login_jar "$(echo "$LKR" | jq_ "d['data']['loginId']")" "$(echo "$LKR" | jq_ "d['data']['password']")" "$LKJ" 10.0.1.71
+LPW=$(api POST /api/students/$LK/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$LGU\"}" | jq_ "d['data']['password']"); LPJ=$(mktemp); login_jar 01066660119 "$LPW" "$LPJ" 10.0.1.72
+TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.73
+kq() { curl -s -b "$LKJ" "$B/api/quizzes/item?g=$LG&b=$1"; }
+kstart() { curl -s -b "$LKJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\",\"blockId\":\"$1\"}" $B/api/quizzes/item; }
+kput() { curl -s -b "$LKJ" -X PUT -H 'Content-Type: application/json' -d "$2" $B/api/quizzes/attempts/$1; }
+check "the lesson never carries the quiz questions" "$(curl -s -b "$LKJ" "$B/api/lessons/$(M "SELECT id FROM CurriculumSession WHERE editionId='$E6' AND number=1")?g=$LG" | jq_ "[('questions' in b['data'], b['data']['questionCount']) for b in d['data']['blocks'] if b['id']=='$QZ'][0]")" "(False, 6)"
+kstart $QZ >/dev/null
+A1=$(kq $QZ | jq_ "d['data']['active']['id']")
+check "a try started: questions without correct answers, deadline from the server" "$(kq $QZ | jq_ "(len(d['data']['active']['questions']), any('correct' in q or 'pairs' in q for q in d['data']['active']['questions']), d['data']['active']['deadlineAt'] is not None)")" "(6, False, True)"
+check "answers saved while working" "$(kput $A1 '{"answers":{"q1":"0\n2\n4"},"submit":false}' | jq_ "d['data']['status']")" "IN_PROGRESS"
+check "handed in: graded on the server (9 / 11)" "$(kput $A1 '{"answers":{"q1":"0\n2\n4","q2":2,"q3":["range","x"],"q4":["a","b","c"],"q5":{"m1":"m1","m2":"m1"},"q6":"true"},"submit":true}' | jq_ "(d['data']['status'], float(d['data']['score']))")" "('GRADED', 9.0)"
+check "correct answers shown after handing in (quiz setting)" "$(kq $QZ | jq_ "('range' in d['data']['attempts'][0]['key']['q3'], 'print' in d['data']['attempts'][0]['key']['q3'])")" "(True, True)"
+check "a finished try cannot be changed" "$(kput $A1 '{"answers":{},"submit":true}' | jq_ "d['error']['code']")" "LOCKED"
+kstart $QZ >/dev/null; A2=$(kq $QZ | jq_ "d['data']['active']['id']"); kput $A2 '{"answers":{},"submit":true}' >/dev/null
+check "2 tries used → no third; the best try counts (9 / 11)" "$(kstart $QZ | jq_ "d['error']['code']")/$(kq $QZ | jq_ "float(d['data']['result']['score'])")" "NO_ATTEMPTS/9.0"
+kstart $QB >/dev/null; AB=$(kq $QB | jq_ "d['data']['active']['id']")
+check "bank quiz drew 2 random questions from the bank" "$(M "SELECT JSON_LENGTH(questions) FROM QuizAttempt WHERE id='$AB'")/$(M "SELECT JSON_UNQUOTE(JSON_EXTRACT(questions,'\$[0].id')) LIKE 'bank_%' FROM QuizAttempt WHERE id='$AB'")" "2/1"
+M "UPDATE QuizAttempt SET deadlineAt=DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 2 MINUTE) WHERE id='$AB'"
+check "time is up on the server: late answers refused, the try was handed in automatically" "$(kput $AB '{"answers":{},"submit":false}' | jq_ "d['error']['code']")/$(M "SELECT status FROM QuizAttempt WHERE id='$AB'")" "TIME_UP/GRADED"
+check "final exam waits for the instructor to open it" "$(kstart $QF | jq_ "d['error']['code']")" "NOT_OPEN"
+check "secretary does not see the group's quizzes" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/groups/$LG/quizzes)" "403"
+curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d "{\"blockId\":\"$QF\",\"open\":true}" $B/api/groups/$LG/quizzes >/dev/null
+kstart $QF >/dev/null; AF=$(kq $QF | jq_ "d['data']['active']['id']")
+check "instructor opened it → the student takes it; written code waits for review" "$(kput $AF '{"answers":{"w1":{"code":"def add(a,b): return a+b\nprint(add(1,2))","results":[{"id":"t1","passed":true}]},"s1":"o1"},"submit":true}' | jq_ "d['data']['status']")" "SUBMITTED"
+check "instructor sees it in the review list" "$(curl -s -b "$TJ" $B/api/groups/$LG/quizzes | jq_ "[r['reviewId'] is not None for q in d['data']['quizzes'] if q['blockId']=='$QF' for r in q['results'] if r['studentId']=='$LK'][0]")" "True"
+check "review needs points for every written-code answer" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d '{"points":{}}' $B/api/quizzes/review/$AF | jq_ "d['success']")" "False"
+check "instructor gives 3 / 4 for the code → final 4 / 5" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d '{"points":{"w1":3},"feedback":"Good"}' $B/api/quizzes/review/$AF | jq_ "float(d['data']['score'])")" "4.0"
+check "paper exam result typed in for another student" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d "{\"blockId\":\"$QF\",\"studentId\":\"$LO\",\"score\":70,\"maxScore\":100}" $B/api/groups/$LG/quizzes/paper | jq_ "d['success']")/$(M "SELECT CONCAT(paper,'/',status,'/',CAST(score AS SIGNED)) FROM QuizAttempt WHERE blockId='$QF' AND studentId='$LO'")" "True/1/GRADED/70"
+check "a scan from outside the group's folder is refused" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d "{\"blockId\":\"$QF\",\"studentId\":\"$LO\",\"score\":70,\"maxScore\":100,\"scanFiles\":[{\"publicId\":\"x/other/scan\",\"resourceType\":\"image\"}]}" $B/api/groups/$LG/quizzes/paper | jq_ "d['success']")" "False"
+check "parent sees the quiz scores" "$(curl -s -b "$LPJ" "$B/api/quizzes/my?s=$LK" | jq_ "sorted(float(i['result']['percent']) for g in d['data']['groups'] for i in g['items'] if i['result'])")" "[0.0, 80.0, 81.82]"
+check "parent cannot take the quiz" "$(curl -s -b "$LPJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\",\"blockId\":\"$QZ\"}" $B/api/quizzes/item | jq_ "d['success']")" "False"
+check "item analysis for the instructor (6 questions)" "$(curl -s -b "$TJ" "$B/api/quizzes/analysis?b=$QZ&g=$LG" | jq_ "len(d['data'])")" "6"
+check "level result: task 40.91% (session quizzes) and MCQ 80% (final exam) from the LMS" "$(api GET "/api/level-results?classSectionId=$LG&subjectId=$SUBJ" | jq_ "[(float(r['lms']['task']), float(r['lms']['mcq'])) for r in d['data']['rows'] if r['student']['id']=='$LK'][0]")" "(40.91, 80.0)"
+api PUT /api/platform/settings '{"modules":{"lms":false}}' >/dev/null
+rm -f "$LKJ" "$LPJ" "$TJ"
+
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

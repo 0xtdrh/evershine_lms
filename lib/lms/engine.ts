@@ -21,6 +21,7 @@ import { visibleTo } from '@/lib/curriculum/blocks'
 import { effectiveMode, sessionStates, sessionDone, isUnlockMode, type SessionState, type UnlockMode } from './unlock'
 import { getLmsSettings } from './settings'
 import { stripForStudent, type AssignmentData } from '@/lib/assignments/rules'
+import { parseQuiz, quizSummary } from '@/lib/quizzes/engine'
 
 export interface Outcome<T = undefined> { ok: boolean; code?: string; message?: string; value?: T }
 const fail = (code: string, message: string) => ({ ok: false, code, message })
@@ -300,6 +301,8 @@ export async function studentLesson(studentId: string, groupId: string, sessionI
       let data = (b.data ?? {}) as Record<string, unknown>
       // L3: an assignment's correct answers never reach the student's browser
       if (b.type === 'ASSIGNMENT') data = stripForStudent(data as unknown as AssignmentData) as unknown as Record<string, unknown>
+      // L4: a quiz's questions are only sent inside an attempt (never with the lesson)
+      if (b.type === 'QUIZ') { const qd = parseQuiz(data); data = qd ? (quizSummary(qd) as unknown as Record<string, unknown>) : {} }
       const hasMedia = !!(data.media as { publicId?: string } | undefined)?.publicId
       return {
         id: b.id, type: b.type, audience: b.audience, titleEn: b.titleEn, titleAr: b.titleAr,

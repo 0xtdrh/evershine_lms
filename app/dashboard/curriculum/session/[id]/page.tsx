@@ -12,6 +12,7 @@ import { useI18n } from '@/lib/i18n/client'
 import { BLOCK_TYPES, moveInOrder, type BlockType } from '@/lib/curriculum/blocks'
 import { BlockView, Markdown, type Block } from '@/components/curriculum/BlockView'
 import { BlockForm, TYPE_LABELS, blankData, type BlockDraft } from '@/components/curriculum/BlockForm'
+import { cleanQuiz } from '@/components/quizzes/QuizForm'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -144,7 +145,8 @@ export default function CurriculumSessionPage() {
 
   const saveBlock = useMutation({
     mutationFn: (e: { id: string | null; draft: BlockDraft }) => {
-      const { mediaUrl: _m, ...cleanData } = e.draft.data as Record<string, unknown> & { mediaUrl?: string }
+      const { mediaUrl: _m, ...rawData } = e.draft.data as Record<string, unknown> & { mediaUrl?: string }
+      const cleanData = e.draft.type === 'QUIZ' ? cleanQuiz(rawData) : rawData
       const body = JSON.stringify({ ...e.draft, titleEn: e.draft.titleEn || null, titleAr: e.draft.titleAr || null, data: cleanData, ...(e.id ? { type: undefined } : {}) })
       return e.id ? fetchApi(`/api/curriculum/blocks/${e.id}`, { method: 'PATCH', body }) : fetchApi(`/api/curriculum/sessions/${id}/blocks`, { method: 'POST', body })
     },

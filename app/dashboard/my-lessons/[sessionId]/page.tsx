@@ -100,6 +100,13 @@ export default function LessonPage() {
           const isDone = data.done.includes(b.id)
           // L3: homework is handed in (that marks it done), not ticked
           if (b.type === 'ASSIGNMENT') return <AssignmentWork key={b.id} groupId={groupId} blockId={b.id} />
+          // L4: a quiz opens on its own page (timer, one try at a time)
+          if (b.type === 'QUIZ') return (
+            <div key={b.id} className="space-y-2 rounded-2xl border border-sky-100 bg-white p-4">
+              <BlockView block={b} />
+              <Button asChild size={kid ? 'lg' : 'sm'}><Link href={`/dashboard/my-quizzes/${b.id}?g=${groupId}`}>{t('qz.start')}</Link></Button>
+            </div>
+          )
           return (
             <div key={b.id} className={`rounded-2xl border bg-white ${kid ? 'p-6' : 'p-4'} ${isDone ? 'border-emerald-200' : 'border-slate-200'}`}>
               <BlockView block={b} watermark={data.watermark} />

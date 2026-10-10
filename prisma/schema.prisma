@@ -4136,3 +4136,74 @@ model GalleryReaction {
   @@unique([submissionId, userId, emoji])
   @@index([submissionId])
 }
+
+/// LMS L4: question bank of a course (optionally one level). type + data = the question (options, correct answer,
+/// code, lines, pairs, picture…). difficulty 1 easy · 2 medium · 3 hard. skillIds = CourseSkill ids.
+model Question {
+  id          String   @id @default(cuid())
+  subjectId   String
+  levelId     String?
+  type        String   @db.VarChar(16)
+  textEn      String   @db.Text
+  textAr      String   @db.Text
+  data        Json
+  points      Float    @default(1)
+  difficulty  Int      @default(2)
+  skillIds    Json?
+  isActive    Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subjectId, levelId, isActive])
+}
+
+/// LMS L4: one try of one quiz (a QUIZ block) by a student in a group. The timer lives here (deadlineAt) so closing
+/// the page never stops it. questions = frozen copy (with answers — never sent to the browser) incl. shuffled order.
+/// status IN_PROGRESS | SUBMITTED (waits for the instructor: written code) | GRADED. paper = typed-in paper exam.
+model QuizAttempt {
+  id             String    @id @default(cuid())
+  blockId        String
+  sessionId      String
+  classSectionId String
+  studentId      String
+  attemptNo      Int       @default(1)
+  status         String    @default("IN_PROGRESS") @db.VarChar(12)
+  startedAt      DateTime  @default(now())
+  deadlineAt     DateTime?
+  submittedAt    DateTime?
+  questions      Json
+  answers        Json?
+  autoScore      Float?
+  manualScore    Float?
+  score          Float?
+  maxScore       Float?
+  detail         Json?
+  needsReview    Boolean   @default(false)
+  feedback       String?   @db.Text
+  paper          Boolean   @default(false)
+  scanFiles      Json?
+  gradedById     String?
+  gradedAt       DateTime?
+  ip             String?   @db.VarChar(64)
+  userAgent      String?   @db.VarChar(300)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([blockId, studentId, classSectionId])
+  @@index([classSectionId, status])
+}
+
+/// LMS L4: the instructor opens / closes a quiz (e.g. the final exam in the last session) for one group.
+model QuizWindow {
+  id             String    @id @default(cuid())
+  classSectionId String
+  blockId        String
+  open           Boolean   @default(false)
+  closesAt       DateTime?
+  byUserId       String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([classSectionId, blockId])
+}

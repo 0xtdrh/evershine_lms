@@ -997,6 +997,15 @@ async function lmsDemo(sa, base, run) {
   check('code homework (Python, 2 tests)', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO add two numbers', data: { kinds: ['CODE'], maxPoints: 0, gradingMode: 'AUTO_REVIEW', instructionsEn: 'Read two numbers and print their sum.', instructionsAr: 'اقرا رقمين واطبع مجموعهم.', code: { language: 'python', starter: 'a = int(input())\n', tests: [{ id: 't1', input: '2\n3', expected: '5', points: 2 }, { id: 't2', input: '10\n5', expected: '15', points: 3 }] } } })).data?.success)
   check('Arduino homework with automatic checks', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO blink', data: { kinds: ['CODE'], maxPoints: 0, gradingMode: 'AUTO', code: { language: 'arduino', starter: 'void setup() {\n}\n\nvoid loop() {\n}\n' }, toolCheck: { tool: 'ARDUINO', rules: [{ id: 'a1', kind: 'HAS_SETUP_LOOP', points: 2 }, { id: 'a2', kind: 'BALANCED', points: 1 }, { id: 'a3', kind: 'USES_FUNCTION', value: 'digitalWrite', points: 2 }] } } })).data?.success)
   check('Scratch homework with automatic project checks', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO Scratch game', data: { kinds: ['LINK'], maxPoints: 0, gradingMode: 'AUTO', instructionsEn: 'Share your Scratch game and paste the link.', instructionsAr: 'اعمل Share للعبة وحط اللينك.', toolCheck: { tool: 'SCRATCH', rules: [{ id: 's1', kind: 'SPRITES_MIN', value: 1, points: 2 }, { id: 's2', kind: 'HAS_LOOP', points: 2 }, { id: 's3', kind: 'BLOCKS_MIN', value: 5, points: 1 }] } } })).data?.success)
+  check('quiz with code questions (what it prints, find the bug, fill the blank, order lines)', (await add({ type: 'QUIZ', titleEn: 'DEMO loops quiz', data: { kind: 'SESSION', timeLimitMin: 10, showAnswers: 'AFTER_SUBMIT', shuffleQuestions: false, questions: [
+    { id: 'q1', type: 'CODE_OUTPUT', textEn: 'What does it print?', textAr: 'بيطبع إيه؟', code: 'for i in range(3):\n    print(i * 2)', correct: ['0\n2\n4'], points: 2 },
+    { id: 'q2', type: 'FIND_BUG', textEn: 'Which line has the mistake?', textAr: 'أنهي سطر فيه الغلطة؟', code: 'name = "Ali"\nprint(nam)', correct: [2], points: 2 },
+    { id: 'q3', type: 'FILL_BLANK', textEn: 'Fill the blank', textAr: 'كمّل الفراغ', code: 'for i in ___(5):\n    print(i)', correct: ['range'], points: 2 },
+    { id: 'q4', type: 'PARSONS', textEn: 'Put the lines in order', textAr: 'رتّب السطور', items: [{ id: 'a', textEn: 'x = 1' }, { id: 'b', textEn: 'x = x + 1' }, { id: 'c', textEn: 'print(x)' }], points: 2 },
+  ] } })).data?.success)
+  check('end-of-level exam (instructor opens it in class / paper)', (await add({ type: 'QUIZ', titleEn: 'DEMO final exam', data: { kind: 'FINAL', questions: [
+    { id: 'f1', type: 'SINGLE', textEn: 'Which loop repeats forever?', textAr: 'أنهي loop بيكرر للأبد؟', options: [{ id: 'o1', textEn: 'while True' }, { id: 'o2', textEn: 'for i in range(3)' }], correct: ['o1'], points: 1 },
+  ] } })).data?.success)
   check('homework the instructor grades (photo / link, out of 10)', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO show your robot', data: { kinds: ['PHOTO', 'LINK', 'TEXT'], maxPoints: 10, instructionsEn: 'Take a photo of your robot and explain it.', instructionsAr: 'صوّر الروبوت بتاعك واشرحه.' } })).data?.success)
   check('embed from an unknown site is refused', (await add({ type: 'EMBED', data: { url: 'https://evil.example.com/x' } })).data?.success === false)
   check('javascript: link is refused', (await add({ type: 'LINK', data: { url: 'javascript:alert(1)' } })).data?.success === false)
@@ -1200,6 +1209,26 @@ async function lmsStudentDemo(sa, base, run, phone, preferLevelId = null) {
         check(ok ? `Scratch project read from scratch.mit.edu and checked (${r.data?.data?.score} / 5)` : 'Scratch project check (could not read it — the instructor grades it)', r.data?.success, r.data?.error?.message)
       }
     } else console.log('  ↳ lesson 1 has no homework (the level already had a published curriculum) — add one in Curriculum to try homework')
+    // L4 quizzes
+    const qz = ((await stu.json('GET', '/api/quizzes/my')).data?.data?.groups ?? []).flatMap((g) => g.items)
+    const loops = qz.find((i) => (i.titleEn ?? '').startsWith('DEMO loops quiz'))
+    if (loops) {
+      await stu.json('POST', '/api/quizzes/item', { body: { groupId: group, blockId: loops.blockId } })
+      const item = (await stu.json('GET', `/api/quizzes/item?g=${group}&b=${loops.blockId}`)).data?.data
+      check('quiz started (server timer, no answers sent to the browser)', !!item?.active?.deadlineAt && !JSON.stringify(item.active.questions).includes('"correct"'))
+      const r = await stu.json('PUT', `/api/quizzes/attempts/${item?.active?.id}`, { body: { answers: { q1: '0\n2\n4', q2: 2, q3: ['range'], q4: ['a', 'c', 'b'] }, submit: true } })
+      check(`quiz graded on the server (${r.data?.data?.score} / 8 — the line order was wrong on purpose)`, r.data?.data?.score === 6, r.data?.error?.message)
+    }
+    const fin = qz.find((i) => (i.titleEn ?? '').startsWith('DEMO final exam'))
+    if (fin) {
+      const closed = await stu.json('POST', '/api/quizzes/item', { body: { groupId: group, blockId: fin.blockId } })
+      check('final exam waits until the instructor opens it', closed.data?.error?.code === 'NOT_OPEN')
+      await sa.json('PATCH', `/api/groups/${group}/quizzes`, { body: { blockId: fin.blockId, open: true } })
+      await stu.json('POST', '/api/quizzes/item', { body: { groupId: group, blockId: fin.blockId } })
+      const item = (await stu.json('GET', `/api/quizzes/item?g=${group}&b=${fin.blockId}`)).data?.data
+      const r = await stu.json('PUT', `/api/quizzes/attempts/${item?.active?.id}`, { body: { answers: { f1: 'o1' }, submit: true } })
+      check(`opened by staff → student takes the final exam (${r.data?.data?.score} / 1)`, r.data?.data?.score === 1, r.data?.error?.message)
+    }
     await sa.json('POST', `/api/groups/${group}/lessons/notes`, { body: { sessionNumber: 1, body: `DEMO note ${run}: bring your kit` } })
     check('group note shows inside the lesson', ((await stu.json('GET', `/api/lessons/${s1.id}?g=${group}`)).data?.data?.notes ?? []).length === 1)
     const par = new Client(base)

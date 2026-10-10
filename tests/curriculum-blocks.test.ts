@@ -32,7 +32,9 @@ describe('curriculum blocks (LMS L1)', () => {
     expect(validateBlockData('VIDEO', { url: 'https://youtu.be/dQw4w9WgXcQ' }).ok).toBe(true)
     expect(validateBlockData('VIDEO', { media: { publicId: 'x/y', resourceType: 'video' } }).ok).toBe(true)
     expect(validateBlockData('IMAGE', {}).ok).toBe(false)
-    expect(validateBlockData('QUIZ', { note: 'later' }).ok).toBe(true)
+    expect(validateBlockData('QUIZ', { note: 'later' }).ok).toBe(false) // L4: a real quiz now needs questions
+    expect(validateBlockData('QUIZ', { questions: [{ id: 'a', type: 'TRUE_FALSE', correct: ['true'] }] }).ok).toBe(true)
+    expect(validateBlockData('H5P', { note: 'later' }).ok).toBe(true)
   })
 
   it('drops unknown fields such as a signed media link sent back by the editor', () => {

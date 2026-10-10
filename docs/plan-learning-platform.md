@@ -152,6 +152,25 @@ Decisions are from the owner (chat 2026-10-03 → 2026-10-05) unless marked "pro
   picture blocks for young children (all graded on the server); "write the code" with tests (browser + instructor
   confirms, or instructor only in the final exam). Code shown with syntax colours and line numbers.
 
+### L4 as built (2026-10-10)
+- QUIZ block (`lib/quizzes/rules.ts` pure + tests `tests/quizzes-rules.test.ts`, `lib/quizzes/engine.ts`). Tables
+  `Question` (bank: course / level / difficulty / skills), `QuizAttempt` (frozen questions with answers, server
+  deadline, answers, detail, needsReview, paper + scanFiles), `QuizWindow` (instructor open / close per group).
+- 17 question types incl. the code ones; partial credit for match / fill-the-blank; WRITE_CODE runs tests in the
+  browser and always waits for the instructor. Correct answers never leave the server before a try is handed in;
+  the lesson page carries only a summary of a quiz.
+- Tries: default 2 (session) / 1 (final), best / last / average; seeded shuffle of questions and choices; random
+  draw of N bank questions per student. Timer = deadlineAt on the server (+30 s grace); an expired try is handed in
+  automatically when anyone next reads it; late answers are refused (TIME_UP).
+- Final exam: the instructor opens it in class (`QuizWindow`), or types a paper score + uploads a scan (private
+  Cloudinary `<base>/quiz-scans/<groupId>`). Show answers: never / after handing in / when no tries are left or the
+  quiz is closed.
+- Pages: student / parent `/dashboard/my-quizzes` (+ `/[blockId]`, kid mode one question per screen), staff
+  `/dashboard/quizzes` (open / close, scores, code review, paper exam, item analysis — not secretaries), question
+  bank `/dashboard/question-bank`. Level results: session quizzes → task %, final exam → MCQ % ("use" buttons).
+- Not yet: uploading pictures for picture-choice options / circuit pictures in questions (the schema has `media`;
+  the editor uses text / emoji for now), drag-and-drop (arrows are used).
+
 ### L5 — Interactive content, external tools, video, online classes
 - **H5P:**
   - Authored with the free Lumi editor (or h5p.org), giving a `.h5p` file; uploaded into a block.

@@ -12,7 +12,7 @@ import { useI18n } from '@/lib/i18n/client'
 import { videoEmbedUrl } from '@/lib/curriculum/blocks'
 import { Watermark } from './Watermark'
 import { useEffect, useRef, useState } from 'react'
-import { ClipboardList, ExternalLink, FileText, Hourglass, Maximize2, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { ClipboardList, ListChecks, ExternalLink, FileText, Hourglass, Maximize2, X, ZoomIn, ZoomOut } from 'lucide-react'
 
 export interface Block {
   id: string; type: string; audience: string; titleEn: string | null; titleAr: string | null
@@ -105,6 +105,17 @@ export function BlockView({ block, watermark }: { block: Block; watermark?: stri
     case 'EMBED':
       body = <iframe src={d.url as string} style={fill ? undefined : { height: Number(d.height) || 480 }} className={`w-full rounded-lg border border-slate-200 ${fill ? 'h-full' : ''}`} sandbox="allow-scripts allow-same-origin allow-popups allow-forms" allow="fullscreen" allowFullScreen title={title || 'embed'} />
       break
+    case 'QUIZ': {
+      const qn = ((d.questions as unknown[] | undefined)?.length ?? 0) + ((d.bank as { count?: number } | null)?.count ?? 0) + (Number(d.questionCount) || 0)
+      body = (
+        <div className="space-y-1 rounded-lg border border-sky-100 bg-sky-50/40 p-3">
+          <p className="flex items-center gap-1 text-xs font-semibold uppercase text-sky-700"><ListChecks className="h-4 w-4" /> {d.kind === 'FINAL' ? t('qz.final') : t('qz.quiz')}</p>
+          <Markdown text={pick(d.instructionsEn as string, d.instructionsAr as string)} />
+          <p className="text-xs text-slate-500">{qn} question(s){Number(d.timeLimitMin) ? ` · ${d.timeLimitMin} min` : ''}</p>
+        </div>
+      )
+      break
+    }
     case 'ASSIGNMENT': {
       const qs = (d.questions as unknown[] | undefined)?.length ?? 0
       body = (
