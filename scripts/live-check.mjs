@@ -994,6 +994,9 @@ async function lmsDemo(sa, base, run) {
     { id: 'q1', type: 'SINGLE', textEn: 'Which part is the robot brain?', textAr: 'أنهي جزء هو مخ الروبوت؟', options: [{ id: 'a', textEn: 'Controller', textAr: 'المتحكم' }, { id: 'b', textEn: 'Wheel', textAr: 'العجلة' }], correct: ['a'], points: 2 },
     { id: 'q2', type: 'TRUE_FALSE', textEn: 'An LED makes light', textAr: 'الـ LED بيطلع نور', correct: ['true'], points: 1 },
   ] } })).data?.success)
+  check('code homework (Python, 2 tests)', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO add two numbers', data: { kinds: ['CODE'], maxPoints: 0, gradingMode: 'AUTO_REVIEW', instructionsEn: 'Read two numbers and print their sum.', instructionsAr: 'اقرا رقمين واطبع مجموعهم.', code: { language: 'python', starter: 'a = int(input())\n', tests: [{ id: 't1', input: '2\n3', expected: '5', points: 2 }, { id: 't2', input: '10\n5', expected: '15', points: 3 }] } } })).data?.success)
+  check('Arduino homework with automatic checks', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO blink', data: { kinds: ['CODE'], maxPoints: 0, gradingMode: 'AUTO', code: { language: 'arduino', starter: 'void setup() {\n}\n\nvoid loop() {\n}\n' }, toolCheck: { tool: 'ARDUINO', rules: [{ id: 'a1', kind: 'HAS_SETUP_LOOP', points: 2 }, { id: 'a2', kind: 'BALANCED', points: 1 }, { id: 'a3', kind: 'USES_FUNCTION', value: 'digitalWrite', points: 2 }] } } })).data?.success)
+  check('Scratch homework with automatic project checks', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO Scratch game', data: { kinds: ['LINK'], maxPoints: 0, gradingMode: 'AUTO', instructionsEn: 'Share your Scratch game and paste the link.', instructionsAr: 'اعمل Share للعبة وحط اللينك.', toolCheck: { tool: 'SCRATCH', rules: [{ id: 's1', kind: 'SPRITES_MIN', value: 1, points: 2 }, { id: 's2', kind: 'HAS_LOOP', points: 2 }, { id: 's3', kind: 'BLOCKS_MIN', value: 5, points: 1 }] } } })).data?.success)
   check('homework the instructor grades (photo / link, out of 10)', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO show your robot', data: { kinds: ['PHOTO', 'LINK', 'TEXT'], maxPoints: 10, instructionsEn: 'Take a photo of your robot and explain it.', instructionsAr: 'صوّر الروبوت بتاعك واشرحه.' } })).data?.success)
   check('embed from an unknown site is refused', (await add({ type: 'EMBED', data: { url: 'https://evil.example.com/x' } })).data?.success === false)
   check('javascript: link is refused', (await add({ type: 'LINK', data: { url: 'javascript:alert(1)' } })).data?.success === false)
@@ -1167,6 +1170,34 @@ async function lmsStudentDemo(sa, base, run, phone, preferLevelId = null) {
         const cell = book?.cells?.find((c) => c.blockId === manual.blockId)
         const g = cell ? await sa.json('POST', `/api/assignments/submissions/${cell.id}`, { body: { action: 'grade', points: 9, feedback: 'DEMO: great work!' } }) : null
         check('graded from the gradebook (9 / 10 + feedback)', g?.data?.data?.score === 9, g?.data?.error?.message)
+      }
+      // L3 batch 2: code, Arduino, Scratch check, gallery
+      const py = hw.find((i) => (i.titleEn ?? '').startsWith('DEMO add two numbers'))
+      if (py) {
+        const code = 'a = int(input())\nb = int(input())\nprint(a + b)'
+        const r = await stu.json('PUT', '/api/assignments/item', { body: { groupId: group, blockId: py.blockId, code, codeResults: [{ id: 't1', passed: true, output: '5' }, { id: 't2', passed: true, output: '15' }], submit: true } })
+        check('code homework handed in (tests passed in the browser → waits for the instructor)', r.data?.data?.status === 'SUBMITTED', r.data?.error?.message)
+        const book = (await sa.json('GET', `/api/groups/${group}/assignments`)).data?.data
+        const cell = book?.cells?.find((c) => c.blockId === py.blockId)
+        const g = cell ? await sa.json('POST', `/api/assignments/submissions/${cell.id}`, { body: { action: 'grade', gallery: true, feedback: 'DEMO: clean code!' } }) : null
+        check(`instructor confirms the code score (${g?.data?.data?.score} / 5) and puts it in the gallery`, g?.data?.data?.score === 5, g?.data?.error?.message)
+        const gal = (await stu.json('GET', '/api/gallery')).data?.data ?? []
+        check(`the project shows in the gallery (${gal.length})`, gal.some((x) => x.firstName?.startsWith('Lesson')))
+        if (gal[0]) {
+          await stu.json('POST', '/api/gallery/react', { body: { submissionId: gal[0].id, emoji: '👏' } })
+          check('emoji reaction on the gallery project', ((await stu.json('GET', '/api/gallery')).data?.data?.[0]?.reactions?.['👏'] ?? 0) === 1)
+        }
+      }
+      const ard = hw.find((i) => (i.titleEn ?? '').startsWith('DEMO blink'))
+      if (ard) {
+        const r = await stu.json('PUT', '/api/assignments/item', { body: { groupId: group, blockId: ard.blockId, code: 'void setup() { pinMode(13, OUTPUT); }\nvoid loop() { digitalWrite(13, HIGH); delay(500); digitalWrite(13, LOW); delay(500); }', submit: true } })
+        check(`Arduino code checked on the server and graded at once (${r.data?.data?.score} / 5)`, r.data?.data?.status === 'GRADED' && r.data?.data?.score === 5, r.data?.error?.message)
+      }
+      const sc = hw.find((i) => (i.titleEn ?? '').startsWith('DEMO Scratch game'))
+      if (sc) {
+        const r = await stu.json('PUT', '/api/assignments/item', { body: { groupId: group, blockId: sc.blockId, links: ['https://scratch.mit.edu/projects/10128407'], submit: true } })
+        const ok = r.data?.data?.status === 'GRADED'
+        check(ok ? `Scratch project read from scratch.mit.edu and checked (${r.data?.data?.score} / 5)` : 'Scratch project check (could not read it — the instructor grades it)', r.data?.success, r.data?.error?.message)
       }
     } else console.log('  ↳ lesson 1 has no homework (the level already had a published curriculum) — add one in Curriculum to try homework')
     await sa.json('POST', `/api/groups/${group}/lessons/notes`, { body: { sessionNumber: 1, body: `DEMO note ${run}: bring your kit` } })
