@@ -1004,7 +1004,13 @@ async function lmsDemo(sa, base, run) {
   ] } })).data?.success)
   check('end-of-level exam (instructor opens it in class / paper)', (await add({ type: 'QUIZ', titleEn: 'DEMO final exam', data: { kind: 'FINAL', questions: [
     { id: 'f1', type: 'SINGLE', textEn: 'Which loop repeats forever?', textAr: 'أنهي loop بيكرر للأبد؟', options: [{ id: 'o1', textEn: 'while True' }, { id: 'o2', textEn: 'for i in range(3)' }], correct: ['o1'], points: 1 },
+    { id: 'w1', type: 'WRITE_CODE', textEn: 'Print the sum of 1 and 2', textAr: 'اطبع مجموع 1 و 2', language: 'python', points: 2, tests: [{ id: 't1', input: '', expected: '3', points: 1 }] },
   ] } })).data?.success)
+  let bankOk = 0
+  for (let i = 1; i <= 3; i++) bankOk += (await sa.json('POST', '/api/questions', { body: { subjectId: level.courseId, levelId: level.id, difficulty: 1, question: { id: 'x', type: 'TRUE_FALSE', textEn: `DEMO bank question ${i}: robots need power`, textAr: `سؤال بنك تجربة ${i}: الروبوت محتاج كهربا`, correct: ['true'], points: 1 } } })).data?.success ? 1 : 0
+  check(`question bank: ${bankOk} DEMO questions added`, bankOk === 3)
+  check('quiz that draws 2 random questions from the bank', (await add({ type: 'QUIZ', titleEn: 'DEMO bank quiz', data: { kind: 'SESSION', timeLimitMin: 5, bank: { count: 2, levelOnly: true } } })).data?.success)
+  check('short quiz to try the server timer', (await add({ type: 'QUIZ', titleEn: 'DEMO timer quiz', data: { kind: 'SESSION', requireInstructorOpen: true, questions: [{ id: 't1', type: 'TRUE_FALSE', textEn: 'Time runs on the server', correct: ['true'], points: 1 }] } })).data?.success)
   check('homework the instructor grades (photo / link, out of 10)', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO show your robot', data: { kinds: ['PHOTO', 'LINK', 'TEXT'], maxPoints: 10, instructionsEn: 'Take a photo of your robot and explain it.', instructionsAr: 'صوّر الروبوت بتاعك واشرحه.' } })).data?.success)
   check('embed from an unknown site is refused', (await add({ type: 'EMBED', data: { url: 'https://evil.example.com/x' } })).data?.success === false)
   check('javascript: link is refused', (await add({ type: 'LINK', data: { url: 'javascript:alert(1)' } })).data?.success === false)
@@ -1105,7 +1111,7 @@ async function lmsStudentDemo(sa, base, run, phone, preferLevelId = null) {
   section('18. LMS L2 — lessons for students')
   const iso = (k) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() + k); return d.toISOString().slice(0, 10) }
   const tree = (await sa.json('GET', '/api/curriculum/tree')).data?.data?.tree ?? []
-  const level = tree.flatMap((t) => t.courses.flatMap((c) => c.levels.map((l) => ({ ...l, course: c.name }))))
+  const level = tree.flatMap((t) => t.courses.flatMap((c) => c.levels.map((l) => ({ ...l, course: c.name, courseId: c.id }))))
     .sort((a, b) => (b.id === preferLevelId) - (a.id === preferLevelId)).find((l) => l.publishedNumber)
   if (!level) return bad('no level has a published curriculum yet — publish one (Curriculum page) and run again')
   const campuses = list((await sa.json('GET', '/api/campuses')).data)
@@ -1135,6 +1141,22 @@ async function lmsStudentDemo(sa, base, run, phone, preferLevelId = null) {
     const pp = (await sa.json('POST', `/api/students/${s.id}/portal-password`, { body: { target: 'guardian', guardianId } })).data?.data
     const stu = new Client(base)
     check('demo student signs in', sp?.password && (await stu.login(sp.loginId, sp.password)))
+    // a classmate (copying alert, gallery visibility, paper exam)
+    const mateStu = (await sa.json('POST', '/api/students', {
+      body: {
+        firstName: `Mate-${run}`, lastName: 'DEMO-TEST', fullNameAr: 'زميل تجربة', fatherName: 'Father Demo', fatherPhoneNumber: '', motherName: '',
+        parentStatus: 'BOTH_ALIVE', dateOfBirth: '2014-05-10T00:00:00.000Z', gender: 'MALE', nationality: 'Egyptian', address: '12 Demo St Hurghada',
+        city: 'Hurghada', phoneNumber: phone(98), emergencyContact: phone(98), email: '', hasSiblingAtAcademy: false, campusId: campus.id,
+        rollNumber: '', totalFeeAmount: 0, academicYear: `${year}-${year + 1}`, guardianFirstName: 'Demo Mate Parent', guardianLastName: '',
+        guardianPhone: phone(99), guardianEmail: '', guardianRelationship: '',
+      },
+    })).data?.data
+    const mate = new Client(base)
+    if (mateStu?.id) {
+      await sa.json('POST', `/api/groups/${group}/students`, { body: { studentId: mateStu.id } })
+      const mp = (await sa.json('POST', `/api/students/${mateStu.id}/portal-password`, { body: { target: 'student' } })).data?.data
+      check('a classmate in the same group signs in', mp?.password && (await mate.login(mp.loginId, mp.password)))
+    }
     const openNos = async () => ((await stu.json('GET', '/api/lessons/my')).data?.data?.groups ?? []).flatMap((g) => g.sessions.filter((x) => x.open).map((x) => x.number))
     const my = (await stu.json('GET', '/api/lessons/my')).data?.data
     check(`"My lessons" shows the group (kid mode ${my?.kidMode ? 'ON' : 'off'}), nothing open before the first session`, my?.groups?.length === 1 && (await openNos()).length === 0, JSON.stringify(my?.groups?.map((g) => g.sessions.filter((x) => x.open).length)))
@@ -1178,6 +1200,18 @@ async function lmsStudentDemo(sa, base, run, phone, preferLevelId = null) {
         const cell = book?.cells?.find((c) => c.blockId === manual.blockId)
         const g = cell ? await sa.json('POST', `/api/assignments/submissions/${cell.id}`, { body: { action: 'grade', points: 9, feedback: 'DEMO: great work!' } }) : null
         check('graded from the gradebook (9 / 10 + feedback)', g?.data?.data?.score === 9, g?.data?.error?.message)
+        // "when are grades / answers shown" — only for this DEMO group, put back afterwards
+        const pol = { late: 'MARK_LATE', latePenaltyPct: 0, resubmit: true, maxAttempts: 2, excuseExtensionDays: 7, parentCanSubmit: true, gallery: 'GROUP' }
+        await sa.json('PATCH', `/api/groups/${group}/assignments`, { body: { policy: { ...pol, showGrades: 'AFTER_DUE', showAnswers: 'AFTER_SUBMIT' } } })
+        await sa.json('PATCH', `/api/groups/${group}/assignments`, { body: { blockId: manual.blockId, dueAt: new Date(Date.now() + 3 * 86400000).toISOString() } })
+        const hidden = (await stu.json('GET', `/api/assignments/item?g=${group}&b=${manual.blockId}`)).data?.data
+        check('rule "grade after the due date": the grade is hidden until then', hidden?.submission?.score === null && !!hidden?.gradesHiddenUntil)
+        const qc = hw.find((i) => (i.titleEn ?? '').startsWith('DEMO quick check'))
+        if (qc) check('rule "answers after handing in": correct answers shown', !!(await stu.json('GET', `/api/assignments/item?g=${group}&b=${qc.blockId}`)).data?.data?.answerKey)
+        await sa.json('PATCH', `/api/groups/${group}/assignments`, { body: { policy: { ...pol, showGrades: 'IMMEDIATE', showAnswers: 'NEVER' } } })
+        check('rule "never": answers hidden; "at once": grade shown again', !(await stu.json('GET', `/api/assignments/item?g=${group}&b=${qc?.blockId}`)).data?.data?.answerKey && (await stu.json('GET', `/api/assignments/item?g=${group}&b=${manual.blockId}`)).data?.data?.submission?.score === 9)
+        await sa.json('PATCH', `/api/groups/${group}/assignments`, { body: { policy: null } })
+        await sa.json('PATCH', `/api/groups/${group}/assignments`, { body: { blockId: manual.blockId, dueAt: null } })
       }
       // L3 batch 2: code, Arduino, Scratch check, gallery
       const py = hw.find((i) => (i.titleEn ?? '').startsWith('DEMO add two numbers'))
@@ -1191,6 +1225,11 @@ async function lmsStudentDemo(sa, base, run, phone, preferLevelId = null) {
         check(`instructor confirms the code score (${g?.data?.data?.score} / 5) and puts it in the gallery`, g?.data?.data?.score === 5, g?.data?.error?.message)
         const gal = (await stu.json('GET', '/api/gallery')).data?.data ?? []
         check(`the project shows in the gallery (${gal.length})`, gal.some((x) => x.firstName?.startsWith('Lesson')))
+        const mateGal = (await mate.json('GET', '/api/gallery')).data?.data ?? []
+        check('a classmate (same group) sees it in the gallery', mateGal.some((x) => x.firstName?.startsWith('Lesson')))
+        await mate.json('PUT', '/api/assignments/item', { body: { groupId: group, blockId: py.blockId, code: code + '\n', codeResults: [{ id: 't1', passed: true }, { id: 't2', passed: true }], submit: true } })
+        const sim = cell ? (await sa.json('GET', `/api/assignments/submissions/${cell.id}`)).data?.data?.similar ?? [] : []
+        check(`copying alert: the classmate's code is ${sim[0]?.percent ?? 0}% alike`, sim.some((x) => x.percent >= 80))
         if (gal[0]) {
           await stu.json('POST', '/api/gallery/react', { body: { submissionId: gal[0].id, emoji: '👏' } })
           check('emoji reaction on the gallery project', ((await stu.json('GET', '/api/gallery')).data?.data?.[0]?.reactions?.['👏'] ?? 0) === 1)
@@ -1225,9 +1264,56 @@ async function lmsStudentDemo(sa, base, run, phone, preferLevelId = null) {
       await sa.json('PATCH', `/api/groups/${group}/quizzes`, { body: { blockId: fin.blockId, open: true } })
       await stu.json('POST', '/api/quizzes/item', { body: { groupId: group, blockId: fin.blockId } })
       const item = (await stu.json('GET', `/api/quizzes/item?g=${group}&b=${fin.blockId}`)).data?.data
-      const r = await stu.json('PUT', `/api/quizzes/attempts/${item?.active?.id}`, { body: { answers: { f1: 'o1' }, submit: true } })
-      check(`opened by staff → student takes the final exam (${r.data?.data?.score} / 1)`, r.data?.data?.score === 1, r.data?.error?.message)
+      const r = await stu.json('PUT', `/api/quizzes/attempts/${item?.active?.id}`, { body: { answers: { f1: 'o1', w1: { code: 'print(1 + 2)', results: [{ id: 't1', passed: true }] } }, submit: true } })
+      check('opened by staff → student takes the final exam; the written code waits for review', r.data?.data?.status === 'SUBMITTED', r.data?.error?.message)
+      const book = (await sa.json('GET', `/api/groups/${group}/quizzes`)).data?.data
+      const reviewId = book?.quizzes?.find((x) => x.blockId === fin.blockId)?.results?.find((x) => x.studentId === s.id)?.reviewId
+      const rv = reviewId ? await sa.json('POST', `/api/quizzes/review/${reviewId}`, { body: { points: { w1: 2 }, feedback: 'DEMO: well done' } }) : null
+      check(`instructor reviews the code → final exam ${rv?.data?.data?.score} / 3`, rv?.data?.data?.score === 3, rv?.data?.error?.message)
+      // paper exam for the classmate, with a scan (private)
+      if (mateStu?.id) {
+        const sig = (await sa.json('POST', `/api/groups/${group}/quizzes/scan-sign`)).data?.data
+        let scan = []
+        if (sig?.signature) {
+          const fd = new FormData()
+          fd.append('file', new Blob([PNG], { type: 'image/png' }), 'scan.png')
+          for (const [k, v] of Object.entries({ api_key: sig.apiKey, timestamp: String(sig.timestamp), signature: sig.signature, folder: sig.folder, allowed_formats: sig.allowedFormats, type: sig.type })) fd.append(k, v)
+          const up = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/auto/upload`, { method: 'POST', body: fd })
+          const j = await up.json().catch(() => ({}))
+          if (up.ok) scan = [{ publicId: j.public_id, resourceType: 'image', format: j.format, originalName: 'scan.png' }]
+        }
+        const pr = await sa.json('POST', `/api/groups/${group}/quizzes/paper`, { body: { blockId: fin.blockId, studentId: mateStu.id, score: 80, maxScore: 100, scanFiles: scan, feedback: 'DEMO paper exam' } })
+        check(`paper exam typed in for the classmate (80 / 100${scan.length ? ', scan uploaded privately' : ', no scan — storage not set up'})`, pr.data?.success, pr.data?.error?.message)
+        const mineQ = ((await mate.json('GET', '/api/quizzes/my')).data?.data?.groups ?? []).flatMap((g) => g.items).find((i) => i.blockId === fin.blockId)
+        check('the classmate sees the paper exam result', mineQ?.result?.percent === 80)
+      }
     }
+    const bankQ = qz.find((i) => (i.titleEn ?? '').startsWith('DEMO bank quiz'))
+    if (bankQ) {
+      await stu.json('POST', '/api/quizzes/item', { body: { groupId: group, blockId: bankQ.blockId } })
+      const it = (await stu.json('GET', `/api/quizzes/item?g=${group}&b=${bankQ.blockId}`)).data?.data
+      check(`bank quiz: ${it?.active?.questions?.length ?? 0} random questions drawn from the bank`, it?.active?.questions?.length === 2)
+      const ans = Object.fromEntries((it?.active?.questions ?? []).map((q) => [q.id, 'true']))
+      const r = await stu.json('PUT', `/api/quizzes/attempts/${it?.active?.id}`, { body: { answers: ans, submit: true } })
+      check(`bank quiz graded (${r.data?.data?.score} / 2)`, r.data?.data?.score === 2, r.data?.error?.message)
+    }
+    const timerQ = qz.find((i) => (i.titleEn ?? '').startsWith('DEMO timer quiz'))
+    if (timerQ) {
+      await sa.json('PATCH', `/api/groups/${group}/quizzes`, { body: { blockId: timerQ.blockId, open: true, closesAt: new Date(Date.now() + 5000).toISOString() } })
+      await stu.json('POST', '/api/quizzes/item', { body: { groupId: group, blockId: timerQ.blockId } })
+      const it = (await stu.json('GET', `/api/quizzes/item?g=${group}&b=${timerQ.blockId}`)).data?.data
+      console.log('  ↳ waiting 40 seconds for the quiz time to run out on the server…')
+      await sleep(40_000)
+      const late = await stu.json('PUT', `/api/quizzes/attempts/${it?.active?.id}`, { body: { answers: { t1: 'true' }, submit: true } })
+      check('time ran out on the server: late answers refused, the try was handed in automatically', late.data?.error?.code === 'TIME_UP', late.data?.error?.message ?? JSON.stringify(late.data?.data))
+    }
+    if (loops) {
+      const an = (await sa.json('GET', `/api/quizzes/analysis?b=${loops.blockId}&g=${group}`)).data?.data ?? []
+      check(`question analysis (${an.length} questions, hardest: ${an[0]?.textEn ?? '—'})`, an.length === 4)
+    }
+    const lr = (await sa.json('GET', `/api/level-results?classSectionId=${group}&subjectId=${level.courseId}`)).data?.data?.rows ?? []
+    const mineLr = lr.find((x) => x.student?.id === s.id)?.lms
+    check(`level result gets LMS scores (homework ${mineLr?.homework ?? '—'}%, task ${mineLr?.task ?? '—'}%, MCQ ${mineLr?.mcq ?? '—'}%)`, mineLr && mineLr.task !== null && mineLr.mcq === 100)
     await sa.json('POST', `/api/groups/${group}/lessons/notes`, { body: { sessionNumber: 1, body: `DEMO note ${run}: bring your kit` } })
     check('group note shows inside the lesson', ((await stu.json('GET', `/api/lessons/${s1.id}?g=${group}`)).data?.data?.notes ?? []).length === 1)
     const par = new Client(base)

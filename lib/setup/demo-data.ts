@@ -8,7 +8,7 @@
  *  - groups: className starting "DEMO "
  *  - discount types / payment accounts: name / label starting "DEMO "
  *  - staff accounts: email ending @demo.technova.local
- *  - curriculum versions: notes starting "DEMO "; course skills: English name starting "DEMO "
+ *  - curriculum versions: notes starting "DEMO "; course skills / bank questions: English text starting "DEMO "
  * Removal runs in one transaction and checks every foreign key at the end
  * (any broken reference rolls everything back), like the test-data wipe.
  */
@@ -156,6 +156,8 @@ export async function removeDemoData(): Promise<Record<string, number>> {
           await del('CurriculumEdition', 'id', ids.curricula)
         }
         await del('CourseSkill', 'id', ids.skills)
+        // L4: demo bank questions (text starts with "DEMO ")
+        await tx.$executeRawUnsafe("DELETE FROM `Question` WHERE `textEn` LIKE 'DEMO %'")
         // L3 batch 2: reactions left on demo projects that were just removed
         await tx.$executeRawUnsafe('DELETE FROM `GalleryReaction` WHERE `submissionId` NOT IN (SELECT `id` FROM `AssignmentSubmission`)')
         await del('_GuardianToStudent', 'A', ids.guardians)
