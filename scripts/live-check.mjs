@@ -988,7 +988,6 @@ async function lmsDemo(sa, base, run) {
   check('code block (instructor only)', (await add({ type: 'CODE', audience: 'INSTRUCTOR', titleEn: 'Solution', data: { language: 'python', code: 'print("hello robot")' } })).data?.success)
   check('link block', (await add({ type: 'LINK', titleEn: 'Robot parts', data: { url: 'https://www.tinkercad.com' } })).data?.success)
   check('embedded Scratch project', (await add({ type: 'EMBED', data: { url: 'https://scratch.mit.edu/projects/10128407/embed', height: 420 } })).data?.success)
-  check('quiz placeholder (built in L4)', (await add({ type: 'QUIZ', data: { note: 'DEMO quiz later' } })).data?.success)
   // L3 homework: automatic questions + a hand-in the instructor grades
   check('homework with automatic questions', (await add({ type: 'ASSIGNMENT', titleEn: 'DEMO quick check', data: { kinds: [], gradingMode: 'AUTO', questions: [
     { id: 'q1', type: 'SINGLE', textEn: 'Which part is the robot brain?', textAr: 'أنهي جزء هو مخ الروبوت؟', options: [{ id: 'a', textEn: 'Controller', textAr: 'المتحكم' }, { id: 'b', textEn: 'Wheel', textAr: 'العجلة' }], correct: ['a'], points: 2 },
