@@ -4061,6 +4061,15 @@ model AssignmentSubmission {
   late              Boolean   @default(false)
   latePenaltyPct    Float?
   history           Json?
+  /// L3 batch 2: code written in the editor + the browser test run; tool check result (Scratch, MakeCode…)
+  code              String?   @db.MediumText
+  codeResults       Json?
+  toolResult        Json?
+  /// instructor's voice note { publicId, resourceType, format, seconds }
+  feedbackAudio     Json?
+  /// projects gallery: null | APPROVED (instructor approved it for the gallery)
+  galleryStatus     String?   @db.VarChar(10)
+  galleryAt         DateTime?
   submittedAt       DateTime?
   submittedByUserId String?
   gradedAt          DateTime?
@@ -4114,4 +4123,16 @@ model AssignmentNotice {
   createdAt      DateTime @default(now())
 
   @@unique([classSectionId, blockId, kind, studentId])
+}
+
+/// LMS L3 batch 2: emoji reaction on a gallery project (no written comments, on purpose).
+model GalleryReaction {
+  id           String   @id @default(cuid())
+  submissionId String
+  userId       String
+  emoji        String   @db.VarChar(8)
+  createdAt    DateTime @default(now())
+
+  @@unique([submissionId, userId, emoji])
+  @@index([submissionId])
 }

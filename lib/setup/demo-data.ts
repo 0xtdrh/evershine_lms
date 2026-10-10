@@ -156,6 +156,8 @@ export async function removeDemoData(): Promise<Record<string, number>> {
           await del('CurriculumEdition', 'id', ids.curricula)
         }
         await del('CourseSkill', 'id', ids.skills)
+        // L3 batch 2: reactions left on demo projects that were just removed
+        await tx.$executeRawUnsafe('DELETE FROM `GalleryReaction` WHERE `submissionId` NOT IN (SELECT `id` FROM `AssignmentSubmission`)')
         await del('_GuardianToStudent', 'A', ids.guardians)
         await del('_GuardianToStudent', 'B', ids.students)
         await del('StudentEnrollment', 'id', ids.enrollments)

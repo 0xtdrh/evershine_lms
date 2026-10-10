@@ -452,6 +452,26 @@ Built automatically after each session. No typing, except optional instructor ex
   the due date / after the next session (default after the due date); grade + feedback shown as soon as graded /
   after the due date / after the next session (default at once). Hidden results say "result on …"; the family is
   notified when the result becomes visible (daily job, notice kind RESULT). Unknown dates = shown, never hidden forever.
+
+### L3 batch 2 as built (2026-10-10)
+- Code homework (`kinds: CODE`): editor in the page (line numbers, Tab), Python via Pyodide (WebAssembly, jsdelivr
+  CDN, first run downloads it) and JavaScript in Web Workers with a time limit — nothing runs on our server. Author
+  tests (input → expected output, points) run in the student's browser before handing in; they always wait for the
+  instructor (a browser can be tampered with). Arduino: text checks (setup/loop, balanced brackets, functions used).
+- Automatic project checks (`toolCheck`, switch `autoCheck`), run on the server at hand-in: Scratch (shared link via
+  the Scratch project API, or .sb3), MakeCode (shared link, makecode.com API), App Inventor (.aia), Snap! (public link
+  or .xml), GitHub (public repo; optional env GITHUB_TOKEN for the rate limit), Arduino code. Rules from a fixed list
+  with points (`lib/assignments/tool-checks.ts`, tests `tests/tool-checks.test.ts`; fetchers `tool-fetch.ts`, 10 s
+  timeout, 15 MB limit). If a project cannot be read the instructor grades it. Tinkercad / Wokwi / Code.org = instructor.
+- Projects gallery `/dashboard/gallery`: instructor ticks "show in the gallery" when grading; visibility = homework
+  rule `gallery` (own / group / everyone); first name only; "no marketing" students never outside their group;
+  emoji reactions only (`GalleryReaction`, 👏 ❤️ 🤩 🔥 ⭐). Gallery images open through the access-checked files route.
+- Copying alert: the grading dialog lists classmates whose code / written answer for the same homework is ≥ 80 %
+  alike (comments, spaces and case ignored).
+- Voice feedback: the instructor records up to 2 minutes in the grading dialog (private Cloudinary, per hand-in
+  folder); the student and parent play it in the homework (hidden while the grade is hidden).
+- Schema (additive): AssignmentSubmission.code / codeResults / toolResult / feedbackAudio / galleryStatus / galleryAt,
+  model GalleryReaction. e2e section 33.
   view log, homework list for parents (comes with L3).
 
 ## 11. Owner answers (2026-10-08)

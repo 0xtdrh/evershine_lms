@@ -6,6 +6,7 @@
 }
 @layer utilities{@media screen{
 :where(.dark) .bg-slate-700:where(:not(:is(.keep-light,[data-document-page],[data-pdf-page],#challan-container) *):not(:is(.keep-light,[data-document-page],[data-pdf-page],#challan-container))){background-color:oklch(37.2% 0.044 257.287)}
+:where(.dark) .bg-slate-800:where(:not(:is(.keep-light,[data-document-page],[data-pdf-page],#challan-container) *):not(:is(.keep-light,[data-document-page],[data-pdf-page],#challan-container))){background-color:oklch(27.9% 0.041 260.031)}
 @media (hover:hover){:where(.dark) .hover\:bg-slate-800:where(:not(:is(.keep-light,[data-document-page],[data-pdf-page],#challan-container) *):not(:is(.keep-light,[data-document-page],[data-pdf-page],#challan-container))):hover{background-color:oklch(27.9% 0.041 260.031)}}
 :where(.dark) .to-slate-800:where(:not(:is(.keep-light,[data-document-page],[data-pdf-page],#challan-container) *):not(:is(.keep-light,[data-document-page],[data-pdf-page],#challan-container))){--tw-gradient-to:oklch(27.9% 0.041 260.031)}
 :where(.dark) .bg-slate-900:where(:not(:is(.keep-light,[data-document-page],[data-pdf-page],#challan-container) *):not(:is(.keep-light,[data-document-page],[data-pdf-page],#challan-container))){background-color:oklch(20.8% 0.042 265.755)}

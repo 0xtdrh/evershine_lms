@@ -20,9 +20,10 @@ import { visibleTo } from '@/lib/curriculum/blocks'
 import { groupLessons, studentLessonGroups, studentLessonAccess, studentInGroup, canManageGroupLessons } from '@/lib/lms/engine'
 import { getLmsSettings } from '@/lib/lms/settings'
 import { ageOn, cairoYmd } from '@/lib/dates/cairo'
+import { runToolCheck } from './tool-fetch'
 import {
   assignmentDataSchema, canSubmit, finalScore, gradeQuestions, manualKinds, manualMax, penaltyFor, percentOf,
-  questionsMax, resolvePolicy, rubricScore, stripForStudent, totalMax, POLICY_DEFAULTS, released, releaseAt,
+  questionsMax, resolvePolicy, rubricScore, stripForStudent, totalMax, POLICY_DEFAULTS, released, releaseAt, codeTestsMax, autoMax, similarity,
   type AssignmentData, type AssignmentPolicy, type Answers, type SubmitCheck,
 } from './rules'
 
@@ -42,6 +43,8 @@ export async function policyForGroup(groupId: string): Promise<AssignmentPolicy>
 }
 
 export const submissionsFolder = (studentId: string) => `${getBaseUploadFolder()}/submissions/${studentId}`
+/** Instructor voice notes for one hand-in. */
+export const feedbackFolder = (submissionId: string) => `${getBaseUploadFolder()}/feedback/${submissionId}`
 
 // ───────────────────────── reading assignments ─────────────────────────
 
@@ -116,6 +119,8 @@ const submissionView = (s: Prisma.AssignmentSubmissionGetPayload<object> | null)
   autoScore: s.autoScore, autoDetail: s.status === 'GRADED' ? s.autoDetail : null, score: s.score, maxScore: s.maxScore,
   rubricScores: s.rubricScores, feedback: s.feedback, late: s.late, latePenaltyPct: s.latePenaltyPct,
   submittedAt: s.submittedAt, gradedAt: s.gradedAt, updatedAt: s.updatedAt,
+  code: s.code, codeResults: s.codeResults, toolResult: s.status === 'GRADED' ? s.toolResult : null,
+  feedbackAudio: s.feedbackAudio ? `/api/assignments/files/${s.id}?audio=1` : null, galleryStatus: s.galleryStatus,
 }
 
 /** "My assignments": every open assignment of the student's groups with status, due date and grade. */
@@ -174,13 +179,13 @@ export async function studentAssignment(studentId: string, groupId: string, bloc
   const vis = visibility(policy, { dueAt, nextSessionAt: a.nextSessionAt }, sub)
   let view = submissionView(sub)
   // grade, feedback, rubric choices and question ticks stay hidden until their release time
-  if (view && view.status === 'GRADED' && !vis.grades) view = { ...view, score: null, autoScore: null, autoDetail: null, rubricScores: null, feedback: null }
+  if (view && view.status === 'GRADED' && !vis.grades) view = { ...view, score: null, autoScore: null, autoDetail: null, rubricScores: null, feedback: null, toolResult: null, feedbackAudio: null }
   const answerKey = vis.answers ? Object.fromEntries(data.questions.map((q) => [q.id, { correct: q.correct, tolerance: q.tolerance ?? null }])) : null
   return {
     ok: true,
     value: {
       blockId, sessionId: b.sessionId, groupId, titleEn: b.titleEn, titleAr: b.titleAr,
-      assignment: { ...stripForStudent(data), maxScore: totalMax(data), questionsMax: questionsMax(data.questions), manualMax: manualMax(data) },
+      assignment: { ...stripForStudent(data), maxScore: totalMax(data), questionsMax: questionsMax(data.questions), autoMax: autoMax(data), manualMax: manualMax(data) },
       submission: view, dueAt, policy, canSubmit: check,
       answerKey, gradesHiddenUntil: view?.status === 'GRADED' && !vis.grades ? vis.gradesAt : null,
       answersAt: !vis.answers && data.questions.length && policy.showAnswers !== 'NEVER' ? vis.answersAt : null,
@@ -197,6 +202,9 @@ export interface HandIn {
   links?: string[]
   files?: { publicId: string; resourceType: 'image' | 'video' | 'raw'; format?: string; bytes?: number; originalName?: string }[]
   answers?: Answers
+  /** batch 2: code from the editor + the browser's test run [{ id, passed, output }] */
+  code?: string | null
+  codeResults?: { id: string; passed: boolean; output?: string }[]
 }
 
 /**
@@ -222,10 +230,12 @@ export async function saveSubmission(studentId: string, groupId: string, blockId
   const text = input.text?.slice(0, 20000) ?? null
   if (text && !kinds.includes('TEXT')) return fail('INVALID', 'This assignment does not take text')
   const answers = data.questions.length ? (input.answers ?? {}) : null
+  const code = data.kinds.includes('CODE') ? (input.code ?? '').slice(0, 100_000) || null : null
+  if (input.code && !data.kinds.includes('CODE')) return fail('INVALID', 'This assignment does not take code')
 
   const existing = await prisma.assignmentSubmission.findUnique({ where: { blockId_studentId_classSectionId: { blockId, studentId, classSectionId: groupId } } })
   if (existing && (existing.status === 'SUBMITTED' || existing.status === 'GRADED') && !submit) return fail('LOCKED', 'Already handed in')
-  const base = { text, links: links as Prisma.InputJsonValue, files: files as unknown as Prisma.InputJsonValue, answers: (answers ?? undefined) as Prisma.InputJsonValue | undefined }
+  const base = { text, code, links: links as Prisma.InputJsonValue, files: files as unknown as Prisma.InputJsonValue, answers: (answers ?? undefined) as Prisma.InputJsonValue | undefined }
 
   if (!submit) {
     await prisma.assignmentSubmission.upsert({
@@ -237,17 +247,25 @@ export async function saveSubmission(studentId: string, groupId: string, blockId
   }
 
   if (!ctx.canSubmit.ok) return fail(ctx.canSubmit.code!, ctx.canSubmit.message!)
-  const hasWork = !!text || links.length > 0 || files.length > 0 || (answers && Object.keys(answers).length > 0)
+  const hasWork = !!text || !!code || links.length > 0 || files.length > 0 || (answers && Object.keys(answers).length > 0)
   if (!hasWork && !(kinds.length === 1 && kinds[0] === 'IN_CLASS')) return fail('EMPTY', 'Nothing to hand in yet')
 
   const policy = ctx.policy
   const late = ctx.canSubmit.late && policy.late !== 'ALLOWED'
   const pen = penaltyFor(ctx.canSubmit.late, policy)
   const auto = data.questions.length ? gradeQuestions(data.questions, answers ?? {}) : null
-  const onlyAuto = data.gradingMode === 'AUTO' && kinds.length === 0
+  // code tests ran in the student's browser: they count, but the instructor always confirms (could be tampered with)
+  const testIds = new Set((data.code?.tests ?? []).map((t) => t.id))
+  const codeResults = codeTestsMax(data) > 0 ? (input.codeResults ?? []).filter((r) => testIds.has(r.id)).slice(0, 30).map((r) => ({ id: r.id, passed: !!r.passed, output: String(r.output ?? '').slice(0, 500) })) : null
+  const codeScore = codeResults ? (data.code?.tests ?? []).filter((t) => codeResults.some((r) => r.id === t.id && r.passed)).reduce((sum, t) => sum + t.points, 0) : 0
+  // tool project checks run here on the server (Scratch / MakeCode / App Inventor / Snap! / GitHub / Arduino)
+  const tool = data.autoCheck && data.toolCheck ? await runToolCheck(data.toolCheck, { links, files, code }) : null
+  const autoTotal = (auto?.score ?? 0) + codeScore + (tool?.score ?? 0)
+  const hasAuto = !!auto || !!codeResults || !!tool
+  const onlyAuto = data.gradingMode === 'AUTO' && kinds.length === 0 && !codeResults && (!tool || tool.ok)
   const max = totalMax(data)
   const status = onlyAuto ? 'GRADED' : 'SUBMITTED'
-  const score = onlyAuto ? finalScore(auto?.score ?? 0, 0, pen) : null
+  const score = onlyAuto ? finalScore(autoTotal, 0, pen) : null
   const history = [
     ...(((existing?.history as unknown[]) ?? []) as unknown[]),
     ...(existing && existing.status !== 'DRAFT' ? [{ attempt: existing.attempt, status: existing.status, text: existing.text, links: existing.links, files: existing.files, answers: existing.answers, score: existing.score, feedback: existing.feedback, submittedAt: existing.submittedAt }] : []),
@@ -257,12 +275,14 @@ export async function saveSubmission(studentId: string, groupId: string, blockId
     where: { blockId_studentId_classSectionId: { blockId, studentId, classSectionId: groupId } },
     create: {
       blockId, sessionId: ctx.sessionId, classSectionId: groupId, studentId, ...base, status, attempt: 1,
-      autoScore: auto?.score ?? null, autoDetail: (auto?.detail ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+      autoScore: hasAuto ? autoTotal : null, autoDetail: (auto?.detail ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+      codeResults: (codeResults ?? undefined) as unknown as Prisma.InputJsonValue | undefined, toolResult: (tool ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
       score, maxScore: max, late, latePenaltyPct: pen || null, submittedAt: new Date(), submittedByUserId: byUserId,
       ...(onlyAuto ? { gradedAt: new Date() } : {}),
     },
     update: {
-      ...base, status, attempt: { increment: 1 }, autoScore: auto?.score ?? null, autoDetail: (auto?.detail ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+      ...base, status, attempt: { increment: 1 }, autoScore: hasAuto ? autoTotal : null, autoDetail: (auto?.detail ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+      codeResults: (codeResults ?? Prisma.DbNull) as unknown as Prisma.InputJsonValue, toolResult: (tool ?? Prisma.DbNull) as unknown as Prisma.InputJsonValue,
       score, maxScore: max, late, latePenaltyPct: pen || null, submittedAt: new Date(), submittedByUserId: byUserId,
       rubricScores: Prisma.DbNull, feedback: onlyAuto ? null : existing?.feedback ?? null, gradedAt: onlyAuto ? new Date() : null, gradedById: null,
       history: history as Prisma.InputJsonValue,
@@ -318,9 +338,21 @@ export async function staffSubmission(submissionId: string) {
   const b = await prisma.curriculumBlock.findUnique({ where: { id: s.blockId } })
   const data = parseAssignment(b?.data)
   const student = await prisma.student.findUnique({ where: { id: s.studentId }, select: { firstName: true, lastName: true, registrationNumber: true } })
+  // classmates' hand-ins of the same homework that look copied (code or written answer, ≥ 80% alike)
+  const mine = s.code || s.text || ''
+  const similar: { name: string; percent: number }[] = []
+  if (mine.trim().length >= 40) {
+    const others = await prisma.assignmentSubmission.findMany({ where: { blockId: s.blockId, classSectionId: s.classSectionId, id: { not: s.id }, status: { not: 'DRAFT' } }, select: { studentId: true, code: true, text: true } })
+    const names = await prisma.student.findMany({ where: { id: { in: others.map((o) => o.studentId) } }, select: { id: true, firstName: true, lastName: true } })
+    for (const o of others) {
+      const pct = Math.round(similarity(mine, o.code || o.text || '') * 100)
+      if (pct >= 80) { const n = names.find((x) => x.id === o.studentId); similar.push({ name: `${n?.firstName ?? ''} ${n?.lastName ?? ''}`.trim(), percent: pct }) }
+    }
+  }
   return {
-    submission: { ...submissionView(s), autoDetail: s.autoDetail, history: s.history, submittedByUserId: s.submittedByUserId },
-    assignment: data ? { ...data, maxScore: totalMax(data), questionsMax: questionsMax(data.questions), manualMax: manualMax(data) } : null,
+    similar: similar.sort((a, b) => b.percent - a.percent),
+    submission: { ...submissionView(s), autoDetail: s.autoDetail, toolResult: s.toolResult, history: s.history, submittedByUserId: s.submittedByUserId },
+    assignment: data ? { ...data, maxScore: totalMax(data), questionsMax: questionsMax(data.questions), autoMax: autoMax(data), manualMax: manualMax(data) } : null,
     titleEn: b?.titleEn ?? null, titleAr: b?.titleAr ?? null, student, classSectionId: s.classSectionId, studentId: s.studentId,
   }
 }
@@ -334,6 +366,10 @@ export interface GradeInput {
   autoOverride?: number | null
   overrideReason?: string | null
   feedback?: string | null
+  /** batch 2: show this project in the gallery (true) / take it out (false) */
+  gallery?: boolean
+  /** batch 2: instructor voice note (uploaded to feedbackFolder), null = remove */
+  feedbackAudio?: { publicId: string; resourceType: 'video' | 'raw'; format?: string; seconds?: number } | null
 }
 
 export async function gradeSubmission(user: { id: string; role: string; campusId?: string | null }, submissionId: string, input: GradeInput): Promise<Outcome<{ score: number | null; status: string }>> {
@@ -345,10 +381,15 @@ export async function gradeSubmission(user: { id: string; role: string; campusId
   const data = parseAssignment(b?.data)
   if (!data) return fail('NOT_FOUND', 'Assignment not found')
   const feedback = input.feedback?.trim().slice(0, 5000) || null
+  if (input.feedbackAudio && !input.feedbackAudio.publicId.startsWith(`${feedbackFolder(s.id)}/`)) return fail('INVALID', 'Voice note not found')
+  const extras = {
+    ...(input.feedbackAudio !== undefined ? { feedbackAudio: (input.feedbackAudio ?? Prisma.DbNull) as Prisma.InputJsonValue } : {}),
+    ...(input.gallery !== undefined ? { galleryStatus: input.gallery ? 'APPROVED' : null, galleryAt: input.gallery ? new Date() : null } : {}),
+  }
 
   if (input.action === 'return') {
     if (!feedback) return fail('INVALID', 'Write what needs to change')
-    await prisma.assignmentSubmission.update({ where: { id: s.id }, data: { status: 'RETURNED', feedback, gradedAt: new Date(), gradedById: user.id, score: null } })
+    await prisma.assignmentSubmission.update({ where: { id: s.id }, data: { status: 'RETURNED', feedback, gradedAt: new Date(), gradedById: user.id, score: null, ...extras } })
     await notifyGraded(s.studentId, b?.titleEn || 'Homework', 'returned')
     return { ok: true, value: { score: null, status: 'RETURNED' } }
   }
@@ -375,15 +416,15 @@ export async function gradeSubmission(user: { id: string; role: string; campusId
   let autoDetail = s.autoDetail as Prisma.InputJsonValue | undefined
   if (input.autoOverride !== undefined && input.autoOverride !== null && input.autoOverride !== s.autoScore) {
     if (!input.overrideReason?.trim()) return fail('INVALID', 'Write why the automatic score is changed')
-    const qmax = questionsMax(data.questions)
-    if (input.autoOverride < 0 || input.autoOverride > qmax) return fail('INVALID', `Question points must be 0 to ${qmax}`)
+    const qmax = autoMax(data)
+    if (input.autoOverride < 0 || input.autoOverride > qmax) return fail('INVALID', `Automatic points must be 0 to ${qmax}`)
     auto = input.autoOverride
     autoDetail = { ...(typeof s.autoDetail === 'object' && s.autoDetail ? { items: s.autoDetail } : {}), override: { from: s.autoScore, to: auto, reason: input.overrideReason.trim().slice(0, 500), by: user.id, at: new Date().toISOString() } } as Prisma.InputJsonValue
   }
   const score = finalScore(auto, manual, s.latePenaltyPct ?? 0)
   await prisma.assignmentSubmission.update({
     where: { id: s.id },
-    data: { status: 'GRADED', score, maxScore: totalMax(data), autoScore: auto, autoDetail, rubricScores, feedback, gradedAt: new Date(), gradedById: user.id },
+    data: { status: 'GRADED', score, maxScore: totalMax(data), autoScore: auto, autoDetail, rubricScores, feedback, gradedAt: new Date(), gradedById: user.id, ...extras },
   })
   // tell the family now, or later from the daily job when the grade's release time comes
   if (await resultVisibleNow(s.classSectionId, s.blockId, s.studentId)) {

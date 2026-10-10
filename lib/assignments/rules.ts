@@ -9,8 +9,10 @@
  */
 
 import { z } from 'zod'
+import { toolCheckSchema, toolMax } from './tool-checks'
 
-export const SUBMISSION_KINDS = ['TEXT', 'FILE', 'PHOTO', 'VIDEO', 'LINK', 'IN_CLASS'] as const
+export const SUBMISSION_KINDS = ['TEXT', 'FILE', 'PHOTO', 'VIDEO', 'LINK', 'IN_CLASS', 'CODE'] as const
+export const CODE_LANGUAGES = ['python', 'javascript', 'arduino'] as const
 export type SubmissionKind = (typeof SUBMISSION_KINDS)[number]
 export const QUESTION_TYPES = ['SINGLE', 'MULTI', 'TRUE_FALSE', 'NUMBER', 'SHORT'] as const
 export const GRADING_MODES = ['MANUAL', 'AUTO', 'AUTO_REVIEW'] as const
@@ -52,13 +54,32 @@ export const assignmentDataSchema = z.object({
   rubric: z.object({ nameEn: z.string().default(''), nameAr: z.string().default(''), criteria: rubricCriteriaSchema, kidStars: z.boolean().default(false) }).nullish(),
   gradingMode: z.enum(GRADING_MODES).default('MANUAL'),
   finalProject: z.boolean().default(false),
+  /** batch 2: code written in the editor; Python / JavaScript tests run in the student's browser */
+  code: z.object({
+    language: z.enum(CODE_LANGUAGES),
+    starter: z.string().max(20000).default(''),
+    tests: z.array(z.object({ id: z.string().min(1).max(40), input: z.string().max(5000).default(''), expected: z.string().max(5000), points: z.number().min(0).max(100).default(1) })).max(30).default([]),
+  }).nullish(),
+  /** batch 2: automatic checks of the tool project (link / file / Arduino code); can be switched off */
+  toolCheck: toolCheckSchema.nullish(),
+  autoCheck: z.boolean().default(true),
 }).refine((d) => d.kinds.length > 0 || d.questions.length > 0, 'Choose at least one way to hand in, or add questions')
-  .refine((d) => d.gradingMode === 'MANUAL' || d.questions.length > 0, 'Automatic grading needs questions with correct answers')
+  .refine((d) => d.gradingMode === 'MANUAL' || d.questions.length > 0 || (d.autoCheck && !!d.toolCheck) || codeTestsMax(d) > 0, 'Automatic grading needs questions, code tests or tool checks')
+  .refine((d) => !d.kinds.includes('CODE') || !!d.code, 'Choose the code language')
   .refine((d) => d.scale !== 'RUBRIC' || !manualKinds(d.kinds).length || !!d.rubric, 'Choose a rubric')
 export type AssignmentData = z.infer<typeof assignmentDataSchema>
 
 /** Kinds the instructor has to look at ("done in class" too: the instructor ticks it). */
-export const manualKinds = (kinds: readonly string[]) => kinds.filter((k) => (SUBMISSION_KINDS as readonly string[]).includes(k))
+export const manualKinds = (kinds: readonly string[]) => kinds.filter((k) => k !== 'CODE' && (SUBMISSION_KINDS as readonly string[]).includes(k))
+
+/** Points of the code tests (Arduino has no tests: its checks are tool rules). */
+export function codeTestsMax(a: { kinds?: string[]; code?: { language?: string; tests?: { points?: number }[] } | null }): number {
+  if (!a.kinds?.includes('CODE') || !a.code || a.code.language === 'arduino') return 0
+  return (a.code.tests ?? []).reduce((s, t) => s + (t.points ?? 0), 0)
+}
+export const toolChecksMax = (a: { autoCheck?: boolean; toolCheck?: Parameters<typeof toolMax>[0] }) => (a.autoCheck ? toolMax(a.toolCheck) : 0)
+/** Everything graded by the computer (questions + code tests + tool checks). */
+export const autoMax = (a: AssignmentData) => questionsMax(a.questions) + codeTestsMax(a) + toolChecksMax(a)
 
 export const rubricMax = (criteria: Criterion[]) => criteria.reduce((s, c) => s + Math.max(...c.levels.map((l) => l.points)), 0)
 export const questionsMax = (qs: Question[]) => qs.reduce((s, q) => s + q.points, 0)
@@ -70,7 +91,7 @@ export function manualMax(a: AssignmentData): number {
   if (a.scale === 'STARS') return 3
   return a.maxPoints
 }
-export const totalMax = (a: AssignmentData) => questionsMax(a.questions) + manualMax(a)
+export const totalMax = (a: AssignmentData) => autoMax(a) + manualMax(a)
 
 /** Copy for students: no correct answers / tolerances. */
 export function stripForStudent(a: AssignmentData) {
@@ -140,6 +161,8 @@ export const LATE_RULES = ['ALLOWED', 'MARK_LATE', 'CLOSED'] as const
 export const ANSWER_RELEASE = ['NEVER', 'AFTER_SUBMIT', 'AFTER_DUE', 'AFTER_NEXT_SESSION'] as const
 /** When they see the grade + feedback (owner 2026-10-10: e.g. after the session that follows the homework). */
 export const GRADE_RELEASE = ['IMMEDIATE', 'AFTER_DUE', 'AFTER_NEXT_SESSION'] as const
+/** Who sees approved projects in the gallery: the student only / their group / everyone at TechNova. */
+export const GALLERY_SCOPES = ['OWN', 'GROUP', 'ALL'] as const
 export interface AssignmentPolicy {
   late: (typeof LATE_RULES)[number]
   latePenaltyPct: number
@@ -151,12 +174,14 @@ export interface AssignmentPolicy {
   parentCanSubmit: boolean
   showAnswers: (typeof ANSWER_RELEASE)[number]
   showGrades: (typeof GRADE_RELEASE)[number]
+  gallery: (typeof GALLERY_SCOPES)[number]
 }
-export const POLICY_DEFAULTS: AssignmentPolicy = { late: 'MARK_LATE', latePenaltyPct: 0, resubmit: true, maxAttempts: 2, excuseExtensionDays: 7, parentCanSubmit: true, showAnswers: 'AFTER_DUE', showGrades: 'IMMEDIATE' }
+export const POLICY_DEFAULTS: AssignmentPolicy = { late: 'MARK_LATE', latePenaltyPct: 0, resubmit: true, maxAttempts: 2, excuseExtensionDays: 7, parentCanSubmit: true, showAnswers: 'AFTER_DUE', showGrades: 'IMMEDIATE', gallery: 'GROUP' }
 export const policySchema = z.object({
   late: z.enum(LATE_RULES), latePenaltyPct: z.number().min(0).max(100), resubmit: z.boolean(),
   maxAttempts: z.number().int().min(1).max(10), excuseExtensionDays: z.number().int().min(0).max(60), parentCanSubmit: z.boolean(),
   showAnswers: z.enum(ANSWER_RELEASE).default('AFTER_DUE'), showGrades: z.enum(GRADE_RELEASE).default('IMMEDIATE'),
+  gallery: z.enum(GALLERY_SCOPES).default('GROUP'),
 })
 
 export function resolvePolicy(company?: Partial<AssignmentPolicy> | null, level?: Partial<AssignmentPolicy> | null, group?: Partial<AssignmentPolicy> | null): AssignmentPolicy {
@@ -200,4 +225,28 @@ export function releaseAt(rule: string, o: { dueAt: Date | null; nextSessionAt: 
   if (rule === 'AFTER_DUE') return o.dueAt
   if (rule === 'AFTER_NEXT_SESSION') return o.nextSessionAt
   return null
+}
+
+// ───────────────────────── similarity (code / text copied from a classmate) ─────────────────────────
+
+/** Normalised text for comparing two hand-ins: comments, spaces and case ignored. */
+export function similarityText(s: string): string {
+  return s.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|\s)(#|\/\/).*$/gm, ' ').toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+function shingles(s: string, n = 5): Set<string> {
+  const out = new Set<string>()
+  const t = similarityText(s)
+  if (t.length <= n) { if (t) out.add(t); return out }
+  for (let i = 0; i <= t.length - n; i++) out.add(t.slice(i, i + n))
+  return out
+}
+
+/** 0..1 (Jaccard of 5-character pieces). Short texts (< 40 chars) are never compared. */
+export function similarity(a: string, b: string): number {
+  if (similarityText(a).length < 40 || similarityText(b).length < 40) return 0
+  const x = shingles(a), y = shingles(b)
+  let common = 0
+  for (const v of x) if (y.has(v)) common++
+  return common / (x.size + y.size - common || 1)
 }

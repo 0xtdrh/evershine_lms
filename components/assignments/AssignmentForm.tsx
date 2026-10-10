@@ -7,12 +7,15 @@ import { fetchApi } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
+import { TOOLS, TOOL_RULES } from '@/lib/assignments/tool-checks'
 
 type Q = { id: string; type: string; textEn: string; textAr: string; options: { id: string; textEn: string; textAr: string }[]; correct: (string | number)[]; tolerance?: number; points: number }
 interface Rubric { id: string; nameEn: string; nameAr: string; criteria: unknown[]; kidStars: boolean; maxPoints: number }
 
-export const KIND_LABELS: Record<string, string> = { TEXT: 'Written answer', FILE: 'File', PHOTO: 'Photos', VIDEO: 'Video', LINK: 'Link (Scratch, Tinkercad, GitHub…)', IN_CLASS: 'Done in class (instructor ticks)' }
+export const KIND_LABELS: Record<string, string> = { TEXT: 'Written answer', FILE: 'File', PHOTO: 'Photos', VIDEO: 'Video', LINK: 'Link (Scratch, MakeCode, GitHub…)', IN_CLASS: 'Done in class (instructor ticks)', CODE: 'Code in the editor (Python / JavaScript / Arduino)' }
+const TOOL_LABELS: Record<string, string> = { SCRATCH: 'Scratch (shared link or .sb3)', MAKECODE: 'MakeCode micro:bit / Arcade (shared link)', APPINVENTOR: 'App Inventor (.aia file)', SNAP: 'Snap! (public link or .xml)', GITHUB: 'GitHub (public repository link)', ARDUINO: 'Arduino code (editor or .ino)' }
 const Q_LABELS: Record<string, string> = { SINGLE: 'One correct choice', MULTI: 'Several correct choices', TRUE_FALSE: 'True / false', NUMBER: 'Number', SHORT: 'Short answer (word)' }
 const uid = () => Math.random().toString(36).slice(2, 10)
 const area = 'min-h-[110px] w-full rounded-md border border-slate-200 bg-white p-2 text-sm'
@@ -44,6 +47,9 @@ export function AssignmentForm({ data, onChange, subjectId }: { data: Record<str
           ))}
         </div>
       </div>
+
+      {kinds.includes('CODE') && <CodeConfig data={data} set={set} />}
+      <ToolConfig data={data} set={set} />
 
       <div className="space-y-2 rounded-lg border border-slate-200 p-3">
         <div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">Questions (graded automatically)</p><Button type="button" size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={addQ}><Plus className="h-3 w-3" /> Question</Button></div>
@@ -129,6 +135,82 @@ export function AssignmentForm({ data, onChange, subjectId }: { data: Record<str
         )}
         <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!data.finalProject} onChange={(e) => set({ finalProject: e.target.checked })} /> Final project of the level (fills the &quot;project&quot; score)</label>
       </div>
+    </div>
+  )
+}
+
+type Test = { id: string; input: string; expected: string; points: number }
+type Code = { language: string; starter: string; tests: Test[] }
+
+function CodeConfig({ data, set }: { data: Record<string, unknown>; set: (p: Record<string, unknown>) => void }) {
+  const code = (data.code as Code | null) ?? { language: 'python', starter: '', tests: [] }
+  const setCode = (p: Partial<Code>) => set({ code: { ...code, ...p } })
+  return (
+    <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs font-semibold text-slate-500">Code</p>
+        <Select value={code.language} onValueChange={(v) => setCode({ language: v })}>
+          <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="python">Python</SelectItem><SelectItem value="javascript">JavaScript</SelectItem><SelectItem value="arduino">Arduino (C++)</SelectItem></SelectContent>
+        </Select>
+      </div>
+      <textarea dir="ltr" className="min-h-[90px] w-full rounded-md border border-slate-200 bg-white p-2 font-mono text-xs" placeholder="Starting code the student sees (optional)" value={code.starter} onChange={(e) => setCode({ starter: e.target.value })} />
+      {code.language === 'arduino' ? (
+        <p className="text-xs text-slate-500">Arduino code cannot run here: add &quot;Arduino code&quot; automatic checks below (setup/loop, brackets, functions used).</p>
+      ) : (
+        <div className="space-y-1">
+          <p className="text-xs text-slate-500">Tests: what the program must print for an input (one value per line; Python <code>input()</code>, JavaScript <code>readLine()</code>). They run in the student&apos;s browser; you confirm the score.</p>
+          {code.tests.map((t, i) => (
+            <div key={t.id} className="flex flex-wrap items-start gap-2">
+              <span className="pt-2 text-xs font-bold text-slate-500">T{i + 1}</span>
+              <textarea dir="ltr" className="h-14 flex-1 rounded-md border border-slate-200 bg-white p-1 font-mono text-xs" placeholder="input" value={t.input} onChange={(e) => setCode({ tests: code.tests.map((x) => (x.id === t.id ? { ...x, input: e.target.value } : x)) })} />
+              <textarea dir="ltr" className="h-14 flex-1 rounded-md border border-slate-200 bg-white p-1 font-mono text-xs" placeholder="expected output" value={t.expected} onChange={(e) => setCode({ tests: code.tests.map((x) => (x.id === t.id ? { ...x, expected: e.target.value } : x)) })} />
+              <Input type="number" min={0} className="h-8 w-16" value={t.points} onChange={(e) => setCode({ tests: code.tests.map((x) => (x.id === t.id ? { ...x, points: Number(e.target.value) || 0 } : x)) })} />
+              <button type="button" aria-label="Remove test" onClick={() => setCode({ tests: code.tests.filter((x) => x.id !== t.id) })}><Trash2 className="h-4 w-4 text-slate-400" /></button>
+            </div>
+          ))}
+          <Button type="button" size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setCode({ tests: [...code.tests, { id: uid(), input: '', expected: '', points: 1 }] })}><Plus className="h-3 w-3" /> Test</Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+type Rule = { id: string; kind: string; value?: string | number | null; points: number }
+
+function ToolConfig({ data, set }: { data: Record<string, unknown>; set: (p: Record<string, unknown>) => void }) {
+  const tc = data.toolCheck as { tool: string; rules: Rule[] } | null | undefined
+  const on = data.autoCheck !== false
+  const [chosen, setChosen] = useState<string>(tc?.tool ?? 'SCRATCH')
+  const tool = (tc?.tool ?? chosen) as keyof typeof TOOL_RULES
+  const rules = tc?.rules ?? []
+  const setRules = (rs: Rule[]) => set({ toolCheck: rs.length ? { tool, rules: rs } : null })
+  return (
+    <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs font-semibold text-slate-500">Automatic project check</p>
+        <Select value={tool} onValueChange={(v) => { setChosen(v); set({ toolCheck: null }) }}>
+          <SelectTrigger className="h-8 w-72 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>{TOOLS.map((t) => <SelectItem key={t} value={t}>{TOOL_LABELS[t]}</SelectItem>)}</SelectContent>
+        </Select>
+        {rules.length > 0 && <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={on} onChange={(e) => set({ autoCheck: e.target.checked })} /> On</label>}
+      </div>
+      {rules.map((r) => {
+        const def = TOOL_RULES[tool].find((x) => x.kind === r.kind)
+        return (
+          <div key={r.id} className="flex flex-wrap items-center gap-2">
+            <Select value={r.kind} onValueChange={(k) => setRules(rules.map((x) => (x.id === r.id ? { ...x, kind: k, value: null } : x)))}>
+              <SelectTrigger className="h-8 w-72 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>{TOOL_RULES[tool].map((d) => <SelectItem key={d.kind} value={d.kind}>{d.labelEn}</SelectItem>)}</SelectContent>
+            </Select>
+            {def && def.param !== 'none' && <Input className="h-8 w-40" type={def.param === 'number' ? 'number' : 'text'} placeholder={def.param === 'number' ? 'N' : 'value'} value={r.value ?? ''} onChange={(e) => setRules(rules.map((x) => (x.id === r.id ? { ...x, value: def.param === 'number' ? Number(e.target.value) : e.target.value } : x)))} />}
+            <label className="flex items-center gap-1 text-xs">Points <Input type="number" min={0} className="h-8 w-16" value={r.points} onChange={(e) => setRules(rules.map((x) => (x.id === r.id ? { ...x, points: Number(e.target.value) || 0 } : x)))} /></label>
+            <button type="button" aria-label="Remove check" onClick={() => setRules(rules.filter((x) => x.id !== r.id))}><Trash2 className="h-4 w-4 text-slate-400" /></button>
+          </div>
+        )
+      })}
+      <Button type="button" size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setRules([...rules, { id: uid(), kind: TOOL_RULES[tool][0].kind, value: null, points: 1 }])}><Plus className="h-3 w-3" /> Check</Button>
+      <p className="text-[10px] text-slate-400">The project must be shared / public (Scratch &quot;Share&quot;, MakeCode &quot;Share&quot;, Snap! &quot;Publish&quot;, a public GitHub repo) or uploaded as a file — add &quot;Link&quot; or &quot;File&quot; above. If the check cannot read the project, the instructor grades it.</p>
     </div>
   )
 }

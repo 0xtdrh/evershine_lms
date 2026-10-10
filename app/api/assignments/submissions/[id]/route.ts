@@ -35,6 +35,8 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     rubricPicks: z.record(z.string(), z.number().int().min(0).max(10)).optional(),
     autoOverride: z.number().nullish(), overrideReason: z.string().max(500).nullish(),
     feedback: z.string().max(5000).nullish(),
+    gallery: z.boolean().optional(),
+    feedbackAudio: z.object({ publicId: z.string().min(1).max(300), resourceType: z.enum(['video', 'raw']), format: z.string().max(10).optional(), seconds: z.number().optional() }).nullable().optional(),
   }).safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
   const o = await gradeSubmission({ id: session.user.id, role: session.user.role, campusId: session.user.campusId }, id, parsed.data as never)

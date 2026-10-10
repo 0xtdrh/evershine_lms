@@ -1221,6 +1221,49 @@ api PUT /api/assignments/policies '{"company":{"late":"MARK_LATE","latePenaltyPc
 api PUT /api/platform/settings '{"modules":{"lms":false}}' >/dev/null
 rm -f "$LKJ" "$LPJ" "$TJ"
 
+echo "== 33. LMS L3 batch 2: code editor, Arduino checks, copying alert, projects gallery, reactions"
+E5=$(api POST /api/curriculum/levels/$CL "{\"copyFromId\":\"$E4\"}" | jq_ "d['data']['id']")
+S51=$(M "SELECT id FROM CurriculumSession WHERE editionId='$E5' AND number=1")
+PY=$(api POST /api/curriculum/sessions/$S51/blocks '{"type":"ASSIGNMENT","titleEn":"Add two numbers","data":{"kinds":["CODE"],"maxPoints":0,"gradingMode":"AUTO","code":{"language":"python","starter":"a = int(input())\n","tests":[{"id":"t1","input":"2\n3","expected":"5","points":2},{"id":"t2","input":"10\n5","expected":"15","points":3}]}}}' | jq_ "d['data']['id']")
+ARD=$(api POST /api/curriculum/sessions/$S51/blocks '{"type":"ASSIGNMENT","titleEn":"Blink","data":{"kinds":["CODE"],"maxPoints":0,"gradingMode":"AUTO","code":{"language":"arduino"},"toolCheck":{"tool":"ARDUINO","rules":[{"id":"r1","kind":"HAS_SETUP_LOOP","points":2},{"id":"r2","kind":"BALANCED","points":1},{"id":"r3","kind":"USES_FUNCTION","value":"digitalWrite","points":2}]}}}' | jq_ "d['data']['id']")
+check "code homework (Python tests) and Arduino homework (automatic checks) added" "$([ -n "$PY" ] && [ -n "$ARD" ] && echo yes)" "yes"
+check "code homework needs a language" "$(api POST /api/curriculum/sessions/$S51/blocks '{"type":"ASSIGNMENT","data":{"kinds":["CODE"]}}' | jq_ "d['success']")" "False"
+api PATCH /api/curriculum/editions/$E5 '{"action":"publish"}' >/dev/null
+api PATCH /api/groups/$LG/lessons '{"useLatest":true}' >/dev/null
+api POST /api/groups/$LG/students "{\"studentId\":\"$LO\"}" >/dev/null
+LOE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$LO' AND classSectionId='$LG'")
+api PUT /api/platform/settings '{"modules":{"lms":true}}' >/dev/null
+LKR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); LKJ=$(mktemp); login_jar "$(echo "$LKR" | jq_ "d['data']['loginId']")" "$(echo "$LKR" | jq_ "d['data']['password']")" "$LKJ" 10.0.1.61
+LOR=$(api POST /api/students/$LO/portal-password '{"target":"student"}'); LOJ=$(mktemp); login_jar "$(echo "$LOR" | jq_ "d['data']['loginId']")" "$(echo "$LOR" | jq_ "d['data']['password']")" "$LOJ" 10.0.1.62
+TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.63
+WPJ=$(mktemp); login_as 01066660099 Wallet2026A "$WPJ" >/dev/null
+put_as() { curl -s -b "$1" -X PUT -H 'Content-Type: application/json' -d "$2" $B/api/assignments/item; }
+PYCODE='a = int(input())\nb = int(input())\n# add them up\nresult = a + b\nprint(result)\nprint(\"done adding the two numbers together\")'
+check "Python hand-in with the browser's test run: 2 of 5 points, waits for the instructor (could be tampered)" "$(put_as "$LKJ" "{\"groupId\":\"$LG\",\"blockId\":\"$PY\",\"code\":\"$PYCODE\",\"codeResults\":[{\"id\":\"t1\",\"passed\":true},{\"id\":\"t2\",\"passed\":false},{\"id\":\"fake\",\"passed\":true}],\"submit\":true}" | jq_ "d['data']['status']")/$(M "SELECT CAST(autoScore AS SIGNED) FROM AssignmentSubmission WHERE blockId='$PY' AND studentId='$LK'")" "SUBMITTED/2"
+check "Arduino code checked on the server and graded at once (5/5)" "$(put_as "$LKJ" "{\"groupId\":\"$LG\",\"blockId\":\"$ARD\",\"code\":\"void setup() { pinMode(13, OUTPUT); }\\nvoid loop() { digitalWrite(13, HIGH); delay(500); }\",\"submit\":true}" | jq_ "(d['data']['status'], float(d['data']['score']))")" "('GRADED', 5.0)"
+check "broken Arduino code loses the bracket and function points (2/5)" "$(put_as "$LOJ" "{\"groupId\":\"$LG\",\"blockId\":\"$ARD\",\"code\":\"void setup() { pinMode(13, OUTPUT);\\nvoid loop() { analogWrite(9, 100); }\",\"submit\":true}" | jq_ "float(d['data']['score'])")" "2.0"
+put_as "$LOJ" "{\"groupId\":\"$LG\",\"blockId\":\"$PY\",\"code\":\"$(echo "$PYCODE" | sed 's/# add them up/# sum/')\",\"codeResults\":[{\"id\":\"t1\",\"passed\":true},{\"id\":\"t2\",\"passed\":true}],\"submit\":true}" >/dev/null
+SPY=$(M "SELECT id FROM AssignmentSubmission WHERE blockId='$PY' AND studentId='$LK'")
+check "instructor sees the copying alert (almost the same code as a classmate)" "$(curl -s -b "$TJ" $B/api/assignments/submissions/$SPY | jq_ "[x['name'] for x in d['data']['similar'] if x['percent']>=80]")" "['LessonOther E2e']"
+check "instructor confirms the code score and puts the project in the gallery" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d '{"action":"grade","gallery":true,"feedback":"Clean code"}' $B/api/assignments/submissions/$SPY | jq_ "float(d['data']['score'])")/$(M "SELECT galleryStatus FROM AssignmentSubmission WHERE id='$SPY'")" "2.0/APPROVED"
+check "a classmate (same group) sees it in the gallery" "$(curl -s -b "$LOJ" $B/api/gallery | jq_ "[i['firstName'] for i in d['data']]")" "['LessonKid']"
+check "a family from another group does not (gallery rule = group)" "$(curl -s -b "$WPJ" $B/api/gallery | jq_ "len(d['data'])")" "0"
+api PATCH /api/groups/$LG/assignments '{"policy":{"late":"MARK_LATE","latePenaltyPct":0,"resubmit":true,"maxAttempts":2,"excuseExtensionDays":7,"parentCanSubmit":true,"showAnswers":"AFTER_DUE","showGrades":"IMMEDIATE","gallery":"ALL"}}' >/dev/null
+check "gallery rule 'everyone' → the other family sees it too" "$(curl -s -b "$WPJ" $B/api/gallery | jq_ "len(d['data'])")" "1"
+M "UPDATE Student SET noMarketing=1 WHERE id='$LK'"
+check "a 'no marketing' student is never shown outside the group" "$(curl -s -b "$WPJ" $B/api/gallery | jq_ "len(d['data'])")/$(curl -s -b "$LOJ" $B/api/gallery | jq_ "len(d['data'])")" "0/1"
+M "UPDATE Student SET noMarketing=0 WHERE id='$LK'"
+curl -s -b "$LOJ" -X POST -H 'Content-Type: application/json' -d "{\"submissionId\":\"$SPY\",\"emoji\":\"\ud83d\udc4f\"}" $B/api/gallery/react >/dev/null
+check "emoji reaction counted" "$(M "SELECT COUNT(*) FROM GalleryReaction WHERE submissionId='$SPY'")/$(curl -s -b "$LKJ" $B/api/gallery | jq_ "sum(d['data'][0]['reactions'].values())")" "1/1"
+curl -s -b "$LOJ" -X POST -H 'Content-Type: application/json' -d "{\"submissionId\":\"$SPY\",\"emoji\":\"\ud83d\udc4f\"}" $B/api/gallery/react >/dev/null
+check "pressing it again removes it" "$(M "SELECT COUNT(*) FROM GalleryReaction WHERE submissionId='$SPY'")" "0"
+check "no written comments / unknown reactions" "$(curl -s -b "$LOJ" -X POST -H 'Content-Type: application/json' -d "{\"submissionId\":\"$SPY\",\"emoji\":\"nice job\"}" $B/api/gallery/react | jq_ "d['success']")" "False"
+check "voice note upload: instructor allowed (storage not set up locally), secretary refused" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ" -X POST $B/api/assignments/submissions/$SPY/audio)/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" -X POST $B/api/assignments/submissions/$SPY/audio)" "400/403"
+check "a voice note from outside its folder is refused" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d '{"action":"grade","feedbackAudio":{"publicId":"x/other/voice","resourceType":"video"}}' $B/api/assignments/submissions/$SPY | jq_ "d['success']")" "False"
+api PATCH /api/groups/$LG/assignments '{"policy":null}' >/dev/null
+api PUT /api/platform/settings '{"modules":{"lms":false}}' >/dev/null
+rm -f "$LKJ" "$LOJ" "$TJ" "$WPJ"
+
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

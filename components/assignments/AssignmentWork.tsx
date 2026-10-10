@@ -14,6 +14,8 @@ import { useI18n } from '@/lib/i18n/client'
 import { Markdown } from '@/components/curriculum/BlockView'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { CodeWork, useCodeRunner, type TestCase, type TestResult } from './CodeRunner'
+import { TOOL_RULES, type ToolCheck } from '@/lib/assignments/tool-checks'
 import { Camera, CheckCircle2, ClipboardList, FileText, Link2, Loader2, Paperclip, Send, Trash2, XCircle } from 'lucide-react'
 
 type Ans = string | string[] | number | null
@@ -22,8 +24,9 @@ interface Crit { id: string; titleEn: string; titleAr: string; levels: { labelEn
 interface FileRef { publicId: string; resourceType: 'image' | 'video' | 'raw'; format?: string; bytes?: number; originalName?: string; url?: string }
 interface Data {
   blockId: string; groupId: string; titleEn: string | null; titleAr: string | null; asParent: boolean; parentMaySubmit: boolean
-  assignment: { instructionsEn: string; instructionsAr: string; kinds: string[]; questions: QView[]; scale: string; maxPoints: number; rubric: { criteria: Crit[]; kidStars: boolean } | null; gradingMode: string; finalProject: boolean; maxScore: number }
-  submission: null | { status: string; attempt: number; text: string | null; links: string[] | null; files: FileRef[]; answers: Record<string, Ans> | null; score: number | null; maxScore: number | null; feedback: string | null; late: boolean; rubricScores: Record<string, number> | null; autoDetail: { id: string; correct: boolean }[] | { items?: { id: string; correct: boolean }[] } | null }
+  assignment: { instructionsEn: string; instructionsAr: string; kinds: string[]; questions: QView[]; scale: string; maxPoints: number; rubric: { criteria: Crit[]; kidStars: boolean } | null; gradingMode: string; finalProject: boolean; maxScore: number
+    code: { language: 'python' | 'javascript' | 'arduino'; starter: string; tests: TestCase[] } | null; toolCheck: ToolCheck | null; autoCheck: boolean }
+  submission: null | { status: string; attempt: number; code: string | null; codeResults: TestResult[] | null; toolResult: { ok: boolean; error?: string; detail: { id: string; kind: string; ok: boolean }[] } | null; feedbackAudio: string | null; galleryStatus: string | null; text: string | null; links: string[] | null; files: FileRef[]; answers: Record<string, Ans> | null; score: number | null; maxScore: number | null; feedback: string | null; late: boolean; rubricScores: Record<string, number> | null; autoDetail: { id: string; correct: boolean }[] | { items?: { id: string; correct: boolean }[] } | null }
   dueAt: string | null; policy: { maxAttempts: number; resubmit: boolean }; canSubmit: { ok: boolean; late: boolean; message?: string }
   answerKey: Record<string, { correct: (string | number)[]; tolerance: number | null }> | null
   gradesHiddenUntil: string | null; answersAt: string | null
@@ -54,6 +57,9 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
   const [links, setLinks] = useState<string[]>([])
   const [files, setFiles] = useState<FileRef[]>([])
   const [answers, setAnswers] = useState<Record<string, Ans>>({})
+  const [code, setCode] = useState('')
+  const [results, setResults] = useState<TestResult[] | null>(null)
+  const runner = useCodeRunner(data?.assignment.code?.language ?? 'python')
   const [again, setAgain] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)
@@ -62,16 +68,22 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
   useEffect(() => {
     if (!data) return
     const s = data.submission
-    setText(s?.text ?? ''); setLinks(s?.links ?? []); setFiles(s?.files ?? []); setAnswers(s?.answers ?? {}); dirty.current = false
+    setText(s?.text ?? ''); setLinks(s?.links ?? []); setFiles(s?.files ?? []); setAnswers(s?.answers ?? {}); setCode(s?.code ?? data.assignment.code?.starter ?? ''); setResults(s?.codeResults ?? null); dirty.current = false
   }, [data])
 
   const status = data?.submission?.status ?? 'TODO'
   const mayAct = !!data && (!data.asParent || data.parentMaySubmit)
   const editable = mayAct && (status === 'TODO' || status === 'DRAFT' || status === 'RETURNED' || again) && (data?.canSubmit.ok || status === 'DRAFT' || status === 'TODO')
-  const body = (submit: boolean) => JSON.stringify({ groupId, blockId, studentId: studentId ?? null, text: text || null, links: links.filter(Boolean), files: files.map(({ url: _u, ...f }) => f), answers, submit })
+  const body = (submit: boolean, codeResults?: TestResult[] | null) => JSON.stringify({ groupId, blockId, studentId: studentId ?? null, text: text || null, links: links.filter(Boolean), files: files.map(({ url: _u, ...f }) => f), answers, code: data?.assignment.kinds.includes('CODE') ? code : undefined, codeResults: codeResults ?? undefined, submit })
 
   const save = useMutation({
-    mutationFn: (submit: boolean) => fetchApi<{ status: string; score: number | null }>('/api/assignments/item', { method: 'PUT', body: body(submit) }),
+    mutationFn: async (submit: boolean) => {
+      // the author's code tests run in this browser right before handing in
+      let res = results
+      const c = data?.assignment.code
+      if (submit && c && c.language !== 'arduino' && c.tests.length) { res = await runner.runTests(code, c.tests); setResults(res) }
+      return fetchApi<{ status: string; score: number | null }>('/api/assignments/item', { method: 'PUT', body: body(submit, res) })
+    },
     onSuccess: (r, submit) => {
       dirty.current = false
       if (submit) { notify.success(t('hw.handedIn')); setAgain(false); qc.invalidateQueries({ queryKey: key }); qc.invalidateQueries({ queryKey: ['my-assignments'] }); qc.invalidateQueries({ queryKey: ['my-lessons'] }); qc.invalidateQueries({ queryKey: ['lesson'] }) }
@@ -85,7 +97,7 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
     if (!editable || status === 'SUBMITTED' || status === 'GRADED' || !dirty.current) return
     const tm = setTimeout(() => { if (dirty.current && !save.isPending) save.mutate(false) }, 3000)
     return () => clearTimeout(tm)
-  }, [text, links, files, answers]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [text, links, files, answers, code]) // eslint-disable-line react-hooks/exhaustive-deps
   const touch = <T,>(fn: (v: T) => void) => (v: T) => { dirty.current = true; fn(v) }
 
   if (isLoading) return <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
@@ -196,6 +208,23 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
           })}
         </div>
       )}
+
+      {kinds.includes('CODE') && a.code && (
+        <CodeWork language={a.code.language} code={code} onCode={(v) => { dirty.current = true; setCode(v) }} tests={a.code.tests} toolCheck={a.toolCheck} disabled={!editable} results={results} onResults={setResults} />
+      )}
+      {a.autoCheck && a.toolCheck && a.toolCheck.tool !== 'ARDUINO' && (
+        <div className="rounded-lg border border-slate-200 p-2 text-xs">
+          <p className="font-semibold text-slate-600">{t('hw.toolChecks')}</p>
+          {a.toolCheck.rules.map((r) => {
+            const res = sub?.toolResult?.detail.find((d) => d.id === r.id)
+            const def = TOOL_RULES[a.toolCheck!.tool].find((x) => x.kind === r.kind)
+            return <p key={r.id} className="flex items-center gap-1">{res ? (res.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <XCircle className="h-4 w-4 text-rose-600" />) : '•'} {def ? pick(def.labelEn, def.labelAr).replace('N', String(r.value ?? '')) : r.kind}{def?.param === 'text' ? `: ${r.value}` : ''} ({r.points})</p>
+          })}
+          {sub?.toolResult?.error && <p className="text-amber-700">{sub.toolResult.error}</p>}
+        </div>
+      )}
+      {sub?.feedbackAudio && <div className="space-y-1"><p className="text-xs font-semibold text-slate-600">{t('hw.voiceFeedback')}</p><audio controls src={sub.feedbackAudio} className="w-full max-w-md" /></div>}
+      {sub?.galleryStatus === 'APPROVED' && <p className="text-xs font-semibold text-amber-600">{t('hw.inGallery')}</p>}
 
       {kinds.includes('TEXT') && <textarea className="min-h-[120px] w-full rounded-md border border-slate-200 bg-white p-2 text-sm" placeholder={t('hw.write')} disabled={!editable} value={text} onChange={(e) => touch(setText)(e.target.value)} />}
 

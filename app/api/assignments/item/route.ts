@@ -37,6 +37,8 @@ export async function PUT(request: NextRequest) {
     text: z.string().max(20000).nullish(), links: z.array(z.string().max(1000)).max(5).optional(),
     files: z.array(fileSchema).max(10).optional(),
     answers: z.record(z.string(), z.union([z.string().max(500), z.number(), z.array(z.string().max(100)).max(10), z.null()])).optional(),
+    code: z.string().max(100_000).nullish(),
+    codeResults: z.array(z.object({ id: z.string().max(40), passed: z.boolean(), output: z.string().max(2000).optional() })).max(30).optional(),
     submit: z.boolean(),
   }).safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
@@ -47,7 +49,7 @@ export async function PUT(request: NextRequest) {
     const ctx = (await studentAssignment(v!.studentId, d.groupId!, d.blockId!)) as { ok: boolean; value?: { parentMaySubmit: boolean } }
     if (!ctx.ok || !ctx.value?.parentMaySubmit) return errors.forbidden('Parents can hand in only for young children')
   }
-  const o = await saveSubmission(v!.studentId, d.groupId!, d.blockId!, { text: d.text, links: d.links, files: d.files as never, answers: d.answers as never }, d.submit!, v!.userId)
+  const o = await saveSubmission(v!.studentId, d.groupId!, d.blockId!, { text: d.text, links: d.links, files: d.files as never, answers: d.answers as never, code: d.code, codeResults: d.codeResults as never }, d.submit!, v!.userId)
   if (!o.ok) return outcomeError(o)
   return successResponse(o.value, d.submit ? 'Handed in' : 'Draft saved')
 }
