@@ -13,6 +13,7 @@ import { Loader2, Upload } from 'lucide-react'
 import { Markdown } from './BlockView'
 import { AssignmentForm, blankAssignment } from '@/components/assignments/AssignmentForm'
 import { QuizForm, blankQuiz } from '@/components/quizzes/QuizForm'
+import { L } from '@/lib/i18n/client'
 
 interface Sign { timestamp: number; signature: string; cloudName: string; apiKey: string; folder: string; allowedFormats: string; type: string }
 export interface Media { publicId: string; resourceType: 'image' | 'video' | 'raw'; format?: string; bytes?: number; originalName?: string }
@@ -33,7 +34,7 @@ export async function uploadCurriculumFile(file: File): Promise<Media> {
   fd.append('type', s.type)
   const res = await fetch(`https://api.cloudinary.com/v1_1/${s.cloudName}/auto/upload`, { method: 'POST', body: fd })
   const j = await res.json()
-  if (!res.ok) throw new Error(j?.error?.message || 'Upload failed')
+  if (!res.ok) throw new Error(j?.error?.message || L('Upload failed', 'الرفع فشل'))
   return { publicId: j.public_id, resourceType: j.resource_type, format: j.format, bytes: j.bytes, originalName: file.name.slice(0, 200) }
 }
 
@@ -43,6 +44,12 @@ export const TYPE_LABELS: Record<BlockType, string> = {
   TEXT: 'Text', IMAGE: 'Image', VIDEO: 'Video', FILE: 'File / PDF', LINK: 'Link', CODE: 'Code', EMBED: 'Embedded tool',
   H5P: 'Interactive (H5P)', QUIZ: 'Quiz', ASSIGNMENT: 'Assignment', TOOL: 'Code editor / tool',
 }
+const TYPE_AR: Record<BlockType, string> = {
+  TEXT: 'نص', IMAGE: 'صورة', VIDEO: 'فيديو', FILE: 'ملف / PDF', LINK: 'لينك', CODE: 'كود', EMBED: 'أداة مدمجة',
+  H5P: 'نشاط تفاعلي (H5P)', QUIZ: 'كويز', ASSIGNMENT: 'واجب', TOOL: 'محرر كود / أداة',
+}
+/** Content type name in the page language. */
+export const blockTypeLabel = (t: BlockType) => L(TYPE_LABELS[t] ?? t, TYPE_AR[t] ?? t)
 
 export function blankData(type: BlockType): Record<string, unknown> {
   if (type === 'TEXT') return { textEn: '', textAr: '' }
@@ -72,14 +79,14 @@ export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; o
       const f = input.files?.[0]
       if (!f) return
       setUploading(true)
-      try { set({ media: await uploadCurriculumFile(f) }); notify.success('Uploaded') } catch (e) { notify.error((e as Error).message) } finally { setUploading(false) }
+      try { set({ media: await uploadCurriculumFile(f) }); notify.success(L('Uploaded', 'اترفع')) } catch (e) { notify.error((e as Error).message) } finally { setUploading(false) }
     }
     input.click()
   }
   const uploadBtn = (accept: string) => (
     <div className="flex flex-wrap items-center gap-2">
       <Button type="button" size="sm" variant="outline" className="gap-1" disabled={uploading} onClick={() => pickFile(accept)}>
-        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} {media ? 'Replace file' : 'Upload file'}
+        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} {media ? L('Replace file', 'غيّر الملف') : L('Upload file', 'ارفع ملف')}
       </Button>
       {media && <span className="text-xs text-slate-500">{media.originalName ?? media.publicId} {media.bytes ? `· ${(media.bytes / 1024 / 1024).toFixed(1)} MB` : ''}</span>}
     </div>
@@ -88,15 +95,15 @@ export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; o
   return (
     <div className="space-y-3 text-sm">
       <div className="grid gap-2 sm:grid-cols-3">
-        <label className="space-y-1"><span className="text-xs text-slate-500">Title (English, optional)</span><Input value={value.titleEn} onChange={(e) => onChange({ ...value, titleEn: e.target.value })} /></label>
+        <label className="space-y-1"><span className="text-xs text-slate-500">{L('Title (English, optional)', 'العنوان (إنجليزي، اختياري)')}</span><Input value={value.titleEn} onChange={(e) => onChange({ ...value, titleEn: e.target.value })} /></label>
         <label className="space-y-1" dir="rtl"><span className="text-xs text-slate-500">العنوان (عربي، اختياري)</span><Input value={value.titleAr} onChange={(e) => onChange({ ...value, titleAr: e.target.value })} /></label>
-        <label className="space-y-1"><span className="text-xs text-slate-500">Who sees it</span>
+        <label className="space-y-1"><span className="text-xs text-slate-500">{L('Who sees it', 'مين يشوفه')}</span>
           <Select value={value.audience} onValueChange={(a) => onChange({ ...value, audience: a })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="BOTH">Instructor + students</SelectItem>
-              <SelectItem value="INSTRUCTOR">Instructor only</SelectItem>
-              <SelectItem value="STUDENT">Students only</SelectItem>
+              <SelectItem value="BOTH">{L('Instructor + students', 'المدرب والطلبة')}</SelectItem>
+              <SelectItem value="INSTRUCTOR">{L('Instructor only', 'المدرب بس')}</SelectItem>
+              <SelectItem value="STUDENT">{L('Students only', 'الطلبة بس')}</SelectItem>
             </SelectContent>
           </Select>
         </label>
@@ -104,12 +111,12 @@ export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; o
 
       {value.type === 'TEXT' && (
         <>
-          <div className="flex justify-between text-xs text-slate-500"><span>Markdown: **bold**, # heading, - list, [link](https://…), tables.</span><button type="button" className="text-indigo-600" onClick={() => setShowPreview(!showPreview)}>{showPreview ? 'Edit' : 'Preview'}</button></div>
+          <div className="flex justify-between text-xs text-slate-500"><span>{L('Markdown: **bold**, # heading, - list, [link](https://…), tables.', 'Markdown: **عريض**، # عنوان، - قائمة، [لينك](https://…)، جداول.')}</span><button type="button" className="text-indigo-600" onClick={() => setShowPreview(!showPreview)}>{showPreview ? L('Edit', 'تعديل') : L('Preview', 'معاينة')}</button></div>
           {showPreview ? (
             <div className="grid gap-3 sm:grid-cols-2"><Markdown text={(d.textEn as string) || ''} /><div dir="rtl"><Markdown text={(d.textAr as string) || ''} /></div></div>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              <textarea className={area} placeholder="English" value={(d.textEn as string) ?? ''} onChange={(e) => set({ textEn: e.target.value })} />
+              <textarea className={area} placeholder={L('English', 'إنجليزي')} value={(d.textEn as string) ?? ''} onChange={(e) => set({ textEn: e.target.value })} />
               <textarea className={area} dir="rtl" placeholder="عربي" value={(d.textAr as string) ?? ''} onChange={(e) => set({ textAr: e.target.value })} />
             </div>
           )}
@@ -119,14 +126,14 @@ export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; o
         <>
           {uploadBtn('image/*')}
           <div className="grid gap-2 sm:grid-cols-2">
-            <Input placeholder="Caption (English)" value={(d.captionEn as string) ?? ''} onChange={(e) => set({ captionEn: e.target.value })} />
+            <Input placeholder={L('Caption (English)', 'التعليق (إنجليزي)')} value={(d.captionEn as string) ?? ''} onChange={(e) => set({ captionEn: e.target.value })} />
             <Input dir="rtl" placeholder="التعليق (عربي)" value={(d.captionAr as string) ?? ''} onChange={(e) => set({ captionAr: e.target.value })} />
           </div>
         </>
       )}
       {value.type === 'VIDEO' && (
         <>
-          <p className="text-xs text-slate-500">Upload a video (private, max {MAX_MB} MB) <b>or</b> paste a YouTube / Vimeo link.</p>
+          <p className="text-xs text-slate-500">{L(`Upload a video (private, max ${MAX_MB} MB) or paste a YouTube / Vimeo link.`, `ارفع فيديو (private، أقصى حد ${MAX_MB} MB) أو حط لينك YouTube / Vimeo.`)}</p>
           {uploadBtn('video/*')}
           <Input placeholder="https://www.youtube.com/watch?v=…" value={(d.url as string) ?? ''} onChange={(e) => set({ url: e.target.value || undefined })} />
         </>
@@ -134,7 +141,7 @@ export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; o
       {value.type === 'FILE' && (
         <>
           {uploadBtn('.pdf,.pptx,.docx,.xlsx,.zip,.ino,.py,.sb3,.stl,.mp3,.wav')}
-          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!d.downloadable} onChange={(e) => set({ downloadable: e.target.checked })} /> Allow download (otherwise a PDF opens inside the page only)</label>
+          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!d.downloadable} onChange={(e) => set({ downloadable: e.target.checked })} /> {L('Allow download (otherwise a PDF opens inside the page only)', 'اسمح بالتحميل (غير كده الـ PDF بيتفتح جوه الصفحة بس)')}</label>
         </>
       )}
       {value.type === 'LINK' && <Input placeholder="https://…" value={(d.url as string) ?? ''} onChange={(e) => set({ url: e.target.value })} />}
@@ -150,7 +157,7 @@ export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; o
       {value.type === 'EMBED' && (
         <>
           <Input placeholder="https://scratch.mit.edu/projects/…/embed" value={(d.url as string) ?? ''} onChange={(e) => set({ url: e.target.value })} />
-          <label className="flex items-center gap-2 text-xs">Height (px) <Input type="number" className="h-8 w-24" value={Number(d.height) || 480} onChange={(e) => set({ height: Number(e.target.value) || 480 })} /></label>
+          <label className="flex items-center gap-2 text-xs">{L('Height (px)', 'الارتفاع (px)')} <Input type="number" className="h-8 w-24" value={Number(d.height) || 480} onChange={(e) => set({ height: Number(e.target.value) || 480 })} /></label>
           <p className="text-xs text-slate-400">Allowed sites: {EMBED_HOSTS.join(', ')}</p>
         </>
       )}
@@ -158,8 +165,8 @@ export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; o
       {value.type === 'ASSIGNMENT' && <AssignmentForm data={d} onChange={(nd) => onChange({ ...value, data: nd })} subjectId={subjectId} />}
       {COMING_TYPES.includes(value.type) && (
         <>
-          <p className="rounded bg-amber-50 p-2 text-xs text-amber-800">This type is built in a later stage. You can add a placeholder now (with a note) and fill it later.</p>
-          <Input placeholder="Note" value={(d.note as string) ?? ''} onChange={(e) => set({ note: e.target.value })} />
+          <p className="rounded bg-amber-50 p-2 text-xs text-amber-800">{L('This type is built in a later stage. You can add a placeholder now (with a note) and fill it later.', 'النوع ده هيتعمل في مرحلة جاية. تقدر تضيفه دلوقتي بملاحظة وتكمّله بعدين.')}</p>
+          <Input placeholder={L('Note', 'ملاحظة')} value={(d.note as string) ?? ''} onChange={(e) => set({ note: e.target.value })} />
         </>
       )}
     </div>

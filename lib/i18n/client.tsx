@@ -40,6 +40,7 @@ export function I18nProvider({ children, defaults }: { children: React.ReactNode
   const [chosen, setChosen] = useState<Locale | null>(null)
   useEffect(() => { setChosen(readCookie()) }, [])
   const locale: Locale = chosen ?? fallback
+  currentLocale = locale // read by L() during this render
   const dir = locale === 'ar' ? 'rtl' : 'ltr'
 
   useEffect(() => {
@@ -64,6 +65,18 @@ export function I18nProvider({ children, defaults }: { children: React.ReactNode
 }
 
 export const useI18n = () => useContext(I18nContext)
+
+/** The language of the page being rendered (set by I18nProvider before its children render). */
+let currentLocale: Locale = 'en'
+
+/** Inline two-language text: L('Save', 'حفظ'). For staff screens translated in place (no message key). */
+export const L = (en: string, ar: string) => (currentLocale === 'ar' ? ar : en)
+
+/** Same as L() as a component, for text inside JSX that must follow a language switch at once. */
+export function T({ en, ar }: { en: string; ar: string }) {
+  const { locale } = useI18n()
+  return <>{locale === 'ar' ? ar : en}</>
+}
 
 /** Small EN / عربي switch for the header. */
 export function LanguageSwitch() {

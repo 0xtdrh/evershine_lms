@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CheckCircle2, FileText, Link2, Loader2, Mic, Square, Trash2, XCircle } from 'lucide-react'
 import { TOOL_RULES } from '@/lib/assignments/tool-checks'
+import { L } from '@/lib/i18n/client'
 
 interface Opt { id: string; textEn: string; textAr: string }
 interface Q { id: string; type: string; textEn: string; options: Opt[]; correct: (string | number)[]; tolerance?: number; points: number }
@@ -65,7 +66,7 @@ export function GradeDialog({ submissionId, onDone }: { submissionId: string; on
         gallery, ...(audio !== undefined ? { feedbackAudio: audio } : {}),
       }),
     }),
-    onSuccess: (_r, p) => { notify.success(p.action === 'return' ? 'Sent back for changes' : 'Graded'); onDone(!!p.next) },
+    onSuccess: (_r, p) => { notify.success(p.action === 'return' ? L('Sent back for changes', 'اترجع للتعديل') : L('Graded', 'اتصحّح')); onDone(!!p.next) },
     onError: (e: Error) => notify.error(e.message),
   })
 
@@ -88,13 +89,13 @@ export function GradeDialog({ submissionId, onDone }: { submissionId: string; on
           const j = await res.json()
           if (!res.ok) throw new Error(j?.error?.message || 'Upload failed')
           setAudio({ publicId: j.public_id, resourceType: j.resource_type === 'video' ? 'video' : 'raw', format: j.format })
-          notify.success('Voice note ready — it is saved with the grade')
+          notify.success(L('Voice note ready — it is saved with the grade', 'الرسالة الصوتية جاهزة — هتتحفظ مع الدرجة'))
         } catch (e) { notify.error((e as Error).message) } finally { setUploadingAudio(false) }
       }
       rec.start()
       setRecording(rec)
       setTimeout(() => { if (rec.state === 'recording') rec.stop() }, 120_000) // 2 minutes max
-    } catch { notify.error('Microphone not available') }
+    } catch { notify.error(L('Microphone not available', 'المايك مش متاح')) }
   }
 
   if (isLoading || !data) return <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
@@ -106,24 +107,24 @@ export function GradeDialog({ submissionId, onDone }: { submissionId: string; on
     <div className="space-y-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-semibold text-slate-800">{data.student?.firstName} {data.student?.lastName} <span className="text-xs font-normal text-slate-400">{data.student?.registrationNumber}</span></p>
-        <span className="text-xs text-slate-500">try {s.attempt}{s.submittedAt ? ` · ${new Date(s.submittedAt).toLocaleString('en-GB')}` : ''}{s.late ? ` · late${s.latePenaltyPct ? ` (−${s.latePenaltyPct}%)` : ''}` : ''}{s.inClass ? ' · done in class' : ''}</span>
+        <span className="text-xs text-slate-500">{L('try', 'محاولة')} {s.attempt}{s.submittedAt ? ` · ${new Date(s.submittedAt).toLocaleString('en-GB')}` : ''}{s.late ? ` · ${L('late', 'متأخر')}${s.latePenaltyPct ? ` (−${s.latePenaltyPct}%)` : ''}` : ''}{s.inClass ? L(' · done in class', ' · اتعمل في الحصة') : ''}</span>
       </div>
-      {a?.instructionsEn && <details className="text-xs"><summary className="cursor-pointer text-slate-500">Instructions</summary><Markdown text={a.instructionsEn} /></details>}
+      {a?.instructionsEn && <details className="text-xs"><summary className="cursor-pointer text-slate-500">{L('Instructions', 'المطلوب')}</summary><Markdown text={a.instructionsEn} /></details>}
 
-      {data.similar.length > 0 && <p className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">Looks like: {data.similar.map((x) => `${x.name} (${x.percent}%)`).join(', ')} — check for copying.</p>}
+      {data.similar.length > 0 && <p className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">{L('Looks like', 'شبه')}: {data.similar.map((x) => `${x.name} (${x.percent}%)`).join(', ')} — {L('check for copying.', 'اتأكد إنه مش منقول.')}</p>}
       {s.code && (
         <div className="space-y-1">
           <pre dir="ltr" className="max-h-72 overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-xs text-slate-100">{s.code}</pre>
           {a?.code?.tests.map((tc, i) => {
             const r2 = s.codeResults?.find((x) => x.id === tc.id)
-            return <p key={tc.id} dir="ltr" className="flex items-center gap-1 text-xs">{r2?.passed ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <XCircle className="h-4 w-4 text-rose-600" />} Test {i + 1}: expected <b>{tc.expected}</b>{r2 && !r2.passed ? ` · got ${r2.output.slice(0, 80) || '—'}` : ''} ({tc.points}) <span className="text-slate-400">· ran in the student&apos;s browser</span></p>
+            return <p key={tc.id} dir="ltr" className="flex items-center gap-1 text-xs">{r2?.passed ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <XCircle className="h-4 w-4 text-rose-600" />} Test {i + 1}: expected <b>{tc.expected}</b>{r2 && !r2.passed ? ` · got ${r2.output.slice(0, 80) || '—'}` : ''} ({tc.points}) <span className="text-slate-400">· {L("ran in the student's browser", 'اشتغل في متصفح الطالب')}</span></p>
           })}
         </div>
       )}
       {a?.toolCheck && (
         <div className="space-y-1 rounded-lg border border-slate-200 p-2 text-xs">
-          <p className="font-semibold text-slate-500">Automatic project check{s.toolResult?.source ? ` · ${s.toolResult.source}` : ''}</p>
-          {s.toolResult?.error && <p className="text-amber-700">{s.toolResult.error} — grade it yourself.</p>}
+          <p className="font-semibold text-slate-500">{L('Automatic project check', 'فحص المشروع التلقائي')}{s.toolResult?.source ? ` · ${s.toolResult.source}` : ''}</p>
+          {s.toolResult?.error && <p className="text-amber-700">{s.toolResult.error} — {L('grade it yourself.', 'صحّحه بنفسك.')}</p>}
           {a.toolCheck.rules.map((rule) => {
             const d = s.toolResult?.detail.find((x) => x.id === rule.id)
             const def = TOOL_RULES[a.toolCheck!.tool]?.find((x) => x.kind === rule.kind)
@@ -144,30 +145,30 @@ export function GradeDialog({ submissionId, onDone }: { submissionId: string; on
 
       {!a?.questions.length && !!a?.autoMax && (
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          Automatic points / {a.autoMax} <Input type="number" className="h-8 w-20" value={auto} onChange={(e) => setAuto(e.target.value)} />
-          {auto !== '' && Number(auto) !== s.autoScore && <Input className="h-8 flex-1" placeholder="Why the automatic score is changed (required)" value={reason} onChange={(e) => setReason(e.target.value)} />}
+          {L('Automatic points', 'الدرجة التلقائية')} / {a.autoMax} <Input type="number" className="h-8 w-20" value={auto} onChange={(e) => setAuto(e.target.value)} />
+          {auto !== '' && Number(auto) !== s.autoScore && <Input className="h-8 flex-1" placeholder={L('Why the automatic score is changed (required)', 'ليه الدرجة التلقائية اتغيّرت (لازم)')} value={reason} onChange={(e) => setReason(e.target.value)} />}
         </div>
       )}
       {!!a?.questions.length && (
         <div className="space-y-1 rounded-lg border border-slate-200 p-2">
-          <p className="text-xs font-semibold uppercase text-slate-500">Questions</p>
+          <p className="text-xs font-semibold uppercase text-slate-500">{L('Questions', 'الأسئلة')}</p>
           {a.questions.map((q, i) => {
             const d = detail.find((x) => x.id === q.id)
             return (
               <div key={q.id} className="flex items-start gap-2 text-xs">
                 {d?.correct ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <XCircle className="h-4 w-4 shrink-0 text-rose-600" />}
-                <span>{i + 1}. {q.textEn} — <b>{answerText(q, s.answers?.[q.id])}</b>{!d?.correct && <span className="text-slate-500"> (correct: {correctText(q)})</span>}</span>
+                <span>{i + 1}. {q.textEn} — <b>{answerText(q, s.answers?.[q.id])}</b>{!d?.correct && <span className="text-slate-500"> ({L('correct', 'الصح')}: {correctText(q)})</span>}</span>
               </div>
             )
           })}
           <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-            Automatic points (all) / {a.autoMax} <Input type="number" className="h-8 w-20" value={auto} onChange={(e) => setAuto(e.target.value)} />
-            {auto !== '' && Number(auto) !== s.autoScore && <Input className="h-8 flex-1" placeholder="Why the automatic score is changed (required)" value={reason} onChange={(e) => setReason(e.target.value)} />}
+            {L('Automatic points (all)', 'الدرجة التلقائية (الكل)')} / {a.autoMax} <Input type="number" className="h-8 w-20" value={auto} onChange={(e) => setAuto(e.target.value)} />
+            {auto !== '' && Number(auto) !== s.autoScore && <Input className="h-8 flex-1" placeholder={L('Why the automatic score is changed (required)', 'ليه الدرجة التلقائية اتغيّرت (لازم)')} value={reason} onChange={(e) => setReason(e.target.value)} />}
           </div>
         </div>
       )}
 
-      {hasManual && a!.scale === 'POINTS' && <label className="flex items-center gap-2">Points <Input type="number" min={0} max={a!.maxPoints} className="h-9 w-24" value={points} onChange={(e) => setPoints(e.target.value)} /> / {a!.maxPoints}</label>}
+      {hasManual && a!.scale === 'POINTS' && <label className="flex items-center gap-2">{L('Points', 'الدرجة')} <Input type="number" min={0} max={a!.maxPoints} className="h-9 w-24" value={points} onChange={(e) => setPoints(e.target.value)} /> / {a!.maxPoints}</label>}
       {hasManual && a!.scale === 'STARS' && (
         <div className="flex items-center gap-1">{[0, 1, 2, 3].map((n) => <button key={n} type="button" onClick={() => setStars(n)} className={`rounded-lg border px-3 py-1 text-lg ${stars === n ? 'border-amber-400 bg-amber-50' : 'border-slate-200'}`}>{n === 0 ? '0' : '⭐'.repeat(n)}</button>)}</div>
       )}
@@ -190,25 +191,25 @@ export function GradeDialog({ submissionId, onDone }: { submissionId: string; on
         </div>
       )}
 
-      <textarea className="min-h-[90px] w-full rounded-md border border-slate-200 bg-white p-2" placeholder="Feedback for the student and the parent" value={feedback} onChange={(e) => setFeedback(e.target.value)} />
+      <textarea className="min-h-[90px] w-full rounded-md border border-slate-200 bg-white p-2" placeholder={L('Feedback for the student and the parent', 'تعليق للطالب وولي الأمر')} value={feedback} onChange={(e) => setFeedback(e.target.value)} />
       <div className="flex flex-wrap items-center gap-3 text-xs">
         {recording ? (
-          <Button type="button" size="sm" variant="outline" className="gap-1 border-rose-300 text-rose-700" onClick={() => { recording.stop(); setRecording(null) }}><Square className="h-3 w-3" /> Stop recording</Button>
+          <Button type="button" size="sm" variant="outline" className="gap-1 border-rose-300 text-rose-700" onClick={() => { recording.stop(); setRecording(null) }}><Square className="h-3 w-3" /> {L('Stop recording', 'وقّف التسجيل')}</Button>
         ) : (
-          <Button type="button" size="sm" variant="outline" className="gap-1" disabled={uploadingAudio} onClick={record}>{uploadingAudio ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3 w-3" />} Voice note</Button>
+          <Button type="button" size="sm" variant="outline" className="gap-1" disabled={uploadingAudio} onClick={record}>{uploadingAudio ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3 w-3" />} {L('Voice note', 'رسالة صوتية')}</Button>
         )}
         {(audio === undefined ? s.feedbackAudio : audio) && (
           <span className="flex items-center gap-1">
-            {audio === undefined && s.feedbackAudio ? <audio controls src={s.feedbackAudio} className="h-8" /> : <span className="text-emerald-700">new voice note ✓</span>}
+            {audio === undefined && s.feedbackAudio ? <audio controls src={s.feedbackAudio} className="h-8" /> : <span className="text-emerald-700">{L('new voice note ✓', 'رسالة صوتية جديدة ✓')}</span>}
             <button type="button" aria-label="Remove voice note" onClick={() => setAudio(null)}><Trash2 className="h-3 w-3 text-slate-400" /></button>
           </span>
         )}
-        <label className="flex items-center gap-1"><input type="checkbox" checked={gallery} onChange={(e) => setGallery(e.target.checked)} /> Show in the projects gallery ⭐</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={gallery} onChange={(e) => setGallery(e.target.checked)} /> {L('Show in the projects gallery ⭐', 'اعرضه في معرض المشاريع ⭐')}</label>
       </div>
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: 'return' })}>Send back for changes</Button>
-        <Button variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: 'grade', next: true })}>Grade &amp; next</Button>
-        <Button disabled={act.isPending} onClick={() => act.mutate({ action: 'grade' })}>{act.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}Grade</Button>
+        <Button variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: 'return' })}>{L('Send back for changes', 'رجّعه للتعديل')}</Button>
+        <Button variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: 'grade', next: true })}>{L('Grade & next', 'صحّح واللي بعده')}</Button>
+        <Button disabled={act.isPending} onClick={() => act.mutate({ action: 'grade' })}>{act.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}{L('Grade', 'صحّح')}</Button>
       </div>
     </div>
   )

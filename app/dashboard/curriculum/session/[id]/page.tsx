@@ -8,10 +8,10 @@ import { useParams, useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { useI18n } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 import { BLOCK_TYPES, moveInOrder, type BlockType } from '@/lib/curriculum/blocks'
 import { BlockView, Markdown, type Block } from '@/components/curriculum/BlockView'
-import { BlockForm, TYPE_LABELS, blankData, type BlockDraft } from '@/components/curriculum/BlockForm'
+import { BlockForm, blockTypeLabel, blankData, type BlockDraft } from '@/components/curriculum/BlockForm'
 import { cleanQuiz } from '@/components/quizzes/QuizForm'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -44,7 +44,7 @@ function Fields({ data, skills, onSaved }: { data: SessionData; skills: Skill[];
   })
   const save = useMutation({
     mutationFn: () => fetchApi(`/api/curriculum/sessions/${s.id}`, { method: 'PATCH', body: JSON.stringify({ ...f, durationMin: f.durationMin || null }) }),
-    onSuccess: () => { notify.success('Saved'); onSaved() },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); onSaved() },
     onError: (e: Error) => notify.error(e.message),
   })
   const toggleSkill = (id: string) => setF({ ...f, skillIds: f.skillIds.includes(id) ? f.skillIds.filter((x) => x !== id) : [...f.skillIds, id] })
@@ -52,26 +52,26 @@ function Fields({ data, skills, onSaved }: { data: SessionData; skills: Skill[];
     <Card>
       <CardContent className="space-y-3 pt-4 text-sm">
         <div className="grid gap-2 sm:grid-cols-2">
-          <label className="space-y-1"><span className="text-xs text-slate-500">Title (English)</span><Input value={f.titleEn} onChange={(e) => setF({ ...f, titleEn: e.target.value })} /></label>
+          <label className="space-y-1"><span className="text-xs text-slate-500">{L('Title (English)', 'العنوان (إنجليزي)')}</span><Input value={f.titleEn} onChange={(e) => setF({ ...f, titleEn: e.target.value })} /></label>
           <label className="space-y-1" dir="rtl"><span className="text-xs text-slate-500">العنوان (عربي)</span><Input value={f.titleAr} onChange={(e) => setF({ ...f, titleAr: e.target.value })} /></label>
-          <label className="space-y-1"><span className="text-xs text-slate-500">Objectives (English)</span><textarea className={area} value={f.objectivesEn} onChange={(e) => setF({ ...f, objectivesEn: e.target.value })} /></label>
+          <label className="space-y-1"><span className="text-xs text-slate-500">{L('Objectives (English)', 'الأهداف (إنجليزي)')}</span><textarea className={area} value={f.objectivesEn} onChange={(e) => setF({ ...f, objectivesEn: e.target.value })} /></label>
           <label className="space-y-1" dir="rtl"><span className="text-xs text-slate-500">الأهداف (عربي)</span><textarea className={area} value={f.objectivesAr} onChange={(e) => setF({ ...f, objectivesAr: e.target.value })} /></label>
-          <label className="space-y-1"><span className="text-xs text-slate-500">Materials / kits (English)</span><textarea className={area} value={f.materialsEn} onChange={(e) => setF({ ...f, materialsEn: e.target.value })} /></label>
+          <label className="space-y-1"><span className="text-xs text-slate-500">{L('Materials / kits (English)', 'الأدوات (إنجليزي)')}</span><textarea className={area} value={f.materialsEn} onChange={(e) => setF({ ...f, materialsEn: e.target.value })} /></label>
           <label className="space-y-1" dir="rtl"><span className="text-xs text-slate-500">الأدوات المطلوبة (عربي)</span><textarea className={area} value={f.materialsAr} onChange={(e) => setF({ ...f, materialsAr: e.target.value })} /></label>
         </div>
-        <label className="block space-y-1"><span className="text-xs text-slate-500">Instructor notes (never shown to students / parents)</span><textarea className={area} value={f.instructorNotes} onChange={(e) => setF({ ...f, instructorNotes: e.target.value })} /></label>
+        <label className="block space-y-1"><span className="text-xs text-slate-500">{L('Instructor notes (never shown to students / parents)', 'ملاحظات المدرب (مابتظهرش للطلبة وأولياء الأمور)')}</span><textarea className={area} value={f.instructorNotes} onChange={(e) => setF({ ...f, instructorNotes: e.target.value })} /></label>
         <div className="flex flex-wrap items-center gap-4">
-          <label className="flex items-center gap-2 text-xs text-slate-500">Duration (minutes) <Input type="number" min={0} className="h-8 w-24" value={f.durationMin} onChange={(e) => setF({ ...f, durationMin: Number(e.target.value) || 0 })} /></label>
+          <label className="flex items-center gap-2 text-xs text-slate-500">{L('Duration (minutes)', 'المدة (دقيقة)')} <Input type="number" min={0} className="h-8 w-24" value={f.durationMin} onChange={(e) => setF({ ...f, durationMin: Number(e.target.value) || 0 })} /></label>
           {skills.length > 0 && (
             <div className="flex flex-wrap items-center gap-1 text-xs">
-              <span className="text-slate-500">Skills:</span>
+              <span className="text-slate-500">{L('Skills', 'المهارات')}:</span>
               {skills.map((k) => (
                 <button key={k.id} type="button" onClick={() => toggleSkill(k.id)} className={`rounded-full border px-2 py-0.5 ${f.skillIds.includes(k.id) ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500'}`}>{k.nameEn}</button>
               ))}
             </div>
           )}
         </div>
-        <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}Save session</Button>
+        <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}{L('Save session', 'احفظ الحصة')}</Button>
       </CardContent>
     </Card>
   )
@@ -106,20 +106,20 @@ function Comments({ data, onChange }: { data: SessionData; onChange: () => void 
   })
   return (
     <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-base">Review comments</CardTitle></CardHeader>
+      <CardHeader className="pb-2"><CardTitle className="text-base">{L('Review comments', 'تعليقات المراجعة')}</CardTitle></CardHeader>
       <CardContent className="space-y-2 text-sm">
         {data.comments.map((c) => (
           <div key={c.id} className={`rounded-lg border p-2 ${c.resolved ? 'border-slate-100 opacity-60' : 'border-amber-200 bg-amber-50/40'}`}>
             <p className="whitespace-pre-wrap text-slate-700">{c.body}</p>
             <p className="mt-1 flex justify-between text-xs text-slate-400">
               <span>{c.authorName} · {new Date(c.createdAt).toLocaleString('en-GB')}</span>
-              <button type="button" className="text-indigo-600" onClick={() => resolve.mutate({ id: c.id, resolved: !c.resolved })}>{c.resolved ? 'Open again' : 'Mark solved'}</button>
+              <button type="button" className="text-indigo-600" onClick={() => resolve.mutate({ id: c.id, resolved: !c.resolved })}>{c.resolved ? L('Open again', 'افتحه تاني') : L('Mark solved', 'اتحل')}</button>
             </p>
           </div>
         ))}
-        {!data.comments.length && <p className="text-xs text-slate-400">No comments.</p>}
-        <textarea className={area} placeholder="Write a comment for the author / reviewer…" value={text} onChange={(e) => setText(e.target.value)} />
-        <Button size="sm" variant="outline" disabled={!text.trim() || add.isPending} onClick={() => add.mutate()}>Add comment</Button>
+        {!data.comments.length && <p className="text-xs text-slate-400">{L('No comments.', 'مفيش تعليقات.')}</p>}
+        <textarea className={area} placeholder={L('Write a comment for the author / reviewer…', 'اكتب تعليق للكاتب / المراجع…')} value={text} onChange={(e) => setText(e.target.value)} />
+        <Button size="sm" variant="outline" disabled={!text.trim() || add.isPending} onClick={() => add.mutate()}>{L('Add comment', 'ضيف تعليق')}</Button>
       </CardContent>
     </Card>
   )
@@ -150,7 +150,7 @@ export default function CurriculumSessionPage() {
       const body = JSON.stringify({ ...e.draft, titleEn: e.draft.titleEn || null, titleAr: e.draft.titleAr || null, data: cleanData, ...(e.id ? { type: undefined } : {}) })
       return e.id ? fetchApi(`/api/curriculum/blocks/${e.id}`, { method: 'PATCH', body }) : fetchApi(`/api/curriculum/sessions/${id}/blocks`, { method: 'POST', body })
     },
-    onSuccess: () => { notify.success('Saved'); setEditing(null); refresh() },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); setEditing(null); refresh() },
     onError: (e: Error) => notify.error(e.message),
   })
   const delBlock = useMutation({ mutationFn: (bid: string) => fetchApi(`/api/curriculum/blocks/${bid}`, { method: 'DELETE' }), onSuccess: refresh, onError: (e: Error) => notify.error(e.message) })
@@ -160,17 +160,17 @@ export default function CurriculumSessionPage() {
   })
   const duplicate = useMutation({
     mutationFn: () => fetchApi<{ id: string }>(`/api/curriculum/sessions/${id}`, { method: 'POST' }),
-    onSuccess: (r) => { notify.success('Session duplicated'); router.push(`/dashboard/curriculum/session/${r.id}`) },
+    onSuccess: (r) => { notify.success(L('Session duplicated', 'الحصة اتنسخت')); router.push(`/dashboard/curriculum/session/${r.id}`) },
     onError: (e: Error) => notify.error(e.message),
   })
   const removeSession = useMutation({
     mutationFn: () => fetchApi(`/api/curriculum/sessions/${id}`, { method: 'DELETE' }),
-    onSuccess: () => { notify.success('Session removed'); router.push(`/dashboard/curriculum/level/${data!.edition.levelId}?edition=${data!.edition.id}`) },
+    onSuccess: () => { notify.success(L('Session removed', 'الحصة اتشالت')); router.push(`/dashboard/curriculum/level/${data!.edition.levelId}?edition=${data!.edition.id}`) },
     onError: (e: Error) => notify.error(e.message),
   })
 
   if (isLoading) return <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-  if (error || !data) return <p className="text-sm text-slate-500">{(error as Error)?.message ?? 'Not found'}</p>
+  if (error || !data) return <p className="text-sm text-slate-500">{(error as Error)?.message ?? L('Not found', 'مش موجود')}</p>
   const s = data.session
   const isEdit = mode === 'edit' && data.editable
   const ids = data.blocks.map((b) => b.id)
@@ -187,17 +187,17 @@ export default function CurriculumSessionPage() {
             {data.nextId && <Button size="sm" variant="ghost" asChild><Link href={`/dashboard/curriculum/session/${data.nextId}`}><ChevronRight className="h-4 w-4 rtl:rotate-180" /></Link></Button>}
           </div>
         </div>
-        {s.durationMin ? <p className="text-xs text-slate-500">{s.durationMin} min</p> : null}
+        {s.durationMin ? <p className="text-xs text-slate-500">{s.durationMin} {L('min', 'دقيقة')}</p> : null}
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {data.editable && <Button size="sm" variant={mode === 'edit' ? 'default' : 'outline'} className="gap-1" onClick={() => setMode('edit')}><Pencil className="h-4 w-4" /> Edit</Button>}
-        <Button size="sm" variant={mode === 'INSTRUCTOR' ? 'default' : 'outline'} className="gap-1" onClick={() => setMode('INSTRUCTOR')}><Eye className="h-4 w-4" /> Instructor view</Button>
+        {data.editable && <Button size="sm" variant={mode === 'edit' ? 'default' : 'outline'} className="gap-1" onClick={() => setMode('edit')}><Pencil className="h-4 w-4" /> {L('Edit', 'تعديل')}</Button>}
+        <Button size="sm" variant={mode === 'INSTRUCTOR' ? 'default' : 'outline'} className="gap-1" onClick={() => setMode('INSTRUCTOR')}><Eye className="h-4 w-4" /> {L('Instructor view', 'عرض المدرب')}</Button>
         <Button size="sm" variant={mode === 'STUDENT' ? 'default' : 'outline'} className="gap-1" onClick={() => setMode('STUDENT')}><Eye className="h-4 w-4" /> {t('cur.preview')}</Button>
         {data.editable && <Button size="sm" variant="outline" className="gap-1" onClick={() => duplicate.mutate()} disabled={duplicate.isPending}><Copy className="h-4 w-4" /> {t('cur.duplicate')}</Button>}
-        {data.editable && <Button size="sm" variant="ghost" className="gap-1 text-rose-600" onClick={() => { if (confirm('Remove this session and its content? The next sessions are renumbered.')) removeSession.mutate() }}><Trash2 className="h-4 w-4" /> Remove session</Button>}
+        {data.editable && <Button size="sm" variant="ghost" className="gap-1 text-rose-600" onClick={() => { if (confirm(L('Remove this session and its content? The next sessions are renumbered.', 'تشيل الحصة دي ومحتواها؟ الحصص اللي بعدها هيتغيّر ترقيمها.'))) removeSession.mutate() }}><Trash2 className="h-4 w-4" /> {L('Remove session', 'شيل الحصة')}</Button>}
       </div>
-      {!data.editable && data.can.edit && <p className="rounded bg-slate-50 p-2 text-xs text-slate-500">This version is {data.edition.status.toLowerCase().replace('_', ' ')} and locked. To change it, create a new version from the level page.</p>}
+      {!data.editable && data.can.edit && <p className="rounded bg-slate-50 p-2 text-xs text-slate-500">{L('This version is locked. To change it, create a new version from the level page.', 'النسخة دي مقفولة. علشان تعدّلها اعمل نسخة جديدة من صفحة المستوى.')} ({t(`cur.status.${data.edition.status}` as 'cur.status.DRAFT')})</p>}
 
       {isEdit ? <Fields key={`${s.id}-${data.edition.status}`} data={data} skills={skills ?? []} onSaved={refresh} /> : <ReadOnlyFields data={data} mode={mode} skills={skills ?? []} />}
 
@@ -206,13 +206,13 @@ export default function CurriculumSessionPage() {
           <div key={b.id} className={`rounded-xl border p-4 ${b.audience === 'INSTRUCTOR' ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-white'}`}>
             {mode !== 'STUDENT' && (
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                <span>{TYPE_LABELS[b.type as BlockType] ?? b.type} · {t(`cur.audience.${b.audience}` as 'cur.audience.BOTH')}</span>
+                <span>{blockTypeLabel(b.type as BlockType)} · {t(`cur.audience.${b.audience}` as 'cur.audience.BOTH')}</span>
                 {isEdit && (
                   <span className="flex items-center gap-1">
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0" disabled={i === 0 || reorder.isPending} onClick={() => reorder.mutate(moveInOrder(ids, b.id, 'up'))} aria-label="Up"><ArrowUp className="h-4 w-4" /></Button>
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0" disabled={i === ids.length - 1 || reorder.isPending} onClick={() => reorder.mutate(moveInOrder(ids, b.id, 'down'))} aria-label="Down"><ArrowDown className="h-4 w-4" /></Button>
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditing({ id: b.id, draft: { type: b.type as BlockType, audience: b.audience, titleEn: b.titleEn ?? '', titleAr: b.titleAr ?? '', data: b.data } })} aria-label="Edit"><Pencil className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-rose-600" onClick={() => { if (confirm('Remove this content?')) delBlock.mutate(b.id) }} aria-label="Remove"><Trash2 className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-rose-600" onClick={() => { if (confirm(L('Remove this content?', 'تشيل المحتوى ده؟'))) delBlock.mutate(b.id) }} aria-label="Remove"><Trash2 className="h-4 w-4" /></Button>
                   </span>
                 )}
               </div>
@@ -229,7 +229,7 @@ export default function CurriculumSessionPage() {
           <CardContent className="flex flex-wrap gap-2">
             {BLOCK_TYPES.map((ty) => (
               <Button key={ty} size="sm" variant="outline" className="gap-1" onClick={() => setEditing({ id: null, draft: { type: ty, audience: 'BOTH', titleEn: '', titleAr: '', data: blankData(ty) } })}>
-                <Plus className="h-3 w-3" /> {TYPE_LABELS[ty]}
+                <Plus className="h-3 w-3" /> {blockTypeLabel(ty)}
               </Button>
             ))}
           </CardContent>
@@ -240,7 +240,7 @@ export default function CurriculumSessionPage() {
 
       <Dialog open={!!editing} onOpenChange={(o) => { if (!o) setEditing(null) }}>
         <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? `${editing.id ? 'Edit' : 'Add'}: ${TYPE_LABELS[editing.draft.type]}` : ''}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? `${editing.id ? L('Edit', 'تعديل') : L('Add', 'إضافة')}: ${blockTypeLabel(editing.draft.type)}` : ''}</DialogTitle></DialogHeader>
           {editing && (
             <>
               <BlockForm value={editing.draft} onChange={(d) => setEditing({ ...editing, draft: d })} subjectId={data.level?.subjectId} />

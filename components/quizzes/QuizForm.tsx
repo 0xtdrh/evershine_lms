@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus } from 'lucide-react'
 import { QuestionEditor, blankQuestion, cleanQuestion, type Q } from './QuestionEditor'
+import { L } from '@/lib/i18n/client'
 
 export function blankQuiz() {
   return { kind: 'SESSION', instructionsEn: '', instructionsAr: '', questions: [blankQuestion()], bank: null, timeLimitMin: 0, attempts: null, scoring: 'BEST', shuffleQuestions: true, shuffleOptions: true, passMark: 50, showAnswers: 'AFTER_CLOSE', requireInstructorOpen: null, allowPaper: true }
@@ -26,53 +27,53 @@ export function QuizForm({ data, onChange }: { data: Record<string, unknown>; on
         <Select value={(data.kind as string) ?? 'SESSION'} onValueChange={(v) => set({ kind: v })}>
           <SelectTrigger className="h-9 w-72"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="SESSION">Session quiz (fills the &quot;task&quot; score)</SelectItem>
-            <SelectItem value="FINAL">End-of-level exam (fills the &quot;MCQ&quot; score)</SelectItem>
+            <SelectItem value="SESSION">{L('Session quiz (fills the "task" score)', 'كويز حصة (بيملا خانة task)')}</SelectItem>
+            <SelectItem value="FINAL">{L('End-of-level exam (fills the "MCQ" score)', 'امتحان آخر المستوى (بيملا خانة MCQ)')}</SelectItem>
           </SelectContent>
         </Select>
-        <label className="flex items-center gap-1 text-xs">Time limit <Input type="number" min={0} className="h-8 w-16" value={(data.timeLimitMin as number) ?? 0} onChange={(e) => set({ timeLimitMin: Number(e.target.value) || 0 })} /> min (0 = none)</label>
-        <label className="flex items-center gap-1 text-xs">Tries <Input type="number" min={1} max={10} className="h-8 w-16" placeholder={isFinal ? '1' : '2'} value={(data.attempts as number | null) ?? ''} onChange={(e) => set({ attempts: e.target.value ? Number(e.target.value) : null })} /></label>
+        <label className="flex items-center gap-1 text-xs">{L('Time limit', 'الوقت')} <Input type="number" min={0} className="h-8 w-16" value={(data.timeLimitMin as number) ?? 0} onChange={(e) => set({ timeLimitMin: Number(e.target.value) || 0 })} /> {L('min (0 = none)', 'دقيقة (0 = من غير)')}</label>
+        <label className="flex items-center gap-1 text-xs">{L('Tries', 'المحاولات')} <Input type="number" min={1} max={10} className="h-8 w-16" placeholder={isFinal ? '1' : '2'} value={(data.attempts as number | null) ?? ''} onChange={(e) => set({ attempts: e.target.value ? Number(e.target.value) : null })} /></label>
         <Select value={(data.scoring as string) ?? 'BEST'} onValueChange={(v) => set({ scoring: v })}>
           <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="BEST">Best try counts</SelectItem><SelectItem value="LAST">Last try counts</SelectItem><SelectItem value="AVERAGE">Average of tries</SelectItem></SelectContent>
+          <SelectContent><SelectItem value="BEST">{L('Best try counts', 'أحسن محاولة')}</SelectItem><SelectItem value="LAST">{L('Last try counts', 'آخر محاولة')}</SelectItem><SelectItem value="AVERAGE">{L('Average of tries', 'متوسط المحاولات')}</SelectItem></SelectContent>
         </Select>
-        <label className="flex items-center gap-1 text-xs">Pass mark <Input type="number" min={0} max={100} className="h-8 w-16" value={(data.passMark as number) ?? 50} onChange={(e) => set({ passMark: Number(e.target.value) || 0 })} />%</label>
+        <label className="flex items-center gap-1 text-xs">{L('Pass mark', 'درجة النجاح')} <Input type="number" min={0} max={100} className="h-8 w-16" value={(data.passMark as number) ?? 50} onChange={(e) => set({ passMark: Number(e.target.value) || 0 })} />%</label>
       </div>
       <div className="flex flex-wrap items-center gap-4 text-xs">
-        <label className="flex items-center gap-1"><input type="checkbox" checked={data.shuffleQuestions !== false} onChange={(e) => set({ shuffleQuestions: e.target.checked })} /> Mix the questions</label>
-        <label className="flex items-center gap-1"><input type="checkbox" checked={data.shuffleOptions !== false} onChange={(e) => set({ shuffleOptions: e.target.checked })} /> Mix the choices</label>
-        <label className="flex items-center gap-1"><input type="checkbox" checked={(data.requireInstructorOpen as boolean | null) ?? isFinal} onChange={(e) => set({ requireInstructorOpen: e.target.checked })} /> The instructor opens it in class</label>
-        {isFinal && <label className="flex items-center gap-1"><input type="checkbox" checked={data.allowPaper !== false} onChange={(e) => set({ allowPaper: e.target.checked })} /> Can be done on paper (typed score + scan)</label>}
-        <label className="flex items-center gap-1">Show correct answers
+        <label className="flex items-center gap-1"><input type="checkbox" checked={data.shuffleQuestions !== false} onChange={(e) => set({ shuffleQuestions: e.target.checked })} /> {L('Mix the questions', 'اخلط الأسئلة')}</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={data.shuffleOptions !== false} onChange={(e) => set({ shuffleOptions: e.target.checked })} /> {L('Mix the choices', 'اخلط الاختيارات')}</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={(data.requireInstructorOpen as boolean | null) ?? isFinal} onChange={(e) => set({ requireInstructorOpen: e.target.checked })} /> {L('The instructor opens it in class', 'المدرب يفتحه في الحصة')}</label>
+        {isFinal && <label className="flex items-center gap-1"><input type="checkbox" checked={data.allowPaper !== false} onChange={(e) => set({ allowPaper: e.target.checked })} /> {L('Can be done on paper (typed score + scan)', 'ينفع ورقي (درجة + سكان)')}</label>}
+        <label className="flex items-center gap-1">{L('Show correct answers', 'إظهار الإجابات الصح')}
           <Select value={(data.showAnswers as string) ?? 'AFTER_CLOSE'} onValueChange={(v) => set({ showAnswers: v })}>
             <SelectTrigger className="h-8 w-52 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="NEVER">Never</SelectItem><SelectItem value="AFTER_SUBMIT">Right after handing in</SelectItem><SelectItem value="AFTER_CLOSE">When no tries are left / the quiz is closed</SelectItem></SelectContent>
+            <SelectContent><SelectItem value="NEVER">{L('Never', 'أبدًا')}</SelectItem><SelectItem value="AFTER_SUBMIT">{L('Right after handing in', 'بعد التسليم على طول')}</SelectItem><SelectItem value="AFTER_CLOSE">{L('When no tries are left / the quiz is closed', 'لما المحاولات تخلص / الكويز يتقفل')}</SelectItem></SelectContent>
           </Select>
         </label>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
-        <textarea className="min-h-[60px] rounded-md border border-slate-200 bg-white p-2 text-xs" placeholder="Instructions (English)" value={(data.instructionsEn as string) ?? ''} onChange={(e) => set({ instructionsEn: e.target.value })} />
+        <textarea className="min-h-[60px] rounded-md border border-slate-200 bg-white p-2 text-xs" placeholder={L('Instructions (English)', 'التعليمات (إنجليزي)')} value={(data.instructionsEn as string) ?? ''} onChange={(e) => set({ instructionsEn: e.target.value })} />
         <textarea className="min-h-[60px] rounded-md border border-slate-200 bg-white p-2 text-xs" dir="rtl" placeholder="التعليمات (عربي)" value={(data.instructionsAr as string) ?? ''} onChange={(e) => set({ instructionsAr: e.target.value })} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2 text-xs">
-        <label className="flex items-center gap-1"><input type="checkbox" checked={!!bank} onChange={(e) => set({ bank: e.target.checked ? { count: 5, levelOnly: true, difficulty: null } : null })} /> Add random questions from the question bank</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={!!bank} onChange={(e) => set({ bank: e.target.checked ? { count: 5, levelOnly: true, difficulty: null } : null })} /> {L('Add random questions from the question bank', 'ضيف أسئلة عشوائية من بنك الأسئلة')}</label>
         {bank && (
           <>
-            <Input type="number" min={1} max={100} className="h-8 w-16" value={bank.count} onChange={(e) => set({ bank: { ...bank, count: Number(e.target.value) || 1 } })} /> questions
-            <label className="flex items-center gap-1"><input type="checkbox" checked={bank.levelOnly} onChange={(e) => set({ bank: { ...bank, levelOnly: e.target.checked } })} /> this level only</label>
+            <Input type="number" min={1} max={100} className="h-8 w-16" value={bank.count} onChange={(e) => set({ bank: { ...bank, count: Number(e.target.value) || 1 } })} /> {L('questions', 'سؤال')}
+            <label className="flex items-center gap-1"><input type="checkbox" checked={bank.levelOnly} onChange={(e) => set({ bank: { ...bank, levelOnly: e.target.checked } })} /> {L('this level only', 'المستوى ده بس')}</label>
             <Select value={String(bank.difficulty ?? 'ANY')} onValueChange={(v) => set({ bank: { ...bank, difficulty: v === 'ANY' ? null : Number(v) } })}>
               <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="ANY">Any difficulty</SelectItem><SelectItem value="1">Easy</SelectItem><SelectItem value="2">Medium</SelectItem><SelectItem value="3">Hard</SelectItem></SelectContent>
+              <SelectContent><SelectItem value="ANY">{L('Any difficulty', 'أي صعوبة')}</SelectItem><SelectItem value="1">{L('Easy', 'سهل')}</SelectItem><SelectItem value="2">{L('Medium', 'متوسط')}</SelectItem><SelectItem value="3">{L('Hard', 'صعب')}</SelectItem></SelectContent>
             </Select>
-            <span className="text-slate-400">(each student gets a different draw)</span>
+            <span className="text-slate-400">{L('(each student gets a different draw)', '(كل طالب بياخد أسئلة مختلفة)')}</span>
           </>
         )}
       </div>
 
       <div className="space-y-2">
         {qs.map((q, i) => <QuestionEditor key={q.id} q={q} index={i} onChange={(nq) => set({ questions: qs.map((x) => (x.id === q.id ? nq : x)) })} onRemove={() => set({ questions: qs.filter((x) => x.id !== q.id) })} />)}
-        <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => set({ questions: [...qs, blankQuestion()] })}><Plus className="h-4 w-4" /> Question</Button>
+        <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => set({ questions: [...qs, blankQuestion()] })}><Plus className="h-4 w-4" /> {L('Question', 'سؤال')}</Button>
       </div>
     </div>
   )

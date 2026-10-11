@@ -11,9 +11,9 @@ import { useSearchParams } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { useI18n } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 import { GradeDialog } from '@/components/assignments/GradeDialog'
-import { PolicyForm, LATE_LABEL, type Policy } from '@/components/assignments/PolicyForm'
+import { PolicyForm, lateLabel, type Policy } from '@/components/assignments/PolicyForm'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,45 +47,45 @@ export default function AssignmentsPage() {
   const refresh = () => { qc.invalidateQueries({ queryKey: key }); qc.invalidateQueries({ queryKey: ['hw-groups'] }) }
   const patch = useMutation({
     mutationFn: (b: object) => fetchApi(`/api/groups/${groupId}/assignments`, { method: 'PATCH', body: JSON.stringify(b) }),
-    onSuccess: () => { notify.success('Saved'); refresh() },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); refresh() },
     onError: (e: Error) => notify.error(e.message),
   })
   const queue = useMemo(() => (book?.cells ?? []).filter((c) => c.status === 'SUBMITTED' && (!column || c.blockId === column)).map((c) => c.id), [book, column])
   const col = book?.assignments.find((a) => a.blockId === column)
 
-  if (gErr) return <p className="text-sm text-slate-500">You don&apos;t grade homework.</p>
+  if (gErr) return <p className="text-sm text-slate-500">{L("You don't grade homework.", 'مش عندك واجبات تصححها.')}</p>
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><ClipboardList className="h-7 w-7 text-violet-600" /> Grade homework</h1>
-          <p className="mt-1 text-sm text-slate-500">Hand-ins of your groups. Purple = waiting to be graded.</p>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><ClipboardList className="h-7 w-7 text-violet-600" /> {L('Grade homework', 'تصحيح الواجبات')}</h1>
+          <p className="mt-1 text-sm text-slate-500">{L('Hand-ins of your groups. Purple = waiting to be graded.', 'تسليمات جروباتك. البنفسجي = مستني تصحيح.')}</p>
         </div>
         <Select value={groupId} onValueChange={(v) => { setGroupId(v); setColumn(null) }}>
-          <SelectTrigger className="h-9 w-80"><SelectValue placeholder="Choose a group" /></SelectTrigger>
-          <SelectContent>{(groups ?? []).map((g) => <SelectItem key={g.id} value={g.id}>{g.label} · {g.course} {g.level}{g.toGrade ? ` · ${g.toGrade} to grade` : ''}</SelectItem>)}</SelectContent>
+          <SelectTrigger className="h-9 w-80"><SelectValue placeholder={L('Choose a group', 'اختار جروب')} /></SelectTrigger>
+          <SelectContent>{(groups ?? []).map((g) => <SelectItem key={g.id} value={g.id}>{g.label} · {g.course} {g.level}{g.toGrade ? ` · ${g.toGrade} ${L('to grade', 'للتصحيح')}` : ''}</SelectItem>)}</SelectContent>
         </Select>
       </div>
 
       {!groupId ? null : isLoading || !book ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            {queue.length > 0 && <Button className="gap-1" onClick={() => setGrading(queue[0])}><CheckCheck className="h-4 w-4" /> Grade {queue.length} waiting{col ? ` (${pick(col.titleEn, col.titleAr) || `session ${col.sessionNumber}`})` : ''}</Button>}
-            {book.canChangePolicy && <Button variant="outline" className="gap-1" onClick={() => setPolicyOpen(true)}><Settings2 className="h-4 w-4" /> Homework rules for this group{book.groupPolicy ? ' (own)' : ''}</Button>}
-            <span className="text-xs text-slate-500">Late: {LATE_LABEL[book.policy.late]}{book.policy.latePenaltyPct ? ` −${book.policy.latePenaltyPct}%` : ''} · hand in again: {book.policy.resubmit ? `up to ${book.policy.maxAttempts}` : 'no'}</span>
+            {queue.length > 0 && <Button className="gap-1" onClick={() => setGrading(queue[0])}><CheckCheck className="h-4 w-4" /> {L(`Grade ${queue.length} waiting`, `صحّح ${queue.length} مستنيين`)}{col ? ` (${pick(col.titleEn, col.titleAr) || `${L('session', 'الحصة')} ${col.sessionNumber}`})` : ''}</Button>}
+            {book.canChangePolicy && <Button variant="outline" className="gap-1" onClick={() => setPolicyOpen(true)}><Settings2 className="h-4 w-4" /> {L('Homework rules for this group', 'قواعد الواجبات للجروب ده')}{book.groupPolicy ? L(' (own)', ' (خاصة)') : ''}</Button>}
+            <span className="text-xs text-slate-500">{L('Late', 'التأخير')}: {lateLabel(book.policy.late)}{book.policy.latePenaltyPct ? ` −${book.policy.latePenaltyPct}%` : ''} · {L('hand in again', 'إعادة التسليم')}: {book.policy.resubmit ? L(`up to ${book.policy.maxAttempts}`, `لحد ${book.policy.maxAttempts}`) : L('no', 'لأ')}</span>
           </div>
-          {!book.assignments.length ? <p className="text-sm text-slate-500">No homework open for this group yet (homework opens with its lesson).</p> : (
+          {!book.assignments.length ? <p className="text-sm text-slate-500">{L('No homework open for this group yet (homework opens with its lesson).', 'لسه مفيش واجبات مفتوحة للجروب ده (الواجب بيتفتح مع درسه).')}</p> : (
             <Card>
               <CardContent className="overflow-x-auto pt-4">
                 <table className="w-full border-collapse text-xs">
                   <thead>
                     <tr>
-                      <th className="sticky start-0 bg-white p-2 text-start">Student</th>
+                      <th className="sticky start-0 bg-white p-2 text-start">{L('Student', 'الطالب')}</th>
                       {book.assignments.map((a) => (
                         <th key={a.blockId} className={`min-w-[110px] cursor-pointer border-b border-slate-200 p-2 text-start align-bottom ${column === a.blockId ? 'bg-violet-50' : ''}`} onClick={() => setColumn(column === a.blockId ? null : a.blockId)}>
-                          <span className="block text-[10px] text-slate-400">S{a.sessionNumber}{a.finalProject ? ' · project' : ''}</span>
-                          <span className="block font-semibold text-slate-700">{pick(a.titleEn, a.titleAr) || 'Homework'}</span>
-                          <span className="block font-normal text-slate-400">{a.handedIn}/{book.students.length} in{a.toGrade ? ` · ${a.toGrade} to grade` : ''}</span>
+                          <span className="block text-[10px] text-slate-400">S{a.sessionNumber}{a.finalProject ? L(' · project', ' · مشروع') : ''}</span>
+                          <span className="block font-semibold text-slate-700">{pick(a.titleEn, a.titleAr) || L('Homework', 'واجب')}</span>
+                          <span className="block font-normal text-slate-400">{a.handedIn}/{book.students.length} {L('in', 'سلّموا')}{a.toGrade ? ` · ${a.toGrade} ${L('to grade', 'للتصحيح')}` : ''}</span>
                         </th>
                       ))}
                     </tr>
@@ -96,7 +96,7 @@ export default function AssignmentsPage() {
                         <td className="sticky start-0 bg-white p-2 font-medium text-slate-700">{s.name}</td>
                         {book.assignments.map((a) => {
                           const c = book.cells.find((x) => x.studentId === s.id && x.blockId === a.blockId)
-                          const label = !c || c.status === 'DRAFT' ? '—' : c.status === 'GRADED' ? `${c.score}/${c.maxScore}` : c.status === 'RETURNED' ? 'changes' : 'to grade'
+                          const label = !c || c.status === 'DRAFT' ? '—' : c.status === 'GRADED' ? `${c.score}/${c.maxScore}` : c.status === 'RETURNED' ? L('changes', 'تعديل') : L('to grade', 'للتصحيح')
                           return (
                             <td key={a.blockId} className="p-1">
                               <button type="button" disabled={!c || c.status === 'DRAFT'} onClick={() => c && setGrading(c.id)} className={`w-full rounded px-2 py-1 text-start ${c ? CELL[c.status] ?? '' : 'text-slate-300'}`}>
@@ -115,13 +115,13 @@ export default function AssignmentsPage() {
 
           {col && (
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-base">{pick(col.titleEn, col.titleAr) || 'Homework'} · session {col.sessionNumber}</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-base">{pick(col.titleEn, col.titleAr) || L('Homework', 'واجب')} · {L('session', 'الحصة')} {col.sessionNumber}</CardTitle></CardHeader>
               <CardContent className="flex flex-wrap items-center gap-3 text-sm">
-                <label className="flex items-center gap-2"><Clock className="h-4 w-4 text-slate-400" /> Due for this group
+                <label className="flex items-center gap-2"><Clock className="h-4 w-4 text-slate-400" /> {L('Due for this group', 'آخر ميعاد للجروب ده')}
                   <Input type="datetime-local" className="h-8 w-56" defaultValue={toLocalInput(col.dueAt)} onBlur={(e) => patch.mutate({ blockId: col.blockId, dueAt: e.target.value ? new Date(e.target.value).toISOString() : null })} />
                 </label>
-                <Button size="sm" variant="outline" onClick={() => patch.mutate({ blockId: col.blockId, inClass: book.students.map((s) => s.id), fullMarks: false })}>Done in class — everyone</Button>
-                <Button size="sm" variant="outline" onClick={() => patch.mutate({ blockId: col.blockId, inClass: book.students.map((s) => s.id), fullMarks: true })}>Done in class — full marks</Button>
+                <Button size="sm" variant="outline" onClick={() => patch.mutate({ blockId: col.blockId, inClass: book.students.map((s) => s.id), fullMarks: false })}>{L('Done in class — everyone', 'اتعمل في الحصة — الكل')}</Button>
+                <Button size="sm" variant="outline" onClick={() => patch.mutate({ blockId: col.blockId, inClass: book.students.map((s) => s.id), fullMarks: true })}>{L('Done in class — full marks', 'اتعمل في الحصة — الدرجة كاملة')}</Button>
               </CardContent>
             </Card>
           )}
@@ -130,7 +130,7 @@ export default function AssignmentsPage() {
 
       <Dialog open={!!grading} onOpenChange={(o) => { if (!o) setGrading(null) }}>
         <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
-          <DialogHeader><DialogTitle>Grade</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{L('Grade', 'التصحيح')}</DialogTitle></DialogHeader>
           {grading && <GradeDialog key={grading} submissionId={grading} onDone={(next) => {
             refresh()
             const rest = queue.filter((id) => id !== grading)
@@ -141,7 +141,7 @@ export default function AssignmentsPage() {
 
       <Dialog open={policyOpen} onOpenChange={setPolicyOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Homework rules for this group</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{L('Homework rules for this group', 'قواعد الواجبات للجروب ده')}</DialogTitle></DialogHeader>
           {book && <PolicyForm value={book.groupPolicy ?? book.policy} onSave={(p) => { patch.mutate({ policy: p }); setPolicyOpen(false) }} onReset={book.groupPolicy ? () => { patch.mutate({ policy: null }); setPolicyOpen(false) } : undefined} />}
         </DialogContent>
       </Dialog>

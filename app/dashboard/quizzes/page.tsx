@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { useI18n } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 import { CodeBlock } from '@/components/quizzes/CodeBlock'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -33,7 +33,7 @@ function Review({ attemptId, onDone }: { attemptId: string; onDone: () => void }
   useEffect(() => { if (data) setFeedback(data.feedback ?? '') }, [data])
   const save = useMutation({
     mutationFn: () => fetchApi(`/api/quizzes/review/${attemptId}`, { method: 'POST', body: JSON.stringify({ points, feedback: feedback || null }) }),
-    onSuccess: () => { notify.success('Saved'); onDone() }, onError: (e: Error) => notify.error(e.message),
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); onDone() }, onError: (e: Error) => notify.error(e.message),
   })
   if (!data) return <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
   return (
@@ -49,15 +49,15 @@ function Review({ attemptId, onDone }: { attemptId: string; onDone: () => void }
             {q.type === 'WRITE_CODE' ? (
               <>
                 <CodeBlock code={typeof a === 'object' && a?.code ? a.code : '(no code)'} language={q.language} />
-                <p className="text-xs text-slate-500">Tests passed in the browser: {typeof a === 'object' ? (a?.results ?? []).filter((x) => x.passed).length : 0}</p>
-                <label className="flex items-center gap-2 text-xs">Points <Input type="number" min={0} max={q.points} className="h-8 w-20" defaultValue={d?.points ?? 0} onChange={(e) => setPoints({ ...points, [q.id]: Number(e.target.value) })} /> / {q.points}</label>
+                <p className="text-xs text-slate-500">{L('Tests passed in the browser', 'الاختبارات اللي عدّت في المتصفح')}: {typeof a === 'object' ? (a?.results ?? []).filter((x) => x.passed).length : 0}</p>
+                <label className="flex items-center gap-2 text-xs">{L('Points', 'الدرجة')} <Input type="number" min={0} max={q.points} className="h-8 w-20" defaultValue={d?.points ?? 0} onChange={(e) => setPoints({ ...points, [q.id]: Number(e.target.value) })} /> / {q.points}</label>
               </>
-            ) : <p className="text-xs text-slate-600">Answer: {typeof a === 'object' ? JSON.stringify(a) : String(a ?? '—')}</p>}
+            ) : <p className="text-xs text-slate-600">{L('Answer', 'الإجابة')}: {typeof a === 'object' ? JSON.stringify(a) : String(a ?? '—')}</p>}
           </div>
         )
       })}
-      <textarea className="min-h-[70px] w-full rounded-md border border-slate-200 bg-white p-2" placeholder="Feedback" value={feedback} onChange={(e) => setFeedback(e.target.value)} />
-      <div className="flex justify-end"><Button disabled={save.isPending} onClick={() => save.mutate()}>Save</Button></div>
+      <textarea className="min-h-[70px] w-full rounded-md border border-slate-200 bg-white p-2" placeholder={L('Feedback', 'تعليق')} value={feedback} onChange={(e) => setFeedback(e.target.value)} />
+      <div className="flex justify-end"><Button disabled={save.isPending} onClick={() => save.mutate()}>{L('Save', 'حفظ')}</Button></div>
     </div>
   )
 }
@@ -79,27 +79,27 @@ function Paper({ groupId, quiz, students, onDone }: { groupId: string; quiz: Qui
         for (const [k, v] of Object.entries({ file: f, api_key: s.apiKey, timestamp: String(s.timestamp), signature: s.signature, folder: s.folder, allowed_formats: s.allowedFormats, type: s.type })) fd.append(k, v as Blob | string)
         const res = await fetch(`https://api.cloudinary.com/v1_1/${s.cloudName}/auto/upload`, { method: 'POST', body: fd })
         const j = await res.json()
-        if (!res.ok) throw new Error(j?.error?.message || 'Upload failed')
+        if (!res.ok) throw new Error(j?.error?.message || L('Upload failed', 'الرفع فشل'))
         setFiles((x) => [...x, { publicId: j.public_id, resourceType: j.resource_type === 'image' ? 'image' : 'raw', format: j.format, originalName: f.name }])
       }
     } catch (e) { notify.error((e as Error).message) } finally { setUploading(false) }
   }
   const save = useMutation({
     mutationFn: () => fetchApi(`/api/groups/${groupId}/quizzes/paper`, { method: 'POST', body: JSON.stringify({ blockId: quiz.blockId, studentId, score: Number(score), maxScore: Number(max), scanFiles: files, feedback: feedback || null }) }),
-    onSuccess: () => { notify.success('Saved'); setStudentId(''); setScore(''); setFiles([]); setFeedback(''); onDone() },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); setStudentId(''); setScore(''); setFiles([]); setFeedback(''); onDone() },
     onError: (e: Error) => notify.error(e.message),
   })
   return (
     <div className="space-y-3 text-sm">
       <Select value={studentId} onValueChange={setStudentId}>
-        <SelectTrigger><SelectValue placeholder="Student" /></SelectTrigger>
-        <SelectContent>{students.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}{quiz.results.find((r) => r.studentId === s.id)?.paper ? ' (has a paper result)' : ''}</SelectItem>)}</SelectContent>
+        <SelectTrigger><SelectValue placeholder={L('Student', 'الطالب')} /></SelectTrigger>
+        <SelectContent>{students.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}{quiz.results.find((r) => r.studentId === s.id)?.paper ? L(' (has a paper result)', ' (ليه نتيجة ورقية)') : ''}</SelectItem>)}</SelectContent>
       </Select>
-      <div className="flex items-center gap-2">Score <Input type="number" className="h-9 w-24" value={score} onChange={(e) => setScore(e.target.value)} /> out of <Input type="number" className="h-9 w-24" value={max} onChange={(e) => setMax(e.target.value)} /></div>
-      <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs">{uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />} Scan of the paper (photo / PDF)<input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={(e) => upload(e.target.files)} /></label>
+      <div className="flex items-center gap-2">{L('Score', 'الدرجة')} <Input type="number" className="h-9 w-24" value={score} onChange={(e) => setScore(e.target.value)} /> {L('out of', 'من')} <Input type="number" className="h-9 w-24" value={max} onChange={(e) => setMax(e.target.value)} /></div>
+      <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs">{uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />} {L('Scan of the paper (photo / PDF)', 'سكان الورقة (صورة / PDF)')}<input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={(e) => upload(e.target.files)} /></label>
       {files.map((f) => <p key={f.publicId} className="flex items-center gap-1 text-xs"><Paperclip className="h-3 w-3" /> {f.originalName}</p>)}
-      <textarea className="min-h-[60px] w-full rounded-md border border-slate-200 bg-white p-2" placeholder="Feedback (optional)" value={feedback} onChange={(e) => setFeedback(e.target.value)} />
-      <div className="flex justify-end"><Button disabled={!studentId || score === '' || uploading || save.isPending} onClick={() => save.mutate()}>Save paper result</Button></div>
+      <textarea className="min-h-[60px] w-full rounded-md border border-slate-200 bg-white p-2" placeholder={L('Feedback (optional)', 'تعليق (اختياري)')} value={feedback} onChange={(e) => setFeedback(e.target.value)} />
+      <div className="flex justify-end"><Button disabled={!studentId || score === '' || uploading || save.isPending} onClick={() => save.mutate()}>{L('Save paper result', 'احفظ النتيجة الورقية')}</Button></div>
     </div>
   )
 }
@@ -107,10 +107,10 @@ function Paper({ groupId, quiz, students, onDone }: { groupId: string; quiz: Qui
 function Analysis({ groupId, blockId }: { groupId: string; blockId: string }) {
   const { data } = useQuery({ queryKey: ['quiz-analysis', groupId, blockId], queryFn: () => fetchApi<{ id: string; textEn: string; type: string; answered: number; percentCorrect: number | null; commonWrong: string | null }[]>(`/api/quizzes/analysis?b=${blockId}&g=${groupId}`) })
   if (!data) return <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-  if (!data.length) return <p className="text-sm text-slate-500">No finished tries yet.</p>
+  if (!data.length) return <p className="text-sm text-slate-500">{L('No finished tries yet.', 'لسه مفيش محاولات خلصت.')}</p>
   return (
     <table className="w-full text-xs">
-      <thead><tr className="text-start text-slate-500"><th className="p-1 text-start">Question (hardest first)</th><th className="p-1">Answered</th><th className="p-1">Correct</th><th className="p-1 text-start">Most chosen wrong answer</th></tr></thead>
+      <thead><tr className="text-start text-slate-500"><th className="p-1 text-start">{L('Question (hardest first)', 'السؤال (الأصعب الأول)')}</th><th className="p-1">{L('Answered', 'جاوبوا')}</th><th className="p-1">{L('Correct', 'صح')}</th><th className="p-1 text-start">{L('Most chosen wrong answer', 'أكتر إجابة غلط اتختارت')}</th></tr></thead>
       <tbody>{data.map((r) => <tr key={r.id} className="border-t border-slate-100"><td className="p-1">{r.textEn || r.type}</td><td className="p-1 text-center">{r.answered}</td><td className={`p-1 text-center font-semibold ${(r.percentCorrect ?? 100) < 50 ? 'text-rose-600' : 'text-emerald-700'}`}>{r.percentCorrect ?? '—'}%</td><td className="p-1">{r.commonWrong ?? '—'}</td></tr>)}</tbody>
     </table>
   )
@@ -130,32 +130,32 @@ export default function QuizzesPage() {
   const refresh = () => qc.invalidateQueries({ queryKey: key })
   const win = useMutation({
     mutationFn: (b: { blockId: string; open: boolean; closesAt?: string | null }) => fetchApi(`/api/groups/${groupId}/quizzes`, { method: 'PATCH', body: JSON.stringify(b) }),
-    onSuccess: () => { notify.success('Saved'); refresh() }, onError: (e: Error) => notify.error(e.message),
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); refresh() }, onError: (e: Error) => notify.error(e.message),
   })
-  if (gErr) return <p className="text-sm text-slate-500">You don&apos;t run quizzes.</p>
+  if (gErr) return <p className="text-sm text-slate-500">{L("You don't run quizzes.", 'مش عندك كويزات.')}</p>
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><ListChecks className="h-7 w-7 text-sky-600" /> Quizzes</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><ListChecks className="h-7 w-7 text-sky-600" /> {L('Quizzes & exams', 'الكويزات والامتحانات')}</h1>
         <Select value={groupId} onValueChange={setGroupId}>
-          <SelectTrigger className="h-9 w-80"><SelectValue placeholder="Choose a group" /></SelectTrigger>
+          <SelectTrigger className="h-9 w-80"><SelectValue placeholder={L('Choose a group', 'اختار جروب')} /></SelectTrigger>
           <SelectContent>{(groups ?? []).map((g) => <SelectItem key={g.id} value={g.id}>{g.label} · {g.course} {g.level}</SelectItem>)}</SelectContent>
         </Select>
       </div>
-      {!groupId ? null : isLoading || !data ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : !data.quizzes.length ? <p className="text-sm text-slate-500">This group&apos;s curriculum has no quizzes.</p> : data.quizzes.map((q) => (
+      {!groupId ? null : isLoading || !data ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : !data.quizzes.length ? <p className="text-sm text-slate-500">{L("This group's curriculum has no quizzes.", 'منهج الجروب ده مفيهوش كويزات.')}</p> : data.quizzes.map((q) => (
         <Card key={q.blockId}>
           <CardHeader className="pb-2">
             <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
-              <span>S{q.sessionNumber} · {pick(q.titleEn, q.titleAr) || (q.kind === 'FINAL' ? 'End-of-level exam' : 'Quiz')} <span className={`ms-1 rounded-full border px-2 text-xs ${q.kind === 'FINAL' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-sky-200 bg-sky-50 text-sky-700'}`}>{q.kind === 'FINAL' ? 'final → MCQ' : 'session → task'}</span></span>
+              <span>S{q.sessionNumber} · {pick(q.titleEn, q.titleAr) || (q.kind === 'FINAL' ? L('End-of-level exam', 'امتحان آخر المستوى') : L('Quiz', 'كويز'))} <span className={`ms-1 rounded-full border px-2 text-xs ${q.kind === 'FINAL' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-sky-200 bg-sky-50 text-sky-700'}`}>{q.kind === 'FINAL' ? L('final → MCQ', 'نهائي ← MCQ') : L('session → task', 'حصة ← task')}</span></span>
               <span className="flex flex-wrap gap-2">
                 {q.needsOpen && (q.open
-                  ? <Button size="sm" variant="outline" className="gap-1" onClick={() => win.mutate({ blockId: q.blockId, open: false })}><Lock className="h-4 w-4" /> Close</Button>
-                  : <Button size="sm" className="gap-1" disabled={!q.lessonOpen} title={q.lessonOpen ? '' : 'The lesson is not open yet'} onClick={() => win.mutate({ blockId: q.blockId, open: true })}><LockOpen className="h-4 w-4" /> Open now</Button>)}
-                {q.allowPaper && <Button size="sm" variant="outline" className="gap-1" onClick={() => setPaper(q)}><FileUp className="h-4 w-4" /> Paper exam</Button>}
-                <Button size="sm" variant="ghost" className="gap-1" onClick={() => setAnalysis(q.blockId)}><BarChart3 className="h-4 w-4" /> Analysis</Button>
+                  ? <Button size="sm" variant="outline" className="gap-1" onClick={() => win.mutate({ blockId: q.blockId, open: false })}><Lock className="h-4 w-4" /> {L('Close', 'اقفل')}</Button>
+                  : <Button size="sm" className="gap-1" disabled={!q.lessonOpen} title={q.lessonOpen ? '' : L('The lesson is not open yet', 'الدرس لسه ما اتفتحش')} onClick={() => win.mutate({ blockId: q.blockId, open: true })}><LockOpen className="h-4 w-4" /> {L('Open now', 'افتحه دلوقتي')}</Button>)}
+                {q.allowPaper && <Button size="sm" variant="outline" className="gap-1" onClick={() => setPaper(q)}><FileUp className="h-4 w-4" /> {L('Paper exam', 'امتحان ورقي')}</Button>}
+                <Button size="sm" variant="ghost" className="gap-1" onClick={() => setAnalysis(q.blockId)}><BarChart3 className="h-4 w-4" /> {L('Analysis', 'التحليل')}</Button>
               </span>
             </CardTitle>
-            <p className="text-xs text-slate-500">{q.needsOpen ? (q.open ? 'Open — students can start' : 'Closed — open it in class') : 'Opens with its lesson'} · pass mark {q.passMark}%{q.toReview.length ? ` · ${q.toReview.length} to review` : ''}</p>
+            <p className="text-xs text-slate-500">{q.needsOpen ? (q.open ? L('Open — students can start', 'مفتوح — الطلبة يقدروا يبدأوا') : L('Closed — open it in class', 'مقفول — افتحه في الحصة')) : L('Opens with its lesson', 'بيتفتح مع درسه')} · {L('pass mark', 'درجة النجاح')} {q.passMark}%{q.toReview.length ? ` · ${q.toReview.length} ${L('to review', 'للمراجعة')}` : ''}</p>
           </CardHeader>
           <CardContent className="space-y-1 text-sm">
             {data.students.map((s) => {
@@ -164,11 +164,11 @@ export default function QuizzesPage() {
                 <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 px-2 py-1">
                   <span>{s.name}</span>
                   <span className="flex items-center gap-2 text-xs">
-                    {r?.inProgress && <span className="text-sky-700">in progress</span>}
-                    {r?.paper && <span className="text-slate-500">paper</span>}
-                    {r?.reviewId && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setReview(r.reviewId)}>review code</Button>}
+                    {r?.inProgress && <span className="text-sky-700">{L('in progress', 'شغال')}</span>}
+                    {r?.paper && <span className="text-slate-500">{L('paper', 'ورقي')}</span>}
+                    {r?.reviewId && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setReview(r.reviewId)}>{L('review code', 'راجع الكود')}</Button>}
                     <span className={`font-semibold ${r?.result ? (r.result.percent >= q.passMark ? 'text-emerald-700' : 'text-amber-700') : 'text-slate-300'}`}>{r?.result ? `${r.result.score}/${r.result.max} (${r.result.percent}%)` : '—'}</span>
-                    <span className="text-slate-400">{r?.tries ?? 0} tries</span>
+                    <span className="text-slate-400">{r?.tries ?? 0} {L('tries', 'محاولات')}</span>
                   </span>
                 </div>
               )
@@ -177,13 +177,13 @@ export default function QuizzesPage() {
         </Card>
       ))}
       <Dialog open={!!review} onOpenChange={(o) => { if (!o) setReview(null) }}>
-        <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>Review</DialogTitle></DialogHeader>{review && <Review attemptId={review} onDone={() => { setReview(null); refresh() }} />}</DialogContent>
+        <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{L('Review', 'المراجعة')}</DialogTitle></DialogHeader>{review && <Review attemptId={review} onDone={() => { setReview(null); refresh() }} />}</DialogContent>
       </Dialog>
       <Dialog open={!!paper} onOpenChange={(o) => { if (!o) setPaper(null) }}>
-        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Paper exam result</DialogTitle></DialogHeader>{paper && data && <Paper groupId={groupId} quiz={paper} students={data.students} onDone={refresh} />}</DialogContent>
+        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{L('Paper exam result', 'نتيجة الامتحان الورقي')}</DialogTitle></DialogHeader>{paper && data && <Paper groupId={groupId} quiz={paper} students={data.students} onDone={refresh} />}</DialogContent>
       </Dialog>
       <Dialog open={!!analysis} onOpenChange={(o) => { if (!o) setAnalysis(null) }}>
-        <DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Question analysis</DialogTitle></DialogHeader>{analysis && <Analysis groupId={groupId} blockId={analysis} />}</DialogContent>
+        <DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{L('Question analysis', 'تحليل الأسئلة')}</DialogTitle></DialogHeader>{analysis && <Analysis groupId={groupId} blockId={analysis} />}</DialogContent>
       </Dialog>
     </div>
   )

@@ -8,7 +8,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { useI18n } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,24 +32,25 @@ const STATUS_STYLE: Record<string, string> = {
 function NewEditionDialog({ data, onDone }: { data: LevelData; onDone: (id: string) => void }) {
   const [from, setFrom] = useState<string>(data.editions.find((e) => e.status === 'PUBLISHED')?.id ?? 'blank')
   const [notes, setNotes] = useState('')
+  const { t } = useI18n()
   const create = useMutation({
     mutationFn: () => fetchApi<{ id: string }>(`/api/curriculum/levels/${data.level.id}`, { method: 'POST', body: JSON.stringify({ copyFromId: from === 'blank' ? null : from, notes: notes || null }) }),
-    onSuccess: (r) => { notify.success('Draft created'); onDone(r.id) },
+    onSuccess: (r) => { notify.success(L('Draft created', 'المسودة اتعملت')); onDone(r.id) },
     onError: (e: Error) => notify.error(e.message),
   })
   return (
     <div className="space-y-3 text-sm">
-      <label className="block space-y-1"><span className="text-xs text-slate-500">Start from</span>
+      <label className="block space-y-1"><span className="text-xs text-slate-500">{L('Start from', 'ابدأ من')}</span>
         <Select value={from} onValueChange={setFrom}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="blank">Empty ({data.level.numberOfSessions} empty sessions)</SelectItem>
-            {data.editions.map((e) => <SelectItem key={e.id} value={e.id}>Copy of version {e.number} ({e.status.toLowerCase().replace('_', ' ')})</SelectItem>)}
+            <SelectItem value="blank">{L(`Empty (${data.level.numberOfSessions} empty sessions)`, `فاضية (${data.level.numberOfSessions} حصة فاضية)`)}</SelectItem>
+            {data.editions.map((e) => <SelectItem key={e.id} value={e.id}>{L('Copy of version', 'نسخة من النسخة')} {e.number} ({t(`cur.status.${e.status}` as 'cur.status.DRAFT')})</SelectItem>)}
           </SelectContent>
         </Select>
       </label>
-      <label className="block space-y-1"><span className="text-xs text-slate-500">What changes in this version? (optional)</span><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
-      <div className="flex justify-end"><Button onClick={() => create.mutate()} disabled={create.isPending}>{create.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}Create draft</Button></div>
+      <label className="block space-y-1"><span className="text-xs text-slate-500">{L('What changes in this version? (optional)', 'إيه اللي اتغيّر في النسخة دي؟ (اختياري)')}</span><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
+      <div className="flex justify-end"><Button onClick={() => create.mutate()} disabled={create.isPending}>{create.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}{L('Create draft', 'اعمل مسودة')}</Button></div>
     </div>
   )
 }
@@ -67,7 +68,7 @@ function SkillsCard({ data }: { data: LevelData }) {
   const del = useMutation({ mutationFn: (id: string) => fetchApi(`/api/curriculum/skills/${id}`, { method: 'DELETE' }), onSuccess: refresh, onError: (e: Error) => notify.error(e.message) })
   return (
     <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-base">Skills of {data.level.subject.name}</CardTitle><CardDescription>Tag lessons with skills; later they feed the skills chart in reports and the passport.</CardDescription></CardHeader>
+      <CardHeader className="pb-2"><CardTitle className="text-base">{L('Skills of', 'مهارات')} {data.level.subject.name}</CardTitle><CardDescription>{L('Tag lessons with skills; later they feed the skills chart in reports and the passport.', 'علّم الدروس بالمهارات؛ بعدين بتغذّي رسم المهارات في التقارير والـ Passport.')}</CardDescription></CardHeader>
       <CardContent className="space-y-2 text-sm">
         <div className="flex flex-wrap gap-1">
           {data.skills.map((s) => (
@@ -76,11 +77,11 @@ function SkillsCard({ data }: { data: LevelData }) {
               {data.can.delete && <button type="button" aria-label="Remove" onClick={() => del.mutate(s.id)}><Trash2 className="h-3 w-3" /></button>}
             </span>
           ))}
-          {!data.skills.length && <span className="text-xs text-slate-400">No skills yet.</span>}
+          {!data.skills.length && <span className="text-xs text-slate-400">{L('No skills yet.', 'لسه مفيش مهارات.')}</span>}
         </div>
         {data.can.edit && (
           <div className="flex flex-wrap gap-2">
-            <Input className="h-8 w-40" placeholder="Skill (English)" value={en} onChange={(e) => setEn(e.target.value)} />
+            <Input className="h-8 w-40" placeholder={L('Skill (English)', 'المهارة (إنجليزي)')} value={en} onChange={(e) => setEn(e.target.value)} />
             <Input className="h-8 w-40" dir="rtl" placeholder="المهارة (عربي)" value={ar} onChange={(e) => setAr(e.target.value)} />
             <Button size="sm" variant="outline" disabled={!en.trim() || add.isPending} onClick={() => add.mutate()}><Plus className="h-4 w-4" /></Button>
           </div>
@@ -115,7 +116,7 @@ export default function CurriculumLevelPage() {
   })
   const remove = useMutation({
     mutationFn: () => fetchApi(`/api/curriculum/editions/${selected}`, { method: 'DELETE' }),
-    onSuccess: () => { notify.success('Draft deleted'); setSelected(null); refresh() },
+    onSuccess: () => { notify.success(L('Draft deleted', 'المسودة اتمسحت')); setSelected(null); refresh() },
     onError: (e: Error) => notify.error(e.message),
   })
   const addSession = useMutation({
@@ -125,12 +126,12 @@ export default function CurriculumLevelPage() {
   })
   const importFile = useMutation({
     mutationFn: async (file: File) => fetchApi<{ id: string }>(`/api/curriculum/levels/${levelId}/import`, { method: 'POST', body: await file.text() }),
-    onSuccess: (r) => { notify.success('Imported as a new draft'); setSelected(r.id); refresh() },
+    onSuccess: (r) => { notify.success(L('Imported as a new draft', 'اتستورد كمسودة جديدة')); setSelected(r.id); refresh() },
     onError: (e: Error) => notify.error(e.message),
   })
 
   if (isLoading) return <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-  if (error || !data) return <p className="text-sm text-slate-500">{(error as Error)?.message ?? 'Not found'}</p>
+  if (error || !data) return <p className="text-sm text-slate-500">{(error as Error)?.message ?? L('Not found', 'مش موجود')}</p>
   const cur = ed?.edition
   const can = data.can
   return (
@@ -138,7 +139,7 @@ export default function CurriculumLevelPage() {
       <div className="space-y-1">
         <Link href="/dashboard/curriculum" className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"><ArrowLeft className="h-3 w-3 rtl:rotate-180" /> {t('cur.title')}</Link>
         <h1 className="text-2xl font-bold text-slate-900">{data.level.subject.name} — {data.level.name}</h1>
-        <p className="text-sm text-slate-500">{data.level.subject.track?.name ?? ''} · {data.level.numberOfSessions} sessions planned</p>
+        <p className="text-sm text-slate-500">{data.level.subject.track?.name ?? ''} · {data.level.numberOfSessions} {L('sessions planned', 'حصة متخططة')}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -150,44 +151,44 @@ export default function CurriculumLevelPage() {
         {can.edit && <Button size="sm" className="gap-1" onClick={() => setNewOpen(true)}><Plus className="h-4 w-4" /> {t('cur.newEdition')}</Button>}
         {can.edit && (
           <>
-            <Button size="sm" variant="outline" className="gap-1" onClick={() => fileRef.current?.click()} disabled={importFile.isPending}><Upload className="h-4 w-4" /> Import</Button>
+            <Button size="sm" variant="outline" className="gap-1" onClick={() => fileRef.current?.click()} disabled={importFile.isPending}><Upload className="h-4 w-4" /> {L('Import', 'استيراد')}</Button>
             <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importFile.mutate(f); e.target.value = '' }} />
           </>
         )}
       </div>
 
-      {!data.editions.length && <p className="text-sm text-slate-500">No curriculum for this level yet.{can.edit ? ' Create the first version.' : ''}</p>}
+      {!data.editions.length && <p className="text-sm text-slate-500">{L('No curriculum for this level yet.', 'لسه مفيش منهج للمستوى ده.')}{can.edit ? L(' Create the first version.', ' اعمل أول نسخة.') : ''}</p>}
 
       {cur && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
-              <span>Version {cur.number} <span className={`ms-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLE[cur.status]}`}>{t(`cur.status.${cur.status}` as 'cur.status.DRAFT')}</span></span>
+              <span>{L('Version', 'النسخة')} {cur.number} <span className={`ms-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLE[cur.status]}`}>{t(`cur.status.${cur.status}` as 'cur.status.DRAFT')}</span></span>
               <span className="flex flex-wrap gap-2">
                 {can.edit && cur.status === 'DRAFT' && <Button size="sm" variant="outline" onClick={() => act.mutate('submit')} disabled={act.isPending}>{t('cur.submitReview')}</Button>}
-                {can.approve && (cur.status === 'IN_REVIEW' || cur.status === 'DRAFT') && <Button size="sm" onClick={() => { if (confirm('Publish this version? New groups of this level will use it.')) act.mutate('publish') }} disabled={act.isPending}>{t('cur.publish')}</Button>}
-                {can.approve && cur.status === 'IN_REVIEW' && <Button size="sm" variant="outline" onClick={() => act.mutate('reject')} disabled={act.isPending}>Back to draft</Button>}
-                {can.approve && cur.status === 'PUBLISHED' && <Button size="sm" variant="ghost" onClick={() => { if (confirm('Archive this version? Groups already using it keep reading it.')) act.mutate('archive') }}>Archive</Button>}
-                {can.edit && <Button size="sm" variant="ghost" className="gap-1" asChild><a href={`/api/curriculum/editions/${cur.id}/export`}><Download className="h-4 w-4" /> Export</a></Button>}
-                {can.delete && cur.status === 'DRAFT' && <Button size="sm" variant="ghost" className="gap-1 text-rose-600" onClick={() => { if (confirm('Delete this draft and all its content?')) remove.mutate() }}><Trash2 className="h-4 w-4" /></Button>}
+                {can.approve && (cur.status === 'IN_REVIEW' || cur.status === 'DRAFT') && <Button size="sm" onClick={() => { if (confirm(L('Publish this version? New groups of this level will use it.', 'تنشر النسخة دي؟ الجروبات الجديدة في المستوى ده هتستخدمها.'))) act.mutate('publish') }} disabled={act.isPending}>{t('cur.publish')}</Button>}
+                {can.approve && cur.status === 'IN_REVIEW' && <Button size="sm" variant="outline" onClick={() => act.mutate('reject')} disabled={act.isPending}>{L('Back to draft', 'رجّعها مسودة')}</Button>}
+                {can.approve && cur.status === 'PUBLISHED' && <Button size="sm" variant="ghost" onClick={() => { if (confirm(L('Archive this version? Groups already using it keep reading it.', 'تأرشف النسخة دي؟ الجروبات اللي شغالة عليها هتفضل تقراها.'))) act.mutate('archive') }}>{L('Archive', 'أرشفة')}</Button>}
+                {can.edit && <Button size="sm" variant="ghost" className="gap-1" asChild><a href={`/api/curriculum/editions/${cur.id}/export`}><Download className="h-4 w-4" /> {L('Export', 'تصدير')}</a></Button>}
+                {can.delete && cur.status === 'DRAFT' && <Button size="sm" variant="ghost" className="gap-1 text-rose-600" onClick={() => { if (confirm(L('Delete this draft and all its content?', 'تمسح المسودة دي وكل محتواها؟'))) remove.mutate() }}><Trash2 className="h-4 w-4" /></Button>}
               </span>
             </CardTitle>
             <CardDescription>
-              {cur.notes ? `${cur.notes} · ` : ''}{data.editions.find((e) => e.id === cur.id)?.groupCount ?? 0} group(s) pinned
-              {cur.status !== 'DRAFT' && can.edit ? ' · To change it, create a new version (copy) — published versions are locked.' : ''}
+              {cur.notes ? `${cur.notes} · ` : ''}{data.editions.find((e) => e.id === cur.id)?.groupCount ?? 0} {L('group(s) on it', 'جروب شغال عليها')}
+              {cur.status !== 'DRAFT' && can.edit ? L(' · To change it, create a new version (copy) — published versions are locked.', ' · علشان تعدّلها اعمل نسخة جديدة — النسخ المنشورة مقفولة.') : ''}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1">
             {ed.sessions.map((s) => (
               <Link key={s.id} href={`/dashboard/curriculum/session/${s.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 px-3 py-2 text-sm hover:bg-slate-50">
-                <span><span className="font-semibold text-slate-500">{s.number}.</span> {pick(s.titleEn, s.titleAr) || <span className="italic text-slate-400">no title yet</span>}</span>
+                <span><span className="font-semibold text-slate-500">{s.number}.</span> {pick(s.titleEn, s.titleAr) || <span className="italic text-slate-400">{L('no title yet', 'لسه مالهاش عنوان')}</span>}</span>
                 <span className="flex items-center gap-2 text-xs text-slate-500">
                   {s.openComments > 0 && <span className="inline-flex items-center gap-0.5 text-amber-600"><MessageSquare className="h-3 w-3" />{s.openComments}</span>}
-                  {s.blockCount} item(s){s.durationMin ? ` · ${s.durationMin} min` : ''}
+                  {s.blockCount} {L('item(s)', 'عنصر')}{s.durationMin ? ` · ${s.durationMin} ${L('min', 'دقيقة')}` : ''}
                 </span>
               </Link>
             ))}
-            {can.edit && cur.status === 'DRAFT' && <Button size="sm" variant="outline" className="mt-2 gap-1" onClick={() => addSession.mutate()} disabled={addSession.isPending}><Plus className="h-4 w-4" /> Add session</Button>}
+            {can.edit && cur.status === 'DRAFT' && <Button size="sm" variant="outline" className="mt-2 gap-1" onClick={() => addSession.mutate()} disabled={addSession.isPending}><Plus className="h-4 w-4" /> {L('Add session', 'ضيف حصة')}</Button>}
           </CardContent>
         </Card>
       )}

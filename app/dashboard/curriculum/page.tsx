@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { checkPermission } from '@/lib/rbac'
-import { useI18n } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BookOpen, ChevronRight, Loader2 } from 'lucide-react'
@@ -22,7 +22,7 @@ export default function CurriculumPage() {
   const allowed = !!role && checkPermission(role, 'curriculum', 'read')
   const { data, isLoading } = useQuery({ queryKey: ['curriculum-tree'], queryFn: () => fetchApi<Tree>('/api/curriculum/tree'), enabled: allowed })
   if (!role) return null
-  if (!allowed) return <AccessDenied title="Curriculum" message="You don't have access to the curriculum." />
+  if (!allowed) return <AccessDenied title={L('Curriculum', 'المنهج')} message={L("You don't have access to the curriculum.", 'مش عندك صلاحية للمنهج.')} />
   return (
     <div className="space-y-6">
       <div>
@@ -40,10 +40,10 @@ export default function CurriculumPage() {
                   <CardContent className="space-y-1">
                     {c.levels.map((l) => (
                       <Link key={l.id} href={`/dashboard/curriculum/level/${l.id}`} className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 px-3 py-2 text-sm hover:bg-slate-50">
-                        <span className="font-medium text-slate-800">{l.name} <span className="text-xs font-normal text-slate-400">· {l.numberOfSessions} sessions</span></span>
+                        <span className="font-medium text-slate-800">{l.name} <span className="text-xs font-normal text-slate-400">· {l.numberOfSessions} {L('sessions', 'حصص')}</span></span>
                         <span className="flex items-center gap-1">
                           {l.publishedNumber ? <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">v{l.publishedNumber}</span>
-                            : <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-500">no curriculum</span>}
+                            : <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-500">{L('no curriculum', 'مفيش منهج')}</span>}
                           {l.reviewCount > 0 && <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700">{t('cur.status.IN_REVIEW')}</span>}
                           {l.draftCount > 0 && <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs text-sky-700">{t('cur.status.DRAFT')}</span>}
                           <ChevronRight className="h-4 w-4 text-slate-400 rtl:rotate-180" />
