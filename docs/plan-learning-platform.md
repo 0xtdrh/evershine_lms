@@ -192,6 +192,19 @@ Decisions are from the owner (chat 2026-10-03 → 2026-10-05) unless marked "pro
   - A meeting link is generated per online session; attendance can be marked from it.
   - Owner confirmation needed.
 - **Storage adapter:** H5P packages / PDFs / submissions on Cloudinary now, own server later, with no app change.
+- **Owner decisions (2026-10-11):**
+  1. H5P: build it (made with the free Lumi editor, `.h5p` uploaded as a lesson item, score + completion saved and
+     used by progress, session report, skills and the "task" score).
+  2. External tools: ALL of this list. Inside the lesson page: Scratch, MakeCode (micro:bit, Arcade), Blockly Games,
+     Snap!, Trinket, Python Tutor, p5.js, CodePen, Wokwi, Tinkercad, Falstad, GeoGebra, PhET, Desmos, Wordwall,
+     LearningApps, Genially. New tab + hand in the project link (the sites refuse to be shown inside another site):
+     Code.org, App Inventor, Replit, Open Roberta Lab, VEXcode VR, Teachable Machine, Machine Learning for Kids,
+     Kahoot. Admins can add more sites from the settings.
+  3. Video: stay on Cloudinary for now (still a trial); code ready to move to Bunny Stream later. Moving name
+     watermark on videos.
+  4. Online classes: free first step only — a meeting link per session (Zoom / Meet / any), "Join" button in the
+     portal shortly before the session, joining logged as provisional attendance the instructor confirms.
+  5. LTI: postponed (most children's tools do not support it; the project-link hand-in covers it).
 
 ## 3. Reports
 
