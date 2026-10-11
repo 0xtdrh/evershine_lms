@@ -17,7 +17,7 @@ import { prisma } from '@/lib/prisma'
 import { getSetting, setSetting } from '@/lib/settings/app-settings'
 import { getBaseUploadFolder } from '@/lib/cloudinary'
 import { visibleTo } from '@/lib/curriculum/blocks'
-import { groupLessons, studentLessonGroups, studentLessonAccess, studentInGroup, canManageGroupLessons } from '@/lib/lms/engine'
+import { groupLessons, studentLessonGroups, studentLessonAccess, studentInGroup, canManageGroupLessons, type GroupLessons } from '@/lib/lms/engine'
 import { getLmsSettings } from '@/lib/lms/settings'
 import { ageOn, cairoYmd } from '@/lib/dates/cairo'
 import { runToolCheck } from './tool-fetch'
@@ -62,8 +62,8 @@ interface GroupAssignment {
 }
 
 /** Every assignment of a group's curriculum (with open state for the student, and the group due date). */
-export async function groupAssignments(groupId: string, opts: { studentId?: string } = {}): Promise<GroupAssignment[]> {
-  const gl = await groupLessons(groupId, opts)
+export async function groupAssignments(groupId: string, opts: { studentId?: string; lessons?: GroupLessons | null } = {}): Promise<GroupAssignment[]> {
+  const gl = opts.lessons !== undefined ? opts.lessons : await groupLessons(groupId, { studentId: opts.studentId })
   if (!gl?.edition) return []
   const blocks = await prisma.curriculumBlock.findMany({
     where: { sessionId: { in: gl.sessions.map((s) => s.id) }, type: 'ASSIGNMENT' },

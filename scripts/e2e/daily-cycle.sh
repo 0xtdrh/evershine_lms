@@ -1320,6 +1320,17 @@ check "parent cannot take the quiz" "$(curl -s -b "$LPJ" -X POST -H 'Content-Typ
 check "item analysis for the instructor (6 questions)" "$(curl -s -b "$TJ" "$B/api/quizzes/analysis?b=$QZ&g=$LG" | jq_ "len(d['data'])")" "6"
 check "level result: task 40.91% (session quizzes) and MCQ 80% (final exam) from the LMS" "$(api GET "/api/level-results?classSectionId=$LG&subjectId=$SUBJ" | jq_ "[(float(r['lms']['task']), float(r['lms']['mcq'])) for r in d['data']['rows'] if r['student']['id']=='$LK'][0]")" "(40.91, 80.0)"
 api PUT /api/platform/settings '{"modules":{"lms":false}}' >/dev/null
+
+echo "== 35. LMS analytics: numbers, groups table, follow-up list, filters, who can see it"
+AN=$(api GET /api/lms/analytics)
+check "admin: the LMS group is in the groups table" "$(echo "$AN" | jq_ "any(g['id']=='$LG' for g in d['data']['groups'])")" "True"
+check "quiz average of the group = (81.82 + 0 + 80 + 70) / 4" "$(echo "$AN" | jq_ "[float(g['quizAvg']) for g in d['data']['groups'] if g['id']=='$LG'][0]")" "58.0"
+check "the quiz tries of this week are in the weekly chart" "$(echo "$AN" | jq_ "sum(w['quizzes'] for w in d['data']['weeks']) >= 5")" "True"
+check "filter by another level → no groups" "$(api GET "/api/lms/analytics?levelId=nope" | jq_ "len(d['data']['groups'])")" "0"
+check "wrong period refused" "$(api GET "/api/lms/analytics?from=2026-10-10&to=2026-10-01" | jq_ "d['success']")" "False"
+check "instructor sees own groups only, no instructor filter" "$(curl -s -b "$TJ" $B/api/lms/analytics | jq_ "(any(g['id']=='$LG' for g in d['data']['groups']), d['data']['options']['teachers'])")" "(True, [])"
+check "secretary cannot open the analytics" "$(secapi GET /api/lms/analytics | jq_ "d['success']")" "False"
+check "parent cannot open the analytics" "$(curl -s -o /dev/null -w '%{http_code}' -b "$LPJ" $B/api/lms/analytics)" "403"
 rm -f "$LKJ" "$LPJ" "$TJ"
 
 echo

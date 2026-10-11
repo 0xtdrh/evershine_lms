@@ -9,6 +9,7 @@ import { fetchApi } from '@/lib/api-client'
 import { checkPermission } from '@/lib/rbac'
 import { useI18n } from '@/lib/i18n/client'
 import { AccessDenied } from '@/components/AccessDenied'
+import { LmsAnalytics } from '@/components/lms/LmsAnalytics'
 import { Card, CardContent } from '@/components/ui/card'
 import { BarChart3, BookOpen, ClipboardCheck, ClipboardList, GraduationCap, Images, Library, ListChecks, Power, Settings2, Table2 } from 'lucide-react'
 
@@ -87,6 +88,7 @@ export default function LmsHubPage() {
           </div>
         )
       })}
+      {['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'TEACHER'].includes(role) && <LmsAnalytics />}
     </div>
   )
 }
