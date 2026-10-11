@@ -11,7 +11,7 @@ import { useI18n } from '@/lib/i18n/client'
 import { AccessDenied } from '@/components/AccessDenied'
 import { LmsAnalytics } from '@/components/lms/LmsAnalytics'
 import { Card, CardContent } from '@/components/ui/card'
-import { BarChart3, BookOpen, FileText, ClipboardCheck, ClipboardList, GraduationCap, Images, Library, ListChecks, Power, Settings2, Table2 } from 'lucide-react'
+import { Award, BarChart3, BookOpen, FileText, ClipboardCheck, ClipboardList, GraduationCap, Images, Library, ListChecks, Power, Settings2, Table2 } from 'lucide-react'
 
 type Perm = Parameters<typeof checkPermission>[1]
 interface Tile { href: string; en: string; ar: string; descEn: string; descAr: string; icon: React.ComponentType<{ className?: string }>; perm?: [Perm, Parameters<typeof checkPermission>[2]]; count?: number; countEn?: string; countAr?: string }
@@ -22,7 +22,7 @@ export default function LmsHubPage() {
   const ar = locale === 'ar'
   const role = session?.user?.role ?? ''
   const allowed = !!role && checkPermission(role, 'curriculum', 'read')
-  const { data: n } = useQuery({ queryKey: ['lms-hub'], queryFn: () => fetchApi<{ toGrade: number; quizReview: number; inReview: number }>('/api/lms/hub'), enabled: allowed, refetchInterval: 60_000 })
+  const { data: n } = useQuery({ queryKey: ['lms-hub'], queryFn: () => fetchApi<{ toGrade: number; quizReview: number; inReview: number; myPerformance?: boolean }>('/api/lms/hub'), enabled: allowed, refetchInterval: 60_000 })
   if (!role) return null
   if (!allowed) return <AccessDenied title="LMS" message="You don't have access to the LMS." />
   const teacher = role === 'TEACHER'
@@ -38,6 +38,7 @@ export default function LmsHubPage() {
       en: 'Teaching', ar: 'التدريس', tiles: [
         { href: teacher ? '/dashboard/teacher/attendance' : '/dashboard/attendance/sections', en: 'Lesson plan & attendance', ar: 'خطة الحصة والحضور', descEn: 'Open / lock lessons, group notes — inside the attendance screen', descAr: 'فتح وقفل الدروس وملاحظات الجروب — جوه شاشة الحضور', icon: ClipboardCheck },
         { href: '/dashboard/session-reports', en: 'Session reports', ar: 'تقارير الحصص', descEn: 'Report after each session: stars, phrases, what is missing', descAr: 'تقرير بعد كل حصة: نجوم، جمل جاهزة، والحاجات الناقصة', icon: FileText, perm: ['session_reports', 'read'] },
+        ...(teacher && n?.myPerformance ? [{ href: '/dashboard/teacher-performance', en: 'My performance', ar: 'أدائي', descEn: 'Attendance, ratings, renewals, grading of your groups', descAr: 'الحضور والتقييمات والتجديد والتصحيح في جروباتك', icon: Award }] : []),
       ],
     },
     {

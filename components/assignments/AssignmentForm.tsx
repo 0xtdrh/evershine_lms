@@ -2,6 +2,7 @@
 
 /** LMS L3: author form of an ASSIGNMENT block (curriculum editor): instructions, ways to hand in, questions, grading. */
 
+import { SkillPicker } from '@/components/curriculum/SkillPicker'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
@@ -138,6 +139,7 @@ export function AssignmentForm({ data, onChange, subjectId }: { data: Record<str
           </label>
         )}
         <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!data.finalProject} onChange={(e) => set({ finalProject: e.target.checked })} /> {L('Final project of the level (fills the "project" score)', 'المشروع النهائي للمستوى (بيملا خانة project)')}</label>
+        <SkillPicker subjectId={subjectId} value={data.skillIds as string[] | undefined} onChange={(skillIds) => set({ skillIds })} />
       </div>
     </div>
   )

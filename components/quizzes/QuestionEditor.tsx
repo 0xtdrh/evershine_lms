@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, Trash2 } from 'lucide-react'
 import { CodeBlock } from './CodeBlock'
+import { SkillPicker } from '@/components/curriculum/SkillPicker'
 import { L } from '@/lib/i18n/client'
 
 export type Q = {
@@ -14,6 +15,7 @@ export type Q = {
   options: { id: string; textEn: string; textAr: string; code?: string }[]; correct: (string | number)[]; tolerance?: number
   items: { id: string; textEn: string; textAr: string }[]; pairs: { id: string; left: string; right: string }[]
   tests: { id: string; input: string; expected: string; points: number }[]
+  skillIds?: string[]
 }
 
 export const TYPE_LABELS: Record<string, string> = {
@@ -41,7 +43,7 @@ export function blankQuestion(type = 'SINGLE'): Q {
   return { id: uid(), type, textEn: '', textAr: '', points: 1, language: 'python', options: CHOICE_TYPES.includes(type) ? [{ id: uid(), textEn: '', textAr: '' }, { id: uid(), textEn: '', textAr: '' }] : [], correct: [], items: [], pairs: [], tests: [] }
 }
 
-export function QuestionEditor({ q, onChange, onRemove, index }: { q: Q; onChange: (q: Q) => void; onRemove?: () => void; index?: number }) {
+export function QuestionEditor({ q, onChange, onRemove, index, subjectId }: { q: Q; onChange: (q: Q) => void; onRemove?: () => void; index?: number; subjectId?: string | null }) {
   const set = (p: Partial<Q>) => onChange({ ...q, ...p })
   const isChoice = CHOICE_TYPES.includes(q.type)
   return (
@@ -159,6 +161,7 @@ export function QuestionEditor({ q, onChange, onRemove, index }: { q: Q; onChang
           <p className="text-[10px] text-slate-400">{L("Tests run in the student's browser; you confirm the points in the quiz results. Not for Arduino.", 'الاختبارات بتشتغل في متصفح الطالب، وأنت بتأكّد الدرجة في نتايج الكويز. مش لـ Arduino.')}</p>
         </div>
       )}
+      <SkillPicker subjectId={subjectId} value={q.skillIds} onChange={(skillIds) => set({ skillIds })} />
     </div>
   )
 }

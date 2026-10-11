@@ -63,6 +63,8 @@ export const assignmentDataSchema = z.object({
   /** batch 2: automatic checks of the tool project (link / file / Arduino code); can be switched off */
   toolCheck: toolCheckSchema.nullish(),
   autoCheck: z.boolean().default(true),
+  /** R2: course skills this homework measures (none = the skills of its lesson) */
+  skillIds: z.array(z.string()).max(10).optional(),
 }).refine((d) => d.kinds.length > 0 || d.questions.length > 0, 'Choose at least one way to hand in, or add questions')
   .refine((d) => d.gradingMode === 'MANUAL' || d.questions.length > 0 || (d.autoCheck && !!d.toolCheck) || codeTestsMax(d) > 0, 'Automatic grading needs questions, code tests or tool checks')
   .refine((d) => !d.kinds.includes('CODE') || !!d.code, 'Choose the code language')

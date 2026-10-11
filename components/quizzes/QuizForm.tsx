@@ -16,7 +16,7 @@ export function blankQuiz() {
 /** Before saving: question shapes cleaned for the server. */
 export const cleanQuiz = (d: Record<string, unknown>) => ({ ...d, questions: ((d.questions as Q[]) ?? []).map(cleanQuestion) })
 
-export function QuizForm({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+export function QuizForm({ data, onChange, subjectId }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void; subjectId?: string | null }) {
   const set = (p: Record<string, unknown>) => onChange({ ...data, ...p })
   const qs = (data.questions as Q[]) ?? []
   const bank = data.bank as { count: number; levelOnly: boolean; difficulty?: number | null } | null
@@ -72,7 +72,7 @@ export function QuizForm({ data, onChange }: { data: Record<string, unknown>; on
       </div>
 
       <div className="space-y-2">
-        {qs.map((q, i) => <QuestionEditor key={q.id} q={q} index={i} onChange={(nq) => set({ questions: qs.map((x) => (x.id === q.id ? nq : x)) })} onRemove={() => set({ questions: qs.filter((x) => x.id !== q.id) })} />)}
+        {qs.map((q, i) => <QuestionEditor key={q.id} q={q} index={i} subjectId={subjectId} onChange={(nq) => set({ questions: qs.map((x) => (x.id === q.id ? nq : x)) })} onRemove={() => set({ questions: qs.filter((x) => x.id !== q.id) })} />)}
         <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => set({ questions: [...qs, blankQuestion()] })}><Plus className="h-4 w-4" /> {L('Question', 'سؤال')}</Button>
       </div>
     </div>

@@ -247,6 +247,20 @@ Built automatically after each session. No typing, except optional instructor ex
   - at-risk students (attendance + LMS activity + ratings) → follow-ups.
 - **Instructor performance page:** group attendance, parent ratings, renewal rate, complaints, ungraded work,
   incomplete reports.
+- **Owner decisions (2026-10-11):** the instructor seeing their own performance page is a setting (off by default);
+  the skills chart is built now and fills in as questions / homework / lessons get skill tags; "book the next level"
+  is a wish for the secretaries (never a seat).
+- **R2 as built (2026-10-11, e2e section 37):**
+  - Skill tags: `SkillPicker` on quiz questions (lesson + bank), homework (`skillIds` in the assignment data) and the
+    existing lesson tags; untagged items use the lesson's skills. Bank questions keep their skills when drawn.
+  - Pure maths `lib/skills/calc.ts` (per skill earned / possible, counted tries like the quiz score, strong / weak,
+    most used phrase). `lib/reports/lms-summary.ts`: monthly (homework handed in / on time / average, quiz average,
+    stars, gallery projects, latest instructor comment, most used phrase, skills) and level (same + skills over all
+    the level's groups). Shown by `components/reports/ReportLmsPart.tsx` (radar with 3+ measured skills + bars).
+  - `lib/reports/next-level.ts` + `POST /api/students/[id]/next-level` (parent only): running group → renewal YES;
+    closed group → waiting-list entry for the next level; staff event `NEXT_LEVEL_WISH`.
+  - `lib/teachers/performance.ts`, `GET /api/teachers/performance` (+ `/settings`), page
+    `/dashboard/teacher-performance` (managers: table + details; instructor: own, from the LMS hub, when allowed).
 
 ## 4. Passport (official record, system-made)
 

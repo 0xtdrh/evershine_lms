@@ -9,6 +9,8 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Printer } from 'lucide-react'
+import { I18nProvider, LanguageSwitch } from '@/lib/i18n/client'
+import { ReportLmsPart, type LmsPart } from '@/components/reports/ReportLmsPart'
 
 interface Row { n: number; of: number; date: string; status: string; excuseReason: string | null }
 interface Stats { sessions: number; present: number; late: number; absent: number; excused: number; pct: number | null }
@@ -27,6 +29,9 @@ interface Report {
   level?: string
   months?: (GroupSummary & { stats: Stats; perfect: boolean; sessions: Row[] })[]
   recommendation?: { action: string; text: string } | null
+  lms?: LmsPart | null
+  nextLevel?: { nextLevel: string | null; asked: boolean } | null
+  viewer?: string
 }
 
 const STATUS: Record<string, string> = { PRESENT: 'Present', LATE: 'Late', ABSENT: 'Absent', EXCUSED: 'Absent (excused)' }
@@ -59,8 +64,7 @@ function StatsLine({ s, perfect }: { s: Stats; perfect?: boolean }) {
   )
 }
 
-export default function StudentReportPage({ params }: { params: Promise<{ studentId: string }> }) {
-  const { studentId } = use(params)
+function ReportView({ studentId }: { studentId: string }) {
   const sp = useSearchParams()
   const kind = sp.get('kind') ?? 'MONTHLY'
   const group = sp.get('group') ?? ''
@@ -76,6 +80,7 @@ export default function StudentReportPage({ params }: { params: Promise<{ studen
       <div className="mx-auto mb-4 flex max-w-3xl flex-wrap justify-center gap-2 px-4 print:hidden">
         <Button variant="outline" onClick={() => (history.length > 1 ? history.back() : (window.location.href = '/dashboard'))}><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
         <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Print / save as PDF</Button>
+        <LanguageSwitch />
       </div>
       {isLoading || !r ? <p className="text-center text-sm text-gray-500">Loading…</p> : (
         <div className="mx-auto max-w-3xl bg-white p-6 text-sm text-black shadow print:shadow-none">
@@ -137,9 +142,15 @@ export default function StudentReportPage({ params }: { params: Promise<{ studen
               <p className="my-1">{r.recommendation.text}</p>
             </>
           )}
-          <p className="mt-4 text-[11px] text-gray-500">This report is prepared automatically from attendance, ratings and results. Session reports, homework and skills will be added with the online learning platform.</p>
+          <ReportLmsPart lms={r.lms} kind={r.kind} nextLevel={r.nextLevel} studentId={studentId} groupId={group} isParent={r.viewer === 'PARENT'} />
+          <p className="mt-4 text-[11px] text-gray-500">This report is prepared automatically from attendance, ratings, results, homework, quizzes and the session reports.</p>
         </div>
       )}
     </div>
   )
+}
+
+export default function StudentReportPage({ params }: { params: Promise<{ studentId: string }> }) {
+  const { studentId } = use(params)
+  return <I18nProvider><ReportView studentId={studentId} /></I18nProvider>
 }

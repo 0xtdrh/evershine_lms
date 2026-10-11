@@ -38,6 +38,7 @@ export const NOTIFICATION_EVENTS = [
   { key: 'RENEWAL_REQUEST', label: 'Continuing next month?', description: 'Parent: please confirm if your child continues (renewals)', audience: 'PARENT' },
   { key: 'BIRTHDAY', label: 'Birthday greeting', description: 'Student, parent or staff member: happy birthday', audience: 'PARENT' },
   { key: 'EXCUSE_PENDING', label: 'Excuse to review', description: 'Staff: a parent sent an excuse that needs approval', audience: 'STAFF' },
+  { key: 'NEXT_LEVEL_WISH', label: 'Next level wanted', description: 'Renewals staff: a parent pressed "book the next level" in the level report', audience: 'STAFF' },
   { key: 'CONSECUTIVE_ABSENCE', label: 'Absent twice in a row', description: 'Staff: a student missed two sessions in a row (a follow-up is added)', audience: 'STAFF' },
   { key: 'LOW_RATING', label: 'Low rating', description: 'Managers: a rating of 2 or less (a follow-up is added)', audience: 'STAFF' },
   { key: 'BIRTHDAY_STAFF', label: 'Birthdays today (staff)', description: 'Instructors and branch staff: whose birthday is today', audience: 'STAFF' },

@@ -18,7 +18,7 @@ import { Library, Loader2, Plus, Trash2 } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
 
 interface Tree { tree: { courses: { id: string; name: string; levels: { id: string; name: string }[] }[] }[] }
-interface Row { id: string; type: string; textEn: string; textAr: string; points: number; difficulty: number; levelId: string | null; data: Record<string, unknown> }
+interface Row { id: string; type: string; textEn: string; textAr: string; points: number; difficulty: number; levelId: string | null; data: Record<string, unknown>; skillIds: string[] | null }
 const DIFF_EN: Record<number, string> = { 1: 'Easy', 2: 'Medium', 3: 'Hard' }
 const DIFF_AR: Record<number, string> = { 1: 'سهل', 2: 'متوسط', 3: 'صعب' }
 const diff = (d: number) => L(DIFF_EN[d], DIFF_AR[d])
@@ -42,7 +42,7 @@ export default function QuestionBankPage() {
   const [edit, setEdit] = useState<{ id: string | null; q: Q; levelId: string | null; difficulty: number } | null>(null)
   const save = useMutation({
     mutationFn: () => {
-      const body = JSON.stringify({ subjectId, levelId: edit!.levelId, difficulty: edit!.difficulty, question: cleanQuestion(edit!.q) })
+      const body = JSON.stringify({ subjectId, levelId: edit!.levelId, difficulty: edit!.difficulty, skillIds: edit!.q.skillIds ?? [], question: cleanQuestion(edit!.q) })
       return edit!.id ? fetchApi(`/api/questions/${edit!.id}`, { method: 'PATCH', body }) : fetchApi('/api/questions', { method: 'POST', body })
     },
     onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); setEdit(null); qc.invalidateQueries({ queryKey: ['questions'] }) },
@@ -74,7 +74,7 @@ export default function QuestionBankPage() {
                   <span className="block text-xs text-slate-500">{typeLabel(r.type)} · {diff(r.difficulty)} · {r.points} {L('pt', 'درجة')} · {course?.levels.find((l) => l.id === r.levelId)?.name ?? L('any level', 'أي مستوى')}</span>
                 </span>
                 <span className="flex gap-1">
-                  {canEdit && <Button size="sm" variant="outline" onClick={() => setEdit({ id: r.id, q: { ...(blankQuestion(r.type)), ...(r.data as object), id: r.id, type: r.type, textEn: r.textEn, textAr: r.textAr, points: r.points } as Q, levelId: r.levelId, difficulty: r.difficulty })}>{L('Edit', 'تعديل')}</Button>}
+                  {canEdit && <Button size="sm" variant="outline" onClick={() => setEdit({ id: r.id, q: { ...(blankQuestion(r.type)), ...(r.data as object), id: r.id, type: r.type, textEn: r.textEn, textAr: r.textAr, points: r.points, skillIds: r.skillIds ?? [] } as Q, levelId: r.levelId, difficulty: r.difficulty })}>{L('Edit', 'تعديل')}</Button>}
                   {canDelete && <Button size="sm" variant="ghost" className="text-rose-600" onClick={() => { if (confirm(L('Remove this question from the bank? Finished tries keep their copy.', 'تشيل السؤال ده من البنك؟ المحاولات اللي خلصت بتفضل محتفظة بنسختها.'))) del.mutate(r.id) }}><Trash2 className="h-4 w-4" /></Button>}
                 </span>
               </CardContent>
@@ -92,7 +92,7 @@ export default function QuestionBankPage() {
                 <Select value={edit.levelId ?? 'ANY'} onValueChange={(v) => setEdit({ ...edit, levelId: v === 'ANY' ? null : v })}><SelectTrigger className="h-9 w-48"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ANY">{L('Any level of the course', 'أي مستوى في الكورس')}</SelectItem>{(course?.levels ?? []).map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select>
                 <Select value={String(edit.difficulty)} onValueChange={(v) => setEdit({ ...edit, difficulty: Number(v) })}><SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger><SelectContent>{[1, 2, 3].map((d) => <SelectItem key={d} value={String(d)}>{diff(d)}</SelectItem>)}</SelectContent></Select>
               </div>
-              <QuestionEditor q={edit.q} onChange={(q) => setEdit({ ...edit, q })} />
+              <QuestionEditor q={edit.q} subjectId={subjectId} onChange={(q) => setEdit({ ...edit, q })} />
               <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setEdit(null)}>{L('Cancel', 'إلغاء')}</Button><Button disabled={save.isPending} onClick={() => save.mutate()}>{save.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}{L('Save', 'حفظ')}</Button></div>
             </div>
           )}

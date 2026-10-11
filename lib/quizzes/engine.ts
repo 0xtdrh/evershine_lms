@@ -158,7 +158,7 @@ export async function startAttempt(studentId: string, groupId: string, blockId: 
     }) : []
     const pool = rows
       .filter((r) => !ctx.data.bank!.skillId || ((r.skillIds as string[] | null) ?? []).includes(ctx.data.bank!.skillId))
-      .map((r) => quizQuestionSchema.safeParse({ ...(r.data as object), id: `bank_${r.id}`, type: r.type, textEn: r.textEn, textAr: r.textAr, points: r.points }))
+      .map((r) => quizQuestionSchema.safeParse({ ...(r.data as object), id: `bank_${r.id}`, type: r.type, textEn: r.textEn, textAr: r.textAr, points: r.points, skillIds: (r.skillIds as string[] | null) ?? undefined }))
       .filter((x) => x.success).map((x) => (x as { data: QuizQuestion }).data)
     questions = [...questions, ...drawFromBank(pool, ctx.data.bank.count, `${studentId}:${blockId}:${ctx.used}`)]
   }

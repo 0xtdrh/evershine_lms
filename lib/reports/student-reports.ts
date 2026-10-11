@@ -6,8 +6,8 @@
  *    Skipped when the level is only one month long (the level report covers it).
  *  - LEVEL report when the level's result is in: attendance of every month of
  *    the level, result + instructor feedback, certificate, recommendation.
- * Session reports, homework, quizzes and skills come with Moodle (phase C2):
- * the `moodle` field is the slot for that data.
+ * R2 (2026-10-11): the `lms` part adds homework, quizzes, stars, projects, the instructor's words and the skills
+ * chart (lib/reports/lms-summary.ts); the level report offers "book the next level" (lib/reports/next-level.ts).
  * Server-only.
  */
 
@@ -15,6 +15,8 @@ import { prisma } from '@/lib/prisma'
 import { sessionsPerCycle, cyclesInLevel } from '@/lib/groups/cycle-rules'
 import { studentAttendanceTimeline, type GroupAttendance } from '@/lib/attendance/timeline'
 import { attendanceStats } from '@/lib/attendance/timeline-calc'
+import { lmsLevelSummary, lmsMonthSummary } from './lms-summary'
+import { nextLevelWishState } from './next-level'
 
 export interface ReportEntry { kind: 'MONTHLY' | 'LEVEL'; classSectionId: string; title: string; subtitle: string; date: string | null }
 
@@ -81,7 +83,7 @@ export async function monthlyReport(studentId: string, classSectionId: string) {
     perfect: g.perfect,
     sessionRatings: await faces(studentId, [classSectionId]),
     result: await resultFor(studentId, classSectionId),
-    moodle: null,
+    lms: await lmsMonthSummary(studentId, classSectionId, (await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { level: { select: { subjectId: true } } } }))?.level?.subjectId),
   }
 }
 
@@ -119,7 +121,7 @@ export async function levelReport(studentId: string, classSectionId: string) {
     recommendation: passed == null ? null : passed
       ? { action: 'NEXT_LEVEL' as const, text: next ? `Ready for ${next.name}.` : 'Level completed — ready for the next course.' }
       : { action: 'REPEAT' as const, text: `We recommend repeating ${level.name} to strengthen the basics.` },
-    skills: null,
-    moodle: null,
+    lms: await lmsLevelSummary(studentId, levelGroups, level.subjectId),
+    nextLevel: passed ? await nextLevelWishState(studentId, classSectionId) : null,
   }
 }

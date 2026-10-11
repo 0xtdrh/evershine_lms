@@ -16,7 +16,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const { id } = await params
-  if (!(await studentViewer(session.user, id))) return errors.forbidden()
+  const viewer = await studentViewer(session.user, id)
+  if (!viewer) return errors.forbidden()
   const sp = new URL(request.url).searchParams
   const kind = sp.get('kind')
   const group = sp.get('group')
@@ -24,5 +25,5 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!group) return errors.badRequest('group is required')
   const report = kind === 'LEVEL' ? await levelReport(id, group) : await monthlyReport(id, group)
   if (!report) return errors.notFound('Report')
-  return successResponse(report)
+  return successResponse({ ...report, viewer })
 }

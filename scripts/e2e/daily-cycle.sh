@@ -1361,6 +1361,23 @@ api PUT /api/session-reports/settings '{"enabled":false,"mode":"AUTO","hours":3,
 sess $LG "$(D -2)" "$(rec $LKE PRESENT)" >/dev/null
 check "switched off: no new reports" "$(M "SELECT COUNT(*) FROM SessionReport WHERE classSectionId='$LG' AND sessionDate='$(D -2)'")" "0"
 check "a parent cannot open the staff list" "$(curl -s -o /dev/null -w '%{http_code}' -b "$LPJ" $B/api/session-reports)" "403"
+
+echo "== 37. R2: skills chart, LMS part of the monthly / level report, book the next level, instructor performance"
+SK1=$(api POST /api/curriculum/skills "{\"subjectId\":\"$SUBJ\",\"nameEn\":\"Loops\",\"nameAr\":\"\"}" | jq_ "d['data']['id']")
+SK2=$(api POST /api/curriculum/skills "{\"subjectId\":\"$SUBJ\",\"nameEn\":\"Debugging\",\"nameAr\":\"\"}" | jq_ "d['data']['id']")
+M "UPDATE CurriculumSession SET skillIds=JSON_ARRAY('$SK1') WHERE id='$S61'"
+LR=$(api GET "/api/students/$LK/reports?kind=LEVEL&group=$LG")
+check "level report: skills chart from the quizzes of the lesson tagged 'Loops' (9/11 + 0/2 + 4/5 = 72%), Debugging not measured" "$(echo "$LR" | jq_ "[(s['nameEn'], s['percent']) for s in d['data']['lms']['skills']['scores'] if s['nameEn'] in ('Loops','Debugging')]")" "[('Loops', 72), ('Debugging', None)]"
+MR=$(api GET "/api/students/$LK/reports?kind=MONTHLY&group=$LG")
+check "monthly report: stars, the instructor's comment and most used phrase from the session reports" "$(echo "$MR" | jq_ "(d['data']['lms']['stars'], d['data']['lms']['quote']['text'], d['data']['lms']['topPhrase']['en'])")" "(1, 'Well done', 'Needs more focus')"
+check "staff cannot book the next level for the parent" "$(api POST /api/students/$LK/next-level "{\"group\":\"$LG\"}" | jq_ "d['success']")" "False"
+check "parent books the next level → the renewal answer becomes YES (a wish, no seat)" "$(curl -s -b "$LPJ" -X POST -H 'Content-Type: application/json' -d "{\"group\":\"$LG\"}" $B/api/students/$LK/next-level | jq_ "d['data']['via']")/$(M "SELECT status FROM RenewalRequest WHERE classSectionId='$LG' AND studentId='$LK'")/$(M "SELECT COUNT(*) > 0 FROM Notification WHERE type='NEXT_LEVEL_WISH' AND relatedId='$LG'")" "RENEWAL/YES/1"
+check "instructor cannot see the performance page while the setting is off" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ" $B/api/teachers/performance)" "403"
+check "admin sees the instructors table (the LMS group's instructor is in it)" "$(api GET /api/teachers/performance | jq_ "any(r['teacher']['id']=='$CALT' for r in d['data']['rows'])")" "True"
+api PUT /api/teachers/performance/settings '{"teacherCanSee":true}' >/dev/null
+check "setting on: the instructor sees only his own page (2 session reports sent)" "$(curl -s -b "$TJ" $B/api/teachers/performance | jq_ "(d['data']['own'], len(d['data']['rows']), d['data']['rows'][0]['teacher']['id']=='$CALT', d['data']['rows'][0]['reports']['sent'])")" "(True, 1, True, 2)"
+check "secretary cannot open instructor performance" "$(secapi GET /api/teachers/performance | jq_ "d['success']")" "False"
+api PUT /api/teachers/performance/settings '{"teacherCanSee":false}' >/dev/null
 rm -f "$LKJ" "$LPJ" "$TJ"
 
 echo

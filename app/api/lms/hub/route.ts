@@ -9,6 +9,7 @@ import { errors, successResponse } from '@/lib/api-response'
 import { requireSession } from '@/lib/academic/api-helpers'
 import { checkPermission } from '@/lib/rbac'
 import { getTeacherByUserId, getTeacherClassSectionIds } from '@/lib/academic/teacher-scope'
+import { getPerformanceSettings } from '@/lib/teachers/performance'
 
 export async function GET() {
   const { session, error } = await requireSession()
@@ -28,5 +29,6 @@ export async function GET() {
     prisma.quizAttempt.count({ where: { ...inGroups, status: 'SUBMITTED' } }),
     checkPermission(role, 'curriculum', 'approve') ? prisma.curriculumEdition.count({ where: { status: 'IN_REVIEW' } }) : Promise.resolve(0),
   ])
-  return successResponse({ toGrade, quizReview, inReview })
+  const myPerformance = role === 'TEACHER' && (await getPerformanceSettings()).teacherCanSee
+  return successResponse({ toGrade, quizReview, inReview, myPerformance })
 }

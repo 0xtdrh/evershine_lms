@@ -161,7 +161,7 @@ export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; o
           <p className="text-xs text-slate-400">Allowed sites: {EMBED_HOSTS.join(', ')}</p>
         </>
       )}
-      {value.type === 'QUIZ' && <QuizForm data={d} onChange={(nd) => onChange({ ...value, data: nd })} />}
+      {value.type === 'QUIZ' && <QuizForm data={d} onChange={(nd) => onChange({ ...value, data: nd })} subjectId={subjectId} />}
       {value.type === 'ASSIGNMENT' && <AssignmentForm data={d} onChange={(nd) => onChange({ ...value, data: nd })} subjectId={subjectId} />}
       {COMING_TYPES.includes(value.type) && (
         <>
