@@ -11,7 +11,7 @@
  *   node scripts/live-check.mjs --phase-c  # demo data for phase C: excuses, attendance alerts, ratings, birthdays, reports
  *   node scripts/live-check.mjs --logins   # demo instructor + student + parent you can sign in with (printed once, removed by --cleanup)
  *   node scripts/live-check.mjs --phase-d  # demo data for phase D: referral (code → new student → first payment), complaints
- *   node scripts/live-check.mjs --lms      # LMS L1 + L2: demo curriculum (every content type, private upload, review, publish,
+ *   node scripts/live-check.mjs --lms      # LMS L1 + L2 (+ L3, L4, R1 session report): demo curriculum (every content type, private upload, review, publish,
  *                                          # export/import) + a demo student/parent: lessons open after attendance, ticks, watermark
  *
  * Asks for the site address, the Super Admin email and password at run time.
@@ -1321,6 +1321,32 @@ async function lmsStudentDemo(sa, base, run, phone, preferLevelId = null) {
       const sum = (await par.json('GET', `/api/lessons/my?s=${s.id}`)).data?.data
       check('parent sees what was learned (read-only)', sum?.mode === 'PARENT' && sum.groups?.[0]?.sessions?.length === 1)
       check('parent cannot open the lesson content itself', (await par.json('GET', `/api/lessons/${s1.id}?g=${group}&s=${s.id}`)).data?.success === false)
+      // R1 session report: switched on only for this test (settings put back as they were); only the DEMO family is notified
+      section('19. R1 — session report')
+      const srWas = (await sa.json('GET', '/api/session-reports/settings')).data?.data
+      if (srWas) {
+        if (!srWas.enabled) await sa.json('PUT', '/api/session-reports/settings', { body: { ...srWas, enabled: true } })
+        try {
+          const panel = (await sa.json('GET', `/api/session-reports?groupId=${group}&date=${iso(-1)}`)).data?.data
+          const rid = panel?.report?.id
+          check(`session report made from the attendance (session ${panel?.report?.sessionNumber ?? '—'}, ${panel?.report?.sendAt ? 'goes out by itself ' + new Date(panel.report.sendAt).toLocaleString('en-GB') : 'waits for the instructor'})`, !!rid && panel.report.status === 'DRAFT', JSON.stringify(panel?.report ?? null))
+          if (rid) {
+            const ph = panel.phrases?.[0]?.id
+            const ex = await sa.json('PATCH', `/api/session-reports/${rid}`, { body: { groupNote: `DEMO ${run}: we built a line robot`, students: [{ studentId: s.id, star: true, phrases: ph ? [ph] : [], comment: 'DEMO well done' }] } })
+            check('instructor extras saved (star, ready phrase, comment, group note)', ex.data?.success, ex.data?.error?.message)
+            check('parent cannot see the report before it is sent', (await par.json('GET', `/api/session-reports/${rid}?student=${s.id}`)).data?.success === false)
+            const sent = await sa.json('POST', `/api/session-reports/${rid}/send`)
+            check('"Send now"', sent.data?.success, sent.data?.error?.message)
+            const v = (await par.json('GET', `/api/session-reports/${rid}?student=${s.id}`)).data?.data
+            check(`parent sees the sent report (star, attendance ${v?.attendance ?? '—'}, ${v?.quizzes?.length ?? 0} quiz result(s), lesson ${v?.lesson ? 'yes' : 'no'})`, v?.status === 'SENT' && v?.star === true, JSON.stringify(v ?? null).slice(0, 200))
+            check('listed in the parent Reports tab', ((await par.json('GET', `/api/students/${s.id}/session-reports`)).data?.data ?? []).some((x) => x.id === rid))
+            check('changing it after sending is refused', (await sa.json('PATCH', `/api/session-reports/${rid}`, { body: { groupNote: 'late' } })).data?.success === false)
+            console.log(`  ↳ open it as the parent sees it: ${base}/reports/session/${rid}?student=${s.id}`)
+          }
+        } finally {
+          if (!srWas.enabled) { await sa.json('PUT', '/api/session-reports/settings', { body: srWas }); console.log('  ↳ session reports switched back OFF (as they were)') }
+        }
+      } else bad('session report settings could not be read')
     } else bad('demo parent signs in')
     console.log(`\n  Look at it in the browser (temporary passwords, not saved anywhere; the LMS must be ON in Platform):`)
     console.log(`  Student: ${sp?.loginId}  /  ${sp?.password}`)
