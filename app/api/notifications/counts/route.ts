@@ -33,6 +33,12 @@ export async function GET() {
       /* never break the badge counts */
     }
   }
+  // R1: session reports go out N hours after the session (everyone's poll helps; throttled to 2 min, sending is guarded).
+  try {
+    await (await import('@/lib/session-reports/engine')).sweepSessionReports()
+  } catch {
+    /* never break the badge counts */
+  }
 
   // Fetch all unread notifications for this user — only type is needed.
   // WHY not load full rows: badges only need type values, and the composite

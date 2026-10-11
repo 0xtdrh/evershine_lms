@@ -4207,3 +4207,40 @@ model QuizWindow {
 
   @@unique([classSectionId, blockId])
 }
+
+/// R1 session report (2026-10-11): one per group x session date, made when attendance is saved. Attendance, homework
+/// and quiz parts are read live (a grade given later appears by itself); only the instructor's extras are stored.
+/// status DRAFT | SENT. sendAt = when it goes out by itself (null = the instructor presses Send).
+model SessionReport {
+  id             String                 @id @default(cuid())
+  classSectionId String
+  sessionDate    DateTime               @db.Date
+  sessionNumber  Int?
+  teacherId      String?
+  groupNote      String?                @db.Text
+  status         String                 @default("DRAFT") @db.VarChar(8)
+  sendAt         DateTime?
+  sentAt         DateTime?
+  sentById       String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  students       SessionReportStudent[]
+
+  @@unique([classSectionId, sessionDate])
+  @@index([status, sendAt])
+}
+
+/// R1: the instructor's optional extras for one student in one session report (star, ready phrases, a comment).
+model SessionReportStudent {
+  id        String        @id @default(cuid())
+  reportId  String
+  report    SessionReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  studentId String
+  star      Boolean       @default(false)
+  phrases   Json?
+  comment   String?       @db.VarChar(500)
+  updatedAt DateTime      @updatedAt
+
+  @@unique([reportId, studentId])
+  @@index([studentId])
+}

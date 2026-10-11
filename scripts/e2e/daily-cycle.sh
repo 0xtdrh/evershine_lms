@@ -1331,6 +1331,36 @@ check "wrong period refused" "$(api GET "/api/lms/analytics?from=2026-10-10&to=2
 check "instructor sees own groups only, no instructor filter" "$(curl -s -b "$TJ" $B/api/lms/analytics | jq_ "(any(g['id']=='$LG' for g in d['data']['groups']), d['data']['options']['teachers'])")" "(True, [])"
 check "secretary cannot open the analytics" "$(secapi GET /api/lms/analytics | jq_ "d['success']")" "False"
 check "parent cannot open the analytics" "$(curl -s -o /dev/null -w '%{http_code}' -b "$LPJ" $B/api/lms/analytics)" "403"
+
+echo "== 36. R1 session reports: made from attendance, instructor extras, send now / automatic, who sees what"
+check "secretary cannot change the session report settings" "$(secapi PUT /api/session-reports/settings '{"enabled":true,"mode":"AUTO","hours":3,"phrases":[]}' | jq_ "d['success']")" "False"
+check "admin switches session reports on (3 hours after the session)" "$(api PUT /api/session-reports/settings '{"enabled":true,"mode":"AUTO","hours":3,"phrases":[{"id":"focus","en":"Needs more focus","ar":""},{"id":"great","en":"Great work","ar":""}]}' | jq_ "d['success']")" "True"
+LKE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$LK' AND classSectionId='$LG'")
+LOE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$LO' AND classSectionId='$LG'")
+D1=$(D -1); DT=$(D 0)
+sess $LG "$DT" "$(rec $LKE PRESENT),$(rec $LOE ABSENT)" >/dev/null
+RT=$(M "SELECT id FROM SessionReport WHERE classSectionId='$LG' AND sessionDate='$DT'")
+check "saving attendance made today's report: draft, goes out by itself later" "$(M "SELECT CONCAT(status,'/',sendAt > UTC_TIMESTAMP(3)) FROM SessionReport WHERE id='$RT'")" "DRAFT/1"
+P1=$(curl -s -b "$TJ" "$B/api/session-reports?groupId=$LG&date=$D1")
+R1=$(echo "$P1" | jq_ "d['data']['report']['id']")
+check "instructor opens an older session: its report is made on the fly (session 1, the student who attended)" "$(echo "$P1" | jq_ "(d['data']['report']['sessionNumber'], [s['name'] for s in d['data']['students']], d['data']['canEdit'])")" "(1, ['LessonKid E2e'], True)"
+V1=$(api GET "/api/session-reports/$R1?student=$LK")
+check "report: what was done + attendance + the session quizzes (live results)" "$(echo "$V1" | jq_ "(d['data']['lesson'] is not None, d['data']['attendance'], sorted(float(q['percent']) for q in d['data']['quizzes'] if q['percent'] is not None))")" "(True, 'PRESENT', [0.0, 80.0, 81.82])"
+check "instructor adds a star, phrases (unknown ones dropped), a comment and a group note" "$(curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d "{\"groupNote\":\"We built a line robot\",\"students\":[{\"studentId\":\"$LK\",\"star\":true,\"phrases\":[\"focus\",\"nope\"],\"comment\":\"Well done\"}]}" $B/api/session-reports/$R1 | jq_ "d['success']")/$(api GET "/api/session-reports/$R1?student=$LK" | jq_ "(d['data']['star'], [p['en'] for p in d['data']['phrases']], d['data']['comment'], d['data']['groupNote'])")" "True/(True, ['Needs more focus'], 'Well done', 'We built a line robot')"
+check "secretary sees the reports of the branch but cannot change them" "$(secapi GET "/api/session-reports?from=$D1&to=$DT" | jq_ "any(r['id']=='$R1' for r in d['data']['reports'])")/$(secapi PATCH /api/session-reports/$R1 '{"groupNote":"x"}' | jq_ "d['success']")" "True/False"
+check "parent cannot see the report before it is sent" "$(curl -s -b "$LPJ" "$B/api/session-reports/$R1?student=$LK" | jq_ "d['success']")/$(curl -s -b "$LPJ" $B/api/students/$LK/session-reports | jq_ "len(d['data'])")" "False/0"
+check "instructor presses Send now; sending twice or editing afterwards is refused" "$(curl -s -b "$TJ" -X POST $B/api/session-reports/$R1/send | jq_ "d['success']")/$(curl -s -b "$TJ" -X POST $B/api/session-reports/$R1/send | jq_ "d['success']")/$(curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d '{"groupNote":"late edit"}' $B/api/session-reports/$R1 | jq_ "d['success']")" "True/False/False"
+check "parent now sees it (with the star) and got a notification" "$(curl -s -b "$LPJ" "$B/api/session-reports/$R1?student=$LK" | jq_ "(d['data']['status'], d['data']['star'])")/$(M "SELECT COUNT(*) > 0 FROM Notification WHERE type='SESSION_REPORT' AND relatedId='$R1'")" "('SENT', True)/1"
+check "parent's report list shows the sent report only" "$(curl -s -b "$LPJ" $B/api/students/$LK/session-reports | jq_ "[r['id'] for r in d['data']]==['$R1']")" "True"
+check "the absent student's report says absent" "$(api GET "/api/session-reports/$RT?student=$LO" | jq_ "d['data']['attendance']")" "ABSENT"
+check "a parent cannot open another family's report" "$(curl -s -b "$LPJ" "$B/api/session-reports/$RT?student=$LO" | jq_ "d['success']")" "False"
+M "UPDATE SessionReport SET sendAt=DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE) WHERE id='$RT'"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "time came: today's report went out by itself" "$(M "SELECT CONCAT(status,'/',sentById IS NULL) FROM SessionReport WHERE id='$RT'")" "SENT/1"
+api PUT /api/session-reports/settings '{"enabled":false,"mode":"AUTO","hours":3,"phrases":[{"id":"focus","en":"Needs more focus","ar":""}]}' >/dev/null
+sess $LG "$(D -2)" "$(rec $LKE PRESENT)" >/dev/null
+check "switched off: no new reports" "$(M "SELECT COUNT(*) FROM SessionReport WHERE classSectionId='$LG' AND sessionDate='$(D -2)'")" "0"
+check "a parent cannot open the staff list" "$(curl -s -o /dev/null -w '%{http_code}' -b "$LPJ" $B/api/session-reports)" "403"
 rm -f "$LKJ" "$LPJ" "$TJ"
 
 echo

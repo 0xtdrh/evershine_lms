@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { GroupLessonsPanel } from '@/components/lms/GroupLessonsPanel'
+import { SessionReportPanel } from '@/components/session-reports/SessionReportPanel'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -170,7 +171,7 @@ export default function TeacherAttendancePage() {
         })),
       }),
     }),
-    onSuccess: () => { notify.success('Attendance saved successfully'); refetch(); qc.invalidateQueries({ queryKey: ['group-lessons', classSectionId] }) },
+    onSuccess: () => { notify.success('Attendance saved successfully'); refetch(); qc.invalidateQueries({ queryKey: ['group-lessons', classSectionId] }); qc.invalidateQueries({ queryKey: ['session-report', classSectionId] }) },
     onError:   (e: Error) => notify.error(e.message),
   })
 
@@ -336,6 +337,7 @@ export default function TeacherAttendancePage() {
       </Card>
 
       {classSectionId && <GroupLessonsPanel groupId={classSectionId} />}
+      {classSectionId && <SessionReportPanel groupId={classSectionId} date={date} />}
 
       {classSectionId && (
         <>

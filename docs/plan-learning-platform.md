@@ -221,6 +221,17 @@ Built automatically after each session. No typing, except optional instructor ex
   - Who sees: admins all; branch manager own branch; instructor own groups (+ sessions covered as a substitute),
     no editing after sending; parent own children; student own; secretary own branch read-only; accountant /
     marketing no.
+- **R1 as built (2026-10-11, e2e section 36):**
+  - Tables `SessionReport` (group × date, DRAFT/SENT, sendAt, groupNote) + `SessionReportStudent` (star, phrases,
+    comment). Attendance / homework / quiz parts are read live, so later grades appear by themselves.
+  - Pure rules `lib/session-reports/rules.ts` (sendAt = session end + N h, at least 30 min; homework / quiz lines;
+    settings schema), engine `lib/session-reports/engine.ts` (ensure on attendance save, sweep from the
+    notification poll + daily cron that also makes missing reports of the last 3 days, send, views, lists).
+  - Settings AppSetting `sessionReports.settings` { enabled (OFF by default), mode AUTO/MANUAL, hours, phrases }.
+  - APIs `/api/session-reports` (panel / list), `/[id]` (view, extras), `/[id]/send`, `/settings`,
+    `/api/students/[id]/session-reports`. RBAC `session_reports` (read / update / approve). Event `SESSION_REPORT`.
+  - Screens: panel in both attendance screens (not secretaries), page `/dashboard/session-reports` (reports,
+    not complete, settings), printable `/reports/session/[id]?student=` (bilingual), portal Reports tab.
 
 ### R2 — Report upgrades + skills
 - **Monthly report:** + homework completion %, quiz average, projects of the month, skills progress, the best

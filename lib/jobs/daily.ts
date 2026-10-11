@@ -63,5 +63,6 @@ export async function runDailyJobs(opts: { forceSummary?: boolean } = {}) {
   await step('morningSummary', () => morningSummary(opts.forceSummary))
   await step('complaints', async () => (await import('@/lib/complaints/engine')).sweepComplaints(true))
   await step('assignments', async () => (await import('@/lib/assignments/engine')).assignmentReminders())
+  await step('sessionReports', async () => (await import('@/lib/session-reports/engine')).sweepSessionReports(true))
   return out
 }

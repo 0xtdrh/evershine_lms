@@ -11,7 +11,7 @@ import { useI18n } from '@/lib/i18n/client'
 import { AccessDenied } from '@/components/AccessDenied'
 import { LmsAnalytics } from '@/components/lms/LmsAnalytics'
 import { Card, CardContent } from '@/components/ui/card'
-import { BarChart3, BookOpen, ClipboardCheck, ClipboardList, GraduationCap, Images, Library, ListChecks, Power, Settings2, Table2 } from 'lucide-react'
+import { BarChart3, BookOpen, FileText, ClipboardCheck, ClipboardList, GraduationCap, Images, Library, ListChecks, Power, Settings2, Table2 } from 'lucide-react'
 
 type Perm = Parameters<typeof checkPermission>[1]
 interface Tile { href: string; en: string; ar: string; descEn: string; descAr: string; icon: React.ComponentType<{ className?: string }>; perm?: [Perm, Parameters<typeof checkPermission>[2]]; count?: number; countEn?: string; countAr?: string }
@@ -37,6 +37,7 @@ export default function LmsHubPage() {
     {
       en: 'Teaching', ar: 'التدريس', tiles: [
         { href: teacher ? '/dashboard/teacher/attendance' : '/dashboard/attendance/sections', en: 'Lesson plan & attendance', ar: 'خطة الحصة والحضور', descEn: 'Open / lock lessons, group notes — inside the attendance screen', descAr: 'فتح وقفل الدروس وملاحظات الجروب — جوه شاشة الحضور', icon: ClipboardCheck },
+        { href: '/dashboard/session-reports', en: 'Session reports', ar: 'تقارير الحصص', descEn: 'Report after each session: stars, phrases, what is missing', descAr: 'تقرير بعد كل حصة: نجوم، جمل جاهزة، والحاجات الناقصة', icon: FileText, perm: ['session_reports', 'read'] },
       ],
     },
     {

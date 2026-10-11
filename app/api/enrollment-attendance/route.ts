@@ -10,6 +10,7 @@ import type { Role } from '@prisma/client'
 import { createStudentAbsenceAssessment } from '@/lib/penalties/assessments'
 import { syncGroupProgress } from '@/lib/groups/sync-progress'
 import { applyExcuses, afterAttendanceSaved } from '@/lib/attendance/after-save'
+import { afterAttendanceForReport } from '@/lib/session-reports/engine'
 
 const ATTENDANCE_STATUSES = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'] as const
 
@@ -208,6 +209,7 @@ export async function POST(request: NextRequest) {
 
     await refreshGroupProgress(classSectionId, session.user.id)
     await afterAttendanceSaved({ classSectionId, date: attendanceDate, before, after: records })
+    await afterAttendanceForReport(classSectionId, attendanceDate)
     return createdResponse(results, 'Attendance saved')
   }
 
@@ -270,5 +272,6 @@ export async function POST(request: NextRequest) {
     before: new Map(previous ? [[parsed.data.studentEnrollmentId!, previous.status as string]] : []),
     after: [single],
   })
+  await afterAttendanceForReport(target.classSectionId, parsed.data.attendanceDate!)
   return createdResponse(record)
 }
