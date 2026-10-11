@@ -210,6 +210,17 @@ Built automatically after each session. No typing, except optional instructor ex
 - **Delivery:** in the portal "Reports" tab (session / month / level); a notification; WhatsApp once the API exists.
   The instructor has a short window to add a comment before it is sent.
 - **Missing pieces:** managers see "reports not complete" (e.g. homework not graded) like "attendance missing".
+- **Owner decisions (2026-10-11):**
+  1. Sending: automatic 3 hours after the session ends; the number of hours is a setting, and the setting can also be
+     "the instructor presses Send" (no automatic sending). The instructor can always press "Send now" earlier.
+  2. Homework not graded yet when sent: the report goes out with "grading in progress" and the grade updates by itself.
+  3. Secretaries see session reports of their branch, read-only.
+  4. Session photos: postponed (children's privacy).
+  - Absent students also get a report ("what you missed" + the lesson link). Grade / answer release rules (L3/L4)
+    apply inside the report. Ready-made instructor phrases are managed by the admin (bilingual).
+  - Who sees: admins all; branch manager own branch; instructor own groups (+ sessions covered as a substitute),
+    no editing after sending; parent own children; student own; secretary own branch read-only; accountant /
+    marketing no.
 
 ### R2 — Report upgrades + skills
 - **Monthly report:** + homework completion %, quiz average, projects of the month, skills progress, the best
