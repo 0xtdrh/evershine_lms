@@ -14,7 +14,7 @@ export default function MyAssignmentPage() {
   const { t, dir } = useI18n()
   return (
     <div className="space-y-4" dir={dir}>
-      <Link href="/dashboard/my-assignments" className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"><ArrowLeft className="h-3 w-3 rtl:rotate-180" /> {t('hw.myHomework')}</Link>
+      <Link href="/dashboard/learning?tab=homework" className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"><ArrowLeft className="h-3 w-3 rtl:rotate-180" /> {t('hw.myHomework')}</Link>
       <AssignmentWork groupId={q.get('g') ?? ''} blockId={blockId} studentId={q.get('s')} />
     </div>
   )

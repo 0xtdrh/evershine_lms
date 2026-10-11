@@ -61,7 +61,7 @@ export default function LessonPage() {
   })
 
   if (isLoading) return <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-  if (error || !data) return <div className="space-y-3"><p className="text-sm text-slate-500">{(error as Error)?.message ?? t('common.error')}</p><Link href="/dashboard/my-lessons" className="text-sm text-indigo-600">{t('les.back')}</Link></div>
+  if (error || !data) return <div className="space-y-3"><p className="text-sm text-slate-500">{(error as Error)?.message ?? t('common.error')}</p><Link href="/dashboard/learning?tab=lessons" className="text-sm text-indigo-600">{t('les.back')}</Link></div>
 
   const s = data.session
   const kid = data.kidMode
@@ -76,7 +76,7 @@ export default function LessonPage() {
       onContextMenu={stop} onCopy={stop} onCut={stop} onDragStart={stop}
     >
       <div className="space-y-1">
-        <Link href="/dashboard/my-lessons" className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"><ArrowLeft className="h-3 w-3 rtl:rotate-180" /> {t('les.back')}</Link>
+        <Link href="/dashboard/learning?tab=lessons" className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"><ArrowLeft className="h-3 w-3 rtl:rotate-180" /> {t('les.back')}</Link>
         <h1 className={`font-bold text-slate-900 ${kid ? 'text-3xl' : 'text-2xl'}`}>{pick(s.titleEn, s.titleAr) || t('cur.session', { n: s.number })}</h1>
         <p className="text-sm text-slate-500">{data.group.courseName} — {data.group.levelName} · {t('cur.session', { n: s.number })}{s.durationMin ? ` · ${s.durationMin} min` : ''}</p>
       </div>

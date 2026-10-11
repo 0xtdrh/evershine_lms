@@ -14,7 +14,7 @@ export default function MyQuizPage() {
   const { t, dir } = useI18n()
   return (
     <div className="space-y-4 print:hidden" dir={dir}>
-      <Link href="/dashboard/my-quizzes" className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"><ArrowLeft className="h-3 w-3 rtl:rotate-180" /> {t('qz.myQuizzes')}</Link>
+      <Link href="/dashboard/learning?tab=quizzes" className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"><ArrowLeft className="h-3 w-3 rtl:rotate-180" /> {t('qz.myQuizzes')}</Link>
       <QuizPlayer groupId={q.get('g') ?? ''} blockId={blockId} studentId={q.get('s')} />
     </div>
   )

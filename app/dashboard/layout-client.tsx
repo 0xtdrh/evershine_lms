@@ -83,7 +83,8 @@ import { FeeOverdueModal } from '@/components/student/FeeOverdueModal'
 import { getNotificationModuleForNavLabel, type NotificationCounts } from '@/lib/notifications/module-map'
 import { BirthdayCelebration, useBirthdayToday } from '@/components/birthdays/BirthdayCelebration'
 import { AgreementsGate } from '@/components/agreements/AgreementsGate'
-import { I18nProvider, LanguageSwitch } from '@/lib/i18n/client'
+import { I18nProvider, LanguageSwitch, useI18n } from '@/lib/i18n/client'
+import { navLabel } from '@/lib/i18n/nav'
 
 // ─── Role-gated nav items ─────────────────────────────────────────────────────
 interface NavItem {
@@ -96,6 +97,8 @@ interface NavItem {
   perm?: Array<[AcademicResource, Action]>
   /** Shown only while this Platform module is switched on. */
   module?: string
+  /** Other pages that light up this menu item (hub pages). */
+  match?: string[]
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -147,13 +150,8 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Classes (Legacy)', href: '/dashboard/classes',      icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN'], legacy: true },
   { name: 'Academic Engine', href: '/dashboard/academic',     icon: ClipboardList,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Grading Weights', href: '/dashboard/grading-config', icon: SlidersHorizontal, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
+  { name: 'LMS',             href: '/dashboard/lms',          icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'TEACHER'], perm: [['curriculum', 'read']], match: ['/dashboard/lms', '/dashboard/curriculum', '/dashboard/assignments', '/dashboard/quizzes', '/dashboard/question-bank', '/dashboard/admin/rubrics', '/dashboard/admin/lms', '/dashboard/gallery'] },
   { name: 'Course Structure', href: '/dashboard/course-config', icon: GraduationCap, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
-  { name: 'Curriculum',      href: '/dashboard/curriculum',   icon: BookOpen,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'TEACHER'], perm: [['curriculum', 'read']] },
-  { name: 'Grade Homework',  href: '/dashboard/assignments',  icon: ClipboardList,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'TEACHER'], perm: [['curriculum', 'read']] },
-  { name: 'Quizzes',         href: '/dashboard/quizzes',      icon: ListChecks,      roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'TEACHER'], perm: [['curriculum', 'read']] },
-  { name: 'Question Bank',   href: '/dashboard/question-bank', icon: Library,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'TEACHER'], perm: [['curriculum', 'update']] },
-  { name: 'Rubrics',         href: '/dashboard/admin/rubrics', icon: Table2,         roles: ['SUPER_ADMIN', 'ADMIN'], perm: [['curriculum', 'update']] },
-  { name: 'LMS Settings',    href: '/dashboard/admin/lms',    icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN'], perm: [['curriculum', 'approve']] },
   { name: 'Groups', href: '/dashboard/groups', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['class_sections', 'read']] },
   { name: 'Wallet & Top-ups', href: '/dashboard/wallet', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['wallet', 'read']] },
   { name: 'Renewals', href: '/dashboard/renewals', icon: RefreshCcw, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['renewals', 'read']] },
@@ -171,12 +169,8 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'My Substitutions', href: '/dashboard/teacher/my-substitutions', icon: ClipboardList, roles: ['TEACHER'] },
   { name: 'Promotions',      href: '/dashboard/promotions',   icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Report Cards',    href: '/dashboard/report-cards', icon: FileText,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
+  { name: 'My Learning',     href: '/dashboard/learning',     icon: BookOpen,        roles: ['STUDENT', 'PARENT', 'GUARDIAN'], module: 'lms', match: ['/dashboard/learning', '/dashboard/my-lessons', '/dashboard/my-assignments', '/dashboard/my-quizzes', '/dashboard/gallery'] },
   { name: 'My Children',     href: '/dashboard/my-children',  icon: Users,           roles: ['PARENT', 'GUARDIAN'] },
-  { name: 'My Lessons',      href: '/dashboard/my-lessons',   icon: BookOpen,        roles: ['STUDENT', 'PARENT', 'GUARDIAN'], module: 'lms' },
-  { name: 'Projects Gallery', href: '/dashboard/gallery',     icon: Images,          roles: ['STUDENT', 'PARENT', 'GUARDIAN'], module: 'lms' },
-  { name: 'Projects Gallery', href: '/dashboard/gallery',     icon: Images,          roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'TEACHER'], perm: [['curriculum', 'read']] },
-  { name: 'My Quizzes',      href: '/dashboard/my-quizzes',   icon: ListChecks,      roles: ['STUDENT', 'PARENT', 'GUARDIAN'], module: 'lms' },
-  { name: 'My Homework',     href: '/dashboard/my-assignments', icon: ClipboardList, roles: ['STUDENT', 'PARENT', 'GUARDIAN'], module: 'lms' },
   { name: 'Certificates',    href: '/dashboard/certificates', icon: Award,           roles: ['STUDENT', 'PARENT', 'GUARDIAN'] },
   { name: 'Settings',        href: '/dashboard/settings',     icon: Settings },
 ]
@@ -240,6 +234,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const { sidebarOpen, setSidebarOpen, setUser } = useAppStore()
   const role = (session?.user?.role as string) ?? ''
   const { active: birthdayToday } = useBirthdayToday()
+  const { locale } = useI18n()
   const { data: platformData } = useQuery({
     queryKey: ['platform-settings'],
     queryFn: () => fetchApi<{ language: { staff: 'en' | 'ar'; portal: 'en' | 'ar' }; modules: Record<string, boolean> }>('/api/platform/settings'),
@@ -343,9 +338,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const roleBadge = getRoleBadge(role)
 
-  const isActive = (href: string) => {
+  const isActive = (href: string, match?: string[]) => {
     if (href === '/dashboard') return pathname === '/dashboard'
-    return pathname.startsWith(href)
+    return pathname.startsWith(href) || !!match?.some((m) => pathname.startsWith(m))
   }
 
   return (
@@ -382,7 +377,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <nav className="flex-1 overflow-y-auto py-3 px-3">
             <div className="space-y-0.5">
               {visibleNav.map((item) => {
-                const active = isActive(item.href)
+                const active = isActive(item.href, item.match)
                 const badgeCount = getBadgeCount(item.name)
                 return (
                   <Link
@@ -396,7 +391,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   >
                     <div className="flex items-center gap-3">
                       <item.icon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${active ? 'text-blue-600' : ''}`} />
-                      {item.name}
+                      {navLabel(item.name, locale)}
                     </div>
                     <div className="flex items-center gap-2">
                       {badgeCount > 0 && (
@@ -413,7 +408,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               {isTeacher && (
                 <>
                   <div className="pt-3 pb-1 px-3">
-                    <p className="text-[10px] font-semibold tracking-widest uppercase text-gray-400">Teacher Hub</p>
+                    <p className="text-[10px] font-semibold tracking-widest uppercase text-gray-400">{locale === 'ar' ? 'أدوات المدرب' : 'Teacher Hub'}</p>
                   </div>
                   {TEACHER_NAV_ITEMS.map((item) => {
                     const active = isActive(item.href)
@@ -430,7 +425,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                       >
                         <div className="flex items-center gap-3">
                           <item.icon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${active ? 'text-emerald-600' : ''}`} />
-                          {item.name}
+                          {navLabel(item.name, locale)}
                         </div>
                         <div className="flex items-center gap-2">
                           {badgeCount > 0 && (
@@ -478,7 +473,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all duration-200 group"
             >
               <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-              Sign out
+              {locale === 'ar' ? 'تسجيل الخروج' : 'Sign out'}
             </button>
           </div>
         </motion.aside>
@@ -557,6 +552,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 interface Notif { id: string; title: string; message: string; type: string; isRead: boolean; relatedId?: string | null; createdAt: string }
 
 function NotificationBell() {
+  const ar = useI18n().locale === 'ar'
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'inbox' | 'archive'>('inbox')
@@ -783,14 +779,14 @@ function NotificationBell() {
           >
             <div className="flex flex-col border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-                <span className="font-bold text-sm text-slate-800">Notifications</span>
+                <span className="font-bold text-sm text-slate-800">{ar ? 'الإشعارات' : 'Notifications'}</span>
                 {unreadNotifications.length > 0 && (
                   <button
                     onClick={() => markAllMutation.mutate()}
                     className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 transition-colors hover:underline"
                   >
                     <CheckCheck className="w-3.5 h-3.5" />
-                    Mark all read
+                    {ar ? 'تعليم الكل كمقروء' : 'Mark all read'}
                   </button>
                 )}
               </div>
@@ -806,7 +802,7 @@ function NotificationBell() {
                 >
                   <span className="flex items-center gap-1.5">
                     <Inbox className="w-3.5 h-3.5" />
-                    Inbox
+                    {ar ? 'الوارد' : 'Inbox'}
                     {unreadNotifications.length > 0 && (
                       <span className="bg-indigo-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">
                         {unreadNotifications.length}
@@ -824,7 +820,7 @@ function NotificationBell() {
                 >
                   <span className="flex items-center gap-1.5">
                     <Archive className="w-3.5 h-3.5" />
-                    Archive
+                    {ar ? 'الأرشيف' : 'Archive'}
                     {readNotifications.length > 0 && (
                       <span className="bg-slate-200 text-slate-600 text-[9px] px-1.5 py-0.5 rounded-full font-bold">
                         {readNotifications.length}
