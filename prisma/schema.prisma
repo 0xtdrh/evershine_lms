@@ -1959,6 +1959,8 @@ model ClassSection {
   curriculumEditionId String?
   /// LMS L2: how lessons open for this group (ALL | SCHEDULE | ATTENDANCE | MANUAL | PREVIOUS); null = the level's / company default
   lessonUnlockMode    String?           @db.VarChar(12)
+  /// L5: online class link of the group (Zoom / Meet / any https link); null = not online
+  onlineMeetingUrl          String?                    @db.VarChar(500)
   curriculumMode CurriculumMode    @default(FIXED)
   isActive       Boolean           @default(true)
   createdAt      DateTime          @default(now())
@@ -4206,6 +4208,38 @@ model QuizWindow {
   updatedAt      DateTime  @updatedAt
 
   @@unique([classSectionId, blockId])
+}
+
+/// L5: a student's result in an H5P activity (best score kept; completed when the package said so).
+model H5PResult {
+  id             String   @id @default(cuid())
+  blockId        String
+  sessionId      String
+  classSectionId String
+  studentId      String
+  score          Float?
+  maxScore       Float?
+  completed      Boolean  @default(false)
+  attempts       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([blockId, studentId, classSectionId])
+  @@index([classSectionId])
+  @@index([studentId])
+}
+
+/// L5: a student pressed "Join" for an online session (provisional attendance; the instructor confirms).
+model OnlineJoin {
+  id             String   @id @default(cuid())
+  classSectionId String
+  studentId      String
+  sessionDate    DateTime @db.Date
+  joinedAt       DateTime @default(now())
+  userId         String
+
+  @@unique([classSectionId, studentId, sessionDate])
+  @@index([classSectionId, sessionDate])
 }
 
 /// R1 session report (2026-10-11): one per group x session date, made when attendance is saved. Attendance, homework

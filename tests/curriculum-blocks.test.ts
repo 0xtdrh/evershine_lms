@@ -34,7 +34,14 @@ describe('curriculum blocks (LMS L1)', () => {
     expect(validateBlockData('IMAGE', {}).ok).toBe(false)
     expect(validateBlockData('QUIZ', { note: 'later' }).ok).toBe(false) // L4: a real quiz now needs questions
     expect(validateBlockData('QUIZ', { questions: [{ id: 'a', type: 'TRUE_FALSE', correct: ['true'] }] }).ok).toBe(true)
-    expect(validateBlockData('H5P', { note: 'later' }).ok).toBe(true)
+    // L5: H5P needs the uploaded .h5p (raw file); TOOL needs a link of an allowed tool and gets its mode + embed link
+    expect(validateBlockData('H5P', { note: 'later' }).ok).toBe(false)
+    expect(validateBlockData('H5P', { media: { publicId: 'x/act', resourceType: 'raw' } }).ok).toBe(true)
+    const tool = validateBlockData('TOOL', { url: 'https://scratch.mit.edu/projects/123' })
+    expect(tool.ok && (tool.data as { mode: string; embedUrl: string })).toMatchObject({ mode: 'INLINE', embedUrl: 'https://scratch.mit.edu/projects/123/embed' })
+    expect(validateBlockData('TOOL', { url: 'https://random-site.com/x' }).ok).toBe(false)
+    expect(validateBlockData('TOOL', { url: 'https://random-site.com/x' }, [{ host: 'random-site.com', nameEn: 'R', nameAr: '', mode: 'NEW_TAB' }]).ok).toBe(true)
+    expect(validateBlockData('EMBED', { url: 'https://wordwall.net/embed/abc' }).ok).toBe(true)
   })
 
   it('drops unknown fields such as a signed media link sent back by the editor', () => {

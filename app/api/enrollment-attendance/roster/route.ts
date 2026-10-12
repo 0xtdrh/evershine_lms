@@ -7,6 +7,7 @@ import { getTeacherByUserId, teacherCanAccessClassSection } from '@/lib/academic
 import { getOrSyncSectionEnrollments } from '@/lib/academic/roster-helper'
 import type { Role } from '@prisma/client'
 import { excusesOn } from '@/lib/excuses/engine'
+import { onlineJoinsOn } from '@/lib/online/engine'
 
 /** Active enrollments in a class section for attendance marking with batch/shift filters. */
 export async function GET(request: NextRequest) {
@@ -85,6 +86,8 @@ export async function GET(request: NextRequest) {
 
   // Phase C: parents' excuses for this session (shown next to the name; approved = EXCUSED by default)
   const excuses = await excusesOn(classSectionId, attendanceDate)
+  // L5: who pressed Join for the online session (provisional attendance)
+  const joins = await onlineJoinsOn(classSectionId, dateStr)
 
   // Calculate attendance statistics for this session
   let present = 0
@@ -114,6 +117,7 @@ export async function GET(request: NextRequest) {
       todayStatus: Array.isArray(e.attendanceRecords) ? e.attendanceRecords[0]?.status : null,
       isWithdrawn: e.isWithdrawn,
       excuse: excuses.get(e.studentId) ? { status: excuses.get(e.studentId)!.status, reason: excuses.get(e.studentId)!.reason } : null,
+      onlineJoinedAt: joins.get(e.studentId) ?? null,
     })),
   })
 }

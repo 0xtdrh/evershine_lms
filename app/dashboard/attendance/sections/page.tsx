@@ -1,8 +1,10 @@
 'use client'
 
+import { L } from '@/lib/i18n/client'
 import { useState, useEffect } from 'react'
 import { GroupLessonsPanel } from '@/components/lms/GroupLessonsPanel'
 import { SessionReportPanel } from '@/components/session-reports/SessionReportPanel'
+import { OnlineLinkField } from '@/components/online/OnlineLinkField'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -27,6 +29,7 @@ interface RosterRow {
   todayStatus: AttendanceStatus | null
   isWithdrawn?: boolean
   excuse?: { status: string; reason: string } | null
+  onlineJoinedAt?: string | null
 }
 
 const STATUS_BTNS: AttendanceStatus[] = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']
@@ -457,6 +460,7 @@ export default function SectionAttendancePage() {
       )}
 
       {/* LMS L2: lesson plan — only for the instructor / managers (hidden for secretaries) */}
+      {classSectionId && <OnlineLinkField groupId={classSectionId} />}
       {classSectionId && <GroupLessonsPanel groupId={classSectionId} />}
       {classSectionId && <SessionReportPanel groupId={classSectionId} date={date} />}
 
@@ -556,6 +560,7 @@ export default function SectionAttendancePage() {
                         )}
                       </p>
                       <p className="text-xs text-gray-500">Roll {row.rollNumber}</p>
+                      {row.onlineJoinedAt && <p className="mt-1 text-xs text-emerald-700">🟢 {L('Joined online', 'دخل أونلاين')} {new Date(row.onlineJoinedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>}
                       {row.excuse && (
                         <p className={`mt-1 text-xs ${row.excuse.status === 'APPROVED' ? 'text-indigo-700' : 'text-amber-700'}`}>
                           {row.excuse.status === 'APPROVED' ? 'Excused' : 'Excuse waiting for approval'}: {row.excuse.reason}

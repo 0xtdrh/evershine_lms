@@ -20,11 +20,12 @@ export async function studentSkills(studentId: string, groupIds: string[], subje
   if (!subjectId || !groupIds.length) return null
   const skills = await prisma.courseSkill.findMany({ where: { subjectId }, orderBy: [{ order: 'asc' }, { createdAt: 'asc' }], select: { id: true, nameEn: true, nameAr: true } })
   if (!skills.length) return null
-  const [atts, subs] = await Promise.all([
+  const [atts, subs, acts] = await Promise.all([
     prisma.quizAttempt.findMany({ where: { studentId, classSectionId: { in: groupIds }, status: 'GRADED' }, select: { blockId: true, questions: true, detail: true, score: true, maxScore: true, createdAt: true, paper: true } }),
     prisma.assignmentSubmission.findMany({ where: { studentId, classSectionId: { in: groupIds }, status: 'GRADED' }, select: { blockId: true, score: true, maxScore: true } }),
+    prisma.h5PResult.findMany({ where: { studentId, classSectionId: { in: groupIds }, maxScore: { gt: 0 } }, select: { blockId: true, score: true, maxScore: true } }),
   ])
-  const blockIds = [...new Set([...atts.map((a) => a.blockId), ...subs.map((s) => s.blockId)])]
+  const blockIds = [...new Set([...atts.map((a) => a.blockId), ...subs.map((s) => s.blockId), ...acts.map((a) => a.blockId)])]
   if (!blockIds.length) return { scores: skillScores([], skills), ...strongWeak([]) }
   const blocks = await prisma.curriculumBlock.findMany({ where: { id: { in: blockIds } }, select: { id: true, sessionId: true, data: true } })
   const sessions = await prisma.curriculumSession.findMany({ where: { id: { in: [...new Set(blocks.map((b) => b.sessionId))] } }, select: { id: true, skillIds: true } })
@@ -50,6 +51,8 @@ export async function studentSkills(studentId: string, groupIds: string[], subje
     const data = blocks.find((b) => b.id === s.blockId)?.data as { skillIds?: string[] } | null
     items.push({ skillIds: data?.skillIds?.length ? data.skillIds : sessionSkills(s.blockId), points: s.score ?? 0, max: s.maxScore ?? 0 })
   }
+  // L5: H5P activities count for the skills of their lesson
+  for (const a of acts) items.push({ skillIds: sessionSkills(a.blockId), points: a.score ?? 0, max: a.maxScore ?? 0 })
   const scores = skillScores(items, skills)
   return { scores, ...strongWeak(scores) }
 }

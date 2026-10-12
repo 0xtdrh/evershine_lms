@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { COMING_TYPES, EMBED_HOSTS, type BlockType } from '@/lib/curriculum/blocks'
+import { ToolPicker } from './ToolPicker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -42,11 +43,11 @@ export interface BlockDraft { type: BlockType; audience: string; titleEn: string
 
 export const TYPE_LABELS: Record<BlockType, string> = {
   TEXT: 'Text', IMAGE: 'Image', VIDEO: 'Video', FILE: 'File / PDF', LINK: 'Link', CODE: 'Code', EMBED: 'Embedded tool',
-  H5P: 'Interactive (H5P)', QUIZ: 'Quiz', ASSIGNMENT: 'Assignment', TOOL: 'Code editor / tool',
+  H5P: 'Interactive activity (H5P)', QUIZ: 'Quiz', ASSIGNMENT: 'Assignment', TOOL: 'Tool (Scratch, Wokwi, Tinkercad…)',
 }
 const TYPE_AR: Record<BlockType, string> = {
   TEXT: 'نص', IMAGE: 'صورة', VIDEO: 'فيديو', FILE: 'ملف / PDF', LINK: 'لينك', CODE: 'كود', EMBED: 'أداة مدمجة',
-  H5P: 'نشاط تفاعلي (H5P)', QUIZ: 'كويز', ASSIGNMENT: 'واجب', TOOL: 'محرر كود / أداة',
+  H5P: 'نشاط تفاعلي (H5P)', QUIZ: 'كويز', ASSIGNMENT: 'واجب', TOOL: 'أداة (Scratch، Wokwi، Tinkercad…)',
 }
 /** Content type name in the page language. */
 export const blockTypeLabel = (t: BlockType) => L(TYPE_LABELS[t] ?? t, TYPE_AR[t] ?? t)
@@ -56,6 +57,8 @@ export function blankData(type: BlockType): Record<string, unknown> {
   if (type === 'CODE') return { language: 'python', code: '' }
   if (type === 'EMBED') return { url: '', height: 480 }
   if (type === 'LINK') return { url: '' }
+  if (type === 'TOOL') return { url: '', height: 600, instructionsEn: '', instructionsAr: '' }
+  if (type === 'H5P') return { height: 640 }
   if (type === 'FILE') return { downloadable: false }
   if (type === 'ASSIGNMENT') return blankAssignment()
   if (type === 'QUIZ') return blankQuiz()
@@ -158,9 +161,17 @@ export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; o
         <>
           <Input placeholder="https://scratch.mit.edu/projects/…/embed" value={(d.url as string) ?? ''} onChange={(e) => set({ url: e.target.value })} />
           <label className="flex items-center gap-2 text-xs">{L('Height (px)', 'الارتفاع (px)')} <Input type="number" className="h-8 w-24" value={Number(d.height) || 480} onChange={(e) => set({ height: Number(e.target.value) || 480 })} /></label>
-          <p className="text-xs text-slate-400">Allowed sites: {EMBED_HOSTS.join(', ')}</p>
+          <p className="text-xs text-slate-400">{L('Allowed sites', 'المواقع المسموحة')}: {EMBED_HOSTS.join(', ')} {L('+ the tools list (use "Tool" for those)', '+ قايمة الأدوات (استخدم «أداة» ليها)')}</p>
         </>
       )}
+      {value.type === 'H5P' && (
+        <>
+          <p className="text-xs text-slate-500">{L('Make the activity with the free Lumi editor (lumi.education) or h5p.org, save it as a .h5p file and upload it here. Students play it inside the lesson; their score is saved.', 'اعمل النشاط ببرنامج Lumi المجاني (lumi.education) أو h5p.org، احفظه كملف ‎.h5p‎ وارفعه هنا. الطلبة بيلعبوه جوه الدرس ودرجتهم بتتسجل.')}</p>
+          {uploadBtn('.h5p')}
+          <label className="flex items-center gap-2 text-xs">{L('Height (px)', 'الارتفاع (px)')} <Input type="number" className="h-8 w-24" value={Number(d.height) || 640} onChange={(e) => set({ height: Number(e.target.value) || 640 })} /></label>
+        </>
+      )}
+      {value.type === 'TOOL' && <ToolPicker data={d} onChange={(patch) => set(patch)} />}
       {value.type === 'QUIZ' && <QuizForm data={d} onChange={(nd) => onChange({ ...value, data: nd })} subjectId={subjectId} />}
       {value.type === 'ASSIGNMENT' && <AssignmentForm data={d} onChange={(nd) => onChange({ ...value, data: nd })} subjectId={subjectId} />}
       {COMING_TYPES.includes(value.type) && (

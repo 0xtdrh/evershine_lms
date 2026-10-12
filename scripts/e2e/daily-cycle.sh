@@ -1378,6 +1378,43 @@ api PUT /api/teachers/performance/settings '{"teacherCanSee":true}' >/dev/null
 check "setting on: the instructor sees only his own page (2 session reports sent)" "$(curl -s -b "$TJ" $B/api/teachers/performance | jq_ "(d['data']['own'], len(d['data']['rows']), d['data']['rows'][0]['teacher']['id']=='$CALT', d['data']['rows'][0]['reports']['sent'])")" "(True, 1, True, 2)"
 check "secretary cannot open instructor performance" "$(secapi GET /api/teachers/performance | jq_ "d['success']")" "False"
 api PUT /api/teachers/performance/settings '{"teacherCanSee":false}' >/dev/null
+
+echo "== 38. L5: tools in lessons (+ admin sites), H5P activities (player, token, results, task score, report), online class link + Join"
+E7=$(api POST /api/curriculum/levels/$CL "{\"copyFromId\":\"$E6\"}" | jq_ "d['data']['id']")
+S71=$(M "SELECT id FROM CurriculumSession WHERE editionId='$E7' AND number=1")
+TB=$(api POST /api/curriculum/sessions/$S71/blocks '{"type":"TOOL","data":{"url":"https://scratch.mit.edu/projects/10128407","instructionsEn":"Make the cat dance"}}' | jq_ "d['data']['id']")
+check "Scratch tool saved: opens inside the lesson with the Scratch player link" "$(M "SELECT CONCAT(JSON_UNQUOTE(JSON_EXTRACT(data,'\$.mode')),' ',JSON_UNQUOTE(JSON_EXTRACT(data,'\$.embedUrl'))) FROM CurriculumBlock WHERE id='$TB'")" "INLINE https://scratch.mit.edu/projects/10128407/embed"
+check "a site that is not in the tools list is refused" "$(api POST /api/curriculum/sessions/$S71/blocks '{"type":"TOOL","data":{"url":"https://random-site.example/x"}}' | jq_ "d['success']")" "False"
+check "secretary cannot change the tools list" "$(secapi PUT /api/lms/tools '{"extra":[]}' | jq_ "d['success']")" "False"
+check "admin adds a site (address cleaned)" "$(api PUT /api/lms/tools '{"extra":[{"host":"https://www.random-site.example/page","nameEn":"Random lab","nameAr":"","mode":"NEW_TAB"}]}' | jq_ "d['data']['extra'][0]['host']")" "random-site.example"
+check "now that site works as a new-tab tool" "$(api POST /api/curriculum/sessions/$S71/blocks '{"type":"TOOL","data":{"url":"https://random-site.example/x"}}' | jq_ "d['success']")/$(M "SELECT JSON_UNQUOTE(JSON_EXTRACT(data,'\$.mode')) FROM CurriculumBlock WHERE sessionId='$S71' AND type='TOOL' ORDER BY createdAt DESC, id DESC LIMIT 1")" "True/NEW_TAB"
+check "an H5P item without its .h5p file is refused" "$(api POST /api/curriculum/sessions/$S71/blocks '{"type":"H5P","data":{"height":600}}' | jq_ "d['success']")" "False"
+api PUT /api/platform/settings '{"modules":{"lms":true}}' >/dev/null
+HB=$(M "SELECT REPLACE(UUID(),'-','')")
+M "INSERT INTO CurriculumBlock (id, sessionId, \`order\`, type, audience, titleEn, data, createdAt, updatedAt) VALUES ('$HB', '$S61', 99, 'H5P', 'BOTH', 'Robot parts drag and drop', JSON_OBJECT('media', JSON_OBJECT('publicId','e2e/act','resourceType','raw'), 'height', 640), NOW(3), NOW(3))"
+LKR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); LKJ=$(mktemp); login_jar "$(echo "$LKR" | jq_ "d['data']['loginId']")" "$(echo "$LKR" | jq_ "d['data']['password']")" "$LKJ" 10.0.1.81
+PLAY=$(curl -s -b "$LKJ" "$B/api/h5p/$HB/play?g=$LG")
+check "student opens the activity player (signed file link, never the package link)" "$(echo "$PLAY" | grep -c "h5pJsonPath")/$(echo "$PLAY" | grep -c "e2e/act")" "1/0"
+check "the lesson sends no package link for the H5P item" "$(curl -s -b "$LKJ" "$B/api/lessons/$S61?g=$LG" | jq_ "[b['data'] for b in d['data']['blocks'] if b['id']=='$HB'][0]")" "{'height': 640}"
+check "a forged / missing file token is refused" "$(curl -s -o /dev/null -w '%{http_code}' "$B/api/h5p/$HB/f/abc.123.xyz/h5p.json")" "403"
+check "parent cannot play it" "$(curl -s -o /dev/null -w '%{http_code}' -b "$LPJ" "$B/api/h5p/$HB/play?g=$LG")" "403"
+hres() { curl -s -b "$LKJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\",\"blockId\":\"$HB\",\"score\":$1,\"maxScore\":10,\"completed\":true}" $B/api/h5p/result | jq_ "d['success']"; }
+check "student result saved (8/10, done) → the lesson item is ticked" "$(hres 8)/$(M "SELECT CONCAT(CAST(score AS SIGNED),'/',completed) FROM H5PResult WHERE blockId='$HB' AND studentId='$LK'")/$(M "SELECT COUNT(*) FROM LessonProgress WHERE blockId='$HB' AND studentId='$LK'")" "True/8/1/1"
+check "a lower try keeps the best score; tries counted" "$(hres 5)/$(M "SELECT CONCAT(CAST(score AS SIGNED),'/',attempts) FROM H5PResult WHERE blockId='$HB' AND studentId='$LK'")" "True/8/2"
+check "staff cannot save a result" "$(api POST /api/h5p/result "{\"groupId\":\"$LG\",\"blockId\":\"$HB\",\"score\":10,\"maxScore\":10}" | jq_ "d['success']")" "False"
+check "instructor sees the activity results (80%)" "$(curl -s -b "$TJ" $B/api/groups/$LG/h5p | jq_ "[float(r['percent']) for a in d['data']['activities'] if a['blockId']=='$HB' for r in a['results']]")" "[80.0]"
+check "level result: task now counts the activity too ((81.82 + 0 + 80) / 3)" "$(api GET "/api/level-results?classSectionId=$LG&subjectId=$SUBJ" | jq_ "[float(r['lms']['task']) for r in d['data']['rows'] if r['student']['id']=='$LK'][0]")" "53.94"
+check "session report shows the activity result" "$(api GET "/api/session-reports/$R1?student=$LK" | jq_ "[a['percent'] for a in d['data']['activities']]")" "[80]"
+check "online link: http refused, https saved" "$(curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d '{"url":"http://zoom.us/j/1"}' $B/api/groups/$LG/online | jq_ "d['success']")/$(curl -s -b "$TJ" -X PATCH -H 'Content-Type: application/json' -d '{"url":"https://zoom.us/j/123456"}' $B/api/groups/$LG/online | jq_ "d['data']['url']")" "False/https://zoom.us/j/123456"
+check "secretary does not see / change the online link" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/groups/$LG/online)" "403"
+NOWC=$(node -e "const p=new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Cairo',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date());const g=t=>p.find(x=>x.type===t).value;console.log(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(g('weekday'))+' '+g('hour')+':'+g('minute'))")
+M "UPDATE ClassSection SET scheduleSlots=JSON_ARRAY(JSON_OBJECT('dayOfWeek', ${NOWC%% *}, 'time', '${NOWC##* }')) WHERE id='$LG'"
+check "student sees today's online class with Join open" "$(curl -s -b "$LKJ" $B/api/online/my | jq_ "[(r['groupId']=='$LG', r['canJoin']) for r in d['data']]")" "[(True, True)]"
+check "Join gives the meeting link and is logged (provisional attendance)" "$(curl -s -b "$LKJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\"}" $B/api/online/join | jq_ "d['data']['url']")/$(M "SELECT COUNT(*) FROM OnlineJoin WHERE classSectionId='$LG' AND studentId='$LK'")" "https://zoom.us/j/123456/1"
+check "the attendance screen shows who joined online" "$(api GET "/api/enrollment-attendance/roster?classSectionId=$LG&date=$(D 0)" | jq_ "[e['onlineJoinedAt'] is not None for e in d['data']['enrollments'] if e['student']['id']=='$LK'][0]")" "True"
+check "the parent can press Join for the child; not for another family" "$(curl -s -b "$LPJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\",\"s\":\"$LK\"}" $B/api/online/join | jq_ "d['success']")/$(curl -s -b "$LPJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\",\"s\":\"$LO\"}" $B/api/online/join | jq_ "d['success']")" "True/False"
+api PUT /api/platform/settings '{"modules":{"lms":false}}' >/dev/null
+rm -f "$LKJ"
 rm -f "$LKJ" "$LPJ" "$TJ"
 
 echo

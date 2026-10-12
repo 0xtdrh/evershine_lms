@@ -303,6 +303,8 @@ export async function studentLesson(studentId: string, groupId: string, sessionI
       if (b.type === 'ASSIGNMENT') data = stripForStudent(data as unknown as AssignmentData) as unknown as Record<string, unknown>
       // L4: a quiz's questions are only sent inside an attempt (never with the lesson)
       if (b.type === 'QUIZ') { const qd = parseQuiz(data); data = qd ? (quizSummary(qd) as unknown as Record<string, unknown>) : {} }
+      // L5: the H5P package is played through /api/h5p (token links), never downloaded
+      if (b.type === 'H5P') data = { height: data.height }
       const hasMedia = !!(data.media as { publicId?: string } | undefined)?.publicId
       return {
         id: b.id, type: b.type, audience: b.audience, titleEn: b.titleEn, titleAr: b.titleAr,

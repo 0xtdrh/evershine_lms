@@ -7,11 +7,12 @@
 import { z } from 'zod'
 import { assignmentDataSchema } from '@/lib/assignments/rules'
 import { quizDataSchema } from '@/lib/quizzes/rules'
+import { inlineHosts, toolEmbedUrl, toolForUrl, type ExtraSite } from '@/lib/lms/tools'
 
 export const BLOCK_TYPES = ['TEXT', 'IMAGE', 'VIDEO', 'FILE', 'LINK', 'CODE', 'EMBED', 'H5P', 'QUIZ', 'ASSIGNMENT', 'TOOL'] as const
 export type BlockType = (typeof BLOCK_TYPES)[number]
-/** Types that are built in later stages (L2 / L4): they can be added as placeholders only. */
-export const COMING_TYPES: BlockType[] = ['H5P', 'TOOL']
+/** Types still built in a later stage (placeholders only). L5 built H5P and TOOL. */
+export const COMING_TYPES: BlockType[] = []
 export const AUDIENCES = ['BOTH', 'INSTRUCTOR', 'STUDENT'] as const
 export type Audience = (typeof AUDIENCES)[number]
 export const EDITION_STATUSES = ['DRAFT', 'IN_REVIEW', 'PUBLISHED', 'ARCHIVED'] as const
@@ -70,18 +71,39 @@ export const blockDataSchemas: Record<BlockType, z.ZodTypeAny> = {
   LINK: z.object({ url: httpsUrl }),
   CODE: z.object({ language: z.string().max(20).default('text'), code: z.string().max(20000) }),
   EMBED: z.object({ url: httpsUrl.refine((u) => hostAllowed(u), 'This site is not in the allowed list'), height: z.number().int().min(200).max(1200).default(480) }),
-  H5P: z.object({ note: z.string().max(500).optional() }).passthrough(),
+  /** L5: an H5P package (.h5p made with Lumi / h5p.org), private on Cloudinary, played in a sandboxed frame */
+  H5P: z.object({ media: media.refine((m) => m.resourceType === 'raw', 'Upload the .h5p file'), height: z.number().int().min(300).max(1400).default(640), note: z.string().max(500).optional() }),
   QUIZ: quizDataSchema,
   ASSIGNMENT: assignmentDataSchema,
-  TOOL: z.object({ note: z.string().max(500).optional() }).passthrough(),
+  /** L5: an external tool from the catalog (lib/lms/tools.ts) or a site added by the admin; toolId / mode / embedUrl are set on save */
+  TOOL: z.object({
+    url: httpsUrl, height: z.number().int().min(300).max(1400).default(600),
+    instructionsEn: z.string().max(5000).default(''), instructionsAr: z.string().max(5000).default(''),
+    toolId: z.string().optional(), toolNameEn: z.string().optional(), toolNameAr: z.string().optional(), mode: z.enum(['INLINE', 'NEW_TAB']).optional(), embedUrl: z.string().optional(),
+  }),
 }
 
 export interface BlockCheck { ok: boolean; data?: unknown; message?: string }
 
-export function validateBlockData(type: string, data: unknown): BlockCheck {
+/** extra = sites the admin added (Settings > LMS > Tools); they are allowed for TOOL and (when INLINE) EMBED. */
+export function validateBlockData(type: string, data: unknown, extra: ExtraSite[] = []): BlockCheck {
   if (!(BLOCK_TYPES as readonly string[]).includes(type)) return { ok: false, message: 'Unknown content type' }
+  // EMBED: the fixed list + the inline tools of the catalog / admin sites
+  if (type === 'EMBED') {
+    const url = String((data as { url?: unknown } | null)?.url ?? '')
+    if (url && !hostAllowed(url) && hostAllowed(url, inlineHosts(extra))) {
+      const r = z.object({ url: httpsUrl, height: z.number().int().min(200).max(1200).default(480) }).safeParse(data)
+      return r.success ? { ok: true, data: r.data } : { ok: false, message: r.error.issues[0]?.message ?? 'Invalid content' }
+    }
+  }
   const r = blockDataSchemas[type as BlockType].safeParse(data ?? {})
   if (!r.success) return { ok: false, message: r.error.issues[0]?.message ?? 'Invalid content' }
+  if (type === 'TOOL') {
+    const d = r.data as { url: string }
+    const t = toolForUrl(d.url, extra)
+    if (!t) return { ok: false, message: 'This site is not in the tools list (an admin can add it in LMS settings)' }
+    return { ok: true, data: { ...d, toolId: t.id, toolNameEn: t.nameEn, toolNameAr: t.nameAr, mode: t.mode, embedUrl: t.mode === 'INLINE' ? toolEmbedUrl(d.url) : undefined } }
+  }
   return { ok: true, data: r.data }
 }
 
@@ -109,4 +131,4 @@ export function moveInOrder(ids: string[], id: string, dir: 'up' | 'down'): stri
 }
 
 /** Files a curriculum author may upload (no SVG / HTML: they can carry scripts). */
-export const CURRICULUM_UPLOAD_FORMATS = 'jpg,jpeg,png,webp,gif,pdf,mp4,webm,mov,mp3,wav,pptx,docx,xlsx,zip,ino,py,sb3,stl'
+export const CURRICULUM_UPLOAD_FORMATS = 'jpg,jpeg,png,webp,gif,pdf,mp4,webm,mov,mp3,wav,pptx,docx,xlsx,zip,ino,py,sb3,stl,h5p'

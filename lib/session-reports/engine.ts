@@ -273,6 +273,7 @@ export async function studentReport(user: User, reportId: string, studentId: str
   let previousHomework: { title: string; state: string; grade: string; score: number | null; maxScore: number | null; gradesAt: Date | null }[] = []
   let nextHomework: { title: string; dueAt: Date | null }[] = []
   let quizzes: { title: string; state: string; percent: number | null; passed: boolean | null }[] = []
+  let activities: { title: string; percent: number | null; completed: boolean }[] = []
   if (gl && cur) {
     const [list, policy] = await Promise.all([groupAssignments(r.classSectionId, { lessons: gl }), policyForGroup(r.classSectionId)])
     const prevList = list.filter((a) => a.sessionNumber === cur.number - 1)
@@ -285,6 +286,14 @@ export async function studentReport(user: User, reportId: string, studentId: str
     nextHomework = list.filter((a) => a.sessionNumber === cur.number).map((a) => ({ title: a.titleEn || a.sessionTitleEn, dueAt: a.dueAt }))
     const qBlocks = await prisma.curriculumBlock.findMany({ where: { sessionId: cur.id, type: 'QUIZ' }, select: { id: true, titleEn: true, data: true } })
     const atts = qBlocks.length ? await prisma.quizAttempt.findMany({ where: { classSectionId: r.classSectionId, studentId, blockId: { in: qBlocks.map((b) => b.id) } }, select: { blockId: true, status: true, score: true, maxScore: true, createdAt: true } }) : []
+    const aBlocks = await prisma.curriculumBlock.findMany({ where: { sessionId: cur.id, type: 'H5P' }, select: { id: true, titleEn: true } })
+    if (aBlocks.length) {
+      const res = await prisma.h5PResult.findMany({ where: { classSectionId: r.classSectionId, studentId, blockId: { in: aBlocks.map((b) => b.id) } } })
+      activities = aBlocks.map((b) => {
+        const x = res.find((y) => y.blockId === b.id)
+        return { title: b.titleEn || 'Activity', percent: x?.score != null && x.maxScore ? Math.round((x.score / x.maxScore) * 100) : null, completed: !!x?.completed }
+      })
+    }
     quizzes = qBlocks.flatMap((b) => {
       const d = parseQuiz(b.data)
       return d ? [{ title: b.titleEn || 'Quiz', ...quizLine(atts.filter((a) => a.blockId === b.id), d.scoring, d.passMark) }] : []
@@ -300,7 +309,7 @@ export async function studentReport(user: User, reportId: string, studentId: str
     lesson: cur ? { id: cur.id, titleEn: cur.titleEn, titleAr: cur.titleAr, objectivesEn: cur.objectivesEn, objectivesAr: cur.objectivesAr } : null,
     attendance: rec.status,
     missedLessonLink: cur && (rec.status === 'ABSENT' || rec.status === 'EXCUSED') ? `/dashboard/my-lessons/${cur.id}?g=${r.classSectionId}` : null,
-    previousHomework, quizzes, nextHomework,
+    previousHomework, quizzes, activities, nextHomework,
     star: !!e?.star,
     phrases: settings.phrases.filter((p) => phraseIds.includes(p.id)).map((p) => ({ en: p.en, ar: p.ar || p.en })),
     comment: e?.comment ?? null,

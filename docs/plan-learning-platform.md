@@ -205,6 +205,19 @@ Decisions are from the owner (chat 2026-10-03 → 2026-10-05) unless marked "pro
   4. Online classes: free first step only — a meeting link per session (Zoom / Meet / any), "Join" button in the
      portal shortly before the session, joining logged as provisional attendance the instructor confirms.
   5. LTI: postponed (most children's tools do not support it; the project-link hand-in covers it).
+- **L5 as built (2026-10-12, e2e section 38):**
+  - Tools: catalog + embed links `lib/lms/tools.ts` (pure, tests), admin sites AppSetting `lms.tools`
+    (`lib/lms/tool-settings.ts`, `/api/lms/tools`, card in LMS settings). TOOL block = link + instructions; on save
+    the server sets toolId / mode (INLINE | NEW_TAB) / embedUrl. Editor `components/curriculum/ToolPicker.tsx`.
+  - H5P: block = private `.h5p` on Cloudinary; `/api/h5p/[blockId]/play` (sandboxed frame page, h5p-standalone 3.8.0
+    from unpkg, div mode) + `/api/h5p/[blockId]/f/[token]/…` (files unpacked in memory, signed short-lived token, no
+    cookies) + `POST /api/h5p/result` (student only; best score kept; completion ticks the item). Table `H5PResult`.
+    Results count in "task", the session report, skills, and a staff card on the Quizzes page. The lesson never
+    sends the package link. Not tested with a real Lumi file yet (needs Cloudinary).
+  - Video: the moving name watermark already existed (L2); Cloudinary stays.
+  - Online classes: `ClassSection.onlineMeetingUrl` (field in the attendance screens), `lib/online/*`
+    (Join opens 15 min before, closes 30 min after the planned end), table `OnlineJoin`, "Join" card on My Learning
+    and in the parent page, "joined online" badge in the attendance roster.
 
 ## 3. Reports
 

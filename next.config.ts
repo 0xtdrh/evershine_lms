@@ -88,6 +88,11 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
       },
+      // LMS L5: the H5P player is shown in a (sandboxed) frame of our own lesson page
+      {
+        source: "/api/h5p/:path*",
+        headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }],
+      },
     ];
   },
 };

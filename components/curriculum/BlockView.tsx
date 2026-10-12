@@ -11,6 +11,8 @@ import remarkGfm from 'remark-gfm'
 import { useI18n } from '@/lib/i18n/client'
 import { videoEmbedUrl } from '@/lib/curriculum/blocks'
 import { Watermark } from './Watermark'
+import { H5PFrame } from './H5PFrame'
+import { L } from '@/lib/i18n/client'
 import { useEffect, useRef, useState } from 'react'
 import { ClipboardList, ListChecks, ExternalLink, FileText, Hourglass, Maximize2, X, ZoomIn, ZoomOut } from 'lucide-react'
 
@@ -31,10 +33,10 @@ export function Markdown({ text }: { text: string }) {
 
 const noMenu = (e: React.MouseEvent) => e.preventDefault()
 
-const FILL_TYPES = ['VIDEO', 'EMBED', 'FILE']
+const FILL_TYPES = ['VIDEO', 'EMBED', 'FILE', 'TOOL']
 const ZOOM_TYPES = ['TEXT', 'CODE', 'IMAGE']
 
-export function BlockView({ block, watermark }: { block: Block; watermark?: string | null }) {
+export function BlockView({ block, watermark, groupId }: { block: Block; watermark?: string | null; groupId?: string | null }) {
   const { pick, t } = useI18n()
   const [full, setFull] = useState(false)
   const [zoom, setZoom] = useState(1)
@@ -105,6 +107,27 @@ export function BlockView({ block, watermark }: { block: Block; watermark?: stri
     case 'EMBED':
       body = <iframe src={d.url as string} style={fill ? undefined : { height: Number(d.height) || 480 }} className={`w-full rounded-lg border border-slate-200 ${fill ? 'h-full' : ''}`} sandbox="allow-scripts allow-same-origin allow-popups allow-forms" allow="fullscreen" allowFullScreen title={title || 'embed'} />
       break
+    case 'H5P':
+      body = <H5PFrame blockId={block.id} groupId={groupId} height={Number(d.height) || 640} />
+      break
+    case 'TOOL': {
+      const name = pick(d.toolNameEn as string, d.toolNameAr as string) || (d.url as string)
+      const instructions = pick(d.instructionsEn as string, d.instructionsAr as string)
+      body = (
+        <div className="space-y-2">
+          {instructions && <Markdown text={instructions} />}
+          {d.mode === 'INLINE' && d.embedUrl ? (
+            <iframe src={d.embedUrl as string} style={fill ? undefined : { height: Number(d.height) || 600 }} className={`w-full rounded-lg border border-slate-200 ${fill ? 'h-full' : ''}`} sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-downloads" allow="fullscreen; clipboard-write; usb; serial" allowFullScreen title={name} />
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3">
+              <span className="text-sm text-slate-700">{L(`${name} opens in a new tab. When you finish, copy the link of your project and hand it in with the homework.`, `${name} بيتفتح في تاب جديد. لما تخلص انسخ لينك مشروعك وسلّمه مع الواجب.`)}</span>
+              <a href={d.url as string} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"><ExternalLink className="h-4 w-4" /> {L('Open', 'افتح')} {name}</a>
+            </div>
+          )}
+        </div>
+      )
+      break
+    }
     case 'QUIZ': {
       const qn = ((d.questions as unknown[] | undefined)?.length ?? 0) + ((d.bank as { count?: number } | null)?.count ?? 0) + (Number(d.questionCount) || 0)
       body = (
@@ -130,7 +153,7 @@ export function BlockView({ block, watermark }: { block: Block; watermark?: stri
     default:
       body = <p className="flex items-center gap-2 rounded-lg border border-dashed border-slate-200 p-3 text-xs text-slate-500"><Hourglass className="h-4 w-4" /> {block.type} — {t('cur.coming')}</p>
   }
-  const canExpand = !['LINK', 'H5P', 'QUIZ', 'ASSIGNMENT', 'TOOL'].includes(block.type) && !(block.type === 'FILE' && ((d.media as { format?: string } | undefined)?.format ?? d.mediaFormat) !== 'pdf')
+  const canExpand = !['LINK', 'H5P', 'QUIZ', 'ASSIGNMENT'].includes(block.type) && !(block.type === 'TOOL' && d.mode !== 'INLINE') && !(block.type === 'FILE' && ((d.media as { format?: string } | undefined)?.format ?? d.mediaFormat) !== 'pdf')
   const btn = 'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
 
   if (full) {

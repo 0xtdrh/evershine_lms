@@ -15,6 +15,7 @@ import { curriculumMediaUrl } from '@/lib/cloudinary'
 import { getTeacherByUserId } from '@/lib/academic/teacher-scope'
 import { staffNames } from '@/lib/contacts/contact-log'
 import { nextStatus, validateBlockData, visibleTo, type EditionAction } from './blocks'
+import { getToolSettings } from '@/lib/lms/tool-settings'
 
 export interface Viewer {
   userId: string
@@ -364,7 +365,7 @@ export interface BlockInput { type?: string; audience?: string; titleEn?: string
 export async function addBlock(v: Viewer, sessionId: string, input: BlockInput): Promise<Outcome<{ id: string }>> {
   const r = await editableSession(v, sessionId)
   if (r.err) return r.err
-  const check = validateBlockData(input.type ?? '', input.data)
+  const check = validateBlockData(input.type ?? '', input.data, (await getToolSettings()).extra)
   if (!check.ok) return fail('INVALID', check.message!)
   const last = await prisma.curriculumBlock.findFirst({ where: { sessionId }, orderBy: { order: 'desc' }, select: { order: true } })
   const b = await prisma.curriculumBlock.create({
@@ -380,7 +381,7 @@ export async function updateBlock(v: Viewer, blockId: string, input: BlockInput)
   if (r.err) return r.err
   let data: Prisma.InputJsonValue | undefined
   if (input.data !== undefined) {
-    const check = validateBlockData(b.type, input.data)
+    const check = validateBlockData(b.type, input.data, (await getToolSettings()).extra)
     if (!check.ok) return fail('INVALID', check.message!)
     data = check.data as Prisma.InputJsonValue
   }
@@ -473,9 +474,10 @@ export async function importEdition(v: Viewer, levelId: string, file: ImportFile
   if (!level) return fail('NOT_FOUND', 'Level not found')
   const sessions = (file.sessions ?? []).slice(0, 200)
   if (!sessions.length) return fail('INVALID', 'The file has no sessions')
+  const extraSites = (await getToolSettings()).extra
   for (const [i, s] of sessions.entries()) {
     for (const b of s.blocks ?? []) {
-      const c = validateBlockData(b.type ?? '', b.data)
+      const c = validateBlockData(b.type ?? '', b.data, extraSites)
       if (!c.ok) return fail('INVALID', `Session ${i + 1}: ${c.message}`)
       b.data = c.data
     }

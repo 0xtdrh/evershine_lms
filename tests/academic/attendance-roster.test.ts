@@ -30,6 +30,7 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 vi.mock('@/lib/excuses/engine', () => ({ excusesOn: vi.fn().mockResolvedValue(new Map()) }))
+vi.mock('@/lib/online/engine', () => ({ onlineJoinsOn: vi.fn().mockResolvedValue(new Map()) }))
 
 vi.mock('@/lib/academic/engine', () => ({
   getActiveAcademicYear: vi.fn(async () => ({ id: 'year-1' })),

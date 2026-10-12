@@ -19,7 +19,58 @@ import Link from 'next/link'
 import { PolicyForm, type Policy } from '@/components/assignments/PolicyForm'
 import { L, useI18n } from '@/lib/i18n/client'
 
+import { TOOL_CATALOG, TOOL_CATEGORIES, type ExtraSite } from '@/lib/lms/tools'
+import { Plus, Trash2 } from 'lucide-react'
+
 interface Settings { unlockMode: string; watermark: boolean; kidModeMaxAge: number }
+
+/** L5: the tools list (built-in, read-only) + sites the admin adds. */
+function ToolsCard({ canEdit }: { canEdit: boolean }) {
+  const { locale } = useI18n()
+  const ar = locale === 'ar'
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['lms-tools'], queryFn: () => fetchApi<{ extra: ExtraSite[] }>('/api/lms/tools') })
+  const [rows, setRows] = useState<ExtraSite[] | null>(null)
+  useEffect(() => { if (data) setRows(data.extra) }, [data])
+  const save = useMutation({
+    mutationFn: () => fetchApi('/api/lms/tools', { method: 'PUT', body: JSON.stringify({ extra: rows }) }),
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['lms-tools'] }) },
+    onError: (e: Error) => notify.error(e.message),
+  })
+  const set = (i: number, p: Partial<ExtraSite>) => setRows((xs) => (xs ?? []).map((x, j) => (j === i ? { ...x, ...p } : x)))
+  return (
+    <Card>
+      <CardHeader className="pb-2"><CardTitle className="text-base">{L('Tools', 'الأدوات')}</CardTitle><CardDescription>{L('Tools a lesson can use. ↗ = the site refuses to be shown inside another site, so it opens in a new tab. You can add more sites below.', 'الأدوات اللي الدرس يقدر يستخدمها. ↗ = الموقع مابيسمحش يتفتح جوه موقع تاني، فبيتفتح في تاب جديد. تقدر تضيف مواقع تانية تحت.')}</CardDescription></CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <div className="space-y-1">
+          {Object.entries(TOOL_CATEGORIES).filter(([c]) => c !== 'OTHER').map(([c, label]) => (
+            <p key={c} className="text-xs"><span className="font-semibold text-slate-600">{ar ? label.ar : label.en}:</span> <span className="text-slate-500">{TOOL_CATALOG.filter((t) => t.category === c).map((t) => `${ar ? t.nameAr : t.nameEn}${t.mode === 'NEW_TAB' ? ' ↗' : ''}`).join('، ')}</span></p>
+          ))}
+        </div>
+        <div className="space-y-2">
+          <p className="font-medium">{L('Sites you added', 'مواقع انت ضفتها')}</p>
+          {(rows ?? []).map((r, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2">
+              <Input className="h-8 w-56" placeholder="example.com" value={r.host} disabled={!canEdit} onChange={(e) => set(i, { host: e.target.value })} />
+              <Input className="h-8 w-40" placeholder={L('Name (English)', 'الاسم (إنجليزي)')} value={r.nameEn} disabled={!canEdit} onChange={(e) => set(i, { nameEn: e.target.value })} />
+              <Input className="h-8 w-40" dir="rtl" placeholder="الاسم (عربي)" value={r.nameAr} disabled={!canEdit} onChange={(e) => set(i, { nameAr: e.target.value })} />
+              <Select value={r.mode} onValueChange={(v) => set(i, { mode: v as ExtraSite['mode'] })} disabled={!canEdit}>
+                <SelectTrigger className="h-8 w-48 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="INLINE">{L('Inside the lesson', 'جوه الدرس')}</SelectItem><SelectItem value="NEW_TAB">{L('New tab ↗', 'تاب جديد ↗')}</SelectItem></SelectContent>
+              </Select>
+              {canEdit && <Button type="button" size="sm" variant="ghost" onClick={() => setRows((xs) => (xs ?? []).filter((_, j) => j !== i))}><Trash2 className="h-4 w-4 text-rose-500" /></Button>}
+            </div>
+          ))}
+          {canEdit && <div className="flex gap-2">
+            <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setRows((xs) => [...(xs ?? []), { host: '', nameEn: '', nameAr: '', mode: 'INLINE' }])}><Plus className="h-4 w-4" /> {L('Site', 'موقع')}</Button>
+            <Button type="button" size="sm" disabled={save.isPending || (rows ?? []).some((r) => !r.host.trim() || !r.nameEn.trim())} onClick={() => save.mutate()}>{L('Save', 'حفظ')}</Button>
+          </div>}
+          <p className="text-[11px] text-slate-400">{L('Only add sites you trust: an "inside the lesson" site runs inside the student page frame.', 'ضيف بس مواقع موثوقة: الموقع اللي «جوه الدرس» بيشتغل جوه صفحة الطالب.')}</p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 interface Data { settings: Settings; modes: string[]; levels: { id: string; name: string; mode: string | null }[] }
 
 function HomeworkRules({ canEdit, levels }: { canEdit: boolean; levels: { id: string; name: string }[] }) {
@@ -109,6 +160,7 @@ export default function LmsSettingsPage() {
             </CardContent>
           </Card>
           <HomeworkRules canEdit={canEdit} levels={data.levels} />
+          <ToolsCard canEdit={canEdit} />
         </>
       )}
     </div>

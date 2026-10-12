@@ -21,6 +21,7 @@ interface Report {
   missedLessonLink: string | null
   previousHomework: { title: string; state: 'DONE' | 'LATE' | 'MISSING' | 'NOT_DUE'; grade: 'SHOWN' | 'GRADING' | 'LATER' | 'RETURNED' | 'NONE'; score: number | null; maxScore: number | null; gradesAt: string | null }[]
   quizzes: { title: string; state: 'DONE' | 'GRADING' | 'NOT_TAKEN'; percent: number | null; passed: boolean | null }[]
+  activities?: { title: string; percent: number | null; completed: boolean }[]
   nextHomework: { title: string; dueAt: string | null }[]
   star: boolean
   phrases: { en: string; ar: string }[]
@@ -116,6 +117,14 @@ function ReportBody({ id }: { id: string }) {
                 <p key={i}>
                   <span className="font-medium">{q.title}</span> — {q.state === 'DONE' ? <strong>{q.percent}% {q.passed ? '✅' : ''}</strong> : q.state === 'GRADING' ? L('grading in progress', 'جاري التصحيح') : L('not taken', 'ماتحلّش')}
                 </p>
+              ))}
+            </Section>
+          )}
+
+          {!!r.activities?.length && (
+            <Section title={L('Interactive activities', 'الأنشطة التفاعلية')}>
+              {r.activities.map((a, i) => (
+                <p key={i}><span className="font-medium">{a.title}</span> — {a.percent != null ? <strong>{a.percent}%</strong> : a.completed ? L('done ✅', 'خلّصه ✅') : L('not done yet', 'لسه ماخلّصهوش')}</p>
               ))}
             </Section>
           )}

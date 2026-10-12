@@ -324,9 +324,12 @@ export async function quizAnalysis(groupId: string | null, blockId: string) {
 export async function quizLevelScores(studentId: string, levelId: string): Promise<{ task: number | null; mcq: number | null }> {
   const groups = await prisma.classSection.findMany({ where: { levelId, enrollments: { some: { studentId } } }, select: { id: true } })
   const atts = await prisma.quizAttempt.findMany({ where: { studentId, classSectionId: { in: groups.map((g) => g.id) }, status: 'GRADED' }, select: { blockId: true, score: true, maxScore: true, createdAt: true } })
-  if (!atts.length) return { task: null, mcq: null }
+  // L5: interactive (H5P) activities count in "task" like session quizzes
+  const h5p = (await prisma.h5PResult.findMany({ where: { studentId, classSectionId: { in: groups.map((g) => g.id) }, maxScore: { gt: 0 } }, select: { score: true, maxScore: true } }))
+    .filter((r) => r.score != null).map((r) => Math.round((r.score! / r.maxScore!) * 10000) / 100)
+  if (!atts.length && !h5p.length) return { task: null, mcq: null }
   const blocks = await prisma.curriculumBlock.findMany({ where: { id: { in: [...new Set(atts.map((a) => a.blockId))] } }, select: { id: true, data: true } })
-  const session: number[] = [], final: number[] = []
+  const session: number[] = [...h5p], final: number[] = []
   for (const b of blocks) {
     const data = parseQuiz(b.data)
     if (!data) continue

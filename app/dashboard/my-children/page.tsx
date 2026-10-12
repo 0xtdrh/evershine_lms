@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { ParentRenewalsCard } from '@/components/portal/ParentRenewalsCard'
 import { ParentWalletCard } from '@/components/portal/ParentWalletCard'
+import { JoinOnlineCard } from '@/components/online/JoinOnlineCard'
 import { ParentRatingsCard } from '@/components/portal/ParentRatingsCard'
 import { ParentReferralCard } from '@/components/portal/ParentReferralCard'
 import { ChildExcusesCard } from '@/components/portal/ChildExcusesCard'
@@ -228,6 +229,7 @@ export default function MyChildrenPage() {
       <BirthdayBanner />
       <ParentRatingsCard />
       <ParentRenewalsCard />
+      {(children ?? []).map((c) => <JoinOnlineCard key={c.id} studentId={c.id} />)}
       <ParentWalletCard />
       <ParentReferralCard />
 

@@ -116,6 +116,31 @@ function Analysis({ groupId, blockId }: { groupId: string; blockId: string }) {
   )
 }
 
+/** L5: the group's interactive (H5P) activities with each student's best result. */
+function Activities({ groupId }: { groupId: string }) {
+  const { pick } = useI18n()
+  const { data } = useQuery({ queryKey: ['group-h5p', groupId], queryFn: () => fetchApi<{ activities: { blockId: string; sessionNumber: number | null; titleEn: string | null; titleAr: string | null; results: { studentId: string; percent: number | null; completed: boolean; attempts: number }[] }[]; students: { id: string; name: string }[] }>(`/api/groups/${groupId}/h5p`) })
+  if (!data?.activities.length) return null
+  return (
+    <Card>
+      <CardHeader className="pb-2"><CardTitle className="text-base">{L('Interactive activities (H5P)', 'الأنشطة التفاعلية (H5P)')}</CardTitle></CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {data.activities.map((a) => (
+          <div key={a.blockId} className="space-y-1">
+            <p className="font-medium text-slate-800">{pick(a.titleEn, a.titleAr) || L('Activity', 'نشاط')}{a.sessionNumber ? ` · ${L('session', 'حصة')} ${a.sessionNumber}` : ''} <span className="text-xs font-normal text-slate-400">({a.results.filter((r) => r.completed).length} / {data.students.length} {L('done', 'خلّصوا')})</span></p>
+            <div className="flex flex-wrap gap-1">
+              {data.students.map((st) => {
+                const r = a.results.find((x) => x.studentId === st.id)
+                return <span key={st.id} className={`rounded-full border px-2 py-0.5 text-xs ${!r ? 'border-slate-200 text-slate-400' : (r.percent ?? 100) >= 50 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>{st.name}: {r ? (r.percent != null ? `${r.percent}%` : '✓') : '—'}</span>
+              })}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function QuizzesPage() {
   const { pick } = useI18n()
   const qc = useQueryClient()
@@ -176,6 +201,7 @@ export default function QuizzesPage() {
           </CardContent>
         </Card>
       ))}
+      {groupId && <Activities groupId={groupId} />}
       <Dialog open={!!review} onOpenChange={(o) => { if (!o) setReview(null) }}>
         <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{L('Review', 'المراجعة')}</DialogTitle></DialogHeader>{review && <Review attemptId={review} onDone={() => { setReview(null); refresh() }} />}</DialogContent>
       </Dialog>

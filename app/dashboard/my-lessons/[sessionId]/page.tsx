@@ -109,7 +109,7 @@ export default function LessonPage() {
           )
           return (
             <div key={b.id} className={`rounded-2xl border bg-white ${kid ? 'p-6' : 'p-4'} ${isDone ? 'border-emerald-200' : 'border-slate-200'}`}>
-              <BlockView block={b} watermark={data.watermark} />
+              <BlockView block={b} watermark={data.watermark} groupId={groupId} />
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 {b.type === 'TEXT' && textOf(b) ? (
                   <Button variant="outline" size={kid ? 'lg' : 'sm'} className="gap-1" onClick={() => speak(textOf(b), locale)}><Volume2 className="h-4 w-4" /> {t('les.listen')}</Button>
