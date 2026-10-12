@@ -4276,6 +4276,8 @@ model PassportShare {
   token        String    @unique @db.VarChar(64)
   showProjects Boolean   @default(false)
   showPhoto    Boolean   @default(false)
+  /// P2: the parent may add the skills chart to the shared page
+  showSkills   Boolean   @default(false)
   createdById  String
   expiresAt    DateTime
   revokedAt    DateTime?
@@ -4296,6 +4298,105 @@ model PassportPrint {
   createdAt   DateTime @default(now())
 
   @@index([studentId, kind])
+}
+
+/// P2 profile (2026-10-12): a goal set by the student, the parent or the instructor.
+/// kind SYSTEM (metric counted by the system from `baseline` up to `target`) | FREE (progress 0-100 moved by hand).
+/// metric SESSIONS | STAMPS | HOMEWORK | QUIZ90 | LEVEL (target level id in `levelId`).
+model StudentGoal {
+  id            String    @id @default(cuid())
+  studentId     String
+  title         String    @db.VarChar(160)
+  kind          String    @db.VarChar(8)
+  metric        String?   @db.VarChar(12)
+  target        Int?
+  baseline      Int?
+  levelId       String?
+  progress      Int       @default(0)
+  dueDate       DateTime? @db.Date
+  doneAt        DateTime?
+  createdById   String
+  createdByRole String    @db.VarChar(16)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([studentId])
+}
+
+/// P2: "first times" album (first robot that moved, first code that ran…), added by staff; may come with a stamp.
+model ProfileMoment {
+  id             String   @id @default(cuid())
+  studentId      String
+  title          String   @db.VarChar(160)
+  note           String?  @db.VarChar(500)
+  media          Json?
+  takenAt        DateTime @db.Date
+  studentStampId String?
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  @@index([studentId])
+}
+
+/// P2: inventor's diary — two lines after a session (older students, optional).
+model DiaryEntry {
+  id             String   @id @default(cuid())
+  studentId      String
+  classSectionId String?
+  text           String   @db.VarChar(500)
+  createdAt      DateTime @default(now())
+
+  @@index([studentId, createdAt])
+}
+
+/// P2: a thank-you note between classmates (shown only after the instructor approves; first names only).
+model ThankNote {
+  id             String    @id @default(cuid())
+  fromStudentId  String
+  toStudentId    String
+  classSectionId String
+  text           String    @db.VarChar(300)
+  status         String    @default("PENDING") @db.VarChar(8)
+  decidedById    String?
+  decidedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([toStudentId, status])
+  @@index([classSectionId, status])
+}
+
+/// P2: experience recorded by the management (assistant instructor, ambassador, alumni, other).
+model StudentExperience {
+  id          String    @id @default(cuid())
+  studentId   String
+  role        String    @db.VarChar(12)
+  titleEn     String?   @db.VarChar(120)
+  titleAr     String?   @db.VarChar(120)
+  fromDate    DateTime  @db.Date
+  toDate      DateTime? @db.Date
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  @@index([studentId])
+}
+
+/// P2: a project photo / short video uploaded by the instructor (approved at once) or an older student (needs approval).
+model ProjectUpload {
+  id             String    @id @default(cuid())
+  studentId      String
+  classSectionId String?
+  title          String    @db.VarChar(160)
+  description    String?   @db.VarChar(500)
+  media          Json
+  uploaderRole   String    @db.VarChar(16)
+  uploadedById   String
+  status         String    @default("PENDING") @db.VarChar(8)
+  decidedById    String?
+  decidedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([studentId, status])
+  @@index([classSectionId, status])
 }
 
 /// L5: a student's result in an H5P activity (best score kept; completed when the package said so).

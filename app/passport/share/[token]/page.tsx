@@ -12,6 +12,7 @@ interface Shared {
   stamps: { nameEn: string; nameAr: string; icon: string; shape: string; color: string; label: string | null; awardedAt: string }[]
   certificates: { title: string; number: string; issuedAt: string }[]
   projects: { titleEn: string; titleAr: string }[] | null
+  skills?: { course: string; scores: { nameEn: string; nameAr: string; percent: number | null }[] }[] | null
 }
 const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -59,6 +60,15 @@ function SharedView({ token }: { token: string }) {
               <div className="rounded-2xl bg-white p-4 text-sm">
                 <p className="mb-2 font-semibold text-slate-800">{L('Projects', 'المشاريع')}</p>
                 <div className="flex flex-wrap gap-2">{data.projects.map((x, i) => <span key={i} className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs text-orange-800">🖼️ {ar ? x.titleAr : x.titleEn}</span>)}</div>
+              </div>
+            )}
+            {data.skills && data.skills.length > 0 && (
+              <div className="grid gap-4 rounded-2xl bg-white p-4 text-xs md:grid-cols-2">
+                {data.skills.map((s) => (
+                  <div key={s.course} className="space-y-1"><p className="font-semibold text-slate-800">{s.course}</p>
+                    {s.scores.map((k, i) => <div key={i} className="flex items-center gap-2"><span className="w-28 truncate">{(ar && k.nameAr) || k.nameEn}</span><div className="h-2 flex-1 rounded bg-slate-100"><div className="h-2 rounded bg-indigo-500" style={{ width: `${k.percent}%` }} /></div><span className="w-10 text-end">{k.percent}%</span></div>)}
+                  </div>
+                ))}
               </div>
             )}
             <p className="text-center text-xs text-slate-400">{L('Shared by the parent · open until', 'شاركه ولي الأمر · مفتوح لحد')} {day(data.expiresAt, ar)}</p>

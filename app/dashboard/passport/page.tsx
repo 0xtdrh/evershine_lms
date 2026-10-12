@@ -57,8 +57,9 @@ export default function PassportPage() {
   // parent: share links
   const [showProjects, setShowProjects] = useState(false)
   const [showPhoto, setShowPhoto] = useState(false)
+  const [showSkills, setShowSkills] = useState(false)
   const share = useMutation({
-    mutationFn: () => fetchApi(`/api/passport/${studentId}/share`, { method: 'POST', body: JSON.stringify({ showProjects, showPhoto }) }),
+    mutationFn: () => fetchApi(`/api/passport/${studentId}/share`, { method: 'POST', body: JSON.stringify({ showProjects, showPhoto, showSkills }) }),
     onSuccess: () => { notify.success(L('Link made', 'اللينك اتعمل')); refresh() }, onError: (e: Error) => notify.error(e.message),
   })
   const stop = useMutation({ mutationFn: (id: string) => fetchApi(`/api/passport/shares/${id}`, { method: 'DELETE' }), onSuccess: refresh })
@@ -91,6 +92,7 @@ export default function PassportPage() {
     <div className="space-y-5" dir={dir}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><BookMarked className="h-7 w-7 text-indigo-600" /> {L('TechNova passport', 'جواز سفر TechNova')}</h1>
+        <Link href={`/dashboard/profile${staffStudent ? `?s=${studentId}` : ''}`} className="text-sm text-indigo-700 hover:underline">👤 {L('Profile', 'البروفايل')} →</Link>
         {!staffStudent && (mine?.length ?? 0) > 1 && (
           <Select value={studentId} onValueChange={setPick}><SelectTrigger className="h-9 w-56"><SelectValue /></SelectTrigger><SelectContent>{mine!.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select>
         )}
@@ -172,6 +174,7 @@ export default function PassportPage() {
             <div className="flex flex-wrap items-center gap-4">
               <label className="flex items-center gap-1"><input type="checkbox" checked={showProjects} onChange={(e) => setShowProjects(e.target.checked)} /> {L('Show the projects', 'اظهر المشاريع')}</label>
               <label className="flex items-center gap-1"><input type="checkbox" checked={showPhoto} onChange={(e) => setShowPhoto(e.target.checked)} /> {L('Show the photo', 'اظهر الصورة')}</label>
+              <label className="flex items-center gap-1"><input type="checkbox" checked={showSkills} onChange={(e) => setShowSkills(e.target.checked)} /> {L('Show the skills', 'اظهر المهارات')}</label>
               <Button size="sm" disabled={share.isPending} onClick={() => share.mutate()}>{L('Make a link', 'اعمل لينك')}</Button>
             </div>
             {p.shares.map((s) => {

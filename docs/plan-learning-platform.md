@@ -359,6 +359,19 @@ Built automatically after each session. No typing, except optional instructor ex
 - **"Year at TechNova" recap** on the join anniversary (sessions, projects, certificates, badges).
 - **Achievement image** for WhatsApp / stories with the TechNova logo (level finished, badge, graduation).
 
+### P2 as built (2026-10-12, e2e section 40)
+- The owner said «ابدأ» without answering the questions, so the proposed defaults were used, all in settings
+  (Passport & Stamps → Settings → Profile): older students from 12; goals by student / parent / instructor; thank-you
+  notes ON (instructor approves); videos ≤ 60 s / 50 MB; portfolio printed by staff only (parents can be allowed);
+  the parent may add the skills to the passport share link; all 9 parts built.
+- Tables StudentGoal, ProfileMoment, DiaryEntry, ThankNote, StudentExperience, ProjectUpload; PassportShare.showSkills.
+  Pure rules `lib/profile/rules.ts` (goals, map + next step, uploads, recap week; tests), engine `lib/profile/engine.ts`.
+- APIs `/api/profile/[studentId]` (GET ?view=recap|portfolio, POST actions), `/api/profile/items`,
+  `/api/profile/approvals`, `/api/profile/settings`. Events PROFILE_UPDATE, PROFILE_RECAP (daily job on the join day).
+- Screens: `/dashboard/profile` (student / parent / staff ?s=), `/dashboard/profile/recap`, printable
+  `/profile/portfolio/[studentId]`, `/dashboard/profile-approvals` (LMS hub tile), "Profile" button on the student page,
+  menu "My Profile".
+
 ## 6. Gamification
 
 ### G1 — Engine

@@ -31,6 +31,8 @@ export const NOTIFICATION_EVENTS = [
   { key: 'CERTIFICATE_ISSUED', label: 'Certificate ready', description: 'Parent and student: a certificate was revealed', audience: 'PARENT' },
   { key: 'REPORT_READY', label: 'Report ready', description: 'Parent: the monthly / level report is ready', audience: 'PARENT' },
   { key: 'PASSPORT_STAMP', label: 'New passport stamp', description: 'Parent and student: a new stamp in the TechNova passport (level, event, achievement)', audience: 'PARENT' },
+  { key: 'PROFILE_UPDATE', label: 'Profile update', description: 'Parent and student: a new album moment or an approved thank-you note in the profile', audience: 'PARENT' },
+  { key: 'PROFILE_RECAP', label: 'Year at TechNova', description: 'Parent and student: the yearly recap on the join anniversary', audience: 'PARENT' },
   { key: 'SESSION_REPORT', label: 'Session report', description: 'Parent and student: the report of each session (what was done, attendance, homework, quiz, instructor note)', audience: 'PARENT' },
   { key: 'PERFECT_ATTENDANCE', label: 'Perfect attendance', description: 'Parent and student: no absence in the whole month', audience: 'PARENT' },
   { key: 'FEEDBACK_REQUEST', label: 'Rate the month', description: 'Parent: please rate the sessions, the instructor and TechNova', audience: 'PARENT' },

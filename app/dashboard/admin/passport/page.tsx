@@ -187,6 +187,37 @@ function SettingsTab() {
   )
 }
 
+interface ProfileSettings { olderAge: number; maxVideoSeconds: number; maxUploadMb: number; parentPortfolio: boolean; thanksOn: boolean; diaryOn: boolean; uploadsOn: boolean }
+/** P2: profile settings (older-student age, uploads, thank-you notes, diary, portfolio for parents). */
+function ProfileSettingsCard() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['profile-settings'], queryFn: () => fetchApi<ProfileSettings>('/api/profile/settings') })
+  const [s, setS] = useState<ProfileSettings | null>(null)
+  useEffect(() => { if (data) setS(data) }, [data])
+  const save = useMutation({
+    mutationFn: () => fetchApi('/api/profile/settings', { method: 'PUT', body: JSON.stringify(s) }),
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['profile-settings'] }) }, onError: (e: Error) => notify.error(e.message),
+  })
+  if (!s) return null
+  const num = (k: 'olderAge' | 'maxVideoSeconds' | 'maxUploadMb', label: string) => <label className="flex items-center gap-2">{label} <Input type="number" className="h-8 w-20" value={s[k]} onChange={(e) => setS({ ...s, [k]: Number(e.target.value) || 1 })} /></label>
+  const box = (k: 'parentPortfolio' | 'thanksOn' | 'diaryOn' | 'uploadsOn', label: string) => <label className="flex items-center gap-2"><input type="checkbox" checked={s[k]} onChange={(e) => setS({ ...s, [k]: e.target.checked })} /> {label}</label>
+  return (
+    <Card>
+      <CardHeader className="pb-2"><CardTitle className="text-base">{L('Profile', 'البروفايل')}</CardTitle></CardHeader>
+      <CardContent className="space-y-2 text-sm">
+        {num('olderAge', L('"Older students" from age', '«الطلبة الكبار» من سن'))}
+        {num('maxVideoSeconds', L('Longest video (seconds)', 'أطول فيديو (ثانية)'))}
+        {num('maxUploadMb', L('Biggest file (MB)', 'أكبر ملف (MB)'))}
+        {box('uploadsOn', L('Project uploads (instructor; older students with approval)', 'رفع المشاريع (المدرب؛ والطلبة الكبار بموافقة)'))}
+        {box('thanksOn', L('Thank-you notes between classmates (instructor approves)', 'رسايل شكر بين الزملاء (المدرب يوافق)'))}
+        {box('diaryOn', L("Inventor's diary (older students)", 'مذكرات المخترع (الطلبة الكبار)'))}
+        {box('parentPortfolio', L('Parents can open the portfolio (older students)', 'ولي الأمر يقدر يفتح الـ Portfolio (الطلبة الكبار)'))}
+        <Button disabled={save.isPending} onClick={() => save.mutate()}>{L('Save', 'حفظ')}</Button>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function PassportAdminPage() {
   const { data: session } = useSession()
   const { locale, dir } = useI18n()
@@ -238,7 +269,7 @@ export default function PassportAdminPage() {
             )
           })}
         </TabsContent>
-        {canEdit && <TabsContent value="settings"><SettingsTab /></TabsContent>}
+        {canEdit && <TabsContent value="settings" className="space-y-4"><SettingsTab /><ProfileSettingsCard /></TabsContent>}
       </Tabs>
       <Dialog open={!!edit} onOpenChange={(o) => { if (!o) setEdit(null) }}>
         <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{edit?.id ? L('Edit stamp', 'تعديل الختم') : L('New stamp', 'ختم جديد')}</DialogTitle></DialogHeader>{edit && <StampEditor value={edit} onDone={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['passport-stamps'] }) }} />}</DialogContent>

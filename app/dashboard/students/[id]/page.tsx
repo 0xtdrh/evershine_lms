@@ -238,6 +238,11 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               <Button variant="outline" size="sm" className="gap-2">📘 Passport</Button>
             </Link>
           )}
+          {session?.user?.role && checkPermission(session.user.role, 'passport', 'read') && (
+            <Link href={`/dashboard/profile?s=${id}`}>
+              <Button variant="outline" size="sm" className="gap-2">👤 Profile</Button>
+            </Link>
+          )}
         </div>
       </div>
 

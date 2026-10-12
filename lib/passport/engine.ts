@@ -335,7 +335,7 @@ export async function passportView(user: User, studentId: string) {
 
 // ───────────────────────── share links (parent only) ─────────────────────────
 
-export async function createShare(user: User, studentId: string, opts: { showProjects: boolean; showPhoto: boolean; days?: number }): Promise<Outcome<{ token: string; expiresAt: Date }>> {
+export async function createShare(user: User, studentId: string, opts: { showProjects: boolean; showPhoto: boolean; showSkills?: boolean; days?: number }): Promise<Outcome<{ token: string; expiresAt: Date }>> {
   if ((await studentViewer(user, studentId)) !== 'PARENT') return fail('FORBIDDEN', 'Only the parent can share the passport')
   await ensurePassport(studentId)
   const live = await prisma.passportShare.count({ where: { studentId, revokedAt: null, expiresAt: { gt: new Date() } } })
@@ -343,7 +343,7 @@ export async function createShare(user: User, studentId: string, opts: { showPro
   const settings = await getPassportSettings()
   const token = randomBytes(24).toString('base64url')
   const expiresAt = shareExpiry(new Date(), opts.days ?? settings.shareDays)
-  await prisma.passportShare.create({ data: { studentId, token, showProjects: !!opts.showProjects, showPhoto: !!opts.showPhoto, createdById: user.id, expiresAt } })
+  await prisma.passportShare.create({ data: { studentId, token, showProjects: !!opts.showProjects, showPhoto: !!opts.showPhoto, showSkills: !!opts.showSkills, createdById: user.id, expiresAt } })
   return { ok: true, value: { token, expiresAt } }
 }
 
@@ -368,7 +368,21 @@ export async function publicShare(token: string) {
   ])
   if (!passport || !student) return null
   const titles = projects.length ? await prisma.curriculumBlock.findMany({ where: { id: { in: projects.map((p) => p.blockId) } }, select: { titleEn: true, titleAr: true } }) : []
+  // P2: the parent may add the skills chart (per course)
+  let skills: { course: string; scores: { nameEn: string; nameAr: string; percent: number | null }[] }[] | null = null
+  if (s.showSkills) {
+    skills = []
+    const groups = await prisma.studentEnrollment.findMany({ where: { studentId: s.studentId }, select: { classSectionId: true, classSection: { select: { level: { select: { subjectId: true, subject: { select: { name: true } } } } } } } })
+    const byCourse = new Map<string, { name: string; ids: string[] }>()
+    for (const g of groups) { const sub = g.classSection.level?.subjectId; if (!sub) continue; const x = byCourse.get(sub) ?? { name: g.classSection.level?.subject?.name ?? '', ids: [] }; x.ids.push(g.classSectionId); byCourse.set(sub, x) }
+    for (const [subjectId, x] of byCourse) {
+      const sk = await studentSkills(s.studentId, x.ids, subjectId).catch(() => null)
+      const measured = (sk?.scores ?? []).filter((k) => k.percent != null)
+      if (measured.length) skills.push({ course: x.name, scores: measured.map((k) => ({ nameEn: k.nameEn, nameAr: k.nameAr, percent: k.percent })) })
+    }
+  }
   return {
+    skills,
     number: passport.number, name: `${student.firstName} ${student.lastName}`.trim(), campus: student.campus?.name ?? '', joinedAt: student.admissionDate,
     photo: s.showPhoto ? student.profilePicture : null, expiresAt: s.expiresAt,
     stamps: stamps.map((x) => ({ nameEn: x.stamp.nameEn, nameAr: x.stamp.nameAr || x.stamp.nameEn, icon: x.stamp.icon, shape: x.stamp.shape, color: x.color || x.stamp.color, label: x.label, awardedAt: x.awardedAt })),

@@ -9,8 +9,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ student
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const { studentId } = await params
-  const body = (await req.json().catch(() => null)) as { showProjects?: boolean; showPhoto?: boolean } | null
-  const r = await createShare({ id: session.user.id, role: session.user.role as Role }, studentId, { showProjects: !!body?.showProjects, showPhoto: !!body?.showPhoto })
+  const body = (await req.json().catch(() => null)) as { showProjects?: boolean; showPhoto?: boolean; showSkills?: boolean } | null
+  const r = await createShare({ id: session.user.id, role: session.user.role as Role }, studentId, { showProjects: !!body?.showProjects, showPhoto: !!body?.showPhoto, showSkills: !!body?.showSkills })
   if (!r.ok) return r.code === 'FORBIDDEN' ? errors.forbidden(r.message) : errors.conflict(r.message ?? 'Cannot share')
   return createdResponse(r.value)
 }
