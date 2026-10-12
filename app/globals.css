@@ -1182,3 +1182,11 @@ section a:focus-visible {
   background: rgba(15, 23, 42, 0.85);
   border-color: rgba(148, 163, 184, 0.15);
 }
+
+/* P1 passport: a new stamp lands with a "thump" the first time it is seen */
+@keyframes stampIn {
+  0% { transform: scale(2.4) rotate(-20deg); opacity: 0; }
+  60% { transform: scale(0.9) rotate(-4deg); opacity: 1; }
+  80% { transform: scale(1.06) rotate(-7deg); }
+  100% { transform: scale(1) rotate(-6deg); }
+}

@@ -318,6 +318,27 @@ Built automatically after each session. No typing, except optional instructor ex
 | attendance, breaks | partly | ✅ | ✅ | ✅ (breaks: staff only) | ❌ |
 | phone, money | ❌ | ✅ | ❌ | ✅ | ❌ |
 
+### P1 owner decisions (2026-10-12)
+- Number TN-PASS-YYYY-NNNN with the JOIN year, for every student (old ones too). Track graduation rule B: the admin
+  ticks the courses a track needs (none = all), a course is finished when its last level is passed. Graduation
+  certificate with the TN-CERT numbering. Company stamp + signature uploaded in the settings. Share link 30 days.
+  Paper passport A6. Cover = the colour of the current track.
+- A stamps page where the admin adds stamps (AUTO rule / MANUAL / EVENT scan) + ready-made stamps.
+- From the extra ideas only: 14 moving watermark, 15 replacement copy number, 16 parent notification, 17 WhatsApp /
+  stories image, 18 high-resolution file for a real rubber stamp, 19 paper passport price (payment comes with FIN).
+- Printing (booklet, passport PDF, transcript): branch staff only, logged; parents and students only look.
+
+### P1 as built (2026-10-12, e2e section 39)
+- Tables StudentPassport, PassportStamp, StudentStamp, PassportShare, PassportPrint. Pure rules
+  `lib/passport/rules.ts` (auto rules, built-in stamps, track graduation, schema; tests), engine `lib/passport/engine.ts`
+  (facts → stamps, silent first check, notifications, graduation certificate, manual / event stamps, views, share,
+  prints). Checked when the passport opens, after a level result, and by the daily job (students active in 2 days).
+- APIs `/api/passport/*` (me, [studentId], share, shares/[id], public/[token] (rate limited), prints, print, stamps,
+  stamps/[id], stamps/[id]/scan, stamps/give, settings). RBAC `passport`. Event `PASSPORT_STAMP`.
+- Screens: `/dashboard/passport` (student / parent / staff ?s=), `/dashboard/admin/passport` (stamps library, scan,
+  settings), printable `/passport/print/[studentId]?kind=`, public `/passport/share/[token]`, "Passport" button on the
+  student page, menus "My Passport" / "Passport & Stamps".
+
 ## 5. Profile (the student as a person)
 
 ### P2

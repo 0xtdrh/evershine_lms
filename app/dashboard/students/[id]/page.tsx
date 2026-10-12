@@ -4,6 +4,7 @@ import { use } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi, fetchPaginatedApi } from '@/lib/api-client'
 import { useSession } from 'next-auth/react'
+import { checkPermission } from '@/lib/rbac'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -230,6 +231,12 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                 </Button>
               </Link>
             </>
+          )}
+          {/* P1: passport (stamps, printing) — read by every staff role that may see the student */}
+          {session?.user?.role && checkPermission(session.user.role, 'passport', 'read') && (
+            <Link href={`/dashboard/passport?s=${id}`}>
+              <Button variant="outline" size="sm" className="gap-2">📘 Passport</Button>
+            </Link>
           )}
         </div>
       </div>

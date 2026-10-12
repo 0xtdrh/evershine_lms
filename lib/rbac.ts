@@ -93,6 +93,8 @@ export type AcademicResource =
   | 'curriculum'
   // R1: session reports (read; update = instructor extras + send; approve = settings)
   | 'session_reports'
+  // P1: passport (read; update = give stamps, print, event scan; approve = stamps library + settings)
+  | 'passport'
 
 type Resource = AcademicResource
 
@@ -208,6 +210,7 @@ const PERMISSIONS: PermissionMap = {
     agreements: ['create', 'read', 'update'],
     curriculum: ['create', 'read', 'update', 'delete', 'approve'],
     session_reports: ['read', 'update', 'approve'],
+    passport: ['read', 'update', 'approve'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -271,6 +274,7 @@ const PERMISSIONS: PermissionMap = {
     agreements: ['create', 'read', 'update'],
     curriculum: ['create', 'read', 'update', 'delete', 'approve'],
     session_reports: ['read', 'update', 'approve'],
+    passport: ['read', 'update', 'approve'],
   },
   TEACHER: {
     students: ['read'],
@@ -335,6 +339,7 @@ const PERMISSIONS: PermissionMap = {
     agreements: [],
     curriculum: ['read'],
     session_reports: ['read', 'update'],
+    passport: ['read', 'update'],
   },
   STUDENT: {
     students: [],
@@ -398,6 +403,7 @@ const PERMISSIONS: PermissionMap = {
     agreements: [],
     curriculum: [],
     session_reports: [],
+    passport: [],
   },
   PARENT: {
     students: [],
@@ -461,6 +467,7 @@ const PERMISSIONS: PermissionMap = {
     agreements: [],
     curriculum: [],
     session_reports: [],
+    passport: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -526,6 +533,7 @@ const PERMISSIONS: PermissionMap = {
     agreements: [],
     curriculum: [],
     session_reports: [],
+    passport: [],
   },
   GUARDIAN: {
     students: [],
@@ -589,6 +597,7 @@ const PERMISSIONS: PermissionMap = {
     agreements: [],
     curriculum: [],
     session_reports: [],
+    passport: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -656,6 +665,7 @@ const PERMISSIONS: PermissionMap = {
     agreements: ['read'],
     curriculum: [],
     session_reports: ['read'],
+    passport: ['read', 'update'],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -724,6 +734,7 @@ const PERMISSIONS: PermissionMap = {
     agreements: ['read'],
     curriculum: ['read'],
     session_reports: ['read', 'update'],
+    passport: ['read', 'update'],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -790,6 +801,7 @@ const PERMISSIONS: PermissionMap = {
     agreements: [],
     curriculum: [],
     session_reports: [],
+    passport: [],
   },
 }
 

@@ -247,5 +247,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // P1: a finished level may give a passport stamp (and a track graduation)
+  try { await (await import('@/lib/passport/engine')).evaluateStamps(enrollment.studentId) } catch (e) { console.error('[PASSPORT_AFTER_RESULT]', e) }
+
   return successResponse({ result, certificateIssued })
 }

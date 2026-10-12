@@ -1415,6 +1415,46 @@ check "the attendance screen shows who joined online" "$(api GET "/api/enrollmen
 check "the parent can press Join for the child; not for another family" "$(curl -s -b "$LPJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\",\"s\":\"$LK\"}" $B/api/online/join | jq_ "d['success']")/$(curl -s -b "$LPJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\",\"s\":\"$LO\"}" $B/api/online/join | jq_ "d['success']")" "True/False"
 api PUT /api/platform/settings '{"modules":{"lms":false}}' >/dev/null
 rm -f "$LKJ"
+
+echo "== 39. P1 passport: number, automatic / manual / event stamps, track graduation, share link, printing, who sees what"
+PV=$(api GET /api/passport/$LK)
+check "passport number TN-PASS-<join year>-NNNN, welcome stamp, ready-made stamps created" "$(echo "$PV" | jq_ "(__import__('re').match(r'^TN-PASS-\d{4}-\d{4}$', d['data']['passport']['number']) is not None, any(s['nameEn']=='Welcome to TechNova' for s in d['data']['stamps']))")/$(M "SELECT COUNT(*) >= 24 FROM PassportStamp WHERE code IS NOT NULL")" "(True, True)/1"
+PN=$(mkstu PassNew 01066660131 Hala 01066660132)
+check "a student's first check is silent (welcome stamp, no notification)" "$(api GET /api/passport/$PN | jq_ "len(d['data']['stamps'])")/$(M "SELECT COUNT(*) FROM Notification WHERE type='PASSPORT_STAMP' AND relatedId='$PN'")" "1/0"
+check "secretary cannot add stamps to the library" "$(secapi POST /api/passport/stamps '{"nameEn":"X","kind":"MANUAL","givers":["TEACHER"]}' | jq_ "d['success']")" "False"
+check "admin adds an automatic stamp (2 sessions)" "$(api POST /api/passport/stamps '{"nameEn":"Two sessions","nameAr":"","kind":"AUTO","rule":"SESSIONS","threshold":2,"icon":"2","color":"#123456"}' | jq_ "d['success']")" "True"
+check "the next check gives it and notifies the family" "$(api GET /api/passport/$LK | jq_ "any(s['nameEn']=='Two sessions' for s in d['data']['stamps'])")/$(M "SELECT COUNT(*) > 0 FROM Notification WHERE type='PASSPORT_STAMP' AND relatedId='$LK'")" "True/1"
+check "instructor gives a by-hand stamp to his student" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d "{\"stampId\":\"$(M "SELECT id FROM PassportStamp WHERE code='FIRST_ROBOT'")\",\"studentIds\":[\"$LK\"],\"note\":\"Line follower\"}" $B/api/passport/stamps/give | jq_ "d['data']['given']")" "1"
+check "secretary is not one of that stamp's givers" "$(secapi POST /api/passport/stamps/give "{\"stampId\":\"$(M "SELECT id FROM PassportStamp WHERE code='FIRST_ROBOT'")\",\"studentIds\":[\"$LK\"]}" | jq_ "d['success']")" "False"
+LKCARD=$(M "SELECT idCardQRCode FROM Student WHERE id='$LK'")
+COMP=$(M "SELECT id FROM PassportStamp WHERE code='COMPETITION'")
+check "event stamp by scanning the card (secretary); second scan = already has it; a wrong code is refused" "$(secapi POST /api/passport/stamps/$COMP/scan "{\"code\":\"$LKCARD\"}" | jq_ "d['data']['already']")/$(secapi POST /api/passport/stamps/$COMP/scan "{\"code\":\"$LKCARD\"}" | jq_ "d['data']['already']")/$(secapi POST /api/passport/stamps/$COMP/scan '{"code":"TN/2026/0001"}' | jq_ "d['success']")" "False/True/False"
+api POST /api/passport/stamps '{"nameEn":"Secret helper","nameAr":"","kind":"MANUAL","givers":["TEACHER"],"secret":true}' >/dev/null
+check "secret stamps are hidden from the instructor's list" "$(curl -s -b "$TJ" $B/api/passport/stamps | jq_ "any(s['nameEn']=='Secret helper' for s in d['data'])")" "False"
+PS=$LK; PSL=$CL; PSC=$SUBJ
+TRK=$(M "SELECT trackId FROM AcademicSubject WHERE id='$PSC'"); [ -z "$TRK" -o "$TRK" = "NULL" ] && { TRK=$(M "SELECT id FROM Track LIMIT 1"); M "UPDATE AcademicSubject SET trackId='$TRK' WHERE id='$PSC'"; }
+M "UPDATE Level SET \`order\`=999 WHERE id='$PSL'"
+api PUT /api/passport/settings "{\"trackRequired\":{\"$TRK\":[\"$PSC\"]},\"trackColors\":{\"$TRK\":\"#ff6600\"},\"shareDays\":30,\"bookletPrice\":50,\"companyStampUrl\":null,\"signatureUrl\":null,\"signatureName\":\"Manager\"}" >/dev/null
+M "UPDATE ClassSection SET currentCycleNumber=99 WHERE id='$LG'"
+api POST /api/level-results "{\"studentEnrollmentId\":\"$LKE\",\"subjectId\":\"$SUBJ\",\"homeworkScore\":95,\"taskScore\":95,\"instructorScore\":95,\"projectScore\":95,\"mcqScore\":95,\"instructorFeedback\":\"Great level\"}" >/dev/null
+PP=$(api GET /api/passport/$PS)
+check "finished level → level stamp in the track colour; track needs only that course → gold graduation stamp" "$(echo "$PP" | jq_ "(any(s['nameEn']=='Level completed' and s['color']=='#ff6600' for s in d['data']['stamps']), any(s['nameEn']=='Track graduate' for s in d['data']['stamps']))")" "(True, True)"
+check "graduation certificate made with the TN-CERT numbering" "$(M "SELECT certificateNumber LIKE 'TN-CERT-%' FROM Certificate WHERE studentId='$PS' AND remarks='TRACK_GRADUATION:$TRK'")" "1"
+check "settings: secretary cannot change them; an image from another site is refused" "$(secapi PUT /api/passport/settings '{"shareDays":5}' | jq_ "d['success']")/$(api PUT /api/passport/settings '{"companyStampUrl":"https://evil.example/stamp.png"}' | jq_ "d['success']")" "False/False"
+LKR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); LKJ=$(mktemp); login_jar "$(echo "$LKR" | jq_ "d['data']['loginId']")" "$(echo "$LKR" | jq_ "d['data']['password']")" "$LKJ" 10.0.1.91
+check "student opens his passport: new stamps are marked as seen (stamp animation once)" "$(curl -s -b "$LKJ" $B/api/passport/$LK | jq_ "(d['data']['viewer'], any(s['isNew'] for s in d['data']['stamps']))")/$(M "SELECT COUNT(*) FROM StudentStamp WHERE studentId='$LK' AND seenAt IS NULL")" "('STUDENT', True)/0"
+check "a student cannot open another student's passport" "$(curl -s -o /dev/null -w '%{http_code}' -b "$LKJ" $B/api/passport/$LO)" "403"
+check "the student cannot make a share link; staff cannot either" "$(curl -s -b "$LKJ" -X POST -H 'Content-Type: application/json' -d '{}' $B/api/passport/$LK/share | jq_ "d['success']")/$(api POST /api/passport/$LK/share '{}' | jq_ "d['success']")" "False/False"
+SH=$(curl -s -b "$LPJ" -X POST -H 'Content-Type: application/json' -d '{"showProjects":false,"showPhoto":false}' $B/api/passport/$LK/share)
+TOK=$(echo "$SH" | jq_ "d['data']['token']")
+PUB=$(curl -s $B/api/passport/public/$TOK)
+check "parent's share link works without sign-in and shows no phone / money / grades / attendance / photo" "$(echo "$PUB" | jq_ "(d['data']['name'], d['data']['photo'], sorted(d['data'].keys()))")" "('LessonKid E2e', None, ['campus', 'certificates', 'expiresAt', 'joinedAt', 'name', 'number', 'photo', 'projects', 'stamps'])"
+SHID=$(M "SELECT id FROM PassportShare WHERE token='$TOK'")
+check "the parent stops the link → it shows nothing" "$(curl -s -b "$LPJ" -X DELETE $B/api/passport/shares/$SHID | jq_ "d['success']")/$(curl -s -o /dev/null -w '%{http_code}' $B/api/passport/public/$TOK)" "True/404"
+check "printing: instructor no; secretary yes with copy numbers (2 = replacement) and the booklet price" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d '{"kind":"BOOKLET"}' $B/api/passport/$LK/prints | jq_ "d['success']")/$(secapi POST /api/passport/$LK/prints '{"kind":"BOOKLET"}' | jq_ "d['data']['copyNo']")/$(secapi POST /api/passport/$LK/prints '{"kind":"BOOKLET"}' | jq_ "(d['data']['copyNo'], d['data']['price'])")" "False/1/(2, 50)"
+check "parents and students cannot open the print data" "$(curl -s -o /dev/null -w '%{http_code}' -b "$LPJ" $B/api/passport/$LK/print)/$(curl -s -o /dev/null -w '%{http_code}' -b "$LKJ" $B/api/passport/$LK/print)" "403/403"
+check "transcript data for staff has the results" "$(secapi GET /api/passport/$PS/print | jq_ "len(d['data']['transcript']) > 0")" "True"
+rm -f "$LKJ"
 rm -f "$LKJ" "$LPJ" "$TJ"
 
 echo

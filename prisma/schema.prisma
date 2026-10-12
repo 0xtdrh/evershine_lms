@@ -4210,6 +4210,94 @@ model QuizWindow {
   @@unique([classSectionId, blockId])
 }
 
+/// P1 passport (2026-10-12): one per student, number TN-PASS-YYYY-NNNN (YYYY = the year the student joined).
+model StudentPassport {
+  id        String   @id @default(cuid())
+  studentId String   @unique
+  number    String   @unique @db.VarChar(20)
+  issuedAt  DateTime @default(now())
+  /// first time the stamps were checked (no parent notifications for that first batch)
+  evaluatedAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+/// P1: a stamp design. kind AUTO (rule + threshold) | MANUAL (staff give it) | EVENT (scan the student card on the day).
+/// code = built-in stamp key (null for stamps the admin made). givers = roles allowed to give MANUAL / EVENT stamps.
+model PassportStamp {
+  id            String    @id @default(cuid())
+  code          String?   @unique @db.VarChar(40)
+  nameEn        String    @db.VarChar(80)
+  nameAr        String    @default("") @db.VarChar(80)
+  descriptionEn String?   @db.VarChar(300)
+  descriptionAr String?   @db.VarChar(300)
+  kind          String    @db.VarChar(8)
+  rule          String?   @db.VarChar(30)
+  threshold     Int?
+  shape         String    @default("ROUND") @db.VarChar(8)
+  color         String    @default("#4f46e5") @db.VarChar(9)
+  icon          String    @default("") @db.VarChar(16)
+  imagePublicId String?   @db.VarChar(300)
+  givers        Json?
+  repeatable    Boolean   @default(false)
+  secret        Boolean   @default(false)
+  active        Boolean   @default(true)
+  eventFrom     DateTime?
+  eventTo       DateTime?
+  order         Int       @default(0)
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  awards        StudentStamp[]
+}
+
+/// P1: a stamp in a student's passport. refKey keeps one award per thing (a level id, a month, a year…).
+model StudentStamp {
+  id          String        @id @default(cuid())
+  stampId     String
+  stamp       PassportStamp @relation(fields: [stampId], references: [id], onDelete: Cascade)
+  studentId   String
+  refKey      String        @default("") @db.VarChar(80)
+  label       String?       @db.VarChar(160)
+  color       String?       @db.VarChar(9)
+  source      String        @db.VarChar(8)
+  awardedById String?
+  note        String?       @db.VarChar(300)
+  awardedAt   DateTime      @default(now())
+  seenAt      DateTime?
+
+  @@unique([stampId, studentId, refKey])
+  @@index([studentId])
+}
+
+/// P1: share link made by the parent (expires, can be revoked; never phone, money, grades or attendance).
+model PassportShare {
+  id           String    @id @default(cuid())
+  studentId    String
+  token        String    @unique @db.VarChar(64)
+  showProjects Boolean   @default(false)
+  showPhoto    Boolean   @default(false)
+  createdById  String
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  views        Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  @@index([studentId])
+}
+
+/// P1: every printed passport booklet / passport PDF / transcript (copy number for a lost passport, optional price).
+model PassportPrint {
+  id          String   @id @default(cuid())
+  studentId   String
+  kind        String   @db.VarChar(12)
+  copyNo      Int
+  price       Float?
+  printedById String
+  createdAt   DateTime @default(now())
+
+  @@index([studentId, kind])
+}
+
 /// L5: a student's result in an H5P activity (best score kept; completed when the package said so).
 model H5PResult {
   id             String   @id @default(cuid())

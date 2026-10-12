@@ -47,6 +47,7 @@ const RESOURCE_META: Record<string, { label: string; description: string; catego
   agreements:            { label: 'Agreements',          description: 'Write the agreements parents / students / staff must accept, see who accepted', category: 'Operations' },
   curriculum:            { label: 'Curriculum',          description: 'Write lessons (create / update), publish a curriculum version (approve), delete', category: 'Academic' },
   session_reports:       { label: 'Session reports',     description: 'Report after each session (read), add stars / phrases and send (update), settings (approve)', category: 'Academic' },
+  passport:              { label: 'Passport',            description: 'Student passport (read), give stamps / print / event scan (update), stamps library + settings (approve)', category: 'Academic' },
   teachers:              { label: 'Teachers',            description: 'Staff profiles, designations, and class assignments',     category: 'People'     },
   users:                 { label: 'User Accounts',       description: 'View the list of system users',                          category: 'People'     },
   account_management:    { label: 'Account Management',  description: 'Reset passwords/emails, change role or suspend accounts', category: 'People'     },

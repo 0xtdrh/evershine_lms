@@ -38,6 +38,8 @@ const KEEP_ALL = new Set([
   'Agreement',
   // LMS L3: the rubric library is settings (hand-ins are data and are wiped).
   'Rubric',
+  // P1: stamp designs are settings (the stamps students got are removed with them)
+  'PassportStamp',
 ])
 
 type Tx = Prisma.TransactionClient | typeof prisma
