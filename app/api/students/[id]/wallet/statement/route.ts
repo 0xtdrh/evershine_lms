@@ -3,6 +3,7 @@
  * (opening balance, every movement with its document number, closing balance). Phase B.
  */
 
+import { canSeeStudent } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import type { Role } from '@prisma/client'
 import { auth } from '@/lib/auth'
@@ -21,6 +22,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const role = session.user.role as Role
   const allowed = checkPermission(role, 'wallet', 'read') || checkPermission(role, 'refunds', 'read') || (await canViewReceipt({ id: session.user.id, role: session.user.role }, id))
   if (!allowed) return errors.forbidden()
+  // M0: staff see wallets of students of their places
+  if (!['STUDENT', 'PARENT', 'GUARDIAN'].includes(role) && !(await canSeeStudent(session.user, id))) return errors.forbidden()
   const student = await prisma.student.findUnique({ where: { id }, select: { firstName: true, lastName: true, registrationNumber: true, walletVisibleToStudent: true, campus: { select: { name: true } } } })
   if (!student) return errors.notFound('Student')
   if (role === 'STUDENT' && !student.walletVisibleToStudent) return errors.forbidden()

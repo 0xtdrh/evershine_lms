@@ -4,6 +4,7 @@
  *      refunds:create requests (PENDING); someone with refunds:approve is approved at once.
  */
 
+import { canSeeInvoice, requestPlaces, visibleStudentIds } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Prisma, Role } from '@prisma/client'
@@ -35,6 +36,9 @@ export async function GET(request: NextRequest) {
   if (status && ['PENDING', 'APPROVED', 'REJECTED'].includes(status)) where.status = status
   const studentId = sp.get('studentId')
   if (studentId) where.studentId = studentId
+  // M0: refunds of the person's places (by student)
+  const visible = await visibleStudentIds(await requestPlaces(session.user))
+  if (visible) where.studentId = studentId ? (visible.includes(studentId) ? studentId : '__none__') : { in: visible }
   const rows = await prisma.refund.findMany({ where, orderBy: { createdAt: 'desc' }, take: 300 })
   const userIds = [...new Set(rows.flatMap((r) => [r.requestedById, r.approvedById]).filter(Boolean))] as string[]
   const [students, invoices, users] = await Promise.all([
@@ -75,6 +79,8 @@ export async function POST(request: NextRequest) {
   if (d.method === 'CASH' && d.payoutMethod && !(await isActivePaymentMethod(d.payoutMethod))) {
     return errors.badRequest('Unknown payment method. Choose one from the list.')
   }
+  // M0: refunds only on invoices of the person's places
+  if (!(await canSeeInvoice(session.user, d.invoiceId!))) return errors.forbidden()
   const r = await requestRefund({
     invoiceId: d.invoiceId!,
     amount: d.amount!,

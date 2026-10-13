@@ -14,6 +14,7 @@ const { mockAuth, mockCheckPermission, mockPrisma, mockGetActiveAcademicYear, mo
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 vi.mock('@/lib/rbac', () => ({ checkPermission: mockCheckPermission }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
+vi.mock('@/lib/places/server', () => import('./helpers/places-mock'))
 vi.mock('@/lib/academic/engine', () => ({ getActiveAcademicYear: mockGetActiveAcademicYear }))
 vi.mock('@/lib/academic/record-formatters', () => ({ getCanonicalStudentClassSection: mockCanonicalStudentClassSection }))
 vi.mock('@/lib/fees/payment-settings', () => ({ paymentAccountsSnapshot: mockSerializePaymentDetails }))

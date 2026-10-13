@@ -77,3 +77,22 @@ export function placeForCreate(p: Places, requested: string | null | undefined):
 
 /** Instructors for a group in a place: their places include it (primary / extra / all). */
 export const teacherServes = (t: { all: boolean; campusIds: string[] }, campusId: string) => t.all || t.campusIds.includes(campusId)
+
+/**
+ * Invoices (and everything hanging on an invoice: payments, refunds, online payments): the invoice's group place, or —
+ * for an invoice without a group — the student's place.
+ */
+export function invoiceWhere(p: Places): Record<string, unknown> {
+  if (p.all) return {}
+  return { AND: [{ OR: [{ classSection: groupWhere(p) }, { AND: [{ classSectionId: null }, { student: studentWhere(p) }] }] }] }
+}
+
+/**
+ * Reports made for ONE place (P&L statement, expense ledger): the requested place if allowed; with every place the
+ * request as is (null = whole company); otherwise the primary place (or the first one).
+ */
+export function onePlace(p: Places, requested: string | null | undefined): string | null {
+  if (p.all) return requested ?? null
+  if (requested && p.campusIds.includes(requested)) return requested
+  return p.primary && p.campusIds.includes(p.primary) ? p.primary : p.campusIds[0] ?? '__none__'
+}

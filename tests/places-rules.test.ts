@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allowsCampus, allowsGroup, campusWhere, groupWhere, narrow, placeForCreate, resolvePlaces, studentWhere, teacherServes } from '@/lib/places/rules'
+import { allowsCampus, allowsGroup, campusWhere, groupWhere, invoiceWhere, narrow, onePlace, placeForCreate, resolvePlaces, studentWhere, teacherServes } from '@/lib/places/rules'
 
 describe('resolvePlaces', () => {
   it('super admin and "all places" see everything; families see no places', () => {
@@ -41,5 +41,19 @@ describe('filters', () => {
   it('instructor serves a place', () => {
     expect(teacherServes({ all: false, campusIds: ['A', 'B'] }, 'B')).toBe(true)
     expect(teacherServes({ all: false, campusIds: ['A'] }, 'B')).toBe(false)
+  })
+})
+
+describe('finance (M0 batch 2)', () => {
+  const sara = { all: false, campusIds: ['A'], groupIds: ['g-thu'], primary: 'A' }
+  it('invoices: by the group place, or by the student when there is no group', () => {
+    expect(invoiceWhere({ all: true, campusIds: [], groupIds: [], primary: null })).toEqual({})
+    expect(invoiceWhere(sara)).toEqual({ AND: [{ OR: [{ classSection: groupWhere(sara) }, { AND: [{ classSectionId: null }, { student: studentWhere(sara) }] }] }] })
+  })
+  it('one place for a P&L / ledger: allowed request, else the primary; everything = company-wide', () => {
+    expect(onePlace(sara, 'B')).toBe('A')
+    expect(onePlace({ ...sara, campusIds: ['A', 'B'] }, 'B')).toBe('B')
+    expect(onePlace({ all: true, campusIds: [], groupIds: [], primary: null }, null)).toBeNull()
+    expect(onePlace({ all: false, campusIds: [], groupIds: ['g'], primary: null }, null)).toBe('__none__')
   })
 })

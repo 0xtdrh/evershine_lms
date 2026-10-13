@@ -3,6 +3,7 @@
  * ones needing review (money received but not applied). Staff with fee access.
  */
 
+import { requestPlaces, visibleStudentIds } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import type { Prisma, Role } from '@prisma/client'
 import { auth } from '@/lib/auth'
@@ -19,6 +20,9 @@ export async function GET(request: NextRequest) {
   if (!checkPermission(role, 'fee_collection', 'read') && !checkPermission(role, 'finance_settings', 'read')) return errors.forbidden()
   const status = new URL(request.url).searchParams.get('status')
   const where: Prisma.OnlinePaymentWhereInput = status ? { status } : {}
+  // M0: online payments of the person's places (by student)
+  const studentIds = await visibleStudentIds(await requestPlaces(session.user))
+  if (studentIds) where.studentId = { in: studentIds }
   const rows = await prisma.onlinePayment.findMany({ where, orderBy: { createdAt: 'desc' }, take: 100 })
   const invoices = await prisma.feeInvoice.findMany({
     where: { id: { in: rows.map((r) => r.invoiceId) } },

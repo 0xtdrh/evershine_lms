@@ -4,6 +4,7 @@
  * recordPayment (receipt, rules) with the wallet debit in the same transaction.
  */
 
+import { canSeeInvoice } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
@@ -21,6 +22,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const role = session.user.role as Role
   if (!checkPermission(role, 'fees', 'update') && !checkPermission(role, 'fee_collection', 'create')) return errors.forbidden()
   const { id } = await params
+  // M0: only invoices of the person's places
+  if (!(await canSeeInvoice(session.user, id))) return errors.forbidden()
   let body: unknown = {}
   try {
     body = await request.json()

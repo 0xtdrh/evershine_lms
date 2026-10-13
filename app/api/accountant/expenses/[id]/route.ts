@@ -4,6 +4,8 @@
  * DELETE /api/accountant/expenses/[id] (Soft delete)
  */
 
+import { allowsCampus } from '@/lib/places/rules'
+import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
@@ -19,7 +21,6 @@ export async function GET(
 ) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
-  const role = session.user.role
   if (!checkPermission(session.user.role, 'expenses', 'read')) {
     return errors.forbidden()
   }
@@ -54,8 +55,8 @@ export async function GET(
 
   if (!expense) return errors.notFound('Expense not found')
 
-  // Enforce campus scoping
-  if (role === 'ACCOUNTANT' && expense.campusId !== session.user.campusId) {
+  // M0: expenses of the person's places only
+  if (!allowsCampus(await loadPlaces(session.user), expense.campusId)) {
     return errors.forbidden('Expense belongs to a different campus')
   }
 
@@ -68,7 +69,6 @@ export async function PATCH(
 ) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
-  const role = session.user.role
   if (!checkPermission(session.user.role, 'expenses', 'update')) {
     return errors.forbidden()
   }
@@ -81,7 +81,7 @@ export async function PATCH(
   })
 
   if (!existing) return errors.notFound('Expense not found')
-  if (role === 'ACCOUNTANT' && existing.campusId !== session.user.campusId) {
+  if (!allowsCampus(await loadPlaces(session.user), existing.campusId)) {
     return errors.forbidden('Expense belongs to a different campus')
   }
 
@@ -144,7 +144,6 @@ export async function DELETE(
 ) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
-  const role = session.user.role
   if (!checkPermission(session.user.role, 'expenses', 'delete')) {
     return errors.forbidden()
   }
@@ -157,7 +156,7 @@ export async function DELETE(
   })
 
   if (!existing) return errors.notFound('Expense not found')
-  if (role === 'ACCOUNTANT' && existing.campusId !== session.user.campusId) {
+  if (!allowsCampus(await loadPlaces(session.user), existing.campusId)) {
     return errors.forbidden('Expense belongs to a different campus')
   }
 

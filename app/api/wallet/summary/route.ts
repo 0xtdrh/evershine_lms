@@ -1,9 +1,10 @@
 /** GET /api/wallet/summary — prepaid money (all wallet balances) + items waiting, for the accounts pages (phase B). */
 
+import { requestPlaces, visibleStudentIds } from '@/lib/places/server'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { prepaidTotal } from '@/lib/wallet/engine'
 
 export async function GET() {
@@ -12,11 +13,11 @@ export async function GET() {
   const role = session.user.role as Role
   const denied = requirePermission(role, 'wallet', 'read')
   if (denied) return denied
-  const campusId = campusScope(role, session.user.campusId, null)
-  const ids = campusId ? (await prisma.student.findMany({ where: { campusId }, select: { id: true } })).map((s) => s.id) : null
+  // M0: students of the person's places (null = every place)
+  const ids = await visibleStudentIds(await requestPlaces(session.user))
   const scope = ids ? { studentId: { in: ids } } : {}
   const [prepaid, pendingTopUps, pendingWithdrawals] = await Promise.all([
-    prepaidTotal(campusId),
+    prepaidTotal(null, ids),
     prisma.walletTopUp.count({ where: { status: 'PENDING', ...scope } }),
     prisma.walletWithdrawal.count({ where: { status: 'PENDING', ...scope } }),
   ])

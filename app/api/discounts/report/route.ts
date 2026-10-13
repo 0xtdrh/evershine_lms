@@ -4,6 +4,7 @@
  * by the staff member who gave it (auto discounts show as "Automatic").
  */
 
+import { invoiceWhere, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import type { Role } from '@prisma/client'
 import { auth } from '@/lib/auth'
@@ -29,11 +30,14 @@ export async function GET(request: NextRequest) {
     where: { createdAt: { gte: from, lte: to } },
     select: { amount: true, label: true, discountTypeId: true, invoiceId: true, assignment: { select: { requestedById: true } } },
   })
+  // M0: discounts on invoices of the person's places
+  const places = await requestPlaces(session.user)
   const invoices = await prisma.feeInvoice.findMany({
-    where: { id: { in: [...new Set(lines.map((l) => l.invoiceId))] } },
+    where: { id: { in: [...new Set(lines.map((l) => l.invoiceId))] }, ...invoiceWhere(places) },
     select: { id: true, status: true, classSection: { select: { id: true, className: true, sectionName: true } } },
   })
   const inv = new Map(invoices.map((i) => [i.id, i]))
+  if (!places.all) lines.splice(0, lines.length, ...lines.filter((l) => inv.has(l.invoiceId)))
   const staffIds = [...new Set(lines.map((l) => l.assignment?.requestedById).filter(Boolean))] as string[]
   const staff = new Map(
     (await prisma.user.findMany({ where: { id: { in: staffIds } }, select: { id: true, email: true, displayName: true } })).map((u) => [u.id, u.displayName || u.email])

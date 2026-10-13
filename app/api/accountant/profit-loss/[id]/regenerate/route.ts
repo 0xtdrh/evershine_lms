@@ -1,3 +1,5 @@
+import { allowsCampus } from '@/lib/places/rules'
+import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
@@ -17,9 +19,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (!existing) return errors.notFound('P&L statement not found')
 
     // Role scoping check
-    if (session.user.role === 'ACCOUNTANT') {
-      const acc = await prisma.accountant.findUnique({ where: { userId: session.user.id }, select: { campusId: true } })
-      if (acc?.campusId && existing.campusId !== acc.campusId) {
+    {
+      // M0: statements of the person's places (a company-wide one needs every place)
+      const pl = await loadPlaces(session.user)
+      if (existing.campusId ? !allowsCampus(pl, existing.campusId) : !pl.all) {
         return errors.forbidden('Cannot regenerate a statement for a different campus')
       }
     }

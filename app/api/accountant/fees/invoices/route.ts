@@ -3,6 +3,7 @@
  * Generates a new FeeInvoice with items, updates Student dueAmount.
  */
 
+import { canSeeStudent } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
@@ -17,7 +18,6 @@ export async function POST(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   
-  const role = session.user.role
   if (!checkPermission(session.user.role, 'fee_collection', 'create')) {
     return errors.forbidden('Only finance staff can generate invoices')
   }
@@ -41,16 +41,9 @@ export async function POST(request: NextRequest) {
 
   if (!student) return errors.notFound('Student not found')
 
-  if (role === 'ACCOUNTANT') {
-    const acc = await prisma.accountant.findUnique({
-      where: { userId: session.user.id },
-      select: { campusId: true },
-    })
-    // If the accountant is scoped to a campus, enforce campus boundary.
-    // If `acc.campusId` is null/undefined the accountant has all-campuses access.
-    if (acc?.campusId && student.campusId !== acc.campusId) {
-      return errors.forbidden('Cannot generate invoice for a student in a different campus')
-    }
+  // M0: staff invoice students of their places only
+  if (!(await canSeeStudent(session.user, student.id))) {
+    return errors.forbidden('Cannot generate invoice for a student outside your places')
   }
 
   const bankAccounts = await paymentAccountsSnapshot()

@@ -4,6 +4,7 @@
  * Admins/Super Admins see all campuses.
  */
 
+import { invoiceWhere, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
@@ -14,27 +15,18 @@ export async function GET(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
 
-  const role = session.user.role
   if (!checkPermission(session.user.role, 'fee_collection', 'read')) {
     return errors.forbidden()
   }
 
-  // Scope to accountant's campus (admins see all)
-  let campusFilter: { campusId?: string } = {}
-  if (role === 'ACCOUNTANT') {
-    const acc = await prisma.accountant.findUnique({
-      where: { userId: session.user.id },
-      select: { campusId: true },
-    })
-    if (!acc) return errors.forbidden('No accountant profile found')
-    campusFilter = { campusId: acc.campusId }
-  }
+  // M0: proofs of invoices in the person's places
+  const places = await requestPlaces(session.user)
 
   const invoices = await prisma.feeInvoice.findMany({
     where: {
       proofStatus: 'PENDING',
       status: { notIn: ['PAID', 'CANCELLED'] },
-      student: campusFilter,
+      ...invoiceWhere(places),
     },
     select: {
       id: true,

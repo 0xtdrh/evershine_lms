@@ -3,6 +3,7 @@
  * Accountant action on a guardian-uploaded payment proof (APPROVE or REJECT).
  */
 
+import { canSeeInvoice } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
@@ -19,7 +20,6 @@ export async function PATCH(
 ) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
-  const role = session.user.role
   if (!checkPermission(session.user.role, 'fee_collection', 'update')) {
     return errors.forbidden()
   }
@@ -59,14 +59,9 @@ export async function PATCH(
   if (existing.status === 'PAID') return errors.conflict('Invoice is already fully paid')
   if (existing.status === 'CANCELLED') return errors.conflict('Cannot approve proof for a cancelled invoice')
 
-  if (role === 'ACCOUNTANT') {
-    const acc = await prisma.accountant.findUnique({
-      where: { userId: session.user.id },
-      select: { campusId: true },
-    })
-    if (existing.student.campusId !== acc?.campusId) {
-      return errors.forbidden('Cannot action proof for a student in a different campus')
-    }
+  // M0: proofs on invoices of the person's places only
+  if (!(await canSeeInvoice(session.user, invoiceId))) {
+    return errors.forbidden('Cannot action proof for an invoice outside your places')
   }
 
   if (action === 'APPROVE' && existing.classSectionId) {

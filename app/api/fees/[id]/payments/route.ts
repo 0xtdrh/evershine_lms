@@ -3,6 +3,7 @@
  * All the rules and the database writes live in lib/fees/record-payment.ts.
  */
 
+import { canSeeInvoice } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
@@ -24,6 +25,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!checkPermission(session.user.role as Role, 'fees', 'update')) return errors.forbidden()
 
   const { id: invoiceId } = await params
+  // M0: payments only on invoices of the person's places
+  if (!(await canSeeInvoice(session.user, invoiceId))) return errors.forbidden()
   let body: unknown
   try {
     body = await request.json()

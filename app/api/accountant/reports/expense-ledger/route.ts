@@ -6,6 +6,8 @@
  *   ?startDate&endDate&paymentSource&campusId&export=excel
  */
 
+import { onePlace } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
@@ -24,20 +26,11 @@ const querySchema = z.object({
   export: z.enum(['excel']).optional(),
 })
 
-async function getAccountantCampus(userId: string) {
-  const acc = await prisma.accountant.findUnique({
-    where: { userId },
-    select: { campusId: true },
-  })
-  return acc?.campusId
-}
-
 export async function GET(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
 
-    const role = session.user.role
     if (!checkPermission(session.user.role, 'financial_reports', 'read')) {
       return errors.forbidden('Only finance managers can access the unified ledger')
     }
@@ -49,13 +42,8 @@ export async function GET(req: NextRequest) {
     const { startDate, endDate, paymentSource, campusId: queryCampusId, export: exportType } = parsed.data
 
     // Campus restriction: Accountants must stay in their campus boundary
-    let targetCampusId = queryCampusId
-    if (role === 'ACCOUNTANT') {
-      const accountantCampusId = await getAccountantCampus(session.user.id)
-      if (accountantCampusId) {
-        targetCampusId = accountantCampusId
-      }
-    }
+    // M0: one of the person's places (or the whole company for someone with every place)
+    const targetCampusId = onePlace(await requestPlaces(session.user), queryCampusId)
 
     // Set date bounds
     const dateFilter = startDate && endDate

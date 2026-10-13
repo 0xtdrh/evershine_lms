@@ -1,3 +1,5 @@
+import { allowsCampus } from '@/lib/places/rules'
+import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
@@ -17,9 +19,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     if (!statement) return errors.notFound('P&L statement not found')
 
     // Role scoping: accountants can only delete statements for their campus (unless they have no campus restriction)
-    if (session.user.role === 'ACCOUNTANT') {
-      const acc = await prisma.accountant.findUnique({ where: { userId: session.user.id }, select: { campusId: true } })
-      if (acc?.campusId && statement.campusId !== acc.campusId) {
+    {
+      // M0: statements of the person's places (a company-wide one needs every place)
+      const pl = await loadPlaces(session.user)
+      if (statement.campusId ? !allowsCampus(pl, statement.campusId) : !pl.all) {
         return errors.forbidden('Cannot delete a statement for a different campus')
       }
     }

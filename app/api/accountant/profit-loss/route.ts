@@ -16,6 +16,8 @@
  *   remainingAmount         = grossMargin - superAdminAllocation
  */
 
+import { onePlace } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
@@ -45,25 +47,12 @@ const querySchema = z.object({
   export: z.enum(['excel']).optional(),
 })
 
+/** M0: a statement is for one of the person's places (or the whole company for someone with every place). */
 async function resolveCampusScope(
   sessionUser: { id: string; role: string; campusId?: string | null },
   queryCampusId?: string | null
 ) {
-  if (sessionUser.role === 'ACCOUNTANT') {
-    const acc = await prisma.accountant.findUnique({
-      where: { userId: sessionUser.id },
-      select: { campusId: true },
-    })
-
-    if (acc?.campusId) return acc.campusId
-    return sessionUser.campusId ?? queryCampusId ?? null
-  }
-
-  if (sessionUser.role === 'ADMIN' || sessionUser.role === 'BRANCH_MANAGER') {
-    return sessionUser.campusId ?? queryCampusId ?? null
-  }
-
-  return queryCampusId ?? null
+  return onePlace(await requestPlaces(sessionUser), queryCampusId)
 }
 
 // ── GET ───────────────────────────────────────────────────────────────────────
@@ -171,7 +160,7 @@ export async function POST(req: NextRequest) {
       return errors.forbidden('No campus context found for this account')
     }
 
-    const campusId = session.user.role === 'ACCOUNTANT' ? scopedCampusId : requestedCampusId ?? null
+    const campusId = scopedCampusId
     const periodStartDate = new Date(periodStart)
     const periodEndDate = new Date(periodEnd)
 

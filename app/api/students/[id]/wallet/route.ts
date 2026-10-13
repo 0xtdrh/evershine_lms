@@ -4,6 +4,7 @@
  * Staff with wallet/refund/fee access, or the student (if the parent allows) / their parent.
  */
 
+import { canSeeStudent } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import type { Role } from '@prisma/client'
 import { auth } from '@/lib/auth'
@@ -23,6 +24,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const staff = checkPermission(role, 'wallet', 'read') || checkPermission(role, 'refunds', 'read')
   const allowed = staff || (await canViewReceipt({ id: session.user.id, role: session.user.role }, id))
   if (!allowed) return errors.forbidden()
+  // M0: staff see wallets of students of their places
+  if (!['STUDENT', 'PARENT', 'GUARDIAN'].includes(role) && !(await canSeeStudent(session.user, id))) return errors.forbidden()
   if (role === 'STUDENT') {
     const s = await prisma.student.findUnique({ where: { id }, select: { walletVisibleToStudent: true } })
     if (!s?.walletVisibleToStudent) return successResponse({ hidden: true, balance: 0, transactions: [] })

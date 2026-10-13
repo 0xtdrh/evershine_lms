@@ -2,6 +2,8 @@
  * GET /api/admin/reports/fees — outstanding ledger, total collected fee amounts, and overdue accounts.
  */
 
+import { invoiceWhere, studentWhere } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -16,15 +18,16 @@ export async function GET(request: NextRequest) {
   const role = session.user.role as Role
   if (!checkPermission(role, 'documents', 'read')) return errors.forbidden()
 
-  const campusId = session.user.campusId ?? undefined
-  const campusFilter = role !== 'SUPER_ADMIN' && campusId ? { campusId } : {}
+  // M0: the person's places
+  const places = await requestPlaces(session.user)
+  const campusFilter = studentWhere(places)
 
   const [totalCollected, students] = await Promise.all([
     // Total collected sum (payments completed)
     prisma.feePayment.aggregate({
       where: {
         status: 'COMPLETED',
-        ...(campusId ? { student: { campusId } } : {}),
+        ...(places.all ? {} : { invoice: invoiceWhere(places) }),
       },
       _sum: {
         amount: true,

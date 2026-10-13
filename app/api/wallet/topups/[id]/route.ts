@@ -3,13 +3,14 @@
  * PATCH /api/wallet/topups/[id] { action: approve|reject, reason? } — approve a parent's uploaded receipt.
  */
 
+import { canSeeStudent } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { canViewReceipt } from '@/lib/fees/receipt'
 import { getFinanceSettings } from '@/lib/fees/payment-settings'
 import { approveTopUp, rejectTopUp } from '@/lib/wallet/engine'
@@ -64,8 +65,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const t = await prisma.walletTopUp.findUnique({ where: { id }, select: { studentId: true } })
   if (!t) return errors.notFound('Top-up')
   const s = await prisma.student.findUnique({ where: { id: t.studentId }, select: { campusId: true } })
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && s?.campusId !== campusId) return errors.forbidden()
+  if (!s || !(await canSeeStudent(session.user, t.studentId))) return errors.forbidden()
   const r = parsed.data.action === 'approve' ? await approveTopUp(id, session.user.id) : await rejectTopUp(id, session.user.id, parsed.data.reason)
   if ('message' in r) return r.status === 404 ? errors.notFound('Top-up') : errors.conflict(r.message)
   return successResponse(r, parsed.data.action === 'approve' ? 'Top-up approved' : 'Top-up rejected')

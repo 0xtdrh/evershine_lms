@@ -102,3 +102,19 @@ export async function teacherPlaces(teacherId: string): Promise<{ all: boolean; 
 export function teachersOfPlaceWhere(campusId: string) {
   return { OR: [{ campusId }, { user: { allLocations: true } }, { user: { placeAccess: { some: { campusId } } } }] }
 }
+
+/** May this person open this invoice? (its group's place, or the student's place for an invoice without a group) */
+export async function canSeeInvoice(user: Who, invoiceId: string): Promise<boolean> {
+  const p = await loadPlaces(user)
+  if (p.all) return true
+  const inv = await prisma.feeInvoice.findUnique({ where: { id: invoiceId }, select: { classSectionId: true, studentId: true } })
+  if (!inv) return false
+  return inv.classSectionId ? canSeeGroup(user, inv.classSectionId) : canSeeStudent(user, inv.studentId)
+}
+
+/** Ids of the students this person may see (null = every student). For tables without a student relation. */
+export async function visibleStudentIds(p: Places): Promise<string[] | null> {
+  if (p.all) return null
+  const { studentWhere } = await import('./rules')
+  return (await prisma.student.findMany({ where: studentWhere(p), select: { id: true } })).map((s) => s.id)
+}

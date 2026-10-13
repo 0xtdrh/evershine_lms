@@ -3,6 +3,8 @@
  * POST /api/accountant/expenses — Create a new expense record
  */
 
+import { campusWhere, narrow, placeForCreate } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
@@ -11,19 +13,6 @@ import { prisma } from '@/lib/prisma'
 import { errors, createdResponse, paginatedResponse } from '@/lib/api-response'
 import { createExpenseSchema, expenseQuerySchema } from '@/lib/validation/expense'
 import { getExpenseColumnSupport, isExpensePaymentColumnMissingError } from '@/lib/accounting/expense-columns'
-
-// Helper to resolve the campus context for the current user
-async function resolveCampusId(sessionUser: { id: string; role: string; campusId?: string | null }) {
-  if (sessionUser.role === 'ACCOUNTANT') {
-    // Re-verify from DB just to be perfectly safe, though session should have it
-    const acc = await prisma.accountant.findUnique({
-      where: { userId: sessionUser.id },
-      select: { campusId: true },
-    })
-    return acc?.campusId
-  }
-  return sessionUser.campusId
-}
 
 async function resolveExpenseRecorder(userId: string) {
   const accountant = await prisma.accountant.findUnique({
@@ -41,18 +30,12 @@ export async function GET(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
 
-  const role = session.user.role
   if (!checkPermission(session.user.role, 'expenses', 'read')) {
     return errors.forbidden('Only finance staff and admins can view expenses')
   }
 
-  const campusId = await resolveCampusId(session.user)
-
-  // If a non-super-admin has no campus context but is an accountant, they are a Global Accountant.
-  // We should allow them to proceed. If they are not an accountant or admin, they shouldn't be here anyway.
-  if (!campusId && role !== 'SUPER_ADMIN' && role !== 'ACCOUNTANT' && role !== 'ADMIN') {
-    return errors.forbidden('No campus context found for this account')
-  }
+  // M0: expenses of the person's places
+  const places = await requestPlaces(session.user)
 
   const { searchParams } = new URL(request.url)
   const parsed = expenseQuerySchema.safeParse(Object.fromEntries(searchParams))
@@ -75,11 +58,9 @@ export async function GET(request: NextRequest) {
     dateFilter = { gte: start }
   }
 
-  const finalCampusId = campusId || filterCampusId
-
   const where = {
     isDeleted: false,
-    ...(finalCampusId ? { campusId: finalCampusId } : {}), // Super admins/globals use filter, others use scoped
+    ...campusWhere(narrow(places, filterCampusId)), // the place filter can only narrow
     ...(category ? { category } : {}),
     ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}),
   }
@@ -129,12 +110,11 @@ export async function POST(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
 
-  const role = session.user.role
   if (!checkPermission(session.user.role, 'expenses', 'create')) {
     return errors.forbidden('Only finance staff can record expenses')
   }
 
-  const defaultCampusId = await resolveCampusId(session.user)
+  const places = await requestPlaces(session.user)
 
   let body: unknown
   try {
@@ -148,7 +128,10 @@ export async function POST(request: NextRequest) {
 
   const data = parsed.data
 
-  const targetCampusId = defaultCampusId ?? data.campusId
+  // M0: the chosen place must be one of the person's places (else their own place)
+  const pick = placeForCreate(places, data.campusId ?? null)
+  if (!pick.ok && data.campusId) return errors.forbidden('This place is not yours')
+  const targetCampusId = pick.campusId
   if (!targetCampusId) {
     return errors.validation({
       errors: [{ path: ['campusId'], message: 'You must select a campus to record an expense' }],

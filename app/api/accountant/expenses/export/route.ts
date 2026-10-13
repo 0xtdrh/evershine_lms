@@ -3,6 +3,8 @@
  * Streams an Excel export of expenses based on query filters.
  */
 
+import { campusWhere, narrow } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
@@ -16,7 +18,6 @@ export async function GET(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
 
-  const role = session.user.role
   if (!checkPermission(session.user.role, 'expenses', 'export')) {
     return errors.forbidden('Only finance staff and admins can export expenses')
   }
@@ -28,24 +29,8 @@ export async function GET(request: NextRequest) {
 
   const { category, startDate, endDate, period, campusId: queryCampusId } = parsed.data
 
-  let campusId: string | undefined | null = session.user.campusId
-  if (role === 'ACCOUNTANT') {
-    const acc = await prisma.accountant.findUnique({
-      where: { userId: session.user.id },
-      select: { campusId: true },
-    })
-    campusId = acc?.campusId ?? campusId
-    if (!campusId && queryCampusId) {
-      campusId = queryCampusId
-    }
-    if (!campusId) {
-      return errors.forbidden('No campus context found')
-    }
-  }
-
-  if ((role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'BRANCH_MANAGER') && !campusId && queryCampusId) {
-    campusId = queryCampusId
-  }
+  // M0: expenses of the person's places (the place filter can only narrow)
+  const places = narrow(await requestPlaces(session.user), queryCampusId)
 
   let dateFilter = {}
   if (startDate && endDate) {
@@ -64,7 +49,7 @@ export async function GET(request: NextRequest) {
 
   const where = {
     isDeleted: false,
-    ...(campusId ? { campusId } : {}),
+    ...campusWhere(places),
     ...(category ? { category } : {}),
     ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}),
   }

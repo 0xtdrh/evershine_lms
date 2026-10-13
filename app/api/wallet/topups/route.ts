@@ -4,12 +4,13 @@
  * POST /api/wallet/topups { studentId, amount, method, transactionId?, remarks? } — staff top-up at the branch
  */
 
+import { canSeeStudent, requestPlaces, visibleStudentIds } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { isActivePaymentMethod } from '@/lib/fees/payment-settings'
 import { prepaidTotal, staffTopUp } from '@/lib/wallet/engine'
 
@@ -19,7 +20,8 @@ export async function GET(request: NextRequest) {
   const role = session.user.role as Role
   const denied = requirePermission(role, 'wallet', 'read')
   if (denied) return denied
-  const campusId = campusScope(role, session.user.campusId, null)
+  // M0: students of the person's places (null = every place)
+  const ids = await visibleStudentIds(await requestPlaces(session.user))
   const status = new URL(request.url).searchParams.get('status') ?? 'PENDING'
   const start = new Date()
   start.setUTCHours(0, 0, 0, 0)
@@ -29,12 +31,12 @@ export async function GET(request: NextRequest) {
     take: 200,
   })
   const students = await prisma.student.findMany({
-    where: { id: { in: [...new Set(rows.map((r) => r.studentId))] }, ...(campusId && { campusId }) },
+    where: { id: { in: [...new Set(rows.map((r) => r.studentId))].filter((x) => !ids || ids.includes(x)) } },
     select: { id: true, firstName: true, lastName: true, registrationNumber: true },
   })
   const S = new Map(students.map((s) => [s.id, s]))
   return successResponse({
-    prepaidTotal: await prepaidTotal(campusId),
+    prepaidTotal: await prepaidTotal(null, ids),
     topUps: rows.filter((r) => S.has(r.studentId)).map((r) => {
       const s = S.get(r.studentId)!
       return {
@@ -68,8 +70,7 @@ export async function POST(request: NextRequest) {
   if (!(await isActivePaymentMethod(d.method))) return errors.badRequest('Unknown payment method. Choose one from the list.')
   const student = await prisma.student.findUnique({ where: { id: d.studentId }, select: { campusId: true } })
   if (!student) return errors.notFound('Student')
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && student.campusId !== campusId) return errors.forbidden('This student is in another branch')
+  if (!(await canSeeStudent(session.user, d.studentId))) return errors.forbidden('This student is in another place')
   const r = await staffTopUp({ studentId: d.studentId!, amount: d.amount!, method: d.method!, transactionId: d.transactionId ?? null, remarks: d.remarks ?? null, userId: session.user.id })
   if ('message' in r) return r.status === 404 ? errors.notFound('Student') : errors.badRequest(r.message)
   return createdResponse(r, `Wallet topped up (${r.topUpNumber})`)

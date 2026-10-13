@@ -3,6 +3,7 @@
  * Updates invoice status directly (e.g. marking overdue, or cancelled).
  */
 
+import { canSeeInvoice } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
@@ -16,7 +17,6 @@ export async function PATCH(
 ) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
-  const role = session.user.role
   if (!checkPermission(session.user.role, 'fee_collection', 'update')) {
     return errors.forbidden()
   }
@@ -30,14 +30,9 @@ export async function PATCH(
 
   if (!existing) return errors.notFound('Invoice not found')
 
-  if (role === 'ACCOUNTANT') {
-    const acc = await prisma.accountant.findUnique({
-      where: { userId: session.user.id },
-      select: { campusId: true },
-    })
-    if (existing.student.campusId !== acc?.campusId) {
-      return errors.forbidden('Cannot modify invoice for a student in a different campus')
-    }
+  // M0: invoices of the person's places only
+  if (!(await canSeeInvoice(session.user, invoiceId))) {
+    return errors.forbidden('Cannot modify an invoice outside your places')
   }
 
   let body: unknown

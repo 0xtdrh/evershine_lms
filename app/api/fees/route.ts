@@ -7,6 +7,7 @@
  * when recording deposits.
  */
 
+import { invoiceWhere, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -65,8 +66,9 @@ export async function GET(request: NextRequest) {
       where.studentId = { in: childrenIds.length > 0 ? childrenIds : ['NO_STUDENT'] }
     }
   } else {
-    // Admin/Accountant role
+    // Admin/Accountant role — M0: invoices of the person's places only
     if (studentId) where.studentId = studentId
+    Object.assign(where, invoiceWhere(await requestPlaces(session.user)))
   }
 
   const activeYear = await getActiveAcademicYear()

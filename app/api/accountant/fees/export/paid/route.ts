@@ -3,6 +3,8 @@
  * Streams an Excel export of PAID invoices.
  */
 
+import { invoiceWhere, narrow } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
@@ -16,20 +18,10 @@ export async function GET(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
 
-  const role = session.user.role
   if (!checkPermission(session.user.role, 'fee_collection', 'export')) {
     return errors.forbidden('Only finance staff can export fee reports')
   }
 
-  let campusId: string | undefined | null = session.user.campusId
-  if (role === 'ACCOUNTANT') {
-    const acc = await prisma.accountant.findUnique({
-      where: { userId: session.user.id },
-      select: { campusId: true },
-    })
-    campusId = acc?.campusId
-    if (!campusId) return errors.forbidden('No campus context found')
-  }
 
   const { searchParams } = new URL(request.url)
   const parsed = feeExportPaidSchema.passthrough().safeParse(Object.fromEntries(searchParams))
@@ -37,7 +29,8 @@ export async function GET(request: NextRequest) {
 
   const { month, academicYear, campusId: queryCampusId, classId } = parsed.data
 
-  const targetCampus = campusId || queryCampusId
+  // M0: invoices of the person's places (the place filter can only narrow)
+  const places = narrow(await requestPlaces(session.user), queryCampusId)
   const collectedStatuses: InvoiceStatus[] = ['ISSUED', 'PARTIALLY_PAID', 'PAID', 'OVERDUE']
 
   const invoices = await prisma.feeInvoice.findMany({
@@ -52,10 +45,8 @@ export async function GET(request: NextRequest) {
       ],
       ...(month ? { month } : {}),
       ...(academicYear ? { academicYear } : {}),
-      student: {
-        ...(targetCampus ? { campusId: targetCampus } : {}),
-        ...(classId ? { classId } : {}),
-      },
+      ...invoiceWhere(places),
+      ...(classId ? { student: { classId } } : {}),
     },
     include: {
       student: { include: { class: true, campus: { select: { name: true } } } },

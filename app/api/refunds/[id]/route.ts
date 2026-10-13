@@ -3,6 +3,7 @@
  * PATCH /api/refunds/[id] { action: 'approve' | 'reject', reason? } — refunds:approve
  */
 
+import { canSeeInvoice } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
@@ -22,6 +23,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const { id } = await params
   const r = await prisma.refund.findUnique({ where: { id } })
   if (!r) return errors.notFound('Refund')
+  // M0: refunds of the person's places
+  if (!(await canSeeInvoice(session.user, r.invoiceId))) return errors.forbidden()
   const [student, invoice, approver, settings] = await Promise.all([
     prisma.student.findUnique({ where: { id: r.studentId }, select: { firstName: true, lastName: true, registrationNumber: true } }),
     prisma.feeInvoice.findUnique({ where: { id: r.invoiceId }, select: { challanNumber: true, month: true, totalAmount: true, paidAmount: true, refundedAmount: true } }),
@@ -51,6 +54,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!session?.user) return errors.unauthorized()
   if (!canApproveRefunds(session.user.role)) return errors.forbidden('Only someone with refund approval can do this')
   const { id } = await params
+  {
+    // M0: decide only refunds of the person's places
+    const rf = await prisma.refund.findUnique({ where: { id }, select: { invoiceId: true } })
+    if (rf && !(await canSeeInvoice(session.user, rf.invoiceId))) return errors.forbidden()
+  }
   let body: unknown
   try {
     body = await request.json()

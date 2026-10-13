@@ -4,6 +4,7 @@
  * DELETE /api/fees/[id] — delete an unpaid invoice
  */
 
+import { canSeeInvoice } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -64,6 +65,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   })
 
   if (!invoice) return errors.notFound('Fee Invoice')
+  // M0: staff open invoices of their places only
+  if (!isPortalRole && !(await canSeeInvoice(session.user, id))) return errors.forbidden()
 
   // Row-level scope: Students/Parents can only see their own invoices
   if (['STUDENT', 'PARENT', 'GUARDIAN'].includes(session.user.role)) {

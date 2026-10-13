@@ -1515,6 +1515,33 @@ api PUT /api/teachers/$CALT/places "{\"allLocations\":false,\"campusIds\":[],\"p
 check "the instructor still sees his own group in the other place (teaching it)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ" $B/api/groups/$GB/lessons)" "200"
 rm -f "$LKJ" "$LPJ" "$TJ"
 
+
+echo "== 42. M0 places (finance): an accountant of one place sees only that place's invoices, payments, refunds and wallets"
+ACJ=$(mktemp); login_jar $ACCE E2eAcc12345 "$ACJ" 10.0.1.96
+accapi() { curl -s -b "$ACJ" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+INVB=$(invid $SB $GB)
+if [ -z "$INVB" ]; then INVB=$(api POST /api/accountant/fees/invoices "{\"studentId\":\"$SB\",\"month\":\"October 2026\",\"academicYear\":\"2026-2027\",\"dueDate\":\"$(D 10)T00:00:00.000Z\",\"items\":[{\"description\":\"Course fee\",\"amount\":500}]}" | jq_ "d['data']['id']"); fi
+M "UPDATE FeeInvoice SET classSectionId='$GB' WHERE id='$INVB'"
+INVBDUE=$(M "SELECT ROUND(totalAmount-paidAmount,2) FROM FeeInvoice WHERE id='$INVB'")
+api POST /api/fees/$INVB/payments "{\"amount\":$INVBDUE,\"paymentMethod\":\"Cash\"}" >/dev/null
+api POST /api/wallet/topups "{\"studentId\":\"$SB\",\"amount\":50,\"method\":\"Cash\"}" >/dev/null
+check "the other place's invoice exists and was paid" "$(M "SELECT paidAmount>0 FROM FeeInvoice WHERE id='$INVB'")" "1"
+check "accountant of the main place: the other place's invoice is not in the list and cannot be opened" "$(accapi GET "/api/fees?limit=100&studentId=$SB" | jq_ "any(i['id']=='$INVB' for i in d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/fees/$INVB)" "False/403"
+check "…cannot take a payment on it nor make an invoice for that student" "$(accapi POST /api/accountant/fees/invoices/$INVB/payments '{"amount":10,"paymentMethod":"Cash"}' | jq_ "d['success']")/$(accapi POST /api/accountant/fees/invoices "{\"studentId\":\"$SB\",\"month\":\"October 2026\",\"academicYear\":\"2026-2027\",\"dueDate\":\"$(D 10)T00:00:00.000Z\",\"items\":[{\"description\":\"xx\",\"amount\":10}]}" | jq_ "d['success']")" "False/False"
+check "…does not see that student's wallet (balance, statement, top-ups) nor can top it up" "$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/students/$SB/wallet)/$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/students/$SB/wallet/statement)/$(accapi GET "/api/wallet/topups?status=TODAY" | jq_ "any(t['student']['id']=='$SB' if isinstance(t.get('student'),dict) else t.get('studentId')=='$SB' for t in d['data']['topUps'])")/$(accapi POST /api/wallet/topups "{\"studentId\":\"$SB\",\"amount\":20,\"method\":\"Cash\"}" | jq_ "d['success']")" "403/403/False/False"
+RFB=$(api POST /api/refunds "{\"invoiceId\":\"$INVB\",\"amount\":10,\"method\":\"WALLET\"}" | jq_ "d['data']['refundId']")
+check "…cannot ask for a refund on the other place's invoice" "$(accapi POST /api/refunds "{\"invoiceId\":\"$INVB\",\"amount\":5,\"method\":\"WALLET\"}" | jq_ "d['success']")" "False"
+check "…does not see a refund of the other place" "$(accapi GET /api/refunds | jq_ "any(r['id']=='$RFB' for r in d['data'])")/$(api GET /api/refunds | jq_ "any(r['id']=='$RFB' for r in d['data'])")" "False/True"
+EXB=$(api POST /api/accountant/expenses "{\"title\":\"E2E place B rent\",\"amount\":300,\"category\":\"UTILITIES\",\"date\":\"$(D 0)\",\"campusId\":\"$PB\"}" | jq_ "d['data']['id']")
+check "…does not see the other place's expense (list and open)" "$(accapi GET "/api/accountant/expenses?limit=100" | jq_ "any(e['id']=='$EXB' for e in d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/accountant/expenses/$EXB)" "False/403"
+check "…cannot record an expense for the other place" "$(accapi POST /api/accountant/expenses "{\"title\":\"x\",\"amount\":5,\"category\":\"UTILITIES\",\"date\":\"$(D 0)\",\"campusId\":\"$PB\"}" | jq_ "d['success']")" "False"
+ACCU=$(M "SELECT id FROM User WHERE email='$ACCE'")
+api PUT /api/users/$ACCU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\"],\"groupIds\":[\"$GB\"]}" >/dev/null
+check "given the other place's group only: its invoice appears and opens, its expense still does not" "$(accapi GET "/api/fees?limit=100&studentId=$SB" | jq_ "any(i['id']=='$INVB' for i in d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/fees/$INVB)/$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/accountant/expenses/$EXB)" "True/200/403"
+api PUT /api/users/$ACCU/places "{\"allLocations\":true,\"campusIds\":[],\"groupIds\":[]}" >/dev/null
+check "given every place: the expense and refund appear too" "$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/accountant/expenses/$EXB)/$(accapi GET /api/refunds | jq_ "any(r['id']=='$RFB' for r in d['data'])")" "200/True"
+api PUT /api/users/$ACCU/places '{"allLocations":false,"campusIds":[],"groupIds":[]}' >/dev/null
+rm -f "$ACJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

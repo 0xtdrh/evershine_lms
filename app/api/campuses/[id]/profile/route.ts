@@ -8,7 +8,9 @@ import { NextRequest } from 'next/server'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { loadPlaces } from '@/lib/places/server'
+import { allowsCampus } from '@/lib/places/rules'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { prepaidTotal } from '@/lib/wallet/engine'
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -18,8 +20,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const denied = requirePermission(role, 'campuses', 'read')
   if (denied) return denied
   const { id } = await params
-  const own = campusScope(role, session.user.campusId, null)
-  if (own && own !== id) return errors.forbidden('You can only open your own branch')
+  // M0: only branches among the person's places
+  if (!allowsCampus(await loadPlaces(session.user), id)) return errors.forbidden('You can only open your own branch')
 
   const campus = await prisma.campus.findUnique({ where: { id } })
   if (!campus) return errors.notFound('Branch')

@@ -1,3 +1,4 @@
+import { invoiceWhere } from '@/lib/places/rules'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
@@ -14,6 +15,7 @@ const { mockAuth, mockPrisma, mockBuildPaidListReport, mockBuildDefaulterListRep
 
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
+vi.mock('@/lib/places/server', () => import('./helpers/places-mock'))
 vi.mock('@/lib/excel/fee-lists', () => ({
   buildPaidListReport: mockBuildPaidListReport,
   buildDefaulterListReport: mockBuildDefaulterListReport,
@@ -106,9 +108,8 @@ describe('fee Excel export routes', () => {
     ])
   })
 
-  it('keeps accountant exports inside the accountant campus boundary', async () => {
-    mockAuth.mockResolvedValue({ user: { id: 'accountant-1', role: 'ACCOUNTANT', campusId: 'session-campus' } })
-    mockPrisma.accountant.findUnique.mockResolvedValue({ campusId: 'accountant-campus' })
+  it('keeps accountant exports inside the accountant places (M0)', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'accountant-1', role: 'ACCOUNTANT', campusId: 'accountant-campus' } })
     mockPrisma.feeInvoice.findMany.mockResolvedValue([])
 
     const response = await getPaidExport(
@@ -118,7 +119,7 @@ describe('fee Excel export routes', () => {
     expect(response.status).toBe(200)
     expect(mockPrisma.feeInvoice.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
-        student: expect.objectContaining({ campusId: 'accountant-campus' }),
+        AND: invoiceWhere({ all: false, campusIds: ['accountant-campus'], groupIds: [], primary: 'accountant-campus' }).AND,
       }),
     }))
   })

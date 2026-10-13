@@ -348,9 +348,11 @@ export async function decideWithdrawal(id: string, userId: string, approve: bool
 }
 
 // ── prepaid total (accounts) ────────────────────────────────────────────────
-export async function prepaidTotal(campusId?: string | null): Promise<number> {
+export async function prepaidTotal(campusId?: string | null, studentIds?: string[] | null): Promise<number> {
   const agg = await prisma.walletTransaction.aggregate({
-    where: campusId ? { studentId: { in: (await prisma.student.findMany({ where: { campusId }, select: { id: true } })).map((s) => s.id) } } : {},
+    where: studentIds
+      ? { studentId: { in: studentIds } }
+      : campusId ? { studentId: { in: (await prisma.student.findMany({ where: { campusId }, select: { id: true } })).map((s) => s.id) } } : {},
     _sum: { amount: true },
   })
   return round2(Number(agg._sum.amount ?? 0))

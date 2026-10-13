@@ -48,6 +48,7 @@ const { mockAuth, mockPrisma, mockTx } = vi.hoisted(() => {
 
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
+vi.mock('@/lib/places/server', () => import('./helpers/places-mock'))
 
 import { POST } from '../app/api/accountant/profit-loss/route'
 

@@ -14,6 +14,7 @@ const { mockAuth, mockPrisma, mockGetExpenseColumnSupport } = vi.hoisted(() => {
 
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
+vi.mock('@/lib/places/server', () => import('./helpers/places-mock'))
 vi.mock('@/lib/accounting/expense-columns', () => ({
   getExpenseColumnSupport: mockGetExpenseColumnSupport,
   isExpensePaymentColumnMissingError: vi.fn(() => false),
