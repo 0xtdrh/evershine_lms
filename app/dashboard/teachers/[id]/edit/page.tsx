@@ -12,6 +12,7 @@
  * the API's partial schema handles sparse updates correctly.
  */
 
+import { TeacherPlacesCard } from '@/components/places/TeacherPlacesCard'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -1018,6 +1019,9 @@ export default function EditTeacherPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* M0: places, pay per place, employment periods */}
+      <TeacherPlacesCard teacherId={id} />
     </div>
   )
 }

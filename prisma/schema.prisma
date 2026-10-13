@@ -273,6 +273,9 @@ model User {
   // Sessions that signed in before this moment are rejected (set when the
   // password changes or is reset). See lib/session-guard.ts.
   sessionsRevokedAt      DateTime?
+  /// M0: this staff member sees every place (branches + partners)
+  allLocations           Boolean   @default(false)
+  placeAccess            UserPlaceAccess[]
   /// Phase C: birthday for parents and non-teacher staff (students and teachers keep their own dateOfBirth).
   dateOfBirth            DateTime? @db.Date
   lastLogin              DateTime?
@@ -375,6 +378,8 @@ model Campus {
   email         String
   principalName String
   isActive      Boolean  @default(true)
+  /// M0 (2026-10-13): MAIN = a TechNova branch; PARTNER = a partner's place (partner link comes in M1)
+  kind          String   @default("MAIN") @db.VarChar(8)
   // Branch profile (phase A, 2026-10-03) — all optional
   mapUrl        String?
   whatsapp      String?
@@ -4298,6 +4303,62 @@ model PassportPrint {
   createdAt   DateTime @default(now())
 
   @@index([studentId, kind])
+}
+
+/// M0 (2026-10-13): extra places a staff member (any role, teachers too) may see besides the primary one in their profile.
+model UserPlaceAccess {
+  id          String   @id @default(cuid())
+  userId      String
+  campusId    String
+  createdById String
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, campusId])
+  @@index([campusId])
+}
+
+/// M0: single groups a staff member may see in a place that is not theirs (e.g. covering the Thursday groups elsewhere).
+model UserGroupAccess {
+  id             String   @id @default(cuid())
+  userId         String
+  classSectionId String
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, classSectionId])
+  @@index([classSectionId])
+}
+
+/// M0: an instructor's pay in one place (between the group override and the instructor's default).
+model TeacherPlacePay {
+  id                      String   @id @default(cuid())
+  teacherId               String
+  campusId                String
+  fixedAmount             Decimal? @db.Decimal(10, 2)
+  percentOfStudentPayment Decimal? @db.Decimal(5, 2)
+  perSessionAmount        Decimal? @db.Decimal(10, 2)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@unique([teacherId, campusId])
+}
+
+/// M0: an instructor's employment periods. employer TECHNOVA | PARTNER (partner link in M1); kind TEACHER | TRAINEE
+/// (a trainee is not paid). TechNova pay counts only inside TECHNOVA + TEACHER periods; no period = paid as today.
+model TeacherEmployment {
+  id          String    @id @default(cuid())
+  teacherId   String
+  employer    String    @db.VarChar(10)
+  partnerName String?   @db.VarChar(120)
+  kind        String    @db.VarChar(8)
+  fromDate    DateTime  @db.Date
+  toDate      DateTime? @db.Date
+  note        String?   @db.VarChar(300)
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  @@index([teacherId])
 }
 
 /// P2 profile (2026-10-12): a goal set by the student, the parent or the instructor.

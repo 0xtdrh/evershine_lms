@@ -6,6 +6,7 @@
  * ?mode=scoped — teachers assigned to classId and/or matching placement filters
  */
 
+import { allowsCampus, campusWhere, canSeeGroup, requestPlaces, teachersOfPlaceWhere } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -39,10 +40,18 @@ export async function GET(request: NextRequest) {
 
   const { mode, campusId, batchId, classId, houseId, search, limit, classSectionId } = parsed.data
 
-  const scopedCampusId =
-    session.user.role === 'SUPER_ADMIN'
-      ? campusId
-      : (campusId ?? session.user.campusId ?? undefined)
+  // M0 (owner 2026-10-13): for a group, only the instructors of the group's place; otherwise the person's places
+  const places = await requestPlaces(session.user)
+  let placeCampus: string | undefined
+  if (classSectionId) {
+    const g = await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { campusId: true } })
+    if (!g || !(await canSeeGroup(session.user, classSectionId))) return errors.forbidden()
+    placeCampus = g.campusId
+  } else if (campusId) {
+    if (!allowsCampus(places, campusId)) return errors.forbidden()
+    placeCampus = campusId
+  }
+  const scopedCampusId = placeCampus
 
   const teacherSelect = {
     id: true,
@@ -108,7 +117,7 @@ export async function GET(request: NextRequest) {
     where: {
       isActive: true,
       ...(teacherIds && { id: { in: teacherIds } }),
-      ...(scopedCampusId && !teacherIds && { campusId: scopedCampusId }),
+      ...(!teacherIds ? (placeCampus ? teachersOfPlaceWhere(placeCampus) : campusWhere(places)) : {}),
       ...(batchId && !teacherIds && { batchId }),
       ...(houseId && !teacherIds && { houseId }),
       ...(search && {

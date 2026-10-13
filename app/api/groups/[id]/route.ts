@@ -7,6 +7,7 @@
  *                            Subject Offerings flow — not duplicated here.
  */
 
+import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { resolveShiftId } from '@/lib/shifts/default-shift'
@@ -77,8 +78,8 @@ export async function GET(
   })
   if (!group) return errors.notFound('Group')
 
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && group.campusId !== campusId) return errors.forbidden()
+  // M0: the group's place (or a single group given to this person)
+  if (!(await canSeeGroup(session.user, id))) return errors.forbidden()
 
   // WHY: the page reads `teacher`; this route never returned it, so the
   // instructor dropdown always showed "none" even after a successful save.
@@ -163,8 +164,8 @@ export async function PATCH(
   const existing = await prisma.classSection.findUnique({ where: { id } })
   if (!existing) return errors.notFound('Group')
 
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && existing.campusId !== campusId) return errors.forbidden()
+  // M0: the group's place (or a single group given to this person)
+  if (!(await canSeeGroup(session.user, id))) return errors.forbidden()
 
   let body: unknown
   try {
@@ -248,8 +249,8 @@ export async function DELETE(
   })
   if (!existing) return errors.notFound('Group')
 
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && existing.campusId !== campusId) return errors.forbidden()
+  // M0: the group's place (or a single group given to this person)
+  if (!(await canSeeGroup(session.user, id))) return errors.forbidden()
 
   if (existing._count.enrollments > 0) {
     return errors.conflict('This group still has active students — remove or transfer them before deleting it')

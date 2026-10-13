@@ -6,6 +6,7 @@
  * schedules). Read-only; assigning happens via /assign-substitute.
  */
 
+import { teachersOfPlaceWhere } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
@@ -41,8 +42,10 @@ export async function GET(
   for (const affected of affectedSessions) {
     const group = await prisma.classSection.findUnique({
       where: { id: affected.classSectionId },
-      select: { levelId: true, level: { select: { subjectId: true, subject: { select: { trackId: true } } } } },
+      select: { campusId: true, levelId: true, level: { select: { subjectId: true, subject: { select: { trackId: true } } } } },
     })
+    // M0: only instructors who serve the group's place
+    const servesPlace = group ? new Set((await prisma.teacher.findMany({ where: teachersOfPlaceWhere(group.campusId), select: { id: true } })).map((t) => t.id)) : new Set<string>()
     const levelId = group?.levelId ?? null
     const subjectId = group?.level?.subjectId ?? null
     const trackId = group?.level?.subject.trackId ?? null
@@ -57,7 +60,7 @@ export async function GET(
       },
       select: { teacherId: true },
     })
-    const qualifiedTeacherIds = [...new Set(qualified.map((q) => q.teacherId))].filter((tid) => tid !== absence.teacherId)
+    const qualifiedTeacherIds = [...new Set(qualified.map((q) => q.teacherId))].filter((tid) => tid !== absence.teacherId && servesPlace.has(tid))
 
     const candidates = []
     for (const tid of qualifiedTeacherIds) {

@@ -40,6 +40,17 @@ const { mockAuth, mockPrisma, mockTx, mockHash, mockSendApprovalNotification, mo
 })
 
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
+// M0: places come from the signed-in person (super admin = every place, others = their campus)
+vi.mock('@/lib/places/server', async () => {
+  const rules = await vi.importActual<typeof import('@/lib/places/rules')>('@/lib/places/rules')
+  return {
+    ...rules,
+    loadPlaces: vi.fn(async () => {
+      const u = (await mockAuth())?.user
+      return u?.role === 'SUPER_ADMIN' ? rules.ALL_PLACES : { all: false, campusIds: u?.campusId ? [u.campusId] : [], groupIds: [], primary: u?.campusId ?? null }
+    }),
+  }
+})
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
 vi.mock('@node-rs/argon2', () => ({ hash: mockHash }))
 vi.mock('@/lib/notifications', () => ({ sendApprovalNotification: mockSendApprovalNotification }))

@@ -1481,6 +1481,38 @@ SK=$(curl -s -b "$LPJ" -X POST -H 'Content-Type: application/json' -d '{"showSki
 check "the parent can add the skills to the share link" "$(curl -s $B/api/passport/public/$SK | jq_ "[k['nameEn'] for s in d['data']['skills'] for k in s['scores']]")" "['Loops']"
 check "secretary cannot change the profile settings" "$(secapi PUT /api/profile/settings '{"olderAge":5,"maxVideoSeconds":60,"maxUploadMb":50,"parentPortfolio":true,"thanksOn":true,"diaryOn":true,"uploadsOn":true}' | jq_ "d['success']")" "False"
 rm -f "$LKJ"
+
+echo "== 41. M0 places: staff see only their places, single groups, extra places, header filter, instructor picker, pay per place, trainee"
+SECU=$(M "SELECT id FROM User WHERE email='sec@e2e.local'")
+PB=$(api POST /api/campuses '{"name":"E2E Partner Place","code":"EPP","address":"5 Sheraton Rd Hurghada","phone":"+201000000001","email":"epp@e2e.local","principalName":"Partner Head"}' | jq_ "d['data']['id']")
+check "a second place is made and marked as a partner place" "$(api PATCH /api/campuses/$PB '{"kind":"PARTNER"}' | jq_ "d['success']")/$(M "SELECT kind FROM Campus WHERE id='$PB'")" "True/PARTNER"
+GB=$(api POST /api/groups "{\"campusId\":\"$PB\",\"shiftId\":\"$SHIFT\",\"className\":\"E2E Place B\",\"sectionName\":\"A\",\"levelId\":\"$CL\"}" | jq_ "d['data']['id']")
+SB=$(mkstu PlaceKid 01066660141 Rana 01066660142); M "UPDATE Student SET campusId='$PB' WHERE id='$SB'"
+api POST /api/groups/$GB/students "{\"studentId\":\"$SB\"}" >/dev/null
+check "only Super Admin may change places of an account" "$(secapi PUT /api/users/$SECU/places '{"allLocations":true,"campusIds":[],"groupIds":[]}' | jq_ "d['success']")" "False"
+api PUT /api/users/$SECU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\"],\"groupIds\":[]}" >/dev/null
+check "secretary of the main place: the other place's group and student do not appear at all" "$(secapi GET /api/groups | jq_ "any(g['id']=='$GB' for g in d['data'])")/$(secapi GET "/api/students?limit=100&search=PlaceKid" | jq_ "len(d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/groups/$GB)" "False/0/403"
+api PUT /api/users/$SECU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\"],\"groupIds\":[\"$GB\"]}" >/dev/null
+check "given one group of the other place: she sees that group and its student" "$(secapi GET /api/groups | jq_ "any(g['id']=='$GB' for g in d['data'])")/$(secapi GET "/api/students?limit=100&search=PlaceKid" | jq_ "len(d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/groups/$GB)" "True/1/200"
+check "a single group does not give the place: she cannot make a group there" "$(secapi POST /api/groups "{\"campusId\":\"$PB\",\"shiftId\":\"$SHIFT\",\"className\":\"E2E Sec B\",\"sectionName\":\"A\",\"levelId\":\"$CL\"}" | jq_ "d['success']")" "False"
+api PUT /api/users/$SECU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\",\"$PB\"],\"groupIds\":[]}" >/dev/null
+check "given the whole other place: the header filter lists both places" "$(secapi GET /api/places/mine | jq_ "(d['data']['all'], sorted(p['kind'] for p in d['data']['places']))")" "(False, ['MAIN', 'PARTNER'])"
+curl -s -b "$SECJ" -c "$SECJ" -X POST -H 'Content-Type: application/json' -d "{\"campusId\":\"$PB\"}" $B/api/places/mine >/dev/null
+check "the header filter narrows every list to one place" "$(secapi GET /api/groups | jq_ "sorted(set(g['campus']['id']=='$PB' for g in d['data']))")" "[True]"
+check "the header filter cannot widen (a place she does not have is refused)" "$(secapi POST /api/places/mine '{"campusId":"nope-place"}' | jq_ "d['success']")" "False"
+curl -s -b "$SECJ" -c "$SECJ" -X POST -H 'Content-Type: application/json' -d '{"campusId":"ALL"}' $B/api/places/mine >/dev/null
+check "instructor picker for the other place's group: only instructors of that place" "$(api GET "/api/teachers/for-selection?mode=all&classSectionId=$GB" | jq_ "any(t['id']=='$CALT' for t in d['data']['teachers'])")" "False"
+api PUT /api/teachers/$CALT/places "{\"allLocations\":false,\"campusIds\":[\"$PB\"],\"pay\":[{\"campusId\":\"$PB\",\"fixed\":null,\"percent\":null,\"perSession\":200}],\"employment\":[]}" >/dev/null
+check "instructor given the other place → he can be chosen there" "$(api GET "/api/teachers/for-selection?mode=all&classSectionId=$GB" | jq_ "any(t['id']=='$CALT' for t in d['data']['teachers'])")" "True"
+api POST /api/groups/$GB/instructor "{\"teacherId\":\"$CALT\"}" >/dev/null
+SBE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$SB' AND classSectionId='$GB'")
+curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d "{\"classSectionId\":\"$GB\",\"attendanceDate\":\"$(D 0)\",\"records\":[$(rec $SBE PRESENT)]}" $B/api/enrollment-attendance >/dev/null
+check "pay in that place uses the place rate (200 per session)" "$(api GET /api/teachers/$CALT/group-pay-summary | jq_ "[(float(g['perSessionAmount']), g['sessionsCounted']) for g in d['data']['groups'] if g['classSectionId']=='$GB'][0]")" "(200.0, 1)"
+check "overlapping employment periods are refused" "$(api PUT /api/teachers/$CALT/places "{\"allLocations\":false,\"campusIds\":[\"$PB\"],\"pay\":[],\"employment\":[{\"employer\":\"TECHNOVA\",\"kind\":\"TRAINEE\",\"fromDate\":\"2026-01-01\",\"toDate\":null},{\"employer\":\"PARTNER\",\"kind\":\"TEACHER\",\"fromDate\":\"2026-06-01\",\"toDate\":null}]}" | jq_ "d['success']")" "False"
+api PUT /api/teachers/$CALT/places "{\"allLocations\":false,\"campusIds\":[\"$PB\"],\"pay\":[{\"campusId\":\"$PB\",\"fixed\":null,\"percent\":null,\"perSession\":200}],\"employment\":[{\"employer\":\"TECHNOVA\",\"kind\":\"TRAINEE\",\"fromDate\":\"2026-01-01\",\"toDate\":null}]}" >/dev/null
+check "a trainee is not paid (the group drops out of his pay)" "$(api GET /api/teachers/$CALT/group-pay-summary | jq_ "any(g['classSectionId']=='$GB' for g in d['data']['groups'])")" "False"
+api PUT /api/teachers/$CALT/places "{\"allLocations\":false,\"campusIds\":[],\"pay\":[],\"employment\":[]}" >/dev/null
+check "the instructor still sees his own group in the other place (teaching it)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ" $B/api/groups/$GB/lessons)" "200"
 rm -f "$LKJ" "$LPJ" "$TJ"
 
 echo

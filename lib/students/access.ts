@@ -4,6 +4,7 @@
  * Server-only.
  */
 
+import { canSeeStudent } from '@/lib/places/server'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { campusScope } from '@/lib/academic/api-helpers'
@@ -28,10 +29,7 @@ export async function studentViewer(user: { id: string; role: string; campusId?:
     return n ? 'TEACHER' : null
   }
   if (!checkPermission(role, 'students', 'read')) return null
-  const scoped = campusScope(role, user.campusId, null)
-  if (scoped) {
-    const s = await prisma.student.findUnique({ where: { id: studentId }, select: { campusId: true } })
-    if (s?.campusId !== scoped) return null
-  }
+  // M0: the student's place (or one of the single groups given to this person)
+  if (!(await canSeeStudent(user, studentId))) return null
   return 'STAFF'
 }

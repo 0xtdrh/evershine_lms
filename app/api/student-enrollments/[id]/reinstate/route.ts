@@ -6,6 +6,7 @@
  * instead of starting fresh under a brand-new enrollment.
  */
 
+import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
@@ -29,8 +30,7 @@ export async function POST(
   })
   if (!enrollment) return errors.notFound('Enrollment')
 
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && enrollment.classSection.campusId !== campusId) return errors.forbidden()
+  if (!(await canSeeGroup(session.user, enrollment.classSectionId))) return errors.forbidden()
 
   if (enrollment.status !== 'WITHDRAWN') {
     return errors.conflict('This enrollment is not withdrawn, so there is nothing to reinstate')

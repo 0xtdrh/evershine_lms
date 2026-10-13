@@ -12,6 +12,8 @@ export const createCampusSchema = z.object({
   phone: z.string().regex(/^\+?[\d\s\-]{10,15}$/),
   email: z.string().email().toLowerCase(),
   principalName: z.string().min(3).trim(),
+  /** M0: MAIN = TechNova branch, PARTNER = a partner's place */
+  kind: z.enum(['MAIN', 'PARTNER']).optional(),
 })
 
 export const updateCampusSchema = createCampusSchema.partial().extend({

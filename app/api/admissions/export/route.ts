@@ -5,6 +5,7 @@
  * Query: status, campusId, batchId
  */
 
+import { campusWhere, requestPlaces } from '@/lib/places/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
@@ -26,9 +27,7 @@ export async function GET(request: NextRequest) {
 
   const where: Record<string, unknown> = {}
   if (status && status !== 'ALL') where.status = status
-  if (CAMPUS_SCOPED_ROLES.includes(role) && session.user.campusId) {
-    where.preferredCampusId = session.user.campusId
-  }
+  Object.assign(where, campusWhere(await requestPlaces(session.user), 'preferredCampusId'))
 
   const admissions = await prisma.admissionRequest.findMany({
     where,

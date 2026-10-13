@@ -7,6 +7,7 @@
  * call repeatedly.
  */
 
+import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -31,8 +32,8 @@ export async function POST(
   const group = await prisma.classSection.findUnique({ where: { id }, select: { campusId: true } })
   if (!group) return errors.notFound('Group')
 
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && group.campusId !== campusId) return errors.forbidden()
+  // M0: the group's place (or a single group given to this person)
+  if (!(await canSeeGroup(session.user, id))) return errors.forbidden()
 
   let body: unknown = {}
   try {

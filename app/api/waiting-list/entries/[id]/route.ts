@@ -6,6 +6,7 @@
  * (PLACED is set automatically when the student is added to a matching group.)
  */
 
+import { allowsCampus, loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -30,8 +31,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const entry = await prisma.waitingListEntry.findUnique({ where: { id } })
   if (!entry) return errors.notFound('Waiting list entry')
 
-  const scoped = campusScope(role, session.user.campusId, null)
-  if (scoped && entry.campusId !== scoped) return errors.forbidden()
+  if (!allowsCampus(await loadPlaces(session.user), entry.campusId)) return errors.forbidden()
 
   let body: unknown
   try {

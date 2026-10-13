@@ -3,6 +3,7 @@
  * offline with the parent. GET → { noMarketing }, PUT { noMarketing } (students:update). Parents never see it.
  */
 
+import { canSeeStudent } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
@@ -18,8 +19,7 @@ async function guard(id: string, action: 'read' | 'update') {
   if (denied) return { err: denied }
   const s = await prisma.student.findUnique({ where: { id }, select: { campusId: true, noMarketing: true } })
   if (!s) return { err: errors.notFound('Student') }
-  const scoped = campusScope(role, session.user.campusId, null)
-  if (scoped && s.campusId !== scoped) return { err: errors.forbidden() }
+  if (!(await canSeeStudent(session.user, id))) return { err: errors.forbidden() }
   return { s }
 }
 

@@ -7,6 +7,7 @@
  * - Printing (booklet, passport PDF, transcript) is staff only and logged with a copy number; families only look.
  */
 
+import { canSeeStudent } from '@/lib/places/server'
 import { randomBytes } from 'crypto'
 import QRCode from 'qrcode'
 import type { Prisma, Role } from '@prisma/client'
@@ -228,12 +229,7 @@ export async function evaluateRecentStudents() {
 /** Staff who may manage this student's passport (give stamps, print): admins, the branch, the student's instructors. */
 export async function canManageStudent(user: User, studentId: string): Promise<boolean> {
   const role = user.role as Role
-  if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'SECRETARY') {
-    const scoped = campusScope(role, user.campusId, null)
-    if (!scoped) return true
-    const s = await prisma.student.findUnique({ where: { id: studentId }, select: { campusId: true } })
-    return s?.campusId === scoped
-  }
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'SECRETARY') return canSeeStudent(user, studentId)
   if (role === 'TEACHER') {
     const t = await getTeacherByUserId(user.id)
     if (!t) return false
@@ -273,8 +269,7 @@ export async function scanEventStamp(user: User, stampId: string, code: string):
   if (!/^(tn|esa)-qr-/i.test(clean)) return fail('INVALID', 'This is not a student card')
   const st = await prisma.student.findFirst({ where: { idCardQRCode: clean, isActive: true }, select: { id: true, firstName: true, lastName: true, campusId: true } })
   if (!st) return fail('NOT_FOUND', 'Student card not found')
-  const scoped = campusScope(user.role as Role, user.campusId, null)
-  if (user.role !== 'TEACHER' && scoped && st.campusId !== scoped && user.role !== 'SUPER_ADMIN') return fail('FORBIDDEN', 'This student is from another branch')
+  if (user.role !== 'TEACHER' && !(await canSeeStudent(user, st.id))) return fail('FORBIDDEN', 'This student is from another place')
   await ensurePassport(st.id)
   const refKey = s.repeatable ? (s.eventFrom ?? new Date()).toISOString().slice(0, 10) : ''
   let already = false

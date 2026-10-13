@@ -11,6 +11,7 @@
  * fees, and the adjustment must belong to this group.
  */
 
+import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -41,8 +42,8 @@ export async function POST(
   const group = await prisma.classSection.findUnique({ where: { id }, select: { campusId: true, currentCycleNumber: true } })
   if (!group) return errors.notFound('Group')
 
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && group.campusId !== campusId) return errors.forbidden()
+  // M0: the group's place (or a single group given to this person)
+  if (!(await canSeeGroup(session.user, id))) return errors.forbidden()
 
   let body: unknown
   try {
@@ -114,8 +115,7 @@ export async function DELETE(
   })
   if (!adjustment || adjustment.classSectionId !== id) return errors.notFound('Adjustment')
 
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && adjustment.classSection?.campusId !== campusId) return errors.forbidden()
+  if (!adjustment.classSectionId || !(await canSeeGroup(session.user, adjustment.classSectionId))) return errors.forbidden()
 
   await prisma.teacherPayAdjustment.delete({ where: { id: adjustmentId } })
   return successResponse({ id: adjustmentId, deleted: true })

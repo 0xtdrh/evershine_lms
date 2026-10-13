@@ -1,3 +1,4 @@
+import { allowsCampus, loadPlaces } from '@/lib/places/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
@@ -35,10 +36,8 @@ export async function POST(
     if (request.status !== 'PENDING') {
       return NextResponse.json({ success: false, error: 'Request is already processed' }, { status: 400 })
     }
-    if (CAMPUS_SCOPED_ROLES.includes(role)) {
-      if (!session.user.campusId || request.preferredCampusId !== session.user.campusId) {
+    if (!allowsCampus(await loadPlaces(session.user), request.preferredCampusId)) {
         return NextResponse.json({ success: false, error: 'You can decline admissions only for your assigned campus.' }, { status: 403 })
-      }
     }
 
     // Mark Request as Declined

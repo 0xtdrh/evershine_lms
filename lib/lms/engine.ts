@@ -10,6 +10,7 @@
  *   opening and every file is logged (LessonView). Parents see what was learned (titles + objectives), read-only.
  */
 
+import { canSeeGroup } from '@/lib/places/server'
 import type { Prisma, Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
@@ -151,12 +152,12 @@ async function completedSessionNumbers(studentId: string, editionId: string): Pr
 /** Super Admin / Admin, the branch manager of the group's branch, the group's instructor or a confirmed substitute. */
 export async function canManageGroupLessons(user: { id: string; role: string; campusId?: string | null }, groupId: string): Promise<boolean> {
   const role = user.role as Role
-  if (role === 'SUPER_ADMIN' || role === 'ADMIN') return true
+  if (role === 'SUPER_ADMIN') return true
+  // M0: admins and branch managers manage the groups of their places (or single groups given to them)
+  if (role === 'ADMIN') return canSeeGroup(user, groupId)
   if (role === 'BRANCH_MANAGER') {
     if (!checkPermission(role, 'curriculum', 'read')) return false
-    if (!user.campusId) return true
-    const g = await prisma.classSection.findUnique({ where: { id: groupId }, select: { campusId: true } })
-    return g?.campusId === user.campusId
+    return canSeeGroup(user, groupId)
   }
   if (role === 'TEACHER') {
     const t = await getTeacherByUserId(user.id)

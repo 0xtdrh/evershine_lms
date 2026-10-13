@@ -1,3 +1,4 @@
+import { paidByTechNovaBetween, paidByTechNovaOn, pickPayRule } from '@/lib/teachers/employment'
 import { prisma } from '@/lib/prisma'
 import { resolveCycleStart } from './cycle-start'
 import { preDiscountCollected } from '@/lib/discounts/calculate'
@@ -12,7 +13,9 @@ export interface TeacherPayBreakdown {
   adjustmentsTotal: number
   adjustments: { id: string; amount: number; reason: string; createdAt: string }[]
   total: number
-  source: 'GROUP_OVERRIDE' | 'TEACHER_DEFAULT' | 'NONE'
+  source: 'GROUP_OVERRIDE' | 'PLACE_RATE' | 'TEACHER_DEFAULT' | 'NONE'
+  /** M0: false when TechNova does not pay this instructor in this cycle (trainee / employed by a partner) */
+  paidByTechNova?: boolean
 }
 
 /**
@@ -31,6 +34,11 @@ export async function resolveGroupSessionRate(classSectionId: string, teacherId:
     select: { overridePerSessionAmount: true },
   })
   if (groupRule?.overridePerSessionAmount != null) return Number(groupRule.overridePerSessionAmount)
+
+  // M0: the instructor's rate in this group's place
+  const g = await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { campusId: true } })
+  const placeRate = g ? await prisma.teacherPlacePay.findUnique({ where: { teacherId_campusId: { teacherId, campusId: g.campusId } }, select: { perSessionAmount: true } }) : null
+  if (placeRate?.perSessionAmount != null) return Number(placeRate.perSessionAmount)
 
   const teacher = await prisma.teacher.findUnique({
     where: { id: teacherId },
@@ -61,28 +69,32 @@ export async function computeTeacherGroupPay(
     where: { id: teacherId },
     select: { defaultFixedAmount: true, defaultPercentOfStudentPayment: true, defaultPerSessionAmount: true },
   })
-
-  const hasOverride = offering && (
-    offering.overrideFixedAmount != null ||
-    offering.overridePercentOfStudentPayment != null ||
-    offering.overridePerSessionAmount != null
+  // M0: group override → the instructor's rate in this place → the instructor's default
+  const groupPlace = await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { campusId: true } })
+  const placeRow = groupPlace ? await prisma.teacherPlacePay.findUnique({ where: { teacherId_campusId: { teacherId, campusId: groupPlace.campusId } } }) : null
+  const picked = pickPayRule(
+    offering ? { fixed: offering.overrideFixedAmount, percent: offering.overridePercentOfStudentPayment, perSession: offering.overridePerSessionAmount } : null,
+    placeRow ? { fixed: placeRow.fixedAmount, percent: placeRow.percentOfStudentPayment, perSession: placeRow.perSessionAmount } : null,
+    teacher ? { fixed: teacher.defaultFixedAmount, percent: teacher.defaultPercentOfStudentPayment, perSession: teacher.defaultPerSessionAmount } : null,
   )
-
-  const source: TeacherPayBreakdown['source'] = hasOverride ? 'GROUP_OVERRIDE' : teacher ? 'TEACHER_DEFAULT' : 'NONE'
-  const fixedAmount = Number(hasOverride ? offering!.overrideFixedAmount ?? 0 : teacher?.defaultFixedAmount ?? 0)
-  const percentOfStudentPayment = hasOverride
-    ? offering!.overridePercentOfStudentPayment != null ? Number(offering!.overridePercentOfStudentPayment) : null
-    : teacher?.defaultPercentOfStudentPayment != null ? Number(teacher.defaultPercentOfStudentPayment) : null
-  const perSessionAmount = hasOverride
-    ? offering!.overridePerSessionAmount != null ? Number(offering!.overridePerSessionAmount) : null
-    : teacher?.defaultPerSessionAmount != null ? Number(teacher.defaultPerSessionAmount) : null
+  const source: TeacherPayBreakdown['source'] = picked.source
+  const num = (v: unknown) => (v != null ? Number(v) : null)
+  let fixedAmount = Number(picked.rule?.fixed ?? 0)
+  const percentOfStudentPayment = num(picked.rule?.percent)
+  const perSessionAmount = num(picked.rule?.perSession)
+  // M0: trainee / partner periods are not paid by TechNova
+  const periods = await prisma.teacherEmployment.findMany({ where: { teacherId }, select: { employer: true, kind: true, fromDate: true, toDate: true } })
 
   // Percent-of-payment component: what students paid on this cycle's invoices,
   // valued at the price BEFORE discounts (owner, 2026-10-02: the company bears
   // discounts, so they never reduce the teacher's share). Refunds DO reduce it:
   // the teacher gets a share of what the company keeps. See preDiscountCollected.
+  const cycleGroup = await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { currentCycleStartDate: true, startDate: true, expectedEndDate: true } })
+  const cycleFrom = cycleGroup?.currentCycleStartDate ?? cycleGroup?.startDate ?? new Date()
+  const paidInCycle = paidByTechNovaBetween(periods, cycleFrom, cycleGroup?.expectedEndDate ?? new Date())
+  if (!paidInCycle) fixedAmount = 0
   let percentAmount = 0
-  if (percentOfStudentPayment) {
+  if (percentOfStudentPayment && paidInCycle) {
     const invoices = await prisma.feeInvoice.findMany({
       where: { classSectionId, cycleNumber },
       select: { paidAmount: true, refundedAmount: true, subtotal: true, totalAmount: true, status: true },
@@ -115,7 +127,7 @@ export async function computeTeacherGroupPay(
         select: { attendanceDate: true },
         distinct: ['attendanceDate'],
       })
-      sessionsCounted = records.length
+      sessionsCounted = records.filter((r) => paidByTechNovaOn(periods, r.attendanceDate)).length
       sessionAmount = Math.round(sessionsCounted * perSessionAmount * 100) / 100
     }
   }
@@ -136,6 +148,7 @@ export async function computeTeacherGroupPay(
   const total = Math.round((fixedAmount + percentAmount + sessionAmount + adjustmentsTotal) * 100) / 100
 
   return {
+    paidByTechNova: paidInCycle,
     fixedAmount,
     percentOfStudentPayment,
     percentAmount,

@@ -1,5 +1,6 @@
 'use client'
 
+import { L } from '@/lib/i18n/client'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchPaginatedApi, fetchApi } from '@/lib/api-client'
@@ -49,6 +50,7 @@ interface Campus {
   email: string
   principalName: string
   isActive: boolean
+  kind?: string
   _count?: {
     students: number
     teachers: number
@@ -304,6 +306,12 @@ export default function CampusesPage() {
                     <CardDescription className="font-bold text-xs mt-1 text-indigo-500 font-mono tracking-wider">
                       CODE: {campus.code}
                     </CardDescription>
+                    {/* M0: branch or partner place */}
+                    <button type="button" className={`mt-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${campus.kind === 'PARTNER' ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-sky-200 bg-sky-50 text-sky-700'}`}
+                      title={L('Click to change', 'اضغط للتغيير')}
+                      onClick={() => fetchApi(`/api/campuses/${campus.id}`, { method: 'PATCH', body: JSON.stringify({ kind: campus.kind === 'PARTNER' ? 'MAIN' : 'PARTNER' }) }).then(() => queryClient.invalidateQueries({ queryKey: ['campuses'] })).catch((e: Error) => notify.error(e.message))}>
+                      {campus.kind === 'PARTNER' ? L('🤝 Partner place', '🤝 مكان شريك') : L('🏢 TechNova branch', '🏢 فرع TechNova')}
+                    </button>
                   </div>
                   <span
                     className={`text-[9px] px-2 py-0.5 rounded-full font-black tracking-widest ${

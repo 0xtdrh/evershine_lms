@@ -6,6 +6,7 @@
  * branch. Branch defaults to the student's own branch.
  */
 
+import { allowsCampus, canSeeStudent, loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -42,8 +43,8 @@ export async function POST(request: NextRequest) {
   if (!student) return errors.notFound('Student')
 
   const targetCampusId = parsed.data.campusId ?? student.campusId
-  const scoped = campusScope(role, session.user.campusId, null)
-  if (scoped && (student.campusId !== scoped || targetCampusId !== scoped)) return errors.forbidden()
+  const mine = await loadPlaces(session.user)
+  if (!(await canSeeStudent(session.user, student.id)) || !allowsCampus(mine, targetCampusId)) return errors.forbidden()
 
   const course = await prisma.academicSubject.findUnique({ where: { id: subjectId }, select: { id: true } })
   if (!course) return errors.notFound('Course')

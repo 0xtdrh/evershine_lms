@@ -6,6 +6,7 @@
  * POST /api/students/[id]/transfer  { fromClassSectionId, toClassSectionId, creditTo, discountDecisions, reason? }
  */
 
+import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
@@ -15,11 +16,9 @@ import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { executeTransfer, listTransfers, previewTransfer, type ExecuteTransferInput } from '@/lib/groups/transfer'
 
-async function outsideCampus(role: Role, userCampusId: string | null | undefined, groupIds: string[]) {
-  const campusId = campusScope(role, userCampusId, null)
-  if (!campusId) return false
-  const n = await prisma.classSection.count({ where: { id: { in: groupIds }, campusId } })
-  return n !== new Set(groupIds).size
+async function outsideCampus(user: { id: string; role: string }, groupIds: string[]) {
+  for (const g of new Set(groupIds)) if (!(await canSeeGroup(user, g))) return true
+  return false
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -35,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const to = sp.get('to')
   if (!from || !to) return successResponse(await listTransfers(id))
 
-  if (await outsideCampus(role, session.user.campusId, [from, to])) return errors.forbidden('That group is in another branch')
+  if (await outsideCampus(session.user, [from, to])) return errors.forbidden('That group is in another branch')
   const r = await previewTransfer(id, from, to)
   if ('message' in r) return errorFor(r.status, r.message)
   return successResponse(r.preview)
@@ -68,7 +67,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!parsed.success) return errors.validation(parsed.error)
   const d = parsed.data
 
-  if (await outsideCampus(role, session.user.campusId, [d.fromClassSectionId, d.toClassSectionId])) {
+  if (await outsideCampus(session.user, [d.fromClassSectionId, d.toClassSectionId])) {
     return errors.forbidden('That group is in another branch')
   }
   if (d.overrideCapacity && !checkPermission(role, 'group_capacity', 'approve')) {

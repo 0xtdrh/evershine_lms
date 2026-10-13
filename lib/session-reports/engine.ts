@@ -11,6 +11,7 @@
  *   groups covered as a substitute; parent own children; student own.
  */
 
+import { canSeeGroup, groupWhere, requestPlaces } from '@/lib/places/server'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
@@ -52,10 +53,7 @@ export async function canViewGroupReports(user: User, groupId: string): Promise<
   const role = user.role as Role
   if (!checkPermission(role, 'session_reports', 'read')) return false
   if (role === 'TEACHER') return canManageGroupLessons(user, groupId)
-  const scoped = campusScope(role, user.campusId, null)
-  if (!scoped) return true
-  const g = await prisma.classSection.findUnique({ where: { id: groupId }, select: { campusId: true } })
-  return g?.campusId === scoped
+  return canSeeGroup(user, groupId)
 }
 
 /** Staff who may add extras and send (never secretaries — same as the LMS staff screens). */
@@ -346,9 +344,9 @@ async function scopeGroupIds(user: User): Promise<string[] | null> {
     const subs = (await prisma.substituteAssignment.findMany({ where: { substituteTeacherId: t.id, status: 'CONFIRMED' }, select: { classSectionId: true } })).map((s) => s.classSectionId)
     return [...new Set([...(await getTeacherClassSectionIds(t.id)), ...subs])]
   }
-  const scoped = campusScope(role, user.campusId, null)
-  if (!scoped) return null
-  return (await prisma.classSection.findMany({ where: { campusId: scoped }, select: { id: true } })).map((g) => g.id)
+  const p = await requestPlaces(user)
+  if (p.all) return null
+  return (await prisma.classSection.findMany({ where: groupWhere(p), select: { id: true } })).map((g) => g.id)
 }
 
 export async function staffList(user: User, f: { from: string; to: string; status?: string | null; groupId?: string | null }) {

@@ -1,5 +1,6 @@
 /** DELETE /api/groups/[id]/extra-sessions/[sessionId] */
 
+import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
@@ -16,8 +17,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const row = await prisma.extraSession.findUnique({ where: { id: sessionId }, select: { classSectionId: true } })
   if (!row || row.classSectionId !== id) return errors.notFound('Extra session')
   const g = await prisma.classSection.findUnique({ where: { id }, select: { campusId: true } })
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && g?.campusId !== campusId) return errors.forbidden()
+  // M0: the group's place (or a single group given to this person)
+  if (!(await canSeeGroup(session.user, id))) return errors.forbidden()
   await prisma.extraSession.delete({ where: { id: sessionId } })
   return successResponse({ deleted: true }, 'Extra session removed')
 }

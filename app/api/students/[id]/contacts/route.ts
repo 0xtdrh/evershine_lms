@@ -1,5 +1,6 @@
 /** GET /api/students/[id]/contacts — the student's contact log, newest first (phase A). */
 
+import { canSeeStudent } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
@@ -19,8 +20,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     select: { campusId: true, guardians: { select: { id: true, firstName: true, lastName: true, phoneNumber: true } } },
   })
   if (!student) return errors.notFound('Student')
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && student.campusId !== campusId) return errors.forbidden()
+  // M0: the student's place (or a single group given to this person)
+  if (!(await canSeeStudent(session.user, id))) return errors.forbidden()
   const rows = await prisma.contactLog.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' }, take: 200 })
   const names = await staffNames(rows.map((r) => r.createdById ?? ''))
   const G = new Map(student.guardians.map((g) => [g.id, `${g.firstName} ${g.lastName}`.trim()]))

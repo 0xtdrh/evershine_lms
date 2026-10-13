@@ -1,3 +1,4 @@
+import { campusWhere, requestPlaces } from '@/lib/places/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
@@ -25,12 +26,8 @@ export async function GET(req: Request) {
     if (status) {
       where.status = status
     }
-    if (CAMPUS_SCOPED_ROLES.includes(role)) {
-      if (!session.user.campusId) {
-        return NextResponse.json({ success: false, error: 'Campus assignment is required' }, { status: 403 })
-      }
-      where.preferredCampusId = session.user.campusId
-    }
+    // M0: requests for the person's places only
+    Object.assign(where, campusWhere(await requestPlaces(session.user), 'preferredCampusId'))
 
     const [requests, total] = await Promise.all([
       prisma.admissionRequest.findMany({

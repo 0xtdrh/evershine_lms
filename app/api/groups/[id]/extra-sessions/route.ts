@@ -6,6 +6,7 @@
  * POST /api/groups/[id]/extra-sessions { date: YYYY-MM-DD, time: HH:MM, reason? }
  */
 
+import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
@@ -13,11 +14,10 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 
-async function loadGroup(id: string, role: Role, userCampusId: string | null | undefined) {
+async function loadGroup(id: string, user: { id: string; role: string }) {
   const g = await prisma.classSection.findUnique({ where: { id }, select: { id: true, campusId: true } })
   if (!g) return { error: errors.notFound('Group') }
-  const campusId = campusScope(role, userCampusId, null)
-  if (campusId && g.campusId !== campusId) return { error: errors.forbidden() }
+  if (!(await canSeeGroup(user, id))) return { error: errors.forbidden() }
   return { group: g }
 }
 
@@ -28,7 +28,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const denied = requirePermission(role, 'class_sections', 'read')
   if (denied) return denied
   const { id } = await params
-  const r = await loadGroup(id, role, session.user.campusId)
+  const r = await loadGroup(id, session.user)
   if (r.error) return r.error
   const rows = await prisma.extraSession.findMany({ where: { classSectionId: id }, orderBy: { date: 'asc' } })
   return successResponse(rows.map((x) => ({ id: x.id, date: x.date.toISOString().slice(0, 10), time: x.time, reason: x.reason })))
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const denied = requirePermission(role, 'class_sections', 'update')
   if (denied) return denied
   const { id } = await params
-  const r = await loadGroup(id, role, session.user.campusId)
+  const r = await loadGroup(id, session.user)
   if (r.error) return r.error
   let body: unknown
   try { body = await request.json() } catch { return errors.badRequest('Invalid JSON') }

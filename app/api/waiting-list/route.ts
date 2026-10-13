@@ -7,6 +7,7 @@
  * level they should join next), and recorded wishes.
  */
 
+import { requestPlaces, studentWhere } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
@@ -23,9 +24,10 @@ export async function GET(request: NextRequest) {
   if (denied) return denied
 
   const { searchParams } = new URL(request.url)
-  const campusId = campusScope(role, session.user.campusId, searchParams.get('campusId') || null)
+  // M0: the places this person may see
+  const places = await requestPlaces(session.user, searchParams.get('campusId') || null)
   const subjectId = searchParams.get('subjectId') || undefined
 
-  const data = await buildWaitingList({ campusId, subjectId })
+  const data = await buildWaitingList({ studentWhere: studentWhere(places), subjectId })
   return successResponse(data)
 }

@@ -20,6 +20,7 @@
  *    new group's id.
  */
 
+import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -59,8 +60,8 @@ export async function POST(
   if (!group.level) return errors.conflict('This group has no level set')
   if (group.status === 'COMPLETED') return errors.conflict('This group is already completed')
 
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && group.campusId !== campusId) return errors.forbidden()
+  // M0: the group's place (or a single group given to this person)
+  if (!(await canSeeGroup(session.user, id))) return errors.forbidden()
 
   let body: unknown
   try {

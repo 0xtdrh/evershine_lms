@@ -1,3 +1,4 @@
+import { allowsCampus, loadPlaces } from '@/lib/places/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { nextRegistrationNumber } from '@/lib/ids/sequence'
@@ -92,10 +93,8 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Invalid batch or campus selection' }, { status: 400 })
     }
 
-    if (CAMPUS_SCOPED_ROLES.includes(role)) {
-      if (!session.user.campusId || session.user.campusId !== campusId) {
-        return NextResponse.json({ success: false, error: 'You can approve admissions only for your assigned campus.' }, { status: 403 })
-      }
+    if (!allowsCampus(await loadPlaces(session.user), campusId)) {
+      return NextResponse.json({ success: false, error: 'You can approve admissions only for your own places.' }, { status: 403 })
     }
 
     const separationRequired = batchRequiresGenderSeparation(batch.academicLevel, batch.forceGenderSeparation)

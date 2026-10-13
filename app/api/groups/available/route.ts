@@ -4,6 +4,7 @@
  * waiting student (phase A). Branch-scoped like the other group lists.
  */
 
+import { groupWhere, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import type { Role } from '@prisma/client'
 import { errors, successResponse } from '@/lib/api-response'
@@ -19,6 +20,6 @@ export async function GET(request: NextRequest) {
   const sp = new URL(request.url).searchParams
   const levelId = sp.get('levelId')
   if (!levelId) return errors.badRequest('levelId is required')
-  const campusId = campusScope(role, session.user.campusId, null)
-  return successResponse(await availableGroups(levelId, { campusId, excludeId: sp.get('excludeId') || undefined }))
+  const places = await requestPlaces(session.user)
+  return successResponse(await availableGroups(levelId, { where: groupWhere(places), excludeId: sp.get('excludeId') || undefined }))
 }

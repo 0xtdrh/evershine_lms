@@ -1,3 +1,4 @@
+import { allowsCampus, loadPlaces } from '@/lib/places/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
@@ -24,10 +25,8 @@ export async function DELETE(
     if (!request) {
       return NextResponse.json({ success: false, error: 'Request not found' }, { status: 404 })
     }
-    if (CAMPUS_SCOPED_ROLES.includes(role)) {
-      if (!session.user.campusId || request.preferredCampusId !== session.user.campusId) {
+    if (!allowsCampus(await loadPlaces(session.user), request.preferredCampusId)) {
         return NextResponse.json({ success: false, error: 'You can delete admissions only for their assigned campus.' }, { status: 403 })
-      }
     }
 
     await prisma.admissionRequest.delete({

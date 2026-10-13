@@ -1,3 +1,4 @@
+import { canSeeGroup, groupWhere, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
@@ -33,8 +34,8 @@ async function assertCanMarkGroup(
   if (group.status === 'COMPLETED' && attendanceDate && group.completedAt && new Date(attendanceDate) > group.completedAt) {
     return errors.conflict("This group's cycle is closed. Record attendance in the group of the next cycle.")
   }
-  const scoped = campusScope(session.user.role as Role, session.user.campusId, null)
-  if (scoped && group.campusId !== scoped) return errors.forbidden()
+  // M0: staff - the group's place (or a single group given to them); instructors - their own groups (checked below)
+  if (session.user.role !== 'TEACHER' && !(await canSeeGroup(session.user, classSectionId))) return errors.forbidden()
   if (session.user.role === 'TEACHER') {
     const teacher = await getTeacherByUserId(session.user.id)
     if (!teacher) return errors.forbidden()
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
     }
     if (!classSectionId) teacherGroupFilter = { classSectionId: { in: await getTeacherClassSectionIds(teacher.id) } }
   }
-  const scoped = campusScope(role, session.user.campusId, null)
+  const places = role === 'TEACHER' ? null : await requestPlaces(session.user)
 
   const records = await prisma.enrollmentAttendanceRecord.findMany({
     where: {
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
         ...(studentId && { studentId }),
         ...(classSectionId && { classSectionId }),
         ...(teacherGroupFilter ?? {}),
-        ...(scoped && { classSection: { campusId: scoped } }),
+        ...(places && !places.all ? { classSection: groupWhere(places) } : {}),
       },
     },
     include: {

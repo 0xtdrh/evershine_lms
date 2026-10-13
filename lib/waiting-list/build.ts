@@ -41,9 +41,9 @@ export interface WaitingStudent {
   registeredAt: string
 }
 
-export async function buildWaitingList(opts: { campusId?: string; subjectId?: string }) {
+export async function buildWaitingList(opts: { campusId?: string; studentWhere?: Record<string, unknown>; subjectId?: string }) {
   const students = await prisma.student.findMany({
-    where: { isActive: true, ...(opts.campusId ? { campusId: opts.campusId } : {}) },
+    where: { isActive: true, ...(opts.campusId ? { campusId: opts.campusId } : {}), ...(opts.studentWhere ?? {}) },
     select: {
       id: true,
       firstName: true,

@@ -7,6 +7,7 @@
  * POST /api/groups  — create a group under a specific level.
  */
 
+import { allowsCampus, groupWhere, loadPlaces, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { resolveBatchId } from '@/lib/batches/default-batch'
@@ -34,11 +35,12 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const requestedCampusId = searchParams.get('campusId')
-  const campusId = campusScope(role, session.user.campusId, requestedCampusId)
+  // M0: the places this person may see (narrowed by the page / header filter)
+  const places = await requestPlaces(session.user, requestedCampusId)
   const activeYearId = (await getActiveAcademicYear())?.id
 
   const groups = await prisma.classSection.findMany({
-    where: { isActive: true, ...(campusId && { campusId }) },
+    where: { isActive: true, ...groupWhere(places) },
     orderBy: [{ status: 'asc' }, { startDate: 'asc' }],
     include: {
       campus: { select: { id: true, name: true } },
@@ -124,14 +126,9 @@ export async function POST(request: NextRequest) {
 
   // Branch-scoped roles can only create groups in their own campus, no matter
   // what campusId the client sent — this mirrors the read-side scoping.
-  const scopedCampusId = campusScope(role, session.user.campusId, parsed.data.campusId)
-  if (role !== 'SUPER_ADMIN') {
-    if (!session.user.campusId) return errors.conflict('Your account has no campus assigned')
-    if (parsed.data.campusId !== session.user.campusId) {
-      return errors.forbidden('You can only create groups in your own campus')
-    }
-  }
-  const effectiveCampusId = scopedCampusId ?? parsed.data.campusId
+  // M0: a group can be made only in one of the person's places
+  if (!allowsCampus(await loadPlaces(session.user), parsed.data.campusId)) return errors.forbidden('You can only create groups in your own places')
+  const effectiveCampusId = parsed.data.campusId
 
   // End dates are estimated live from sessions + schedule (lib/groups/end-estimates.ts);
   // expectedEndDate is no longer written.

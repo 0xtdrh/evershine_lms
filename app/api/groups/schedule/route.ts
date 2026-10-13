@@ -13,6 +13,7 @@
  * Filtering by branch / track / course / teacher happens in the page.
  */
 
+import { groupWhere, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { Prisma, type Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     const denied = requirePermission(role, 'class_sections', 'read')
     if (denied) return denied
   }
-  const campusId = ownTeacherId ? undefined : campusScope(role, session.user.campusId, null)
+  const places = ownTeacherId ? null : await requestPlaces(session.user)
   const fromD = new Date(`${from}T00:00:00.000Z`)
   const toD = new Date(`${to}T00:00:00.000Z`)
   const activeYearId = (await getActiveAcademicYear())?.id
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
       isActive: true,
       levelId: { not: null },
       OR: [{ status: 'ACTIVE' }, { status: 'COMPLETED', completedAt: { gte: fromD } }],
-      ...(campusId && { campusId }),
+      ...(places ? groupWhere(places) : {}),
     },
     select: {
       id: true, className: true, sectionName: true, status: true, startDate: true, currentCycleStartDate: true,

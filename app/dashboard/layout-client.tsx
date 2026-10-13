@@ -76,6 +76,7 @@ import {
   Undo2,
 } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
+import { PlaceSwitcher } from '@/components/places/PlaceSwitcher'
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { isAcademicEnginePrimary } from '@/lib/academic/config'
@@ -501,6 +502,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {!['STUDENT', 'PARENT', 'GUARDIAN'].includes(role ?? '') && <PlaceSwitcher />}
             <LanguageSwitch />
             <ThemeToggle />
             <NotificationBell />

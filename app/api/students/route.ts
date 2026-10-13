@@ -7,6 +7,7 @@
  * would leave an orphaned auth account with no profile.
  */
 
+import { requestPlaces, studentWhere } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -91,14 +92,14 @@ export async function GET(request: NextRequest) {
   } = parsed.data
 
   // WHY campus scoping: Admin and Teacher can only see their campus students
-  const scopedCampusId =
-    role === 'SUPER_ADMIN' ? campusId : (session.user.campusId ?? undefined)
+  // M0: the places this person may see (a campus filter in the page narrows it)
+  const places = await requestPlaces(session.user, campusId)
 
   const isNumericSearch = search ? /^\d+$/.test(search) : false;
 
   const where = {
     isActive: true,
-    ...(scopedCampusId && { campusId: scopedCampusId }),
+    ...studentWhere(places),
     ...(batchId && { batchId }),
     ...(classId && { classId }),
     ...(section && { section }),

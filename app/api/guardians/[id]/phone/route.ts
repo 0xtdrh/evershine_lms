@@ -7,6 +7,7 @@
  * branch-scoped user only for parents of students in their branch.
  */
 
+import { allowsCampus, loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -25,13 +26,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (denied) return denied
 
   const { id } = await params
-  const scoped = campusScope(role, session.user.campusId, null)
+  const mine = await loadPlaces(session.user)
   const guardian = await prisma.guardian.findUnique({
     where: { id },
     select: { id: true, students: { select: { campusId: true } } },
   })
   if (!guardian) return errors.notFound('Parent')
-  if (scoped && !guardian.students.some((s) => s.campusId === scoped)) return errors.forbidden()
+  if (!mine.all && !guardian.students.some((s) => allowsCampus(mine, s.campusId))) return errors.forbidden()
 
   let body: unknown
   try {

@@ -13,6 +13,7 @@
  * provides a strict SUPER_ADMIN barrier and a centralized audit trail focus.
  */
 
+import { AccountPlacesCard } from '@/components/places/AccountPlacesCard'
 import { useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -97,6 +98,8 @@ export default function CredentialManagementPage() {
 // ─── Tab 1: Reset Credentials ────────────────────────────────────────────────
 
 function ResetCredentialsTab() {
+  const { data: sessionData } = useSession()
+  const isSuperAdmin = sessionData?.user?.role === 'SUPER_ADMIN'
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null)
@@ -250,6 +253,9 @@ function ResetCredentialsTab() {
           </div>
         </CardContent>
       </Card>
+      {isSuperAdmin && selectedUser && !['SUPER_ADMIN', 'STUDENT', 'PARENT', 'GUARDIAN'].includes(selectedUser.role) && (
+        <div className="lg:col-span-2"><AccountPlacesCard userId={selectedUser.id} name={selectedUser.name} /></div>
+      )}
     </div>
   )
 }
