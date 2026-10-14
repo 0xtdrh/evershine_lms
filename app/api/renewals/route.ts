@@ -4,10 +4,12 @@
  * summary (why students are not continuing) for the last 90 days.
  */
 
+import { groupWhere } from '@/lib/places/rules'
+import { requestPlaces, visibleGroupIds } from '@/lib/places/server'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getRenewalSettings } from '@/lib/groups/renewal'
 
 export async function GET() {
@@ -16,10 +18,11 @@ export async function GET() {
   const role = session.user.role as Role
   const denied = requirePermission(role, 'renewals', 'read')
   if (denied) return denied
-  const campusId = campusScope(role, session.user.campusId, null)
+  // M0: groups of the person's places
+  const places = await requestPlaces(session.user)
 
   const groups = await prisma.classSection.findMany({
-    where: { status: 'ACTIVE', isActive: true, ...(campusId && { campusId }), id: { in: (await prisma.renewalRequest.findMany({ select: { classSectionId: true }, distinct: ['classSectionId'] })).map((r) => r.classSectionId) } },
+    where: { status: 'ACTIVE', isActive: true, ...groupWhere(places), id: { in: (await prisma.renewalRequest.findMany({ select: { classSectionId: true }, distinct: ['classSectionId'] })).map((r) => r.classSectionId) } },
     select: { id: true, className: true, sectionName: true, campus: { select: { name: true } }, level: { select: { name: true, subject: { select: { name: true } } } } },
   })
   const ids = groups.map((g) => g.id)
@@ -33,7 +36,7 @@ export async function GET() {
   // churn: answers "NO" in the last 90 days, by reason (branch-scoped)
   const since = new Date(Date.now() - 90 * 86_400_000)
   const noRows = await prisma.renewalRequest.findMany({
-    where: { status: 'NO', respondedAt: { gte: since }, ...(campusId && { classSectionId: { in: (await prisma.classSection.findMany({ where: { campusId }, select: { id: true } })).map((g) => g.id) } }) },
+    where: { status: 'NO', respondedAt: { gte: since }, ...(!places.all && { classSectionId: { in: (await visibleGroupIds(places)) ?? [] } }) },
     select: { reason: true },
   })
   const reasons: Record<string, number> = {}

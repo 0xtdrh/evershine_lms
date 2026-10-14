@@ -6,13 +6,15 @@
  * POST /api/holidays { date, name, campusId? (empty = whole company), toDate? (a range) }
  */
 
+import { allowsCampus } from '@/lib/places/rules'
+import { loadPlaces, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { notifyHoliday } from '@/lib/notifications/session-events'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 const day = (s: string) => new Date(`${s}T00:00:00.000Z`)
@@ -26,11 +28,12 @@ export async function GET(request: NextRequest) {
   const sp = new URL(request.url).searchParams
   const from = sp.get('from')
   const to = sp.get('to')
-  const campusId = campusScope(role, session.user.campusId, null)
+  // M0: company holidays + holidays of the person's places
+  const places = await requestPlaces(session.user)
   const rows = await prisma.holiday.findMany({
     where: {
       ...(from && DATE.test(from) && { date: { gte: day(from), ...(to && DATE.test(to) && { lte: day(to) }) } }),
-      ...(campusId && { OR: [{ campusId: null }, { campusId }] }),
+      ...(!places.all && { OR: [{ campusId: null }, { campusId: { in: places.campusIds } }] }),
     },
     orderBy: { date: 'asc' },
   })
@@ -64,9 +67,12 @@ export async function POST(request: NextRequest) {
   const d = parsed.data
 
   // Branch staff can only add holidays for their own branch; company-wide = Super Admin.
-  const ownCampus = campusScope(role, session.user.campusId, null)
   const campusId = d.campusId ?? null
-  if (ownCampus && campusId !== ownCampus) return errors.forbidden('You can only add holidays for your own branch')
+  {
+    // M0: holidays for one of the person's places; a company-wide one needs every place
+    const pl = await loadPlaces(session.user)
+    if (campusId ? !allowsCampus(pl, campusId) : !pl.all) return errors.forbidden('You can only add holidays for your own branch')
+  }
 
   const end = d.toDate && d.toDate >= d.date ? d.toDate : d.date
   const days: string[] = []

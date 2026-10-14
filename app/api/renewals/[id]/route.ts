@@ -1,11 +1,12 @@
 /** PATCH /api/renewals/[id] { answer: YES|NO, reason?, note? } — staff record the parent's answer (phase A). */
 
+import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { NOT_CONTINUING_REASONS, respondRenewal } from '@/lib/groups/renewal'
 import { logContact } from '@/lib/contacts/contact-log'
 
@@ -29,9 +30,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const req = await prisma.renewalRequest.findUnique({ where: { id }, select: { studentId: true, classSectionId: true } })
   if (!req) return errors.notFound('Request')
-  const g = await prisma.classSection.findUnique({ where: { id: req.classSectionId }, select: { campusId: true } })
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && g?.campusId !== campusId) return errors.forbidden()
+  if (!(await canSeeGroup(session.user, req.classSectionId))) return errors.forbidden()
 
   const r = await respondRenewal({ requestId: id, answer: parsed.data.answer, reason: parsed.data.reason ?? null, note: parsed.data.note ?? null, via: 'STAFF', userId: session.user.id })
   if ('message' in r) return r.status === 404 ? errors.notFound('Request') : r.status === 409 ? errors.conflict(r.message) : errors.badRequest(r.message)

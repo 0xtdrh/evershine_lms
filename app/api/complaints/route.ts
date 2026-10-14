@@ -6,6 +6,7 @@
  *        staff (complaints:create): a phone / visit complaint { studentId, from: PARENT|STUDENT, kind, topic, body }
  */
 
+import { allowsCampus } from '@/lib/places/rules'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
@@ -13,7 +14,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { COMPLAINT_KINDS, COMPLAINT_TOPICS, createComplaint, normStatus, sweepComplaints } from '@/lib/complaints/engine'
-import { isPortal, senderStudents, staffScope } from '@/lib/complaints/access'
+import { complaintWhere, isPortal, senderStudents, staffScope } from '@/lib/complaints/access'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,11 +28,11 @@ export async function GET(request: NextRequest) {
   if (isPortal(user.role)) {
     where = { complainantId: user.id }
   } else {
-    const scope = staffScope(user)
+    const scope = await staffScope(user)
     if (!scope.canRead) return errors.forbidden()
     const status = sp.get('status') ?? 'OPEN'
     where = {
-      ...(scope.campusId && { OR: [{ campusId: scope.campusId }, { campusId: null }] }),
+      ...complaintWhere(scope),
       ...(status === 'OPEN' ? { status: { in: ['NEW', 'PENDING', 'IN_PROGRESS', 'RESOLVED'] } } : status === 'NEW' ? { status: { in: ['NEW', 'PENDING'] } } : status !== 'ALL' ? { status } : {}),
       ...(sp.get('kind') && { kind: sp.get('kind')! }),
       ...(sp.get('topic') && { topic: sp.get('topic')! }),
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
     return createdResponse(r, 'Sent — we will reply soon')
   }
 
-  const scope = staffScope(user)
+  const scope = await staffScope(user)
   if (!scope.canCreate) return errors.forbidden()
   const parsed = staffSchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
     select: { campusId: true, userId: true, firstName: true, lastName: true, guardians: { select: { userId: true, firstName: true, lastName: true } } },
   })
   if (!s) return errors.notFound('Student')
-  if (scope.campusId && s.campusId !== scope.campusId) return errors.forbidden()
+  if (!allowsCampus(scope.places, s.campusId)) return errors.forbidden()
   const g = s.guardians[0]
   const sender = d.from === 'PARENT' && g
     ? { id: g.userId, name: `${g.firstName} ${g.lastName}`.trim(), role: 'PARENT' }

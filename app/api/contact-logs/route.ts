@@ -5,13 +5,14 @@
  * portal password, renewal reminder); any staff who can read students may send it.
  */
 
+import { canSeeStudent } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errors, createdResponse } from '@/lib/api-response'
-import { requireSession, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession } from '@/lib/academic/api-helpers'
 import { CONTACT_CHANNELS, CONTACT_REASONS, logContact } from '@/lib/contacts/contact-log'
 
 const bodySchema = z.object({
@@ -40,8 +41,7 @@ export async function POST(request: NextRequest) {
 
   const student = await prisma.student.findUnique({ where: { id: d.studentId }, select: { campusId: true } })
   if (!student) return errors.notFound('Student')
-  const campusId = campusScope(role, session.user.campusId, null)
-  if (campusId && student.campusId !== campusId) return errors.forbidden('This student is in another branch')
+  if (!(await canSeeStudent(session.user, d.studentId!))) return errors.forbidden('This student is in another place')
 
   const row = await logContact({
     studentId: d.studentId,

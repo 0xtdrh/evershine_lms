@@ -9,6 +9,8 @@
  * change to that route's validation schema.
  */
 
+import { teacherWhere } from '@/lib/places/rules'
+import { canSeeTeacher, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
@@ -60,11 +62,7 @@ export async function POST(request: NextRequest) {
   if (!teacher) return errors.notFound('Teacher not found')
 
   // ADMIN is campus-scoped: prevent cross-campus document generation
-  if (
-    (session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') &&
-    session.user.campusId &&
-    teacher.campusId !== session.user.campusId
-  ) {
+  if (!(await canSeeTeacher(session.user, teacher.id))) {
     return errors.forbidden()
   }
 
@@ -119,9 +117,7 @@ export async function GET(request: NextRequest) {
   const where: Prisma.TeacherDocumentWhereInput = {
     ...(teacherId && { teacherId }),
     ...(parsedType?.success && { type: parsedType.data as CertificateType }),
-    ...((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && session.user.campusId
-      ? { teacher: { campusId: session.user.campusId } }
-      : {}),
+    ...(await (async () => { const pl = await requestPlaces(session.user); return pl.all ? {} : { teacher: teacherWhere(pl) } })()),
   }
 
   const [total, docs] = await prisma.$transaction([

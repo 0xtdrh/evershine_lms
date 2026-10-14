@@ -3,6 +3,8 @@
  * Move students, teachers, or classes across campus / batch / class / house.
  */
 
+import { allowsCampus } from '@/lib/places/rules'
+import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { defaultBatchId } from '@/lib/batches/default-batch'
 import { auth } from '@/lib/auth'
@@ -36,6 +38,10 @@ export async function POST(request: NextRequest) {
   // Batches are switched off: moving to another branch uses that branch's default batch.
   const targetBatchId = requestedBatchId || (targetCampusId ? await defaultBatchId(targetCampusId) : undefined)
 
+  // M0: move only between the person's places
+  const places = await loadPlaces(session.user)
+  if (targetCampusId && !allowsCampus(places, targetCampusId)) return errors.forbidden('This place is not yours')
+
   if (!targetCampusId && !targetBatchId && !targetClassId && targetHouseId === undefined) {
     return errors.validation({
       errors: [{ path: [], message: 'Provide at least one target: campus, batch, class, or house' }],
@@ -50,7 +56,7 @@ export async function POST(request: NextRequest) {
       })
       if (!student) throw new Error('NOT_FOUND')
 
-      if ((role === 'ADMIN' || role === 'BRANCH_MANAGER') && session.user.campusId && student.campusId !== session.user.campusId) {
+      if (!allowsCampus(places, student.campusId)) {
         throw new Error('FORBIDDEN')
       }
 
@@ -113,7 +119,7 @@ export async function POST(request: NextRequest) {
       })
       if (!teacher) throw new Error('NOT_FOUND')
 
-      if ((role === 'ADMIN' || role === 'BRANCH_MANAGER') && session.user.campusId && teacher.campusId !== session.user.campusId) {
+      if (!allowsCampus(places, teacher.campusId)) {
         throw new Error('FORBIDDEN')
       }
 
@@ -162,7 +168,7 @@ export async function POST(request: NextRequest) {
     const cls = await tx.class.findUnique({ where: { id: entityId } })
     if (!cls) throw new Error('NOT_FOUND')
 
-    if ((role === 'ADMIN' || role === 'BRANCH_MANAGER') && session.user.campusId && cls.campusId !== session.user.campusId) {
+    if (!allowsCampus(places, cls.campusId)) {
       throw new Error('FORBIDDEN')
     }
 

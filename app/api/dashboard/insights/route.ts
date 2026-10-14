@@ -1,9 +1,11 @@
 /** GET /api/dashboard/insights — phase C: the key numbers for the signed-in user's role (branch-scoped). */
 
+import { onePlace } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
-import { requireSession, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession } from '@/lib/academic/api-helpers'
 import { getTeacherByUserId, getTeacherClassSectionIds } from '@/lib/academic/teacher-scope'
 import { managerMetrics, accountantMetrics, secretaryMetrics, teacherMetrics } from '@/lib/insights/insights'
 
@@ -13,7 +15,7 @@ export async function GET() {
   const { session, error } = await requireSession()
   if (error || !session) return error!
   const role = session.user.role as Role
-  const campusId = campusScope(role, session.user.campusId, null)
+  const campusId = (onePlace(await requestPlaces(session.user), null) ?? undefined)
   if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER') return successResponse({ role, metrics: await managerMetrics(campusId) })
   if (role === 'ACCOUNTANT') return successResponse({ role, metrics: await accountantMetrics(campusId) })
   if (role === 'SECRETARY') return successResponse({ role, metrics: await secretaryMetrics(campusId) })

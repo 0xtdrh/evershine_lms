@@ -3,6 +3,7 @@
  * POST /api/calendar  — create an event (Admin/Super Admin only)
  */
 
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -68,7 +69,11 @@ export async function GET(request: NextRequest) {
 
   // Scoping: Students, parents, teachers, and accountants only see events for all campuses (null)
   // or their own specific campus. Super Admins and Admins can see all.
-  if (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN') {
+  if (!['STUDENT', 'PARENT', 'GUARDIAN'].includes(session.user.role)) {
+    // M0: staff see company events + events of their places
+    const pl = await requestPlaces(session.user)
+    if (!pl.all) where.OR = [{ campusId: null }, { campusId: { in: pl.campusIds } }]
+  } else {
     const campusId = session.user.campusId
     if (campusId) {
       where.OR = [

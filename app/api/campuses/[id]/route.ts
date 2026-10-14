@@ -4,6 +4,8 @@
  * DELETE /api/campuses/[id]  — soft delete
  */
 
+import { allowsCampus } from '@/lib/places/rules'
+import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -23,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   const { id } = await params
 
-  if (session.user.role !== 'SUPER_ADMIN' && session.user.campusId !== id) {
+  if (!allowsCampus(await loadPlaces(session.user), id)) {
     return errors.forbidden()
   }
 
@@ -46,7 +48,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   const { id } = await params
 
-  if (session.user.role !== 'SUPER_ADMIN' && session.user.campusId !== id) {
+  if (!allowsCampus(await loadPlaces(session.user), id)) {
     return errors.forbidden()
   }
 

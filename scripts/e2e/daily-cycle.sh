@@ -1565,6 +1565,19 @@ ADU=$(M "SELECT id FROM User WHERE email='m0admin@e2e.local'")
 api PUT /api/users/$ADU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\",\"$PB\"],\"groupIds\":[]}" >/dev/null
 check "given the other place too: the account and the leave appear" "$(adapi GET "/api/users?query=m0secb&limit=50" | jq_ "len(d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$ADJ" $B/api/leaves/m0leaveb)" "1/200"
 rm -f "$ADJ"
+echo "== 44. M0 places (the rest): branches, holidays, contact log, excuses, reports follow the person's places"
+api PUT /api/users/$ADU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\"],\"groupIds\":[]}" >/dev/null
+ADJ=$(mktemp); login_jar m0admin@e2e.local E2eAdm12345 "$ADJ" 10.0.1.98
+check "admin of the main place: the branch list has only his place; the other place does not open" "$(adapi GET "/api/campuses?limit=100" | jq_ "any(c['id']=='$PB' for c in d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$ADJ" $B/api/campuses/$PB)/$(curl -s -o /dev/null -w '%{http_code}' -b "$ADJ" $B/api/campuses/$CAMPUS)" "False/403/200"
+api POST /api/holidays "{\"date\":\"$(D 40)\",\"name\":\"E2E place B day\",\"campusId\":\"$PB\"}" >/dev/null
+HB=$(M "SELECT id FROM Holiday WHERE campusId='$PB' AND name='E2E place B day' LIMIT 1")
+check "…does not see / delete the other place's holiday, cannot add one there or for the whole company" "$(adapi GET /api/holidays | jq_ "any(h['id']=='$HB' for h in d['data'])")/$(adapi DELETE /api/holidays/$HB | jq_ "d['success']")/$(adapi POST /api/holidays "{\"date\":\"$(D 41)\",\"name\":\"x\",\"campusId\":\"$PB\"}" | jq_ "d['success']")/$(adapi POST /api/holidays "{\"date\":\"$(D 41)\",\"name\":\"x\"}" | jq_ "d['success']")" "False/False/False/False"
+check "…can add a holiday for his own place" "$(adapi POST /api/holidays "{\"date\":\"$(D 42)\",\"name\":\"E2E main day\",\"campusId\":\"$CAMPUS\"}" | jq_ "d['success']")" "True"
+check "…cannot log a contact or an absence excuse for the other place's student" "$(adapi POST /api/contact-logs "{\"studentId\":\"$SB\",\"channel\":\"CALL\",\"reason\":\"OTHER\",\"summary\":\"e2e call\"}" | jq_ "d['success']")/$(adapi POST /api/absence-excuses "{\"studentId\":\"$SB\",\"classSectionId\":\"$GB\",\"sessionDate\":\"$(D 1)\",\"reason\":\"sick\"}" | jq_ "d['success']")" "False/False"
+check "…the groups money report has only his place" "$(adapi GET /api/reports/groups-financials-summary | jq_ "any(b['campusId']=='$PB' for b in d['data']['branches'])")/$(api GET /api/reports/groups-financials-summary | jq_ "any(b['campusId']=='$PB' for b in d['data']['branches'])")" "False/True"
+api PUT /api/users/$ADU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\",\"$PB\"],\"groupIds\":[]}" >/dev/null
+check "given the other place too: it is listed and its holiday shows" "$(adapi GET "/api/campuses?limit=100" | jq_ "any(c['id']=='$PB' for c in d['data'])")/$(adapi GET /api/holidays | jq_ "any(h['id']=='$HB' for h in d['data'])")" "True/True"
+rm -f "$ADJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

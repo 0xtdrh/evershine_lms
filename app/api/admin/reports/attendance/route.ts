@@ -12,10 +12,12 @@
  * EXCUSED day breaks the streak on purpose — it is not an unexcused absence.
  */
 
+import { groupWhere, narrow } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import type { Role } from '@prisma/client'
 
@@ -30,7 +32,8 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const requestedCampusId = searchParams.get('campusId')
-  const campusId = campusScope(role, session.user.campusId, requestedCampusId)
+  // M0: groups of the person's places (the place filter can only narrow)
+  const places = narrow(await requestPlaces(session.user), requestedCampusId)
 
   const activeYear = await getActiveAcademicYear()
   if (!activeYear) {
@@ -48,7 +51,7 @@ export async function GET(request: NextRequest) {
     where: {
       academicYearId: activeYear.id,
       status: 'ACTIVE',
-      ...(campusId && { classSection: { campusId } }),
+      ...(!places.all && { classSection: groupWhere(places) }),
     },
     select: {
       id: true,

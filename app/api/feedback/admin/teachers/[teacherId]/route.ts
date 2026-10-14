@@ -1,7 +1,9 @@
+import { onePlace } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { summarizeLikertAnswers } from '@/lib/feedback/engine'
 import type { Role } from '@prisma/client'
 
@@ -31,7 +33,7 @@ export async function GET(
   })
   if (!teacher) return errors.notFound('Teacher')
 
-  const campusId = campusScope(session.user.role as Role, session.user.campusId as string)
+  const campusId = (onePlace(await requestPlaces(session.user), null) ?? undefined)
 
   const feedbacks = await prisma.studentFeedbackSubmission.findMany({
     where: {

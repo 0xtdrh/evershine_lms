@@ -5,12 +5,14 @@
  * POST { studentId, codeOrPhone } — link a student to the parent who referred them (referrals:create)
  */
 
+import { onePlace } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { linkReferral, referralReport } from '@/lib/referrals/engine'
 
 export async function GET(request: NextRequest) {
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
   }
   const denied = requirePermission(role, 'referrals', 'read')
   if (denied) return denied
-  return successResponse(await referralReport(campusScope(role, session.user.campusId, null)))
+  return successResponse(await referralReport((onePlace(await requestPlaces(session.user), null) ?? undefined)))
 }
 
 export async function POST(request: NextRequest) {

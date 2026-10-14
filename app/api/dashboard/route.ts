@@ -10,6 +10,8 @@
  * caching the result in Upstash Redis with a 5-minute TTL.
  */
 
+import { campusWhere, studentWhere, teacherWhere } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
@@ -30,14 +32,15 @@ export async function GET() {
   }
 
   const role = session.user.role as Role
-  const campusId = session.user.campusId ?? undefined
+  // M0: the person's places
+  const places = await requestPlaces(session.user)
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
   // Scope to campus for non-super-admins.
-  const campusFilter: Prisma.StudentWhereInput = role !== 'SUPER_ADMIN' && campusId ? { campusId } : {}
-  const teacherCampusFilter: Prisma.TeacherWhereInput = role !== 'SUPER_ADMIN' && campusId ? { campusId } : {}
+  const campusFilter = studentWhere(places) as Prisma.StudentWhereInput
+  const teacherCampusFilter = teacherWhere(places) as Prisma.TeacherWhereInput
   const invoiceCampusFilter: Prisma.FeeInvoiceWhereInput = Object.keys(campusFilter).length
     ? { student: campusFilter }
     : {}
@@ -45,7 +48,7 @@ export async function GET() {
     ? { student: campusFilter }
     : {}
   const legacyAttendanceCampusFilter: Prisma.AttendanceWhereInput = Object.keys(campusFilter).length
-    ? { class: { campusId } }
+    ? { class: campusWhere(places) }
     : {}
   const modernAttendanceCampusFilter: Prisma.EnrollmentAttendanceRecordWhereInput = Object.keys(campusFilter).length
     ? { studentEnrollment: { student: campusFilter } }
@@ -139,7 +142,7 @@ export async function GET() {
       where: {
         startDate: { gte: today },
         isActive: true,
-        ...(campusId ? { class: { campusId } } : {}),
+        ...(!places.all ? { class: campusWhere(places) } : {}),
       },
       orderBy: { startDate: 'asc' },
       take: 5,

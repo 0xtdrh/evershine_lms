@@ -2,6 +2,8 @@
  * GET /api/admin/reports/performance — academic statistics, struggling accounts count, top-performing classes, and grade distributions.
  */
 
+import { campusWhere, studentWhere } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -16,8 +18,9 @@ export async function GET(request: NextRequest) {
   const role = session.user.role as Role
   if (!checkPermission(role, 'documents', 'read')) return errors.forbidden()
 
-  const campusId = session.user.campusId ?? undefined
-  const campusFilter = campusId ? { campusId } : {}
+  // M0: the person's places
+  const places = await requestPlaces(session.user)
+  const campusFilter = studentWhere(places)
 
   const [allResults, classList, students] = await Promise.all([
     // All results for active students
@@ -35,7 +38,7 @@ export async function GET(request: NextRequest) {
     }),
     // Classes list with exams and results counts
     prisma.class.findMany({
-      where: campusFilter,
+      where: campusWhere(places),
       select: {
         id: true,
         name: true,

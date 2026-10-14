@@ -6,10 +6,12 @@
  * ever see their own branch's row.
  */
 
+import { groupWhere } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { computeTeacherGroupPay } from '@/lib/groups/teacher-pay'
 import type { Role } from '@prisma/client'
@@ -21,11 +23,12 @@ export async function GET(_request: NextRequest) {
   const denied = requirePermission(role, 'fees', 'read')
   if (denied) return denied
 
-  const campusId = campusScope(role, session.user.campusId, null)
+  // M0: groups of the person's places
+  const places = await requestPlaces(session.user)
   const activeYear = await getActiveAcademicYear()
 
   const groups = await prisma.classSection.findMany({
-    where: { isActive: true, ...(campusId && { campusId }) },
+    where: { isActive: true, ...groupWhere(places) },
     select: {
       id: true,
       className: true,

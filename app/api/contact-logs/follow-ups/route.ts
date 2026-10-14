@@ -3,10 +3,11 @@
  * { overdue, today, upcoming, counts }. "Today" uses Egypt time.
  */
 
+import { requestPlaces, visibleStudentIds } from '@/lib/places/server'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { staffNames } from '@/lib/contacts/contact-log'
 
 /** Start of "today" in Egypt (UTC+2/+3) as a UTC instant. */
@@ -25,10 +26,11 @@ export async function GET() {
   const role = session.user.role as Role
   const denied = requirePermission(role, 'contact_logs', 'read')
   if (denied) return denied
-  const campusId = campusScope(role, session.user.campusId, null)
+  // M0: follow-ups of students of the person's places
+  const studentIds = await visibleStudentIds(await requestPlaces(session.user))
   const { start, end } = egyptDayBounds()
   const rows = await prisma.contactLog.findMany({
-    where: { followUpAt: { not: null, lt: new Date(end.getTime() + 14 * 86_400_000) }, followUpDoneAt: null, ...(campusId && { campusId }) },
+    where: { followUpAt: { not: null, lt: new Date(end.getTime() + 14 * 86_400_000) }, followUpDoneAt: null, ...(studentIds && { studentId: { in: studentIds } }) },
     orderBy: { followUpAt: 'asc' },
     take: 300,
   })

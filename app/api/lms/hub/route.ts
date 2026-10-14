@@ -3,6 +3,7 @@
  * this person runs; curriculum versions waiting for approval (approvers only).
  */
 
+import { requestPlaces, visibleGroupIds } from '@/lib/places/server'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
@@ -17,12 +18,12 @@ export async function GET() {
   const role = session.user.role as Role
   if (!checkPermission(role, 'curriculum', 'read')) return errors.forbidden()
   let groupIds: string[] | null = null // null = every group
-  if (role === 'BRANCH_MANAGER' && session.user.campusId) groupIds = (await prisma.classSection.findMany({ where: { campusId: session.user.campusId }, select: { id: true } })).map((g) => g.id)
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER') groupIds = await visibleGroupIds(await requestPlaces(session.user)) // M0
   else if (role === 'TEACHER') {
     const t = await getTeacherByUserId(session.user.id)
     const subs = t ? (await prisma.substituteAssignment.findMany({ where: { substituteTeacherId: t.id, status: 'CONFIRMED' }, select: { classSectionId: true } })).map((s) => s.classSectionId) : []
     groupIds = t ? [...new Set([...(await getTeacherClassSectionIds(t.id)), ...subs])] : []
-  } else if (role !== 'SUPER_ADMIN' && role !== 'ADMIN') groupIds = []
+  } else groupIds = []
   const inGroups = groupIds === null ? {} : { classSectionId: { in: groupIds } }
   const [toGrade, quizReview, inReview] = await Promise.all([
     prisma.assignmentSubmission.count({ where: { ...inGroups, status: 'SUBMITTED' } }),

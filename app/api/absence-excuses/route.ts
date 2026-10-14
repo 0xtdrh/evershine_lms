@@ -5,12 +5,13 @@
  *      (approved at once when the staff member may approve excuses)
  */
 
+import { canSeeGroup, requestPlaces, visibleGroupIds } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getTeacherByUserId, getTeacherClassSectionIds } from '@/lib/academic/teacher-scope'
 import { submitExcuse, decideExcuse, canDecideExcuses } from '@/lib/excuses/engine'
 
@@ -30,8 +31,8 @@ export async function GET(request: NextRequest) {
     if (!t) return errors.forbidden()
     groupIds = await getTeacherClassSectionIds(t.id)
   } else {
-    const scoped = campusScope(role, session.user.campusId, null)
-    if (scoped) groupIds = (await prisma.classSection.findMany({ where: { campusId: scoped }, select: { id: true } })).map((g) => g.id)
+    // M0: groups of the person's places
+    groupIds = await visibleGroupIds(await requestPlaces(session.user))
   }
   if (groupId) groupIds = groupIds ? groupIds.filter((id) => id === groupId) : [groupId]
 
@@ -88,11 +89,7 @@ export async function POST(request: NextRequest) {
   try { body = await request.json() } catch { return errors.badRequest('Invalid JSON') }
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
-  const scoped = campusScope(role, session.user.campusId, null)
-  if (scoped) {
-    const g = await prisma.classSection.findUnique({ where: { id: parsed.data.classSectionId }, select: { campusId: true } })
-    if (g?.campusId !== scoped) return errors.forbidden()
-  }
+  if (!(await canSeeGroup(session.user, parsed.data.classSectionId!))) return errors.forbidden()
   const r = await submitExcuse({ ...(parsed.data as Required<typeof parsed.data>), userId: session.user.id })
   if (!r.ok) return r.code === 404 ? errors.notFound('Enrollment') : errors.conflict(r.message)
   if (r.status === 'PENDING' && canDecideExcuses(role)) {

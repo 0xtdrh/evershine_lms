@@ -3,6 +3,7 @@
  * POST /api/campuses  — create campus (Super Admin only)
  */
 
+import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -18,11 +19,11 @@ export async function GET(_request: NextRequest) {
   if (!checkPermission(session.user.role as Role, 'campuses', 'read')) return errors.forbidden()
 
   // Scoping: If user is not SUPER_ADMIN, they can only view their own campus
-  const scopedCampusId =
-    session.user.role !== 'SUPER_ADMIN' ? (session.user.campusId ?? undefined) : undefined
+  // M0: the person's places (every place for Super Admin / "all places")
+  const places = await loadPlaces(session.user)
 
   const where = {
-    ...(scopedCampusId && { id: scopedCampusId }),
+    ...(!places.all && { id: { in: places.campusIds } }),
     isActive: true,
   }
 

@@ -4,10 +4,12 @@
  * Instructors: only the students of their own groups.
  */
 
+import { onePlace } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import type { Role } from '@prisma/client'
 import { errors, successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getTeacherByUserId, getTeacherClassSectionIds } from '@/lib/academic/teacher-scope'
 import { birthdayPeople, birthdayText, type PersonKind } from '@/lib/birthdays/birthdays'
 import { cairoToday } from '@/lib/dates/cairo'
@@ -25,7 +27,7 @@ export async function GET(request: NextRequest) {
   const kind = sp.get('kind') ?? 'ALL'
   let kinds: PersonKind[] = kind === 'ALL' ? ['STUDENT', 'GUARDIAN', 'STAFF'] : [kind as PersonKind]
   let groupIds: string[] | null = sp.get('groupId') ? [sp.get('groupId')!] : null
-  let campusId = campusScope(role, session.user.campusId, sp.get('campusId'))
+  let campusId = (onePlace(await requestPlaces(session.user), sp.get('campusId') ?? undefined))
   if (role === 'TEACHER') {
     const t = await getTeacherByUserId(session.user.id)
     if (!t) return errors.forbidden()

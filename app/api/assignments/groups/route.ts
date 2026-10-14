@@ -4,6 +4,8 @@
  * Secretaries and other roles: none (403).
  */
 
+import { groupWhere } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession } from '@/lib/academic/api-helpers'
@@ -14,8 +16,8 @@ export async function GET() {
   if (error || !session) return error!
   const role = session.user.role
   let where: Record<string, unknown> | null = null
-  if (role === 'SUPER_ADMIN' || role === 'ADMIN') where = {}
-  else if (role === 'BRANCH_MANAGER') where = session.user.campusId ? { campusId: session.user.campusId } : {}
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN') where = groupWhere(await requestPlaces(session.user)) // M0
+  else if (role === 'BRANCH_MANAGER') where = groupWhere(await requestPlaces(session.user)) // M0
   else if (role === 'TEACHER') {
     const t = await getTeacherByUserId(session.user.id)
     if (!t) return successResponse([])

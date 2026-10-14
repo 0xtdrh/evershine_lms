@@ -23,7 +23,7 @@ async function load(id: string, user: { id: string; role: string; campusId?: str
     if (c.complainantId !== user.id) return { err: errors.notFound('Complaint') }
     return { c, staff: false }
   }
-  const scope = staffScope(user)
+  const scope = await staffScope(user)
   if (!scope.canRead || !staffSees(scope, c)) return { err: errors.forbidden() }
   return { c, staff: true, scope }
 }

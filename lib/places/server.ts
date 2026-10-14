@@ -142,3 +142,10 @@ export async function visibleUserIds(user: Who): Promise<string[] | null> {
   const { userWhere } = await import('./rules')
   return (await prisma.user.findMany({ where: userWhere(p, user.id), select: { id: true } })).map((u) => u.id)
 }
+
+/** Ids of the groups this person may see (null = every group). For tables that keep a group id without a relation. */
+export async function visibleGroupIds(p: Places): Promise<string[] | null> {
+  if (p.all) return null
+  const { groupWhere } = await import('./rules')
+  return (await prisma.classSection.findMany({ where: groupWhere(p), select: { id: true } })).map((g) => g.id)
+}

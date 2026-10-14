@@ -7,6 +7,7 @@
 
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { requestPlaces, visibleGroupIds } from '@/lib/places/server'
 import { getTeacherByUserId, getTeacherClassSectionIds } from '@/lib/academic/teacher-scope'
 import { groupLessons } from '@/lib/lms/engine'
 import { groupAssignments } from '@/lib/assignments/engine'
@@ -27,11 +28,8 @@ export interface AnalyticsFilters { from: Date; to: Date; campusId?: string | nu
 /** Group ids this person may analyse (null = every group). */
 async function scopeGroupIds(user: { id: string; role: string; campusId?: string | null }): Promise<string[] | null> {
   const role = user.role as Role
-  if (role === 'SUPER_ADMIN' || role === 'ADMIN') return null
-  if (role === 'BRANCH_MANAGER') {
-    if (!user.campusId) return null
-    return (await prisma.classSection.findMany({ where: { campusId: user.campusId }, select: { id: true } })).map((g) => g.id)
-  }
+  // M0: managers see the groups of their places
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER') return visibleGroupIds(await requestPlaces(user))
   if (role === 'TEACHER') {
     const t = await getTeacherByUserId(user.id)
     if (!t) return []
@@ -59,7 +57,7 @@ export async function lmsAnalytics(user: { id: string; role: string; campusId?: 
   // filter choices come from every group in scope, before filtering
   const uniq = <T extends { id: string }>(xs: (T | null | undefined)[]) => [...new Map(xs.filter((x): x is T => !!x).map((x) => [x.id, x])).values()]
   const options = {
-    campuses: user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || !user.campusId ? uniq(all.map((g) => g.campus)) : [],
+    campuses: (() => { const c = uniq(all.map((g) => g.campus)); return c.length > 1 ? c : [] })(), // M0: a choice only with more than one place
     tracks: uniq(all.map((g) => g.level?.subject?.track)),
     courses: uniq(all.map((g) => (g.level?.subject ? { id: g.level.subject.id, name: g.level.subject.name, trackId: g.level.subject.track?.id ?? null } : null))),
     levels: uniq(all.map((g) => (g.level ? { id: g.level.id, name: g.level.name, subjectId: g.level.subject?.id ?? null } : null))),

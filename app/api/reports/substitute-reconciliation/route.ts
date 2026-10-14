@@ -8,10 +8,12 @@
  * Restricted to roles that can edit fees — it exposes other teachers' pay.
  */
 
+import { groupWhere } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { resolveGroupSessionRate } from '@/lib/groups/teacher-pay'
 import { getSessionNumberForDate } from '@/lib/teachers/schedule'
 import type { Role } from '@prisma/client'
@@ -23,12 +25,13 @@ export async function GET(_request: NextRequest) {
   const denied = requirePermission(role, 'fees', 'update')
   if (denied) return denied
 
-  const campusId = campusScope(role, session.user.campusId, null)
+  // M0: groups of the person's places
+  const places = await requestPlaces(session.user)
 
   const rows = await prisma.substituteAssignment.findMany({
     where: {
       status: 'CONFIRMED',
-      ...(campusId && { classSection: { campusId } }),
+      ...(!places.all && { classSection: groupWhere(places) }),
     },
     include: {
       classSection: { select: { id: true, className: true, sectionName: true, campusId: true } },

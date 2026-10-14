@@ -4,10 +4,12 @@
  * GET /api/ratings/overview?mine=1 — an instructor's own averages (anonymous).
  */
 
+import { onePlace } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import type { Role } from '@prisma/client'
 import { errors, successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getTeacherByUserId } from '@/lib/academic/teacher-scope'
 import { feedbackOverview, teacherAverages } from '@/lib/ratings/engine'
 
@@ -25,5 +27,5 @@ export async function GET(request: NextRequest) {
   const denied = requirePermission(role, 'ratings', 'read')
   if (denied) return denied
   const days = Math.min(365, Math.max(7, Number(sp.get('days') ?? 90) || 90))
-  return successResponse(await feedbackOverview({ campusId: campusScope(role, session.user.campusId, sp.get('campusId')), sinceDays: days }))
+  return successResponse(await feedbackOverview({ campusId: (onePlace(await requestPlaces(session.user), sp.get('campusId') ?? undefined)), sinceDays: days }))
 }

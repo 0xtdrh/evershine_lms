@@ -4,11 +4,13 @@
  * PUT { replyHours, autoCloseDays } — settings (complaints:export)
  */
 
+import { onePlace } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
 import { errors, successResponse } from '@/lib/api-response'
-import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { complaintsReport, getComplaintSettings, saveComplaintSettings } from '@/lib/complaints/engine'
 
 export async function GET(request: NextRequest) {
@@ -18,7 +20,7 @@ export async function GET(request: NextRequest) {
   const denied = requirePermission(role, 'complaints', 'export')
   if (denied) return denied
   const month = new URL(request.url).searchParams.get('month') ?? undefined
-  const [report, settings] = await Promise.all([complaintsReport({ campusId: campusScope(role, session.user.campusId, null), month }), getComplaintSettings()])
+  const [report, settings] = await Promise.all([complaintsReport({ campusId: (onePlace(await requestPlaces(session.user), null) ?? undefined), month }), getComplaintSettings()])
   return successResponse({ report, settings })
 }
 

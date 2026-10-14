@@ -26,6 +26,7 @@ const { mockAuth, mockCheckPermission, mockPrisma, mockTx } = vi.hoisted(() => {
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 vi.mock('@/lib/rbac', () => ({ checkPermission: mockCheckPermission }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
+vi.mock('@/lib/places/server', () => import('./helpers/places-mock'))
 
 import { GET, POST } from '../app/api/calendar/route'
 import { PUT } from '../app/api/calendar/[id]/route'

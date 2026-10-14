@@ -1,3 +1,4 @@
+import { teacherWhere } from '@/lib/places/rules'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
@@ -28,6 +29,7 @@ const { mockAuth, mockCheckPermission, mockPrisma, mockTx } = vi.hoisted(() => {
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 vi.mock('@/lib/rbac', () => ({ checkPermission: mockCheckPermission }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
+vi.mock('@/lib/places/server', () => import('./helpers/places-mock'))
 
 import { POST as postStudentDocument } from '../app/api/documents/route'
 import { GET as getTeacherDocuments } from '../app/api/documents/teacher/route'
@@ -63,7 +65,7 @@ describe('document generation audit routes', () => {
     }))
   })
 
-  it('scopes Admin teacher document lists to their campus', async () => {
+  it('scopes Admin teacher document lists to their places (M0)', async () => {
     mockAuth.mockResolvedValue({ user: { id: 'admin-1', role: 'ADMIN', campusId: 'clxcampus000000000001' } })
 
     const response = await getTeacherDocuments(new NextRequest('http://localhost/api/documents/teacher?type=TEACHER_PROFILE'))
@@ -72,7 +74,7 @@ describe('document generation audit routes', () => {
     expect(mockPrisma.teacherDocument.count).toHaveBeenCalledWith({
       where: {
         type: 'TEACHER_PROFILE',
-        teacher: { campusId: 'clxcampus000000000001' },
+        teacher: teacherWhere({ all: false, campusIds: ['clxcampus000000000001'], groupIds: [], primary: 'clxcampus000000000001' }),
       },
     })
   })
