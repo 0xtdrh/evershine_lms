@@ -12,7 +12,7 @@ import { notify } from '@/lib/notify'
 import { L } from '@/lib/i18n/client'
 import { MapPin } from 'lucide-react'
 
-interface Mine { all: boolean; places: { id: string; name: string; kind: string }[]; singleGroups: number; selected: string }
+interface Mine { all: boolean; places: { id: string; name: string; kind: string; partner: { id: string; name: string } | null }[]; singleGroups: number; selected: string }
 
 export function PlaceSwitcher() {
   const qc = useQueryClient()
@@ -20,7 +20,13 @@ export function PlaceSwitcher() {
   const { data } = useQuery({ queryKey: ['places-mine'], queryFn: () => fetchApi<Mine>('/api/places/mine'), staleTime: 60_000, retry: false })
   if (!data || (!data.all && data.places.length < 2)) return null
   const branches = data.places.filter((p) => p.kind !== 'PARTNER')
-  const partners = data.places.filter((p) => p.kind === 'PARTNER')
+  // M1: partner places grouped under their partner
+  const byPartner = new Map<string, { name: string; places: Mine['places'] }>()
+  for (const p of data.places.filter((x) => x.kind === 'PARTNER')) {
+    const k = p.partner?.id ?? '-'
+    if (!byPartner.has(k)) byPartner.set(k, { name: p.partner?.name ?? L('Partners', 'الشركاء'), places: [] })
+    byPartner.get(k)!.places.push(p)
+  }
   const choose = async (v: string) => {
     try {
       await fetchApi('/api/places/mine', { method: 'POST', body: JSON.stringify({ campusId: v }) })
@@ -34,7 +40,9 @@ export function PlaceSwitcher() {
       <select className="max-w-[11rem] bg-transparent text-xs outline-none" value={data.selected} onChange={(e) => choose(e.target.value)}>
         <option value="ALL">{L('All my places', 'كل أماكني')}</option>
         {branches.length > 0 && <optgroup label={L('Branches', 'الفروع')}>{branches.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>}
-        {partners.length > 0 && <optgroup label={L('Partners', 'الشركاء')}>{partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>}
+        {[...byPartner.entries()].map(([k, g]) => (
+          <optgroup key={k} label={`${L('Partner', 'شريك')}: ${g.name}`}>{g.places.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>
+        ))}
       </select>
     </label>
   )

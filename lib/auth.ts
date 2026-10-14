@@ -34,6 +34,7 @@ import { compare } from 'bcryptjs'
 import { loginSchema } from '@/lib/validation/user'
 import { authConfig } from '@/lib/auth.config'
 import { ensurePermissionOverrides } from '@/lib/rbac-overrides'
+import { beginPermissionContext, fillPermissionContext } from '@/lib/permission-context'
 import { isDefaultPortalPassword, resolveLoginEmail } from '@/lib/portal-login'
 import { accountKey, clearLoginFailures, clientIp, isLoginLocked, recordLoginFailure } from '@/lib/login-throttle'
 import { guardSession } from '@/lib/session-guard'
@@ -221,11 +222,19 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
  * The load is cached for 30s and never throws.
  */
 export const auth = (async (...args: unknown[]) => {
+  // M1: per-person / per-place permission settings for this request. Opened BEFORE the first await so the route that
+  // awaits auth() keeps the same context (lib/permission-context.ts).
+  const permissionStore = args.length === 0 ? beginPermissionContext() : null
   const result = await (nextAuthSession as (...a: unknown[]) => Promise<unknown>)(...args)
   await ensurePermissionOverrides()
   // auth() is also used as a middleware wrapper (auth(handler)); only plain
   // session lookups (no arguments) return a session object to re-check.
   // Deactivated accounts / revoked sessions -> null; role refreshed from the DB.
-  if (args.length === 0) return guardSession(result as Parameters<typeof guardSession>[0])
+  if (args.length === 0) {
+    const session = await guardSession(result as Parameters<typeof guardSession>[0])
+    const u = (session as { user?: { id?: string; role?: string } } | null)?.user
+    if (permissionStore && u?.id && u.role) await fillPermissionContext(permissionStore, { id: u.id, role: u.role })
+    return session
+  }
   return result
 }) as typeof nextAuthSession

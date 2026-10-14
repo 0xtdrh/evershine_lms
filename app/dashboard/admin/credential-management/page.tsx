@@ -14,6 +14,7 @@
  */
 
 import { AccountPlacesCard } from '@/components/places/AccountPlacesCard'
+import { UserPermissionsCard } from '@/components/permissions/UserPermissionsCard'
 import { useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -254,7 +255,10 @@ function ResetCredentialsTab() {
         </CardContent>
       </Card>
       {isSuperAdmin && selectedUser && !['SUPER_ADMIN', 'STUDENT', 'PARENT', 'GUARDIAN'].includes(selectedUser.role) && (
-        <div className="lg:col-span-2"><AccountPlacesCard userId={selectedUser.id} name={selectedUser.name} /></div>
+        <>
+          <div className="lg:col-span-2"><AccountPlacesCard userId={selectedUser.id} name={selectedUser.name} /></div>
+          <div className="lg:col-span-2"><UserPermissionsCard userId={selectedUser.id} name={selectedUser.name} role={selectedUser.role} /></div>
+        </>
       )}
     </div>
   )

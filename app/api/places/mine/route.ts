@@ -13,7 +13,7 @@ export async function GET() {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const p = await loadPlaces({ id: session.user.id, role: session.user.role })
-  const campuses = await prisma.campus.findMany({ where: { isActive: true, ...(p.all ? {} : { id: { in: p.campusIds } }) }, select: { id: true, name: true, kind: true }, orderBy: { name: 'asc' } })
+  const campuses = await prisma.campus.findMany({ where: { isActive: true, ...(p.all ? {} : { id: { in: p.campusIds } }) }, select: { id: true, name: true, kind: true, partner: { select: { id: true, name: true } } }, orderBy: { name: 'asc' } })
   const chosen = (await cookies()).get(PLACE_COOKIE)?.value ?? 'ALL'
   return successResponse({ all: p.all, places: campuses, singleGroups: p.groupIds.length, selected: chosen !== 'ALL' && allowsCampus(p, chosen) ? chosen : 'ALL' })
 }

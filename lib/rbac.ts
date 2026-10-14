@@ -95,6 +95,8 @@ export type AcademicResource =
   | 'session_reports'
   // P1: passport (read; update = give stamps, print, event scan; approve = stamps library + settings)
   | 'passport'
+  // M1: partners (schools, nurseries, …), their places, contracts and per-place / per-person permissions
+  | 'partners'
 
 type Resource = AcademicResource
 
@@ -211,6 +213,7 @@ const PERMISSIONS: PermissionMap = {
     curriculum: ['create', 'read', 'update', 'delete', 'approve'],
     session_reports: ['read', 'update', 'approve'],
     passport: ['read', 'update', 'approve'],
+    partners: ['create', 'read', 'update', 'delete'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -275,6 +278,7 @@ const PERMISSIONS: PermissionMap = {
     curriculum: ['create', 'read', 'update', 'delete', 'approve'],
     session_reports: ['read', 'update', 'approve'],
     passport: ['read', 'update', 'approve'],
+    partners: ['create', 'read', 'update', 'delete'],
   },
   TEACHER: {
     students: ['read'],
@@ -340,6 +344,7 @@ const PERMISSIONS: PermissionMap = {
     curriculum: ['read'],
     session_reports: ['read', 'update'],
     passport: ['read', 'update'],
+    partners: [],
   },
   STUDENT: {
     students: [],
@@ -404,6 +409,7 @@ const PERMISSIONS: PermissionMap = {
     curriculum: [],
     session_reports: [],
     passport: [],
+    partners: [],
   },
   PARENT: {
     students: [],
@@ -468,6 +474,7 @@ const PERMISSIONS: PermissionMap = {
     curriculum: [],
     session_reports: [],
     passport: [],
+    partners: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -534,6 +541,7 @@ const PERMISSIONS: PermissionMap = {
     curriculum: [],
     session_reports: [],
     passport: [],
+    partners: [],
   },
   GUARDIAN: {
     students: [],
@@ -598,6 +606,7 @@ const PERMISSIONS: PermissionMap = {
     curriculum: [],
     session_reports: [],
     passport: [],
+    partners: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -666,6 +675,7 @@ const PERMISSIONS: PermissionMap = {
     curriculum: [],
     session_reports: ['read'],
     passport: ['read', 'update'],
+    partners: [],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -735,6 +745,7 @@ const PERMISSIONS: PermissionMap = {
     curriculum: ['read'],
     session_reports: ['read', 'update'],
     passport: ['read', 'update'],
+    partners: [],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -802,6 +813,7 @@ const PERMISSIONS: PermissionMap = {
     curriculum: [],
     session_reports: [],
     passport: [],
+    partners: [],
   },
 }
 
@@ -815,6 +827,10 @@ const PERMISSIONS: PermissionMap = {
 export function checkPermission(role: Role | string | null | undefined, resource: Resource, action: Action): boolean {
   const normalizedRole = normalizeRole(role)
   if (!normalizedRole) return false
+
+  // M1: one person's own setting, then their place's setting (only for the signed-in person's own role)
+  const personal = getContextOverride(normalizedRole, resource, action)
+  if (personal !== undefined) return personal
 
   const override = getOverride(normalizedRole, resource, action)
   if (override !== undefined) return override
@@ -863,6 +879,27 @@ export function setPermissionOverrides(rows: Array<{ role: Role; resource: strin
     next.set(overrideKey(row.role, row.resource, row.action), row.isEnabled)
   }
   permissionOverrides = next
+}
+
+// ── M1: per-person and per-place overrides (UserPermissionOverride / LocationPermissionOverride) ─────────
+// The server registers a provider (lib/permission-context.ts) that returns the signed-in person's settings for the
+// current request; checkPermission stays synchronous. "The most specific wins": person > place > role > matrix.
+// Applied only when the role being checked is the signed-in person's own role (a check about another role, e.g. "who
+// should get this notification", keeps the role rules). Super Admin is never affected.
+
+export interface PermissionContext { role: string; user: Map<string, boolean>; place: Map<string, boolean> }
+let contextProvider: (() => PermissionContext | undefined) | null = null
+
+export function setPermissionContextProvider(fn: () => PermissionContext | undefined) {
+  contextProvider = fn
+}
+
+function getContextOverride(role: Role, resource: string, action: Action): boolean | undefined {
+  if (role === 'SUPER_ADMIN' || !contextProvider) return undefined
+  const ctx = contextProvider()
+  if (!ctx || ctx.role !== role) return undefined
+  const key = `${resource}:${action}`
+  return ctx.user.get(key) ?? ctx.place.get(key)
 }
 
 /**

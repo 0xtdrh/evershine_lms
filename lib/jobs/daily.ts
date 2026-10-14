@@ -66,5 +66,6 @@ export async function runDailyJobs(opts: { forceSummary?: boolean } = {}) {
   await step('profileRecaps', async () => (await import('@/lib/profile/engine')).anniversaryRecaps())
   await step('passport', async () => (await import('@/lib/passport/engine')).evaluateRecentStudents())
   await step('sessionReports', async () => (await import('@/lib/session-reports/engine')).sweepSessionReports(true))
+  await step('partnerContracts', async () => (await import('@/lib/partners/engine')).partnerContractAlerts())
   return out
 }

@@ -20,76 +20,7 @@ import { ACADEMIC_RESOURCES } from '@/lib/admin/permission-manager'
 import { DEFAULT_PERMISSION_MATRIX } from '@/lib/rbac'
 import type { Role } from '@prisma/client'
 
-// ── Resource metadata ─────────────────────────────────────────────────────────
-// WHY: Non-technical admins need plain-English descriptions of what each
-// resource controls. Tooltips reduce misconfiguration risk.
-const RESOURCE_META: Record<string, { label: string; description: string; category: string }> = {
-  waiting_list:          { label: 'Waiting List',        description: 'Students waiting for a group; record wanted course/level', category: 'People'     },
-  finance_settings:      { label: 'Finance Settings',    description: 'Payment accounts shown to parents, payment methods, invoice due days, discount rules', category: 'Finance' },
-  discount_types:        { label: 'Discount Types',      description: 'Create and edit the kinds of discounts (sibling, promo, manual...)', category: 'Finance' },
-  discounts:             { label: 'Discounts',           description: 'Give a discount to a student or a whole group', category: 'Finance' },
-  discount_approvals:    { label: 'Discount Approvals',  description: 'Approve or reject discount requests', category: 'Finance' },
-  refunds:               { label: 'Refunds',             description: 'Request (create) or approve refunds; student wallets', category: 'Finance' },
-  group_transfers:       { label: 'Group transfers',     description: 'Move a student to another group (money, discounts, history move with them)', category: 'Academic' },
-  students:              { label: 'Students',            description: 'Admission records, profiles, and enrollment status',     category: 'People'     },
-  contact_logs:          { label: 'Parent contact log',  description: 'Calls, WhatsApp, meetings with parents and follow-ups', category: 'People' },
-  group_capacity:        { label: 'Group capacity',      description: 'Approve = add a student to a full group anyway',          category: 'Academic' },
-  renewals:              { label: 'Renewals',            description: 'Who continues next month (parent answers, reminders)',   category: 'Academic' },
-  holidays:              { label: 'Holidays',            description: 'Branch / company days off (sessions are postponed)',      category: 'Structure' },
-  wallet:                { label: 'Wallet',              description: 'Top up (create), approve uploaded top-ups and withdrawals (approve)', category: 'Finance' },
-  absence_excuses:       { label: 'Absence excuses',     description: 'Record (create), approve excuses sent by parents (approve), excuse settings (update)', category: 'Operations' },
-  ratings:               { label: 'Ratings',             description: 'Session and monthly ratings by students and parents, with names (instructors only see their own averages)', category: 'Operations' },
-  birthdays:             { label: 'Birthdays',           description: 'Birthdays page: students, parents and staff (instructors: their own students)', category: 'Operations' },
-  notification_settings: { label: 'Notification settings', description: 'Switch each notification type on or off for everyone', category: 'Operations' },
-  complaints:            { label: 'Complaints',          description: 'Handle complaints and suggestions (update), record a phone complaint (create), monthly report (export)', category: 'Operations' },
-  referrals:             { label: 'Referrals',           description: 'Who referred whom, rewards; link a referral (create); referral settings (update)', category: 'Operations' },
-  platform_settings:     { label: 'Platform settings',   description: 'Switch whole modules on/off (LMS, gamification, passport, …) and the default language', category: 'Operations' },
-  agreements:            { label: 'Agreements',          description: 'Write the agreements parents / students / staff must accept, see who accepted', category: 'Operations' },
-  curriculum:            { label: 'Curriculum',          description: 'Write lessons (create / update), publish a curriculum version (approve), delete', category: 'Academic' },
-  session_reports:       { label: 'Session reports',     description: 'Report after each session (read), add stars / phrases and send (update), settings (approve)', category: 'Academic' },
-  passport:              { label: 'Passport',            description: 'Student passport (read), give stamps / print / event scan (update), stamps library + settings (approve)', category: 'Academic' },
-  teachers:              { label: 'Teachers',            description: 'Staff profiles, designations, and class assignments',     category: 'People'     },
-  users:                 { label: 'User Accounts',       description: 'View the list of system users',                          category: 'People'     },
-  account_management:    { label: 'Account Management',  description: 'Reset passwords/emails, change role or suspend accounts', category: 'People'     },
-  staff_applications:    { label: 'Staff Applications',  description: 'Job applications. "Approve" = accept/reject an applicant', category: 'People'     },
-  student_transfers:     { label: 'Transfers',           description: 'Move students, teachers or classes between branches',  category: 'People'     },
-  campuses:              { label: 'Campuses',            description: 'Branch locations, principal info, and activation',       category: 'Structure'  },
-  batches:               { label: 'Batches',             description: 'Academic groupings (e.g. Matriculation 2026)',           category: 'Structure'  },
-  classes:               { label: 'Classes',             description: 'Class levels, sections, and grade assignments',         category: 'Structure'  },
-  houses:                { label: 'Houses',              description: 'Performance house assignments for students and teachers', category: 'Structure'  },
-  academic_years:        { label: 'Academic Years',      description: 'Year creation, locking, and activation lifecycle',      category: 'Academic'   },
-  class_sections:        { label: 'Groups',              description: 'Groups, their students, cycles, schedule and payments', category: 'Academic'   },
-  shifts:                { label: 'Shifts',              description: 'Morning / afternoon session schedules',                 category: 'Academic'   },
-  subject_offerings:     { label: 'Subject Offerings',   description: 'Subjects assigned to class sections per year',          category: 'Academic'   },
-  subject_enrollments:   { label: 'Subject Enrollments', description: 'Individual student subject selections (electives)',     category: 'Academic'   },
-  promotions:            { label: 'Promotions',          description: 'End-of-year student grade promotion workflow',          category: 'Academic'   },
-  timetable_engine:      { label: 'Timetable Engine',    description: 'Schedule builder, slot creation, and publishing',      category: 'Academic'   },
-  grading_engine:        { label: 'Grading Engine',      description: 'Marks entry, grading schemes, and result calculation', category: 'Academic'   },
-  exams:                 { label: 'Exams',               description: 'Exam schedules, types, and date management',           category: 'Academic'   },
-  results:               { label: 'Results',             description: 'Published student results and report cards',           category: 'Academic'   },
-  attendance:            { label: 'Attendance',          description: 'Daily student and teacher attendance records',         category: 'Operations' },
-  attendance_import:     { label: 'Attendance Import',   description: 'Excel/biometric import. View = download student template', category: 'Operations' },
-  leaves:                { label: 'Leave Requests',      description: 'Create = apply for leave. Approve = review all requests', category: 'Operations' },
-  policies:              { label: 'Policies',            description: 'Penalty policies and system rules',                    category: 'Operations' },
-  fees:                  { label: 'Fee Records',         description: 'Challan generation, payment tracking, and dues',       category: 'Finance'    },
-  fee_penalties:         { label: 'Fee Penalties',       description: 'Late payment penalty rules and application',           category: 'Finance'    },
-  expenses:              { label: 'Expenses',            description: 'Expense ledger: record, edit, delete, export',         category: 'Finance'    },
-  fee_collection:        { label: 'Fee Collection',      description: 'Accountant desk: invoices, payments, proofs, exports', category: 'Finance'    },
-  salaries:              { label: 'Salaries',            description: 'Salary slips. "Approve" = issue, authorize and see all salaries', category: 'Finance' },
-  profit_loss:           { label: 'Profit & Loss',       description: 'P&L snapshots: generate, regenerate, delete',          category: 'Finance'    },
-  financial_reports:     { label: 'Financial Reports',   description: 'Expense ledger report and exports',                    category: 'Finance'    },
-  teacher_penalties:     { label: 'Teacher Penalties',   description: 'Deduction policies and enforcement for staff',        category: 'Finance'    },
-  documents:             { label: 'Documents',           description: 'Official student ID cards and profile printouts',     category: 'Operations' },
-  announcements:         { label: 'Announcements',       description: 'Broadcast notices to campus stakeholders',            category: 'Operations' },
-  calendar:              { label: 'Calendar',            description: 'Academic events, holidays, and schedule items',       category: 'Operations' },
-  teacher_absences:      { label: 'Teacher Absences',    description: 'Absence requests, approvals and substitutes',         category: 'Operations' },
-  admissions:            { label: 'Leads / Admissions',  description: 'Inbound leads, admission requests, and approvals',    category: 'Operations' },
-  audit_logs:            { label: 'Audit Logs',          description: 'System-level change history (read-only by design)',   category: 'System'     },
-  dashboard:             { label: 'Dashboard',           description: 'Summary analytics and KPI overview',                  category: 'System'     },
-}
-
-const RESOURCE_LABEL = (resource: string) =>
-  RESOURCE_META[resource]?.label ?? resource.replace(/_/g, ' ')
+import { RESOURCE_META, RESOURCE_LABEL } from '@/lib/admin/permission-labels'
 
 const CATEGORY_COLORS: Record<string, string> = {
   People:     'bg-blue-100 text-blue-800',

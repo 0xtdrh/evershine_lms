@@ -1578,6 +1578,38 @@ check "…the groups money report has only his place" "$(adapi GET /api/reports/
 api PUT /api/users/$ADU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\",\"$PB\"],\"groupIds\":[]}" >/dev/null
 check "given the other place too: it is listed and its holiday shows" "$(adapi GET "/api/campuses?limit=100" | jq_ "any(c['id']=='$PB' for c in d['data'])")/$(adapi GET /api/holidays | jq_ "any(h['id']=='$HB' for h in d['data'])")" "True/True"
 rm -f "$ADJ"
+echo "== 45. M1-a partners: partners page, places, contracts + alert, per-person / per-place permissions"
+api PUT /api/users/$ADU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\"],\"groupIds\":[]}" >/dev/null
+ADJ=$(mktemp); login_jar m0admin@e2e.local E2eAdm12345 "$ADJ" 10.0.1.99
+PN=$(api POST /api/partners '{"name":"E2E Nour School","kind":"SCHOOL","contactName":"Mrs Hala","contactPhone":"01099990001","contactEmail":"nour@e2e.local","address":"Kawther"}' | jq_ "d['data']['id']")
+check "a partner is added; the same name again is refused" "$([ -n "$PN" ] && echo yes)/$(api POST /api/partners '{"name":"E2E Nour School","kind":"SCHOOL"}' | jq_ "d['success']")" "yes/False"
+check "who sees the partners page: secretary no (role), admin yes (role default)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/partners)/$(curl -s -o /dev/null -w '%{http_code}' -b "$ADJ" $B/api/partners)" "403/200"
+PNP=$(api POST /api/partners/$PN/places '{"name":"E2E Nour - Kawther"}' | jq_ "d['data']['id']")
+check "a place of the partner is a PARTNER campus linked to it, with the partner contact filled in" "$(M "SELECT CONCAT(kind,'/',partnerId='$PN','/',phone) FROM Campus WHERE id='$PNP'")" "PARTNER/1/01099990001"
+check "a place name already used by a branch is refused" "$(api POST /api/partners/$PN/places "{\"name\":\"$(M "SELECT name FROM Campus WHERE id='$CAMPUS'")\"}" | jq_ "d['success']")" "False"
+check "the header filter lists the place under its partner" "$(api GET /api/places/mine | jq_ "[p['partner']['name'] for p in d['data']['places'] if p['id']=='$PNP']")" "['E2E Nour School']"
+check "a contract that ends before it starts is refused" "$(api POST /api/partners/$PN/contracts "{\"title\":\"Bad\",\"startDate\":\"$(D 10)\",\"endDate\":\"$(D 1)\"}" | jq_ "d['success']")" "False"
+PNC=$(api POST /api/partners/$PN/contracts "{\"title\":\"Year 2026/27\",\"startDate\":\"$(D -30)\",\"endDate\":\"$(D 10)\",\"alertDaysBefore\":30}" | jq_ "d['data']['id']")
+check "the contract shows as ending soon (10 days)" "$(api GET /api/partners/$PN | jq_ "[(c['state'], c['daysLeft']) for c in d['data']['contracts']]")" "[('ENDING_SOON', 10)]"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "the daily job alerts the partner people once (Super Admin + Admin by role)" "$(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE n.type='PARTNER_CONTRACT_ENDING' AND n.relatedId='$PN' AND u.email='m0admin@e2e.local'")" "1"
+check "a file outside the partner folder is refused" "$(api POST /api/partner-contracts/$PNC/files '{"publicId":"somewhere/else/x","resourceType":"image","format":"jpg","bytes":100}' | jq_ "d['success']")" "False"
+check "a partner with places cannot be deleted (stop it instead)" "$(api DELETE /api/partners/$PN | jq_ "d['success']")" "False"
+api PUT /api/permissions/user/$SECU '{"items":[{"resource":"partners","action":"read","allowed":true}]}' >/dev/null
+check "a personal rule gives the secretary the partners page (and it shows in her permissions)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/partners)/$(secapi GET /api/me/permissions | jq_ "'read' in d['data']['permissions'].get('partners', [])")" "200/True"
+check "only Super Admin may set permissions" "$(adapi PUT /api/permissions/user/$SECU '{"items":[]}' | jq_ "d['success']")/$(adapi PUT /api/permissions/place/$CAMPUS '{"role":"ALL","items":[]}' | jq_ "d['success']")" "False/False"
+api PUT /api/permissions/place/$CAMPUS '{"role":"ADMIN","items":[{"resource":"partners","action":"read","allowed":false}]}' >/dev/null
+check "a place rule takes the partners page from the admins of that place" "$(curl -s -o /dev/null -w '%{http_code}' -b "$ADJ" $B/api/partners)" "403"
+api PUT /api/permissions/user/$ADU '{"items":[{"resource":"partners","action":"read","allowed":true}]}' >/dev/null
+check "the person's own rule wins over the place rule" "$(curl -s -o /dev/null -w '%{http_code}' -b "$ADJ" $B/api/partners)" "200"
+api PUT /api/permissions/user/$ADU '{"items":[]}' >/dev/null
+api PUT /api/permissions/place/$CAMPUS '{"role":"ADMIN","items":[]}' >/dev/null
+api PUT /api/permissions/user/$SECU '{"items":[]}' >/dev/null
+check "rules removed: back to the role settings" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/partners)/$(curl -s -o /dev/null -w '%{http_code}' -b "$ADJ" $B/api/partners)" "403/200"
+api PATCH /api/partners/$PN '{"name":"E2E Nour School","kind":"SCHOOL","isActive":false}' >/dev/null
+check "stopping the partner stops its places" "$(M "SELECT isActive FROM Campus WHERE id='$PNP'")" "0"
+rm -f "$ADJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

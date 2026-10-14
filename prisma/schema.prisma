@@ -261,47 +261,48 @@ enum StaffApplicantType {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model User {
-  id                     String    @id @default(cuid())
-  email                  String    @unique
+  id                     String                   @id @default(cuid())
+  email                  String                   @unique
   // WHY passwordHash stored separately: never return this field in API responses
   passwordHash           String
-  role                   Role      @default(STUDENT)
-  isActive               Boolean   @default(true)
+  role                   Role                     @default(STUDENT)
+  isActive               Boolean                  @default(true)
   // Set when a password is issued by someone else (staff reset / temporary
   // password). The user must choose a new password before using the app.
-  mustChangePassword     Boolean   @default(false)
+  mustChangePassword     Boolean                  @default(false)
   // Sessions that signed in before this moment are rejected (set when the
   // password changes or is reset). See lib/session-guard.ts.
   sessionsRevokedAt      DateTime?
   /// M0: this staff member sees every place (branches + partners)
-  allLocations           Boolean   @default(false)
+  allLocations           Boolean                  @default(false)
   placeAccess            UserPlaceAccess[]
+  permissionOverrides    UserPermissionOverride[]
   /// Phase C: birthday for parents and non-teacher staff (students and teachers keep their own dateOfBirth).
-  dateOfBirth            DateTime? @db.Date
+  dateOfBirth            DateTime?                @db.Date
   lastLogin              DateTime?
-  emailVerified          Boolean   @default(false)
+  emailVerified          Boolean                  @default(false)
   emailVerifiedAt        DateTime?
   displayName            String?
   profilePictureUrl      String?
   profilePicturePublicId String?
-  profileStatus          String    @default("ACTIVE")
+  profileStatus          String                   @default("ACTIVE")
   profileUpdatedAt       DateTime?
-  profileSource          String    @default("SYSTEM")
+  profileSource          String                   @default("SYSTEM")
   // Short-lived reset token; always expires after 1 hour
-  resetToken             String?   @unique
+  resetToken             String?                  @unique
   resetTokenExpiry       DateTime?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
 
   // Profile relationships — at most one of these is populated per user
-  student       Student?
-  teacher       Teacher?
-  admin         Admin?
-  parent        Parent?
-  accountant    Accountant?
-  guardian      Guardian?
-  branchManager BranchManager?
-  secretary     Secretary?
+  student        Student?
+  teacher        Teacher?
+  admin          Admin?
+  parent         Parent?
+  accountant     Accountant?
+  guardian       Guardian?
+  branchManager  BranchManager?
+  secretary      Secretary?
   marketingStaff MarketingStaff?
 
   // Audit trail — every mutation this user performs
@@ -380,6 +381,9 @@ model Campus {
   isActive      Boolean  @default(true)
   /// M0 (2026-10-13): MAIN = a TechNova branch; PARTNER = a partner's place (partner link comes in M1)
   kind          String   @default("MAIN") @db.VarChar(8)
+  /// M1 (2026-10-14): the partner that owns this place (kind PARTNER); null for TechNova branches
+  partnerId     String?
+  partner       Partner? @relation(fields: [partnerId], references: [id])
   // Branch profile (phase A, 2026-10-03) — all optional
   mapUrl        String?
   whatsapp      String?
@@ -408,8 +412,10 @@ model Campus {
   marketingStaff         MarketingStaff[]
 
   waitingListEntries WaitingListEntry[]
+
   @@index([code])
   @@index([isActive])
+  @@index([partnerId])
 }
 
 model Batch {
@@ -500,15 +506,15 @@ model Student {
   email            String?
 
   // School & prior background
-  schoolName                  String? // Current regular school the student attends
-  regularSchoolGrade          String? // Grade/year in their regular school, e.g. "الصف الرابع الابتدائي"
-  priorProgrammingExperience  String? // Free-text note on any programming/robotics experience before TechNova
+  schoolName                 String? // Current regular school the student attends
+  regularSchoolGrade         String? // Grade/year in their regular school, e.g. "الصف الرابع الابتدائي"
+  priorProgrammingExperience String? // Free-text note on any programming/robotics experience before TechNova
 
   // Optional medical note — never required
   medicalNotes String? // Optional: allergies, conditions staff should be aware of
 
   // Marketing / Referral
-  sourceOfInfo String? // Facebook, Instagram, School, Referral, etc.
+  sourceOfInfo    String? // Facebook, Instagram, School, Referral, etc.
   nearestBranchId String? // Campus nearest to the student's home, may differ from enrolled campus
 
   // Sibling linkage at same academy
@@ -517,23 +523,23 @@ model Student {
   siblingClass        String? // Class/Section of sibling
 
   // Academic placement
-  campusId      String
-  batchId       String
-  classId       String?
-  section       String?
-  rollNumber    String?
-  houseId       String?
+  campusId               String
+  batchId                String
+  classId                String?
+  section                String?
+  rollNumber             String?
+  houseId                String?
   /// Phase B: the parent chooses if the child sees the wallet in the student portal
-  walletVisibleToStudent Boolean @default(true)
+  walletVisibleToStudent Boolean           @default(true)
   /// Foundations (2026-10-09): staff-only exception — do not use this child in marketing (agreed offline with the parent)
-  noMarketing Boolean @default(false)
-  admissionDate DateTime          @default(now())
-  firstSessionDate DateTime? // Set automatically the first time attendance is recorded for this student
-  academicYear  String // "2024-2025"
+  noMarketing            Boolean           @default(false)
+  admissionDate          DateTime          @default(now())
+  firstSessionDate       DateTime? // Set automatically the first time attendance is recorded for this student
+  academicYear           String // "2024-2025"
   // WHY shift: Student is enrolled in Morning, Evening, or Night coaching session
-  shift         SessionShift      @default(MORNING)
-  deliveryMode  ClassDeliveryMode @default(PHYSICAL)
-  rulesAccepted Boolean           @default(false)
+  shift                  SessionShift      @default(MORNING)
+  deliveryMode           ClassDeliveryMode @default(PHYSICAL)
+  rulesAccepted          Boolean           @default(false)
 
   // Fee summary — denormalized for fast dashboard queries
   // TRADEOFF: Slight denormalization here accepted because fee dashboard
@@ -544,10 +550,10 @@ model Student {
   dueAmount      Decimal   @default(0) @db.Decimal(10, 2)
 
   // Documents
-  profilePicture    String? // Student photo — Cloudinary URL
-  idCardQRCode      String? // QR code data string
-  idCardIssueDate   DateTime?
-  idCardExpiryDate  DateTime?
+  profilePicture   String? // Student photo — Cloudinary URL
+  idCardQRCode     String? // QR code data string
+  idCardIssueDate  DateTime?
+  idCardExpiryDate DateTime?
 
   // Status
   enrollmentStatus EnrollmentStatus @default(ACTIVE)
@@ -586,6 +592,7 @@ model Student {
   examDateSheetOverrides  ExamDateSheetOverride[]
 
   waitingListEntries WaitingListEntry[]
+
   @@index([userId])
   @@index([campusId])
   @@index([batchId])
@@ -603,12 +610,12 @@ model AdmissionRequest {
   id String @id @default(cuid())
 
   // ── Section 1: Student Identity ──────────────────────────────────────────
-  firstName  String
-  lastName   String
-  fullNameAr String? // Full four-part Arabic legal name
-  fullNameEn String? // Full four-part English legal name (for certificates)
-  fatherName String
-  motherName String? // Mother's full name
+  firstName   String
+  lastName    String
+  fullNameAr  String? // Full four-part Arabic legal name
+  fullNameEn  String? // Full four-part English legal name (for certificates)
+  fatherName  String
+  motherName  String? // Mother's full name
   dateOfBirth DateTime
   gender      Gender
   bloodGroup  String?
@@ -702,18 +709,18 @@ model Teacher {
   city             String
   emergencyContact String
 
-  campusId       String
-  batchId        String?
-  designation    String // "Teacher", "Senior Teacher", "Head Teacher"
-  monthlySalary  Decimal? @db.Decimal(10, 2)
+  campusId                       String
+  batchId                        String?
+  designation                    String // "Teacher", "Senior Teacher", "Head Teacher"
+  monthlySalary                  Decimal? @db.Decimal(10, 2)
   // Default group-pay rule, applied to any group this teacher is assigned to
   // that doesn't have its own override on the SubjectOffering. Same
   // combinable three components as the group-level override.
   defaultFixedAmount             Decimal? @db.Decimal(10, 2)
   defaultPercentOfStudentPayment Decimal? @db.Decimal(5, 2)
   defaultPerSessionAmount        Decimal? @db.Decimal(10, 2)
-  profilePicture String? // Cloudinary URL
-  isActive       Boolean  @default(true)
+  profilePicture                 String? // Cloudinary URL
+  isActive                       Boolean  @default(true)
 
   // Performance/House assignment for teachers (optional)
   houseId String?
@@ -733,8 +740,8 @@ model Teacher {
   qualifiedSubjects      TeacherQualifiedSubject[]
   credentials            TeacherCredential[]
   absences               TeacherAbsence[]
-  substitutingFor        SubstituteAssignment[] @relation("OriginalTeacherAssignments")
-  substituteAssignments  SubstituteAssignment[] @relation("SubstituteTeacherAssignments")
+  substitutingFor        SubstituteAssignment[]     @relation("OriginalTeacherAssignments")
+  substituteAssignments  SubstituteAssignment[]     @relation("SubstituteTeacherAssignments")
   timetable              Timetable[]
   tasks                  ClassTask[]
   changeRequests         TimetableChangeRequest[]
@@ -1059,22 +1066,22 @@ model FeeInvoice {
   issuedBy      String // Admin user ID
 
   // Payment Proof & Multi-Bank Fields
-  bankAccounts     String? // Semicolon-separated account list e.g. "Allied Bank: 1234; HBL: 5678"
-  proofUrl         String? // Cloudinary receipt image URL
-  proofRemarks     String? // Student/guardian deposit comments
-  proofUploadedAt  DateTime?
-  proofStatus      String? // "PENDING", "APPROVED", "REJECTED"
+  bankAccounts        String? // Semicolon-separated account list e.g. "Allied Bank: 1234; HBL: 5678"
+  proofUrl            String? // Cloudinary receipt image URL
+  proofRemarks        String? // Student/guardian deposit comments
+  proofUploadedAt     DateTime?
+  proofStatus         String? // "PENDING", "APPROVED", "REJECTED"
   // What the guardian said they paid when uploading proof — only used when
   // the linked group allows installments; the accountant can still adjust
   // this when approving.
-  proofDeclaredAmount Decimal? @db.Decimal(10, 2)
-  penaltyAmount    Decimal   @default(0) @db.Decimal(10, 2)
+  proofDeclaredAmount Decimal?  @db.Decimal(10, 2)
+  penaltyAmount       Decimal   @default(0) @db.Decimal(10, 2)
   /// Money given back on this invoice (approved refunds). Net paid = paidAmount - refundedAmount.
-  refundedAmount   Decimal   @default(0) @db.Decimal(10, 2)
-  isPenaltyApplied Boolean   @default(false)
+  refundedAmount      Decimal   @default(0) @db.Decimal(10, 2)
+  isPenaltyApplied    Boolean   @default(false)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   // Optional link to a group's billing cycle (a month, or a full level),
   // when this invoice was generated from the Groups system rather than the
   // legacy general monthly-invoice flow. Nullable so nothing existing breaks.
@@ -1308,27 +1315,27 @@ model Certificate {
   // Human-readable, publicly-quotable ID e.g. "TN-CERT-2026-00001".
   // Distinct from the internal cuid `id` — this is the one printed on the
   // certificate and encoded in the QR code / verification URL.
-  certificateNumber String  @unique
-  qrCodeUrl         String? @db.LongText // Base64 QR code image (data URL)
+  certificateNumber String            @unique
+  qrCodeUrl         String?           @db.LongText // Base64 QR code image (data URL)
   status            CertificateStatus @default(VALID)
   revokedAt         DateTime?
   revokedBy         String? // Admin/Super Admin user ID
   revokedReason     String?
 
   // ── Level-completion certificate fields ──────────────────────────────────
-  templateId   String? // Which CertificateTemplate design to render with
-  subjectId    String? // Which course/level this certificate is for
-  levelResultId String? @unique // The graded result that triggered this certificate
+  templateId    String? // Which CertificateTemplate design to render with
+  subjectId     String? // Which course/level this certificate is for
+  levelResultId String?   @unique // The graded result that triggered this certificate
   // WHY blur-by-default: certificates are handed out formally at a ceremony;
   // student/guardian should see "earned" state before the actual artwork is revealed.
-  isRevealed   Boolean   @default(false)
-  revealedAt   DateTime?
-  revealedBy   String? // Admin/Super Admin user ID who revealed it
+  isRevealed    Boolean   @default(false)
+  revealedAt    DateTime?
+  revealedBy    String? // Admin/Super Admin user ID who revealed it
 
-  student      Student              @relation(fields: [studentId], references: [id])
-  template     CertificateTemplate? @relation(fields: [templateId], references: [id])
-  subject      AcademicSubject?     @relation(fields: [subjectId], references: [id])
-  levelResult  StudentLevelResult?  @relation(fields: [levelResultId], references: [id])
+  student     Student              @relation(fields: [studentId], references: [id])
+  template    CertificateTemplate? @relation(fields: [templateId], references: [id])
+  subject     AcademicSubject?     @relation(fields: [subjectId], references: [id])
+  levelResult StudentLevelResult?  @relation(fields: [levelResultId], references: [id])
 
   @@index([studentId])
   @@index([type])
@@ -1367,29 +1374,29 @@ model CourseGradingConfig {
 // scores (each stored as a 0-100 percentage of that component), the computed
 // final score, and the pass/fail outcome.
 model StudentLevelResult {
-  id                  String   @id @default(cuid())
+  id                  String @id @default(cuid())
   studentEnrollmentId String
   subjectId           String
 
   // Raw component scores (0-100 scale each)
-  homeworkScore   Float? // Source: MANUAL for now, later can be MOODLE
-  homeworkSource  String  @default("MANUAL")
-  taskScore       Float?
-  taskSource      String  @default("MANUAL")
-  instructorScore Float?
+  homeworkScore    Float? // Source: MANUAL for now, later can be MOODLE
+  homeworkSource   String @default("MANUAL")
+  taskScore        Float?
+  taskSource       String @default("MANUAL")
+  instructorScore  Float?
   instructorSource String @default("MANUAL")
-  projectScore    Float?
-  projectSource   String  @default("MANUAL")
-  mcqScore        Float?
-  mcqSource       String  @default("MANUAL")
+  projectScore     Float?
+  projectSource    String @default("MANUAL")
+  mcqScore         Float?
+  mcqSource        String @default("MANUAL")
 
-  finalScore    Float? // Weighted result computed from the components above
-  passed        Boolean? // Null until all components are entered and computed
+  finalScore         Float? // Weighted result computed from the components above
+  passed             Boolean? // Null until all components are entered and computed
   instructorFeedback String? // Required before the result can be finalized
 
   computedAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   studentEnrollment StudentEnrollment @relation(fields: [studentEnrollmentId], references: [id], onDelete: Cascade)
   subject           AcademicSubject   @relation(fields: [subjectId], references: [id])
@@ -1403,18 +1410,18 @@ model StudentLevelResult {
 // An uploaded certificate background + the positions/styling of the dynamic
 // text fields (student name, course, date, QR code, etc.) drawn on top of it.
 model CertificateTemplate {
-  id              String   @id @default(cuid())
-  name            String
-  backgroundUrl   String // Cloudinary URL of the uploaded design
-  widthPx         Int      @default(1600)
-  heightPx        Int      @default(1131) // A4 landscape @ ~200dpi default
+  id            String   @id @default(cuid())
+  name          String
+  backgroundUrl String // Cloudinary URL of the uploaded design
+  widthPx       Int      @default(1600)
+  heightPx      Int      @default(1131) // A4 landscape @ ~200dpi default
   // Array of { key, label, x, y, fontSizePx, fontFamily, color, align, bold }
   // key is one of: studentName, courseName, levelName, issueDate, certificateId, qrCode
-  fieldLayout     Json
-  isDefault       Boolean  @default(false)
-  createdBy       String // Admin user ID
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  fieldLayout   Json
+  isDefault     Boolean  @default(false)
+  createdBy     String // Admin user ID
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   certificates Certificate[]
 }
@@ -1564,13 +1571,13 @@ model LeaveRequest {
 }
 
 model Complaint {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   complainantId   String // References User.id
   complainantName String
   complainantRole Role
   title           String
   description     String
-  status          String   @default("PENDING") // legacy "PENDING"/"RESOLVED"; phase D: NEW | IN_PROGRESS | RESOLVED | CLOSED
+  status          String    @default("PENDING") // legacy "PENDING"/"RESOLVED"; phase D: NEW | IN_PROGRESS | RESOLVED | CLOSED
   remarks         String?
   /// Phase D (docs/design-phase-d.md) — all optional / defaulted (additive)
   number          String?   @unique
@@ -1590,8 +1597,8 @@ model Complaint {
   satisfied       Boolean?
   handlingRating  Int?
   resolvedBy      String? // Admin User.id
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([complainantId])
   @@index([status])
@@ -1949,56 +1956,56 @@ model Room {
 }
 
 model ClassSection {
-  id             String            @id @default(cuid())
-  campusId       String
-  batchId        String
-  shiftId        String
-  className      String            @db.VarChar(50) // "Class 9"
-  sectionName    String            @db.VarChar(10) // "A"
-  grade          Int?
-  deliveryMode   ClassDeliveryMode @default(PHYSICAL)
-  capacity       Int               @default(40)
+  id                        String            @id @default(cuid())
+  campusId                  String
+  batchId                   String
+  shiftId                   String
+  className                 String            @db.VarChar(50) // "Class 9"
+  sectionName               String            @db.VarChar(10) // "A"
+  grade                     Int?
+  deliveryMode              ClassDeliveryMode @default(PHYSICAL)
+  capacity                  Int               @default(40)
   /// Phase A: most students allowed in the group (null = no limit). Not the old template "capacity".
-  maxStudents    Int?
+  maxStudents               Int?
   /// LMS (L1): the curriculum version this group follows (pinned when it starts; null = newest published)
-  curriculumEditionId String?
+  curriculumEditionId       String?
   /// LMS L2: how lessons open for this group (ALL | SCHEDULE | ATTENDANCE | MANUAL | PREVIOUS); null = the level's / company default
-  lessonUnlockMode    String?           @db.VarChar(12)
+  lessonUnlockMode          String?           @db.VarChar(12)
   /// L5: online class link of the group (Zoom / Meet / any https link); null = not online
-  onlineMeetingUrl          String?                    @db.VarChar(500)
-  curriculumMode CurriculumMode    @default(FIXED)
-  isActive       Boolean           @default(true)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  onlineMeetingUrl          String?           @db.VarChar(500)
+  curriculumMode            CurriculumMode    @default(FIXED)
+  isActive                  Boolean           @default(true)
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
   // Which specific Level (of which Course) this Group is teaching. Nullable —
   // existing groups keep working unassigned until an admin sets it, and the
   // legacy Class/Subject workflow never needs this field at all.
-  levelId        String?
-  status         GroupStatus       @default(ACTIVE)
-  completedAt    DateTime?
+  levelId                   String?
+  status                    GroupStatus       @default(ACTIVE)
+  completedAt               DateTime?
   // When this group's sessions start/are expected to finish, and its weekly
   // recurring schedule — kept simple (Json array of {dayOfWeek, time}) for
   // now; a full Timetable integration is planned separately later.
-  startDate      DateTime?
-  expectedEndDate DateTime?
-  scheduleSlots  Json?
+  startDate                 DateTime?
+  expectedEndDate           DateTime?
+  scheduleSlots             Json?
   // Tracks progress through the current subscription cycle. For a MONTHLY
   // level, currentCycleNumber counts which billing month the group is on.
   // For a FULL_LEVEL level, "finishing the cycle" instead advances levelId
   // to the next level and this resets to 1.
-  currentCycleNumber    Int       @default(1)
-  currentCycleStartDate DateTime?
+  currentCycleNumber        Int               @default(1)
+  currentCycleStartDate     DateTime?
   // Payment-gating settings for this group specifically.
-  requireFullPaymentToStart Boolean @default(false)
-  partialPaymentCounts      Boolean @default(false)
-  installmentsAllowed       Boolean @default(false)
+  requireFullPaymentToStart Boolean           @default(false)
+  partialPaymentCounts      Boolean           @default(false)
+  installmentsAllowed       Boolean           @default(false)
 
-  cycleLogs GroupCycleLog[]
-  invoices  FeeInvoice[]
-  payAdjustments TeacherPayAdjustment[]
-  absences TeacherAbsence[]
+  cycleLogs             GroupCycleLog[]
+  invoices              FeeInvoice[]
+  payAdjustments        TeacherPayAdjustment[]
+  absences              TeacherAbsence[]
   substituteAssignments SubstituteAssignment[]
-  cancelledSessions CancelledSession[]
+  cancelledSessions     CancelledSession[]
 
   campus                    Campus                     @relation(fields: [campusId], references: [id])
   batch                     Batch                      @relation(fields: [batchId], references: [id])
@@ -2023,18 +2030,18 @@ model ClassSection {
 }
 
 model StudentEnrollment {
-  id             String                   @id @default(cuid())
-  studentId      String
-  academicYearId String
-  classSectionId String
-  rollNumber     String
-  deliveryMode   ClassDeliveryMode        @default(PHYSICAL)
-  status         AcademicEnrollmentStatus @default(ACTIVE)
-  enrollmentType EnrollmentType           @default(REGULAR)
-  timetableScope Json?
-  courseScope    Json?
-  promotedFromId String?
-  createdAt      DateTime                 @default(now())
+  id               String                   @id @default(cuid())
+  studentId        String
+  academicYearId   String
+  classSectionId   String
+  rollNumber       String
+  deliveryMode     ClassDeliveryMode        @default(PHYSICAL)
+  status           AcademicEnrollmentStatus @default(ACTIVE)
+  enrollmentType   EnrollmentType           @default(REGULAR)
+  timetableScope   Json?
+  courseScope      Json?
+  promotedFromId   String?
+  createdAt        DateTime                 @default(now())
   // Why this enrollment was withdrawn, when it was withdrawn automatically
   // rather than by an explicit staff action — e.g. "UNPAID_AUTO" when a
   // student passed the group's payment checkpoint without paying. Lets the
@@ -2063,25 +2070,25 @@ model StudentEnrollment {
 }
 
 model SubjectOffering {
-  id              String   @id @default(cuid())
-  academicYearId  String
-  classSectionId  String
-  subjectId       String
-  teacherId       String?
-  isMandatory     Boolean  @default(true)
-  electiveGroupId String?
+  id                              String   @id @default(cuid())
+  academicYearId                  String
+  classSectionId                  String
+  subjectId                       String
+  teacherId                       String?
+  isMandatory                     Boolean  @default(true)
+  electiveGroupId                 String?
   // WHY per-offering: Different subjects/classes may evaluate daily PST out of
   // different totals (e.g. 10, 20, 50). Configurable at the admin level.
   // Default 20 preserves backward compatibility with existing data.
-  maxDailyScore   Int      @default(20)
-  createdAt       DateTime @default(now())
+  maxDailyScore                   Int      @default(20)
+  createdAt                       DateTime @default(now())
   // Group-specific pay override for this teacher — when any of these three
   // is set, it replaces the teacher's own default for THIS group only. All
   // three can be combined (e.g. a flat amount plus a percentage), and any
   // left null simply doesn't contribute to that component.
-  overrideFixedAmount              Decimal? @db.Decimal(10, 2)
-  overridePercentOfStudentPayment  Decimal? @db.Decimal(5, 2)
-  overridePerSessionAmount         Decimal? @db.Decimal(10, 2)
+  overrideFixedAmount             Decimal? @db.Decimal(10, 2)
+  overridePercentOfStudentPayment Decimal? @db.Decimal(5, 2)
+  overridePerSessionAmount        Decimal? @db.Decimal(10, 2)
 
   academicYear           AcademicYear            @relation(fields: [academicYearId], references: [id])
   classSection           ClassSection            @relation(fields: [classSectionId], references: [id])
@@ -2140,16 +2147,17 @@ model AcademicSubject {
   // next course in the same track.
   trackOrder  Int?
 
-  track          Track?                   @relation(fields: [trackId], references: [id])
-  offerings      SubjectOffering[]
-  gradingSchemes AcademicGradingScheme[]
-  gradingConfigs CourseGradingConfig[]
-  levelResults   StudentLevelResult[]
-  certificates   Certificate[]
-  levels         Level[]
+  track             Track?                    @relation(fields: [trackId], references: [id])
+  offerings         SubjectOffering[]
+  gradingSchemes    AcademicGradingScheme[]
+  gradingConfigs    CourseGradingConfig[]
+  levelResults      StudentLevelResult[]
+  certificates      Certificate[]
+  levels            Level[]
   qualifiedTeachers TeacherQualifiedSubject[]
 
   waitingListEntries WaitingListEntry[]
+
   @@index([trackId])
 }
 
@@ -2164,7 +2172,7 @@ model Track {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
 
-  courses AcademicSubject[]
+  courses           AcademicSubject[]
   qualifiedTeachers TeacherQualifiedSubject[]
 }
 
@@ -2179,27 +2187,28 @@ enum LevelPricingType {
 /// own subscription pricing, since different courses (and different levels
 /// within the same course) can have entirely different structures.
 model Level {
-  id               String            @id @default(cuid())
+  id               String           @id @default(cuid())
   subjectId        String
   name             String // "Level 1", "Beginner", etc.
   order            Int // display/progression order within the course
   numberOfMonths   Int
   numberOfSessions Int
   /// LMS L2: default way lessons open for groups of this level; null = company default (lms.settings)
-  lessonUnlockMode String?           @db.VarChar(12)
-  pricingType      LevelPricingType  @default(MONTHLY)
+  lessonUnlockMode String?          @db.VarChar(12)
+  pricingType      LevelPricingType @default(MONTHLY)
   monthlyPrice     Float?
   fullLevelPrice   Float?
-  isActive         Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  subject      AcademicSubject @relation(fields: [subjectId], references: [id])
-  classSections ClassSection[]
-  invoices      FeeInvoice[]
+  subject           AcademicSubject           @relation(fields: [subjectId], references: [id])
+  classSections     ClassSection[]
+  invoices          FeeInvoice[]
   qualifiedTeachers TeacherQualifiedSubject[]
 
   waitingListEntries WaitingListEntry[]
+
   @@unique([subjectId, order])
   @@index([subjectId])
 }
@@ -2319,10 +2328,10 @@ model SubstituteAssignment {
   assignedAt          DateTime         @default(now())
   respondedAt         DateTime?
 
-  teacherAbsence    TeacherAbsence @relation(fields: [teacherAbsenceId], references: [id])
-  classSection      ClassSection   @relation(fields: [classSectionId], references: [id])
-  originalTeacher   Teacher        @relation("OriginalTeacherAssignments", fields: [originalTeacherId], references: [id])
-  substituteTeacher Teacher        @relation("SubstituteTeacherAssignments", fields: [substituteTeacherId], references: [id])
+  teacherAbsence    TeacherAbsence         @relation(fields: [teacherAbsenceId], references: [id])
+  classSection      ClassSection           @relation(fields: [classSectionId], references: [id])
+  originalTeacher   Teacher                @relation("OriginalTeacherAssignments", fields: [originalTeacherId], references: [id])
+  substituteTeacher Teacher                @relation("SubstituteTeacherAssignments", fields: [substituteTeacherId], references: [id])
   payAdjustments    TeacherPayAdjustment[]
 
   @@index([classSectionId])
@@ -2364,13 +2373,13 @@ enum GroupCycleType {
 /// moves on, so group financials/reporting can later show exactly what was
 /// completed and when.
 model GroupCycleLog {
-  id            String         @id @default(cuid())
-  classSectionId String
-  type          GroupCycleType
-  levelId       String? // the level that was active when this cycle closed
-  cycleNumber   Int? // which month number, for MONTH_COMPLETED
-  completedAt   DateTime       @default(now())
-  completedBy   String // User id
+  id                String         @id @default(cuid())
+  classSectionId    String
+  type              GroupCycleType
+  levelId           String? // the level that was active when this cycle closed
+  cycleNumber       Int? // which month number, for MONTH_COMPLETED
+  completedAt       DateTime       @default(now())
+  completedBy       String // User id
   // The new group created (if any) for students who continued — set once
   // the "who's continuing" step is confirmed via the manual advance button.
   newClassSectionId String?
@@ -2384,14 +2393,14 @@ model GroupCycleLog {
 /// amount is positive for a bonus, negative for a deduction — always with a
 /// reason on record.
 model TeacherPayAdjustment {
-  id             String   @id @default(cuid())
-  teacherId      String
-  classSectionId String? // null = a general adjustment, not tied to one group
-  cycleNumber    Int? // which billing cycle this applies to, if relevant
-  amount         Decimal  @db.Decimal(10, 2)
-  reason         String
-  createdBy      String // User id
-  createdAt      DateTime @default(now())
+  id                     String   @id @default(cuid())
+  teacherId              String
+  classSectionId         String? // null = a general adjustment, not tied to one group
+  cycleNumber            Int? // which billing cycle this applies to, if relevant
+  amount                 Decimal  @db.Decimal(10, 2)
+  reason                 String
+  createdBy              String // User id
+  createdAt              DateTime @default(now())
   // Links this adjustment back to the substitute-coverage event it settles
   // (a bonus for the covering teacher, or a deduction for the absent one) —
   // lets the reconciliation screen know an event's already been handled.
@@ -2405,7 +2414,6 @@ model TeacherPayAdjustment {
   @@index([classSectionId])
   @@index([substituteAssignmentId])
 }
-
 
 model ElectiveGroup {
   id             String   @id @default(cuid())
@@ -3372,33 +3380,33 @@ model PaymentMethod {
 
 /// A kind of discount, managed from Discounts > Types.
 model DiscountType {
-  id           String    @id @default(cuid())
-  name         String
+  id            String    @id @default(cuid())
+  name          String
   /// MANUAL | SIBLING | PROMO | OTHER
-  kind         String    @db.VarChar(20)
+  kind          String    @db.VarChar(20)
   /// PERCENT | FIXED
-  valueType    String    @db.VarChar(10)
-  value        Decimal   @db.Decimal(10, 2)
+  valueType     String    @db.VarChar(10)
+  value         Decimal   @db.Decimal(10, 2)
   /// Staff may type the value when applying it (up to maxValue).
-  editableValue Boolean  @default(false)
-  maxValue     Decimal?  @db.Decimal(10, 2)
+  editableValue Boolean   @default(false)
+  maxValue      Decimal?  @db.Decimal(10, 2)
   /// EVERY_CYCLE | FIRST_CYCLE | ONE_TIME
-  duration     String    @db.VarChar(20)
+  duration      String    @db.VarChar(20)
   /// Applied by the system without an assignment (siblings, promos for a scope).
-  autoApply    Boolean   @default(false)
+  autoApply     Boolean   @default(false)
   /// STAFF | MANAGER | STAFF_WITH_APPROVAL
-  approvalMode String    @db.VarChar(25)
+  approvalMode  String    @db.VarChar(25)
   /// ALL | TRACK | COURSE | LEVEL | GROUP (+ scopeId)
-  scopeType    String    @default("ALL") @db.VarChar(10)
-  scopeId      String?
-  validFrom    DateTime?
-  validTo      DateTime?
+  scopeType     String    @default("ALL") @db.VarChar(10)
+  scopeId       String?
+  validFrom     DateTime?
+  validTo       DateTime?
   /// Can be combined with other discounts on the same invoice.
-  stackable    Boolean   @default(true)
-  isActive     Boolean   @default(true)
-  createdById  String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  stackable     Boolean   @default(true)
+  isActive      Boolean   @default(true)
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   assignments      DiscountAssignment[]
   invoiceDiscounts InvoiceDiscount[]
@@ -3515,21 +3523,21 @@ model Refund {
 
 /// Student wallet ledger: balance = sum(amount). + credit (refund), - spent (invoice payment).
 model WalletTransaction {
-  id          String   @id @default(cuid())
-  studentId   String
-  amount      Decimal  @db.Decimal(10, 2)
+  id             String   @id @default(cuid())
+  studentId      String
+  amount         Decimal  @db.Decimal(10, 2)
   /// REFUND | PAYMENT | ADJUSTMENT | TOPUP | WITHDRAW | TRANSFER_IN | TRANSFER_OUT
-  type        String   @db.VarChar(12)
-  refundId    String?
-  paymentId   String?
+  type           String   @db.VarChar(12)
+  refundId       String?
+  paymentId      String?
   /// Phase B
-  topUpId     String?
-  withdrawalId String?
+  topUpId        String?
+  withdrawalId   String?
   /// the other child in a sibling transfer
   otherStudentId String?
-  note        String?
-  createdById String
-  createdAt   DateTime @default(now())
+  note           String?
+  createdById    String
+  createdAt      DateTime @default(now())
 
   @@index([studentId])
 }
@@ -3603,26 +3611,25 @@ model GroupTransfer {
   @@index([toClassSectionId])
 }
 
-
 /// Phase A (docs/design-phase-a.md): every call / WhatsApp / meeting / visit with a parent,
 /// plus messages the system sent (channel SYSTEM / auto = true).
 model ContactLog {
-  id          String    @id @default(cuid())
-  studentId   String
-  guardianId  String?
-  campusId    String?
+  id             String    @id @default(cuid())
+  studentId      String
+  guardianId     String?
+  campusId       String?
   /// CALL | WHATSAPP | MEETING | VISIT | SYSTEM
-  channel     String    @db.VarChar(12)
+  channel        String    @db.VarChar(12)
   /// OUT (we contacted them) | IN (they contacted us)
-  direction   String    @default("OUT") @db.VarChar(3)
+  direction      String    @default("OUT") @db.VarChar(3)
   /// PAYMENT | ABSENCE | BEHAVIOUR | LEVEL | RENEWAL | COMPLAINT | OTHER
-  reason      String    @db.VarChar(12)
-  summary     String    @db.Text
-  followUpAt  DateTime?
+  reason         String    @db.VarChar(12)
+  summary        String    @db.Text
+  followUpAt     DateTime?
   followUpDoneAt DateTime?
-  auto        Boolean   @default(false)
-  createdById String?
-  createdAt   DateTime  @default(now())
+  auto           Boolean   @default(false)
+  createdById    String?
+  createdAt      DateTime  @default(now())
 
   @@index([studentId, createdAt])
   @@index([followUpAt, followUpDoneAt])
@@ -3659,22 +3666,22 @@ model ExtraSession {
 
 /// Phase A: "is your child continuing next month?" — one per student per group (= per cycle).
 model RenewalRequest {
-  id             String    @id @default(cuid())
-  classSectionId String
-  studentId      String
+  id                   String    @id @default(cuid())
+  classSectionId       String
+  studentId            String
   /// PENDING | YES | NO
-  status         String    @default("PENDING") @db.VarChar(8)
+  status               String    @default("PENDING") @db.VarChar(8)
   /// why not continuing: PRICE | TIME | LEVEL | TRAVEL | OTHER
-  reason         String?   @db.VarChar(10)
-  reasonNote     String?   @db.Text
+  reason               String?   @db.VarChar(10)
+  reasonNote           String?   @db.Text
   /// PARENT | STAFF
-  respondedVia   String?   @db.VarChar(6)
-  respondedById  String?
-  respondedAt    DateTime?
+  respondedVia         String?   @db.VarChar(6)
+  respondedById        String?
+  respondedAt          DateTime?
   /// early-renewal discount given (DiscountAssignment id)
   discountAssignmentId String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@unique([classSectionId, studentId])
   @@index([status])
@@ -3751,6 +3758,7 @@ model WalletRule {
 
   @@index([kind])
 }
+
 /// Phase C: a parent's excuse for one session (docs/design-phase-c.md).
 /// status PENDING | APPROVED | REJECTED | CANCELLED. Approved → the attendance is EXCUSED.
 model AbsenceExcuse {
@@ -3872,22 +3880,22 @@ model Referral {
 /// audience PARENT | STUDENT | STAFF. Editing the text publishes a new version; mandatory ones block the portal
 /// until the current version is accepted.
 model Agreement {
-  id          String    @id @default(cuid())
-  key         String    @unique @db.VarChar(40)
-  titleEn     String    @db.VarChar(160)
-  titleAr     String    @db.VarChar(160)
-  bodyEn      String    @db.Text
-  bodyAr      String    @db.Text
-  audience    String    @db.VarChar(8)
-  mandatory   Boolean   @default(true)
-  isActive    Boolean   @default(true)
-  version     Int       @default(1)
-  sortOrder   Int       @default(0)
-  graceDays   Int       @default(0)
-  publishedAt DateTime  @default(now())
+  id          String   @id @default(cuid())
+  key         String   @unique @db.VarChar(40)
+  titleEn     String   @db.VarChar(160)
+  titleAr     String   @db.VarChar(160)
+  bodyEn      String   @db.Text
+  bodyAr      String   @db.Text
+  audience    String   @db.VarChar(8)
+  mandatory   Boolean  @default(true)
+  isActive    Boolean  @default(true)
+  version     Int      @default(1)
+  sortOrder   Int      @default(0)
+  graceDays   Int      @default(0)
+  publishedAt DateTime @default(now())
   updatedById String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([audience, isActive])
 }
@@ -4217,41 +4225,41 @@ model QuizWindow {
 
 /// P1 passport (2026-10-12): one per student, number TN-PASS-YYYY-NNNN (YYYY = the year the student joined).
 model StudentPassport {
-  id        String   @id @default(cuid())
-  studentId String   @unique
-  number    String   @unique @db.VarChar(20)
-  issuedAt  DateTime @default(now())
+  id          String    @id @default(cuid())
+  studentId   String    @unique
+  number      String    @unique @db.VarChar(20)
+  issuedAt    DateTime  @default(now())
   /// first time the stamps were checked (no parent notifications for that first batch)
   evaluatedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt   DateTime  @default(now())
 }
 
 /// P1: a stamp design. kind AUTO (rule + threshold) | MANUAL (staff give it) | EVENT (scan the student card on the day).
 /// code = built-in stamp key (null for stamps the admin made). givers = roles allowed to give MANUAL / EVENT stamps.
 model PassportStamp {
-  id            String    @id @default(cuid())
-  code          String?   @unique @db.VarChar(40)
-  nameEn        String    @db.VarChar(80)
-  nameAr        String    @default("") @db.VarChar(80)
-  descriptionEn String?   @db.VarChar(300)
-  descriptionAr String?   @db.VarChar(300)
-  kind          String    @db.VarChar(8)
-  rule          String?   @db.VarChar(30)
+  id            String         @id @default(cuid())
+  code          String?        @unique @db.VarChar(40)
+  nameEn        String         @db.VarChar(80)
+  nameAr        String         @default("") @db.VarChar(80)
+  descriptionEn String?        @db.VarChar(300)
+  descriptionAr String?        @db.VarChar(300)
+  kind          String         @db.VarChar(8)
+  rule          String?        @db.VarChar(30)
   threshold     Int?
-  shape         String    @default("ROUND") @db.VarChar(8)
-  color         String    @default("#4f46e5") @db.VarChar(9)
-  icon          String    @default("") @db.VarChar(16)
-  imagePublicId String?   @db.VarChar(300)
+  shape         String         @default("ROUND") @db.VarChar(8)
+  color         String         @default("#4f46e5") @db.VarChar(9)
+  icon          String         @default("") @db.VarChar(16)
+  imagePublicId String?        @db.VarChar(300)
   givers        Json?
-  repeatable    Boolean   @default(false)
-  secret        Boolean   @default(false)
-  active        Boolean   @default(true)
+  repeatable    Boolean        @default(false)
+  secret        Boolean        @default(false)
+  active        Boolean        @default(true)
   eventFrom     DateTime?
   eventTo       DateTime?
-  order         Int       @default(0)
+  order         Int            @default(0)
   createdById   String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   awards        StudentStamp[]
 }
 
@@ -4527,4 +4535,94 @@ model SessionReportStudent {
 
   @@unique([reportId, studentId])
   @@index([studentId])
+}
+
+/// M1 (2026-10-14, docs/design-locations-and-partners.md): a partner (school, nursery, centre, academy, company, …).
+/// Its places are Campus rows with kind PARTNER and partnerId = this id.
+model Partner {
+  id           String            @id @default(cuid())
+  name         String            @unique
+  /// SCHOOL / NURSERY / CENTER / ACADEMY / COMPANY / GOVERNMENT / NGO / OTHER
+  kind         String            @default("SCHOOL") @db.VarChar(12)
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+  address      String?           @db.Text
+  notes        String?           @db.Text
+  isActive     Boolean           @default(true)
+  createdById  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  places       Campus[]
+  contracts    PartnerContract[]
+
+  @@index([isActive])
+}
+
+/// M1: a contract with a partner (a partner may have several over time). Money terms come in M2.
+model PartnerContract {
+  id              String                @id @default(cuid())
+  partnerId       String
+  title           String
+  startDate       DateTime
+  endDate         DateTime?
+  /// alert the people with partner access this many days before the end
+  alertDaysBefore Int                   @default(30)
+  notes           String?               @db.Text
+  alertSentAt     DateTime?
+  endedNoticeAt   DateTime?
+  createdById     String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  partner         Partner               @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  files           PartnerContractFile[]
+
+  @@index([partnerId])
+  @@index([endDate])
+}
+
+/// M1: a scan / photo / PDF of a contract — private Cloudinary file (authenticated), opened only by a short signed link.
+model PartnerContractFile {
+  id           String          @id @default(cuid())
+  contractId   String
+  publicId     String          @db.VarChar(400)
+  resourceType String          @default("image") @db.VarChar(10)
+  format       String?         @db.VarChar(20)
+  originalName String?
+  bytes        Int?
+  uploadedById String?
+  createdAt    DateTime        @default(now())
+  contract     PartnerContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+}
+
+/// M1: a permission for ONE staff member (wins over the place and the role settings). Super Admin is never affected.
+model UserPermissionOverride {
+  id          String   @id @default(cuid())
+  userId      String
+  resource    String   @db.VarChar(60)
+  action      String   @db.VarChar(20)
+  allowed     Boolean
+  createdById String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, resource, action])
+}
+
+/// M1: a permission for the staff of ONE place (their primary place), for one role or ALL roles.
+/// Wins over the role setting (Permissions page); a person's own override wins over this.
+model LocationPermissionOverride {
+  id          String   @id @default(cuid())
+  campusId    String
+  role        String   @default("ALL") @db.VarChar(20)
+  resource    String   @db.VarChar(60)
+  action      String   @db.VarChar(20)
+  allowed     Boolean
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@unique([campusId, role, resource, action])
+  @@index([campusId])
 }
