@@ -3,6 +3,8 @@
  * POST /api/teachers  — create staff member (Admin/Super Admin only)
  */
 
+import { allowsCampus, narrow, teacherWhere } from '@/lib/places/rules'
+import { loadPlaces, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -56,11 +58,9 @@ export async function GET(request: NextRequest) {
 
   const { page, limit, search, campusId, batchId, isActive } = parsed.data
 
-  const scopedCampusId =
-    session.user.role !== 'SUPER_ADMIN' ? (session.user.campusId ?? undefined) : campusId
-
+  // M0: instructors of the person's places (the place filter can only narrow)
   const where = {
-    ...(scopedCampusId && { campusId: scopedCampusId }),
+    ...teacherWhere(narrow(await requestPlaces(session.user), campusId)),
     ...(batchId && { batchId }),
     ...(isActive !== undefined && { isActive }),
     ...(search && {
@@ -140,6 +140,8 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return errors.validation(parsed.error)
 
   const data = parsed.data
+  // M0: a new instructor belongs to one of the person's places
+  if (!allowsCampus(await loadPlaces(session.user), data.campusId)) return errors.forbidden('This place is not yours')
 
   // Check duplicates before starting the transaction.
   // WHY: the auth `users.email` column has a unique constraint, so a duplicate

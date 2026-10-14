@@ -1,3 +1,4 @@
+import { canSeeUser } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
@@ -33,6 +34,7 @@ export async function GET(
   const isOwner = leave.applicantId === session.user.id
 
   if (!isAdmin && !isOwner) return errors.forbidden()
+  if (!isOwner && !(await canSeeUser(session.user, leave.applicantId))) return errors.forbidden()
 
   return successResponse(leave)
 }
@@ -60,6 +62,8 @@ export async function PUT(
   })
 
   if (!leave) return errors.notFound('Leave request')
+  // M0: decide only requests of the people in the person's places
+  if (!(await canSeeUser(session.user, leave.applicantId))) return errors.forbidden()
 
   if (leave.status !== 'PENDING') {
     return errors.validation(new ZodError([

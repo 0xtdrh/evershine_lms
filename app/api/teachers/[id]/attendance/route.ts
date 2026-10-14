@@ -11,6 +11,7 @@
  *   POST — SUPER_ADMIN, ADMIN only (teachers cannot self-mark)
  */
 
+import { canSeeTeacher } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     return errors.forbidden()
   }
 
-  if ((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && teacher.campusId !== session.user.campusId) {
+  if (session.user.role !== 'TEACHER' && !(await canSeeTeacher(session.user, teacher.id))) {
     return errors.forbidden()
   }
 
@@ -132,7 +133,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   if (!teacher) return errors.notFound('Teacher')
   if (!teacher.isActive) return errors.forbidden('Cannot mark attendance for an inactive teacher')
 
-  if ((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && teacher.campusId !== session.user.campusId) {
+  if (!(await canSeeTeacher(session.user, teacher.id))) {
     return errors.forbidden()
   }
 

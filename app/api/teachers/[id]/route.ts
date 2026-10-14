@@ -4,6 +4,8 @@
  * DELETE /api/teachers/[id]  — soft delete (sets isActive=false)
  */
 
+import { allowsCampus } from '@/lib/places/rules'
+import { canSeeTeacher, loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -45,7 +47,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   }
 
   // Scoping: If user is ADMIN, they can only view teachers in their campus
-  if ((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && teacher.campusId !== session.user.campusId) {
+  if (session.user.role !== 'TEACHER' && !(await canSeeTeacher(session.user, teacher.id))) {
     return errors.forbidden()
   }
 
@@ -62,7 +64,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const existing = await prisma.teacher.findUnique({ where: { id }, select: { id: true, campusId: true, employeeId: true } })
   if (!existing) return errors.notFound('Teacher')
 
-  if ((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && existing.campusId !== session.user.campusId) {
+  if (session.user.role !== 'TEACHER' && !(await canSeeTeacher(session.user, existing.id))) {
     return errors.forbidden()
   }
 
@@ -92,11 +94,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   // ADMIN cannot transfer teachers to another campus
-  if (
-    (session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') &&
-    campusId &&
-    campusId !== session.user.campusId
-  ) {
+  // M0: a teacher can be moved only to one of the person's places
+  if (campusId && !allowsCampus(await loadPlaces(session.user), campusId)) {
     return errors.forbidden('Cannot move a teacher to a different campus')
   }
 
@@ -142,7 +141,7 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
   const existing = await prisma.teacher.findUnique({ where: { id }, select: { id: true, campusId: true, userId: true } })
   if (!existing) return errors.notFound('Teacher')
 
-  if ((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && existing.campusId !== session.user.campusId) {
+  if (session.user.role !== 'TEACHER' && !(await canSeeTeacher(session.user, existing.id))) {
     return errors.forbidden()
   }
 

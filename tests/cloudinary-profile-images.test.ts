@@ -58,6 +58,7 @@ const {
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 vi.mock('@/lib/rbac', () => ({ checkPermission: mockCheckPermission }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
+vi.mock('@/lib/places/server', () => import('./helpers/places-mock'))
 vi.mock('@node-rs/argon2', () => ({ hash: mockHash }))
 vi.mock('@/lib/cloudinary', () => ({
   isProfileImageDataUrl: (value: string | null | undefined) =>

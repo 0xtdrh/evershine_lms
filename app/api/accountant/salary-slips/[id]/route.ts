@@ -9,6 +9,7 @@
  *   — Soft-deletes a salary slip.
  */
 
+import { canSeeUser } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -63,6 +64,7 @@ export async function GET(
     if (!isOwner && !isStaff) {
       return errors.forbidden('You do not have permission to view this salary slip')
     }
+    if (!isOwner && !(await canSeeUser(session.user, slip.employeeId))) return errors.forbidden()
 
     return successResponse(slip)
   } catch (err) {
@@ -92,6 +94,8 @@ export async function PATCH(
     })
 
     if (!existing) return errors.notFound('Salary slip')
+    // M0: slips of the people in the person's places
+    if (!(await canSeeUser(session.user, existing.employeeId))) return errors.forbidden()
 
     const updateData = parsed.data
 
@@ -215,6 +219,8 @@ export async function DELETE(
     })
 
     if (!existing) return errors.notFound('Salary slip')
+    // M0: slips of the people in the person's places
+    if (!(await canSeeUser(session.user, existing.employeeId))) return errors.forbidden()
 
     await prisma.salarySlip.update({
       where: { id },

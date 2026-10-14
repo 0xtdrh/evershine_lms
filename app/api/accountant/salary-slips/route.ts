@@ -8,6 +8,7 @@
  *     Validates net salary calculations.
  */
 
+import { canSeeUser, visibleUserIds } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -62,9 +63,12 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit
 
+    // M0: slips of the people in the person's places
+    const visible = isTeacher ? null : await visibleUserIds(session.user)
     const where = {
       isDeleted: false,
       ...(employeeId ? { employeeId } : {}),
+      ...(visible ? { employeeId: employeeId ? (visible.includes(employeeId) ? employeeId : '__none__') : { in: visible } } : {}),
       ...(month ? { month } : {}),
       ...(status ? { status } : {}),
     }
@@ -99,6 +103,8 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return errors.validation(parsed.error)
 
     const data = parsed.data
+    // M0: slips only for people in the person's places
+    if (!(await canSeeUser(session.user, data.employeeId))) return errors.forbidden()
 
     // 1. Fetch employee profile and basic details
     const employee = await prisma.user.findUnique({

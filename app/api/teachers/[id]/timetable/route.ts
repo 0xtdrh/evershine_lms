@@ -6,6 +6,7 @@
  * ownership and can surface stale or false records in current portals.
  */
 
+import { canSeeTeacher } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   if (session.user.role === 'TEACHER' && teacher.userId !== session.user.id) {
     return errors.forbidden()
   }
-  if ((session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') && teacher.campusId !== session.user.campusId) {
+  if (session.user.role !== 'TEACHER' && !(await canSeeTeacher(session.user, teacher.id))) {
     return errors.forbidden()
   }
 

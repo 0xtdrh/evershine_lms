@@ -18,6 +18,8 @@
  *   - All imports logged to AttendanceImportLog for audit trail
  */
 
+import { teacherWhere } from '@/lib/places/rules'
+import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
@@ -124,13 +126,12 @@ export async function POST(req: NextRequest) {
 
     // ── Pre-load DB references for O(1) row lookups ──────────────────────
     // Build a campus scope for ADMIN: only allow teachers from their campus
-    const adminCampusId =
-      (role === 'ADMIN' || role === 'BRANCH_MANAGER') ? (session.user.campusId ?? null) : null
+    const teacherScope = teacherWhere(await loadPlaces(session.user))
 
     const dbTeachers = await prisma.teacher.findMany({
       where: {
         isActive: true,
-        ...(adminCampusId ? { campusId: adminCampusId } : {}),
+        ...teacherScope, // M0: instructors of the person's places
       },
       select: {
         id: true,
@@ -216,7 +217,7 @@ export async function POST(req: NextRequest) {
       if (rawEmployeeId && !teacher) {
         errorList.push(
           `Employee ID "${rawEmployeeId}" not found${
-            adminCampusId ? ' in your campus' : ''
+            Object.keys(teacherScope).length ? ' in your places' : ''
           }. Check the Teacher Code in Staff Directory.`
         )
       }

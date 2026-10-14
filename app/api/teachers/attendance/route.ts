@@ -19,6 +19,8 @@
  *     with an explicit role check.
  */
 
+import { narrow, teacherWhere } from '@/lib/places/rules'
+import { loadPlaces, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -72,13 +74,8 @@ export async function GET(req: NextRequest) {
 
   // Determine which campus to query
   // ADMIN: always their own campus. SUPER_ADMIN: campusId param or all.
-  let campusFilter: string | undefined
-  if (session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') {
-    if (!session.user.campusId) return errors.forbidden('Admin has no assigned campus')
-    campusFilter = session.user.campusId
-  } else {
-    campusFilter = campusIdParam // undefined = all campuses for SUPER_ADMIN
-  }
+  // M0: instructors of the person's places (the place filter can only narrow)
+  const places = narrow(await requestPlaces(session.user), campusIdParam)
 
   const queryDate = new Date(`${date}T00:00:00.000Z`)
 
@@ -86,7 +83,7 @@ export async function GET(req: NextRequest) {
   const teachers = await prisma.teacher.findMany({
     where: {
       isActive: true,
-      ...(campusFilter ? { campusId: campusFilter } : {}),
+      ...teacherWhere(places),
     },
     select: {
       id: true,
@@ -197,13 +194,11 @@ export async function POST(req: NextRequest) {
   // ── Campus-scope enforcement ─────────────────────────────────────────────
   // For ADMIN: all teacherIds in the payload must belong to their campus.
   // Validate in one query before any writes occur.
-  if (session.user.role === 'ADMIN' || session.user.role === 'BRANCH_MANAGER') {
-    const campusId = session.user.campusId
-    if (!campusId) return errors.forbidden('Admin has no assigned campus')
-
+  {
+    // M0: every instructor in the payload must be in the person's places
     const teacherIds = [...new Set(records.map((r) => r.teacherId))]
     const teachersInCampus = await prisma.teacher.findMany({
-      where: { id: { in: teacherIds }, campusId },
+      where: { id: { in: teacherIds }, ...teacherWhere(await loadPlaces(session.user)) },
       select: { id: true },
     })
     const inCampusSet = new Set(teachersInCampus.map((t) => t.id))

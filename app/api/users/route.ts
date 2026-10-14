@@ -2,6 +2,8 @@
  * GET /api/users — Paginated/searchable list of all system users (Admin/Super Admin only)
  */
 
+import { userWhere } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -96,7 +98,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [total, users] = await prisma.$transaction([
+    // M0: accounts of the person's places (+ their own)
+  Object.assign(where, userWhere(await requestPlaces(session.user), session.user.id))
+
+  const [total, users] = await prisma.$transaction([
       prisma.user.count({ where }),
       prisma.user.findMany({
         where,

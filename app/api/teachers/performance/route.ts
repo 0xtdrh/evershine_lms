@@ -3,6 +3,8 @@
  * Managers: every instructor of their scope (table) or one (teacherId). Instructor: own only, when the setting allows.
  */
 
+import { teacherWhere } from '@/lib/places/rules'
+import { canSeeTeacher, requestPlaces } from '@/lib/places/server'
 import type { Role } from '@prisma/client'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession } from '@/lib/academic/api-helpers'
@@ -29,12 +31,10 @@ export async function GET(req: Request) {
   }
   const teacherId = q.get('teacherId')
   if (teacherId) {
-    if (scope.campusId) {
-      const t = await prisma.teacher.findUnique({ where: { id: teacherId }, select: { campusId: true } })
-      if (t?.campusId !== scope.campusId) return errors.forbidden()
-    }
+    // M0: instructors of the person's places
+    if (!(await canSeeTeacher(session.user, teacherId))) return errors.forbidden()
     const p = await teacherPerformance(teacherId, from, to)
     return p ? successResponse({ own: false, rows: [p] }) : errors.notFound('Instructor')
   }
-  return successResponse({ own: false, rows: await performanceTable(scope.campusId, from, to) })
+  return successResponse({ own: false, rows: await performanceTable(null, from, to, teacherWhere(await requestPlaces(session.user))) })
 }

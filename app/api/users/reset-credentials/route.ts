@@ -2,6 +2,7 @@
  * POST /api/users/reset-credentials — Reset email & password credentials for any user (Admin/Super Admin only)
  */
 
+import { canSeeUser } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -51,6 +52,8 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return errors.notFound('User')
   }
+  // M0: only accounts of the person's places
+  if (!(await canSeeUser(session.user, userId))) return errors.forbidden()
 
   // Security Gate: ADMINs cannot reset credentials of a SUPER_ADMIN
   if (session.user.role === 'ADMIN' && user.role === 'SUPER_ADMIN') {

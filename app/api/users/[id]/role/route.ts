@@ -2,6 +2,8 @@
  * PATCH /api/users/[id]/role — Elevate, update, or toggle roles/statuses of users
  */
 
+import { allowsCampus } from '@/lib/places/rules'
+import { canSeeUser, loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
@@ -53,6 +55,9 @@ export async function PATCH(
   }
 
   const { firstName, lastName, role, campusId, department, isActive } = parsed.data
+  // M0: only accounts of the person's places, and only into one of their places
+  if (!(await canSeeUser(session.user, userId))) return errors.forbidden()
+  if (campusId && !allowsCampus(await loadPlaces(session.user), campusId)) return errors.forbidden('This place is not yours')
 
   // Safety Gate: Prevent self-lockout or self-demotion
   if (session.user.id === userId) {

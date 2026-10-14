@@ -118,3 +118,27 @@ export async function visibleStudentIds(p: Places): Promise<string[] | null> {
   const { studentWhere } = await import('./rules')
   return (await prisma.student.findMany({ where: studentWhere(p), select: { id: true } })).map((s) => s.id)
 }
+
+/** May this person open this instructor? (serves one of their places, or teaches one of their single groups) */
+export async function canSeeTeacher(user: Who, teacherId: string): Promise<boolean> {
+  const p = await loadPlaces(user)
+  if (p.all) return true
+  const { teacherWhere } = await import('./rules')
+  return (await prisma.teacher.count({ where: { id: teacherId, ...teacherWhere(p) } })) > 0
+}
+
+/** May this person manage this account? (see userWhere) */
+export async function canSeeUser(user: Who, userId: string): Promise<boolean> {
+  const p = await loadPlaces(user)
+  if (p.all || userId === user.id) return true
+  const { userWhere } = await import('./rules')
+  return (await prisma.user.count({ where: { id: userId, ...userWhere(p, user.id) } })) > 0
+}
+
+/** Ids of the accounts this person may see (null = every account). For tables that keep a user id without a relation. */
+export async function visibleUserIds(user: Who): Promise<string[] | null> {
+  const p = await loadPlaces(user)
+  if (p.all) return null
+  const { userWhere } = await import('./rules')
+  return (await prisma.user.findMany({ where: userWhere(p, user.id), select: { id: true } })).map((u) => u.id)
+}

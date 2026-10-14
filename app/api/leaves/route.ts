@@ -1,3 +1,4 @@
+import { visibleUserIds } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
@@ -38,8 +39,9 @@ export async function GET(request: NextRequest) {
   let where: Prisma.LeaveRequestWhereInput = {}
 
   if (checkPermission(userRole, 'leaves', 'approve')) {
-    // Admins see all leave requests, including student submissions.
-    where = {}
+    // Approvers see the requests of the people in their places (M0), including student submissions.
+    const visible = await visibleUserIds(session.user)
+    where = visible ? { applicantId: { in: visible } } : {}
   } else if (checkPermission(userRole, 'leaves', 'create')) {
     // Staff only see their own requests
     where = { applicantId: userId }

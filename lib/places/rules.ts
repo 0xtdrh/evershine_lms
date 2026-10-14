@@ -96,3 +96,46 @@ export function onePlace(p: Places, requested: string | null | undefined): strin
   if (requested && p.campusIds.includes(requested)) return requested
   return p.primary && p.campusIds.includes(p.primary) ? p.primary : p.campusIds[0] ?? '__none__'
 }
+
+/**
+ * Instructors a person sees: primary place or an extra place among the person's places, instructors for every place,
+ * and the instructors of the person's single groups.
+ */
+export function teacherWhere(p: Places): Record<string, unknown> {
+  if (p.all) return {}
+  const or: Record<string, unknown>[] = [{ user: { allLocations: true } }]
+  if (p.campusIds.length) {
+    or.push({ campusId: { in: p.campusIds } }, { user: { placeAccess: { some: { campusId: { in: p.campusIds } } } } })
+  }
+  if (p.groupIds.length) or.push({ subjectOfferings: { some: { classSectionId: { in: p.groupIds } } } })
+  return { AND: [{ OR: or }] }
+}
+
+/** Office staff (Admin / Accountant rows): their place or an extra place among the person's places. */
+export function staffWhere(p: Places): Record<string, unknown> {
+  if (p.all) return {}
+  const ids = p.campusIds.length ? p.campusIds : ['__none__']
+  return { AND: [{ OR: [{ campusId: { in: ids } }, { user: { allLocations: true } }, { user: { placeAccess: { some: { campusId: { in: ids } } } } }] }] }
+}
+
+/**
+ * Accounts a person sees (Credential management): staff, instructors and students of their places, the parents of
+ * those students, and their own account.
+ */
+export function userWhere(p: Places, selfId: string): Record<string, unknown> {
+  if (p.all) return {}
+  const staff = staffWhere(p)
+  const students = studentWhere(p)
+  return {
+    AND: [{
+      OR: [
+        { id: selfId },
+        { admin: staff }, { branchManager: staff }, { secretary: staff }, { marketingStaff: staff }, { accountant: staff },
+        { teacher: teacherWhere(p) },
+        { student: students },
+        { parent: { students: { some: students } } },
+        { guardian: { students: { some: students } } },
+      ],
+    }],
+  }
+}

@@ -11,6 +11,7 @@
  * RBAC: SUPER_ADMIN and ADMIN only for writes; read is open to TEACHER (own).
  */
 
+import { canSeeTeacher } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -173,7 +174,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   }
 
   // Campus scope for ADMIN
-  if (isStrictAdmin(session.user.role) && teacher.campusId !== session.user.campusId) {
+  if (session.user.role !== 'TEACHER' && !(await canSeeTeacher(session.user, teacher.id))) {
     return errors.forbidden()
   }
 
@@ -251,7 +252,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     if (!teacher) return errors.notFound('Teacher')
     if (!teacher.isActive) return errors.forbidden('Cannot assign classes to an inactive teacher')
 
-    if (isStrictAdmin(session.user.role) && teacher.campusId !== session.user.campusId) {
+    if (session.user.role !== 'TEACHER' && !(await canSeeTeacher(session.user, teacher.id))) {
       return errors.forbidden('Admin can only manage teachers in their assigned campus')
     }
 
@@ -475,7 +476,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     })
     if (!teacher) return errors.notFound('Teacher')
 
-    if (isStrictAdmin(session.user.role) && teacher.campusId !== session.user.campusId) {
+    if (session.user.role !== 'TEACHER' && !(await canSeeTeacher(session.user, teacher.id))) {
       return errors.forbidden()
     }
 

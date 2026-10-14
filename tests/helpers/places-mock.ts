@@ -18,4 +18,7 @@ export const forgetPlaces = () => {}
 export const canSeeGroup = async () => true
 export const canSeeStudent = async () => true
 export const canSeeInvoice = async () => true
+export const canSeeTeacher = async () => true
+export const canSeeUser = async () => true
+export const visibleUserIds = async () => null
 export const visibleStudentIds = async (p: rules.Places) => (p.all ? null : [])

@@ -5,6 +5,8 @@
  * RBAC: SUPER_ADMIN, ADMIN only.
  */
 
+import { narrow, staffWhere } from '@/lib/places/rules'
+import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -19,16 +21,13 @@ export async function GET(request: NextRequest) {
   const role = session.user.role as Role
   if (!checkPermission(role, 'teachers', 'read')) return errors.forbidden() // standard staff read check
 
-  // Campus scoping: non-super-admins only see their campus
-  const campusId =
-    role === 'SUPER_ADMIN'
-      ? (new URL(request.url).searchParams.get('campusId') ?? undefined)
-      : (session.user.campusId ?? undefined)
+  // M0: the person's places (the place filter can only narrow)
+  const places = narrow(await requestPlaces(session.user), new URL(request.url).searchParams.get('campusId'))
 
   const [admins, accountants] = await Promise.all([
     prisma.admin.findMany({
       where: {
-        ...(campusId && { campusId }),
+        ...staffWhere(places),
       },
       orderBy: { createdAt: 'desc' },
       select: {
@@ -43,7 +42,7 @@ export async function GET(request: NextRequest) {
     }),
     prisma.accountant.findMany({
       where: {
-        ...(campusId && { campusId }),
+        ...staffWhere(places),
       },
       orderBy: { createdAt: 'desc' },
       select: {

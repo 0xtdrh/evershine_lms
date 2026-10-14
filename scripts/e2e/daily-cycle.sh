@@ -1542,6 +1542,29 @@ api PUT /api/users/$ACCU/places "{\"allLocations\":true,\"campusIds\":[],\"group
 check "given every place: the expense and refund appear too" "$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/accountant/expenses/$EXB)/$(accapi GET /api/refunds | jq_ "any(r['id']=='$RFB' for r in d['data'])")" "200/True"
 api PUT /api/users/$ACCU/places '{"allLocations":false,"campusIds":[],"groupIds":[]}' >/dev/null
 rm -f "$ACJ"
+echo "== 43. M0 places (staff): instructors, accounts, salaries and leaves follow the person's places"
+api PUT /api/users/$SECU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\"],\"groupIds\":[]}" >/dev/null
+CALTC=$(M "SELECT campusId FROM Teacher WHERE id='$CALT'")
+M "UPDATE Teacher SET campusId='$PB' WHERE id='$CALT'"
+check "secretary of the main place: an instructor of the other place is not listed and cannot be opened" "$(secapi GET "/api/teachers?limit=100" | jq_ "any(t['id']=='$CALT' for t in d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/teachers/$CALT)" "False/403"
+api PUT /api/teachers/$CALT/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\"],\"pay\":[],\"employment\":[]}" >/dev/null
+check "the instructor also serves the main place → listed and opens" "$(secapi GET "/api/teachers?limit=100" | jq_ "any(t['id']=='$CALT' for t in d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/teachers/$CALT)" "True/200"
+api PUT /api/teachers/$CALT/places '{"allLocations":false,"campusIds":[],"pay":[],"employment":[]}' >/dev/null
+M "UPDATE Teacher SET campusId='$CALTC' WHERE id='$CALT'"
+api POST /api/users/create-admin "{\"firstName\":\"Main\",\"lastName\":\"Admin\",\"email\":\"m0admin@e2e.local\",\"password\":\"E2eAdm12345\",\"role\":\"ADMIN\",\"campusId\":\"$CAMPUS\"}" >/dev/null
+api POST /api/users/create-admin "{\"firstName\":\"Other\",\"lastName\":\"Sec\",\"email\":\"m0secb@e2e.local\",\"password\":\"E2eSecB12345\",\"role\":\"SECRETARY\",\"campusId\":\"$PB\"}" >/dev/null
+SECB=$(M "SELECT id FROM User WHERE email='m0secb@e2e.local'")
+ADJ=$(mktemp); login_jar m0admin@e2e.local E2eAdm12345 "$ADJ" 10.0.1.97
+adapi() { curl -s -b "$ADJ" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+check "admin of the main place: the other place's account is not in the list" "$(adapi GET "/api/users?query=m0secb&limit=50" | jq_ "len(d['data'])")/$(api GET "/api/users?query=m0secb&limit=50" | jq_ "len(d['data'])")" "0/1"
+check "…cannot reset its password, nor create staff in the other place" "$(adapi POST /api/users/reset-credentials "{\"userId\":\"$SECB\",\"newPassword\":\"Hacked12345\"}" | jq_ "d['success']")/$(adapi POST /api/users/create-admin "{\"firstName\":\"X\",\"lastName\":\"Y\",\"email\":\"m0x@e2e.local\",\"password\":\"E2eXyz12345\",\"role\":\"SECRETARY\",\"campusId\":\"$PB\"}" | jq_ "d['success']")" "False/False"
+M "INSERT INTO LeaveRequest (id, applicantId, applicantRole, applicantName, leaveType, startDate, endDate, reason, status, createdAt, updatedAt) VALUES ('m0leaveb', '$SECB', 'SECRETARY', 'Other Sec', 'CASUAL', NOW(), NOW(), 'e2e', 'PENDING', NOW(), NOW())" 2>/dev/null
+check "…does not see the other place's leave request (list and open)" "$(adapi GET "/api/leaves?limit=100" | jq_ "any(l['id']=='m0leaveb' for l in d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$ADJ" $B/api/leaves/m0leaveb)/$(api GET "/api/leaves?limit=100" | jq_ "any(l['id']=='m0leaveb' for l in d['data'])")" "False/403/True"
+check "…cannot make a salary slip for the other place's staff" "$(curl -s -o /dev/null -w '%{http_code}' -b "$ADJ" -X POST -H 'Content-Type: application/json' -d "{\"employeeId\":\"$SECB\",\"month\":\"October 2026\",\"salaryPeriodStart\":\"2026-10-01T00:00:00.000Z\",\"salaryPeriodEnd\":\"2026-10-31T00:00:00.000Z\",\"basicSalary\":1000}" $B/api/accountant/salary-slips)" "403"
+ADU=$(M "SELECT id FROM User WHERE email='m0admin@e2e.local'")
+api PUT /api/users/$ADU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\",\"$PB\"],\"groupIds\":[]}" >/dev/null
+check "given the other place too: the account and the leave appear" "$(adapi GET "/api/users?query=m0secb&limit=50" | jq_ "len(d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$ADJ" $B/api/leaves/m0leaveb)" "1/200"
+rm -f "$ADJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

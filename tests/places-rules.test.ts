@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allowsCampus, allowsGroup, campusWhere, groupWhere, invoiceWhere, narrow, onePlace, placeForCreate, resolvePlaces, studentWhere, teacherServes } from '@/lib/places/rules'
+import { allowsCampus, allowsGroup, campusWhere, groupWhere, invoiceWhere, narrow, onePlace, staffWhere, teacherWhere, userWhere, placeForCreate, resolvePlaces, studentWhere, teacherServes } from '@/lib/places/rules'
 
 describe('resolvePlaces', () => {
   it('super admin and "all places" see everything; families see no places', () => {
@@ -55,5 +55,28 @@ describe('finance (M0 batch 2)', () => {
     expect(onePlace({ ...sara, campusIds: ['A', 'B'] }, 'B')).toBe('B')
     expect(onePlace({ all: true, campusIds: [], groupIds: [], primary: null }, null)).toBeNull()
     expect(onePlace({ all: false, campusIds: [], groupIds: ['g'], primary: null }, null)).toBe('__none__')
+  })
+})
+
+describe('staff (M0 batch 3)', () => {
+  const sara = { all: false, campusIds: ['A'], groupIds: ['g-thu'], primary: 'A' }
+  const all = { all: true, campusIds: [], groupIds: [], primary: null }
+  it('instructors: their place / extra place / every place / teaching a single group', () => {
+    expect(teacherWhere(all)).toEqual({})
+    expect(teacherWhere(sara)).toEqual({ AND: [{ OR: [
+      { user: { allLocations: true } },
+      { campusId: { in: ['A'] } },
+      { user: { placeAccess: { some: { campusId: { in: ['A'] } } } } },
+      { subjectOfferings: { some: { classSectionId: { in: ['g-thu'] } } } },
+    ] }] })
+  })
+  it('office staff: their place or an extra place; nothing with single groups only', () => {
+    expect(staffWhere({ ...sara, campusIds: [] })).toEqual({ AND: [{ OR: [{ campusId: { in: ['__none__'] } }, { user: { allLocations: true } }, { user: { placeAccess: { some: { campusId: { in: ['__none__'] } } } } }] }] })
+  })
+  it('accounts: own account always; everything for every place', () => {
+    expect(userWhere(all, 'me')).toEqual({})
+    const or = (userWhere(sara, 'me') as { AND: { OR: unknown[] }[] }).AND[0].OR
+    expect(or[0]).toEqual({ id: 'me' })
+    expect(or).toContainEqual({ parent: { students: { some: studentWhere(sara) } } })
   })
 })

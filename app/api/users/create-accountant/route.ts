@@ -13,6 +13,8 @@
  * be able to provision them, unlike general ADMIN accounts which an ADMIN can also create.
  */
 
+import { allowsCampus } from '@/lib/places/rules'
+import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -65,6 +67,11 @@ export async function POST(request: NextRequest) {
   }
 
   const { firstName, lastName, email, password, phoneNumber, campusId, employeeId } = parsed.data
+  // M0: new staff only in one of the person's places ("all" needs every place)
+  {
+    const pl = await loadPlaces(session.user)
+    if (campusId === 'ALL' ? !pl.all : !allowsCampus(pl, campusId)) return errors.forbidden('This place is not yours')
+  }
 
   // Validate campus exists before doing any writes (if not ALL)
   let resolvedCampusName = 'All Campuses'

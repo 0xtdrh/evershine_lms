@@ -5,6 +5,7 @@
  * when the setting allows it (`teacherPerformance.settings.teacherCanSee`, off by default). Read-only. Server-only.
  */
 
+import type { Prisma } from '@prisma/client'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { campusScope } from '@/lib/academic/api-helpers'
@@ -36,8 +37,8 @@ export async function performanceScope(user: User): Promise<{ teacherIds: string
   return null
 }
 
-export async function teacherList(campusId: string | null) {
-  const rows = await prisma.teacher.findMany({ where: { isActive: true, ...(campusId ? { campusId } : {}) }, select: { id: true, firstName: true, lastName: true, campus: { select: { name: true } } }, orderBy: { firstName: 'asc' } })
+export async function teacherList(campusId: string | null, where: Prisma.TeacherWhereInput = {}) {
+  const rows = await prisma.teacher.findMany({ where: { isActive: true, ...(campusId ? { campusId } : {}), ...where }, select: { id: true, firstName: true, lastName: true, campus: { select: { name: true } } }, orderBy: { firstName: 'asc' } })
   return rows.map((t) => ({ id: t.id, name: `${t.firstName} ${t.lastName}`.trim(), campus: t.campus?.name ?? '' }))
 }
 
@@ -87,8 +88,8 @@ export async function teacherPerformance(teacherId: string, from: Date, to: Date
 }
 
 /** One short line per instructor for the managers' table. */
-export async function performanceTable(campusId: string | null, from: Date, to: Date) {
-  const list = await teacherList(campusId)
+export async function performanceTable(campusId: string | null, from: Date, to: Date, where: Prisma.TeacherWhereInput = {}) {
+  const list = await teacherList(campusId, where)
   const out = []
   for (const t of list.slice(0, 150)) {
     const p = await teacherPerformance(t.id, from, to)

@@ -2,6 +2,8 @@
  * POST /api/users/create-admin — Allow SUPER_ADMIN to provision a campus-level administrator account (User + Admin profile)
  */
 
+import { allowsCampus } from '@/lib/places/rules'
+import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -51,6 +53,8 @@ export async function POST(request: NextRequest) {
   }
 
   const { firstName, lastName, email, password, role, campusId, department } = parsed.data
+  // M0: new staff only in one of the person's places
+  if (campusId && !allowsCampus(await loadPlaces(session.user), campusId)) return errors.forbidden('This place is not yours')
 
   if (role === 'SUPER_ADMIN') {
     return errors.forbidden('Super Administrator accounts must be created through the protected bootstrap process.')
