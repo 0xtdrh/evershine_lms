@@ -28,6 +28,7 @@ import { PaymentProofUploadModal } from '@/components/fees/PaymentProofUploadMod
 import { getCanonicalStudentClassSection, type EnrollmentRecord } from '@/lib/academic/record-formatters'
 import { PaymentMethodSelect } from '@/components/fees/PaymentMethodSelect'
 import { useAfterPayment } from '@/lib/fees/use-after-payment'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface FeeInvoice {
   id: string
@@ -191,8 +192,11 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
   )
 }
 
+const STATUS_AR: Record<string, string> = { ISSUED: 'صادرة', PARTIALLY_PAID: 'مدفوعة جزئيًا', PAID: 'مدفوعة', OVERDUE: 'متأخرة', CANCELLED: 'ملغية' }
+
 export default function FeesManagementPage() {
   const { data: session, status } = useSession()
+  useI18n() // re-render on a language switch
   const role = (session?.user?.role as string) || ''
   const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'].includes(role)
   const ALLOWED_ROLES = ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'STUDENT', 'PARENT', 'GUARDIAN']
@@ -252,8 +256,8 @@ export default function FeesManagementPage() {
   if (!canViewFees) {
     return (
       <AccessDenied
-        title="Fee Module Restricted"
-        message="Access to the fee management module is restricted. Teachers are not part of the fee collection workflow."
+        title={L('Invoices', 'الفواتير')}
+        message={L('You do not have access to invoices.', 'مالكش صلاحية على الفواتير.')}
       />
     )
   }
@@ -274,7 +278,7 @@ export default function FeesManagementPage() {
         onOpenChange={(open) => { if (!open) setUploadInvoice(null) }}
         invoice={uploadInvoice}
         uploadEndpoint={uploadInvoice ? `/api/fees/${uploadInvoice.id}/proof` : ''}
-        successMessage="Payment proof submitted successfully!"
+        successMessage={L('Payment proof submitted!', 'إيصال الدفع اتبعت!')}
         successQueryKeys={[['fees']]}
       />
 
@@ -285,16 +289,16 @@ export default function FeesManagementPage() {
             <div className="p-2 bg-green-100 rounded-lg text-green-600">
               <DollarSign className="w-6 h-6" />
             </div>
-            Fees Management
+            {isAdmin ? L('Invoices', 'الفواتير') : L('My invoices', 'فواتيري')}
           </h1>
           <p className="text-sm text-slate-500 mt-1 font-medium ml-11">
-            {pagination ? `${pagination.total.toLocaleString()} challans total` : 'Loading...'}
+            {pagination ? `${pagination.total.toLocaleString()} ${L('invoices', 'فاتورة')}` : L('Loading…', 'بيحمّل…')}
           </p>
           {filterStudentId && (
             <p className="text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 mt-2 ml-11 w-fit">
-              Showing challans for one student —{' '}
+              {L('Showing invoices for one student —', 'فواتير طالب واحد —')}{' '}
               <Link href={`/dashboard/students/${filterStudentId}`} className="underline font-medium">
-                view profile
+                {L('view profile', 'افتح ملفه')}
               </Link>
             </p>
           )}
@@ -303,7 +307,7 @@ export default function FeesManagementPage() {
           <Link href="/dashboard/fees/generate">
             <Button className="gap-2 bg-green-600 hover:bg-green-700 transition-colors shadow-md hover:shadow-lg">
               <Plus className="w-4 h-4" />
-              Generate Challan
+              {L('Generate invoice', 'عمل فاتورة')}
             </Button>
           </Link>
         )}
@@ -316,7 +320,7 @@ export default function FeesManagementPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               type="search"
-              placeholder="Challan no., student name or reg..."
+              placeholder={L('Invoice no., student name or reg. no.', 'رقم الفاتورة أو اسم الطالب أو رقم التسجيل')}
               className="pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -331,20 +335,16 @@ export default function FeesManagementPage() {
                 setPage(1)
               }}
             >
-              Pending Proofs
+              {L('Pending proofs', 'إيصالات مستنية')}
             </Button>
           )}
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v === 'ALL' ? '' : v); setPage(1) }}>
             <SelectTrigger className="w-44">
-              <SelectValue placeholder="All statuses" />
+              <SelectValue placeholder={L('All statuses', 'كل الحالات')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All statuses</SelectItem>
-              <SelectItem value="ISSUED">Issued</SelectItem>
-              <SelectItem value="PARTIALLY_PAID">Partially Paid</SelectItem>
-              <SelectItem value="PAID">Paid</SelectItem>
-              <SelectItem value="OVERDUE">Overdue</SelectItem>
-              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              <SelectItem value="ALL">{L('All statuses', 'كل الحالات')}</SelectItem>
+              {['ISSUED', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'CANCELLED'].map((s) => <SelectItem key={s} value={s}>{L(s.replace('_', ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase()), STATUS_AR[s])}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -354,15 +354,15 @@ export default function FeesManagementPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead>Challan No.</TableHead>
-                <TableHead>Student</TableHead>
-                <TableHead>Month</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Paid</TableHead>
-                <TableHead>Balance</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{L('Invoice no.', 'رقم الفاتورة')}</TableHead>
+                <TableHead>{L('Student', 'الطالب')}</TableHead>
+                <TableHead>{L('Month', 'الشهر')}</TableHead>
+                <TableHead>{L('Total', 'الإجمالي')}</TableHead>
+                <TableHead>{L('Paid', 'المدفوع')}</TableHead>
+                <TableHead>{L('Balance', 'الباقي')}</TableHead>
+                <TableHead>{L('Due date', 'ميعاد الدفع')}</TableHead>
+                <TableHead>{L('Status', 'الحالة')}</TableHead>
+                <TableHead className="text-end">{L('Actions', 'إجراءات')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -379,8 +379,8 @@ export default function FeesManagementPage() {
                   <TableCell colSpan={9} className="h-64">
                     <EmptyState 
                       icon={FileText}
-                      title="No fee records found"
-                      description={search || statusFilter ? "Try adjusting your filters to find what you're looking for." : "There are currently no fee invoices generated."}
+                      title={L('No invoices found', 'مفيش فواتير')}
+                      description={search || statusFilter ? L('Try changing the filters.', 'جرّب تغيّر الفلاتر.') : L('No invoices yet.', 'لسه مفيش فواتير.')}
                     />
                   </TableCell>
                 </TableRow>
@@ -402,22 +402,22 @@ export default function FeesManagementPage() {
                         </Link>
                       </TableCell>
                       <TableCell className="text-sm">{fee.month}</TableCell>
-                      <TableCell className="text-sm font-medium">EGP {total.toLocaleString()}</TableCell>
-                      <TableCell className="text-sm text-green-700">EGP {paid.toLocaleString()}</TableCell>
+                      <TableCell className="text-sm font-medium">{L('EGP', 'ج.م')} {total.toLocaleString()}</TableCell>
+                      <TableCell className="text-sm text-green-700">{L('EGP', 'ج.م')} {paid.toLocaleString()}</TableCell>
                       <TableCell className={`text-sm font-medium ${balance > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                        {balance > 0 ? `EGP ${balance.toLocaleString()}` : '—'}
+                        {balance > 0 ? `${L('EGP', 'ج.م')} ${balance.toLocaleString()}` : '—'}
                       </TableCell>
                       <TableCell className={`text-xs ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                        {new Date(fee.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(fee.dueDate).toLocaleDateString(L('en-GB', 'ar-EG'), { day: 'numeric', month: 'short', year: 'numeric' })}
                         {isOverdue && ' ⚠'}
                       </TableCell>
                       <TableCell>
                         <span className={`inline-flex text-xs px-2 py-0.5 rounded-full font-medium border ${STATUS_STYLES[fee.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {fee.status.replace('_', ' ')}
+                          {L(fee.status.replace('_', ' '), STATUS_AR[fee.status] ?? fee.status)}
                         </span>
                         {fee.proofStatus === 'PENDING' && (
                           <span className="ml-1 inline-flex text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 font-bold whitespace-nowrap">
-                            PROOF PENDING
+                            {L('PROOF PENDING', 'الإيصال بيتراجع')}
                           </span>
                         )}
                       </TableCell>
@@ -431,7 +431,7 @@ export default function FeesManagementPage() {
                               onClick={() => setCollectInvoice(fee)}
                             >
                               <DollarSign className="w-3 h-3" />
-                              Collect
+                              {L('Collect', 'تحصيل')}
                             </Button>
                           )}
                           {!isAdmin && fee.status !== 'PAID' && fee.status !== 'CANCELLED' && fee.proofStatus !== 'PENDING' && (
@@ -442,7 +442,7 @@ export default function FeesManagementPage() {
                               onClick={() => setUploadInvoice(fee)}
                             >
                               <UploadCloud className="w-3 h-3" />
-                              Pay Fee
+                              {L('Pay', 'ادفع')}
                             </Button>
                           )}
                           {!isAdmin && fee.proofStatus === 'PENDING' && (
@@ -453,12 +453,12 @@ export default function FeesManagementPage() {
                               className="gap-1.5 border-amber-300 text-amber-600 bg-amber-50 h-7 text-[10px] font-bold"
                             >
                               <Loader2 className="w-3 h-3 animate-spin" />
-                              Pending
+                              {L('Pending', 'مستني')}
                             </Button>
                           )}
                           <Link href={`/dashboard/fees/${fee.id}`}>
                             <Button variant="ghost" size="sm" className="h-7 text-xs text-gray-500">
-                              View
+                              {L('View', 'عرض')}
                             </Button>
                           </Link>
                         </div>
@@ -475,7 +475,7 @@ export default function FeesManagementPage() {
         {pagination && pagination.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50">
             <p className="text-sm text-slate-500 font-medium">
-              Showing {((page - 1) * limit) + 1}–{Math.min(page * limit, pagination.total)} of {pagination.total}
+              {((page - 1) * limit) + 1}–{Math.min(page * limit, pagination.total)} {L('of', 'من')} {pagination.total}
             </p>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className="h-8 w-8 p-0 border-slate-200">

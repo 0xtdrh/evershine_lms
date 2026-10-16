@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Award, PartyPopper, ShieldCheck } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface FieldLayoutItem {
   key: 'studentName' | 'courseName' | 'levelName' | 'issueDate' | 'certificateId' | 'qrCode'
@@ -81,9 +82,9 @@ function CertificateCard({ cert, studentName }: { cert: MyCertificate; studentNa
         {!cert.isRevealed && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/10 text-center px-4">
             <PartyPopper className="w-8 h-8 text-white drop-shadow mb-2" />
-            <p className="text-white font-bold drop-shadow">Certificate Earned! 🎉</p>
+            <p className="text-white font-bold drop-shadow">{L('Certificate earned! 🎉', 'كسبت شهادة! 🎉')}</p>
             <p className="text-white/90 text-xs mt-1 drop-shadow max-w-[220px]">
-              This will be revealed at the upcoming TechNova ceremony.
+              {L('It will be revealed at the next TechNova ceremony.', 'هتتكشف في حفلة TechNova الجاية.')}
             </p>
           </div>
         )}
@@ -92,7 +93,7 @@ function CertificateCard({ cert, studentName }: { cert: MyCertificate; studentNa
         <div className="flex items-center justify-between">
           <p className="font-semibold text-slate-900 text-sm">{cert.title}</p>
           {cert.isRevealed && (
-            <Badge className="bg-emerald-100 text-emerald-800 border-0 gap-1 text-[10px]"><ShieldCheck className="w-3 h-3" /> Verified</Badge>
+            <Badge className="bg-emerald-100 text-emerald-800 border-0 gap-1 text-[10px]"><ShieldCheck className="w-3 h-3" /> {L('Verified', 'موثّقة')}</Badge>
           )}
         </div>
         <p className="text-xs text-slate-400 font-mono">{cert.certificateNumber}</p>
@@ -103,6 +104,7 @@ function CertificateCard({ cert, studentName }: { cert: MyCertificate; studentNa
 
 export default function MyCertificatesPage() {
   const { data: session } = useSession()
+  useI18n() // re-render on a language switch
   const role = session?.user?.role
   const [selectedChildId, setSelectedChildId] = useState('')
 
@@ -131,13 +133,13 @@ export default function MyCertificatesPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Award className="w-6 h-6 text-indigo-600" /> Certificates
+            <Award className="w-6 h-6 text-indigo-600" /> {L('Certificates', 'الشهادات')}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Every certificate earned at TechNova, with a QR code you can use to verify it anytime.</p>
+          <p className="text-sm text-slate-500 mt-1">{L('Every certificate earned at TechNova, with a QR code to verify it anytime.', 'كل شهادة اتاخدت في TechNova، وعليها QR code تتأكد منه في أي وقت.')}</p>
         </div>
         {isGuardian && children.length > 1 && (
           <Select value={activeChildId} onValueChange={setSelectedChildId}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Select child" /></SelectTrigger>
+            <SelectTrigger className="w-48"><SelectValue placeholder={L('Select child', 'اختار الابن')} /></SelectTrigger>
             <SelectContent>
               {children.map((c) => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}
             </SelectContent>
@@ -148,7 +150,7 @@ export default function MyCertificatesPage() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : certificates.length === 0 ? (
-        <Card><CardContent className="py-16 text-center text-slate-400">No certificates yet — keep learning!</CardContent></Card>
+        <Card><CardContent className="py-16 text-center text-slate-400">{L('No certificates yet — keep learning!', 'لسه مفيش شهادات — كمّل تعلّم!')}</CardContent></Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {certificates.map((c) => <CertificateCard key={c.id} cert={c} studentName={studentName} />)}

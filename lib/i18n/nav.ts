@@ -8,8 +8,8 @@ export const NAV_AR: Record<string, string> = {
   'Settings Centre': 'مركز الإعدادات', 'Settings': 'الإعدادات', 'Platform': 'تشغيل الأنظمة', 'Agreements': 'الموافقات',
   'Role Assumptions': 'الدخول بدور آخر', 'Credential Management': 'إدارة الحسابات', 'Backups': 'النسخ الاحتياطي',
   'Admissions': 'طلبات الالتحاق', 'Landing Leads': 'عملاء الموقع', 'Students': 'الطلبة', 'Waiting List': 'قائمة الانتظار',
-  'Staff Directory': 'الموظفين', 'Fees': 'المصروفات', 'Accounting Hub': 'الحسابات', 'Fee Collection': 'تحصيل المصروفات',
-  'Discounts': 'الخصومات', 'Refunds': 'الاسترداد', 'Expense Ledger': 'المصروفات الإدارية', 'Financial Reports': 'التقارير المالية',
+  'Staff Directory': 'الموظفين', 'Fees': 'الفواتير', 'Accounting Hub': 'ملخص الحسابات', 'Fee Collection': 'التحصيل',
+  'Discounts': 'الخصومات', 'Refunds': 'الاسترداد', 'Expense Ledger': 'مصاريف التشغيل', 'Financial Reports': 'التقارير المالية',
   'Wallet & Top-ups': 'المحفظة والشحن', 'Groups Financials': 'ماليات المجموعات', 'Leaves': 'الإجازات', 'Complaints': 'الشكاوى',
   'Referrals': 'الإحالات', 'Academic Queries': 'الاستفسارات الدراسية', 'Staff Salaries': 'رواتب الموظفين',
   'Attendance': 'الحضور', 'Attendance Report': 'تقرير الحضور', 'Staff Attendance': 'حضور الموظفين', 'Biometric Import': 'استيراد البصمة',
@@ -28,7 +28,7 @@ export const NAV_AR: Record<string, string> = {
   'Projects Gallery': 'معرض المشاريع', 'My Lessons': 'دروسي', 'My Homework': 'واجباتي', 'My Quizzes': 'كويزاتي',
   // teacher hub
   'My Students': 'طلابي', 'Student Attendance': 'حضور الطلبة', 'Import Attendance': 'استيراد الحضور', 'My Announcements': 'إعلاناتي',
-  'Tasks & Marks': 'المهام والدرجات', 'Daily Scores': 'الدرجات اليومية', 'Level Results': 'نتائج المستوى', 'Grade Entry': 'إدخال الدرجات',
+  'Tasks & Marks': 'المهام والدرجات', 'Daily Scores': 'الدرجات اليومية', 'Level Results': 'نتائج المستوى', 'LMS Results': 'نتائج المستوى', 'Grade Entry': 'إدخال الدرجات',
   'Student Targets': 'أهداف الطلبة', 'Exam Results': 'نتائج الامتحانات', 'Monthly Monitoring': 'المتابعة الشهرية',
   'Student Leaves': 'إجازات الطلبة', 'HR & Salary': 'الموارد البشرية والراتب',
 }

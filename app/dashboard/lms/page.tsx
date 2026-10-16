@@ -47,7 +47,7 @@ export default function LmsHubPage() {
         { href: '/dashboard/assignments', en: 'Grade homework', ar: 'تصحيح الواجبات', descEn: 'Hand-ins, rubrics, code, voice notes', descAr: 'التسليمات، الـ Rubrics، الكود، الرسائل الصوتية', icon: ClipboardList, perm: ['curriculum', 'read'], count: n?.toGrade, countEn: 'waiting to be graded', countAr: 'مستني تصحيح' },
         { href: '/dashboard/quizzes', en: 'Quizzes & exams', ar: 'الكويزات والامتحانات', descEn: 'Open the final exam, scores, paper exams, analysis', descAr: 'فتح الامتحان النهائي، الدرجات، الورقي، التحليل', icon: ListChecks, perm: ['curriculum', 'read'], count: n?.quizReview, countEn: 'code answers to review', countAr: 'إجابات كود للمراجعة' },
         { href: '/dashboard/gallery', en: 'Projects gallery', ar: 'معرض المشاريع', descEn: 'Projects approved by instructors', descAr: 'المشاريع اللي المدربين اختاروها', icon: Images, perm: ['curriculum', 'read'] },
-        { href: teacher ? '/dashboard/teacher/level-results' : '/dashboard/results', en: 'Level results', ar: 'نتائج المستوى', descEn: 'Homework / task / project / MCQ from the LMS', descAr: 'درجات الواجبات والكويزات والمشروع من المنصة', icon: BarChart3 },
+        { href: '/dashboard/teacher/level-results', en: 'Level results', ar: 'نتائج المستوى', descEn: 'Homework / task / project / MCQ from the LMS', descAr: 'درجات الواجبات والكويزات والمشروع من المنصة', icon: BarChart3 },
       ],
     },
     {

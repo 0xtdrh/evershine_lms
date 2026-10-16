@@ -3,12 +3,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AcademyLogo } from '@/components/AcademyLogo'
-import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Printer } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { L, useI18n } from '@/lib/i18n/client'
+import { notify } from '@/lib/notify'
+import { CalendarDays, CalendarOff, ChevronLeft, ChevronRight, Loader2, Printer, X } from 'lucide-react'
 
 type Status = 'HELD' | 'MISSING' | 'SCHEDULED' | 'NOT_STARTED' | 'CANCELLED' | 'HOLIDAY'
 interface Group {
@@ -46,8 +49,12 @@ const D = (s: string) => new Date(`${s}T00:00:00.000Z`)
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 const addDays = (s: string, n: number) => iso(new Date(D(s).getTime() + n * 86_400_000))
 const startOfWeek = (s: string) => addDays(s, -D(s).getUTCDay())
-const fmt = (s: string, o: Intl.DateTimeFormatOptions) => D(s).toLocaleDateString('en-GB', { timeZone: 'UTC', ...o })
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const fmt = (s: string, o: Intl.DateTimeFormatOptions) => D(s).toLocaleDateString(L('en-GB', 'ar-EG'), { timeZone: 'UTC', ...o })
+const DAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const DAYS_AR = ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت']
+const dayName = (i: number) => L(DAYS_EN[i], DAYS_AR[i])
+/** Roles that may add a holiday (the API checks the real permission, incl. overrides). */
+const HOLIDAY_ROLES = ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER']
 const ALL = 'all'
 
 function monthRange(anchor: string) {
@@ -68,7 +75,10 @@ const STATUS_STYLE: Record<Status, string> = {
 
 export default function GroupsSchedulePage() {
   const { data: auth } = useSession()
+  useI18n() // re-render on a language switch
   const isTeacher = auth?.user?.role === 'TEACHER'
+  const canAddHoliday = HOLIDAY_ROLES.includes(auth?.user?.role ?? '')
+  const [holidayOpen, setHolidayOpen] = useState(false)
   const [view, setView] = useState<'week' | 'month'>('week')
   const [anchor, setAnchor] = useState(() => iso(new Date()))
   const [campus, setCampus] = useState(ALL)
@@ -121,10 +131,10 @@ export default function GroupsSchedulePage() {
   }, [sessions])
 
   const filterText = [
-    campus !== ALL ? `Branch: ${options.campuses.find((x) => x.id === campus)?.name}` : isTeacher ? null : 'All branches',
-    track !== ALL ? `Track: ${options.tracks.find((x) => x.id === track)?.name}` : null,
-    course !== ALL ? `Course: ${options.courses.find((x) => x.id === course)?.name}` : null,
-    teacher !== ALL ? `Instructor: ${options.teachers.find((x) => x.id === teacher)?.name}` : null,
+    campus !== ALL ? `${L('Branch', 'الفرع')}: ${options.campuses.find((x) => x.id === campus)?.name}` : isTeacher ? null : L('All branches', 'كل الفروع'),
+    track !== ALL ? `${L('Track', 'المسار')}: ${options.tracks.find((x) => x.id === track)?.name}` : null,
+    course !== ALL ? `${L('Course', 'الكورس')}: ${options.courses.find((x) => x.id === course)?.name}` : null,
+    teacher !== ALL ? `${L('Instructor', 'المدرب')}: ${options.teachers.find((x) => x.id === teacher)?.name}` : null,
   ].filter(Boolean).join(' · ')
   const periodText = view === 'week'
     ? `${fmt(range.from, { day: 'numeric', month: 'short' })} – ${fmt(range.to, { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -155,47 +165,50 @@ export default function GroupsSchedulePage() {
 
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900"><CalendarDays className="h-5 w-5 text-indigo-600" /> {isTeacher ? 'My calendar' : 'Groups schedule'}</h1>
-          <p className="text-sm text-slate-500">Every session on its real date, with its number, substitutes, cancellations and clashes.</p>
+          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900"><CalendarDays className="h-5 w-5 text-indigo-600" /> {isTeacher ? L('My calendar', 'جدولي') : L('Groups schedule', 'جدول الجروبات')}</h1>
+          <p className="text-sm text-slate-500">{L('Every session on its real date, with its number, substitutes, cancellations and clashes.', 'كل حصة في يومها الحقيقي، برقمها والبديل والإلغاء والتعارضات.')}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-slate-200 p-0.5">
             {(['week', 'month'] as const).map((v) => (
               <button key={v} type="button" onClick={() => setView(v)}
                 className={`rounded-md px-3 py-1 text-sm font-medium ${view === v ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
-                {v === 'week' ? 'Week' : 'Month'}
+                {v === 'week' ? L('Week', 'أسبوع') : L('Month', 'شهر')}
               </button>
             ))}
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}><Printer className="h-4 w-4" /> Print</Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}><Printer className="h-4 w-4" /> {L('Print', 'طباعة')}</Button>
+          {canAddHoliday && (
+            <Button size="sm" className="gap-1.5" onClick={() => setHolidayOpen(true)}><CalendarOff className="h-4 w-4" /> {L('Add holiday', 'إضافة إجازة')}</Button>
+          )}
         </div>
       </div>
 
       <div className="no-print flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => move(-1)} aria-label="Previous"><ChevronLeft className="h-4 w-4" /></Button>
-        <Button variant="outline" size="sm" className="h-8" onClick={() => setAnchor(iso(new Date()))}>Today</Button>
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => move(1)} aria-label="Next"><ChevronRight className="h-4 w-4" /></Button>
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => move(-1)} aria-label={L('Previous', 'السابق')}><ChevronLeft className="h-4 w-4" /></Button>
+        <Button variant="outline" size="sm" className="h-8" onClick={() => setAnchor(iso(new Date()))}>{L('Today', 'النهارده')}</Button>
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => move(1)} aria-label={L('Next', 'التالي')}><ChevronRight className="h-4 w-4" /></Button>
         <span className="mr-2 text-sm font-semibold text-slate-800">{periodText}</span>
         {!isTeacher && (
-          <FilterSelect value={campus} onChange={(v) => { setCampus(v); setTrack(ALL); setCourse(ALL) }} all="All branches" items={options.campuses} />
+          <FilterSelect value={campus} onChange={(v) => { setCampus(v); setTrack(ALL); setCourse(ALL) }} all={L('All branches', 'كل الفروع')} items={options.campuses} />
         )}
-        <FilterSelect value={track} onChange={(v) => { setTrack(v); setCourse(ALL) }} all="All tracks" items={options.tracks} />
-        <FilterSelect value={course} onChange={setCourse} all="All courses" items={options.courses} />
-        {!isTeacher && <FilterSelect value={teacher} onChange={setTeacher} all="All instructors" items={options.teachers} />}
+        <FilterSelect value={track} onChange={(v) => { setTrack(v); setCourse(ALL) }} all={L('All tracks', 'كل المسارات')} items={options.tracks} />
+        <FilterSelect value={course} onChange={setCourse} all={L('All courses', 'كل الكورسات')} items={options.courses} />
+        {!isTeacher && <FilterSelect value={teacher} onChange={setTeacher} all={L('All instructors', 'كل المدربين')} items={options.teachers} />}
       </div>
 
       <div className="no-print flex flex-wrap gap-2 text-xs">
-        <Legend className={STATUS_STYLE.HELD} text="Held (attendance taken)" />
-        <Legend className={STATUS_STYLE.SCHEDULED} text="Upcoming" />
-        <Legend className={STATUS_STYLE.NOT_STARTED} text="Group not started yet" />
-        <Legend className={STATUS_STYLE.MISSING} text={`No attendance recorded${counts.missing ? ` (${counts.missing})` : ''}`} />
-        <Legend className={STATUS_STYLE.CANCELLED} text="Cancelled" />
-        <Legend className={STATUS_STYLE.HOLIDAY} text="Holiday (session moved to the next day)" />
-        <Legend className="border-rose-400 bg-rose-50 text-rose-700 ring-1 ring-rose-400" text={`Instructor clash${counts.clashes ? ` (${counts.clashes})` : ''}`} />
-        <Legend className="border-indigo-600 bg-indigo-600 text-white" text={`Last session of the month${counts.last ? ` (${counts.last})` : ''}`} />
+        <Legend className={STATUS_STYLE.HELD} text={L('Held (attendance taken)', 'اتعملت (الحضور متسجل)')} />
+        <Legend className={STATUS_STYLE.SCHEDULED} text={L('Upcoming', 'جاية')} />
+        <Legend className={STATUS_STYLE.NOT_STARTED} text={L('Group not started yet', 'الجروب لسه مابدأش')} />
+        <Legend className={STATUS_STYLE.MISSING} text={`${L('No attendance recorded', 'الحضور مش متسجل')}${counts.missing ? ` (${counts.missing})` : ''}`} />
+        <Legend className={STATUS_STYLE.CANCELLED} text={L('Cancelled', 'اتلغت')} />
+        <Legend className={STATUS_STYLE.HOLIDAY} text={L('Holiday (session moved to the next day)', 'إجازة (الحصة اتأجلت لليوم اللي بعده)')} />
+        <Legend className="border-rose-400 bg-rose-50 text-rose-700 ring-1 ring-rose-400" text={`${L('Instructor clash', 'تعارض للمدرب')}${counts.clashes ? ` (${counts.clashes})` : ''}`} />
+        <Legend className="border-indigo-600 bg-indigo-600 text-white" text={`${L('Last session of the month', 'آخر حصة في الشهر')}${counts.last ? ` (${counts.last})` : ''}`} />
       </div>
 
-      {isLoading && <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>}
+      {isLoading && <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> {L('Loading…', 'بيحمّل…')}</p>}
       {error && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{(error as Error).message}</p>}
 
       {data && (
@@ -204,11 +217,11 @@ export default function GroupsSchedulePage() {
             <div className="flex items-center gap-3">
               <AcademyLogo variant="compact" className="h-10 w-10" />
               <div>
-                <p className="text-base font-bold text-slate-900">TechNova · {isTeacher ? `Calendar${auth?.user?.name ? ` of ${auth.user.name}` : ''}` : 'Groups schedule'}</p>
-                <p className="text-xs text-slate-600">{filterText || 'All'} · {view === 'week' ? 'Week' : 'Month'}: {periodText}</p>
+                <p className="text-base font-bold text-slate-900">TechNova · {isTeacher ? `${L('Calendar', 'جدول')}${auth?.user?.name ? ` ${L('of', '')} ${auth.user.name}` : ''}` : L('Groups schedule', 'جدول الجروبات')}</p>
+                <p className="text-xs text-slate-600">{filterText || L('All', 'الكل')} · {view === 'week' ? L('Week', 'أسبوع') : L('Month', 'شهر')}: {periodText}</p>
               </div>
             </div>
-            <p className="text-[10px] text-slate-500">Printed {new Date().toLocaleString('en-GB')}</p>
+            <p className="text-[10px] text-slate-500">{L('Printed', 'اتطبع')} {new Date().toLocaleString(L('en-GB', 'ar-EG'))}</p>
           </div>
 
           {view === 'week' ? (
@@ -216,9 +229,10 @@ export default function GroupsSchedulePage() {
           ) : (
             <MonthView anchor={anchor} today={data.today} byDate={byDate} groupsById={groupsById} isTeacher={isTeacher} />
           )}
-          {sessions.length === 0 && <p className="py-6 text-center text-sm text-slate-500">No sessions in this period{filterText ? ' for this filter' : ''}.</p>}
+          {sessions.length === 0 && <p className="py-6 text-center text-sm text-slate-500">{L('No sessions in this period', 'مفيش حصص في الفترة دي')}{filterText ? L(' for this filter', ' بالفلتر ده') : ''}.</p>}
         </div>
       )}
+      {holidayOpen && <AddHolidayDialog campuses={options.campuses} onClose={() => setHolidayOpen(false)} />}
     </div>
   )
 }
@@ -248,22 +262,22 @@ function SessionCard({ s, g, compact, isTeacher }: { s: Session; g: Group | unde
   const number = s.sessionNumber ? `${s.sessionNumber}/${s.totalSessions}` : null
   const notes = (
     <>
-      {s.conflict && <span className="font-bold text-rose-700">Clash</span>}
-      {s.status === 'MISSING' && <span className="font-semibold text-amber-700">No attendance</span>}
-      {s.substitute && <span className="text-violet-700">Sub: {s.substitute.name}{s.substitute.confirmed ? '' : ' (waiting)'}</span>}
-      {s.teacherAbsent && !s.substitute?.confirmed && s.status !== 'CANCELLED' && <span className="text-rose-600">Instructor absent</span>}
+      {s.conflict && <span className="font-bold text-rose-700">{L('Clash', 'تعارض')}</span>}
+      {s.status === 'MISSING' && <span className="font-semibold text-amber-700">{L('No attendance', 'مفيش حضور')}</span>}
+      {s.substitute && <span className="text-violet-700">{L('Sub', 'بديل')}: {s.substitute.name}{s.substitute.confirmed ? '' : L(' (waiting)', ' (مستني)')}</span>}
+      {s.teacherAbsent && !s.substitute?.confirmed && s.status !== 'CANCELLED' && <span className="text-rose-600">{L('Instructor absent', 'المدرب غايب')}</span>}
       {s.status === 'CANCELLED' && s.cancelReason && <span className="inline-block">{s.cancelReason}</span>}
-      {s.status === 'HOLIDAY' && <span className="font-semibold">Holiday · moved</span>}
-      {s.isExtra && <span className="font-semibold text-indigo-700">Extra session</span>}
+      {s.status === 'HOLIDAY' && <span className="font-semibold">{L('Holiday · moved', 'إجازة · اتأجلت')}</span>}
+      {s.isExtra && <span className="font-semibold text-indigo-700">{L('Extra session', 'حصة إضافية')}</span>}
     </>
   )
   if (compact) {
     return (
       <Link href={href(s, isTeacher)} className={`print-break-avoid block rounded border px-1 py-0.5 text-[10px] leading-tight hover:opacity-80 ${cls}`}
-        title={`${g?.label ?? ''} · ${g?.course?.name ?? ''} ${g?.level?.name ?? ''} · ${s.teacherName ?? 'no instructor'}`}>
+        title={`${g?.label ?? ''} · ${g?.course?.name ?? ''} ${g?.level?.name ?? ''} · ${s.teacherName ?? L('no instructor', 'من غير مدرب')}`}>
         <span className="font-semibold">{s.time || '—'}</span> {g?.label}
         {number && <span className="text-slate-500"> · {number}</span>}
-        {s.isLastOfCycle && s.status !== 'HELD' && <span className="ml-0.5 rounded bg-indigo-600 px-1 text-white">last</span>}
+        {s.isLastOfCycle && s.status !== 'HELD' && <span className="ml-0.5 rounded bg-indigo-600 px-1 text-white">{L('last', 'آخر')}</span>}
         <span className="flex flex-wrap gap-x-1">{notes}</span>
       </Link>
     )
@@ -272,14 +286,14 @@ function SessionCard({ s, g, compact, isTeacher }: { s: Session; g: Group | unde
     <Link href={href(s, isTeacher)} className={`print-break-avoid block rounded-lg border px-2 py-1.5 text-xs hover:opacity-80 ${cls}`}>
       <div className="flex items-center justify-between gap-1">
         <span className="font-bold">{s.time || '—'}</span>
-        {number && <span className="rounded bg-slate-900/5 px-1 text-[10px] font-semibold">Session {number}</span>}
+        {number && <span className="rounded bg-slate-900/5 px-1 text-[10px] font-semibold">{L('Session', 'حصة')} {number}</span>}
       </div>
       <p className="font-semibold">{g?.label}</p>
       <p className="text-[11px] opacity-80">{g?.course?.name} · {g?.level?.name}</p>
-      <p className="text-[11px] opacity-80">{s.teacherName ?? 'No instructor'} · {g?.studentCount ?? 0} students</p>
+      <p className="text-[11px] opacity-80">{s.teacherName ?? L('No instructor', 'من غير مدرب')} · {g?.studentCount ?? 0} {L('students', 'طالب')}</p>
       {g && g.campus && <p className="text-[10px] opacity-60">{g.campus.name}</p>}
       {s.isLastOfCycle && s.status !== 'HELD' && (
-        <p className="mt-0.5 inline-block rounded bg-indigo-600 px-1.5 text-[10px] font-semibold text-white">Last session · advance the group after it</p>
+        <p className="mt-0.5 inline-block rounded bg-indigo-600 px-1.5 text-[10px] font-semibold text-white">{L('Last session · advance the group after it', 'آخر حصة · رحّل الجروب بعدها')}</p>
       )}
       <div className="mt-0.5 flex flex-wrap gap-x-1.5 text-[11px]">{notes}</div>
     </Link>
@@ -293,7 +307,7 @@ function WeekView({ from, today, byDate, groupsById, isTeacher }: { from: string
       {days.map((d, i) => (
         <div key={d} className={`min-h-[120px] rounded-lg border p-1.5 ${d === today ? 'border-indigo-400 bg-indigo-50/40' : 'border-slate-200'}`}>
           <p className={`mb-1.5 text-xs font-semibold ${d === today ? 'text-indigo-700' : 'text-slate-600'}`}>
-            {DAYS[i]} <span className="font-normal text-slate-500">{fmt(d, { day: 'numeric', month: 'short' })}</span>
+            {dayName(i)} <span className="font-normal text-slate-500">{fmt(d, { day: 'numeric', month: 'short' })}</span>
           </p>
           <div className="space-y-1.5">
             {(byDate.get(d) ?? []).map((s, k) => <SessionCard key={`${s.groupId}-${k}`} s={s} g={groupsById.get(s.groupId)} isTeacher={isTeacher} />)}
@@ -312,7 +326,7 @@ function MonthView({ anchor, today, byDate, groupsById, isTeacher }: { anchor: s
   return (
     <div className="overflow-x-auto">
       <div className="grid min-w-[760px] grid-cols-7 gap-px rounded-lg border border-slate-200 bg-slate-200">
-        {DAYS.map((d) => <div key={d} className="bg-slate-50 px-1.5 py-1 text-center text-xs font-semibold text-slate-600">{d.slice(0, 3)}</div>)}
+        {DAYS_EN.map((d, i) => <div key={d} className="bg-slate-50 px-1.5 py-1 text-center text-xs font-semibold text-slate-600">{L(d.slice(0, 3), DAYS_AR[i])}</div>)}
         {days.map((d) => (
           <div key={d} className={`min-h-[96px] p-1 ${inMonth(d) ? 'bg-white' : 'bg-slate-50'} ${d === today ? 'ring-2 ring-inset ring-indigo-400' : ''}`}>
             <p className={`mb-0.5 text-[11px] font-semibold ${inMonth(d) ? 'text-slate-700' : 'text-slate-400'}`}>{fmt(d, { day: 'numeric' })}</p>
@@ -321,6 +335,67 @@ function MonthView({ anchor, today, byDate, groupsById, isTeacher }: { anchor: s
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+/** 5-B (2026-10-17): add a holiday (one day or a range) straight from the schedule; sessions on it move to the next day. */
+function AddHolidayDialog({ campuses, onClose }: { campuses: { id: string; name: string }[]; onClose: () => void }) {
+  const qc = useQueryClient()
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' }) // Cairo's date (YYYY-MM-DD)
+  const [date, setDate] = useState(today)
+  const [toDate, setToDate] = useState('')
+  const [name, setName] = useState('')
+  const [campusId, setCampusId] = useState(campuses.length === 1 ? campuses[0].id : '')
+  const [saving, setSaving] = useState(false)
+  const save = async () => {
+    if (name.trim().length < 2) return notify.error(L('Write the holiday name', 'اكتب اسم الإجازة'))
+    setSaving(true)
+    try {
+      await fetchApi('/api/holidays', { method: 'POST', body: JSON.stringify({ date, toDate: toDate || undefined, name: name.trim(), campusId }) })
+      notify.success(L('Holiday added. Sessions on it move to the next day.', 'الإجازة اتضافت، والحصص اللي فيها اتأجلت لليوم اللي بعده.'))
+      await qc.invalidateQueries({ queryKey: ['groups-schedule'] })
+      onClose()
+    } catch (e) {
+      notify.error((e as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div className="no-print fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-md space-y-3 rounded-xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900"><CalendarOff className="h-4 w-4 text-sky-600" />{L('Add holiday', 'إضافة إجازة')}</h2>
+          <button type="button" onClick={onClose} aria-label="close" className="text-slate-400 hover:text-slate-700"><X className="h-4 w-4" /></button>
+        </div>
+        <label className="block text-sm">
+          <span className="text-slate-600">{L('Name', 'الاسم')}</span>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={L('e.g. Eid al-Adha', 'مثلاً: عيد الأضحى')} />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block text-sm">
+            <span className="text-slate-600">{L('From', 'من')}</span>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+          <label className="block text-sm">
+            <span className="text-slate-600">{L('To (optional)', 'لحد (اختياري)')}</span>
+            <Input type="date" value={toDate} min={date} onChange={(e) => setToDate(e.target.value)} />
+          </label>
+        </div>
+        <label className="block text-sm">
+          <span className="text-slate-600">{L('Where', 'فين')}</span>
+          <select value={campusId} onChange={(e) => setCampusId(e.target.value)} className="mt-1 h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm">
+            <option value="">{L('Whole company (all branches)', 'الشركة كلها (كل الفروع)')}</option>
+            {campuses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </label>
+        <p className="text-xs text-slate-500">{L('Sessions on these days are not lost: they move to the next session day. Managing all holidays: Groups → Holidays.', 'الحصص اللي في الأيام دي مش بتضيع: بتتأجل لليوم اللي بعده. إدارة كل الإجازات: الجروبات ← الإجازات.')}</p>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={onClose}>{L('Cancel', 'إلغاء')}</Button>
+          <Button size="sm" onClick={save} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}{L('Save', 'حفظ')}</Button>
+        </div>
       </div>
     </div>
   )

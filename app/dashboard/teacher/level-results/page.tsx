@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -60,9 +61,17 @@ export default function LevelResultsPage() {
   const [draft, setDraft] = useState<DraftState>({})
   const [savingId, setSavingId] = useState<string | null>(null)
 
+  // 5-B (2026-10-17): staff open any group of their places (grading_engine access); instructors their own groups
+  const { data: session } = useSession()
+  const isTeacher = session?.user?.role === 'TEACHER'
   const { data: offerings = [], isLoading: isLoadingOfferings } = useQuery<SubjectOffering[]>({
-    queryKey: ['teacher-subject-offerings'],
-    queryFn: () => fetchApi<SubjectOffering[]>('/api/teacher-portal/subject-offerings'),
+    queryKey: ['level-results-groups', isTeacher],
+    queryFn: async () => {
+      if (isTeacher) return fetchApi<SubjectOffering[]>('/api/teacher-portal/subject-offerings')
+      const groups = await fetchApi<{ id: string; label: string; course: { id: string; name: string } | null; status: string }[]>('/api/groups')
+      return groups.filter((g) => g.course).map((g) => ({ id: g.id, subject: { id: g.course!.id, name: g.course!.name, code: '' }, classSection: { id: g.id, className: g.label, sectionName: '' } }))
+    },
+    enabled: !!session?.user,
   })
 
   const selectedOffering = offerings.find((o) => o.id === selectedOfferingId)

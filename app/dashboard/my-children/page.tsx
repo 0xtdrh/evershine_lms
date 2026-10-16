@@ -30,8 +30,11 @@ import ResultReportCard, { type ReportCardResult, type ReportCardStudent } from 
 import { TaskMarksPanel, type TaskResultItem } from '@/components/academic/TaskMarksPanel'
 import { MonthlyMonitoringGrid } from '@/components/academic/MonthlyMonitoringGrid'
 import { getDisplayedPosition, type ResultCardConfig } from '@/lib/academic/result-card-config'
+import { L, useI18n } from '@/lib/i18n/client'
 
 const DAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const DAY_NAMES_AR = ['', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت', 'الأحد']
+const INVOICE_STATUS_AR: Record<string, string> = { PAID: 'مدفوعة', UNPAID: 'مش مدفوعة', PARTIAL: 'مدفوعة جزئيًا', OVERDUE: 'متأخرة', CANCELLED: 'ملغية', PENDING: 'مستنية' }
 
 type Child = {
   id: string
@@ -171,6 +174,7 @@ type ChildLeave = {
 
 export default function MyChildrenPage() {
   const { data: session, status } = useSession()
+  useI18n() // re-render on a language switch
   const qc = useQueryClient()
   const [selectedChildId, setSelectedChildId] = useState('')
   // Per-session download state: null = idle, string = termResultId being downloaded
@@ -208,8 +212,8 @@ export default function MyChildrenPage() {
   if (!allowed) {
     return (
       <AccessDenied
-        title="My Children"
-        message="Parents and guardians can monitor linked students' attendance, results, and fees here."
+        title={L('My Children', 'أولادي')}
+        message={L("Parents and guardians can monitor linked students' attendance, results, and fees here.", 'ولي الأمر يقدر يتابع هنا حضور ونتايج وفواتير أولاده.')}
       />
     )
   }
@@ -219,10 +223,10 @@ export default function MyChildrenPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Users className="w-7 h-7 text-emerald-600" />
-          My Children
+          {L('My Children', 'أولادي')}
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Monitor academic progress, attendance, results, and fee status for your linked students.
+          {L('Monitor academic progress, attendance, results, and fee status for your linked students.', 'تابع مستوى أولادك وحضورهم ونتايجهم وفواتيرهم.')}
         </p>
       </div>
 
@@ -235,12 +239,12 @@ export default function MyChildrenPage() {
 
       {loadingChildren ? (
         <div className="flex items-center gap-2 text-gray-500">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading children…
+          <Loader2 className="w-4 h-4 animate-spin" /> {L('Loading children…', 'بيحمّل الأولاد…')}
         </div>
       ) : (children ?? []).length === 0 ? (
         <Card>
           <CardContent className="pt-6 text-sm text-gray-600">
-            No students are linked to your account. Please contact the school office to link your child.
+            {L('No students are linked to your account. Please contact the office to link your child.', 'مفيش طلاب مربوطين بحسابك. كلّم الإدارة علشان يربطوا ابنك بالحساب.')}
           </CardContent>
         </Card>
       ) : (
@@ -285,18 +289,18 @@ export default function MyChildrenPage() {
 
           {loadingAcademic ? (
             <div className="flex items-center gap-2 text-gray-500 py-8">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading academic records…
+              <Loader2 className="w-4 h-4 animate-spin" /> {L('Loading…', 'بيحمّل…')}
             </div>
           ) : academic ? (
             <Tabs defaultValue="overview">
               <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="attendance">Attendance</TabsTrigger>
-                <TabsTrigger value="results">Results</TabsTrigger>
-                <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
-                <TabsTrigger value="fees">Fees</TabsTrigger>
-                <TabsTrigger value="excuses">Absence excuse</TabsTrigger>
-                <TabsTrigger value="reports">Reports</TabsTrigger>
+                <TabsTrigger value="overview">{L('Overview', 'نظرة عامة')}</TabsTrigger>
+                <TabsTrigger value="attendance">{L('Attendance', 'الحضور')}</TabsTrigger>
+                <TabsTrigger value="results">{L('Results', 'النتايج')}</TabsTrigger>
+                <TabsTrigger value="monitoring">{L('Monitoring', 'المتابعة')}</TabsTrigger>
+                <TabsTrigger value="fees">{L('Invoices', 'الفواتير')}</TabsTrigger>
+                <TabsTrigger value="excuses">{L('Absence excuse', 'اعتذار عن غياب')}</TabsTrigger>
+                <TabsTrigger value="reports">{L('Reports', 'التقارير')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="mt-4 space-y-4">
@@ -327,7 +331,7 @@ export default function MyChildrenPage() {
                             {academic.student.firstName} {academic.student.lastName}
                           </h2>
                           <p className="text-emerald-300 text-sm mt-0.5">
-                            {academic.activeYear?.name ?? 'No active year'} · {academic.student.campus.name}
+                            {academic.activeYear?.name ?? L('No active year', 'مفيش سنة دراسية')} · {academic.student.campus.name}
                           </p>
                           <div className="mt-3 flex flex-wrap gap-2">
                             {academic.enrollment && (
@@ -352,7 +356,7 @@ export default function MyChildrenPage() {
 
                         {academic.enrollment?.rollNumber && (
                           <div className="shrink-0 text-center">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Roll No.</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">{L('Roll No.', 'رقم الطالب')}</p>
                             <p className="text-2xl font-black text-white">{academic.enrollment.rollNumber}</p>
                           </div>
                         )}
@@ -361,10 +365,10 @@ export default function MyChildrenPage() {
                       {/* Stats bar */}
                       <div className="grid grid-cols-2 divide-x divide-white/10 border-t border-white/10 sm:grid-cols-4">
                         {[
-                          { label: 'Attendance', value: academic.attendance.summary.attendancePct != null ? `${academic.attendance.summary.attendancePct}%` : '—' },
-                          { label: 'Subjects', value: academic.enrollment?.subjectEnrollments?.length ?? '—' },
-                          { label: 'Avg. Result', value: academic.overallPercentage != null ? `${academic.overallPercentage}%` : '—' },
-                          { label: 'Invoices', value: academic.feeInvoices?.length ?? 0 },
+                          { label: L('Attendance', 'الحضور'), value: academic.attendance.summary.attendancePct != null ? `${academic.attendance.summary.attendancePct}%` : '—' },
+                          { label: L('Courses', 'الكورسات'), value: academic.enrollment?.subjectEnrollments?.length ?? '—' },
+                          { label: L('Avg. Result', 'متوسط النتيجة'), value: academic.overallPercentage != null ? `${academic.overallPercentage}%` : '—' },
+                          { label: L('Invoices', 'الفواتير'), value: academic.feeInvoices?.length ?? 0 },
                         ].map(({ label, value }) => (
                           <div key={label} className="px-4 py-3 text-center">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">{label}</p>
@@ -381,7 +385,7 @@ export default function MyChildrenPage() {
                   <Card className="border-slate-200 shadow-sm">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center gap-2">
-                        <BookOpen className="w-4 h-4 text-indigo-600" /> Enrolled Subjects
+                        <BookOpen className="w-4 h-4 text-indigo-600" /> {L('Enrolled courses', 'الكورسات المشترك فيها')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -410,14 +414,14 @@ export default function MyChildrenPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base flex items-center gap-2">
-                        <Calendar className="w-4 h-4" /> Timetable
+                        <Calendar className="w-4 h-4" /> {L('Timetable', 'المواعيد')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="text-sm space-y-1">
                       {academic.timetable.map((t) => (
                         <div key={`${t.dayOfWeek}-${t.startTime}`} className="flex justify-between border-b py-1">
                           <span>
-                            {DAY_NAMES[t.dayOfWeek]} {t.startTime}–{t.endTime}
+                            {L(DAY_NAMES[t.dayOfWeek], DAY_NAMES_AR[t.dayOfWeek])} {t.startTime}–{t.endTime}
                           </span>
                           <span>{t.subjectOffering.subject.name}</span>
                         </div>
@@ -437,9 +441,9 @@ export default function MyChildrenPage() {
                   <div className="flex items-center gap-2 px-1">
                     <BarChart2 className="w-5 h-5 text-purple-600" />
                     <div>
-                      <h3 className="text-base font-bold text-slate-900">Declared Exam Results</h3>
+                      <h3 className="text-base font-bold text-slate-900">{L('Declared results', 'النتايج المعلنة')}</h3>
                       <p className="text-xs text-slate-500">
-                        Official marks sheets published and verified by the administration.
+                        {L('Official results published by the administration.', 'النتايج الرسمية اللي الإدارة أعلنتها.')}
                       </p>
                     </div>
                   </div>
@@ -452,9 +456,9 @@ export default function MyChildrenPage() {
                           <CardContent className="pt-12 pb-12">
                             <div className="text-center">
                               <Trophy className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                              <h4 className="text-sm font-bold text-slate-900">No Declared Results Found</h4>
+                              <h4 className="text-sm font-bold text-slate-900">{L('No declared results yet', 'لسه مفيش نتايج معلنة')}</h4>
                               <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                                Results for your child have not been declared yet.
+                                {L('Results for your child have not been declared yet.', 'نتايج ابنك لسه ماتعلنتش.')}
                               </p>
                             </div>
                           </CardContent>
@@ -476,7 +480,7 @@ export default function MyChildrenPage() {
                     async function handleDownload(sessionResult: ReportCardResult) {
                       const el = cardRefs.current[sessionResult.termResultId]
                       if (!el) {
-                        notify.error('Please expand the result card first, then try downloading again.')
+                        notify.error(L('Please open the result card first, then try again.', 'افتح كارت النتيجة الأول وجرّب تاني.'))
                         return
                       }
                       setDownloadingId(sessionResult.termResultId)
@@ -488,9 +492,9 @@ export default function MyChildrenPage() {
                           format: 'a4',
                           scale: 3,
                         })
-                        notify.success('Report card downloaded successfully.')
+                        notify.success(L('Report card downloaded.', 'الشهادة اتنزّلت.'))
                       } catch (e) {
-                        notify.error(e instanceof Error ? e.message : 'Download failed.')
+                        notify.error(e instanceof Error ? e.message : L('Download failed.', 'التنزيل فشل.'))
                       } finally {
                         setDownloadingId(null)
                       }
@@ -543,7 +547,7 @@ export default function MyChildrenPage() {
                                   </Badge>
                                   {getDisplayedPosition(sessionResult.resultCardConfig, sessionResult.classPosition, sessionResult.manualPosition) !== null && (
                                     <Badge className="bg-slate-900 hover:bg-slate-900 text-white text-[10px] font-bold py-0">
-                                      Rank #{getDisplayedPosition(sessionResult.resultCardConfig, sessionResult.classPosition, sessionResult.manualPosition)}
+                                      {L('Rank', 'الترتيب')} #{getDisplayedPosition(sessionResult.resultCardConfig, sessionResult.classPosition, sessionResult.manualPosition)}
                                     </Badge>
                                   )}
                                 </div>
@@ -601,9 +605,9 @@ export default function MyChildrenPage() {
                   <div className="flex items-center gap-2">
                     <ClipboardCheck className="w-5 h-5 text-violet-600" />
                     <div>
-                      <h3 className="text-base font-bold text-slate-900">Assignments &amp; Task Marks</h3>
+                      <h3 className="text-base font-bold text-slate-900">{L('Assignments & task marks', 'درجات الواجبات والمهام')}</h3>
                       <p className="text-xs text-slate-500">
-                        Subject-wise breakdown of all graded tasks assigned by the teacher.
+                        {L('All graded tasks by course.', 'كل المهام اللي اتصححت لكل كورس.')}
                       </p>
                     </div>
                   </div>
@@ -614,18 +618,18 @@ export default function MyChildrenPage() {
                   <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
                       <ClipboardCheck className="w-5 h-5 text-indigo-600" />
-                      Monitoring Reports
+                      {L('Monitoring reports', 'تقارير المتابعة')}
                     </CardTitle>
-                    <CardDescription>Daily feedback is visible after teacher save; monthly reports are visible after declaration.</CardDescription>
+                    <CardDescription>{L('Daily feedback shows after the instructor saves it; monthly reports after they are declared.', 'الملاحظات اليومية بتظهر بعد ما المدرب يحفظها، والتقارير الشهرية بعد إعلانها.')}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-5">
                     <div>
-                      <h3 className="mb-2 text-sm font-semibold text-slate-800">Recent daily monitoring</h3>
-                      {academic.monitoringReports.daily.length === 0 ? <p className="text-sm text-gray-500">No daily monitoring entries yet.</p> : (
+                      <h3 className="mb-2 text-sm font-semibold text-slate-800">{L('Recent daily monitoring', 'آخر متابعة يومية')}</h3>
+                      {academic.monitoringReports.daily.length === 0 ? <p className="text-sm text-gray-500">{L('No daily monitoring entries yet.', 'لسه مفيش متابعة يومية.')}</p> : (
                         <div className="space-y-2">
                           {academic.monitoringReports.daily.map((entry, index) => (
                             <div key={`${entry.date}-${entry.courseName}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded border p-3 text-sm">
-                              <div><p className="font-medium">{entry.courseName}</p><p className="text-xs text-slate-500">{new Date(entry.date).toLocaleDateString('en-GB')} · Grade: {entry.grade ?? '—'} · {entry.highlight === 'STAR_OF_THE_DAY' ? 'Star of the Day' : entry.highlight === 'POOR' ? 'Poor' : 'No highlight'}</p></div>
+                              <div><p className="font-medium">{entry.courseName}</p><p className="text-xs text-slate-500">{new Date(entry.date).toLocaleDateString(L('en-GB', 'ar-EG'))} · {L('Grade', 'التقدير')}: {entry.grade ?? '—'} · {entry.highlight === 'STAR_OF_THE_DAY' ? L('Star of the Day', 'نجم اليوم') : entry.highlight === 'POOR' ? L('Poor', 'ضعيف') : L('No highlight', 'عادي')}</p></div>
                               <p className="max-w-md text-slate-600">{entry.remarks || '—'}</p>
                             </div>
                           ))}
@@ -635,11 +639,11 @@ export default function MyChildrenPage() {
                     <div>
                       <h3 className="mb-3 text-sm font-semibold text-slate-800 flex items-center gap-2">
                         <span className="flex h-2 w-2 rounded-full bg-emerald-600" />
-                        Declared Monthly Performance Sheets
+                        {L('Declared monthly sheets', 'تقارير الشهر المعلنة')}
                       </h3>
                       {academic.monitoringReports.monthly.length === 0 ? (
                         <p className="text-sm text-slate-500 bg-slate-50 border border-dashed rounded-lg p-6 text-center">
-                          No monthly monitoring report has been declared yet.
+                          {L('No monthly report has been declared yet.', 'لسه مفيش تقرير شهري معلن.')}
                         </p>
                       ) : (
                         <div className="space-y-4">
@@ -656,7 +660,7 @@ export default function MyChildrenPage() {
               <TabsContent value="monitoring" className="mt-4">
                 <MonitoringReportPanel
                   endpoint={`/api/guardian-portal/children/${childId}/monitoring`}
-                  title={`${academic.student.firstName}'s Academic Monitoring`}
+                  title={L(`${academic.student.firstName}'s monitoring`, `متابعة ${academic.student.firstName}`)}
                 />
               </TabsContent>
 
@@ -665,12 +669,12 @@ export default function MyChildrenPage() {
                   <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
                       <CreditCard className="w-5 h-5 text-blue-600" />
-                      Fee Challans
+                      {L('Invoices', 'الفواتير')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     {academic.feeInvoices.length === 0 ? (
-                      <p className="text-gray-500">No fee records.</p>
+                      <p className="text-gray-500">{L('No invoices.', 'مفيش فواتير.')}</p>
                     ) : (
                       academic.feeInvoices.map((inv) => (
                         <div
@@ -683,7 +687,7 @@ export default function MyChildrenPage() {
                           </div>
                           <div className="text-right">
                             <p>
-                              EGP {Number(inv.paidAmount)} / {Number(inv.totalAmount)}
+                              {L('EGP', 'ج.م')} {Number(inv.paidAmount)} / {Number(inv.totalAmount)}
                             </p>
                             <Badge 
                               variant={
@@ -692,10 +696,10 @@ export default function MyChildrenPage() {
                                 inv.status === 'CANCELLED' ? 'secondary' : 'default'
                               }
                             >
-                              {inv.status}
+                              {L(inv.status, INVOICE_STATUS_AR[inv.status] ?? inv.status)}
                             </Badge>
                             {Number(inv.penaltyAmount) > 0 && (
-                              <p className="text-xs text-red-600">Penalty: EGP {inv.penaltyAmount}</p>
+                              <p className="text-xs text-red-600">{L('Penalty', 'غرامة')}: {inv.penaltyAmount} {L('EGP', 'ج.م')}</p>
                             )}
                           </div>
                           <div className="flex flex-col gap-2 shrink-0">
@@ -703,13 +707,13 @@ export default function MyChildrenPage() {
                               href={`/dashboard/fees/${inv.id}`}
                               className="text-xs text-blue-600 hover:underline text-center border border-blue-200 px-3 py-1 rounded"
                             >
-                              View challan
+                              {L('View invoice', 'عرض الفاتورة')}
                             </Link>
                             
                             {inv.status !== 'PAID' && inv.status !== 'CANCELLED' && (
                               inv.proofStatus === 'PENDING' ? (
                                 <Badge variant="outline" className="flex items-center gap-1 text-[10px]">
-                                  <Clock className="w-3 h-3" /> Awaiting Approval
+                                  <Clock className="w-3 h-3" /> {L('Awaiting approval', 'مستني المراجعة')}
                                 </Badge>
                               ) : (
                                 <Button 
@@ -721,8 +725,8 @@ export default function MyChildrenPage() {
                                     setPaymentDialogOpen(true)
                                   }}
                                 >
-                                  <Upload className="w-3 h-3 mr-1" />
-                                  Upload Proof
+                                  <Upload className="w-3 h-3 me-1" />
+                                  {L('Upload proof', 'ارفع إيصال الدفع')}
                                 </Button>
                               )
                             )}

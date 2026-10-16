@@ -7,11 +7,16 @@ import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Check, Loader2, Lock, Send, Star, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
+
+/** Two-language label map: reading a key gives the text in the current language (lookups, Object.entries keys stay codes). */
+const bi = (m: Record<string, [string, string]>): Record<string, string> =>
+  new Proxy({} as Record<string, string>, { get: (_t, k) => (typeof k === 'string' && m[k] ? L(m[k][0], m[k][1]) : undefined) })
 
 export const STATUS_STEPS = ['NEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const
-export const STATUS_LABEL: Record<string, string> = { NEW: 'New', IN_PROGRESS: 'Being handled', RESOLVED: 'Solved', CLOSED: 'Closed' }
-export const KIND_LABEL: Record<string, string> = { COMPLAINT: 'Complaint', SUGGESTION: 'Suggestion', PRAISE: 'Thank you' }
-export const TOPIC_LABEL: Record<string, string> = { INSTRUCTOR: 'Instructor', SCHEDULE: 'Schedule', PAYMENT: 'Payments', PLACE: 'Place', SESSION: 'Sessions', OTHER: 'Other' }
+export const STATUS_LABEL = bi({ NEW: ['New', 'جديدة'], IN_PROGRESS: ['Being handled', 'جاري الحل'], RESOLVED: ['Solved', 'اتحلّت'], CLOSED: ['Closed', 'اتقفلت'] })
+export const KIND_LABEL = bi({ COMPLAINT: ['Complaint', 'شكوى'], SUGGESTION: ['Suggestion', 'اقتراح'], PRAISE: ['Thank you', 'شكر'] })
+export const TOPIC_LABEL = bi({ INSTRUCTOR: ['Instructor', 'المدرب'], SCHEDULE: ['Schedule', 'المواعيد'], PAYMENT: ['Payments', 'الدفع'], PLACE: ['Place', 'المكان'], SESSION: ['Sessions', 'الحصص'], OTHER: ['Other', 'حاجة تانية'] })
 
 interface Detail {
   id: string; number: string | null; kind: string; topic: string | null; status: string; source: string; text: string
@@ -23,10 +28,11 @@ interface Detail {
   canHandle: boolean
 }
 
-const when = (d: string) => new Date(d).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })
+const when = (d: string) => new Date(d).toLocaleString(L('en-GB', 'ar-EG'), { dateStyle: 'short', timeStyle: 'short' })
 
 /** Phase D: one complaint — stage tracker, conversation, actions (staff) or "solved?" (sender). */
 export function ComplaintThread({ id, staff }: { id: string; staff: boolean }) {
+  useI18n() // re-render on a language switch
   const qc = useQueryClient()
   const [reply, setReply] = useState('')
   const [internal, setInternal] = useState(false)
@@ -40,12 +46,12 @@ export function ComplaintThread({ id, staff }: { id: string; staff: boolean }) {
   })
   const patch = useMutation({
     mutationFn: (body: { status?: string; assignedToId?: string | null }) => fetchApi(`/api/complaints/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-    onSuccess: () => { notify.success('Saved'); refresh() },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); refresh() },
     onError: (e: Error) => notify.error(e.message),
   })
   const confirm = useMutation({
     mutationFn: (satisfied: boolean) => fetchApi(`/api/complaints/${id}/confirm`, { method: 'POST', body: JSON.stringify({ satisfied, rating: stars || null }) }),
-    onSuccess: (_r, satisfied) => { notify.success(satisfied ? 'Thank you!' : 'Sorry — we will follow up again'); refresh() },
+    onSuccess: (_r, satisfied) => { notify.success(satisfied ? L('Thank you!', 'شكرًا!') : L('Sorry — we will follow up again', 'آسفين — هنتابع تاني')); refresh() },
     onError: (e: Error) => notify.error(e.message),
   })
   if (isLoading || !c) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
@@ -54,9 +60,9 @@ export function ComplaintThread({ id, staff }: { id: string; staff: boolean }) {
   return (
     <div className="space-y-4 text-sm">
       <div>
-        <p className="text-xs text-slate-500">{c.number} · {KIND_LABEL[c.kind] ?? c.kind}{c.topic ? ` · ${TOPIC_LABEL[c.topic] ?? c.topic}` : ''}{c.source === 'PHONE' ? ' · recorded by phone' : c.source === 'AUTO_RATING' ? ' · from a low rating' : ''}</p>
-        <p className="font-semibold text-slate-800">{c.sender}{c.student ? ` · about ${c.student.name}` : ''}{c.group ? ` · ${c.group}` : ''}</p>
-        {staff && c.escalatedAt && <p className="text-xs font-semibold text-rose-600">Escalated to the branch manager (no reply before the deadline)</p>}
+        <p className="text-xs text-slate-500">{c.number} · {KIND_LABEL[c.kind] ?? c.kind}{c.topic ? ` · ${TOPIC_LABEL[c.topic] ?? c.topic}` : ''}{c.source === 'PHONE' ? L(' · recorded by phone', ' · اتسجلت بالتليفون') : c.source === 'AUTO_RATING' ? L(' · from a low rating', ' · من تقييم قليل') : ''}</p>
+        <p className="font-semibold text-slate-800">{c.sender}{c.student ? ` · ${L('about', 'بخصوص')} ${c.student.name}` : ''}{c.group ? ` · ${c.group}` : ''}</p>
+        {staff && c.escalatedAt && <p className="text-xs font-semibold text-rose-600">{L('Escalated to the branch manager (no reply before the deadline)', 'اتصعّدت لمدير الفرع (مفيش رد قبل الميعاد)')}</p>}
       </div>
 
       {/* stage tracker */}
@@ -76,10 +82,10 @@ export function ComplaintThread({ id, staff }: { id: string; staff: boolean }) {
           <p className="text-xs text-slate-500">{c.sender} · {when(c.createdAt)}</p>
           <p className="whitespace-pre-wrap text-slate-800">{c.text}</p>
         </div>
-        {c.legacyRemarks && <div className="rounded-lg bg-indigo-50 p-3"><p className="text-xs text-indigo-600">TechNova team</p><p>{c.legacyRemarks}</p></div>}
+        {c.legacyRemarks && <div className="rounded-lg bg-indigo-50 p-3"><p className="text-xs text-indigo-600">{L('TechNova team', 'فريق TechNova')}</p><p>{c.legacyRemarks}</p></div>}
         {c.replies.map((r) => (
           <div key={r.id} className={`rounded-lg p-3 ${r.internal ? 'border border-dashed border-amber-300 bg-amber-50' : r.fromStaff ? 'ml-6 bg-indigo-50' : 'mr-6 bg-slate-50'}`}>
-            <p className="flex items-center gap-1 text-xs text-slate-500">{r.internal && <Lock className="h-3 w-3" />}{r.internal ? 'Internal note · ' : ''}{r.author} · {when(r.createdAt)}</p>
+            <p className="flex items-center gap-1 text-xs text-slate-500">{r.internal && <Lock className="h-3 w-3" />}{r.internal ? L('Internal note · ', 'ملاحظة داخلية · ') : ''}{r.author} · {when(r.createdAt)}</p>
             <p className="whitespace-pre-wrap text-slate-800">{r.body}</p>
           </div>
         ))}
@@ -88,42 +94,42 @@ export function ComplaintThread({ id, staff }: { id: string; staff: boolean }) {
       {/* sender: was it solved? */}
       {!staff && c.status === 'RESOLVED' && (
         <div className="space-y-2 rounded-lg border-2 border-emerald-200 bg-emerald-50 p-3">
-          <p className="font-semibold text-emerald-800">Is the problem really solved?</p>
+          <p className="font-semibold text-emerald-800">{L('Is the problem really solved?', 'المشكلة اتحلّت فعلًا؟')}</p>
           <div className="flex items-center gap-1">
-            <span className="mr-1 text-xs text-slate-600">How did we handle it?</span>
+            <span className="mr-1 text-xs text-slate-600">{L('How did we handle it?', 'إيه رأيك في تعاملنا؟')}</span>
             {[1, 2, 3, 4, 5].map((n) => <button key={n} type="button" onClick={() => setStars(n)}><Star className={`h-5 w-5 ${n <= stars ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} /></button>)}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" className="gap-1 bg-emerald-600 hover:bg-emerald-700" disabled={confirm.isPending} onClick={() => confirm.mutate(true)}><ThumbsUp className="h-4 w-4" /> Yes, thank you</Button>
-            <Button size="sm" variant="outline" className="gap-1 text-rose-600" disabled={confirm.isPending} onClick={() => confirm.mutate(false)}><ThumbsDown className="h-4 w-4" /> No, not yet</Button>
+            <Button size="sm" className="gap-1 bg-emerald-600 hover:bg-emerald-700" disabled={confirm.isPending} onClick={() => confirm.mutate(true)}><ThumbsUp className="h-4 w-4" /> {L('Yes, thank you', 'أيوه، شكرًا')}</Button>
+            <Button size="sm" variant="outline" className="gap-1 text-rose-600" disabled={confirm.isPending} onClick={() => confirm.mutate(false)}><ThumbsDown className="h-4 w-4" /> {L('No, not yet', 'لأ، لسه')}</Button>
           </div>
         </div>
       )}
-      {c.status === 'CLOSED' && c.satisfied != null && <p className="text-xs text-slate-500">Sender said: {c.satisfied ? 'solved 👍' : 'not solved 👎'}{c.handlingRating ? ` · ${c.handlingRating}/5` : ''}</p>}
+      {c.status === 'CLOSED' && c.satisfied != null && <p className="text-xs text-slate-500">{L('Sender said', 'صاحب الرسالة قال')}: {c.satisfied ? L('solved 👍', 'اتحلّت 👍') : L('not solved 👎', 'ماتحلّتش 👎')}{c.handlingRating ? ` · ${c.handlingRating}/5` : ''}</p>}
 
       {/* staff actions */}
       {staff && c.canHandle && c.status !== 'CLOSED' && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2">
           <Select value={c.assignedToId ?? 'none'} onValueChange={(v) => patch.mutate({ assignedToId: v === 'none' ? null : v })}>
-            <SelectTrigger className="h-8 w-48"><SelectValue placeholder="Responsible" /></SelectTrigger>
+            <SelectTrigger className="h-8 w-48"><SelectValue placeholder={L('Responsible', 'المسؤول')} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Nobody yet</SelectItem>
+              <SelectItem value="none">{L('Nobody yet', 'لسه محدش')}</SelectItem>
               {c.handlers.map((h) => <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>)}
             </SelectContent>
           </Select>
-          {c.status === 'NEW' && <Button size="sm" variant="outline" className="h-8" onClick={() => patch.mutate({ status: 'IN_PROGRESS' })}>Start handling</Button>}
-          {c.status !== 'RESOLVED' && <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700" onClick={() => patch.mutate({ status: 'RESOLVED' })}>Mark as solved</Button>}
-          <Button size="sm" variant="ghost" className="h-8" onClick={() => patch.mutate({ status: 'CLOSED' })}>Close</Button>
+          {c.status === 'NEW' && <Button size="sm" variant="outline" className="h-8" onClick={() => patch.mutate({ status: 'IN_PROGRESS' })}>{L('Start handling', 'ابدأ الحل')}</Button>}
+          {c.status !== 'RESOLVED' && <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700" onClick={() => patch.mutate({ status: 'RESOLVED' })}>{L('Mark as solved', 'اتحلّت')}</Button>}
+          <Button size="sm" variant="ghost" className="h-8" onClick={() => patch.mutate({ status: 'CLOSED' })}>{L('Close', 'اقفل')}</Button>
         </div>
       )}
 
       {/* reply */}
       {c.status !== 'CLOSED' && (!staff || c.canHandle) && (
         <div className="space-y-2">
-          <textarea className="min-h-[70px] w-full rounded-md border border-slate-200 bg-white p-2" maxLength={5000} placeholder={staff ? 'Reply to the sender…' : 'Add a message…'} value={reply} onChange={(e) => setReply(e.target.value)} />
+          <textarea className="min-h-[70px] w-full rounded-md border border-slate-200 bg-white p-2" maxLength={5000} placeholder={staff ? L('Reply to the sender…', 'رد على صاحب الرسالة…') : L('Add a message…', 'اكتب رسالة…')} value={reply} onChange={(e) => setReply(e.target.value)} />
           <div className="flex items-center justify-between gap-2">
-            {staff ? <label className="flex items-center gap-1.5 text-xs text-slate-600"><input type="checkbox" checked={internal} onChange={(e) => setInternal(e.target.checked)} /> Internal note (staff only)</label> : <span />}
-            <Button size="sm" className="gap-1" disabled={!reply.trim() || send.isPending} onClick={() => send.mutate()}>{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send</Button>
+            {staff ? <label className="flex items-center gap-1.5 text-xs text-slate-600"><input type="checkbox" checked={internal} onChange={(e) => setInternal(e.target.checked)} /> {L('Internal note (staff only)', 'ملاحظة داخلية (للموظفين بس)')}</label> : <span />}
+            <Button size="sm" className="gap-1" disabled={!reply.trim() || send.isPending} onClick={() => send.mutate()}>{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {L('Send', 'ابعت')}</Button>
           </div>
         </div>
       )}
