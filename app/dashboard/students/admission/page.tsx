@@ -1,5 +1,6 @@
 'use client'
 
+import { GroupRulesPreview } from '@/components/rules/GroupRulesPreview'
 import { useEffect, useState } from 'react'
 import NextImage from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -82,6 +83,7 @@ export default function AdmissionPage() {
   })
 
   const selectedCampusId = useWatch({ control, name: 'campusId' })
+  const selectedSectionId = useWatch({ control, name: 'classSectionId' })
   // Partners part 1-B2: "New admission" from a place / partner page → that place chosen
   useEffect(() => {
     const campusId = new URLSearchParams(window.location.search).get('campusId')
@@ -597,6 +599,7 @@ export default function AdmissionPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {typeof selectedSectionId === 'string' && selectedSectionId && <GroupRulesPreview groupId={selectedSectionId} />}
               {selectedCampusId && sections.length === 0 && !sectionsLoading && (
                 <p className="flex items-center gap-1 text-xs text-amber-600 mt-1">
                   <Info className="w-3 h-3" />

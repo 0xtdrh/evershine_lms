@@ -18,6 +18,7 @@
  * Follows the exact same language as page.tsx (homepage), dashboard cards, and ShadCN components.
  */
 
+import { PolicyLinks } from '@/components/policies/PolicyLinks'
 import React, { useEffect, useState } from 'react'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import Link from 'next/link'
@@ -220,6 +221,7 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
           <span aria-hidden>·</span>
           <span>El Kawthar, Hurghada</span>
         </motion.div>
+        <PolicyLinks className="mt-2" />
 
         {/* ── COPYRIGHT ── */}
         <motion.p

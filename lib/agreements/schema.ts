@@ -13,4 +13,6 @@ export const agreementSchema = z.object({
   isActive: z.boolean().optional(),
   graceDays: z.number().int().min(0).max(60).optional(),
   sortOrder: z.number().int().min(0).max(100).optional(),
+  /** shown on the public page /policies/<key> (no login) */
+  isPublic: z.boolean().optional(),
 })

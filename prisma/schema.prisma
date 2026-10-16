@@ -3896,6 +3896,8 @@ model Agreement {
   version     Int      @default(1)
   sortOrder   Int      @default(0)
   graceDays   Int      @default(0)
+  /// Rules & policies (2026-10-16): shown on the public page /policies/<key> (no login), e.g. for Paymob
+  isPublic    Boolean  @default(false)
   publishedAt DateTime @default(now())
   updatedById String?
   createdAt   DateTime @default(now())
@@ -4789,4 +4791,37 @@ model PartnerActivity {
 
   @@index([partnerId, happenedAt])
   @@index([followUpAt])
+}
+
+/// Rules & policies (2026-10-16): extra written rules for groups, on four levels (all add up):
+/// GLOBAL (scopeId null) / CAMPUS / LEVEL / GROUP. Automatic rules come from the group settings (lib/rules/group-rules.ts).
+model GroupRule {
+  id          String   @id @default(cuid())
+  scope       String   @db.VarChar(8)
+  scopeId     String?
+  textEn      String   @db.Text
+  textAr      String   @db.Text
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([scope, scopeId])
+}
+
+/// Proof that a parent accepted the rules of a child's group — tied to the exact rules (hash); a change asks again.
+model GroupRulesAcceptance {
+  id             String   @id @default(cuid())
+  classSectionId String
+  studentId      String
+  userId         String
+  rulesHash      String   @db.VarChar(64)
+  acceptedAt     DateTime @default(now())
+  ip             String?  @db.VarChar(64)
+  userAgent      String?  @db.VarChar(300)
+
+  @@unique([classSectionId, studentId, userId, rulesHash])
+  @@index([classSectionId])
+  @@index([userId])
 }

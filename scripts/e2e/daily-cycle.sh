@@ -1010,7 +1010,7 @@ echo "== 29. foundations: platform switches, language, agreements, marketing fla
 check "platform settings readable by any staff (modules start OFF, agreements ON)" "$(secapi GET /api/platform/settings | jq_ "(d['data']['modules']['lms'], d['data']['modules']['agreements'], d['data']['language']['portal'])")" "(False, True, 'en')"
 check "secretary cannot change platform settings" "$(secapi PUT /api/platform/settings '{"modules":{"lms":true}}' | jq_ "d['success']")" "False"
 check "admin switches LMS on and portal language to Arabic" "$(api PUT /api/platform/settings '{"modules":{"lms":true},"language":{"staff":"en","portal":"ar"}}' | jq_ "(d['data']['modules']['lms'], d['data']['language']['portal'])")" "(True, 'ar')"
-check "agreements: 5 draft texts created switched off" "$(api GET /api/agreements | jq_ "(len(d['data']), any(a['isActive'] for a in d['data']))")" "(5, False)"
+check "agreements: 9 draft texts created switched off" "$(api GET /api/agreements | jq_ "(len(d['data']), any(a['isActive'] for a in d['data']))")" "(9, False)"
 AWJ=$(mktemp); login_as 01066660099 Wallet2026A "$AWJ" >/dev/null
 apend() { curl -s -b "$AWJ" "$B/api/agreements/pending"; }
 check "nothing to accept while every agreement is off" "$(apend | jq_ "len(d['data'])")" "0"
@@ -1677,6 +1677,29 @@ check "an instructor added to the place appears there; removed again he is gone"
 check "a person who does not have the place gets nothing from it" "$(secapi GET "/api/places/people?campusIds=$PSP" | jq_ "(len(d['data']['groups']), len(d['data']['students']))")" "(0, 0)"
 check "partner report for the nursery: 1 session held, 1 cancelled, 20 children" "$(api GET "/api/partners/$PNU/report?from=$(D -1)&to=$(D 0)" | jq_ "(d['data']['totals']['sessionsHeld'], d['data']['totals']['sessionsCancelled'], d['data']['totals']['students'])")" "(1, 1, 20)"
 check "Excel: partners list downloads; statements need partner money access" "$(curl -s -o /dev/null -w '%{http_code}|%{content_type}' -b "$JAR" "$B/api/partners/export?kind=partners" | cut -c1-40)/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" "$B/api/partners/export?kind=statements")" "200|application/vnd.openxmlformats-offic/403"
+echo "== 49. Rules & policies: policy drafts, public pages, group rules (automatic + written on 4 levels), parent must accept"
+check "4 more policy drafts (terms, refund, attendance, payment) — 9 in all" "$(api GET /api/agreements | jq_ "(len(d['data']), sorted(a['key'] for a in d['data'] if a['key'] in ('terms','refund-policy','attendance-policy','payment-policy')))")" "(9, ['attendance-policy', 'payment-policy', 'refund-policy', 'terms'])"
+TRM=$(M "SELECT id FROM Agreement WHERE \`key\`='terms'")
+check "no public policy while they are switched off" "$(curl -s $B/api/public/policies | jq_ "len(d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' $B/api/public/policies/terms)" "0/404"
+api PATCH /api/agreements/$TRM '{"isActive":true,"isPublic":true}' >/dev/null
+check "switched on + public: anyone can read it (no login); a non-public one stays hidden" "$(curl -s $B/api/public/policies/terms | jq_ "d['data']['titleEn']")/$(curl -s -o /dev/null -w '%{http_code}' $B/api/public/policies/payment-policy)" "Terms and conditions/404"
+api PATCH /api/agreements/$TRM '{"isActive":false}' >/dev/null
+WG=$(M "SELECT classSectionId FROM StudentEnrollment WHERE studentId='$W1' AND status='ACTIVE' LIMIT 1")
+check "a group shows automatic rules (absence, refunds) and its families" "$(api GET /api/groups/$WG/rules | jq_ "(any('absence counts' in i['en'] for i in d['data']['items']), any('refund' in i['en'].lower() for i in d['data']['items']), len(d['data']['families'])>=1)")" "(True, True, True)"
+AWJ=$(mktemp); login_as 01066660099 Wallet2026A "$AWJ" >/dev/null
+gpend() { curl -s -b "$AWJ" "$B/api/guardian-portal/group-rules"; }
+GH=$(gpend | jq_ "[p['hash'] for p in d['data'] if p['studentId']=='$W1' and p['groupId']=='$WG'][0]")
+check "the parent must accept the rules of the child's group" "$([ ${#GH} -eq 64 ] && echo yes)" "yes"
+check "accepting with old rules or for someone else's child is refused" "$(curl -s -b "$AWJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$WG\",\"studentId\":\"$W1\",\"hash\":\"$(printf 'a%.0s' $(seq 1 64))\"}" $B/api/guardian-portal/group-rules | jq_ "d['success']")/$(curl -s -b "$AWJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$GPS\",\"studentId\":\"$SPX\",\"hash\":\"$GH\"}" $B/api/guardian-portal/group-rules | jq_ "d['success']")" "False/False"
+curl -s -b "$AWJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$WG\",\"studentId\":\"$W1\",\"hash\":\"$GH\"}" $B/api/guardian-portal/group-rules >/dev/null
+check "accepted: no longer asked, and staff see the family as accepted" "$(gpend | jq_ "any(p['studentId']=='$W1' and p['groupId']=='$WG' for p in d['data'])")/$(api GET /api/groups/$WG/rules | jq_ "[f['acceptedAt'] is not None for f in d['data']['families'] if f['studentId']=='$W1']")" "False/[True]"
+check "the secretary cannot write group rules" "$(secapi POST /api/group-rules '{"scope":"GLOBAL","textEn":"x rule","textAr":"قاعدة"}' | jq_ "d['success']")" "False"
+GR=$(api POST /api/group-rules '{"scope":"GLOBAL","textEn":"Be on time, please.","textAr":"من فضلك خليك في المعاد."}' | jq_ "d['data']['id']")
+api POST /api/group-rules "{\"scope\":\"GROUP\",\"scopeId\":\"$WG\",\"textEn\":\"Bring the laptop.\",\"textAr\":\"هات اللابتوب.\"}" >/dev/null
+check "company + group rules are added (company first, then this group)" "$(api GET /api/groups/$WG/rules | jq_ "[i['source'] for i in d['data']['items'] if i['source']!='AUTO']")" "['GLOBAL', 'GROUP']"
+check "a change asks the parent again (marked updated)" "$(gpend | jq_ "[p['updated'] for p in d['data'] if p['studentId']=='$W1' and p['groupId']=='$WG']")" "[True]"
+api DELETE /api/group-rules/$GR >/dev/null
+rm -f "$AWJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

@@ -86,6 +86,8 @@ import { GuardianFeedbackModal } from '@/components/feedback/GuardianFeedbackMod
 import { FeeOverdueModal } from '@/components/student/FeeOverdueModal'
 import { getNotificationModuleForNavLabel, type NotificationCounts } from '@/lib/notifications/module-map'
 import { BirthdayCelebration, useBirthdayToday } from '@/components/birthdays/BirthdayCelebration'
+import { GroupRulesGate } from '@/components/agreements/GroupRulesGate'
+import { PolicyLinks } from '@/components/policies/PolicyLinks'
 import { AgreementsGate } from '@/components/agreements/AgreementsGate'
 import { I18nProvider, LanguageSwitch, useI18n } from '@/lib/i18n/client'
 import { navLabel } from '@/lib/i18n/nav'
@@ -537,6 +539,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <PageTransition>
             <BirthdayCelebration />
             <AgreementsGate />
+            {(role === 'PARENT' || role === 'GUARDIAN') && <GroupRulesGate />}
             {role === 'STUDENT' && (
               <>
                 <CompulsoryFeedbackBlocker />
@@ -551,6 +554,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             )}
             {children}
           </PageTransition>
+          <PolicyLinks className="mt-8 pb-20 md:pb-4" />
         </div>
         <div className="md:hidden">
           <MobileNav pathname={pathname} role={role} />

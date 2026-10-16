@@ -21,6 +21,7 @@ import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, T
 import { TransferStudentDialog } from '@/components/groups/TransferStudentDialog'
 import { GroupCapacityPanel, type Seats, type WaitingRow } from '@/components/groups/GroupCapacityPanel'
 import { GroupPricePanel } from '@/components/groups/GroupPricePanel'
+import { GroupRulesPanel } from '@/components/rules/GroupRulesPanel'
 import { ExtraSessionsPanel, type ExtraSessionRow } from '@/components/groups/ExtraSessionsPanel'
 import { FullGroupDialog } from '@/components/groups/FullGroupDialog'
 
@@ -727,6 +728,7 @@ export default function GroupsPage() {
               {detail.seats && (
                 <GroupCapacityPanel groupId={detail.id} levelId={detail.level?.id ?? null} seats={detail.seats} waiting={detail.waiting ?? []} canEdit={canEditGroups} />
               )}
+              <GroupRulesPanel groupId={detail.id} canEditRules={!!myPerms?.permissions?.agreements?.includes('update')} />
               {detail.level && (
                 <GroupPricePanel
                   key={`price-${detail.id}`}

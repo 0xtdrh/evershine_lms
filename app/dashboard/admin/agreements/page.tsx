@@ -2,6 +2,7 @@
 
 /** Agreements centre: write the agreements, publish versions, see who accepted, remind, export. */
 
+import { GroupRulesEditor } from '@/components/rules/GroupRulesEditor'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -18,16 +19,16 @@ import { Bell, Download, FileSignature, Loader2, Plus, Users } from 'lucide-reac
 
 interface Agreement {
   id: string; key: string; titleEn: string; titleAr: string; bodyEn: string; bodyAr: string; audience: 'PARENT' | 'STUDENT' | 'STAFF'
-  mandatory: boolean; isActive: boolean; version: number; graceDays: number; sortOrder: number; acceptedCurrent: number; publishedAt: string
+  mandatory: boolean; isActive: boolean; isPublic: boolean; version: number; graceDays: number; sortOrder: number; acceptedCurrent: number; publishedAt: string
 }
 interface Status { agreement: { titleEn: string; version: number }; accepted: number; pending: number; rows: { userId: string; name: string; role: string; contact: string; acceptedAt: string | null; device: string | null }[] }
 
 const AUD: Record<string, string> = { PARENT: 'Parents', STUDENT: 'Students', STAFF: 'Staff' }
-const blank = { key: '', audience: 'PARENT' as const, titleEn: '', titleAr: '', bodyEn: '', bodyAr: '', mandatory: true, isActive: false, graceDays: 0, sortOrder: 10 }
+const blank = { key: '', audience: 'PARENT' as const, titleEn: '', titleAr: '', bodyEn: '', bodyAr: '', mandatory: true, isActive: false, isPublic: false, graceDays: 0, sortOrder: 10 }
 
 function Editor({ a, onClose }: { a: Agreement | null; onClose: () => void }) {
   const qc = useQueryClient()
-  const [f, setF] = useState(a ? { key: a.key, audience: a.audience, titleEn: a.titleEn, titleAr: a.titleAr, bodyEn: a.bodyEn, bodyAr: a.bodyAr, mandatory: a.mandatory, isActive: a.isActive, graceDays: a.graceDays, sortOrder: a.sortOrder } : blank)
+  const [f, setF] = useState(a ? { key: a.key, audience: a.audience, titleEn: a.titleEn, titleAr: a.titleAr, bodyEn: a.bodyEn, bodyAr: a.bodyAr, mandatory: a.mandatory, isActive: a.isActive, isPublic: a.isPublic, graceDays: a.graceDays, sortOrder: a.sortOrder } : blank)
   const save = useMutation({
     mutationFn: () => a
       ? fetchApi(`/api/agreements/${a.id}`, { method: 'PATCH', body: JSON.stringify({ ...f, key: undefined }) })
@@ -57,6 +58,7 @@ function Editor({ a, onClose }: { a: Agreement | null; onClose: () => void }) {
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2"><input type="checkbox" checked={f.isActive} onChange={(e) => setF({ ...f, isActive: e.target.checked })} /> Switched on (shown to users)</label>
         <label className="flex items-center gap-2"><input type="checkbox" checked={f.mandatory} onChange={(e) => setF({ ...f, mandatory: e.target.checked })} /> Mandatory (blocks the portal until accepted)</label>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={f.isPublic} onChange={(e) => setF({ ...f, isPublic: e.target.checked })} /> Public page (anyone can read it at /policies/{f.key || 'key'}, e.g. for Paymob)</label>
       </div>
       {textChanged && <p className="rounded bg-amber-50 p-2 text-xs text-amber-800">You changed the text: saving publishes version {a!.version + 1} and everyone must accept again{f.graceDays ? ` (within ${f.graceDays} day(s))` : ''}.</p>}
       <div className="flex justify-end gap-2">
@@ -129,7 +131,7 @@ export default function AgreementsPage() {
                   <span>{a.titleEn} <span className="text-sm font-normal text-slate-400" dir="rtl">· {a.titleAr}</span></span>
                   <span className={`rounded-full border px-2 py-0.5 text-xs ${a.isActive ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>{a.isActive ? 'On' : 'Off'}</span>
                 </CardTitle>
-                <CardDescription>{AUD[a.audience]} · version {a.version} · {a.mandatory ? 'mandatory' : 'optional'} · {a.acceptedCurrent} accepted this version</CardDescription>
+                <CardDescription>{AUD[a.audience]} · version {a.version} · {a.mandatory ? 'mandatory' : 'optional'}{a.isPublic ? ' · public page' : ''} · {a.acceptedCurrent} accepted this version</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 {canEdit && <Button size="sm" variant="outline" onClick={() => setEdit(a)}>Edit</Button>}
@@ -139,6 +141,8 @@ export default function AgreementsPage() {
           ))}
         </div>
       )}
+      <GroupRulesEditor canEdit={canEdit} />
+      <p className="text-xs text-slate-500">Public policies (ticked "Public page") are at <a className="text-indigo-700 hover:underline" href="/policies" target="_blank" rel="noopener">/policies</a> — no login needed (Paymob asks for the refund policy and the terms on the website).</p>
       <Dialog open={!!edit} onOpenChange={(o) => { if (!o) setEdit(null) }}>
         <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
           <DialogHeader><DialogTitle>{edit === 'new' ? 'New agreement' : 'Edit agreement'}</DialogTitle></DialogHeader>
