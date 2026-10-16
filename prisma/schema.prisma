@@ -1445,14 +1445,51 @@ model Announcement {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  batch Batch? @relation(fields: [batchId], references: [id])
-  class Class? @relation(fields: [classId], references: [id])
+  // 5-D targeted announcements (2026-10-17, lib/announcements/*). Old rows keep targetRole/campusId (audiences = null).
+  body           String?   @db.Text // full English text (content keeps a short copy for the old screens)
+  titleAr        String?
+  contentAr      String?   @db.Text
+  audiences      String?   @db.VarChar(60) // "PARENT,STUDENT,TEACHER,STAFF"
+  scopeType      String?   @db.VarChar(12) // COMPANY | CAMPUS | PARTNER | TRACK | COURSE | LEVEL | GROUP | STUDENTS
+  scopeIds       Json?
+  attachmentUrl  String?   @db.VarChar(500)
+  attachmentName String?   @db.VarChar(200)
+  pinned         Boolean   @default(false)
+  requireAck     Boolean   @default(false)
+  status         String    @default("PUBLISHED") @db.VarChar(10) // PENDING | PUBLISHED | REJECTED
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectedReason String?   @db.VarChar(300)
+  recipientCount Int?
+  deliveredAt    DateTime? // recipients + notifications made (publishedAt may be later than createdAt)
+
+  batch      Batch?                  @relation(fields: [batchId], references: [id])
+  class      Class?                  @relation(fields: [classId], references: [id])
+  recipients AnnouncementRecipient[]
 
   @@index([targetRole])
   @@index([campusId])
   @@index([batchId])
   @@index([classId])
   @@index([publishedAt])
+  @@index([status])
+}
+
+/// 5-D: who an announcement reaches (made when it is delivered), with read / "I read it" confirmation.
+model AnnouncementRecipient {
+  id             String    @id @default(cuid())
+  announcementId String
+  userId         String
+  studentId      String? // the child it reaches the parent for (first one when a parent has several)
+  kind           String    @db.VarChar(8) // PARENT | STUDENT | TEACHER | STAFF
+  readAt         DateTime?
+  ackAt          DateTime?
+  createdAt      DateTime  @default(now())
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId, readAt])
 }
 
 model CalendarEvent {

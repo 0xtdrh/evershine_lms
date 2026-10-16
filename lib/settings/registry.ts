@@ -71,6 +71,7 @@ export const SETTING_CARDS: SettingCard[] = [
 
   // communication
   { key: 'notifications', group: 'communication', en: 'Notifications', ar: 'الإشعارات', descEn: 'Turn each notification on or off', descAr: 'تشغيل وقفل كل إشعار', href: '/dashboard/admin/notifications', roles: ADMINS },
+  { key: 'announcements', group: 'communication', en: 'Announcements', ar: 'الإعلانات', descEn: 'Instructors may send to their groups, ask "I read it" by default (who needs approval = Permissions)', descAr: 'المدرب يبعت لجروباته، «لازم يأكّد إنه قرأ» افتراضيًا (مين محتاج موافقة = الصلاحيات)', href: '/dashboard/announcements?tab=settings', roles: ['SUPER_ADMIN', 'ADMIN'], perm: ['announcements', 'approve'] },
   { key: 'complaints', group: 'communication', en: 'Complaints', ar: 'الشكاوى', descEn: 'Reply deadline, auto-close after solved', descAr: 'ميعاد الرد، والقفل التلقائي بعد الحل', href: '/dashboard/complaints?tab=report', perm: ['complaints', 'export'] },
 
   // system & security

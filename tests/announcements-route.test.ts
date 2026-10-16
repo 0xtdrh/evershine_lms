@@ -1,82 +1,45 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const { mockAuth, mockPrisma, mockTx, mockSendEmail } = vi.hoisted(() => {
-  const mockAuth = vi.fn()
-  const mockSendEmail = vi.fn()
-  const mockTx = {
-    announcement: { create: vi.fn() },
-    auditLog: { create: vi.fn() },
-  }
-  const mockPrisma = {
-    user: { findMany: vi.fn() },
-    announcement: { count: vi.fn(), findMany: vi.fn() },
-    $transaction: vi.fn(async (ops: Array<Promise<unknown>> | ((tx: typeof mockTx) => Promise<unknown>)) => {
-      if (Array.isArray(ops)) return Promise.all(ops)
-      return ops(mockTx)
-    }),
-  }
-
-  return { mockAuth, mockPrisma, mockTx, mockSendEmail }
-})
+const { mockAuth, mockCreate, mockAudit } = vi.hoisted(() => ({ mockAuth: vi.fn(), mockCreate: vi.fn(), mockAudit: vi.fn() }))
 
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
-vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
-vi.mock('@/lib/email', () => ({ sendEmail: mockSendEmail }))
+vi.mock('@/lib/prisma', () => ({ prisma: {} }))
+vi.mock('@/lib/audit-logger', () => ({ logAudit: mockAudit }))
+vi.mock('@/lib/announcements/engine', () => ({
+  AnnouncementError: class AnnouncementError extends Error {},
+  createAnnouncement: mockCreate,
+  feedFor: vi.fn(async () => []),
+  manageList: vi.fn(async () => []),
+}))
 
 import { POST } from '../app/api/announcements/route'
 
-const validPayload = {
-  title: 'Fee Consultation',
-  content: 'Submit the fee on time please',
-  targetRole: null,
-  expiresAt: '2026-07-30',
-}
+const payload = { title: 'Fee reminder', body: 'Please pay before Thursday', audiences: ['PARENT'], scopeType: 'COMPANY', scopeIds: [] }
+const post = (b: unknown) => POST(new NextRequest('http://localhost/api/announcements', { method: 'POST', body: JSON.stringify(b), headers: { 'content-type': 'application/json' } }))
 
-describe('POST /api/announcements', () => {
+describe('POST /api/announcements (5-D)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAuth.mockResolvedValue({ user: { id: 'admin-1', role: 'Super Admin' } })
-    mockTx.announcement.create.mockResolvedValue({ id: 'announcement-1', title: validPayload.title })
-    mockTx.auditLog.create.mockResolvedValue({ id: 'audit-1' })
-    mockPrisma.user.findMany.mockResolvedValue([])
-    mockSendEmail.mockResolvedValue(undefined)
+    mockCreate.mockResolvedValue({ id: 'a1', title: payload.title, audiences: 'PARENT', scopeType: 'COMPANY', status: 'PUBLISHED' })
+    mockAudit.mockResolvedValue(undefined)
   })
 
-  it('allows SuperAdmin sessions with display role aliases to publish announcements', async () => {
-    const response = await POST(new NextRequest('http://localhost/api/announcements', {
-      method: 'POST',
-      body: JSON.stringify(validPayload),
-      headers: { 'content-type': 'application/json' },
-    }))
-
-    expect(response.status).toBe(201)
-    expect(mockTx.announcement.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        title: validPayload.title,
-        content: validPayload.content,
-        targetRole: null,
-        createdBy: 'admin-1',
-      }),
-    }))
-    expect(mockTx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        userId: 'admin-1',
-        entityType: 'Announcement',
-      }),
-    }))
+  it('Super Admin (display role alias) sends; the engine gets the targeted draft', async () => {
+    const r = await post(payload)
+    expect(r.status).toBe(201)
+    expect(mockCreate).toHaveBeenCalledWith({ id: 'admin-1', role: 'SUPER_ADMIN' }, expect.objectContaining({ audiences: ['PARENT'], scopeType: 'COMPANY' }))
   })
 
-  it('still rejects student sessions from publishing announcements', async () => {
-    mockAuth.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
+  it('students cannot send', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 's1', role: 'STUDENT' } })
+    expect((await post(payload)).status).toBe(403)
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
 
-    const response = await POST(new NextRequest('http://localhost/api/announcements', {
-      method: 'POST',
-      body: JSON.stringify(validPayload),
-      headers: { 'content-type': 'application/json' },
-    }))
-
-    expect(response.status).toBe(403)
-    expect(mockTx.announcement.create).not.toHaveBeenCalled()
+  it('no audience or an unknown scope is refused', async () => {
+    expect((await post({ ...payload, audiences: [] })).status).toBe(400)
+    expect((await post({ ...payload, scopeType: 'PLANET' })).status).toBe(400)
   })
 })

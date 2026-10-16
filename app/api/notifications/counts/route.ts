@@ -40,6 +40,13 @@ export async function GET() {
     /* never break the badge counts */
   }
 
+  // 5-D: announcements published for later go out when their time comes (throttled to 2 min).
+  try {
+    await (await import('@/lib/announcements/engine')).deliverDue()
+  } catch {
+    /* never break the badge counts */
+  }
+
   // Fetch all unread notifications for this user — only type is needed.
   // WHY not load full rows: badges only need type values, and the composite
   // (userId, isRead) index keeps this narrow unread lookup cheap.

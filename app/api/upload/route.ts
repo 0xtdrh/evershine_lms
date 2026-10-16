@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   // Enforce safe folder structure and normalize slashes
   const baseFolder = getBaseUploadFolder()
-  const allowedFolders = ['students', 'teachers', 'fee-proofs', 'documents', 'challans', 'results']
+  const allowedFolders = ['students', 'teachers', 'fee-proofs', 'documents', 'challans', 'results', 'announcements']
 
   // Students and parents may only upload payment proofs (fees page). Staff may
   // use the other folders. Anything else is refused instead of going to misc.

@@ -1,111 +1,71 @@
 /**
- * GET    /api/announcements/[id]
- * PATCH  /api/announcements/[id]  — edit title/content/targetRole/expiresAt
- * DELETE /api/announcements/[id]  — soft-delete (isActive = false)
+ * 5-D announcement (lib/announcements/engine.ts).
+ * GET    /api/announcements/[id] — sender / approver: text + every recipient with read / "I read it"
+ * PATCH  /api/announcements/[id] — { action: 'approve' | 'reject' | 'stop' | 'pin' | 'unpin', reason? }
+ * DELETE /api/announcements/[id] — stop showing it (soft: isActive = false); the sender or an approver of that place
  */
 
 import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkPermission, normalizeRole } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
-import type { Role } from '@prisma/client'
-import { z } from 'zod'
+import { AnnouncementError, decide, detailFor } from '@/lib/announcements/engine'
 
-const updateSchema = z.object({
-  title: z.string().min(2).max(200).optional(),
-  content: z.string().min(5).optional(),
-  targetRole: z.enum(['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'GUARDIAN']).nullable().optional(),
-  expiresAt: z.string().nullable().optional(),
-  isActive: z.boolean().optional(),
-})
+export const dynamic = 'force-dynamic'
 
-export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params
+const patchSchema = z.object({ action: z.enum(['approve', 'reject', 'stop', 'pin', 'unpin']), reason: z.string().max(300).optional().nullable() })
+
+async function who() {
   const session = await auth()
-  if (!session?.user) return errors.unauthorized()
+  if (!session?.user) return null
   const role = normalizeRole(session.user.role)
-  if (!role || !checkPermission(role, 'announcements', 'read')) return errors.forbidden()
-
-  const a = await prisma.announcement.findUnique({ where: { id: params.id } })
-  if (!a) return errors.notFound('Announcement')
-  return successResponse(a)
+  return role ? { id: session.user.id, role } : null
 }
 
-export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params
-  const session = await auth()
-  if (!session?.user) return errors.unauthorized()
-  const role = normalizeRole(session.user.role)
-  if (!role || !checkPermission(role, 'announcements', 'update')) return errors.forbidden()
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const user = await who()
+  if (!user) return errors.unauthorized()
+  const { id } = await params
+  const d = await detailFor(user, id)
+  return d ? successResponse(d) : errors.notFound('Announcement')
+}
 
-  const a = await prisma.announcement.findUnique({ where: { id: params.id }, select: { id: true, createdBy: true } })
-  if (!a) return errors.notFound('Announcement')
-
-  // Only the creator or SUPER_ADMIN can edit
-  if (role !== 'SUPER_ADMIN' && a.createdBy !== session.user.id) {
-    return errors.forbidden()
-  }
-
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const user = await who()
+  if (!user) return errors.unauthorized()
+  const { id } = await params
   let body: unknown
-  try { body = await request.json() } catch {
-    return errors.validation({ errors: [{ path: [], message: 'Invalid JSON' }] } as never)
-  }
-  const parsed = updateSchema.safeParse(body)
+  try { body = await request.json() } catch { return errors.badRequest('Invalid JSON') }
+  const parsed = patchSchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
-
-  const { targetRole, expiresAt, ...rest } = parsed.data
-
-  const updated = await prisma.$transaction(async (tx) => {
-    const r = await tx.announcement.update({
-      where: { id: params.id },
-      data: {
-        ...rest,
-        ...(targetRole !== undefined && { targetRole: (targetRole as Role | null) ?? null }),
-        ...(expiresAt !== undefined && { expiresAt: expiresAt ? new Date(expiresAt) : null }),
-      },
-    })
-    await tx.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: 'UPDATE',
-        entityType: 'Announcement',
-        entityId: params.id,
-        changes: parsed.data,
-      },
-    })
-    return r
-  })
-
-  return successResponse(updated, { message: 'Announcement updated' })
+  const { action, reason } = parsed.data
+  try {
+    if (action === 'approve' || action === 'reject') {
+      await decide(user, id, action, reason)
+    } else {
+      // stop / pin: the sender or someone who manages it (detailFor checks the place)
+      if (!(await detailFor(user, id))) return errors.notFound('Announcement')
+      if (action !== 'stop' && !checkPermission(user.role, 'announcements', 'approve')) return errors.forbidden()
+      await prisma.announcement.update({ where: { id }, data: action === 'stop' ? { isActive: false } : { pinned: action === 'pin' } })
+    }
+    return successResponse({ id, action })
+  } catch (e) {
+    if (e instanceof AnnouncementError) return errors.badRequest(e.message)
+    throw e
+  }
 }
 
-export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params
-  const session = await auth()
-  if (!session?.user) return errors.unauthorized()
-  const role = normalizeRole(session.user.role)
-  if (!role || !checkPermission(role, 'announcements', 'delete')) return errors.forbidden()
-
-  const a = await prisma.announcement.findUnique({ where: { id: params.id }, select: { id: true, createdBy: true } })
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const user = await who()
+  if (!user) return errors.unauthorized()
+  const { id } = await params
+  const a = await prisma.announcement.findUnique({ where: { id }, select: { createdBy: true, audiences: true } })
   if (!a) return errors.notFound('Announcement')
-
-  if (role !== 'SUPER_ADMIN' && a.createdBy !== session.user.id) {
-    return errors.forbidden()
-  }
-
-  await prisma.$transaction(async (tx) => {
-    await tx.announcement.update({ where: { id: params.id }, data: { isActive: false } })
-    await tx.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: 'DELETE',
-        entityType: 'Announcement',
-        entityId: params.id,
-        changes: { reason: 'soft-delete' },
-      },
-    })
-  })
-
-  return successResponse({ id: params.id }, { message: 'Announcement removed' })
+  // old announcements: delete permission; new ones: the sender or an approver of that place
+  const allowed = a.audiences ? !!(await detailFor(user, id)) : checkPermission(user.role, 'announcements', 'delete') && (user.role === 'SUPER_ADMIN' || a.createdBy === user.id)
+  if (!allowed) return errors.forbidden()
+  await prisma.announcement.update({ where: { id }, data: { isActive: false } })
+  return successResponse({ id }, { message: 'Announcement removed' })
 }

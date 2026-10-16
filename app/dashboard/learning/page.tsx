@@ -7,6 +7,7 @@
 
 import { JoinOnlineCard } from '@/components/online/JoinOnlineCard'
 import { UpcomingSessionsCard } from '@/components/portal/UpcomingSessionsCard'
+import { AnnouncementFeed } from '@/components/announcements/AnnouncementFeed'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -51,6 +52,7 @@ export default function LearningPage() {
 
   return (
     <div className="space-y-5" dir={dir}>
+      {!isParent && <AnnouncementFeed compact />}
       {!isParent && <JoinOnlineCard />}
       {!isParent && <UpcomingSessionsCard />}
       {!isParent && (hw || qz) && (

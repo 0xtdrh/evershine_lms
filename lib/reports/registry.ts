@@ -72,6 +72,7 @@ export const REPORT_CARDS: ReportCard[] = [
   { key: 'partners', group: 'partners', en: 'Partners overview & balances', ar: 'ملخص الشركاء والأرصدة', descEn: 'Each partner: places, students, balance; statements to Excel', descAr: 'كل شريك: أماكنه وطلابه ورصيده، وكشوف الحساب Excel', href: '/dashboard/partners', formats: ['excel', 'print'], roles: ADMINS, perm: ['partners', 'read'] },
 
   // communication & families
+  { key: 'announcements', group: 'communication', en: 'Announcements reach', ar: 'وصول الإعلانات', descEn: 'Who received, read and confirmed each announcement', descAr: 'مين وصله كل إعلان ومين قراه ومين أكّد', href: '/dashboard/announcements?tab=sent', perm: ['announcements', 'create'] },
   { key: 'complaints', group: 'communication', en: 'Complaints month report', ar: 'تقرير الشكاوى الشهري', descEn: 'By topic, branch, type; time to solve; "solved" rate', descAr: 'حسب الموضوع والفرع والنوع، ووقت الحل، ونسبة «اتحلّت»', href: '/dashboard/complaints?tab=report', perm: ['complaints', 'export'] },
   { key: 'ratings', group: 'communication', en: 'Ratings', ar: 'التقييمات', descEn: 'What parents think of sessions, instructors and TechNova (NPS)', descAr: 'رأي أولياء الأمور في الحصص والمدربين وTechNova', href: '/dashboard/ratings', perm: ['ratings', 'read'] },
   { key: 'referrals', group: 'communication', en: 'Referrals', ar: 'الإحالات', descEn: 'Who referred whom, top referrers, rewards', descAr: 'مين جاب مين، وأكتر ناس جابوا طلاب، والمكافآت', href: '/dashboard/referrals', perm: ['referrals', 'read'] },

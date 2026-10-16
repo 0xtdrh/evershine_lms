@@ -27,6 +27,7 @@ export const NOTIFICATION_EVENTS = [
   { key: 'SESSION_CANCELLED', label: 'Session cancelled', description: 'Parent: a session was cancelled', audience: 'PARENT' },
   { key: 'SESSION_SUBSTITUTE', label: 'Substitute instructor', description: 'Parent: another instructor will give a session', audience: 'PARENT' },
   { key: 'HOLIDAY', label: 'Day off', description: 'Parent and student: a holiday postpones a session (with the next session date)', audience: 'PARENT' },
+  { key: 'ANNOUNCEMENT', label: 'Announcement', description: 'Parents, students, instructors or staff: a targeted announcement (some ask "I read it")', audience: 'PARENT' },
   { key: 'MAKEUP_SESSION', label: 'Makeup session', description: 'Parent and student: an extra / makeup session was added to the group', audience: 'PARENT' },
   { key: 'RESULT_PUBLISHED', label: 'Result ready', description: 'Parent and student: the level result is ready', audience: 'PARENT' },
   { key: 'CERTIFICATE_ISSUED', label: 'Certificate ready', description: 'Parent and student: a certificate was revealed', audience: 'PARENT' },
@@ -57,6 +58,8 @@ export const NOTIFICATION_EVENTS = [
   { key: 'CURRICULUM_REVIEW', label: 'Curriculum to review', description: 'Approvers: a curriculum version was sent for review', audience: 'STAFF' },
   { key: 'PARTNER_CONTRACT_ENDING', label: 'Partner contract ending', description: 'People with partner access: a partner contract is about to end, or has ended (M1)', audience: 'STAFF' },
   { key: 'PARTNER_STATEMENT', label: 'Partner statement to approve', description: 'People who approve partner statements: a new statement is waiting (part 1-B)', audience: 'STAFF' },
+  { key: 'ANNOUNCEMENT_PENDING', label: 'Announcement to approve', description: 'Approvers: an announcement waits for approval', audience: 'STAFF' },
+  { key: 'ANNOUNCEMENT_DECIDED', label: 'Announcement approved / not approved', description: 'Sender: the announcement was approved or not', audience: 'STAFF' },
   { key: 'MORNING_SUMMARY', label: 'Morning summary', description: 'Managers: today\'s sessions, missing attendance, overdue invoices, items waiting', audience: 'STAFF' },
 ] as const satisfies readonly EventDef[]
 

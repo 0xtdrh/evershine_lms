@@ -146,7 +146,7 @@ const NAV_ITEMS: NavItem[] = [
   // the legacy page available for administrators and backwards-compatible
   // links, but do not expose two competing Results entries to teachers.
   { name: 'Results',         href: '/dashboard/results',      icon: BarChart2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
-  { name: 'Announcements',   href: '/dashboard/announcements',icon: Megaphone,       roles: ['SUPER_ADMIN', 'ADMIN', 'GUARDIAN', 'PARENT', 'STUDENT', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING'] },
+  { name: 'Announcements',   href: '/dashboard/announcements',icon: Megaphone,       roles: ['SUPER_ADMIN', 'ADMIN', 'GUARDIAN', 'PARENT', 'STUDENT', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING', 'ACCOUNTANT'] },
   { name: 'Calendar',        href: '/dashboard/calendar',     icon: CalendarDays },
   { name: 'My Courses',      href: '/dashboard/enrollment',   icon: BookOpen,        roles: ['STUDENT'] },
   { name: 'Timetable',       href: '/dashboard/timetable',    icon: CalendarClock,   roles: ['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'STUDENT', 'BRANCH_MANAGER', 'SECRETARY'] },
@@ -193,7 +193,7 @@ const TEACHER_NAV_ITEMS: NavItem[] = [
   { name: 'My Students',        href: '/dashboard/teacher/students',          icon: Users },
   { name: 'Student Attendance', href: '/dashboard/teacher/attendance',        icon: ClipboardCheck },
   { name: 'Import Attendance',  href: '/dashboard/teacher/attendance-import', icon: UploadCloud },
-  { name: 'My Announcements',   href: '/dashboard/teacher/announcements',     icon: Megaphone },
+  { name: 'My Announcements',   href: '/dashboard/announcements',     icon: Megaphone },
   { name: 'Tasks & Marks',      href: '/dashboard/teacher/tasks',             icon: ClipboardList },
   { name: 'Daily Scores',       href: '/dashboard/teacher/daily-scores',      icon: Target },
   { name: 'Level Results',      href: '/dashboard/teacher/level-results',     icon: Award },

@@ -12,6 +12,7 @@ import { campusWhere, invoiceWhere, teacherWhere, type Places } from '@/lib/plac
 import { getTeacherByUserId, getTeacherClassSectionIds } from '@/lib/academic/teacher-scope'
 import { occurrencesFor, type GroupOccurrences } from '@/lib/groups/occurrences'
 import { birthdayPeople } from '@/lib/birthdays/birthdays'
+import { pendingAcks } from '@/lib/announcements/engine'
 import { tasksFor, type TaskDef, type TaskKey } from './catalog'
 
 export interface TodayTask { key: TaskKey; en: string; ar: string; href: string; urgent: boolean; count: number }
@@ -84,6 +85,8 @@ const COUNTERS: Record<TaskKey, (c: Ctx) => Promise<number>> = {
     return rows.filter((r) => r.endDate && r.endDate.toISOString().slice(0, 10) <= addDays(c.today, r.alertDaysBefore)).length
   },
   curriculumReview: async () => prisma.curriculumEdition.count({ where: { status: 'IN_REVIEW' } }),
+  announcementsToApprove: async (c) => prisma.announcement.count({ where: { status: 'PENDING', isActive: true, createdBy: { not: c.user.id }, ...(c.places.all ? {} : { campusId: inIds(c.places.campusIds) }) } }),
+  announcementsToConfirm: async (c) => pendingAcks(c.user.id),
   mySessionsToday: async (c) => (await c.occ()).reduce((s, g) => s + g.occurrences.filter((o) => o.date === c.today && ['SCHEDULED', 'NOT_STARTED', 'HELD'].includes(o.status)).length, 0),
   myMissingAttendance: async (c) => (await c.occ()).reduce((s, g) => s + g.occurrences.filter((o) => o.status === 'MISSING').length, 0),
   homeworkToGrade: async (c) => prisma.assignmentSubmission.count({ where: { status: 'SUBMITTED', classSectionId: inIds(c.teacherId ? c.myGroups : await c.groups()) ?? undefined } }),

@@ -7,6 +7,7 @@ import { JoinOnlineCard } from '@/components/online/JoinOnlineCard'
 import { ParentRatingsCard } from '@/components/portal/ParentRatingsCard'
 import { ParentReferralCard } from '@/components/portal/ParentReferralCard'
 import { UpcomingSessionsCard } from '@/components/portal/UpcomingSessionsCard'
+import { AnnouncementFeed } from '@/components/announcements/AnnouncementFeed'
 import { ChildExcusesCard } from '@/components/portal/ChildExcusesCard'
 import { AttendanceTimeline } from '@/components/attendance/AttendanceTimeline'
 import { StudentReportsList } from '@/components/reports/StudentReportsList'
@@ -231,6 +232,7 @@ export default function MyChildrenPage() {
         </p>
       </div>
 
+      <AnnouncementFeed compact />
       <BirthdayBanner />
       <ParentRatingsCard />
       <ParentRenewalsCard />

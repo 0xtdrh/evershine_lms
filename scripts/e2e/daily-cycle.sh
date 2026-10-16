@@ -1716,6 +1716,41 @@ TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.90 >/dev/null
 check "today (instructor): only instructor jobs" "$(curl -s -b "$TJ" $B/api/today | TK "set(t) <= {'mySessionsToday','myMissingAttendance','homeworkToGrade','substituteRequests'}")" "True"
 rm -f "$TJ"
 check "settings centre and reports centre open" "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" $B/dashboard/settings-center)/$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" $B/dashboard/reports-center)" "200/200"
+echo "== 51. 5-D targeted announcements: who x where, approval by permission, read / I read it, scheduled, follow-up"
+AWJ=$(mktemp); login_as 01066660099 Wallet2026A "$AWJ" >/dev/null
+pa() { curl -s -b "$AWJ" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+PV=$(api POST /api/announcements/preview "{\"audiences\":[\"PARENT\",\"STUDENT\"],\"scopeType\":\"GROUP\",\"scopeIds\":[\"$WG\"]}")
+PVN=$(echo "$PV" | jq_ "d['data']['count']")
+check "preview: how many people a group announcement reaches" "$(echo "$PV" | jq_ "d['data']['count']>=2 and d['data']['problem'] is None")" "True"
+AN=$(api POST /api/announcements "{\"title\":\"Trip on Friday\",\"body\":\"We visit the science museum.\",\"titleAr\":\"\\u0631\\u062d\\u0644\\u0629 \\u064a\\u0648\\u0645 \\u0627\\u0644\\u062c\\u0645\\u0639\\u0629\",\"contentAr\":\"\\u0647\\u0646\\u0632\\u0648\\u0631 \\u0645\\u062a\\u062d\\u0641 \\u0627\\u0644\\u0639\\u0644\\u0648\\u0645.\",\"audiences\":[\"PARENT\",\"STUDENT\"],\"scopeType\":\"GROUP\",\"scopeIds\":[\"$WG\"],\"requireAck\":true}")
+AID=$(echo "$AN" | jq_ "d['data']['id']")
+check "a manager publishes at once (has approve)" "$(echo "$AN" | jq_ "d['data']['status']")" "PUBLISHED"
+check "recipients = the preview, notified in both languages" "$(M "SELECT recipientCount FROM Announcement WHERE id='$AID'")/$(M "SELECT COUNT(*) FROM Notification WHERE type='ANNOUNCEMENT' AND relatedId='$AID' AND titleAr IS NOT NULL AND titleAr<>title AND messageAr IS NOT NULL")" "$PVN/$PVN"
+check "the parent sees it, important and not confirmed yet" "$(pa GET /api/announcements | PYTHONUTF8=1 jq_ "[(x['titleAr']=='\\u0631\\u062d\\u0644\\u0629 \\u064a\\u0648\\u0645 \\u0627\\u0644\\u062c\\u0645\\u0639\\u0629', x['requireAck'], x['ackAt']) for x in d['data'] if x['id']=='$AID']")" "[(True, True, None)]"
+pa POST /api/announcements/$AID/read '{"ack":true}' >/dev/null
+check "the parent confirms 'I read it' → counted for the sender" "$(api GET /api/announcements/$AID | jq_ "d['data']['reach']['acked']>=1 and d['data']['reach']['read']>=1")" "True"
+check "a parent cannot open the sender view" "$(pa GET /api/announcements/$AID | jq_ "d['success']")" "False"
+check "follow-up calls for parents who did not confirm" "$(api POST /api/announcements/$AID/follow-up | jq_ "d['success']")" "True"
+check "a secretary cannot send to the whole company" "$(secapi POST /api/announcements '{"title":"All","body":"Hello all","audiences":["PARENT"],"scopeType":"COMPANY","scopeIds":[]}' | jq_ "d['success']")" "False"
+SA=$(secapi POST /api/announcements "{\"title\":\"Branch news\",\"body\":\"New robots arrived.\",\"audiences\":[\"PARENT\"],\"scopeType\":\"CAMPUS\",\"scopeIds\":[\"$CAMPUS\"]}")
+SAID=$(echo "$SA" | jq_ "d['data']['id']")
+check "a secretary (no approve) waits for approval; approvers are told" "$(echo "$SA" | jq_ "d['data']['status']")/$(M "SELECT COUNT(*)>0 FROM Notification WHERE type='ANNOUNCEMENT_PENDING' AND relatedId='$SAID'")" "PENDING/1"
+check "'your work today' shows it to the approver" "$(api GET /api/today | jq_ "any(t['key']=='announcementsToApprove' for t in d['data']['tasks'])")" "True"
+api PATCH /api/announcements/$SAID '{"action":"approve"}' >/dev/null
+check "approved → published and delivered, the sender is told" "$(M "SELECT CONCAT(status,'/',deliveredAt IS NOT NULL) FROM Announcement WHERE id='$SAID'")/$(M "SELECT COUNT(*) FROM Notification WHERE type='ANNOUNCEMENT_DECIDED' AND relatedId='$SAID'")" "PUBLISHED/1/1"
+BJ=$(mktemp); login_jar m0secb@e2e.local E2eSecB12345 "$BJ" 10.0.1.91 >/dev/null
+check "another branch's secretary cannot send to this group" "$(curl -s -b "$BJ" -X POST -H 'Content-Type: application/json' -d "{\"title\":\"X\",\"body\":\"Not mine\",\"audiences\":[\"PARENT\"],\"scopeType\":\"GROUP\",\"scopeIds\":[\"$WG\"]}" $B/api/announcements | jq_ "d['success']")" "False"
+rm -f "$BJ"
+LATER=$(python -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+LA=$(api POST /api/announcements "{\"title\":\"Next week\",\"body\":\"Coming soon.\",\"audiences\":[\"PARENT\"],\"scopeType\":\"GROUP\",\"scopeIds\":[\"$WG\"],\"publishAt\":\"$LATER\"}" | jq_ "d['data']['id']")
+check "published for later: nobody gets it yet" "$(M "SELECT deliveredAt IS NULL FROM Announcement WHERE id='$LA'")/$(pa GET /api/announcements | jq_ "any(x['id']=='$LA' for x in d['data'])")" "1/False"
+TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.92 >/dev/null
+TG=$(curl -s -b "$TJ" $B/api/announcements/options | jq_ "d['data']['groups'][0]['id'] if d['data']['groups'] else ''")
+check "an instructor sends to own group (waits for approval) but not to a level" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d "{\"title\":\"Homework\",\"body\":\"Finish the robot arm.\",\"audiences\":[\"PARENT\"],\"scopeType\":\"GROUP\",\"scopeIds\":[\"$TG\"]}" $B/api/announcements | jq_ "d['data']['status']")/$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d "{\"title\":\"All\",\"body\":\"Level news\",\"audiences\":[\"PARENT\"],\"scopeType\":\"LEVEL\",\"scopeIds\":[\"$NLEVEL\"]}" $B/api/announcements | jq_ "d['success']")" "PENDING/False"
+api PUT /api/announcements/settings '{"teachersCanSend":false}' >/dev/null
+check "setting off → instructors cannot send" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d "{\"title\":\"Homework\",\"body\":\"Again please.\",\"audiences\":[\"PARENT\"],\"scopeType\":\"GROUP\",\"scopeIds\":[\"$TG\"]}" $B/api/announcements | jq_ "d['success']")" "False"
+api PUT /api/announcements/settings '{"teachersCanSend":true}' >/dev/null
+rm -f "$TJ" "$AWJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

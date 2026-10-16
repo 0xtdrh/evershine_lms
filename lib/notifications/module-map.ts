@@ -46,6 +46,8 @@ export const NOTIFICATION_TYPE_TO_MODULE: Record<string, string> = {
   TIMETABLE_UPDATE: 'timetable',
   TIMETABLE_CHANGE: 'timetable',
   ANNOUNCEMENT: 'announcements',
+  ANNOUNCEMENT_PENDING: 'announcements',
+  ANNOUNCEMENT_DECIDED: 'announcements',
 }
 
 export const NAV_LABEL_TO_NOTIFICATION_MODULE: Record<string, string> = {

@@ -14,7 +14,7 @@ export const TASK_KEYS = [
   'complaintsLate', 'complaintsMine', 'absenceRequests', 'noSubstitute', 'leaves', 'missingAttendance',
   'groupsToAdvance', 'renewalsUnanswered', 'waitingList', 'overdueInvoices', 'birthdays',
   // partners / learning
-  'partnerStatements', 'partnerContracts', 'curriculumReview',
+  'partnerStatements', 'partnerContracts', 'curriculumReview', 'announcementsToApprove', 'announcementsToConfirm',
   // instructors
   'mySessionsToday', 'myMissingAttendance', 'homeworkToGrade', 'substituteRequests',
 ] as const
@@ -63,6 +63,8 @@ export const TASKS: TaskDef[] = [
   { key: 'partnerStatements', en: 'Partner statements waiting for approval', ar: 'كشوف حساب شركاء مستنية اعتماد', href: '/dashboard/partners', perm: ['partner_finance', 'approve'] },
   { key: 'partnerContracts', en: 'Partner contracts ending soon', ar: 'عقود شركاء قرّبت تخلص', href: '/dashboard/partners', perm: ['partners', 'read'] },
   { key: 'curriculumReview', en: 'Curriculum versions waiting for review', ar: 'نسخ منهج مستنية مراجعة', href: '/dashboard/curriculum', perm: ['curriculum', 'approve'] },
+  { key: 'announcementsToApprove', en: 'Announcements waiting for your approval', ar: 'إعلانات مستنية موافقتك', href: '/dashboard/announcements?tab=pending', urgent: true, perm: ['announcements', 'approve'] },
+  { key: 'announcementsToConfirm', en: 'Important announcements to confirm you read', ar: 'إعلانات مهمة محتاجة تأكيد إنك قريتها', href: '/dashboard/announcements', urgent: true, roles: [...STAFF, 'TEACHER'] },
   { key: 'birthdays', en: 'Student birthdays today', ar: 'أعياد ميلاد طلاب النهارده', href: '/dashboard/birthdays', perm: ['birthdays', 'read'], roles: OFFICE },
 ]
 
