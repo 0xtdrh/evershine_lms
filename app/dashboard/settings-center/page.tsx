@@ -46,6 +46,9 @@ const GROUPS: { name: string; items: Item[] }[] = [
   {
     name: 'System',
     items: [
+      { title: 'Appearance', titleAr: 'المظهر', desc: 'Light / dark and the dark-mode colours (for you)', href: '/dashboard/settings#appearance' },
+      { title: 'Initial setup', titleAr: 'الإعداد الأولي', desc: 'Main branch, tracks and levels in one step', href: '/dashboard/admin/setup', superOnly: true },
+      { title: 'Delete test data', titleAr: 'مسح بيانات التجربة', desc: 'One-time cleanup before going live (backs up first)', href: '/dashboard/admin/wipe-test-data', superOnly: true },
       { title: 'Backups', titleAr: 'النسخ الاحتياطي', desc: 'Daily backups and downloads', href: '/dashboard/admin/backups', superOnly: true },
       { title: 'Login locks', titleAr: 'قفل الدخول', desc: 'Unlock accounts after wrong passwords', href: '/dashboard/admin/login-locks', superOnly: true },
     ],

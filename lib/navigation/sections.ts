@@ -2,6 +2,7 @@
  * Screen re-organisation (2026-10-16): the sidebar has ~13 entries ("hubs"); each opens its first page, and the pages
  * of a hub show as tabs on top of the page (components/layout/HubTabs.tsx). Keys = the English item names in
  * app/dashboard/layout-client.tsx. LEGACY = old template screens, Super Admin only ("Old screens") — not deleted.
+ * A page may be in more than one hub (e.g. a report: in its own hub AND in Reports); hubOf = the first one.
  * Pure, tested in tests/nav-sections.test.ts.
  */
 
@@ -13,14 +14,14 @@ export const HUBS: { key: HubKey; en: string; ar: string; items: string[] }[] = 
   { key: 'home', en: 'Home', ar: 'الرئيسية', items: ['Dashboard', 'My Calendar', 'My Schedule', 'My Substitutions'] },
   { key: 'admissions', en: 'Admissions', ar: 'التسجيل', items: ['Admissions', 'Landing Leads'] },
   { key: 'students', en: 'Students', ar: 'الطلاب', items: ['Students', 'My Students', 'Waiting List', 'Follow-ups', 'Renewals', 'Absence Excuses', 'Birthdays'] },
-  { key: 'groups', en: 'Groups', ar: 'الجروبات', items: ['Groups', 'Groups Schedule', 'Attendance', 'Student Attendance', 'Import Attendance', 'Holidays'] },
+  { key: 'groups', en: 'Groups', ar: 'الجروبات', items: ['Groups', 'Groups Schedule', 'Attendance', 'Student Attendance', 'Import Attendance', 'Holidays', 'Attendance Report'] },
   { key: 'learning', en: 'Learning', ar: 'التعليم', items: ['LMS', 'Level Results', 'Passport & Stamps', 'Session Reports', 'Course Structure', 'Grading Weights'] },
   { key: 'certificates', en: 'Certificates & documents', ar: 'الشهادات والمستندات', items: ['Certificate Designer', 'Certificate Reveal', 'Documents'] },
-  { key: 'staff', en: 'Instructors & staff', ar: 'المدربين والموظفين', items: ['Staff Directory', 'Absence Requests', 'Leaves', 'Staff Salaries', 'HR & Salary', 'Instructor Performance'] },
-  { key: 'money', en: 'Money', ar: 'الفلوس', items: ['Fees', 'Fee Collection', 'Accounting Hub', 'Wallet & Top-ups', 'Discounts', 'Refunds', 'Expense Ledger', 'Financial Reports'] },
+  { key: 'staff', en: 'Instructors & staff', ar: 'المدربين والموظفين', items: ['Staff Directory', 'Absence Requests', 'Leaves', 'Staff Salaries', 'HR & Salary', 'Instructor Performance', 'Substitute Reconciliation'] },
+  { key: 'money', en: 'Money', ar: 'الفلوس', items: ['Fees', 'Fee Collection', 'Accounting Hub', 'Wallet & Top-ups', 'Discounts', 'Refunds', 'Expense Ledger', 'Financial Reports', 'Groups Financials'] },
   { key: 'communication', en: 'Communication', ar: 'التواصل', items: ['Announcements', 'My Announcements', 'Complaints', 'Referrals', 'Ratings'] },
   { key: 'places', en: 'Branches & partners', ar: 'الفروع والشركاء', items: ['Campuses', 'Partners'] },
-  { key: 'reports', en: 'Reports', ar: 'التقارير', items: ['Attendance Report', 'Groups Financials', 'Substitute Reconciliation'] },
+  { key: 'reports', en: 'Reports', ar: 'التقارير', items: ['Attendance Report', 'Groups Financials', 'Financial Reports', 'Instructor Performance', 'Substitute Reconciliation', 'Ratings'] },
   { key: 'settings', en: 'Settings', ar: 'الإعدادات', items: ['Settings Centre', 'Platform', 'Agreements', 'Notifications', 'Permissions', 'Credential Management', 'Backups', 'Settings'] },
 ]
 
@@ -52,7 +53,12 @@ export function buildHubs<T extends { name: string }>(items: T[], role: string):
   const visible = items.filter((i) => !LEGACY_ITEMS.has(i.name) || role === 'SUPER_ADMIN')
   const order = (key: HubKey, name: string) => (HUBS.find((h) => h.key === key)?.items.indexOf(name) ?? 99)
   return [...HUB_KEYS]
-    .map((key) => ({ key, items: visible.filter((i) => hubOf(i.name) === key).sort((a, b) => order(key, a.name) - order(key, b.name)) }))
+    .map((key) => ({
+      key,
+      items: visible
+        .filter((i) => (key === 'legacy' ? LEGACY_ITEMS.has(i.name) : !LEGACY_ITEMS.has(i.name) && (HUBS.find((h) => h.key === key)?.items.includes(i.name) || (key === 'home' && !HUBS.some((h) => h.items.includes(i.name))))))
+        .sort((a, b) => order(key, a.name) - order(key, b.name)),
+    }))
     .filter((h) => h.items.length > 0)
 }
 

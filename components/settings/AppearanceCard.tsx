@@ -37,7 +37,7 @@ export function AppearanceCard() {
     { key: 'system', en: 'Like the device', ar: 'زي الجهاز', icon: Monitor },
   ]
   return (
-    <Card>
+    <Card id="appearance" className="scroll-mt-20">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base"><Palette className="h-5 w-5 text-indigo-600" />{L('Appearance', 'المظهر')}</CardTitle>
         <CardDescription>{L('Saved on this device for your account.', 'بيتحفظ على الجهاز ده لحسابك.')}</CardDescription>

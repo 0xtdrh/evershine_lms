@@ -22,6 +22,10 @@ describe('sidebar hubs', () => {
     expect(buildHubs(items, 'SUPER_ADMIN').map((h) => h.key)).toEqual(['groups', 'money', 'legacy'])
     expect(LEGACY_ITEMS.has('Timetable')).toBe(true)
   })
+  it('a report is in its own hub AND in Reports', () => {
+    const hubs = buildHubs([{ name: 'Attendance Report' }, { name: 'Groups' }], 'ADMIN')
+    expect(hubs.map((h) => [h.key, h.items.map((i) => i.name)])).toEqual([['groups', ['Groups', 'Attendance Report']], ['reports', ['Attendance Report']]])
+  })
   it('search matches English or Arabic', () => {
     expect(matchesSearch('wallet', 'Wallet & Top-ups', 'المحفظة والشحن')).toBe(true)
     expect(matchesSearch('محفظه', 'Wallet & Top-ups', 'المحفظة والشحن')).toBe(true)

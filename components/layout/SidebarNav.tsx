@@ -50,7 +50,7 @@ export function SidebarNav({ items, role, userId, locale, isActive, badge }: {
     write(favKey, next)
   }
   const hubs = useMemo(() => buildHubs(items, role), [items, role])
-  const all = hubs.flatMap((h) => h.items)
+  const all = [...new Map(hubs.flatMap((h) => h.items).map((i) => [i.name, i])).values()]
   const flat = all.length <= 11
   const hits = q.trim() ? all.filter((i) => matchesSearch(q, i.name, NAV_AR[i.name] ?? '')) : null
   const favItems = all.filter((i) => favs.includes(i.name))
@@ -109,7 +109,7 @@ export function SidebarNav({ items, role, userId, locale, isActive, badge }: {
               const active = h.items.some((i) => isActive(i.href, i.match))
               const n = h.items.reduce((s, i) => s + badge(i.name), 0)
               return (
-                <Link key={h.key} href={h.items[0].href} className={`${linkCls(active)} ${h.key === 'legacy' ? 'mt-2 opacity-70' : ''}`}>
+                <Link key={h.key} href={h.items[0].href} onClick={() => { try { sessionStorage.setItem('tn_hub', h.key) } catch { /* private window */ } window.dispatchEvent(new Event('tn-hub')) }} className={`${linkCls(active)} ${h.key === 'legacy' ? 'mt-2 opacity-70' : ''}`}>
                   <span className="flex min-w-0 items-center gap-3"><Icon className={`h-4 w-4 flex-shrink-0 ${active ? 'text-blue-600' : ''}`} /><span className="truncate">{hubLabel(h.key, ar)}</span></span>
                   {count(n)}
                 </Link>
