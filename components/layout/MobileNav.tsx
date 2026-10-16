@@ -13,79 +13,67 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  UsersRound,
   Wallet,
 } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/client'
 
 interface NavItem {
   href: string
+  /** English name — also the key for notification badges */
   label: string
+  ar: string
   icon: React.ComponentType<{ className?: string }>
 }
 
-// Mobile bottom nav — shows the most critical pages per role.
-// Items are weighted toward the role's primary workspace so users
-// can access their most-used features without opening the sidebar.
+// Mobile bottom nav — the 5 most used pages per role (5-A, 2026-10-16: no old template screens; Arabic names).
+const home: NavItem = { href: '/dashboard', label: 'Home', ar: 'الرئيسية', icon: LayoutDashboard }
+const settings: NavItem = { href: '/dashboard/settings', label: 'Settings', ar: 'الإعدادات', icon: Settings }
+const students: NavItem = { href: '/dashboard/students', label: 'Students', ar: 'الطلبة', icon: Users }
+const groups: NavItem = { href: '/dashboard/groups', label: 'Groups', ar: 'المجموعات', icon: UsersRound }
+const collection: NavItem = { href: '/dashboard/accountant/fees', label: 'Fee Collection', ar: 'التحصيل', icon: CreditCard }
+const portal: NavItem[] = [
+  home,
+  { href: '/dashboard/my-children', label: 'My Children', ar: 'أبنائي', icon: Users },
+  { href: '/dashboard/fees', label: 'Fees', ar: 'المصروفات', icon: CreditCard },
+  { href: '/dashboard/passport', label: 'My Passport', ar: 'الجواز', icon: BookOpen },
+  settings,
+]
 const ROLE_NAV_MAP: Record<string, NavItem[]> = {
   STUDENT: [
-    { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-    { href: '/dashboard/enrollment', label: 'Academics', icon: BookOpen },
-    { href: '/dashboard/fees', label: 'Fees', icon: CreditCard },
-    { href: '/dashboard/timetable', label: 'Timetable', icon: CalendarClock },
-    { href: '/dashboard/settings', label: 'Profile', icon: Settings },
+    home,
+    { href: '/dashboard/learning', label: 'My Learning', ar: 'تعلّمي', icon: BookOpen },
+    { href: '/dashboard/fees', label: 'Fees', ar: 'المصروفات', icon: CreditCard },
+    { href: '/dashboard/passport', label: 'My Passport', ar: 'جوازي', icon: ShieldCheck },
+    settings,
   ],
-  PARENT: [
-    { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-    { href: '/dashboard/my-children', label: 'Children', icon: Users },
-    { href: '/dashboard/fees', label: 'Fees', icon: CreditCard },
-    { href: '/dashboard/timetable', label: 'Timetable', icon: CalendarClock },
-    { href: '/dashboard/settings', label: 'Profile', icon: Settings },
-  ],
-  GUARDIAN: [
-    { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-    { href: '/dashboard/my-children', label: 'Children', icon: Users },
-    { href: '/dashboard/fees', label: 'Fees', icon: CreditCard },
-    { href: '/dashboard/timetable', label: 'Timetable', icon: CalendarClock },
-    { href: '/dashboard/settings', label: 'Profile', icon: Settings },
-  ],
+  PARENT: portal,
+  GUARDIAN: portal,
   TEACHER: [
-    { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-    { href: '/dashboard/teacher/students', label: 'Students', icon: Users },
-    { href: '/dashboard/teacher/attendance', label: 'Students', icon: ClipboardCheck },
-    { href: '/dashboard/timetable', label: 'Timetable', icon: CalendarClock },
-    { href: '/dashboard/settings', label: 'Profile', icon: Settings },
+    home,
+    { href: '/dashboard/schedule', label: 'My Calendar', ar: 'جدولي', icon: CalendarClock },
+    { href: '/dashboard/teacher/attendance', label: 'Student Attendance', ar: 'الحضور', icon: ClipboardCheck },
+    { href: '/dashboard/lms', label: 'LMS', ar: 'المنصة', icon: BookOpen },
+    settings,
   ],
-  SUPER_ADMIN: [
-    { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-    { href: '/dashboard/admin', label: 'Admin', icon: ShieldCheck },
-    { href: '/dashboard/students', label: 'Students', icon: Users },
-    { href: '/dashboard/fees', label: 'Fees', icon: CreditCard },
-    { href: '/dashboard/settings', label: 'Profile', icon: Settings },
-  ],
-  ADMIN: [
-    { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-    { href: '/dashboard/admin', label: 'Admin', icon: ShieldCheck },
-    { href: '/dashboard/students', label: 'Students', icon: Users },
-    { href: '/dashboard/fees', label: 'Fees', icon: CreditCard },
-    { href: '/dashboard/settings', label: 'Profile', icon: Settings },
-  ],
+  SUPER_ADMIN: [home, students, groups, collection, { href: '/dashboard/settings-center', label: 'Settings Centre', ar: 'الإعدادات', icon: Settings }],
+  ADMIN: [home, students, groups, collection, { href: '/dashboard/settings-center', label: 'Settings Centre', ar: 'الإعدادات', icon: Settings }],
+  BRANCH_MANAGER: [home, students, groups, collection, { href: '/dashboard/schedule', label: 'Groups Schedule', ar: 'الجدول', icon: CalendarClock }],
+  SECRETARY: [home, students, groups, { href: '/dashboard/attendance/sections', label: 'Attendance', ar: 'الحضور', icon: ClipboardCheck }, collection],
   ACCOUNTANT: [
-    { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-    { href: '/dashboard/accountant', label: 'Finance', icon: Wallet },
-    { href: '/dashboard/fees', label: 'Fees', icon: CreditCard },
-    { href: '/dashboard/accountant/expenses', label: 'Expenses', icon: BookOpen },
-    { href: '/dashboard/settings', label: 'Profile', icon: Settings },
+    home, collection,
+    { href: '/dashboard/wallet', label: 'Wallet & Top-ups', ar: 'المحفظة', icon: Wallet },
+    { href: '/dashboard/accountant/expenses', label: 'Expense Ledger', ar: 'المصروفات', icon: BookOpen },
+    settings,
   ],
+  MARKETING: [home, { href: '/dashboard/admissions', label: 'Admissions', ar: 'التسجيل', icon: Users }, settings],
 }
 
-const defaultNav: NavItem[] = [
-  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-  { href: '/dashboard/students', label: 'Students', icon: Users },
-  { href: '/dashboard/timetable', label: 'Timetable', icon: CalendarClock },
-  { href: '/dashboard/settings', label: 'Profile', icon: Settings },
-]
+const defaultNav: NavItem[] = [home, settings]
 
 export function MobileNav({ pathname, role }: { pathname: string; role: string }) {
   const navItems = ROLE_NAV_MAP[role] ?? defaultNav
+  const { locale } = useI18n()
 
   const { data: countsData } = useQuery({
     queryKey: ['notification-counts'],
@@ -128,7 +116,7 @@ export function MobileNav({ pathname, role }: { pathname: string; role: string }
                   </span>
                 )}
               </div>
-              <span>{item.label}</span>
+              <span>{locale === 'ar' ? item.ar : item.label}</span>
             </Link>
           )
         })}

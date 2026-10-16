@@ -37,7 +37,6 @@ import {
   Building,
   Handshake,
   Settings,
-  ChevronRight,
   CalendarClock,
   RefreshCcw,
   PhoneCall,
@@ -90,7 +89,7 @@ import { GroupRulesGate } from '@/components/agreements/GroupRulesGate'
 import { PolicyLinks } from '@/components/policies/PolicyLinks'
 import { AgreementsGate } from '@/components/agreements/AgreementsGate'
 import { I18nProvider, LanguageSwitch, useI18n } from '@/lib/i18n/client'
-import { navLabel } from '@/lib/i18n/nav'
+import { SidebarNav } from '@/components/layout/SidebarNav'
 
 // ─── Role-gated nav items ─────────────────────────────────────────────────────
 interface NavItem {
@@ -387,72 +386,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <nav className="flex-1 overflow-y-auto py-3 px-3">
-            <div className="space-y-0.5">
-              {visibleNav.map((item) => {
-                const active = isActive(item.href, item.match)
-                const badgeCount = getBadgeCount(item.name)
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`group flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
-                      active
-                        ? 'bg-blue-50 text-blue-700 font-semibold border-l-[3px] border-blue-600 pl-[9px]'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <item.icon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${active ? 'text-blue-600' : ''}`} />
-                      {navLabel(item.name, locale)}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {badgeCount > 0 && (
-                        <span className="min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[9px] font-extrabold flex items-center justify-center px-1">
-                          {badgeCount > 99 ? '99+' : badgeCount}
-                        </span>
-                      )}
-                      <ChevronRight className={`w-3.5 h-3.5 transition-all duration-200 ${active ? 'opacity-70 text-blue-500' : 'opacity-0 group-hover:opacity-40'}`} />
-                    </div>
-                  </Link>
-                )
-              })}
-
-              {isTeacher && (
-                <>
-                  <div className="pt-3 pb-1 px-3">
-                    <p className="text-[10px] font-semibold tracking-widest uppercase text-gray-400">{locale === 'ar' ? 'أدوات المدرب' : 'Teacher Hub'}</p>
-                  </div>
-                  {TEACHER_NAV_ITEMS.map((item) => {
-                    const active = isActive(item.href)
-                    const badgeCount = getBadgeCount(item.name)
-                    return (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        className={`group flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
-                          active
-                            ? 'bg-emerald-50 text-emerald-700 font-semibold border-l-[3px] border-emerald-600 pl-[9px]'
-                            : 'text-gray-600 hover:bg-emerald-50/50 hover:text-emerald-800'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <item.icon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${active ? 'text-emerald-600' : ''}`} />
-                          {navLabel(item.name, locale)}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {badgeCount > 0 && (
-                            <span className="min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[9px] font-extrabold flex items-center justify-center px-1">
-                              {badgeCount > 99 ? '99+' : badgeCount}
-                            </span>
-                          )}
-                          <ChevronRight className={`w-3.5 h-3.5 transition-all duration-200 ${active ? 'opacity-70 text-emerald-500' : 'opacity-0 group-hover:opacity-40'}`} />
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </>
-              )}
-            </div>
+            {/* 5-A: sections, search, favourites; old template screens only for Super Admin */}
+            <SidebarNav
+              items={isTeacher ? [...visibleNav, ...TEACHER_NAV_ITEMS] : visibleNav}
+              role={role}
+              userId={session?.user?.id ?? ''}
+              locale={locale}
+              isActive={isActive}
+              badge={getBadgeCount}
+            />
           </nav>
 
           <div className="flex-shrink-0 border-t border-gray-100 p-3 space-y-2">
