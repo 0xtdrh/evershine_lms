@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { signOut, useSession } from 'next-auth/react'
 import { MyDateOfBirthCard } from '@/components/birthdays/DateOfBirthCards'
+import { AppearanceCard } from '@/components/settings/AppearanceCard'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi, fetchPaginatedApi } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -649,6 +650,8 @@ export default function SettingsPage() {
                   </form>
                 </CardContent>
               </Card>
+
+              <AppearanceCard />
 
               {session?.user?.role !== 'STUDENT' && session?.user?.role !== 'TEACHER' && <MyDateOfBirthCard />}
 

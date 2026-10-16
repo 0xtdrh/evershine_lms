@@ -114,6 +114,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={cn("h-full")} suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
+        {/* Appearance (2026-10-16): the dark-mode colours the person chose, set before the page paints (no flash). */}
+        <script dangerouslySetInnerHTML={{ __html: "try{var p=localStorage.getItem('tn_palette');if(p==='dim'||p==='navy')document.documentElement.setAttribute('data-palette',p)}catch(e){}" }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

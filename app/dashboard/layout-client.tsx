@@ -90,6 +90,7 @@ import { PolicyLinks } from '@/components/policies/PolicyLinks'
 import { AgreementsGate } from '@/components/agreements/AgreementsGate'
 import { I18nProvider, LanguageSwitch, useI18n } from '@/lib/i18n/client'
 import { SidebarNav } from '@/components/layout/SidebarNav'
+import { HubTabs } from '@/components/layout/HubTabs'
 
 // ─── Role-gated nav items ─────────────────────────────────────────────────────
 interface NavItem {
@@ -478,6 +479,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <div className="flex-1 overflow-auto p-4 pb-24 sm:p-6 md:pb-6 relative bg-slate-50/50" style={{ paddingBottom: 'clamp(6rem, calc(6rem + env(safe-area-inset-bottom, 0px)), 8rem)' }}>
+          <HubTabs items={isTeacher ? [...visibleNav, ...TEACHER_NAV_ITEMS] : visibleNav} role={role} locale={locale} isActive={isActive} />
           <PageTransition>
             <BirthdayCelebration />
             <AgreementsGate />

@@ -1,23 +1,28 @@
 /**
- * Screen re-organisation 5-A (2026-10-16): the sidebar sections and which menu item goes where.
- * Keys = the English item names in app/dashboard/layout-client.tsx. Items in LEGACY are old template screens: they are
- * hidden from everyone except Super Admin (closed "Old screens" section) — not deleted. Pure, tested in tests/nav-sections.test.ts.
+ * Screen re-organisation (2026-10-16): the sidebar has ~13 entries ("hubs"); each opens its first page, and the pages
+ * of a hub show as tabs on top of the page (components/layout/HubTabs.tsx). Keys = the English item names in
+ * app/dashboard/layout-client.tsx. LEGACY = old template screens, Super Admin only ("Old screens") — not deleted.
+ * Pure, tested in tests/nav-sections.test.ts.
  */
 
-export const SECTIONS = ['home', 'students', 'teaching', 'staff', 'money', 'places', 'reports', 'settings', 'legacy'] as const
-export type SectionKey = (typeof SECTIONS)[number]
+export const HUB_KEYS = ['home', 'admissions', 'students', 'groups', 'learning', 'certificates', 'staff', 'money', 'communication', 'places', 'reports', 'settings', 'legacy'] as const
+export type HubKey = (typeof HUB_KEYS)[number]
 
-export const SECTION_LABELS: Record<SectionKey, { en: string; ar: string }> = {
-  home: { en: 'Home', ar: 'الرئيسية' },
-  students: { en: 'Students & admissions', ar: 'الطلاب والتسجيل' },
-  teaching: { en: 'Groups & learning', ar: 'الجروبات والتعليم' },
-  staff: { en: 'Instructors & staff', ar: 'المدربين والموظفين' },
-  money: { en: 'Money', ar: 'الفلوس' },
-  places: { en: 'Branches & partners', ar: 'الفروع والشركاء' },
-  reports: { en: 'Reports', ar: 'التقارير' },
-  settings: { en: 'Settings', ar: 'الإعدادات' },
-  legacy: { en: 'Old screens', ar: 'شاشات قديمة' },
-}
+/** Each hub and its pages, in tab order. */
+export const HUBS: { key: HubKey; en: string; ar: string; items: string[] }[] = [
+  { key: 'home', en: 'Home', ar: 'الرئيسية', items: ['Dashboard', 'My Calendar', 'My Schedule', 'My Substitutions'] },
+  { key: 'admissions', en: 'Admissions', ar: 'التسجيل', items: ['Admissions', 'Landing Leads'] },
+  { key: 'students', en: 'Students', ar: 'الطلاب', items: ['Students', 'My Students', 'Waiting List', 'Follow-ups', 'Renewals', 'Absence Excuses', 'Birthdays'] },
+  { key: 'groups', en: 'Groups', ar: 'الجروبات', items: ['Groups', 'Groups Schedule', 'Attendance', 'Student Attendance', 'Import Attendance', 'Holidays'] },
+  { key: 'learning', en: 'Learning', ar: 'التعليم', items: ['LMS', 'Level Results', 'Passport & Stamps', 'Session Reports', 'Course Structure', 'Grading Weights'] },
+  { key: 'certificates', en: 'Certificates & documents', ar: 'الشهادات والمستندات', items: ['Certificate Designer', 'Certificate Reveal', 'Documents'] },
+  { key: 'staff', en: 'Instructors & staff', ar: 'المدربين والموظفين', items: ['Staff Directory', 'Absence Requests', 'Leaves', 'Staff Salaries', 'HR & Salary', 'Instructor Performance'] },
+  { key: 'money', en: 'Money', ar: 'الفلوس', items: ['Fees', 'Fee Collection', 'Accounting Hub', 'Wallet & Top-ups', 'Discounts', 'Refunds', 'Expense Ledger', 'Financial Reports'] },
+  { key: 'communication', en: 'Communication', ar: 'التواصل', items: ['Announcements', 'My Announcements', 'Complaints', 'Referrals', 'Ratings'] },
+  { key: 'places', en: 'Branches & partners', ar: 'الفروع والشركاء', items: ['Campuses', 'Partners'] },
+  { key: 'reports', en: 'Reports', ar: 'التقارير', items: ['Attendance Report', 'Groups Financials', 'Substitute Reconciliation'] },
+  { key: 'settings', en: 'Settings', ar: 'الإعدادات', items: ['Settings Centre', 'Platform', 'Agreements', 'Notifications', 'Permissions', 'Credential Management', 'Backups', 'Settings'] },
+]
 
 /** Old template screens (replaced by newer TechNova screens) — Super Admin only, never deleted here. */
 export const LEGACY_ITEMS = new Set([
@@ -26,41 +31,29 @@ export const LEGACY_ITEMS = new Set([
   'Tasks & Marks', 'Daily Scores', 'Grade Entry', 'Student Targets', 'Exam Results', 'Monthly Monitoring', 'Student Leaves',
 ])
 
-const ITEM_SECTION: Record<string, SectionKey> = {
-  // home
-  'Dashboard': 'home', 'My Calendar': 'home', 'My Schedule': 'home', 'My Substitutions': 'home',
-  'My Children': 'home', 'My Learning': 'home', 'My Passport': 'home', 'My Profile': 'home', 'Certificates': 'home',
-  // students & admissions
-  'Admissions': 'students', 'Landing Leads': 'students', 'Students': 'students', 'Waiting List': 'students', 'Follow-ups': 'students',
-  'Renewals': 'students', 'Absence Excuses': 'students', 'Complaints': 'students', 'Referrals': 'students', 'Birthdays': 'students',
-  // groups & learning
-  'Groups': 'teaching', 'Groups Schedule': 'teaching', 'Attendance': 'teaching', 'Holidays': 'teaching', 'LMS': 'teaching',
-  'Passport & Stamps': 'teaching', 'Session Reports': 'teaching', 'Course Structure': 'teaching', 'Grading Weights': 'teaching',
-  'Certificate Designer': 'teaching', 'Certificate Reveal': 'teaching', 'Documents': 'teaching', 'Announcements': 'teaching',
-  'My Students': 'teaching', 'Student Attendance': 'teaching', 'Import Attendance': 'teaching', 'My Announcements': 'teaching', 'Level Results': 'teaching',
-  // instructors & staff
-  'Staff Directory': 'staff', 'Absence Requests': 'staff', 'Leaves': 'staff', 'Staff Salaries': 'staff', 'HR & Salary': 'staff',
-  // money
-  'Fees': 'money', 'Accounting Hub': 'money', 'Fee Collection': 'money', 'Wallet & Top-ups': 'money', 'Discounts': 'money',
-  'Refunds': 'money', 'Expense Ledger': 'money', 'Financial Reports': 'money',
-  // branches & partners
-  'Campuses': 'places', 'Partners': 'places',
-  // reports
-  'Attendance Report': 'reports', 'Groups Financials': 'reports', 'Substitute Reconciliation': 'reports', 'Instructor Performance': 'reports', 'Ratings': 'reports',
-  // settings
-  'Settings Centre': 'settings', 'Platform': 'settings', 'Agreements': 'settings', 'Notifications': 'settings', 'Permissions': 'settings',
-  'Credential Management': 'settings', 'Backups': 'settings', 'Settings': 'settings',
-}
+export const LEGACY_HUB = { key: 'legacy' as HubKey, en: 'Old screens', ar: 'شاشات قديمة' }
 
-export function sectionOf(name: string): SectionKey {
+/** Portal pages (parents / students): they keep a short flat menu. */
+const PORTAL_ITEMS = new Set(['My Children', 'My Learning', 'My Passport', 'My Profile', 'Certificates'])
+
+export function hubOf(name: string): HubKey {
   if (LEGACY_ITEMS.has(name)) return 'legacy'
-  return ITEM_SECTION[name] ?? 'home'
+  return HUBS.find((h) => h.items.includes(name))?.key ?? 'home'
+}
+export const isKnownItem = (name: string) => LEGACY_ITEMS.has(name) || PORTAL_ITEMS.has(name) || HUBS.some((h) => h.items.includes(name))
+
+export function hubLabel(key: HubKey, ar: boolean) {
+  const h = key === 'legacy' ? LEGACY_HUB : HUBS.find((x) => x.key === key)!
+  return ar ? h.ar : h.en
 }
 
-/** Groups items into sections in the fixed order; legacy only for Super Admin. Small menus (the portal) stay flat. */
-export function groupIntoSections<T extends { name: string }>(items: T[], role: string): { key: SectionKey; items: T[] }[] {
+/** The hubs a person sees, each with their visible pages in tab order; old screens only for Super Admin. */
+export function buildHubs<T extends { name: string }>(items: T[], role: string): { key: HubKey; items: T[] }[] {
   const visible = items.filter((i) => !LEGACY_ITEMS.has(i.name) || role === 'SUPER_ADMIN')
-  return SECTIONS.map((key) => ({ key, items: visible.filter((i) => sectionOf(i.name) === key) })).filter((s) => s.items.length > 0)
+  const order = (key: HubKey, name: string) => (HUBS.find((h) => h.key === key)?.items.indexOf(name) ?? 99)
+  return [...HUB_KEYS]
+    .map((key) => ({ key, items: visible.filter((i) => hubOf(i.name) === key).sort((a, b) => order(key, a.name) - order(key, b.name)) }))
+    .filter((h) => h.items.length > 0)
 }
 
 /** Menu search: matches the English or Arabic name (case-insensitive, Arabic letters normalised a little). */
