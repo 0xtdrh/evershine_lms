@@ -1,5 +1,6 @@
 'use client'
 
+import { useUrlTab } from '@/hooks/use-url-tab'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -46,6 +47,7 @@ const STATUS_CLASS: Record<string, string> = {
 const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} EGP`
 
 export default function RefundsPage() {
+  const [urlTab, setUrlTab] = useUrlTab()
   const { data: session, status } = useSession()
   const role = session?.user?.role
   const { data: perms } = useQuery({
@@ -68,7 +70,7 @@ export default function RefundsPage() {
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><Undo2 className="h-6 w-6" /> Refunds</h1>
         <p className="text-sm text-muted-foreground">To refund, open the invoice and press “Refund”. Approvals, history and the rules are here.</p>
       </div>
-      <Tabs defaultValue={can.approve ? 'requests' : 'all'}>
+      <Tabs value={urlTab ?? (can.approve ? 'requests' : 'all')} onValueChange={setUrlTab}>
         <TabsList>
           {can.approve && <TabsTrigger value="requests">Requests</TabsTrigger>}
           <TabsTrigger value="all">All refunds</TabsTrigger>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
@@ -26,6 +27,7 @@ const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigit
 
 /** Wallet & top-ups (phase B): top up a student, approve uploaded receipts and withdrawals, wallet settings. */
 export default function WalletPage() {
+  const [urlTab, setUrlTab] = useUrlTab()
   const qc = useQueryClient()
   const { data: session } = useSession()
   const { data: perms } = useQuery({
@@ -52,7 +54,7 @@ export default function WalletPage() {
         <Card><CardContent className="p-3"><p className="text-xs text-slate-500">Uploaded receipts to check</p><p className={`text-lg font-bold ${summary?.pendingTopUps ? 'text-amber-700' : 'text-slate-700'}`}>{summary?.pendingTopUps ?? 0}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-slate-500">Withdrawals to approve</p><p className={`text-lg font-bold ${summary?.pendingWithdrawals ? 'text-amber-700' : 'text-slate-700'}`}>{summary?.pendingWithdrawals ?? 0}</p></CardContent></Card>
       </div>
-      <Tabs defaultValue={canTopUp ? 'topup' : 'approve'}>
+      <Tabs value={urlTab ?? (canTopUp ? 'topup' : 'approve')} onValueChange={setUrlTab}>
         <TabsList>
           {canTopUp && <TabsTrigger value="topup">Top up a student</TabsTrigger>}
           <TabsTrigger value="approve">Receipts to check</TabsTrigger>

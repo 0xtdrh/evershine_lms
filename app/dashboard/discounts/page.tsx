@@ -1,5 +1,6 @@
 'use client'
 
+import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -66,6 +67,7 @@ const emptyType = (): Partial<TypeRow> => ({
 })
 
 export default function DiscountsPage() {
+  const [urlTab, setUrlTab] = useUrlTab()
   const { data: session, status } = useSession()
   const role = session?.user?.role
   const { data: perms } = useQuery({
@@ -94,7 +96,7 @@ export default function DiscountsPage() {
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><BadgePercent className="h-6 w-6" /> Discounts</h1>
         <p className="text-sm text-muted-foreground">Discount types, discounts given, approvals and the monthly report.</p>
       </div>
-      <Tabs defaultValue={can.approve ? 'requests' : 'given'}>
+      <Tabs value={urlTab ?? (can.approve ? 'requests' : 'given')} onValueChange={setUrlTab}>
         <TabsList className="flex-wrap">
           {can.approve && <TabsTrigger value="requests">Requests</TabsTrigger>}
           {can.read && <TabsTrigger value="given">Discounts</TabsTrigger>}

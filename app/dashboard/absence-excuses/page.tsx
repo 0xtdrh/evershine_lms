@@ -2,6 +2,7 @@
 
 /** Phase C: parents' absence excuses — review, history, settings (docs/design-phase-c.md). */
 
+import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -126,6 +127,7 @@ function ExcuseSettings({ canEdit }: { canEdit: boolean }) {
 }
 
 export default function AbsenceExcusesPage() {
+  const [urlTab, setUrlTab] = useUrlTab()
   const { data: session } = useSession()
   const role = session?.user?.role
   if (!role) return null
@@ -136,7 +138,7 @@ export default function AbsenceExcusesPage() {
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><ClipboardX className="h-7 w-7 text-rose-600" /> Absence excuses</h1>
         <p className="mt-1 text-sm text-slate-500">Parents send an excuse for a session from the portal. Accepted excuses mark the student &quot;Absent (excused)&quot;; the session still counts as used.</p>
       </div>
-      <Tabs defaultValue="pending">
+      <Tabs value={urlTab ?? 'pending'} onValueChange={setUrlTab}>
         <TabsList>
           <TabsTrigger value="pending">To review</TabsTrigger>
           <TabsTrigger value="all">All</TabsTrigger>

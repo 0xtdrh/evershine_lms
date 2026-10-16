@@ -10,10 +10,11 @@ import { occurrencesFor } from '@/lib/groups/occurrences'
 import { prepaidTotal } from '@/lib/wallet/engine'
 import { birthdayPeople } from '@/lib/birthdays/birthdays'
 
-export interface Metric { key: string; label: string; value: number | string; hint?: string; href?: string; tone?: 'good' | 'warn' | 'bad' }
+export interface Metric { key: string; label: string; labelAr?: string; value: number | string; hint?: string; hintAr?: string; href?: string; tone?: 'good' | 'warn' | 'bad' }
 
 const num = (v: unknown) => Number(v ?? 0)
 const money = (n: number) => `${Math.round(n).toLocaleString('en-US')} EGP`
+const moneyAr = (n: number) => `${Math.round(n).toLocaleString('en-US')} ج.م`
 
 function periods() {
   const t = cairoYmd()
@@ -80,14 +81,14 @@ export async function managerMetrics(campusId?: string | null): Promise<Metric[]
   const collectionPct = invoiced ? Math.round((collected / invoiced) * 100) : null
   const waitingTotal = waiting.topups + waiting.proofs + waiting.excuses + waiting.withdrawals
   return [
-    { key: 'income', label: 'Income this month', value: money(income), hint: 'payments − approved refunds', href: '/dashboard/accountant/reports' },
-    { key: 'collection', label: 'Collected of this month\'s invoices', value: collectionPct == null ? '—' : `${collectionPct}%`, hint: `${money(collected)} of ${money(invoiced)}`, tone: collectionPct == null ? undefined : collectionPct >= 80 ? 'good' : collectionPct >= 50 ? 'warn' : 'bad', href: '/dashboard/fees' },
-    { key: 'students', label: 'Active students', value: active.length, hint: `${newStudents} new this month`, href: '/dashboard/students' },
-    { key: 'renewal', label: 'Renewal (last 60 days)', value: renewalPct == null ? '—' : `${renewalPct}%`, hint: `${yes} continuing · ${no} not`, tone: renewalPct == null ? undefined : renewalPct >= 80 ? 'good' : renewalPct >= 60 ? 'warn' : 'bad', href: '/dashboard/renewals' },
-    { key: 'overdue', label: 'Overdue invoices', value: od.count, hint: money(od.amount), tone: od.count ? 'warn' : 'good', href: '/dashboard/fees' },
-    { key: 'prepaid', label: 'Prepaid in wallets', value: money(prepaid), href: '/dashboard/wallet' },
-    { key: 'sessions', label: 'Sessions today', value: sessions.today, hint: sessions.missingYesterday ? `${sessions.missingYesterday} without attendance yesterday` : 'all of yesterday recorded', tone: sessions.missingYesterday ? 'warn' : 'good', href: '/dashboard/schedule' },
-    { key: 'waiting', label: 'Waiting for you', value: waitingTotal, hint: `${waiting.proofs + waiting.topups} receipts · ${waiting.excuses} excuses · ${waiting.withdrawals} withdrawals`, tone: waitingTotal ? 'warn' : 'good' },
+    { key: 'income', label: 'Income this month', labelAr: 'دخل الشهر', value: money(income), hint: 'payments − approved refunds', hintAr: 'المدفوعات − الاسترداد', href: '/dashboard/accountant/reports' },
+    { key: 'collection', label: 'Collected of this month\'s invoices', labelAr: 'المحصّل من فواتير الشهر', value: collectionPct == null ? '—' : `${collectionPct}%`, hint: `${money(collected)} of ${money(invoiced)}`, hintAr: `${moneyAr(collected)} من ${moneyAr(invoiced)}`, tone: collectionPct == null ? undefined : collectionPct >= 80 ? 'good' : collectionPct >= 50 ? 'warn' : 'bad', href: '/dashboard/fees' },
+    { key: 'students', label: 'Active students', labelAr: 'الطلاب النشطين', value: active.length, hint: `${newStudents} new this month`, hintAr: `${newStudents} جديد الشهر ده`, href: '/dashboard/students' },
+    { key: 'renewal', label: 'Renewal (last 60 days)', labelAr: 'التجديد (آخر 60 يوم)', value: renewalPct == null ? '—' : `${renewalPct}%`, hint: `${yes} continuing · ${no} not`, hintAr: `${yes} مكمّلين · ${no} لأ`, tone: renewalPct == null ? undefined : renewalPct >= 80 ? 'good' : renewalPct >= 60 ? 'warn' : 'bad', href: '/dashboard/renewals' },
+    { key: 'overdue', label: 'Overdue invoices', labelAr: 'فواتير متأخرة', value: od.count, hint: money(od.amount), hintAr: moneyAr(od.amount), tone: od.count ? 'warn' : 'good', href: '/dashboard/fees' },
+    { key: 'prepaid', label: 'Prepaid in wallets', labelAr: 'رصيد المحافظ', value: money(prepaid), href: '/dashboard/wallet' },
+    { key: 'sessions', label: 'Sessions today', labelAr: 'حصص النهارده', value: sessions.today, hint: sessions.missingYesterday ? `${sessions.missingYesterday} without attendance yesterday` : 'all of yesterday recorded', hintAr: sessions.missingYesterday ? `${sessions.missingYesterday} من غير حضور امبارح` : 'حضور امبارح كله متسجل', tone: sessions.missingYesterday ? 'warn' : 'good', href: '/dashboard/schedule' },
+    { key: 'waiting', label: 'Waiting for you', labelAr: 'مستنياك', value: waitingTotal, hint: `${waiting.proofs + waiting.topups} receipts · ${waiting.excuses} excuses · ${waiting.withdrawals} withdrawals`, hintAr: `${waiting.proofs + waiting.topups} إيصال · ${waiting.excuses} عذر · ${waiting.withdrawals} سحب`, tone: waitingTotal ? 'warn' : 'good' },
   ]
 }
 
@@ -101,12 +102,12 @@ export async function accountantMetrics(campusId?: string | null): Promise<Metri
     waitingItems(campusId),
   ])
   return [
-    { key: 'today', label: 'Collected today', value: money(num(todayPay._sum.amount)), hint: `${todayPay._count._all} payments` },
-    { key: 'month', label: 'Collected this month', value: money(num(monthPay._sum.amount)) },
-    { key: 'overdue', label: 'Overdue invoices', value: od.count, hint: money(od.amount), tone: od.count ? 'warn' : 'good', href: '/dashboard/fees' },
-    { key: 'receipts', label: 'Receipts to check', value: waiting.proofs + waiting.topups, tone: waiting.proofs + waiting.topups ? 'warn' : 'good', href: '/dashboard/wallet' },
-    { key: 'withdrawals', label: 'Withdrawals waiting', value: waiting.withdrawals, tone: waiting.withdrawals ? 'warn' : 'good', href: '/dashboard/wallet' },
-    { key: 'prepaid', label: 'Prepaid in wallets', value: money(prepaid), href: '/dashboard/wallet' },
+    { key: 'today', label: 'Collected today', labelAr: 'المحصّل النهارده', value: money(num(todayPay._sum.amount)), hint: `${todayPay._count._all} payments`, hintAr: `${todayPay._count._all} دفعة` },
+    { key: 'month', label: 'Collected this month', labelAr: 'المحصّل الشهر ده', value: money(num(monthPay._sum.amount)) },
+    { key: 'overdue', label: 'Overdue invoices', labelAr: 'فواتير متأخرة', value: od.count, hint: money(od.amount), hintAr: moneyAr(od.amount), tone: od.count ? 'warn' : 'good', href: '/dashboard/fees' },
+    { key: 'receipts', label: 'Receipts to check', labelAr: 'إيصالات للمراجعة', value: waiting.proofs + waiting.topups, tone: waiting.proofs + waiting.topups ? 'warn' : 'good', href: '/dashboard/wallet' },
+    { key: 'withdrawals', label: 'Withdrawals waiting', labelAr: 'طلبات سحب مستنية', value: waiting.withdrawals, tone: waiting.withdrawals ? 'warn' : 'good', href: '/dashboard/wallet' },
+    { key: 'prepaid', label: 'Prepaid in wallets', labelAr: 'رصيد المحافظ', value: money(prepaid), href: '/dashboard/wallet' },
   ]
 }
 
@@ -122,12 +123,12 @@ export async function secretaryMetrics(campusId?: string | null): Promise<Metric
     sessionCounts(campusId),
   ])
   return [
-    { key: 'followups', label: 'Parents to call today', value: followUps, tone: followUps ? 'warn' : 'good', href: '/dashboard/follow-ups' },
-    { key: 'overdue', label: 'Overdue invoices', value: od.count, hint: money(od.amount), tone: od.count ? 'warn' : 'good', href: '/dashboard/fees' },
-    { key: 'excuses', label: 'Excuses to review', value: waiting.excuses, tone: waiting.excuses ? 'warn' : 'good', href: '/dashboard/absence-excuses' },
-    { key: 'waitlist', label: 'On the waiting list', value: waitList, href: '/dashboard/waiting-list' },
-    { key: 'birthdays', label: 'Student birthdays today', value: birthdays.length, href: '/dashboard/birthdays' },
-    { key: 'sessions', label: 'Sessions today', value: sessions.today, hint: sessions.missingYesterday ? `${sessions.missingYesterday} without attendance yesterday` : undefined, tone: sessions.missingYesterday ? 'warn' : undefined, href: '/dashboard/schedule' },
+    { key: 'followups', label: 'Parents to call today', labelAr: 'أولياء أمور تكلّمهم النهارده', value: followUps, tone: followUps ? 'warn' : 'good', href: '/dashboard/follow-ups' },
+    { key: 'overdue', label: 'Overdue invoices', labelAr: 'فواتير متأخرة', value: od.count, hint: money(od.amount), hintAr: moneyAr(od.amount), tone: od.count ? 'warn' : 'good', href: '/dashboard/fees' },
+    { key: 'excuses', label: 'Excuses to review', labelAr: 'أعذار للمراجعة', value: waiting.excuses, tone: waiting.excuses ? 'warn' : 'good', href: '/dashboard/absence-excuses' },
+    { key: 'waitlist', label: 'On the waiting list', labelAr: 'في قايمة الانتظار', value: waitList, href: '/dashboard/waiting-list' },
+    { key: 'birthdays', label: 'Student birthdays today', labelAr: 'أعياد ميلاد النهارده', value: birthdays.length, href: '/dashboard/birthdays' },
+    { key: 'sessions', label: 'Sessions today', labelAr: 'حصص النهارده', value: sessions.today, hint: sessions.missingYesterday ? `${sessions.missingYesterday} without attendance yesterday` : undefined, hintAr: sessions.missingYesterday ? `${sessions.missingYesterday} من غير حضور امبارح` : undefined, tone: sessions.missingYesterday ? 'warn' : undefined, href: '/dashboard/schedule' },
   ]
 }
 
@@ -142,9 +143,9 @@ export async function teacherMetrics(teacherId: string, groupIds: string[]): Pro
   const pct = total ? Math.round(((c('PRESENT') + c('LATE')) / total) * 100) : null
   void teacherId
   return [
-    { key: 'sessions', label: 'Your sessions today', value: sessions.today, href: '/dashboard/schedule' },
-    { key: 'missing', label: 'Attendance not recorded (yesterday)', value: sessions.missingYesterday, tone: sessions.missingYesterday ? 'bad' : 'good', href: '/dashboard/teacher/attendance' },
-    { key: 'attendance', label: 'Attendance in your groups (30 days)', value: pct == null ? '—' : `${pct}%`, tone: pct == null ? undefined : pct >= 85 ? 'good' : pct >= 70 ? 'warn' : 'bad' },
-    { key: 'groups', label: 'Your active groups', value: groupIds.length },
+    { key: 'sessions', label: 'Your sessions today', labelAr: 'حصصك النهارده', value: sessions.today, href: '/dashboard/schedule' },
+    { key: 'missing', label: 'Attendance not recorded (yesterday)', labelAr: 'حضور مش متسجل (امبارح)', value: sessions.missingYesterday, tone: sessions.missingYesterday ? 'bad' : 'good', href: '/dashboard/teacher/attendance' },
+    { key: 'attendance', label: 'Attendance in your groups (30 days)', labelAr: 'الحضور في جروباتك (30 يوم)', value: pct == null ? '—' : `${pct}%`, tone: pct == null ? undefined : pct >= 85 ? 'good' : pct >= 70 ? 'warn' : 'bad' },
+    { key: 'groups', label: 'Your active groups', labelAr: 'جروباتك النشطة', value: groupIds.length },
   ]
 }

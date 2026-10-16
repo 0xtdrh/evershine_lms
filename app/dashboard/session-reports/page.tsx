@@ -5,6 +5,7 @@
  * to review, sessions without attendance) and the settings. Secretaries read only; instructors see their groups.
  */
 
+import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
@@ -95,6 +96,7 @@ function SettingsCard() {
 }
 
 export default function SessionReportsPage() {
+  const [urlTab, setUrlTab] = useUrlTab()
   const { data: session } = useSession()
   const { dir } = useI18n()
   const role = session?.user?.role ?? ''
@@ -117,7 +119,7 @@ export default function SessionReportsPage() {
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><FileText className="h-7 w-7 text-indigo-600" /> {L('Session reports', 'تقارير الحصص')}</h1>
         <p className="mt-1 text-sm text-slate-500">{L('A report for every student after each session: what was done, attendance, homework, quiz and the instructor note. It is made when attendance is saved.', 'تقرير لكل طالب بعد كل حصة: عملنا إيه، والحضور، والواجب، والكويز، وكلمة المدرب. بيتعمل لما الحضور يتسجل.')}</p>
       </div>
-      <Tabs defaultValue="list">
+      <Tabs value={urlTab ?? 'list'} onValueChange={setUrlTab}>
         <TabsList>
           <TabsTrigger value="list">{L('Reports', 'التقارير')}</TabsTrigger>
           <TabsTrigger value="missing">{L('Not complete', 'ناقصة')}{notDone ? ` (${notDone})` : ''}</TabsTrigger>

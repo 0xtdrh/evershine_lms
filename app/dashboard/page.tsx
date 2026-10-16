@@ -5,6 +5,7 @@ import { FollowUpsWidget } from '@/components/dashboard/FollowUpsWidget'
 import { StudentPortalWalletCard } from '@/components/portal/StudentPortalWalletCard'
 import { StudentRatingCard } from '@/components/portal/StudentRatingCard'
 import { RoleInsights } from '@/components/dashboard/RoleInsights'
+import { TodayTasks } from '@/components/dashboard/TodayTasks'
 import { BirthdayBanner } from '@/components/birthdays/BirthdayBanner'
 import { AttendanceTimeline } from '@/components/attendance/AttendanceTimeline'
 import { StudentReportsList } from '@/components/reports/StudentReportsList'
@@ -244,6 +245,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <BirthdayBanner />
+      {role && !['STUDENT', 'PARENT', 'GUARDIAN'].includes(role) && <TodayTasks />}
       {role !== 'STUDENT' && <RoleInsights />}
       <FollowUpsWidget />
       <StudentRatingCard />

@@ -1705,6 +1705,17 @@ check "company + group rules are added (company first, then this group)" "$(api 
 check "a change asks the parent again (marked updated)" "$(gpend | jq_ "[p['updated'] for p in d['data'] if p['studentId']=='$W1' and p['groupId']=='$WG']")" "[True]"
 api DELETE /api/group-rules/$GR >/dev/null
 rm -f "$AWJ"
+echo "== 50. 5-C: settings centre, reports centre, 'your work today' per role"
+TK() { python -c "import sys,json;d=json.load(sys.stdin);t={x['key']:x['count'] for x in d['data']['tasks']};print($1)" 2>/dev/null; }
+TD=$(api GET /api/today)
+check "today (Super Admin): only jobs with something waiting, urgent first" "$(echo "$TD" | python -c "import sys,json;t=json.load(sys.stdin)['data']['tasks'];print(all(x['count']>0 for x in t) and [x['urgent'] for x in t]==sorted([x['urgent'] for x in t],reverse=True))")" "True"
+check "today: payment receipts to check = the receipts really waiting" "$(echo "$TD" | TK "t.get('proofs',0)")" "$(M "SELECT COUNT(*) FROM FeeInvoice WHERE proofStatus='PENDING'")"
+check "today: wallet receipts + refunds waiting = the database" "$(echo "$TD" | TK "(t.get('topUps',0), t.get('refunds',0))")" "($(M "SELECT COUNT(*) FROM WalletTopUp WHERE status='PENDING'"), $(M "SELECT COUNT(*) FROM Refund WHERE status='PENDING'"))"
+check "today (secretary): no refund approvals, own work only" "$(secapi GET /api/today | TK "'refunds' not in t and 'partnerStatements' not in t")" "True"
+TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.90 >/dev/null
+check "today (instructor): only instructor jobs" "$(curl -s -b "$TJ" $B/api/today | TK "set(t) <= {'mySessionsToday','myMissingAttendance','homeworkToGrade','substituteRequests'}")" "True"
+rm -f "$TJ"
+check "settings centre and reports centre open" "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" $B/dashboard/settings-center)/$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" $B/dashboard/reports-center)" "200/200"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

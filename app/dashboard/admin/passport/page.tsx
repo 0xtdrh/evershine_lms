@@ -6,6 +6,7 @@
  * booklet price, company stamp + signature).
  */
 
+import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -219,6 +220,7 @@ function ProfileSettingsCard() {
 }
 
 export default function PassportAdminPage() {
+  const [urlTab, setUrlTab] = useUrlTab()
   const { data: session } = useSession()
   const { locale, dir } = useI18n()
   const ar = locale === 'ar'
@@ -242,7 +244,7 @@ export default function PassportAdminPage() {
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><BookMarked className="h-7 w-7 text-indigo-600" /> {L('Passport & stamps', 'الجواز والأختام')}</h1>
         <p className="mt-1 text-sm text-slate-500">{L('Automatic stamps are given by the system; by-hand stamps by the roles you choose; event stamps by scanning the student card on the day.', 'الأختام التلقائية السيستم بيدّيها لوحده؛ اليدوية بيدّيها اللي تختارهم؛ وأختام الفعاليات بالـ scan على كارت الطالب في يومها.')}</p>
       </div>
-      <Tabs defaultValue="stamps">
+      <Tabs value={urlTab ?? 'stamps'} onValueChange={setUrlTab}>
         <TabsList><TabsTrigger value="stamps">{L('Stamps', 'الأختام')}</TabsTrigger>{canEdit && <TabsTrigger value="settings">{L('Settings', 'الإعدادات')}</TabsTrigger>}</TabsList>
         <TabsContent value="stamps" className="space-y-4">
           {canEdit && <Button className="gap-1" onClick={() => setEdit(blank())}><Plus className="h-4 w-4" /> {L('New stamp', 'ختم جديد')}</Button>}

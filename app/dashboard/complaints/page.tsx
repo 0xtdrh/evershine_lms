@@ -6,6 +6,7 @@
  * Staff with complaints permissions: the queue, phone complaints, the monthly report, settings.
  */
 
+import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -181,6 +182,7 @@ function ReportTab({ canEdit }: { canEdit: boolean }) {
 }
 
 export default function ComplaintsPage() {
+  const [urlTab, setUrlTab] = useUrlTab()
   const { data: session } = useSession()
   useI18n() // re-render on a language switch
   const role = session?.user?.role ?? ''
@@ -215,7 +217,7 @@ export default function ComplaintsPage() {
           {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : <RowList rows={rows} onOpen={setOpen} staff={false} />}
         </>
       ) : (
-        <Tabs defaultValue="queue">
+        <Tabs value={urlTab ?? 'queue'} onValueChange={setUrlTab}>
           <TabsList>
             <TabsTrigger value="queue">{L('Queue', 'الطابور')}</TabsTrigger>
             {checkPermission(role, 'complaints', 'create') && <TabsTrigger value="phone">{L('Record by phone', 'تسجيل من التليفون')}</TabsTrigger>}
