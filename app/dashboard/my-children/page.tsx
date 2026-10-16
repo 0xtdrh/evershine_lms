@@ -6,6 +6,7 @@ import { ParentWalletCard } from '@/components/portal/ParentWalletCard'
 import { JoinOnlineCard } from '@/components/online/JoinOnlineCard'
 import { ParentRatingsCard } from '@/components/portal/ParentRatingsCard'
 import { ParentReferralCard } from '@/components/portal/ParentReferralCard'
+import { UpcomingSessionsCard } from '@/components/portal/UpcomingSessionsCard'
 import { ChildExcusesCard } from '@/components/portal/ChildExcusesCard'
 import { AttendanceTimeline } from '@/components/attendance/AttendanceTimeline'
 import { StudentReportsList } from '@/components/reports/StudentReportsList'
@@ -304,6 +305,7 @@ export default function MyChildrenPage() {
               </TabsList>
 
               <TabsContent value="overview" className="mt-4 space-y-4">
+                <UpcomingSessionsCard studentId={childId} />
                 {/* ── Premium Child Hero Card ─────────────────────────── */}
                 {(() => {
                   const selectedChild = (children ?? []).find((c) => c.id === childId)

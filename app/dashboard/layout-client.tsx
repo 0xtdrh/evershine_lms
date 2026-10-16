@@ -509,7 +509,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-interface Notif { id: string; title: string; message: string; type: string; isRead: boolean; relatedId?: string | null; createdAt: string }
+interface Notif { id: string; title: string; message: string; titleAr?: string | null; messageAr?: string | null; type: string; isRead: boolean; relatedId?: string | null; createdAt: string }
 
 function NotificationBell() {
   const ar = useI18n().locale === 'ar'
@@ -838,7 +838,7 @@ function NotificationBell() {
                               )}
                             </div>
                             <p className={`text-[13px] leading-snug break-words mt-0.5 ${!n.isRead ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>
-                              {n.title}
+                              {(ar && n.titleAr) || n.title}
                             </p>
                           </div>
                           <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap flex-shrink-0 mt-0.5">
@@ -846,7 +846,7 @@ function NotificationBell() {
                           </span>
                         </div>
                         <p className={`text-xs mt-1.5 leading-relaxed whitespace-pre-wrap break-words ${!n.isRead ? 'text-slate-700 font-normal' : 'text-slate-500 font-normal'}`}>
-                          {n.message}
+                          {(ar && n.titleAr && n.messageAr) || n.message}
                         </p>
                         {n.type === 'WALLET_PAYMENT' && n.relatedId && (
                           <a href={`/receipts/${n.relatedId}`} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-700 hover:underline font-semibold mt-1.5 mr-3 inline-block">

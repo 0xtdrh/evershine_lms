@@ -1844,6 +1844,9 @@ model Notification {
   userId    String
   title     String
   message   String
+  // Arabic copy (2026-10-17): the bell shows it when the screen is in Arabic (the language lives in the browser, not the account)
+  titleAr   String?
+  messageAr String?   @db.Text
   type      String // RESULT_PUBLISHED | ATTENDANCE_ALERT | TIMETABLE_CHANGE | GENERAL
   isRead    Boolean  @default(false)
   relatedId String? // optional FK reference (examId, timetableId, etc.)

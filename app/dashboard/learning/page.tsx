@@ -6,6 +6,7 @@
  */
 
 import { JoinOnlineCard } from '@/components/online/JoinOnlineCard'
+import { UpcomingSessionsCard } from '@/components/portal/UpcomingSessionsCard'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -51,6 +52,7 @@ export default function LearningPage() {
   return (
     <div className="space-y-5" dir={dir}>
       {!isParent && <JoinOnlineCard />}
+      {!isParent && <UpcomingSessionsCard />}
       {!isParent && (hw || qz) && (
         <div className="grid gap-2 sm:grid-cols-3">
           <button type="button" onClick={() => go('homework')} className="rounded-xl border border-violet-100 bg-violet-50/50 p-3 text-start">

@@ -730,9 +730,14 @@ check "secretary cannot add a holiday" "$(secapi POST /api/holidays "{\"date\":\
 check "company-wide holiday added" "$(api POST /api/holidays "{\"date\":\"$(D 1)\",\"name\":\"E2E holiday\"}" | jq_ "d['data']['added']")" "1"
 CAL=$(api GET "/api/groups/schedule?from=$(D -1)&to=$(D 5)")
 check "holiday: session moved, numbering kept (held 1, today 2, holiday, 3, 4 last)" "$(row $PH)" "$(D -1 | cut -c6-):HELD:1 $(D 0 | cut -c6-):SCHEDULED:2 $(D 1 | cut -c6-):HOLIDAY:- $(D 2 | cut -c6-):SCHEDULED:3 $(D 3 | cut -c6-):SCHEDULED:4"
+check "holiday notice in Arabic too, with the next session (the day after)" "$(M "SELECT COUNT(*) FROM Notification WHERE type='HOLIDAY' AND relatedId='$PH' AND titleAr LIKE 'إجازة:%' AND messageAr LIKE '%الحصة الجاية%' AND message LIKE '%next session is%'")" "$(M "SELECT COUNT(*) FROM Notification WHERE type='HOLIDAY' AND relatedId='$PH'")"
+check "holiday notice reaches the student too" "$(M "SELECT COUNT(*) FROM Notification n JOIN Student s ON s.userId=n.userId WHERE s.id='$PHS' AND n.type='HOLIDAY'")" "1"
+check "portal 'next sessions': the holiday shows as postponed" "$(api GET /api/students/$PHS/upcoming-sessions | jq_ "[x['status'] for x in d['data']['sessions'] if x['date']=='$(D 1)']")" "['HOLIDAY']"
 check "extra session added on the holiday evening" "$(api POST /api/groups/$PH/extra-sessions "{\"date\":\"$(D 1)\",\"time\":\"20:00\",\"reason\":\"make up\"}" | jq_ "d['success']")" "True"
 CAL=$(api GET "/api/groups/schedule?from=$(D -1)&to=$(D 5)")
 check "extra session counts: the month ends a day earlier" "$(echo "$CAL" | jq_ "[s['date'] for s in d['data']['sessions'] if s['groupId']=='$PH' and s['isLastOfCycle']]==['$(D 2)']")" "True"
+check "makeup session: families + student told (both languages)" "$(M "SELECT COUNT(*)>=1, SUM(titleAr='حصة تعويضية') FROM Notification WHERE type='MAKEUP_SESSION' AND relatedId='$PH'" | tr '	' '/')" "1/$(M "SELECT COUNT(*) FROM Notification WHERE type='MAKEUP_SESSION' AND relatedId='$PH'")"
+check "portal 'next sessions': the makeup session is marked" "$(api GET /api/students/$PHS/upcoming-sessions | jq_ "[x['time'] for x in d['data']['sessions'] if x['isExtra']]")" "['20:00']"
 HID=$(M "SELECT id FROM Holiday WHERE name='E2E holiday' LIMIT 1")
 api DELETE /api/holidays/$HID >/dev/null
 check "holiday removed -> the day is a normal session again" "$(api GET "/api/groups/schedule?from=$(D 1)&to=$(D 1)" | jq_ "any(s['status']=='HOLIDAY' for s in d['data']['sessions'] if s['groupId']=='$PH')")" "False"

@@ -26,7 +26,8 @@ export const NOTIFICATION_EVENTS = [
   { key: 'INVOICE_NEW', label: 'New invoice', description: 'Parent: a new invoice was issued', audience: 'PARENT' },
   { key: 'SESSION_CANCELLED', label: 'Session cancelled', description: 'Parent: a session was cancelled', audience: 'PARENT' },
   { key: 'SESSION_SUBSTITUTE', label: 'Substitute instructor', description: 'Parent: another instructor will give a session', audience: 'PARENT' },
-  { key: 'HOLIDAY', label: 'Day off', description: 'Parent: a holiday postpones a session', audience: 'PARENT' },
+  { key: 'HOLIDAY', label: 'Day off', description: 'Parent and student: a holiday postpones a session (with the next session date)', audience: 'PARENT' },
+  { key: 'MAKEUP_SESSION', label: 'Makeup session', description: 'Parent and student: an extra / makeup session was added to the group', audience: 'PARENT' },
   { key: 'RESULT_PUBLISHED', label: 'Result ready', description: 'Parent and student: the level result is ready', audience: 'PARENT' },
   { key: 'CERTIFICATE_ISSUED', label: 'Certificate ready', description: 'Parent and student: a certificate was revealed', audience: 'PARENT' },
   { key: 'REPORT_READY', label: 'Report ready', description: 'Parent: the monthly / level report is ready', audience: 'PARENT' },
@@ -81,17 +82,19 @@ export async function isEventOn(key: EventKey): Promise<boolean> {
   }
 }
 
-export interface NotifyContent { title: string; message: string; relatedId?: string | null }
+/** titleAr / messageAr: optional Arabic copy, shown when the reader's screen is in Arabic (WhatsApp sends the Arabic one). */
+export interface NotifyContent { title: string; message: string; titleAr?: string; messageAr?: string; relatedId?: string | null }
 
 /** Notification.title / message are VARCHAR(191): keep texts inside that (the full text still goes to WhatsApp). */
 const clip = (s: string, n = 190) => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
+const arabic = (c: NotifyContent) => (c.titleAr ? { titleAr: clip(c.titleAr), messageAr: c.messageAr ? clip(c.messageAr, 1000) : null } : {})
 
 /** In-app notification to these users (deduplicated). */
 export async function notifyUsers(userIds: (string | null | undefined)[], key: EventKey, c: NotifyContent): Promise<number> {
   try {
     const ids = [...new Set(userIds.filter((x): x is string => !!x))]
     if (!ids.length || !(await isEventOn(key))) return 0
-    await prisma.notification.createMany({ data: ids.map((userId) => ({ userId, title: clip(c.title), message: clip(c.message), type: key, relatedId: c.relatedId ?? null })) })
+    await prisma.notification.createMany({ data: ids.map((userId) => ({ userId, title: clip(c.title), message: clip(c.message), ...arabic(c), type: key, relatedId: c.relatedId ?? null })) })
     return ids.length
   } catch (err) {
     console.error('[NOTIFY_USERS]', key, err)
@@ -116,15 +119,15 @@ export async function notifyFamilies(
       where: { id: { in: ids } },
       select: { id: true, firstName: true, lastName: true, userId: true, guardians: { select: { userId: true, phoneNumber: true, isActive: true } } },
     })
-    const rows: { userId: string; title: string; message: string; type: string; relatedId: string | null }[] = []
+    const rows: { userId: string; title: string; message: string; titleAr?: string; messageAr?: string | null; type: string; relatedId: string | null }[] = []
     const whatsapp: { phone: string; text: string }[] = []
     for (const s of students) {
       const c = build(s)
       if (!c) continue
       const users = new Set<string>()
-      for (const g of s.guardians) if (g.isActive !== false) { users.add(g.userId); if (g.phoneNumber) whatsapp.push({ phone: g.phoneNumber, text: `${c.title}\n${c.message}` }) }
+      for (const g of s.guardians) if (g.isActive !== false) { users.add(g.userId); if (g.phoneNumber) whatsapp.push({ phone: g.phoneNumber, text: c.titleAr ? `${c.titleAr}\n${c.messageAr ?? ''}` : `${c.title}\n${c.message}` }) }
       if (opts.includeStudent && s.userId) users.add(s.userId)
-      for (const userId of users) rows.push({ userId, title: clip(c.title), message: clip(c.message), type: key, relatedId: c.relatedId ?? null })
+      for (const userId of users) rows.push({ userId, title: clip(c.title), message: clip(c.message), ...arabic(c), type: key, relatedId: c.relatedId ?? null })
     }
     if (rows.length) await prisma.notification.createMany({ data: rows })
     if (whatsapp.length && isAutoWhatsAppConfigured()) {

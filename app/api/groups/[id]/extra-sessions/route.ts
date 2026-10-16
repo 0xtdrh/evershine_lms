@@ -13,6 +13,7 @@ import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
+import { notifyMakeupSession } from '@/lib/notifications/session-events'
 
 async function loadGroup(id: string, user: { id: string; role: string }) {
   const g = await prisma.classSection.findUnique({ where: { id }, select: { id: true, campusId: true } })
@@ -59,5 +60,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const row = await prisma.extraSession.create({
     data: { classSectionId: id, date, time: parsed.data.time, reason: parsed.data.reason ?? null, createdById: session.user.id },
   })
+  await notifyMakeupSession(id, parsed.data.date, parsed.data.time, parsed.data.reason ?? null)
   return createdResponse({ id: row.id }, 'Extra session added')
 }
