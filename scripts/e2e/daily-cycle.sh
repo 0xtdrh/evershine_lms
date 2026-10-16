@@ -1662,6 +1662,21 @@ ST3=$(api POST /api/partners/$PNU/statements "{\"from\":\"$(D -1)\",\"to\":\"$(D
 api POST /api/partner-statements/$ST3/approve >/dev/null
 api POST /api/partner-statements/$ST3/payments "{\"direction\":\"PARTNER_TO_TECHNOVA\",\"amount\":150,\"method\":\"Cash\",\"paidAt\":\"$(D 0)\"}" >/dev/null
 check "nursery: owes 150 for the held session, pays it → settled" "$(api GET /api/partner-statements/$ST3 | jq_ "(d['data']['totalDue'], d['data']['status'])")" "(150, 'PAID')"
+echo "== 48. Partners part 1 (B2): contacts, meetings + follow-ups, place people tabs, overview, partner report, Excel"
+api POST /api/partners/$PS/contacts '{"name":"Mr Adel","role":"DECISION_MAKER","phone":"01099990021","isPrimary":true}' >/dev/null
+api POST /api/partners/$PS/contacts '{"name":"Ms Rania","role":"FINANCE","phone":"01099990022","isPrimary":true}' >/dev/null
+check "two contacts; only the last one marked main" "$(api GET /api/partners/$PS/contacts | jq_ "(len(d['data']), [c['name'] for c in d['data'] if c['isPrimary']])")" "(2, ['Ms Rania'])"
+AF=$(api POST /api/partners/$PS/activities "{\"kind\":\"MEETING\",\"happenedAt\":\"$(D 0)\",\"summary\":\"Agreed on the new term\",\"followUpAt\":\"$(D 0)\"}" | jq_ "d['data']['id']")
+check "a follow-up due today shows on the overview" "$(api GET /api/partners/overview | jq_ "any(f['id']=='$AF' for f in d['data']['followUps'])")" "True"
+api PATCH /api/partner-activities/$AF "{\"kind\":\"MEETING\",\"happenedAt\":\"$(D 0)\",\"summary\":\"Agreed on the new term\",\"followUpAt\":\"$(D 0)\",\"followUpDone\":true}" >/dev/null
+check "…and leaves it once done" "$(api GET /api/partners/overview | jq_ "any(f['id']=='$AF' for f in d['data']['followUps'])")" "False"
+check "the overview shows what TechNova owes partners (the 50 carried at Sheraton)" "$(api GET /api/partners/overview | jq_ "[round(b['rest']) for b in d['data']['money']['byPartner'] if b['partnerId']=='$PS']")" "[-50]"
+check "place tabs: the Sheraton place lists its group and student" "$(api GET "/api/places/people?campusIds=$PSP" | jq_ "(any(g['id']=='$GPS' for g in d['data']['groups']), any(s['id']=='$SPX' for s in d['data']['students']))")" "(True, True)"
+api POST /api/places/$PSP/instructors "{\"teacherId\":\"$CALT\"}" >/dev/null
+check "an instructor added to the place appears there; removed again he is gone" "$(api GET "/api/places/people?campusIds=$PSP" | jq_ "any(t['id']=='$CALT' for t in d['data']['instructors'])")/$(api DELETE "/api/places/$PSP/instructors?teacherId=$CALT" | jq_ "d['success']")/$(api GET "/api/places/people?campusIds=$PSP" | jq_ "any(t['id']=='$CALT' for t in d['data']['instructors'])")" "True/True/False"
+check "a person who does not have the place gets nothing from it" "$(secapi GET "/api/places/people?campusIds=$PSP" | jq_ "(len(d['data']['groups']), len(d['data']['students']))")" "(0, 0)"
+check "partner report for the nursery: 1 session held, 1 cancelled, 20 children" "$(api GET "/api/partners/$PNU/report?from=$(D -1)&to=$(D 0)" | jq_ "(d['data']['totals']['sessionsHeld'], d['data']['totals']['sessionsCancelled'], d['data']['totals']['students'])")" "(1, 1, 20)"
+check "Excel: partners list downloads; statements need partner money access" "$(curl -s -o /dev/null -w '%{http_code}|%{content_type}' -b "$JAR" "$B/api/partners/export?kind=partners" | cut -c1-40)/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" "$B/api/partners/export?kind=statements")" "200|application/vnd.openxmlformats-offic/403"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

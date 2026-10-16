@@ -117,3 +117,22 @@ export const statementPaymentSchema = z.object({
   reference: z.string().trim().max(120).optional().nullable(),
   note: opt(500),
 })
+
+// ── Partners part 1-B2: contacts, activities ──
+export const contactSchema = z.object({
+  name: z.string().trim().min(2, 'Write the name').max(120),
+  role: z.enum(['DECISION_MAKER', 'FINANCE', 'ACADEMIC', 'PLACE_MANAGER', 'OTHER']),
+  jobTitle: opt(120),
+  phone: opt(40),
+  email: z.union([z.string().trim().email('The email is not valid').max(150), z.literal('')]).optional().nullable(),
+  isPrimary: z.boolean().optional(),
+  notes: opt(1000),
+})
+
+export const activitySchema = z.object({
+  kind: z.enum(['CALL', 'MEETING', 'VISIT', 'MESSAGE', 'OTHER']),
+  happenedAt: z.string().regex(DATE, 'Choose the date'),
+  summary: z.string().trim().min(2, 'Write what was said').max(3000),
+  followUpAt: z.union([z.string().regex(DATE), z.literal('')]).optional().nullable(),
+  followUpDone: z.boolean().optional(),
+})

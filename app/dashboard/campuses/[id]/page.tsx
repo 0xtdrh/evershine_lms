@@ -1,5 +1,6 @@
 'use client'
 
+import { PlacePeople } from '@/components/places/PlacePeople'
 import { useEffect, useState } from 'react'
 import { use } from 'react'
 import Link from 'next/link'
@@ -157,6 +158,11 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
           </CardContent>
         </Card>
       </div>
+      {/* Partners part 1-B2: this place's groups, students and instructors, with quick actions */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Groups · students · instructors</CardTitle></CardHeader>
+        <CardContent><PlacePeople places={[{ id: c.id, name: c.name }]} /></CardContent>
+      </Card>
     </div>
   )
 }

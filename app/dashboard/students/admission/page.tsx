@@ -82,6 +82,11 @@ export default function AdmissionPage() {
   })
 
   const selectedCampusId = useWatch({ control, name: 'campusId' })
+  // Partners part 1-B2: "New admission" from a place / partner page → that place chosen
+  useEffect(() => {
+    const campusId = new URLSearchParams(window.location.search).get('campusId')
+    if (campusId) setValue('campusId', campusId)
+  }, [setValue])
   const hasSiblingAtAcademy = useWatch({ control, name: 'hasSiblingAtAcademy' })
 
   // ── Data Fetching ────────────────────────────────────────────────────────

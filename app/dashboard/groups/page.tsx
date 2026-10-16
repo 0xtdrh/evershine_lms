@@ -148,8 +148,15 @@ export default function GroupsPage() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   // Opened from another page (e.g. the Groups schedule): /dashboard/groups?group=<id>
   useEffect(() => {
-    const g = new URLSearchParams(window.location.search).get('group')
+    const sp = new URLSearchParams(window.location.search)
+    const g = sp.get('group')
     if (g) setSelectedGroupId(g)
+    // Partners part 1-B2: "Add group" from a place / partner page → open the form with that place chosen
+    if (sp.get('create') === '1') {
+      const campusId = sp.get('campusId')
+      if (campusId) setCreateForm((f) => ({ ...f, campusId }))
+      setCreateOpen(true)
+    }
   }, [])
 
   const filtered = useMemo(() => groups.filter((g) => g.displayStatus === filter), [groups, filter])

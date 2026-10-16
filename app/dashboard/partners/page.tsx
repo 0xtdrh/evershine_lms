@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label'
 import { AccessDenied } from '@/components/AccessDenied'
 import { PARTNER_KINDS, type PartnerKind } from '@/lib/partners/rules'
 import { ContractBadge, kindLabel } from '@/components/partners/bits'
+import { PartnersOverview } from '@/components/partners/PartnersOverview'
 import { Handshake, Loader2, MapPin, Plus, Search } from 'lucide-react'
 
 interface Row {
@@ -57,6 +58,8 @@ export default function PartnersPage() {
         </div>
         {canCreate && <Button size="sm" onClick={() => setOpen(!open)}><Plus className="me-1 h-4 w-4" />{L('Add partner', 'ضيف شريك')}</Button>}
       </div>
+
+      <PartnersOverview canExportMoney={!!perms?.permissions?.partner_finance?.includes('export')} />
 
       {open && canCreate && (
         <Card>

@@ -19,7 +19,9 @@ import { PartnerDeals } from '@/components/partners/PartnerDeals'
 import { PartnerStatements } from '@/components/partners/PartnerStatements'
 import { PlacePermissions } from '@/components/partners/PlacePermissions'
 import type { PartnerDetail } from '@/components/partners/types'
-import { ArrowLeft, Handshake, Loader2 } from 'lucide-react'
+import { ArrowLeft, FileText, Handshake, Loader2 } from 'lucide-react'
+import { PlacePeople } from '@/components/places/PlacePeople'
+import { PartnerRelations } from '@/components/partners/PartnerRelations'
 
 export default function PartnerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -43,10 +45,13 @@ export default function PartnerPage({ params }: { params: Promise<{ id: string }
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900"><Handshake className="h-5 w-5 text-indigo-600" />{p.name}</h1>
         <p className="text-sm text-slate-500">{kindLabel(p.kind)}{!p.isActive ? ` · ${L('Stopped', 'موقوف')}` : ''}</p>
+        <a href={`/reports/partner/${p.id}`} target="_blank" rel="noopener" className="mt-1 inline-flex items-center gap-1 text-xs text-indigo-700 hover:underline"><FileText className="h-3.5 w-3.5" />{L('Partner report (PDF)', 'تقرير الشريك (PDF)')}</a>
       </div>
       <Tabs defaultValue="places">
         <TabsList className="flex-wrap">
           <TabsTrigger value="places">{L('Places', 'الأماكن')} ({p.places.length})</TabsTrigger>
+          <TabsTrigger value="people">{L('Groups · students · instructors', 'الجروبات · الطلاب · المدربين')}</TabsTrigger>
+          <TabsTrigger value="relations">{L('Contacts & meetings', 'المسؤولين والاجتماعات')}</TabsTrigger>
           <TabsTrigger value="deals">{L('Deal', 'الاتفاق')}</TabsTrigger>
           {fin('read') && <TabsTrigger value="statements">{L('Statements', 'كشوف الحساب')}</TabsTrigger>}
           <TabsTrigger value="contracts">{L('Contracts', 'العقود')} ({p.contracts.length})</TabsTrigger>
@@ -55,6 +60,8 @@ export default function PartnerPage({ params }: { params: Promise<{ id: string }
         </TabsList>
         <Card className="mt-3"><CardContent className="p-4">
           <TabsContent value="places"><PartnerPlaces p={p} canEdit={can('update')} /></TabsContent>
+          <TabsContent value="people">{p.places.length ? <PlacePeople places={p.places.map((x) => ({ id: x.id, name: x.name }))} /> : <p className="text-sm text-slate-500">{L('Add a place first.', 'ضيف مكان الأول.')}</p>}</TabsContent>
+          <TabsContent value="relations"><PartnerRelations partnerId={p.id} canEdit={can('update')} /></TabsContent>
           <TabsContent value="deals"><PartnerDeals p={p} canEdit={can('update')} /></TabsContent>
           {fin('read') && <TabsContent value="statements"><PartnerStatements p={p} perms={{ create: fin('create'), approve: fin('approve'), update: fin('update') }} /></TabsContent>}
           <TabsContent value="contracts"><PartnerContracts p={p} canEdit={can('update')} canDelete={can('delete')} /></TabsContent>

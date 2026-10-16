@@ -4561,6 +4561,8 @@ model Partner {
   contracts    PartnerContract[]
   deals        PartnerDeal[]
   statements   PartnerStatement[]
+  contacts     PartnerContact[]
+  activities   PartnerActivity[]
 
   @@index([isActive])
 }
@@ -4750,4 +4752,41 @@ model PartnerStatementPayment {
   statement    PartnerStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
 
   @@index([statementId])
+}
+
+/// Partners part 1-B2 (2026-10-16): people at a partner (decision maker, finance, academic coordinator, place manager, …).
+model PartnerContact {
+  id        String   @id @default(cuid())
+  partnerId String
+  name      String
+  /// DECISION_MAKER / FINANCE / ACADEMIC / PLACE_MANAGER / OTHER
+  role      String   @default("OTHER") @db.VarChar(20)
+  jobTitle  String?
+  phone     String?  @db.VarChar(40)
+  email     String?
+  isPrimary Boolean  @default(false)
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  partner   Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId])
+}
+
+/// Partners part 1-B2: calls, meetings, visits and messages with a partner, with an optional follow-up date.
+model PartnerActivity {
+  id             String    @id @default(cuid())
+  partnerId      String
+  /// CALL / MEETING / VISIT / MESSAGE / OTHER
+  kind           String    @default("CALL") @db.VarChar(10)
+  happenedAt     DateTime
+  summary        String    @db.Text
+  followUpAt     DateTime?
+  followUpDoneAt DateTime?
+  createdById    String?
+  createdAt      DateTime  @default(now())
+  partner        Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, happenedAt])
+  @@index([followUpAt])
 }
