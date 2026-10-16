@@ -148,6 +148,13 @@ export function PartnerDeals({ p, canEdit }: { p: PartnerDetail; canEdit: boolea
                     <option value="GROSS">{L('of revenue before discounts', 'من الإيراد قبل الخصومات')}</option>
                   </select>
                 )}
+                {c.kind === 'PERCENT' && f.collector !== 'INSTITUTION' && (
+                  <span className="w-full text-xs font-medium text-indigo-700">
+                    {f.collector === 'TECHNOVA'
+                      ? L(`The partner takes ${c.value}% — TechNova keeps ${100 - Number(c.value)}%`, `الشريك ياخد ${c.value}% — TechNova تاخد ${100 - Number(c.value)}%`)
+                      : L(`TechNova takes ${c.value}% — the partner keeps ${100 - Number(c.value)}%`, `TechNova تاخد ${c.value}% — الشريك ياخد ${100 - Number(c.value)}%`)}
+                  </span>
+                )}
                 {c.kind === 'PER_HOUR' && <><Input type="number" min={0.25} step={0.25} className="h-9 w-20" value={c.hoursPerSession ?? 1} onChange={(e) => setComp(i, { hoursPerSession: Number(e.target.value) })} /><span className="text-xs text-slate-500">{L('hours / session', 'ساعة للحصة')}</span></>}
                 <button type="button" className="text-slate-400 hover:text-rose-600" onClick={() => setF({ ...f, components: f.components.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4" /></button>
               </div>

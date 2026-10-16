@@ -16,6 +16,7 @@ import { PartnerInfoForm } from '@/components/partners/PartnerInfoForm'
 import { PartnerPlaces } from '@/components/partners/PartnerPlaces'
 import { PartnerContracts } from '@/components/partners/PartnerContracts'
 import { PartnerDeals } from '@/components/partners/PartnerDeals'
+import { PartnerStatements } from '@/components/partners/PartnerStatements'
 import { PlacePermissions } from '@/components/partners/PlacePermissions'
 import type { PartnerDetail } from '@/components/partners/types'
 import { ArrowLeft, Handshake, Loader2 } from 'lucide-react'
@@ -31,6 +32,7 @@ export default function PartnerPage({ params }: { params: Promise<{ id: string }
     enabled: !!session?.user?.role,
   })
   const can = (a: string) => !!perms?.permissions?.partners?.includes(a)
+  const fin = (a: string) => !!perms?.permissions?.partner_finance?.includes(a)
   const { data: p, isLoading, error } = useQuery({ queryKey: ['partner', id], queryFn: () => fetchApi<PartnerDetail>(`/api/partners/${id}`), enabled: can('read') })
   if (perms && !can('read')) return <AccessDenied />
   if (isLoading || !perms) return <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
@@ -46,6 +48,7 @@ export default function PartnerPage({ params }: { params: Promise<{ id: string }
         <TabsList className="flex-wrap">
           <TabsTrigger value="places">{L('Places', 'الأماكن')} ({p.places.length})</TabsTrigger>
           <TabsTrigger value="deals">{L('Deal', 'الاتفاق')}</TabsTrigger>
+          {fin('read') && <TabsTrigger value="statements">{L('Statements', 'كشوف الحساب')}</TabsTrigger>}
           <TabsTrigger value="contracts">{L('Contracts', 'العقود')} ({p.contracts.length})</TabsTrigger>
           <TabsTrigger value="info">{L('Details', 'البيانات')}</TabsTrigger>
           {isSuper && <TabsTrigger value="permissions">{L('Permissions', 'الصلاحيات')}</TabsTrigger>}
@@ -53,6 +56,7 @@ export default function PartnerPage({ params }: { params: Promise<{ id: string }
         <Card className="mt-3"><CardContent className="p-4">
           <TabsContent value="places"><PartnerPlaces p={p} canEdit={can('update')} /></TabsContent>
           <TabsContent value="deals"><PartnerDeals p={p} canEdit={can('update')} /></TabsContent>
+          {fin('read') && <TabsContent value="statements"><PartnerStatements p={p} perms={{ create: fin('create'), approve: fin('approve'), update: fin('update') }} /></TabsContent>}
           <TabsContent value="contracts"><PartnerContracts p={p} canEdit={can('update')} canDelete={can('delete')} /></TabsContent>
           <TabsContent value="info"><PartnerInfoForm p={p} canEdit={can('update')} canDelete={can('delete')} /></TabsContent>
           {isSuper && <TabsContent value="permissions"><PlacePermissions p={p} /></TabsContent>}

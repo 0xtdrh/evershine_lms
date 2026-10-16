@@ -1640,6 +1640,28 @@ check "nursery pays 150 per session; the session it cancelled counts → 300; 20
 api PATCH /api/partner-deals/$DN "{\"title\":\"150 per session\",\"collector\":\"INSTITUTION\",\"components\":[{\"kind\":\"PER_SESSION\",\"value\":150}],\"countPartnerCancelled\":false,\"validFrom\":\"$(D -60)\"}" >/dev/null
 check "…and 150 when cancelled sessions do not count" "$(api GET "/api/partner-deals/$DN/preview?from=$(D -1)&to=$(D 0)" | jq_ "d['data']['result']['balanceForTechNova']")" "150"
 check "the calendar shows the held session of the class without names" "$(api GET "/api/groups/schedule?from=$(D 0)&to=$(D 0)" | jq_ "[s['status'] for s in d['data']['sessions'] if s['groupId']=='$GNU' and s['date']=='$(D 0)']")" "['HELD']"
+echo "== 47. Partners part 1 (B1): statements — make, manual lines, approve (frozen), payments both ways, carry-over"
+ST1=$(api POST /api/partners/$PS/statements "{\"from\":\"$(D -1)\",\"to\":\"$(D 0)\"}" | jq_ "d['data']['id']")
+check "Sheraton statement made as a draft from the deal: TechNova owes 165" "$(api GET /api/partner-statements/$ST1 | jq_ "(d['data']['status'], d['data']['totalDue'])")" "('DRAFT', -165)"
+check "a second statement for the same period is refused" "$(api POST /api/partners/$PS/statements "{\"from\":\"$(D 0)\",\"to\":\"$(D 0)\"}" | jq_ "d['success']")" "False"
+check "the secretary cannot see statements; approvers are told a statement waits" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/partners/$PS/statements)/$(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE n.type='PARTNER_STATEMENT' AND u.email='m0admin@e2e.local'" | python -c "import sys;print(int(sys.stdin.read())>=1)")" "403/True"
+api PATCH /api/partner-statements/$ST1 '{"manualLines":[{"label":"Agreed discount","amount":35,"payer":"TECHNOVA","reason":"opening month"}]}' >/dev/null
+check "a manual line TechNova pays lowers the total (−200)" "$(api GET /api/partner-statements/$ST1 | jq_ "d['data']['totalDue']")" "-200"
+ACJ=$(mktemp); login_jar $ACCE E2eAcc12345 "$ACJ" 10.0.2.11
+check "an accountant can see statements but not approve them" "$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/partners/$PS/statements)/$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" -X POST $B/api/partner-statements/$ST1/approve)" "200/403"
+rm -f "$ACJ"
+api POST /api/partner-statements/$ST1/approve >/dev/null
+check "approved: frozen (cannot change any more)" "$(api GET /api/partner-statements/$ST1 | jq_ "d['data']['status']")/$(api PATCH /api/partner-statements/$ST1 '{"manualLines":[]}' | jq_ "d['success']")" "APPROVED/False"
+check "a payment the wrong way or more than the rest is refused" "$(api POST /api/partner-statements/$ST1/payments "{\"direction\":\"PARTNER_TO_TECHNOVA\",\"amount\":10,\"method\":\"Cash\",\"paidAt\":\"$(D 0)\"}" | jq_ "d['success']")/$(api POST /api/partner-statements/$ST1/payments "{\"direction\":\"TECHNOVA_TO_PARTNER\",\"amount\":500,\"method\":\"Cash\",\"paidAt\":\"$(D 0)\"}" | jq_ "d['success']")" "False/False"
+api POST /api/partner-statements/$ST1/payments "{\"direction\":\"TECHNOVA_TO_PARTNER\",\"amount\":150,\"method\":\"Bank Transfer\",\"paidAt\":\"$(D 0)\",\"reference\":\"TRX-1\"}" >/dev/null
+check "TechNova paid 150 of 200: partly paid, 50 left" "$(api GET /api/partner-statements/$ST1 | jq_ "(d['data']['status'], d['data']['rest'])")" "('PARTIAL', -50)"
+ST2=$(api POST /api/partners/$PS/statements "{\"from\":\"$(D 1)\",\"to\":\"$(D 2)\"}" | jq_ "d['data']['id']")
+api POST /api/partner-statements/$ST2/approve >/dev/null
+check "the next statement carries the 50 left; the old one is marked carried" "$(api GET /api/partner-statements/$ST2 | jq_ "(d['data']['previousBalance'], d['data']['totalDue'])")/$(M "SELECT status FROM PartnerStatement WHERE id='$ST1'")" "(-50, -50)/CARRIED"
+ST3=$(api POST /api/partners/$PNU/statements "{\"from\":\"$(D -1)\",\"to\":\"$(D 0)\"}" | jq_ "d['data']['id']")
+api POST /api/partner-statements/$ST3/approve >/dev/null
+api POST /api/partner-statements/$ST3/payments "{\"direction\":\"PARTNER_TO_TECHNOVA\",\"amount\":150,\"method\":\"Cash\",\"paidAt\":\"$(D 0)\"}" >/dev/null
+check "nursery: owes 150 for the held session, pays it → settled" "$(api GET /api/partner-statements/$ST3 | jq_ "(d['data']['totalDue'], d['data']['status'])")" "(150, 'PAID')"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

@@ -97,6 +97,8 @@ export type AcademicResource =
   | 'passport'
   // M1: partners (schools, nurseries, …), their places, contracts and per-place / per-person permissions
   | 'partners'
+  // Partners part 1-B: partner statements (read / create = make & edit drafts / approve = freeze / export)
+  | 'partner_finance'
 
 type Resource = AcademicResource
 
@@ -214,6 +216,7 @@ const PERMISSIONS: PermissionMap = {
     session_reports: ['read', 'update', 'approve'],
     passport: ['read', 'update', 'approve'],
     partners: ['create', 'read', 'update', 'delete'],
+    partner_finance: ['read', 'create', 'update', 'approve', 'export'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -279,6 +282,7 @@ const PERMISSIONS: PermissionMap = {
     session_reports: ['read', 'update', 'approve'],
     passport: ['read', 'update', 'approve'],
     partners: ['create', 'read', 'update', 'delete'],
+    partner_finance: ['read', 'create', 'update', 'approve', 'export'],
   },
   TEACHER: {
     students: ['read'],
@@ -345,6 +349,7 @@ const PERMISSIONS: PermissionMap = {
     session_reports: ['read', 'update'],
     passport: ['read', 'update'],
     partners: [],
+    partner_finance: [],
   },
   STUDENT: {
     students: [],
@@ -410,6 +415,7 @@ const PERMISSIONS: PermissionMap = {
     session_reports: [],
     passport: [],
     partners: [],
+    partner_finance: [],
   },
   PARENT: {
     students: [],
@@ -475,6 +481,7 @@ const PERMISSIONS: PermissionMap = {
     session_reports: [],
     passport: [],
     partners: [],
+    partner_finance: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -542,6 +549,7 @@ const PERMISSIONS: PermissionMap = {
     session_reports: [],
     passport: [],
     partners: [],
+    partner_finance: ['read', 'create', 'update', 'export'],
   },
   GUARDIAN: {
     students: [],
@@ -607,6 +615,7 @@ const PERMISSIONS: PermissionMap = {
     session_reports: [],
     passport: [],
     partners: [],
+    partner_finance: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -676,6 +685,7 @@ const PERMISSIONS: PermissionMap = {
     session_reports: ['read'],
     passport: ['read', 'update'],
     partners: [],
+    partner_finance: [],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -746,6 +756,7 @@ const PERMISSIONS: PermissionMap = {
     session_reports: ['read', 'update'],
     passport: ['read', 'update'],
     partners: [],
+    partner_finance: [],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -814,6 +825,7 @@ const PERMISSIONS: PermissionMap = {
     session_reports: [],
     passport: [],
     partners: [],
+    partner_finance: [],
   },
 }
 

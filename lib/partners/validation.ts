@@ -91,3 +91,29 @@ export const sessionLogSchema = z.object({
   headcount: z.number().int().min(0).max(500).nullable().optional(),
   note: opt(500),
 })
+
+// ── Partners part 1-B: statements ──
+export const makeStatementSchema = z.object({
+  campusId: z.string().max(40).optional().nullable(),
+  from: z.string().regex(DATE, 'Choose the start of the period'),
+  to: z.string().regex(DATE, 'Choose the end of the period'),
+})
+
+export const statementEditSchema = z.object({
+  manualLines: z.array(z.object({
+    label: z.string().trim().min(1).max(120),
+    amount: z.coerce.number().min(0).max(10_000_000),
+    payer: z.enum(['TECHNOVA', 'PARTNER']),
+    reason: z.string().trim().max(300).optional().nullable(),
+  })).max(20).optional(),
+  notes: opt(2000),
+})
+
+export const statementPaymentSchema = z.object({
+  direction: z.enum(['PARTNER_TO_TECHNOVA', 'TECHNOVA_TO_PARTNER']),
+  amount: z.coerce.number().positive().max(10_000_000),
+  method: z.string().trim().min(1).max(50),
+  paidAt: z.string().regex(DATE, 'Choose the payment date'),
+  reference: z.string().trim().max(120).optional().nullable(),
+  note: opt(500),
+})

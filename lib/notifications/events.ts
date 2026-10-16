@@ -55,6 +55,7 @@ export const NOTIFICATION_EVENTS = [
   { key: 'COMPLAINT_ESCALATED', label: 'Complaint escalated', description: 'Managers: no reply before the deadline, or the sender says it is not solved', audience: 'STAFF' },
   { key: 'CURRICULUM_REVIEW', label: 'Curriculum to review', description: 'Approvers: a curriculum version was sent for review', audience: 'STAFF' },
   { key: 'PARTNER_CONTRACT_ENDING', label: 'Partner contract ending', description: 'People with partner access: a partner contract is about to end, or has ended (M1)', audience: 'STAFF' },
+  { key: 'PARTNER_STATEMENT', label: 'Partner statement to approve', description: 'People who approve partner statements: a new statement is waiting (part 1-B)', audience: 'STAFF' },
   { key: 'MORNING_SUMMARY', label: 'Morning summary', description: 'Managers: today\'s sessions, missing attendance, overdue invoices, items waiting', audience: 'STAFF' },
 ] as const satisfies readonly EventDef[]
 
