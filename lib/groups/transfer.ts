@@ -14,6 +14,7 @@
  *    keep their share of the counted sessions only
  */
 
+import { cyclePrice } from '@/lib/pricing/group-price'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
@@ -36,7 +37,7 @@ async function loadGroup(db: Db, id: string) {
     where: { id },
     select: {
       id: true, className: true, sectionName: true, campusId: true, isActive: true, status: true, startDate: true,
-      scheduleSlots: true, currentCycleNumber: true, levelId: true,
+      scheduleSlots: true, currentCycleNumber: true, levelId: true, priceOverride: true,
       level: {
         select: {
           id: true, name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, monthlyPrice: true, fullLevelPrice: true,
@@ -49,7 +50,7 @@ async function loadGroup(db: Db, id: string) {
   if (!g) return null
   const activeYearId = (await getActiveAcademicYear())?.id
   const offering = await findGroupInstructorOffering(id, activeYearId)
-  const price = g.level ? Number(g.level.pricingType === 'MONTHLY' ? g.level.monthlyPrice ?? 0 : g.level.fullLevelPrice ?? 0) : 0
+  const price = g.level ? await cyclePrice(g.level, g.campusId, g.priceOverride) : 0
   return {
     id: g.id,
     label: `${g.className} ${g.sectionName}`.trim(),

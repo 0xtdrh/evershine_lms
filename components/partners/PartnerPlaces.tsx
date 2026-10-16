@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { PartnerDetail, PartnerPlace } from './types'
+import { PlacePrices } from './PlacePrices'
 import { Loader2, MapPin, Pencil, Plus } from 'lucide-react'
 
 const blank = { name: '', address: '', phone: '', email: '', principalName: '' }
@@ -19,6 +20,7 @@ const blank = { name: '', address: '', phone: '', email: '', principalName: '' }
 export function PartnerPlaces({ p, canEdit }: { p: PartnerDetail; canEdit: boolean }) {
   const qc = useQueryClient()
   const [editing, setEditing] = useState<string | 'NEW' | null>(null)
+  const [pricesFor, setPricesFor] = useState<string | null>(null)
   const [f, setF] = useState(blank)
   const refresh = () => { qc.invalidateQueries({ queryKey: ['partner', p.id] }); qc.invalidateQueries({ queryKey: ['partners'] }); qc.invalidateQueries({ queryKey: ['places-mine'] }); qc.invalidateQueries({ queryKey: ['campuses'] }) }
   const save = useMutation({
@@ -51,10 +53,12 @@ export function PartnerPlaces({ p, canEdit }: { p: PartnerDetail; canEdit: boole
             {!pl.isActive && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{L('Stopped', 'موقوف')}</span>}
             {canEdit && (
               <span className="ms-auto flex gap-1">
+                <Button size="sm" variant="outline" onClick={() => setPricesFor(pricesFor === pl.id ? null : pl.id)}>{L('Special prices', 'أسعار خاصة')}</Button>
                 <Button size="sm" variant="ghost" onClick={() => open(pl)}><Pencil className="h-4 w-4" /></Button>
                 <Button size="sm" variant="outline" disabled={toggle.isPending} onClick={() => toggle.mutate(pl)}>{pl.isActive ? L('Stop', 'وقّف') : L('Start', 'شغّل')}</Button>
               </span>
             )}
+            {pricesFor === pl.id && <div className="w-full pt-2"><PlacePrices campusId={pl.id} canEdit={canEdit} /></div>}
           </li>
         ))}
       </ul>

@@ -7,6 +7,8 @@
  *                            Subject Offerings flow — not duplicated here.
  */
 
+import { cyclePrice } from '@/lib/pricing/group-price'
+import { checkPermission } from '@/lib/rbac'
 import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -100,8 +102,11 @@ export async function GET(
     prisma.extraSession.findMany({ where: { classSectionId: id }, orderBy: { date: 'asc' }, select: { id: true, date: true, time: true, reason: true } }),
   ])
 
+  // Partners part 1: the price this group's next invoice will use (group → place → level)
+  const effectivePrice = group.level ? await cyclePrice(group.level, group.campusId, group.priceOverride) : null
   return successResponse({
     ...groupFields,
+    effectivePrice,
     seats,
     waiting: waitingRows.map((w, i) => ({
       id: w.id,
@@ -148,6 +153,10 @@ const updateGroupSchema = z.object({
   installmentsAllowed: z.boolean().optional(),
   /** Phase A: most students allowed (null = no limit) */
   maxStudents: z.number().int().min(1).max(500).nullable().optional(),
+  /** Partners part 1: the group's own cycle price (null = place / level price) — needs fees:update */
+  priceOverride: z.number().min(0).max(1_000_000).nullable().optional(),
+  /** Partners part 1: a class without names (number of children); null = a normal group */
+  unnamedHeadcount: z.number().int().min(1).max(500).nullable().optional(),
 })
 
 export async function PATCH(
@@ -176,6 +185,8 @@ export async function PATCH(
 
   const parsed = updateGroupSchema.safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
+  // Partners part 1: changing the price is a money decision
+  if (parsed.data.priceOverride !== undefined && !checkPermission(role, 'fees', 'update')) return errors.forbidden('Only finance staff may change the group price')
 
   if (parsed.data.levelId) {
     const level = await prisma.level.findUnique({ where: { id: parsed.data.levelId }, select: { id: true } })
@@ -216,6 +227,8 @@ export async function PATCH(
       }),
       ...(parsed.data.requireFullPaymentToStart !== undefined && { requireFullPaymentToStart: parsed.data.requireFullPaymentToStart }),
       ...(parsed.data.maxStudents !== undefined && { maxStudents: parsed.data.maxStudents }),
+      ...(parsed.data.priceOverride !== undefined && { priceOverride: parsed.data.priceOverride }),
+      ...(parsed.data.unnamedHeadcount !== undefined && { unnamedHeadcount: parsed.data.unnamedHeadcount }),
       ...(parsed.data.partialPaymentCounts !== undefined && { partialPaymentCounts: parsed.data.partialPaymentCounts }),
       ...(parsed.data.installmentsAllowed !== undefined && { installmentsAllowed: parsed.data.installmentsAllowed }),
     },

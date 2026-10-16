@@ -1967,6 +1967,10 @@ model ClassSection {
   capacity                  Int               @default(40)
   /// Phase A: most students allowed in the group (null = no limit). Not the old template "capacity".
   maxStudents               Int?
+  /// Partners part 1 (2026-10-16): this group's own cycle price (wins over the place price and the level price); null = none
+  priceOverride             Decimal?          @db.Decimal(10, 2)
+  /// Partners part 1: a class taught WITHOUT student names (e.g. a nursery class): number of children; null = a normal named group
+  unnamedHeadcount          Int?
   /// LMS (L1): the curriculum version this group follows (pinned when it starts; null = newest published)
   curriculumEditionId       String?
   /// LMS L2: how lessons open for this group (ALL | SCHEDULE | ATTENDANCE | MANUAL | PREVIOUS); null = the level's / company default
@@ -4555,6 +4559,7 @@ model Partner {
   updatedAt    DateTime          @updatedAt
   places       Campus[]
   contracts    PartnerContract[]
+  deals        PartnerDeal[]
 
   @@index([isActive])
 }
@@ -4624,5 +4629,70 @@ model LocationPermissionOverride {
   createdAt   DateTime @default(now())
 
   @@unique([campusId, role, resource, action])
+  @@index([campusId])
+}
+
+/// Partners part 1 (2026-10-16): a special price for a level in one place (branch or partner place). Wins over the level price;
+/// a group's own priceOverride wins over this.
+model PlacePrice {
+  id             String   @id @default(cuid())
+  campusId       String
+  levelId        String
+  monthlyPrice   Decimal? @db.Decimal(10, 2)
+  fullLevelPrice Decimal? @db.Decimal(10, 2)
+  updatedById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([campusId, levelId])
+  @@index([levelId])
+}
+
+/// Partners part 1: sessions of a group recorded without per-student attendance (unnamed classes, e.g. nurseries) and
+/// sessions a partner cancelled. Counted as held sessions for the calendar, instructor pay and partner statements.
+model GroupSessionLog {
+  id                String   @id @default(cuid())
+  classSectionId    String
+  sessionDate       DateTime @db.Date
+  /// HELD / CANCELLED_PARTNER / CANCELLED_TECHNOVA
+  status            String   @default("HELD") @db.VarChar(20)
+  headcount         Int?
+  taughtByTeacherId String?
+  note              String?  @db.Text
+  createdById       String?
+  createdAt         DateTime @default(now())
+
+  @@unique([classSectionId, sessionDate])
+  @@index([sessionDate])
+}
+
+/// Partners part 1: the money deal with a partner, built from pieces (docs/design-locations-and-partners.md §12).
+/// One deal per partner (or per place of it) for a period; statements are calculated from it.
+model PartnerDeal {
+  id                    String    @id @default(cuid())
+  partnerId             String
+  contractId            String?
+  /// null = all places of the partner
+  campusId              String?
+  title                 String
+  /// who collects from the parents: TECHNOVA / PARTNER / INSTITUTION (no parents pay; the institution pays TechNova)
+  collector             String    @db.VarChar(12)
+  /// [{ kind, value, base?, hoursPerSession? }] — see lib/partners/deal.ts
+  components            Json
+  /// [{ label, amount, per: ONCE|MONTH|SESSION, payer: TECHNOVA|PARTNER }]
+  extras                Json?
+  countPartnerCancelled Boolean   @default(true)
+  /// MONTH / TERM
+  period                String    @default("MONTH") @db.VarChar(8)
+  validFrom             DateTime  @db.Date
+  validTo               DateTime? @db.Date
+  notes                 String?   @db.Text
+  isActive              Boolean   @default(true)
+  createdById           String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  partner               Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId])
   @@index([campusId])
 }

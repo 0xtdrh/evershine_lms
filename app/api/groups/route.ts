@@ -105,6 +105,7 @@ const createGroupSchema = z.object({
   partialPaymentCounts: z.boolean().optional(),
   installmentsAllowed: z.boolean().optional(),
   maxStudents: z.number().int().min(1).max(500).nullable().optional(),
+  unnamedHeadcount: z.number().int().min(1).max(500).nullable().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -164,6 +165,7 @@ export async function POST(request: NextRequest) {
       partialPaymentCounts: parsed.data.partialPaymentCounts ?? false,
       installmentsAllowed: parsed.data.installmentsAllowed ?? false,
       maxStudents: parsed.data.maxStudents ?? null,
+      unnamedHeadcount: parsed.data.unnamedHeadcount ?? null,
     },
   })
 

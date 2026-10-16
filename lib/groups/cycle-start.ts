@@ -15,10 +15,15 @@ export async function resolveCycleStart(
   if (currentCycleStartDate) return currentCycleStartDate
   if (startDate) return startDate
 
-  const earliest = await prisma.enrollmentAttendanceRecord.findFirst({
-    where: { studentEnrollment: { classSectionId } },
-    orderBy: { attendanceDate: 'asc' },
-    select: { attendanceDate: true },
-  })
-  return earliest?.attendanceDate ?? null
+  const [earliest, log] = await Promise.all([
+    prisma.enrollmentAttendanceRecord.findFirst({
+      where: { studentEnrollment: { classSectionId } },
+      orderBy: { attendanceDate: 'asc' },
+      select: { attendanceDate: true },
+    }),
+    // Partners part 1: classes without names record their sessions in GroupSessionLog
+    prisma.groupSessionLog.findFirst({ where: { classSectionId, status: 'HELD' }, orderBy: { sessionDate: 'asc' }, select: { sessionDate: true } }),
+  ])
+  const dates = [earliest?.attendanceDate, log?.sessionDate].filter((d): d is Date => !!d)
+  return dates.length ? new Date(Math.min(...dates.map((d) => d.getTime()))) : null
 }

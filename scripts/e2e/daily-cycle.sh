@@ -1610,6 +1610,36 @@ check "rules removed: back to the role settings" "$(curl -s -o /dev/null -w '%{h
 api PATCH /api/partners/$PN '{"name":"E2E Nour School","kind":"SCHOOL","isActive":false}' >/dev/null
 check "stopping the partner stops its places" "$(M "SELECT isActive FROM Campus WHERE id='$PNP'")" "0"
 rm -f "$ADJ"
+echo "== 46. Partners part 1 (A): special prices, deals built from pieces, classes without names"
+PS=$(api POST /api/partners '{"name":"E2E Sheraton Centre","kind":"CENTER","contactPhone":"01099990011"}' | jq_ "d['data']['id']")
+PSP=$(api POST /api/partners/$PS/places '{"name":"E2E Sheraton Place"}' | jq_ "d['data']['id']")
+GPS=$(api POST /api/groups "{\"campusId\":\"$PSP\",\"shiftId\":\"$SHIFT\",\"className\":\"E2E Sheraton G\",\"sectionName\":\"A\",\"levelId\":\"$CL\"}" | jq_ "d['data']['id']")
+api PUT /api/places/$PSP/prices "{\"items\":[{\"levelId\":\"$CL\",\"monthlyPrice\":600,\"fullLevelPrice\":600}]}" >/dev/null
+check "a place price wins over the level price" "$(api GET /api/groups/$GPS | jq_ "d['data']['effectivePrice']")" "600"
+check "the secretary cannot change a group price (money decision)" "$(secapi PATCH /api/groups/$GPS '{"priceOverride":10}' | jq_ "d['success']")" "False"
+api PATCH /api/groups/$GPS '{"priceOverride":550}' >/dev/null
+check "the group's own price wins over the place price" "$(api GET /api/groups/$GPS | jq_ "d['data']['effectivePrice']")" "550"
+SPX=$(mkstu ShertKid 01066660151 Mona 01066660152); M "UPDATE Student SET campusId='$PSP' WHERE id='$SPX'"
+api POST /api/groups/$GPS/students "{\"studentId\":\"$SPX\"}" >/dev/null
+INVS=$(invid $SPX $GPS)
+check "the new invoice uses the group price" "$(M "SELECT subtotal FROM FeeInvoice WHERE id='$INVS'")" "550.00"
+api POST /api/fees/$INVS/payments "{\"amount\":$(M "SELECT ROUND(totalAmount-paidAmount,2) FROM FeeInvoice WHERE id='$INVS'"),\"paymentMethod\":\"Cash\"}" >/dev/null
+check "a deal that takes a percentage from an institution that pays is refused" "$(api POST /api/partners/$PS/deals "{\"title\":\"Bad\",\"collector\":\"INSTITUTION\",\"components\":[{\"kind\":\"PERCENT\",\"value\":10}],\"validFrom\":\"$(D -60)\"}" | jq_ "d['success']")" "False"
+DS=$(api POST /api/partners/$PS/deals "{\"title\":\"Sheraton 30%\",\"collector\":\"TECHNOVA\",\"components\":[{\"kind\":\"PERCENT\",\"value\":30}],\"validFrom\":\"$(D -60)\"}" | jq_ "d['data']['id']")
+check "Sheraton: TechNova collected the invoice, the centre's 30% = TechNova owes 165" "$(api GET "/api/partner-deals/$DS/preview?from=$(D -1)&to=$(D 0)" | jq_ "(d['data']['facts']['collected'], d['data']['result']['balanceForTechNova'])")" "(550, -165)"
+PNU=$(api POST /api/partners '{"name":"E2E Little Stars Nursery","kind":"NURSERY"}' | jq_ "d['data']['id']")
+PNUP=$(api POST /api/partners/$PNU/places '{"name":"E2E Little Stars Place"}' | jq_ "d['data']['id']")
+GNU=$(api POST /api/groups "{\"campusId\":\"$PNUP\",\"shiftId\":\"$SHIFT\",\"className\":\"E2E KG1\",\"sectionName\":\"A\",\"levelId\":\"$CL\",\"unnamedHeadcount\":20}" | jq_ "d['data']['id']")
+check "a class without names is made with its number of children" "$(M "SELECT unnamedHeadcount FROM ClassSection WHERE id='$GNU'")" "20"
+check "a named group cannot record 'held' without attendance" "$(api POST /api/groups/$GPS/sessions "{\"date\":\"$(D 0)\",\"status\":\"HELD\"}" | jq_ "d['success']")" "False"
+api POST /api/groups/$GNU/sessions "{\"date\":\"$(D 0)\",\"status\":\"HELD\",\"headcount\":18}" >/dev/null
+api POST /api/groups/$GNU/sessions "{\"date\":\"$(D -1)\",\"status\":\"CANCELLED_PARTNER\",\"note\":\"school trip\"}" >/dev/null
+check "the first held session starts the group (start date set)" "$(M "SELECT startDate IS NOT NULL FROM ClassSection WHERE id='$GNU'")" "1"
+DN=$(api POST /api/partners/$PNU/deals "{\"title\":\"150 per session\",\"collector\":\"INSTITUTION\",\"components\":[{\"kind\":\"PER_SESSION\",\"value\":150}],\"countPartnerCancelled\":true,\"validFrom\":\"$(D -60)\"}" | jq_ "d['data']['id']")
+check "nursery pays 150 per session; the session it cancelled counts → 300; 20 children" "$(api GET "/api/partner-deals/$DN/preview?from=$(D -1)&to=$(D 0)" | jq_ "(d['data']['result']['balanceForTechNova'], d['data']['facts']['students'])")" "(300, 20)"
+api PATCH /api/partner-deals/$DN "{\"title\":\"150 per session\",\"collector\":\"INSTITUTION\",\"components\":[{\"kind\":\"PER_SESSION\",\"value\":150}],\"countPartnerCancelled\":false,\"validFrom\":\"$(D -60)\"}" >/dev/null
+check "…and 150 when cancelled sessions do not count" "$(api GET "/api/partner-deals/$DN/preview?from=$(D -1)&to=$(D 0)" | jq_ "d['data']['result']['balanceForTechNova']")" "150"
+check "the calendar shows the held session of the class without names" "$(api GET "/api/groups/schedule?from=$(D 0)&to=$(D 0)" | jq_ "[s['status'] for s in d['data']['sessions'] if s['groupId']=='$GNU' and s['date']=='$(D 0)']")" "['HELD']"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

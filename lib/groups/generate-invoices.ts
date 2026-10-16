@@ -1,3 +1,4 @@
+import { cyclePrice } from '@/lib/pricing/group-price'
 import { prisma } from '@/lib/prisma'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createCycleInvoice } from './sync-progress'
@@ -36,7 +37,8 @@ export async function generateMissingCycleInvoices(
   if (!group || !group.level) return { generated: 0, skipped: 0 }
 
   const cycleNumber = group.level.pricingType === 'MONTHLY' ? group.currentCycleNumber : null
-  const amount = Number(group.level.pricingType === 'MONTHLY' ? group.level.monthlyPrice ?? 0 : group.level.fullLevelPrice ?? 0)
+  // Partners part 1: group price → place price → level price
+  const amount = await cyclePrice(group.level, group.campusId, group.priceOverride)
   if (amount <= 0) return { generated: 0, skipped: 0 }
 
   const activeYear = await getActiveAcademicYear()

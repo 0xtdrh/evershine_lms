@@ -20,6 +20,7 @@ import { notify } from '@/lib/notify'
 import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, Trash2, CheckCircle2, X, Wallet, ArrowRightLeft } from 'lucide-react'
 import { TransferStudentDialog } from '@/components/groups/TransferStudentDialog'
 import { GroupCapacityPanel, type Seats, type WaitingRow } from '@/components/groups/GroupCapacityPanel'
+import { GroupPricePanel } from '@/components/groups/GroupPricePanel'
 import { ExtraSessionsPanel, type ExtraSessionRow } from '@/components/groups/ExtraSessionsPanel'
 import { FullGroupDialog } from '@/components/groups/FullGroupDialog'
 
@@ -73,6 +74,10 @@ interface GroupDetail extends Omit<GroupSummary, 'campus' | 'level'> {
   }[]
   // Phase A
   maxStudents: number | null
+  // Partners part 1
+  priceOverride: number | string | null
+  effectivePrice: number | null
+  unnamedHeadcount: number | null
   seats: Seats
   waiting: WaitingRow[]
   renewals: { studentId: string; status: 'PENDING' | 'YES' | 'NO'; reason: string | null }[]
@@ -127,6 +132,8 @@ export default function GroupsPage() {
   })
   const canMoveStudents = !!myPerms?.permissions?.group_transfers?.includes('create')
   const canEditGroups = !!myPerms?.permissions?.class_sections?.includes('update')
+  const canEditPrice = !!myPerms?.permissions?.fees?.includes('update')
+  const canRecordSessions = !!myPerms?.permissions?.attendance?.includes('create')
   const [moving, setMoving] = useState<{ studentId: string; name: string } | null>(null)
   const role = session?.user?.role as string | undefined
   const myCampusId = session?.user?.campusId as string | undefined
@@ -712,6 +719,18 @@ export default function GroupsPage() {
 
               {detail.seats && (
                 <GroupCapacityPanel groupId={detail.id} levelId={detail.level?.id ?? null} seats={detail.seats} waiting={detail.waiting ?? []} canEdit={canEditGroups} />
+              )}
+              {detail.level && (
+                <GroupPricePanel
+                  key={`price-${detail.id}`}
+                  groupId={detail.id}
+                  priceOverride={detail.priceOverride === null || detail.priceOverride === undefined ? null : Number(detail.priceOverride)}
+                  effectivePrice={detail.effectivePrice ?? null}
+                  unnamedHeadcount={detail.unnamedHeadcount ?? null}
+                  canEditGroup={canEditGroups}
+                  canEditPrice={canEditPrice}
+                  canRecord={canRecordSessions}
+                />
               )}
               <ExtraSessionsPanel groupId={detail.id} rows={detail.extraSessions ?? []} canEdit={canEditGroups} />
               <div>

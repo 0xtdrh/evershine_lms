@@ -127,7 +127,11 @@ export async function computeTeacherGroupPay(
         select: { attendanceDate: true },
         distinct: ['attendanceDate'],
       })
-      sessionsCounted = records.filter((r) => paidByTechNovaOn(periods, r.attendanceDate)).length
+      // Partners part 1: sessions of classes without names (GroupSessionLog) count too
+      const logged = await prisma.groupSessionLog.findMany({ where: { classSectionId, status: 'HELD', sessionDate: { gte: cycleStart }, taughtByTeacherId: teacherId }, select: { sessionDate: true } })
+      const days = new Map<string, Date>()
+      for (const d of [...records.map((r) => r.attendanceDate), ...logged.map((l) => l.sessionDate)]) days.set(d.toISOString().slice(0, 10), d)
+      sessionsCounted = [...days.values()].filter((d) => paidByTechNovaOn(periods, d)).length
       sessionAmount = Math.round(sessionsCounted * perSessionAmount * 100) / 100
     }
   }

@@ -13,6 +13,7 @@
  *    next invoice), low-balance alerts
  */
 
+import { cyclePrice } from '@/lib/pricing/group-price'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
@@ -395,7 +396,8 @@ export async function lowBalanceAlerts(): Promise<{ checked: number; alerted: nu
     where: { status: 'ACTIVE', isActive: true, level: { pricingType: 'MONTHLY' } },
     select: {
       id: true, status: true, completedAt: true, currentCycleNumber: true, currentCycleStartDate: true, startDate: true, scheduleSlots: true, className: true, sectionName: true,
-      level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true, monthlyPrice: true } },
+      campusId: true, priceOverride: true, unnamedHeadcount: true,
+      level: { select: { id: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, monthlyPrice: true, fullLevelPrice: true } },
       enrollments: { where: { status: 'ACTIVE' }, select: { studentId: true } },
     },
   })
@@ -406,7 +408,8 @@ export async function lowBalanceAlerts(): Promise<{ checked: number; alerted: nu
     if (!g.level || !g.startDate) continue
     const ends = await estimateGroupEnds(g)
     if (!ends.cycleEnd || ends.cycleEnd > limit) continue
-    const price = Number(g.level.monthlyPrice ?? 0)
+    if (g.unnamedHeadcount !== null) continue // a class without names has no family wallets
+    const price = await cyclePrice(g.level, g.campusId, g.priceOverride)
     if (!(price > 0)) continue
     for (const e of g.enrollments) {
       checked++

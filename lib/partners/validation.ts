@@ -50,3 +50,44 @@ export const overrideItemsSchema = z.object({
     allowed: z.boolean(),
   })).max(400),
 })
+
+// ── Partners part 1: deals, place prices, session logs ──
+export const dealSchema = z.object({
+  title: z.string().trim().min(2, 'Write a name for the deal').max(150),
+  campusId: z.string().max(40).optional().nullable(),
+  contractId: z.string().max(40).optional().nullable(),
+  collector: z.enum(['TECHNOVA', 'PARTNER', 'INSTITUTION']),
+  components: z.array(z.object({
+    kind: z.enum(['PERCENT', 'FIXED_MONTHLY', 'PER_SESSION', 'PER_HOUR', 'PER_STUDENT_MONTH', 'PER_GROUP_MONTH', 'PER_TERM', 'MINIMUM']),
+    value: z.coerce.number().min(0).max(10_000_000),
+    base: z.enum(['NET', 'GROSS']).optional(),
+    hoursPerSession: z.coerce.number().min(0.25).max(12).optional(),
+  })).min(1, 'Add at least one piece to the deal').max(10),
+  extras: z.array(z.object({
+    label: z.string().trim().min(1).max(80),
+    amount: z.coerce.number().min(0).max(10_000_000),
+    per: z.enum(['ONCE', 'MONTH', 'SESSION']),
+    payer: z.enum(['TECHNOVA', 'PARTNER']),
+  })).max(10).optional().nullable(),
+  countPartnerCancelled: z.boolean().optional(),
+  period: z.enum(['MONTH', 'TERM']).optional(),
+  validFrom: z.string().regex(DATE, 'Choose the start date'),
+  validTo: z.union([z.string().regex(DATE), z.literal('')]).optional().nullable(),
+  notes: opt(2000),
+  isActive: z.boolean().optional(),
+})
+
+export const placePricesSchema = z.object({
+  items: z.array(z.object({
+    levelId: z.string().min(1).max(40),
+    monthlyPrice: z.number().min(0).max(1_000_000).nullable().optional(),
+    fullLevelPrice: z.number().min(0).max(1_000_000).nullable().optional(),
+  })).max(500),
+})
+
+export const sessionLogSchema = z.object({
+  date: z.string().regex(DATE, 'Choose the date'),
+  status: z.enum(['HELD', 'CANCELLED_PARTNER', 'CANCELLED_TECHNOVA']),
+  headcount: z.number().int().min(0).max(500).nullable().optional(),
+  note: opt(500),
+})

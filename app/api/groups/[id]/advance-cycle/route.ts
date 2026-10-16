@@ -20,6 +20,7 @@
  *    new group's id.
  */
 
+import { cyclePrice } from '@/lib/pricing/group-price'
 import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -158,6 +159,9 @@ export async function POST(
       requireFullPaymentToStart: group.requireFullPaymentToStart,
       partialPaymentCounts: group.partialPaymentCounts,
       installmentsAllowed: group.installmentsAllowed,
+      // Partners part 1: the next cycle keeps the group's own price (same level only) and its no-names class size
+      ...(nextLevel.id === group.levelId && group.priceOverride !== null && { priceOverride: group.priceOverride }),
+      unnamedHeadcount: group.unnamedHeadcount,
       // LMS L2: the next month of the SAME level keeps reading the same curriculum version and the same way of
       // opening lessons; a new level starts fresh (pinned to its newest published version when it starts).
       ...(nextLevel.id === group.levelId && { curriculumEditionId: group.curriculumEditionId, lessonUnlockMode: group.lessonUnlockMode }),
@@ -211,7 +215,7 @@ export async function POST(
       classSectionId: newGroup.id,
       levelId: nextLevel.id,
       cycleNumber: nextLevel.pricingType === 'MONTHLY' ? nextCycleNumber : null,
-      amount: Number(nextLevel.pricingType === 'MONTHLY' ? nextLevel.monthlyPrice ?? 0 : nextLevel.fullLevelPrice ?? 0),
+      amount: await cyclePrice(nextLevel, newGroup.campusId, newGroup.priceOverride),
       academicYearName,
       issuedBy: session.user.id,
       label: nextLevel.pricingType === 'MONTHLY'

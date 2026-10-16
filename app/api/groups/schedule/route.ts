@@ -101,6 +101,9 @@ export async function GET(request: NextRequest) {
      GROUP BY e.classSectionId, d`
   const heldBy = new Map<string, string[]>()
   for (const r of heldRows) heldBy.set(r.g, [...(heldBy.get(r.g) ?? []), r.d])
+  // Partners part 1: sessions recorded without names (held) and sessions a partner cancelled
+  const logs = await prisma.groupSessionLog.findMany({ where: { classSectionId: { in: ids } }, select: { classSectionId: true, sessionDate: true, status: true } })
+  for (const l of logs.filter((x) => x.status === 'HELD')) heldBy.set(l.classSectionId, [...new Set([...(heldBy.get(l.classSectionId) ?? []), toDay(l.sessionDate)])])
 
   const [cancelledRows, absences] = await Promise.all([
     prisma.cancelledSession.findMany({ where: { classSectionId: { in: ids } }, select: { classSectionId: true, date: true, reason: true } }),
@@ -112,6 +115,7 @@ export async function GET(request: NextRequest) {
   const exceptions = await groupExceptions(groups.map(({ g }) => ({ id: g.id, campusId: g.campusId })))
   const cancelledBy = new Map<string, { date: string; reason: string | null }[]>()
   for (const c of cancelledRows) cancelledBy.set(c.classSectionId, [...(cancelledBy.get(c.classSectionId) ?? []), { date: toDay(c.date), reason: c.reason }])
+  for (const l of logs.filter((x) => x.status !== 'HELD')) cancelledBy.set(l.classSectionId, [...(cancelledBy.get(l.classSectionId) ?? []), { date: toDay(l.sessionDate), reason: l.status === 'CANCELLED_PARTNER' ? 'Cancelled by the partner' : 'Cancelled by TechNova' }])
   const subOf = new Map(subs.map((s) => [`${s.classSectionId}|${toDay(s.date)}`, s]))
 
   const today = toDay(new Date())

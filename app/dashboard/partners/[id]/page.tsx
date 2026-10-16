@@ -15,6 +15,7 @@ import { kindLabel } from '@/components/partners/bits'
 import { PartnerInfoForm } from '@/components/partners/PartnerInfoForm'
 import { PartnerPlaces } from '@/components/partners/PartnerPlaces'
 import { PartnerContracts } from '@/components/partners/PartnerContracts'
+import { PartnerDeals } from '@/components/partners/PartnerDeals'
 import { PlacePermissions } from '@/components/partners/PlacePermissions'
 import type { PartnerDetail } from '@/components/partners/types'
 import { ArrowLeft, Handshake, Loader2 } from 'lucide-react'
@@ -44,12 +45,14 @@ export default function PartnerPage({ params }: { params: Promise<{ id: string }
       <Tabs defaultValue="places">
         <TabsList className="flex-wrap">
           <TabsTrigger value="places">{L('Places', 'الأماكن')} ({p.places.length})</TabsTrigger>
+          <TabsTrigger value="deals">{L('Deal', 'الاتفاق')}</TabsTrigger>
           <TabsTrigger value="contracts">{L('Contracts', 'العقود')} ({p.contracts.length})</TabsTrigger>
           <TabsTrigger value="info">{L('Details', 'البيانات')}</TabsTrigger>
           {isSuper && <TabsTrigger value="permissions">{L('Permissions', 'الصلاحيات')}</TabsTrigger>}
         </TabsList>
         <Card className="mt-3"><CardContent className="p-4">
           <TabsContent value="places"><PartnerPlaces p={p} canEdit={can('update')} /></TabsContent>
+          <TabsContent value="deals"><PartnerDeals p={p} canEdit={can('update')} /></TabsContent>
           <TabsContent value="contracts"><PartnerContracts p={p} canEdit={can('update')} canDelete={can('delete')} /></TabsContent>
           <TabsContent value="info"><PartnerInfoForm p={p} canEdit={can('update')} canDelete={can('delete')} /></TabsContent>
           {isSuper && <TabsContent value="permissions"><PlacePermissions p={p} /></TabsContent>}
