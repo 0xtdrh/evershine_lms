@@ -284,6 +284,10 @@ export interface LessonAccess { ok: boolean; code?: string; message?: string; gr
 /** Checks that a student may open one curriculum session through one of their groups. */
 export async function studentLessonAccess(studentId: string, groupId: string, sessionId: string): Promise<LessonAccess> {
   if (!(await studentInGroup(studentId, groupId))) return { ok: false, code: 'FORBIDDEN', message: 'Not your group' }
+  // FIN-2: an unpaid platform fee set to "lock the learning platform"
+  if ((await (await import('@/lib/fees-extra/engine')).feeConsequences(studentId)).has('LOCK_LMS')) {
+    return { ok: false, code: 'FEES_UNPAID', message: 'The platform fee is not paid yet — lessons open again once it is paid. / رسوم المنصة لسه مااتدفعتش — الدروس هتفتح أول ما تتدفع.' }
+  }
   const gl = await groupLessons(groupId, { studentId })
   const state = gl?.sessions.find((s) => s.id === sessionId)
   if (!gl || !state) return { ok: false, code: 'NOT_FOUND', message: 'Lesson not found' }

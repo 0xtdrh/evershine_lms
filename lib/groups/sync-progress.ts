@@ -108,9 +108,13 @@ export async function createCycleInvoice(params: {
       relatedId: invoiceId,
     }))
   }
-  // Phase B (wallet-first): pay the new invoice from the wallet straight away.
+  // FIN-2: the extra fees / platform fee that are due go on their own invoice (instructor % pay stays on the price).
+  const { chargeDueFees, getFeesSettings } = await import('@/lib/fees-extra/engine')
+  const feesInvoiceId = await chargeDueFees(params.studentId, params.classSectionId, { issuedBy: params.issuedBy, academicYear: params.academicYearName })
+  // Phase B (wallet-first): pay the new invoice(s) from the wallet straight away (fees or monthly price first: setting).
   const { autoPay } = await import('@/lib/wallet/engine')
-  await autoPay(params.studentId, { userId: params.issuedBy, preferInvoiceId: invoiceId })
+  const payFirst = (await getFeesSettings()).payFirst
+  await autoPay(params.studentId, { userId: params.issuedBy, preferInvoiceId: payFirst === 'FEES' && feesInvoiceId ? feesInvoiceId : invoiceId })
   return invoiceId
 }
 
@@ -158,7 +162,8 @@ export async function syncGroupProgress(classSectionId: string, _actingUserId: s
   // flag automatically for anyone who has since caught up on payment ──────
   if (sessionsSoFar >= checkpoint50) {
     for (const e of group.enrollments) {
-      const paid = await isPaidEnough(e.studentId, classSectionId, group.currentCycleNumber, group.partialPaymentCounts)
+      const paid = (await isPaidEnough(e.studentId, classSectionId, group.currentCycleNumber, group.partialPaymentCounts))
+        && !(await (await import('@/lib/fees-extra/engine')).feeConsequences(e.studentId)).has('COUNT_WARNING') // FIN-2
       if (!paid && e.withdrawalReason !== 'PAYMENT_OVERDUE_WARNING') {
         await prisma.studentEnrollment.update({
           where: { id: e.id },

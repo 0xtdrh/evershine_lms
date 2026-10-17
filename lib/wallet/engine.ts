@@ -116,7 +116,11 @@ export async function autoPay(studentId: string, opts: { userId: string; preferI
     // Skip invoices of groups the student is no longer in.
     const active = new Set((await prisma.studentEnrollment.findMany({ where: { studentId, status: 'ACTIVE' }, select: { classSectionId: true } })).map((e) => e.classSectionId))
     const list = invoices.filter((i) => !i.classSectionId || active.has(i.classSectionId))
-    list.sort((a, b) => (a.id === opts.preferInvoiceId ? -1 : b.id === opts.preferInvoiceId ? 1 : 0))
+    // FIN-2: fees invoices first or the monthly price first (Settings → fees); inside that, the preferred one, then oldest
+    const { feeInvoiceIds, getFeesSettings } = await import('@/lib/fees-extra/engine')
+    const [feeIds, feeSettings] = await Promise.all([feeInvoiceIds(studentId), getFeesSettings()])
+    const rank = (id: string) => (feeIds.has(id) ? (feeSettings.payFirst === 'FEES' ? 0 : 1) : (feeSettings.payFirst === 'FEES' ? 1 : 0))
+    list.sort((a, b) => rank(a.id) - rank(b.id) || (a.id === opts.preferInvoiceId ? -1 : b.id === opts.preferInvoiceId ? 1 : 0))
     for (const inv of list) {
       const balance = await walletBalance(studentId)
       if (balance <= 0.001) break

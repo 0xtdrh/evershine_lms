@@ -15,7 +15,7 @@ export const TASK_KEYS = [
   'groupsToAdvance', 'renewalsUnanswered', 'waitingList', 'overdueInvoices', 'birthdays',
   // partners / learning
   'partnerStatements', 'partnerContracts', 'curriculumReview', 'announcementsToApprove', 'announcementsToConfirm',
-  'cashCountsToApprove', 'transfersToApprove', 'cashBoxesNotCounted', 'moneyNotPlaced',
+  'cashCountsToApprove', 'transfersToApprove', 'cashBoxesNotCounted', 'moneyNotPlaced', 'budgetOver',
   // instructors
   'mySessionsToday', 'myMissingAttendance', 'homeworkToGrade', 'substituteRequests',
 ] as const
@@ -70,6 +70,7 @@ export const TASKS: TaskDef[] = [
   { key: 'transfersToApprove', en: 'Transfers between accounts to approve', ar: 'تحويلات بين الحسابات مستنية موافقة', href: '/dashboard/treasury?tab=transfers', urgent: true, perm: ['treasury', 'approve'] },
   { key: 'cashBoxesNotCounted', en: 'Cash boxes not counted today', ar: 'خزن لسه ماتقفلتش النهارده', href: '/dashboard/treasury?tab=counts', urgent: true, perm: ['treasury', 'create'] },
   { key: 'moneyNotPlaced', en: 'Money not placed in an account (set the payment method account)', ar: 'فلوس مش متسجلة على حساب (حدد حساب طريقة الدفع)', href: '/dashboard/admin/finance-settings#accounts', perm: ['treasury', 'update'] },
+  { key: 'budgetOver', en: 'Expense categories over their budget this month', ar: 'بنود مصاريف عدّت ميزانيتها الشهر ده', href: '/dashboard/treasury?tab=budget', urgent: true, perm: ['expenses', 'read'], roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'] },
   { key: 'birthdays', en: 'Student birthdays today', ar: 'أعياد ميلاد طلاب النهارده', href: '/dashboard/birthdays', perm: ['birthdays', 'read'], roles: OFFICE },
 ]
 

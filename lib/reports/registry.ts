@@ -56,6 +56,7 @@ export const REPORT_CARDS: ReportCard[] = [
   { key: 'refunds', group: 'money', en: 'Refunds', ar: 'الاسترداد', descEn: 'All refunds, cash or wallet, and who approved', descAr: 'كل عمليات الاسترداد، كاش ولا محفظة، ومين وافق', href: '/dashboard/refunds?tab=all', perm: ['refunds', 'read'] },
   { key: 'wallet', group: 'money', en: 'Wallet top-ups & withdrawals', ar: 'شحن وسحب المحفظة', descEn: 'Receipts to check, withdrawals, student statements', descAr: 'إيصالات للمراجعة، طلبات السحب، كشف حساب الطالب', href: '/dashboard/wallet?tab=withdrawals', perm: ['wallet', 'read'] },
   { key: 'treasury', group: 'money', en: 'Accounts & cash boxes', ar: 'الحسابات والخزن', descEn: 'Balance of every account, every movement in and out, transfers and daily counts', descAr: 'رصيد كل حساب، وكل حركة دخلت أو خرجت، والتحويلات والجرد اليومي', href: '/dashboard/treasury', formats: ['excel', 'pdf'], perm: ['treasury', 'read'] },
+  { key: 'budget', group: 'money', en: 'Budget vs actual', ar: 'الميزانية مقابل الفعلي', descEn: 'What was spent per category against the monthly budget', descAr: 'اللي اتصرف في كل بند مقابل الميزانية الشهرية', href: '/dashboard/treasury?tab=budget', perm: ['expenses', 'read'] },
   { key: 'expenses', group: 'money', en: 'Expenses', ar: 'المصاريف', descEn: 'Running costs per category and month, to Excel', descAr: 'مصاريف التشغيل لكل بند وشهر، وتصدير Excel', href: '/dashboard/accountant/expenses', formats: ['excel'], perm: ['expenses', 'read'] },
 
   // instructors & staff

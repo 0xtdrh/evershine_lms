@@ -1475,6 +1475,70 @@ model Announcement {
   @@index([status])
 }
 
+/// FIN-2 (2026-10-17): extra fees and the platform fee (registration, kit, book, certificate, platform use…).
+/// Charged on their own invoice (no group) so instructor % pay and group money stay on the monthly price only.
+model FeeType {
+  id          String    @id @default(cuid())
+  nameEn      String    @db.VarChar(80)
+  nameAr      String    @db.VarChar(80)
+  amount      Decimal   @db.Decimal(10, 2)
+  frequency   String    @db.VarChar(10) // MONTHLY | PER_LEVEL | YEARLY | ONCE | MANUAL
+  isPlatform  Boolean   @default(false)
+  defaultMode String    @default("OPTIONAL") @db.VarChar(8) // REQUIRED | OPTIONAL — for everyone unless a rule says otherwise
+  onUnpaid    String    @default("REMIND") @db.VarChar(13) // REMIND | LOCK_LMS | BLOCK_NEXT | COUNT_WARNING
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  rules       FeeRule[]
+}
+
+/// FIN-2: an exception / change for one place, partner, track, course, level, group or student (the most specific wins).
+model FeeRule {
+  id        String   @id @default(cuid())
+  feeTypeId String
+  scopeType String   @db.VarChar(8) // PARTNER | CAMPUS | TRACK | COURSE | LEVEL | GROUP | STUDENT
+  scopeId   String
+  mode      String   @db.VarChar(8) // REQUIRED | OPTIONAL | EXEMPT
+  amount    Decimal? @db.Decimal(10, 2)
+  frequency String?  @db.VarChar(10)
+  onUnpaid  String?  @db.VarChar(13)
+  createdAt DateTime @default(now())
+  feeType   FeeType  @relation(fields: [feeTypeId], references: [id], onDelete: Cascade)
+
+  @@index([feeTypeId])
+}
+
+/// FIN-2: a fee charged to a student for one period ("2026-10", "L:<level>", "Y:2026", "ONCE", "M:<id>") — never twice.
+model StudentFeeCharge {
+  id        String   @id @default(cuid())
+  feeTypeId String
+  studentId String
+  periodKey String   @db.VarChar(40)
+  invoiceId String
+  amount    Decimal  @db.Decimal(10, 2)
+  onUnpaid  String   @db.VarChar(13)
+  createdAt DateTime @default(now())
+
+  @@unique([feeTypeId, studentId, periodKey])
+  @@index([invoiceId])
+  @@index([studentId])
+}
+
+/// FIN-2: monthly budget per expense category, for one branch or the whole company (campusId null).
+model Budget {
+  id         String   @id @default(cuid())
+  year       Int
+  month      Int // 1..12
+  campusId   String?
+  categoryId String
+  amount     Decimal  @db.Decimal(12, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([year, month])
+}
+
 /// FIN-1 (2026-10-17): where money is kept — a branch cash box, a bank account, InstaPay, a mobile wallet, Paymob…
 model MoneyAccount {
   id             String          @id @default(cuid())

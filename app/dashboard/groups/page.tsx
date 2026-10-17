@@ -83,6 +83,7 @@ interface GroupDetail extends Omit<GroupSummary, 'campus' | 'level'> {
   seats: Seats
   waiting: WaitingRow[]
   renewals: { studentId: string; status: 'PENDING' | 'YES' | 'NO'; reason: string | null }[]
+  feeBlocked?: string[]
   extraSessions: ExtraSessionRow[]
 }
 
@@ -365,7 +366,7 @@ export default function GroupsPage() {
   const openAdvanceDialog = () => {
     if (!detail) return
     // Phase A: parents who answered "not continuing" start unticked.
-    const saidNo = new Set((detail.renewals ?? []).filter((r) => r.status === 'NO').map((r) => r.studentId))
+    const saidNo = new Set([...(detail.renewals ?? []).filter((r) => r.status === 'NO').map((r) => r.studentId), ...(detail.feeBlocked ?? [])])
     setContinuingIds(new Set(detail.enrollments.filter((e) => e.status === 'ACTIVE' && !saidNo.has(e.student.id)).map((e) => e.student.id)))
     setConfirmAdvance(true)
   }

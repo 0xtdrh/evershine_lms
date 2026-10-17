@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { L, useI18n } from '@/lib/i18n/client'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
+import { BudgetTab } from '@/components/treasury/BudgetTab'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { ACCOUNT_KIND_LABEL, MOVEMENT_KIND_LABEL, type AccountKind, type MovementKind } from '@/lib/treasury/rules'
 import { ArrowDownLeft, ArrowUpRight, Landmark, Loader2 } from 'lucide-react'
@@ -59,6 +60,7 @@ export default function TreasuryPage() {
           <TabsTrigger value="accounts">{L('Balances', 'الأرصدة')}</TabsTrigger>
           <TabsTrigger value="transfers">{L('Transfers', 'التحويلات')}</TabsTrigger>
           <TabsTrigger value="counts">{L('Daily cash count', 'جرد الخزنة')}</TabsTrigger>
+          {can('expenses', 'read') && <TabsTrigger value="budget">{L('Budget', 'الميزانية')}</TabsTrigger>}
           {can('expenses', 'update') && <TabsTrigger value="categories">{L('Expense categories', 'بنود المصاريف')}</TabsTrigger>}
           {['SUPER_ADMIN', 'ADMIN'].includes(role) && can('treasury', 'update') && <TabsTrigger value="settings">{L('Settings', 'الإعدادات')}</TabsTrigger>}
         </TabsList>
@@ -91,11 +93,22 @@ export default function TreasuryPage() {
 
         <TabsContent value="transfers" className="mt-4"><Transfers accounts={accounts} ar={ar} canCreate={can('treasury', 'create')} canApprove={can('treasury', 'approve')} onDone={refresh} status={status} /></TabsContent>
         <TabsContent value="counts" className="mt-4"><Counts accounts={accounts.filter((a) => a.kind === 'CASH')} ar={ar} canCreate={can('treasury', 'create')} canApprove={can('treasury', 'approve')} onDone={refresh} status={status} /></TabsContent>
+        {can('expenses', 'read') && <TabsContent value="budget" className="mt-4"><BudgetsLoader canEdit={can('finance_settings', 'update')} /></TabsContent>}
         {can('expenses', 'update') && <TabsContent value="categories" className="mt-4"><Categories /></TabsContent>}
         {['SUPER_ADMIN', 'ADMIN'].includes(role) && <TabsContent value="settings" className="mt-4"><TreasurySettingsCard /></TabsContent>}
       </Tabs>
     </div>
   )
+}
+
+/** The budget tab needs the branches the person may pick (same list as the payment routes). */
+function BudgetsLoader({ canEdit }: { canEdit: boolean }) {
+  const { data } = useQuery({ queryKey: ['treasury-routes'], queryFn: () => fetchApi<{ campuses: { id: string; name: string }[] }>('/api/treasury/routes') })
+  const { data: rights } = useQuery({ queryKey: ['treasury'], queryFn: () => fetchApi<Overview>('/api/treasury') })
+  if (!data) return <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+  // company budgets only for people with every place (they see company accounts)
+  const allPlaces = (rights?.accounts ?? []).some((a) => !a.campus) || data.campuses.length > 1
+  return <BudgetTab campuses={data.campuses} allPlaces={allPlaces} canEdit={canEdit} />
 }
 
 function Movements({ id, ar }: { id: string; ar: boolean }) {

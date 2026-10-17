@@ -1861,6 +1861,34 @@ TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.95 >/dev/null
 check "instructors cannot see money accounts" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ" $B/api/treasury)" "403"
 rm -f "$TJ"
 check "account movements export to Excel" "$(curl -s -b "$JAR" -o /dev/null -w '%{http_code}' "$B/api/data/movements/export?format=xlsx")" "200"
+echo "== 55. FIN-2 extra fees + platform fee (rules, own invoice, no double charge, consequences, pay first) and budgets"
+FPL=$(api POST /api/fee-types '{"nameEn":"Platform fee","nameAr":"رسوم المنصة","amount":100,"frequency":"MONTHLY","isPlatform":true,"defaultMode":"REQUIRED","onUnpaid":"BLOCK_NEXT"}' | jq_ "d['data']['id']")
+FKIT=$(api POST /api/fee-types '{"nameEn":"Robot kit","nameAr":"كيت روبوت","amount":300,"frequency":"ONCE","defaultMode":"OPTIONAL"}' | jq_ "d['data']['id']")
+FG=$(M "SELECT id FROM ClassSection WHERE campusId='$CAMPUS' AND status='ACTIVE' AND levelId IS NOT NULL AND (maxStudents IS NULL OR maxStudents>30) ORDER BY createdAt DESC LIMIT 1")
+FS1=$(mkstu Feeone 01077770081 '' ''); FS2=$(mkstu Feetwo 01077770082 '' '')
+api POST /api/fee-types/$FPL/rules "{\"scopeType\":\"STUDENT\",\"scopeId\":\"$FS2\",\"mode\":\"EXEMPT\"}" >/dev/null
+api POST /api/groups/$FG/students "{\"studentId\":\"$FS1\"}" >/dev/null
+api POST /api/groups/$FG/students "{\"studentId\":\"$FS2\"}" >/dev/null
+FINV=$(M "SELECT invoiceId FROM StudentFeeCharge WHERE studentId='$FS1' AND feeTypeId='$FPL'")
+check "joining a group charges the required platform fee on its OWN invoice (no group → instructor % untouched)" "$(M "SELECT CONCAT(CAST(totalAmount AS DECIMAL(10,0)),'/',classSectionId IS NULL,'/',(SELECT COUNT(*) FROM FeeItem WHERE invoiceId='$FINV')) FROM FeeInvoice WHERE id='$FINV'")" "100/1/1"
+check "the monthly invoice itself is unchanged (price only)" "$(M "SELECT COUNT(*) FROM FeeInvoice WHERE studentId='$FS1' AND classSectionId='$FG'")/$(M "SELECT CAST(subtotal AS DECIMAL(10,0)) = CAST(totalAmount + discount AS DECIMAL(10,0)) FROM FeeInvoice WHERE studentId='$FS1' AND classSectionId='$FG' LIMIT 1")" "1/1"
+check "an exempt student (exception) is not charged" "$(M "SELECT COUNT(*) FROM StudentFeeCharge WHERE studentId='$FS2' AND feeTypeId='$FPL'")" "0"
+api POST /api/groups/$FG/generate-invoices "{\"studentId\":\"$FS1\"}" >/dev/null
+check "never twice for the same month" "$(M "SELECT COUNT(*) FROM StudentFeeCharge WHERE studentId='$FS1' AND feeTypeId='$FPL'")" "1"
+check "an optional fee added by hand (kit, once) — and refused the second time" "$(api POST /api/students/$FS2/fees "{\"feeTypeId\":\"$FKIT\"}" | jq_ "d['success']")/$(api POST /api/students/$FS2/fees "{\"feeTypeId\":\"$FKIT\"}" | jq_ "d['success']")/$(api GET /api/students/$FS2/fees | jq_ "len(d['data'])")" "True/False/1"
+M "UPDATE FeeInvoice SET dueDate = DATE_SUB(NOW(), INTERVAL 2 DAY) WHERE id='$FINV'"
+check "unpaid platform fee past its due date → this student cannot move to the next month" "$(api GET /api/groups/$FG | jq_ "('$FS1' in d['data']['feeBlocked'], '$FS2' in d['data']['feeBlocked'])")" "(True, False)"
+api PUT /api/fee-types/settings '{"payFirst":"FEES"}' >/dev/null
+api POST /api/wallet/topups "{\"studentId\":\"$FS1\",\"amount\":100,\"method\":\"Cash\"}" >/dev/null
+check "pay-first = fees: a 100 top-up pays the fee before the monthly price" "$(M "SELECT status FROM FeeInvoice WHERE id='$FINV'")/$(M "SELECT CAST(paidAmount AS DECIMAL(10,0)) FROM FeeInvoice WHERE studentId='$FS1' AND classSectionId='$FG' LIMIT 1")" "PAID/0"
+check "paid → the block is lifted" "$(api GET /api/groups/$FG | jq_ "'$FS1' in d['data']['feeBlocked']")" "False"
+api PUT /api/fee-types/settings '{"payFirst":"TUITION"}' >/dev/null
+YM=$(date -u +%Y-%m); BY=${YM%-*}; BMO=$((10#${YM#*-}))
+api PUT /api/budgets "{\"year\":$BY,\"month\":$BMO,\"campusId\":\"$CAMPUS\",\"categoryId\":\"$TCAT\",\"amount\":100}" >/dev/null
+api POST /api/accountant/expenses "{\"title\":\"E2E rent again\",\"amount\":150,\"categoryId\":\"$TCAT\",\"date\":\"$(D 0)\",\"campusId\":\"$CAMPUS\",\"paymentSource\":\"Cash\"}" >/dev/null
+check "budget vs actual: 150 spent of 100 → over (150%)" "$(api GET "/api/budgets?year=$BY&month=$BMO&campusId=$CAMPUS" | jq_ "[(float(r['budget']), float(r['actual']), r['pct'], r['status']) for r in d['data']['rows'] if r['categoryId']=='$TCAT']")" "[(100.0, 150.0, 150, 'OVER')]"
+check "'your work today' warns about the budget" "$(api GET /api/today | jq_ "any(t['key']=='budgetOver' for t in d['data']['tasks'])")" "True"
+check "a secretary cannot set fees or budgets" "$(secapi POST /api/fee-types '{"nameEn":"X fee","nameAr":"رسم","amount":1,"frequency":"ONCE"}' | jq_ "d['success']")/$(secapi PUT /api/budgets "{\"year\":$BY,\"month\":$BMO,\"campusId\":\"$CAMPUS\",\"categoryId\":\"$TCAT\",\"amount\":1}" | jq_ "d['success']")" "False/False"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

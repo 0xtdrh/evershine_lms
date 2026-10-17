@@ -40,6 +40,8 @@ const KEEP_ALL = new Set([
   'Rubric',
   // P1: stamp designs are settings (the stamps students got are removed with them)
   'PassportStamp',
+  // FIN-1 / FIN-2 (2026-10-17): expense categories and fee types are settings (charges and movements are data).
+  'ExpenseCategoryDef', 'FeeType',
 ])
 
 type Tx = Prisma.TransactionClient | typeof prisma
@@ -70,6 +72,12 @@ function filteredDeletes(mainId: string): Record<string, string> {
     CurriculumComment: `sessionId NOT IN (${NOVA_SESSIONS})`,
     // LMS L4: the question bank of the kept courses is company content too.
     Question: `subjectId NOT IN (SELECT id FROM \`AcademicSubject\` WHERE code LIKE 'NOVA-%')`,
+    // FIN-1 / FIN-2: the company's and the main branch's money accounts, routes and budgets are settings
+    MoneyAccount: `campusId IS NOT NULL AND campusId <> '${mainId}'`,
+    AccountRoute: `(campusId IS NOT NULL AND campusId <> '${mainId}') OR accountId IN (SELECT id FROM \`MoneyAccount\` WHERE campusId IS NOT NULL AND campusId <> '${mainId}')`,
+    Budget: `campusId IS NOT NULL AND campusId <> '${mainId}'`,
+    // fee exceptions for students / groups / other places go with them
+    FeeRule: `scopeType IN ('STUDENT','GROUP') OR (scopeType = 'CAMPUS' AND scopeId <> '${mainId}') OR scopeType = 'PARTNER'`,
   }
 }
 

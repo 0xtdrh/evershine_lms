@@ -104,6 +104,9 @@ export async function GET(
 
   // Partners part 1: the price this group's next invoice will use (group → place → level)
   const effectivePrice = group.level ? await cyclePrice(group.level, group.campusId, group.priceOverride) : null
+  // FIN-2: students who cannot move to the next month / level until an unpaid fee is paid
+  const { blockedForNext } = await import('@/lib/fees-extra/engine')
+  const feeBlocked = await blockedForNext(group.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => e.student.id))
   return successResponse({
     ...groupFields,
     effectivePrice,
@@ -116,6 +119,7 @@ export async function GET(
       student: { id: w.student.id, name: `${w.student.firstName} ${w.student.lastName}`, registrationNumber: w.student.registrationNumber },
     })),
     renewals,
+    feeBlocked,
     extraSessions: extraSessions.map((x) => ({ ...x, date: x.date.toISOString().slice(0, 10) })),
     teacher: instructor
       ? {

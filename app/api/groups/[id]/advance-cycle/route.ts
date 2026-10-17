@@ -26,7 +26,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { onCycleClosed } from '@/lib/groups/cycle-closed'
-import { errors, successResponse } from '@/lib/api-response'
+import { errors, errorResponse, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createCycleInvoice, syncGroupProgress } from '@/lib/groups/sync-progress'
@@ -94,6 +94,15 @@ export async function POST(
   )
   const outsiders = parsed.data.continuingStudentIds.filter((sid) => !activeIds.has(sid))
   if (outsiders.length) return errors.badRequest('Some selected students are not active in this group')
+  // FIN-2: an unpaid fee set to "cannot move to the next month / level"
+  {
+    const { blockedForNext } = await import('@/lib/fees-extra/engine')
+    const blocked = await blockedForNext(parsed.data.continuingStudentIds)
+    if (blocked.length) {
+      const names = (await prisma.student.findMany({ where: { id: { in: blocked } }, select: { firstName: true, lastName: true } })).map((s) => `${s.firstName} ${s.lastName}`)
+      return errorResponse('FEES_UNPAID', `Pay the fee first (cannot move on): ${names.join(', ')}`, 409)
+    }
+  }
 
   const level = group.level
 

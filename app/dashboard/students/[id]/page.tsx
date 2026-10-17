@@ -23,6 +23,7 @@ import { StudentAdminToolbar } from '@/components/students/StudentAdminToolbar'
 import { StudentPortalAccessCard } from '@/components/students/StudentPortalAccessCard'
 import { StudentDiscountsCard } from '@/components/students/StudentDiscountsCard'
 import { StudentWalletCard } from '@/components/students/StudentWalletCard'
+import { StudentFeesCard } from '@/components/students/StudentFeesCard'
 import { StudentTransferCard } from '@/components/students/StudentTransferCard'
 import { StudentContactLogCard } from '@/components/students/StudentContactLogCard'
 import { GuardianBirthdaysCard } from '@/components/birthdays/DateOfBirthCards'
@@ -448,6 +449,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           <StudentContactLogCard studentId={student.id} />
 
           <StudentWalletCard studentId={student.id} />
+          <StudentFeesCard studentId={student.id} />
 
           <StudentCertificatesPanel studentId={student.id} />
 
