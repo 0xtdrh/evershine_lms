@@ -48,6 +48,7 @@ export const NOTIFICATION_TYPE_TO_MODULE: Record<string, string> = {
   ANNOUNCEMENT: 'announcements',
   ANNOUNCEMENT_PENDING: 'announcements',
   ANNOUNCEMENT_DECIDED: 'announcements',
+  TREASURY_APPROVAL: 'fees',
 }
 
 export const NAV_LABEL_TO_NOTIFICATION_MODULE: Record<string, string> = {

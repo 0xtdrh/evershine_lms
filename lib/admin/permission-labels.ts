@@ -30,6 +30,7 @@ export const RESOURCE_META: Record<string, { label: string; description: string;
   partner_finance:       { label: 'Partner statements',  description: 'Partner money statements: view, make / edit drafts, approve (freeze) and record payments, export (part 1-B)', category: 'Finance' },
   data_export:           { label: 'Export (Excel / PDF)', description: 'Take tables out as Excel or PDF (also needs the read permission of that table)', category: 'Data' },
   data_import:           { label: 'Import (Excel)',       description: 'Add many rows from an Excel template (also needs the create permission of that table)', category: 'Data' },
+  treasury:              { label: 'Money accounts',      description: 'Cash boxes and bank accounts: balances and movements, transfers and end-of-day counts, approve them, manage accounts', category: 'Finance' },
   partners:              { label: 'Partners',            description: 'Partners (schools, nurseries, …): their places, contracts and files (M1)', category: 'Operations' },
   passport:              { label: 'Passport',            description: 'Student passport (read), give stamps / print / event scan (update), stamps library + settings (approve)', category: 'Academic' },
   teachers:              { label: 'Teachers',            description: 'Staff profiles, designations, and class assignments',     category: 'People'     },

@@ -1475,6 +1475,112 @@ model Announcement {
   @@index([status])
 }
 
+/// FIN-1 (2026-10-17): where money is kept — a branch cash box, a bank account, InstaPay, a mobile wallet, Paymob…
+model MoneyAccount {
+  id             String          @id @default(cuid())
+  name           String          @db.VarChar(100)
+  kind           String          @db.VarChar(10) // CASH | BANK | INSTAPAY | EWALLET | GATEWAY | OTHER
+  campusId       String? // a branch's account (e.g. its cash box); null = a company account
+  openingBalance Decimal         @default(0) @db.Decimal(12, 2)
+  openingDate    DateTime        @db.Date
+  isActive       Boolean         @default(true)
+  notes          String?         @db.VarChar(300)
+  sortOrder      Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  routes         AccountRoute[]
+  movements      MoneyMovement[]
+
+  @@index([campusId])
+}
+
+/// FIN-1: which account a payment method lands in (campusId null = every branch; a branch row wins). Set in Settings → Payments.
+model AccountRoute {
+  id        String       @id @default(cuid())
+  method    String       @db.VarChar(50)
+  campusId  String?
+  accountId String
+  account   MoneyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([method])
+}
+
+/// FIN-1: every movement of money in or out of an account, made automatically from its source record (lib/treasury/sync.ts).
+model MoneyMovement {
+  id               String        @id @default(cuid())
+  accountId        String? // null = no account set for that payment method yet ("not placed")
+  direction        String        @db.VarChar(3) // IN | OUT
+  amount           Decimal       @db.Decimal(12, 2)
+  date             DateTime
+  kind             String        @db.VarChar(12) // PAYMENT | TOPUP | REFUND | WITHDRAWAL | EXPENSE | SALARY | PARTNER | TRANSFER | ADJUST
+  method           String?       @db.VarChar(50)
+  campusId         String?
+  note             String?       @db.VarChar(300)
+  feePaymentId     String?       @unique
+  topUpId          String?       @unique
+  refundId         String?       @unique
+  withdrawalId     String?       @unique
+  expenseId        String?       @unique
+  salarySlipId     String?       @unique
+  partnerPaymentId String?       @unique
+  transferId       String?
+  cashCountId      String?       @unique
+  createdAt        DateTime      @default(now())
+  account          MoneyAccount? @relation(fields: [accountId], references: [id])
+
+  @@index([accountId, date])
+  @@index([campusId, date])
+  @@index([transferId])
+}
+
+/// FIN-1: moving money between accounts (e.g. branch cash box → bank). TN-TRF-YYYY-NNNNN.
+model MoneyTransfer {
+  id            String    @id @default(cuid())
+  number        String?   @unique @db.VarChar(30)
+  fromAccountId String
+  toAccountId   String
+  amount        Decimal   @db.Decimal(12, 2)
+  date          DateTime
+  note          String?   @db.VarChar(300)
+  status        String    @default("PENDING") @db.VarChar(10) // PENDING | APPROVED | REJECTED | CANCELLED
+  createdById   String
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([status])
+}
+
+/// FIN-1: end-of-day cash count — what the system expected vs what was counted; a manager approves the difference.
+model CashCount {
+  id           String    @id @default(cuid())
+  accountId    String
+  date         DateTime  @db.Date
+  expected     Decimal   @db.Decimal(12, 2)
+  counted      Decimal   @db.Decimal(12, 2)
+  difference   Decimal   @db.Decimal(12, 2)
+  note         String?   @db.VarChar(300)
+  status       String    @default("PENDING") @db.VarChar(10) // PENDING | APPROVED | REJECTED
+  countedById  String
+  approvedById String?
+  approvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([accountId, date])
+  @@index([status])
+}
+
+/// FIN-1: expense categories the owner adds / removes (replaces the fixed template list on screens).
+model ExpenseCategoryDef {
+  id        String   @id @default(cuid())
+  key       String   @unique @db.VarChar(40)
+  nameEn    String   @db.VarChar(80)
+  nameAr    String   @db.VarChar(80)
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
 /// Phase 6 (2026-10-17): who imported / exported which table, when and how many rows (Import & Export centre).
 model DataExchangeLog {
   id        String   @id @default(cuid())
@@ -2834,6 +2940,8 @@ model Expense {
   description      String?
   amount           Decimal         @db.Decimal(10, 2)
   category         ExpenseCategory
+  /// FIN-1: editable expense category (ExpenseCategoryDef); the old `category` enum stays for old reports
+  categoryId       String?
   date             DateTime        @db.Date
   campusId         String
   receiptUrl       String? // Cloudinary URL of scanned receipt

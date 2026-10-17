@@ -13,6 +13,12 @@ import { getTeacherByUserId, getTeacherClassSectionIds } from '@/lib/academic/te
 import { occurrencesFor, type GroupOccurrences } from '@/lib/groups/occurrences'
 import { birthdayPeople } from '@/lib/birthdays/birthdays'
 import { pendingAcks } from '@/lib/announcements/engine'
+import { getTreasurySettings } from '@/lib/treasury/engine'
+
+/** Money accounts this person sees (their branches; company accounts only with every place). */
+async function accountIds(c: { places: Places }) {
+  return (await prisma.moneyAccount.findMany({ where: c.places.all ? {} : { campusId: { in: c.places.campusIds.length ? c.places.campusIds : ['__none__'] } }, select: { id: true } })).map((a) => a.id)
+}
 import { tasksFor, type TaskDef, type TaskKey } from './catalog'
 
 export interface TodayTask { key: TaskKey; en: string; ar: string; href: string; urgent: boolean; count: number }
@@ -87,6 +93,18 @@ const COUNTERS: Record<TaskKey, (c: Ctx) => Promise<number>> = {
   curriculumReview: async () => prisma.curriculumEdition.count({ where: { status: 'IN_REVIEW' } }),
   announcementsToApprove: async (c) => prisma.announcement.count({ where: { status: 'PENDING', isActive: true, createdBy: { not: c.user.id }, ...(c.places.all ? {} : { campusId: inIds(c.places.campusIds) }) } }),
   announcementsToConfirm: async (c) => pendingAcks(c.user.id),
+  cashCountsToApprove: async (c) => prisma.cashCount.count({ where: { status: 'PENDING', countedById: { not: c.user.id }, accountId: { in: await accountIds(c) } } }),
+  transfersToApprove: async (c) => prisma.moneyTransfer.count({ where: { status: 'PENDING', createdById: { not: c.user.id }, fromAccountId: { in: await accountIds(c) } } }),
+  cashBoxesNotCounted: async (c) => {
+    const s = await getTreasurySettings()
+    const hour = Number(new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo', hour: '2-digit', hour12: false }))
+    if (!s.dailyCloseRequired || hour < s.closeAfterHour) return 0
+    const boxes = await prisma.moneyAccount.findMany({ where: { kind: 'CASH', isActive: true, id: { in: await accountIds(c) } }, select: { id: true } })
+    if (!boxes.length) return 0
+    const done = await prisma.cashCount.findMany({ where: { accountId: { in: boxes.map((b) => b.id) }, date: day(c.today) }, select: { accountId: true } })
+    return boxes.filter((b) => !done.some((d) => d.accountId === b.id)).length
+  },
+  moneyNotPlaced: async (c) => prisma.moneyMovement.count({ where: { accountId: null, ...(c.places.all ? {} : { campusId: inIds(c.places.campusIds) }) } }),
   mySessionsToday: async (c) => (await c.occ()).reduce((s, g) => s + g.occurrences.filter((o) => o.date === c.today && ['SCHEDULED', 'NOT_STARTED', 'HELD'].includes(o.status)).length, 0),
   myMissingAttendance: async (c) => (await c.occ()).reduce((s, g) => s + g.occurrences.filter((o) => o.status === 'MISSING').length, 0),
   homeworkToGrade: async (c) => prisma.assignmentSubmission.count({ where: { status: 'SUBMITTED', classSectionId: inIds(c.teacherId ? c.myGroups : await c.groups()) ?? undefined } }),

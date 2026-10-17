@@ -1,5 +1,6 @@
 'use client'
 
+import { useI18n } from '@/lib/i18n/client'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -23,6 +24,7 @@ interface ExpenseRecord {
   description?: string | null
   amount: string | number
   category: string
+  categoryId?: string | null
   date: string
   paymentSource?: string | null
   paymentReference?: string | null
@@ -33,21 +35,19 @@ interface ExpenseRecord {
   recordedByUserId?: string | null
 }
 
-const EXPENSE_CATEGORIES = [
-  'UTILITIES',
-  'SALARIES',
-  'MAINTENANCE',
-  'STATIONERY',
-  'EQUIPMENT',
-  'TRANSPORT',
-  'EVENTS',
-  'MISCELLANEOUS',
-]
+/** FIN-1: categories come from Settings (ExpenseCategoryDef) — the owner adds, renames and hides them. */
+interface CategoryDef { id: string; key: string; nameEn: string; nameAr: string; isActive: boolean }
 
 const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'Cheque', 'Petty Cash', 'Online']
 
 export default function AccountantExpensesPage() {
   const { data: session, status } = useSession()
+  const ar = useI18n().locale === 'ar'
+  const { data: categoryDefs = [] } = useQuery({ queryKey: ['expense-categories'], queryFn: () => fetchApi<CategoryDef[]>('/api/expense-categories?all=1') })
+  const activeCategories = categoryDefs.filter((c) => c.isActive)
+  /** an id, or an old built-in key → the category id */
+  const catId = (v: string | null | undefined) => categoryDefs.find((c) => c.id === v || c.key === v)?.id ?? v ?? ''
+  const catName = (e: { categoryId?: string | null; category: string }) => { const c = categoryDefs.find((d) => d.id === e.categoryId) ?? categoryDefs.find((d) => d.key === e.category); return c ? (ar ? c.nameAr : c.nameEn) : e.category }
   const role = (session?.user?.role as string) || ''
   const canAccess = ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'].includes(role)
 
@@ -91,7 +91,7 @@ export default function AccountantExpensesPage() {
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams({ limit: '20' })
-    if (categoryFilter && categoryFilter !== 'ALL') params.set('category', categoryFilter)
+    if (categoryFilter && categoryFilter !== 'ALL') params.set('categoryId', categoryFilter)
     if (startDate) params.set('startDate', startDate)
     if (endDate) params.set('endDate', endDate)
     if (filterCampusId && filterCampusId !== 'ALL') params.set('campusId', filterCampusId)
@@ -100,7 +100,7 @@ export default function AccountantExpensesPage() {
 
   const exportQueryString = useMemo(() => {
     const params = new URLSearchParams()
-    if (categoryFilter && categoryFilter !== 'ALL') params.set('category', categoryFilter)
+    if (categoryFilter && categoryFilter !== 'ALL') params.set('categoryId', categoryFilter)
     if (startDate) params.set('startDate', startDate)
     if (endDate) params.set('endDate', endDate)
     if (filterCampusId && filterCampusId !== 'ALL') params.set('campusId', filterCampusId)
@@ -166,7 +166,7 @@ export default function AccountantExpensesPage() {
       title: expense.title,
       description: expense.description ?? '',
       amount: String(expense.amount),
-      category: expense.category,
+      category: catId(expense.categoryId ?? expense.category),
       date: expense.date,
       paymentSource: expense.paymentSource ?? '',
       paymentReference: expense.paymentReference ?? '',
@@ -186,7 +186,7 @@ export default function AccountantExpensesPage() {
       title: editForm.title,
       description: editForm.description || undefined,
       amount: Number(editForm.amount),
-      category: editForm.category,
+      categoryId: catId(editForm.category),
       date: editForm.date,
       notes: editForm.notes || undefined,
     }
@@ -243,7 +243,7 @@ export default function AccountantExpensesPage() {
         title: form.title,
         description: form.description || undefined,
         amount: Number(form.amount),
-        category: form.category,
+        categoryId: catId(form.category),
         date: form.date,
         notes: form.notes || undefined,
         campusId: form.campusId || undefined,
@@ -295,10 +295,10 @@ export default function AccountantExpensesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-category">Category</Label>
-                <Select value={editForm.category} onValueChange={(value) => setEditForm((prev) => ({ ...prev, category: value }))}>
+                <Select value={catId(editForm.category)} onValueChange={(value) => setEditForm((prev) => ({ ...prev, category: value }))}>
                   <SelectTrigger id="edit-category"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {EXPENSE_CATEGORIES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                    {activeCategories.map((c) => <SelectItem key={c.id} value={c.id}>{ar ? c.nameAr : c.nameEn}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -425,10 +425,10 @@ export default function AccountantExpensesPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
-                <Select value={form.category} onValueChange={(value) => setForm((prev) => ({ ...prev, category: value }))}>
+                <Select value={catId(form.category)} onValueChange={(value) => setForm((prev) => ({ ...prev, category: value }))}>
                   <SelectTrigger id="category"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {EXPENSE_CATEGORIES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                    {activeCategories.map((c) => <SelectItem key={c.id} value={c.id}>{ar ? c.nameAr : c.nameEn}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -506,7 +506,7 @@ export default function AccountantExpensesPage() {
                   <SelectTrigger id="filter-category"><SelectValue placeholder="All categories" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">All categories</SelectItem>
-                    {EXPENSE_CATEGORIES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                    {activeCategories.map((c) => <SelectItem key={c.id} value={c.id}>{ar ? c.nameAr : c.nameEn}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -538,7 +538,7 @@ export default function AccountantExpensesPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-semibold text-slate-900">{item.title}</h3>
-                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] text-slate-600">{item.category}</span>
+                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] text-slate-600">{catName(item)}</span>
                         {item.isApproved && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] text-emerald-700">Approved</span>}
                       </div>
                       <p className="text-sm text-slate-500">{item.description || item.notes || 'No further notes.'}</p>

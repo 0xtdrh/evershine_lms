@@ -34,7 +34,7 @@ export interface FieldDef {
 
 export type DatasetKey =
   | 'students' | 'guardians' | 'groups' | 'instructors' | 'courseStructure'
-  | 'invoices' | 'payments' | 'attendance' | 'waitingList' | 'expenses'
+  | 'invoices' | 'payments' | 'attendance' | 'waitingList' | 'expenses' | 'movements'
 
 export interface DatasetDef {
   key: DatasetKey
@@ -55,6 +55,7 @@ export interface DatasetDef {
   fields: FieldDef[]
 }
 
+const DIRECTION = [{ value: 'IN', en: 'In', ar: 'داخل' }, { value: 'OUT', en: 'Out', ar: 'خارج' }]
 const GENDER = [{ value: 'MALE', en: 'Male', ar: 'ذكر' }, { value: 'FEMALE', en: 'Female', ar: 'أنثى' }]
 const YESNO = [{ value: 'true', en: 'Yes', ar: 'نعم' }, { value: 'false', en: 'No', ar: 'لا' }]
 
@@ -253,6 +254,21 @@ const CODES: Record<string, [string, string]> = {
   STAFF: ['Staff', 'موظف'], PROOF: ['Receipt', 'إيصال'], ONLINE: ['Online', 'أونلاين'], WALLET: ['Wallet', 'المحفظة'],
 }
 export const codeLabel = (v: unknown, ar: boolean) => (typeof v === 'string' && CODES[v] ? CODES[v][ar ? 1 : 0] : v)
+
+export const MOVEMENTS_DATASET: DatasetDef = {
+  key: 'movements', en: 'Account movements', ar: 'حركات الحسابات', descEn: 'Money in and out of every account (cash boxes, bank, wallets).', descAr: 'الفلوس اللي دخلت وخرجت من كل حساب (الخزن، البنك، المحافظ).',
+  canImport: false, exportPerm: ['treasury', 'read'], page: '/dashboard/treasury', filters: ['campus', 'from', 'to'],
+  fields: [
+    { key: 'date', en: 'Date', ar: 'التاريخ', type: 'date' },
+    { key: 'account', en: 'Account', ar: 'الحساب', type: 'text' },
+    { key: 'direction', en: 'In / out', ar: 'داخل / خارج', type: 'enum', options: DIRECTION },
+    { key: 'amount', en: 'Amount', ar: 'المبلغ', type: 'number' },
+    { key: 'kind', en: 'What', ar: 'إيه', type: 'text' },
+    { key: 'method', en: 'Method', ar: 'الطريقة', type: 'text' },
+    { key: 'note', en: 'Note', ar: 'ملاحظة', type: 'text' },
+  ],
+}
+DATASETS.push(MOVEMENTS_DATASET)
 
 export const datasetByKey = (key: string) => DATASETS.find((d) => d.key === key) ?? null
 export const importFields = (d: DatasetDef) => d.fields.filter((f) => !f.exportOnly)

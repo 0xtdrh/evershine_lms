@@ -60,6 +60,7 @@ export const NOTIFICATION_EVENTS = [
   { key: 'PARTNER_STATEMENT', label: 'Partner statement to approve', description: 'People who approve partner statements: a new statement is waiting (part 1-B)', audience: 'STAFF' },
   { key: 'ANNOUNCEMENT_PENDING', label: 'Announcement to approve', description: 'Approvers: an announcement waits for approval', audience: 'STAFF' },
   { key: 'ANNOUNCEMENT_DECIDED', label: 'Announcement approved / not approved', description: 'Sender: the announcement was approved or not', audience: 'STAFF' },
+  { key: 'TREASURY_APPROVAL', label: 'Money to approve', description: 'Approvers: a transfer between accounts or a cash count difference waits for approval', audience: 'STAFF' },
   { key: 'MORNING_SUMMARY', label: 'Morning summary', description: 'Managers: today\'s sessions, missing attendance, overdue invoices, items waiting', audience: 'STAFF' },
 ] as const satisfies readonly EventDef[]
 

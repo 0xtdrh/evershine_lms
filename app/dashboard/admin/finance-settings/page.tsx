@@ -1,5 +1,7 @@
 'use client'
 
+import { AccountsManager } from '@/components/treasury/AccountsManager'
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -56,6 +58,8 @@ function move<T>(list: T[], i: number, d: -1 | 1): T[] {
 }
 
 export default function FinanceSettingsPage() {
+  const { can: canPerm } = useMyPermissions()
+  const canTreasury = canPerm('treasury', 'update')
   const { data: session, status } = useSession()
   const role = session?.user?.role
   const qc = useQueryClient()
@@ -309,6 +313,7 @@ export default function FinanceSettingsPage() {
           </label>
         </CardContent>
       </Card>
+      {canTreasury && <AccountsManager />}
     </div>
   )
 }

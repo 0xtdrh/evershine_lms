@@ -15,6 +15,7 @@ export const TASK_KEYS = [
   'groupsToAdvance', 'renewalsUnanswered', 'waitingList', 'overdueInvoices', 'birthdays',
   // partners / learning
   'partnerStatements', 'partnerContracts', 'curriculumReview', 'announcementsToApprove', 'announcementsToConfirm',
+  'cashCountsToApprove', 'transfersToApprove', 'cashBoxesNotCounted', 'moneyNotPlaced',
   // instructors
   'mySessionsToday', 'myMissingAttendance', 'homeworkToGrade', 'substituteRequests',
 ] as const
@@ -65,6 +66,10 @@ export const TASKS: TaskDef[] = [
   { key: 'curriculumReview', en: 'Curriculum versions waiting for review', ar: 'نسخ منهج مستنية مراجعة', href: '/dashboard/curriculum', perm: ['curriculum', 'approve'] },
   { key: 'announcementsToApprove', en: 'Announcements waiting for your approval', ar: 'إعلانات مستنية موافقتك', href: '/dashboard/announcements?tab=pending', urgent: true, perm: ['announcements', 'approve'] },
   { key: 'announcementsToConfirm', en: 'Important announcements to confirm you read', ar: 'إعلانات مهمة محتاجة تأكيد إنك قريتها', href: '/dashboard/announcements', urgent: true, roles: [...STAFF, 'TEACHER'] },
+  { key: 'cashCountsToApprove', en: 'Cash count differences to approve', ar: 'فروق جرد خزنة مستنية موافقة', href: '/dashboard/treasury?tab=counts', urgent: true, perm: ['treasury', 'approve'] },
+  { key: 'transfersToApprove', en: 'Transfers between accounts to approve', ar: 'تحويلات بين الحسابات مستنية موافقة', href: '/dashboard/treasury?tab=transfers', urgent: true, perm: ['treasury', 'approve'] },
+  { key: 'cashBoxesNotCounted', en: 'Cash boxes not counted today', ar: 'خزن لسه ماتقفلتش النهارده', href: '/dashboard/treasury?tab=counts', urgent: true, perm: ['treasury', 'create'] },
+  { key: 'moneyNotPlaced', en: 'Money not placed in an account (set the payment method account)', ar: 'فلوس مش متسجلة على حساب (حدد حساب طريقة الدفع)', href: '/dashboard/admin/finance-settings#accounts', perm: ['treasury', 'update'] },
   { key: 'birthdays', en: 'Student birthdays today', ar: 'أعياد ميلاد طلاب النهارده', href: '/dashboard/birthdays', perm: ['birthdays', 'read'], roles: OFFICE },
 ]
 

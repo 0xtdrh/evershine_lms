@@ -1824,6 +1824,43 @@ ADMR=$(api POST /api/students "$ADMB")
 ADMID=$(echo "$ADMR" | jq_ "d['data']['id']")
 check "admission form with a group bills the month at once (same as Add to group)" "$(M "SELECT COUNT(*) FROM StudentEnrollment WHERE studentId='$ADMID' AND classSectionId='$IGRP' AND status='ACTIVE'")/$(M "SELECT COUNT(*) FROM FeeInvoice WHERE studentId='$ADMID' AND classSectionId='$IGRP'")" "1/1"
 rm -rf "$DX"
+echo "== 54. FIN-1 money accounts: routes, automatic movements, transfers (two people), daily cash count, expense categories"
+TBOX=$(api POST /api/treasury/accounts "{\"name\":\"E2E main cash box\",\"kind\":\"CASH\",\"campusId\":\"$CAMPUS\",\"openingBalance\":1000}" | jq_ "d['data']['id']")
+TBANK=$(api POST /api/treasury/accounts '{"name":"E2E bank","kind":"BANK","campusId":null,"openingBalance":0}' | jq_ "d['data']['id']")
+check "accounts made: a branch cash box and a company bank account" "$(M "SELECT COUNT(*) FROM MoneyAccount WHERE id IN ('$TBOX','$TBANK')")" "2"
+check "nothing placed before the routes are set (money waits as 'not placed')" "$(api GET /api/treasury | jq_ "d['data']['unplaced']['count']>0")" "True"
+api PUT /api/treasury/routes "{\"method\":\"Cash\",\"campusId\":\"$CAMPUS\",\"accountId\":\"$TBOX\"}" >/dev/null
+api PUT /api/treasury/routes "{\"method\":\"Bank Transfer\",\"campusId\":null,\"accountId\":\"$TBANK\"}" >/dev/null
+check "every staff / receipt / online payment became one movement; wallet payments did not (money came in once)" "$(M "SELECT COUNT(*) FROM FeePayment WHERE status='COMPLETED' AND (source IS NULL OR source IN ('STAFF','PROOF','ONLINE'))")/$(M "SELECT COUNT(*) FROM MoneyMovement m JOIN FeePayment p ON p.id=m.feePaymentId WHERE p.source='WALLET'")" "$(M "SELECT COUNT(*) FROM MoneyMovement WHERE kind='PAYMENT'")/0"
+check "setting the route placed the waiting cash of this branch in its box" "$(M "SELECT COUNT(*) FROM MoneyMovement m LEFT JOIN Campus c ON c.id=m.campusId WHERE m.accountId IS NULL AND m.method='Cash' AND m.campusId='$CAMPUS'")" "0"
+B0=$(api GET /api/treasury | jq_ "float([a['balance'] for a in d['data']['accounts'] if a['id']=='$TBOX'][0])")
+check "box balance = opening + in − out (from the opening date)" "$B0" "$(M "SELECT CAST(1000 + COALESCE(SUM(CASE WHEN direction='IN' THEN amount ELSE -amount END),0) AS DECIMAL(12,1)) FROM MoneyMovement m JOIN MoneyAccount a ON a.id=m.accountId WHERE m.accountId='$TBOX' AND m.date >= a.openingDate" | python -c "import sys;print(float(sys.stdin.read()))")"
+TINV=$(M "SELECT i.id FROM FeeInvoice i JOIN ClassSection g ON g.id=i.classSectionId JOIN StudentEnrollment e ON e.classSectionId=g.id AND e.studentId=i.studentId AND e.status='ACTIVE' WHERE g.campusId='$CAMPUS' AND g.status='ACTIVE' AND i.status='ISSUED' AND i.paidAmount=0 AND i.refundedAmount=0 AND i.proofStatus IS NULL ORDER BY i.createdAt DESC LIMIT 1")
+TAMT=$(M "SELECT CAST(totalAmount AS DECIMAL(10,2)) FROM FeeInvoice WHERE id='$TINV'")
+pay "$TINV" "$TAMT" >/dev/null
+check "a new cash payment lands in this branch's box at once" "$(api GET /api/treasury | jq_ "float(round([a['balance'] for a in d['data']['accounts'] if a['id']=='$TBOX'][0] - $B0, 2))")" "$(python -c "print(float(round(float('$TAMT'),2)))")"
+TCAT=$(api POST /api/expense-categories '{"nameEn":"E2E Rent","nameAr":"إيجار"}' | jq_ "d['data']['id']")
+TEX=$(api POST /api/accountant/expenses "{\"title\":\"E2E rent October\",\"amount\":200,\"categoryId\":\"$TCAT\",\"date\":\"$(D 0)\",\"campusId\":\"$CAMPUS\",\"paymentSource\":\"Cash\"}" | jq_ "d['data']['id']")
+check "a new expense category is used, the old column is filled (Other), the expense filter finds it" "$(M "SELECT CONCAT(category,'/',categoryId='$TCAT') FROM Expense WHERE id='$TEX'")/$(api GET "/api/accountant/expenses?categoryId=$TCAT&limit=5" | jq_ "len(d['data'])")" "MISCELLANEOUS/1/1"
+check "the expense left the box (money out)" "$(api GET /api/treasury >/dev/null; M "SELECT CONCAT(direction,'/',CAST(amount AS DECIMAL(10,0)),'/',accountId='$TBOX') FROM MoneyMovement WHERE expenseId='$TEX'")" "OUT/200/1"
+api DELETE /api/accountant/expenses/$TEX >/dev/null
+check "a deleted expense is taken back out of the box" "$(api GET /api/treasury >/dev/null; M "SELECT COUNT(*) FROM MoneyMovement WHERE expenseId='$TEX'")" "0"
+TT=$(api POST /api/treasury/transfers "{\"fromAccountId\":\"$TBOX\",\"toAccountId\":\"$TBANK\",\"amount\":100,\"note\":\"deposit\"}")
+TTID=$(echo "$TT" | jq_ "d['data']['id']")
+check "transfer box → bank waits for a second person (numbered TN-TRF)" "$(echo "$TT" | jq_ "(d['data']['status'], d['data']['number'][:7])")" "('PENDING', 'TN-TRF-')"
+check "Super Admin may approve own transfer; a secretary cannot approve" "$(api PATCH /api/treasury/transfers/$TTID '{"action":"approve"}' | jq_ "d['success']")/$(secapi PATCH /api/treasury/transfers/$TTID '{"action":"approve"}' | jq_ "d['success']")" "True/False"
+check "approved (Super Admin may approve own) → out of the box, into the bank" "$(M "SELECT GROUP_CONCAT(CONCAT(direction,':',accountId='$TBOX') ORDER BY direction) FROM MoneyMovement WHERE transferId='$TTID'")" "IN:0,OUT:1"
+B1=$(api GET /api/treasury | jq_ "[a['balance'] for a in d['data']['accounts'] if a['id']=='$TBOX'][0]")
+CNT=$(secapi POST /api/treasury/counts "{\"accountId\":\"$TBOX\",\"counted\":$(python -c "print($B1-50)"),\"note\":\"short\"}")
+CID=$(echo "$CNT" | jq_ "d['data']['id']")
+check "end-of-day count by the secretary: 50 short → waits for approval" "$(echo "$CNT" | jq_ "(d['data']['status'], float(d['data']['difference']))")" "('PENDING', -50.0)"
+check "'your work today' shows the count difference to the manager" "$(api GET /api/today | jq_ "any(t['key']=='cashCountsToApprove' for t in d['data']['tasks'])")" "True"
+api PATCH /api/treasury/counts/$CID '{"action":"approve"}' >/dev/null
+check "approved → the difference is booked (box − 50)" "$(api GET /api/treasury | jq_ "round($B1 - [a['balance'] for a in d['data']['accounts'] if a['id']=='$TBOX'][0], 2)")" "50"
+TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.95 >/dev/null
+check "instructors cannot see money accounts" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ" $B/api/treasury)" "403"
+rm -f "$TJ"
+check "account movements export to Excel" "$(curl -s -b "$JAR" -o /dev/null -w '%{http_code}' "$B/api/data/movements/export?format=xlsx")" "200"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

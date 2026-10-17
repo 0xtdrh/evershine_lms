@@ -15,7 +15,9 @@ export const createExpenseSchema = z.object({
     .number({ required_error: 'Amount is required' })
     .positive('Amount must be greater than zero')
     .multipleOf(0.01, 'Amount can have at most 2 decimal places'),
-  category:   z.nativeEnum(ExpenseCategory),
+  category:   z.nativeEnum(ExpenseCategory).optional(),
+  /** FIN-1: editable category (ExpenseCategoryDef id); the old enum is filled from it */
+  categoryId: z.string().max(40).optional().nullable(),
   /** ISO date string "YYYY-MM-DD" */
   date:       z.string().date('Date must be in YYYY-MM-DD format'),
   receiptUrl: z.string().url('Receipt URL must be a valid URL').optional(),
@@ -45,6 +47,8 @@ export const expenseQuerySchema = z.object({
   startDate: z.string().date().optional(),
   endDate:   z.string().date().optional(),
   category:  z.nativeEnum(ExpenseCategory).optional(),
+  /** FIN-1: filter by an editable category */
+  categoryId: z.string().max(40).optional(),
   campusId:  z.string().cuid('Campus ID is invalid').optional(),
   page:      z.coerce.number().min(1).default(1),
   limit:     z.coerce.number().min(1).max(100).default(50),

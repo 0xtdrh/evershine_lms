@@ -166,6 +166,12 @@ export async function exportRows(key: DatasetKey, user: Who, f: ExportFilters): 
         group: (w.classSectionId && groups.get(w.classSectionId)) ?? '', campus: w.campus?.name ?? '', since: ymd(w.createdAt),
       }))
     }
+    case 'movements': {
+      const accounts = await prisma.moneyAccount.findMany({ where: places.all ? (f.campusId ? { campusId: f.campusId } : {}) : { campusId: { in: f.campusId ? [f.campusId].filter((c) => places.campusIds.includes(c)) : places.campusIds } }, select: { id: true, name: true } })
+      const names = new Map(accounts.map((a) => [a.id, a.name]))
+      const rows = await prisma.moneyMovement.findMany({ where: { accountId: { in: accounts.map((a) => a.id) }, ...(dateRange(f) ? { date: dateRange(f) } : {}) }, orderBy: { date: 'desc' }, take: LIMIT })
+      return rows.map((m) => ({ date: ymd(m.date), account: (m.accountId && names.get(m.accountId)) ?? '', direction: m.direction, amount: money(m.amount), kind: m.kind, method: m.method ?? '', note: m.note ?? '' }))
+    }
     case 'expenses': {
       const rows = await prisma.expense.findMany({
         where: AND({ isDeleted: false }, campusWhere(places), onlyCampus, dateRange(f) ? { date: dateRange(f) } : {}) as Prisma.ExpenseWhereInput,

@@ -113,6 +113,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Permissions',     href: '/dashboard/admin/permissions',      icon: ShieldCheck,     roles: ['SUPER_ADMIN'] },
   { name: 'Notifications',   href: '/dashboard/admin/notifications',    icon: BellRing,        roles: ['SUPER_ADMIN', 'ADMIN'] },
   { name: 'Settings Centre', href: '/dashboard/settings-center',        icon: Settings2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY'] },
+  { name: 'Accounts & Cash',  href: '/dashboard/treasury',               icon: Wallet,          roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY'], perm: [['treasury', 'read']] },
   { name: 'Import & Export', href: '/dashboard/data',                   icon: BarChart2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY', 'MARKETING'], perm: [['data_export', 'read'], ['data_import', 'create']] },
   { name: 'Reports Centre',  href: '/dashboard/reports-center',         icon: BarChart2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY', 'MARKETING'] },
   { name: 'Platform',        href: '/dashboard/admin/platform',         icon: Power,           roles: ['SUPER_ADMIN', 'ADMIN'], perm: [['platform_settings', 'read']] },

@@ -12,6 +12,7 @@ import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors, createdResponse, paginatedResponse } from '@/lib/api-response'
 import { createExpenseSchema, expenseQuerySchema } from '@/lib/validation/expense'
+import { expenseCategoryWhere, resolveExpenseCategory } from '@/lib/treasury/expense-category'
 import { getExpenseColumnSupport, isExpensePaymentColumnMissingError } from '@/lib/accounting/expense-columns'
 
 async function resolveExpenseRecorder(userId: string) {
@@ -62,6 +63,7 @@ export async function GET(request: NextRequest) {
     isDeleted: false,
     ...campusWhere(narrow(places, filterCampusId)), // the place filter can only narrow
     ...(category ? { category } : {}),
+    ...(parsed.data.categoryId ? await expenseCategoryWhere(parsed.data.categoryId) : {}),
     ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}),
   }
 
@@ -72,6 +74,7 @@ export async function GET(request: NextRequest) {
     description: true,
     amount: true,
     category: true,
+    categoryId: true,
     date: true,
     campusId: true,
     receiptUrl: true,
@@ -141,11 +144,14 @@ export async function POST(request: NextRequest) {
   const supportedColumns = await getExpenseColumnSupport()
   const recorder = await resolveExpenseRecorder(session.user.id)
 
+  const cat = await resolveExpenseCategory(data.categoryId, data.category)
+  if (!cat) return errors.badRequest('Choose a category')
   const expensePayload = {
     title: data.title,
     description: data.description,
     amount: data.amount,
-    category: data.category,
+    category: cat.category,
+    categoryId: cat.categoryId,
     date: new Date(data.date),
     campusId: targetCampusId,
     receiptUrl: data.receiptUrl,

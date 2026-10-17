@@ -37,6 +37,7 @@ describe('settings centre / reports centre / today (5-C)', () => {
     const API_TO_CARD: Record<string, string> = {
       'app/api/admin/finance-settings/route.ts': '/dashboard/admin/finance-settings',
       'app/api/announcements/settings/route.ts': '/dashboard/announcements',
+      'app/api/treasury/settings/route.ts': '/dashboard/treasury',
       'app/api/lessons/settings/route.ts': '/dashboard/admin/lms',
       'app/api/notifications/settings/route.ts': '/dashboard/admin/notifications',
       'app/api/passport/settings/route.ts': '/dashboard/admin/passport',

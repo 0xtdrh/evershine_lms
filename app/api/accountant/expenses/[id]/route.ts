@@ -4,6 +4,7 @@
  * DELETE /api/accountant/expenses/[id] (Soft delete)
  */
 
+import { resolveExpenseCategory } from '@/lib/treasury/expense-category'
 import { allowsCampus } from '@/lib/places/rules'
 import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
@@ -100,7 +101,7 @@ export async function PATCH(
       ...(parsed.data.title && { title: parsed.data.title }),
       ...(parsed.data.description !== undefined && { description: parsed.data.description }),
       ...(parsed.data.amount && { amount: parsed.data.amount }),
-      ...(parsed.data.category && { category: parsed.data.category }),
+      ...(parsed.data.categoryId || parsed.data.category ? await (async () => { const c = await resolveExpenseCategory(parsed.data.categoryId, parsed.data.category); return c ? { category: c.category, categoryId: c.categoryId } : {} })() : {}),
       ...(parsed.data.date && { date: new Date(parsed.data.date) }),
       ...(parsed.data.receiptUrl !== undefined && { receiptUrl: parsed.data.receiptUrl }),
       ...(parsed.data.notes !== undefined && { notes: parsed.data.notes }),

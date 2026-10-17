@@ -20,8 +20,8 @@ export interface NumberSpec {
   prefix: string
   pad: number
   /** table + column that store the number (trusted constants, never user input) */
-  table: 'FeePayment' | 'FeeInvoice' | 'WalletTopUp' | 'WalletWithdrawal' | 'Refund'
-  column: 'receiptNumber' | 'challanNumber' | 'topUpNumber' | 'withdrawalNumber' | 'refundNumber'
+  table: 'FeePayment' | 'FeeInvoice' | 'WalletTopUp' | 'WalletWithdrawal' | 'Refund' | 'MoneyTransfer'
+  column: 'receiptNumber' | 'challanNumber' | 'topUpNumber' | 'withdrawalNumber' | 'refundNumber' | 'number'
 }
 
 export const formatNumber = (prefix: string, n: number, pad: number) => `${prefix}${String(n).padStart(pad, '0')}`
