@@ -14,6 +14,7 @@ import { ArrowLeft, Plus, Trash2, Search, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { paymentDetailsRowsFromSnapshot } from '@/lib/fees/payment-details'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface FeeItem {
   description: string
@@ -68,6 +69,7 @@ const renderBankAccountsTable = (bankAccountsStr: string) => {
 }
 
 export default function GenerateChallanPage() {
+  useI18n() // re-render on a language switch
   const router = useRouter()
   const queryClient = useQueryClient()
 
@@ -118,10 +120,10 @@ export default function GenerateChallanPage() {
   const total = subtotal - discount + lateFee
 
   const handleSubmit = async () => {
-    if (!selectedStudent) { notify.error('Please select a student'); return }
-    if (items.length === 0) { notify.error('Add at least one fee item'); return }
+    if (!selectedStudent) { notify.error(L('Please select a student', 'اختار طالب')); return }
+    if (items.length === 0) { notify.error(L('Add at least one fee item', 'ضيف بند واحد على الأقل')); return }
     if (items.some((i) => !i.description || i.amount <= 0)) {
-      notify.error('All fee items must have a description and amount > 0')
+      notify.error(L('All fee items must have a description and amount > 0', 'كل بند لازم يكون ليه بيان ومبلغ أكبر من صفر'))
       return
     }
 
@@ -141,11 +143,11 @@ export default function GenerateChallanPage() {
           notes: notes || undefined,
         }),
       })
-      notify.success('Challan generated successfully!')
+      notify.success(L('Challan generated successfully!', 'الفاتورة اتعملت!'))
       queryClient.invalidateQueries({ queryKey: ['fees'] })
       router.push('/dashboard/fees')
     } catch (err: any) {
-      notify.error('Failed to generate challan', { description: err.message })
+      notify.error(L('Failed to generate challan', 'عمل الفاتورة فشل'), { description: err.message })
     } finally {
       setIsSubmitting(false)
     }
@@ -158,8 +160,8 @@ export default function GenerateChallanPage() {
           <Button variant="outline" size="icon"><ArrowLeft className="w-4 h-4" /></Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Generate Fee Challan</h1>
-          <p className="text-sm text-gray-500">Create a new fee invoice for a student.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">{L('Generate Fee Challan', 'اعمل فاتورة')}</h1>
+          <p className="text-sm text-gray-500">{L('Create a new fee invoice for a student.', 'اعمل فاتورة جديدة لطالب.')}</p>
         </div>
       </div>
 
@@ -168,7 +170,7 @@ export default function GenerateChallanPage() {
         <div className="lg:col-span-2 space-y-5">
           {/* Student selector */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Select Student</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{L('Select Student', 'اختار الطالب')}</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {!selectedStudent ? (
                 <>
@@ -176,7 +178,7 @@ export default function GenerateChallanPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       className="pl-9"
-                      placeholder="Type name or registration number..."
+                      placeholder={L('Type name or registration number...', 'اكتب الاسم أو رقم القيد...')}
                       value={studentSearch}
                       onChange={(e) => setStudentSearch(e.target.value)}
                     />
@@ -196,7 +198,7 @@ export default function GenerateChallanPage() {
                     </div>
                   )}
                   {studentSearch.length >= 2 && searchResults.length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-3">No students found</p>
+                    <p className="text-sm text-gray-400 text-center py-3">{L('No students found', 'مفيش طلاب')}</p>
                   )}
                 </>
               ) : (
@@ -207,12 +209,12 @@ export default function GenerateChallanPage() {
                       <p className="font-medium text-sm text-blue-900">{selectedStudent.firstName} {selectedStudent.lastName}</p>
                       <p className="text-xs text-blue-600">{selectedStudent.registrationNumber} · {selectedStudent.campus.name}</p>
                       {selectedStudent.dueAmount > 0 && (
-                        <p className="text-xs text-red-600 mt-0.5">Previous due: EGP {Number(selectedStudent.dueAmount).toLocaleString()}</p>
+                        <p className="text-xs text-red-600 mt-0.5">{L('Previous due: EGP', 'متأخر قديم: ج.م')} {Number(selectedStudent.dueAmount).toLocaleString()}</p>
                       )}
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => setSelectedStudent(null)} className="text-xs text-gray-500">
-                    Change
+                    {L('Change', 'تغيير')}
                   </Button>
                 </div>
               )}
@@ -221,10 +223,10 @@ export default function GenerateChallanPage() {
 
           {/* Challan period */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Challan Period</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{L('Challan Period', 'فترة الفاتورة')}</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label>Month</Label>
+                <Label>{L('Month', 'الشهر')}</Label>
                 <Select value={month} onValueChange={setMonth}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -234,15 +236,15 @@ export default function GenerateChallanPage() {
               </div>
               {/* Academic year: hidden (owner, 2026-09-29) */}
               <div className="hidden">
-                <Label>Academic Year</Label>
+                <Label>{L('Academic Year', 'السنة الدراسية')}</Label>
                 <Input value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} placeholder="2025-2026" />
               </div>
               <div className="space-y-1.5">
-                <Label>Due Date</Label>
+                <Label>{L('Due Date', 'آخر ميعاد للدفع')}</Label>
                 <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
               </div>
               <div className="col-span-1 sm:col-span-3 space-y-1.5">
-                <Label>Official Deposit Instructions</Label>
+                <Label>{L('Official Deposit Instructions', 'تعليمات الدفع')}</Label>
                 <div className="rounded-md border bg-slate-50 p-3">{renderBankAccountsTable(bankAccounts)}</div>
               </div>
             </CardContent>
@@ -251,15 +253,15 @@ export default function GenerateChallanPage() {
           {/* Fee items */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Fee Items</CardTitle>
+              <CardTitle className="text-base">{L('Fee Items', 'بنود الفاتورة')}</CardTitle>
               <Button variant="outline" size="sm" onClick={addItem} className="gap-1.5 text-xs">
-                <Plus className="w-3.5 h-3.5" /> Add Item
+                <Plus className="w-3.5 h-3.5" /> {L('Add Item', 'ضيف بند')}
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
               {/* Preset quick-add */}
               <div className="flex flex-wrap gap-1.5">
-                <span className="text-xs text-gray-400 self-center mr-1">Quick add:</span>
+                <span className="text-xs text-gray-400 self-center mr-1">{L('Quick add:', 'إضافة سريعة:')}</span>
                 {PRESET_FEE_ITEMS.map((p) => (
                   <button
                     key={p.label}
@@ -276,7 +278,7 @@ export default function GenerateChallanPage() {
                   <div key={idx} className="flex gap-2 items-start">
                     <div className="flex-1">
                       <Input
-                        placeholder="Description"
+                        placeholder={L('Description', 'البيان')}
                         value={item.description}
                         onChange={(e) => updateItem(idx, 'description', e.target.value)}
                         className="h-9 text-sm"
@@ -285,7 +287,7 @@ export default function GenerateChallanPage() {
                     <div className="w-28">
                       <Input
                         type="number"
-                        placeholder="Amount"
+                        placeholder={L('Amount', 'المبلغ')}
                         value={item.amount || ''}
                         onChange={(e) => updateItem(idx, 'amount', parseFloat(e.target.value) || 0)}
                         className="h-9 text-sm"
@@ -307,18 +309,18 @@ export default function GenerateChallanPage() {
 
               <div className="grid grid-cols-2 gap-3 pt-2 border-t">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Discount (EGP)</Label>
+                  <Label className="text-xs">{L('Discount (EGP)', 'الخصم (ج.م)')}</Label>
                   <Input type="number" min={0} value={discount || ''} onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Late Fee (EGP)</Label>
+                  <Label className="text-xs">{L('Late Fee (EGP)', 'غرامة التأخير (ج.م)')}</Label>
                   <Input type="number" min={0} value={lateFee || ''} onChange={(e) => setLateFee(parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Notes (optional)</Label>
-                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any additional notes..." className="h-8 text-sm" />
+                <Label className="text-xs">{L('Notes (optional)', 'ملاحظات (اختياري)')}</Label>
+                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={L('Any additional notes...', 'أي ملاحظات...')} className="h-8 text-sm" />
               </div>
             </CardContent>
           </Card>
@@ -328,7 +330,7 @@ export default function GenerateChallanPage() {
         <div className="space-y-4">
           <Card className="sticky top-4">
             <CardHeader className="bg-blue-800 text-white rounded-t-xl">
-              <CardTitle className="text-sm text-center uppercase tracking-widest text-blue-100">Challan Preview</CardTitle>
+              <CardTitle className="text-sm text-center uppercase tracking-widest text-blue-100">{L('Challan Preview', 'معاينة الفاتورة')}</CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-3">
               {selectedStudent ? (
@@ -338,16 +340,16 @@ export default function GenerateChallanPage() {
                   <p className="text-xs text-gray-500">{selectedStudent.campus.name} · {selectedStudent.class?.name ?? '—'}</p>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 text-center">Select a student</p>
+                <p className="text-xs text-gray-400 text-center">{L('Select a student', 'اختار طالب')}</p>
               )}
 
               <div className="border-t pt-3 text-xs">
                 <div className="flex justify-between text-gray-500 mb-1">
-                  <span>Period:</span>
+                  <span>{L('Period:', 'الفترة:')}</span>
                   <span className="font-medium text-gray-900">{month} {academicYear.split('-')[0]}</span>
                 </div>
                 <div className="flex justify-between text-gray-500 mb-1">
-                  <span>Due:</span>
+                  <span>{L('Due:', 'آخر ميعاد:')}</span>
                   <span className="font-medium text-gray-900">
                     {new Date(dueDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
@@ -358,50 +360,50 @@ export default function GenerateChallanPage() {
                 {items.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-gray-700">
                     <span className="truncate pr-2">{item.description || '—'}</span>
-                    <span className="font-medium flex-shrink-0">EGP {Number(item.amount).toLocaleString()}</span>
+                    <span className="font-medium flex-shrink-0">{L('EGP', 'ج.م')} {Number(item.amount).toLocaleString()}</span>
                   </div>
                 ))}
                 {(admissionFee > 0 || courseFee > 0) && (
                   <div className="bg-slate-50 border border-slate-200 rounded-md p-3 text-[10px] text-slate-700">
-                    <div className="font-semibold uppercase tracking-[0.08em] text-slate-800 mb-2">Academic Fee Breakdown</div>
+                    <div className="font-semibold uppercase tracking-[0.08em] text-slate-800 mb-2">{L('Academic Fee Breakdown', 'تفاصيل المصاريف')}</div>
                     {admissionFee > 0 && (
                       <div className="flex justify-between">
-                        <span>Admission Fee</span>
-                        <span className="font-mono">EGP {admissionFee.toLocaleString()}</span>
+                        <span>{L('Admission Fee', 'مصاريف التسجيل')}</span>
+                        <span className="font-mono">{L('EGP', 'ج.م')} {admissionFee.toLocaleString()}</span>
                       </div>
                     )}
                     {courseFee > 0 && (
                       <div className="flex justify-between">
-                        <span>Course Fee</span>
-                        <span className="font-mono">EGP {courseFee.toLocaleString()}</span>
+                        <span>{L('Course Fee', 'مصاريف الكورس')}</span>
+                        <span className="font-mono">{L('EGP', 'ج.م')} {courseFee.toLocaleString()}</span>
                       </div>
                     )}
                     <div className="flex justify-between border-t border-slate-200 pt-2 mt-2 font-semibold text-slate-900">
-                      <span>Total Academic Fee</span>
-                      <span className="font-mono">EGP {totalAcademicFee.toLocaleString()}</span>
+                      <span>{L('Total Academic Fee', 'إجمالي المصاريف')}</span>
+                      <span className="font-mono">{L('EGP', 'ج.م')} {totalAcademicFee.toLocaleString()}</span>
                     </div>
                   </div>
                 )}
                 {discount > 0 && (
                   <div className="flex justify-between text-green-700">
-                    <span>Discount</span>
-                    <span>— EGP {discount.toLocaleString()}</span>
+                    <span>{L('Discount', 'الخصم')}</span>
+                    <span>{L('— EGP', '— ج.م')} {discount.toLocaleString()}</span>
                   </div>
                 )}
                 {lateFee > 0 && (
                   <div className="flex justify-between text-red-700">
-                    <span>Late Fee</span>
-                    <span>+ EGP {lateFee.toLocaleString()}</span>
+                    <span>{L('Late Fee', 'غرامة التأخير')}</span>
+                    <span>{L('+ EGP', '+ ج.م')} {lateFee.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-sm text-gray-900 border-t pt-2 mt-1">
-                  <span>Total</span>
-                  <span>EGP {total.toLocaleString()}</span>
+                  <span>{L('Total', 'الإجمالي')}</span>
+                  <span>{L('EGP', 'ج.م')} {total.toLocaleString()}</span>
                 </div>
               </div>
 
               <div className="border-t pt-3 space-y-1.5">
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Deposit Details Preview:</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{L('Deposit Details Preview:', 'بيانات الدفع:')}</p>
                 {renderBankAccountsTable(bankAccounts)}
               </div>
 

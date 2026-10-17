@@ -27,6 +27,7 @@ import {
   Lock
 } from 'lucide-react'
 import { AccessDenied } from '@/components/AccessDenied'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface SalarySlip {
   id: string
@@ -54,6 +55,7 @@ interface StaffMember {
 }
 
 export default function SalariesPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const queryClient = useQueryClient()
   const userRole = session?.user?.role ?? ''
@@ -113,7 +115,7 @@ export default function SalariesPage() {
     mutationFn: (data: any) => fetchApi('/api/salaries', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['salaries'] })
-      notify.success('Salary Slip Generated', {
+      notify.success(L('Salary Slip Generated', 'القسيمة اتعملت'), {
         description: 'Slip has been compiled and saved into the payroll registries.',
       })
       setEmployeeId('')
@@ -123,7 +125,7 @@ export default function SalariesPage() {
       setNotes('')
     },
     onError: (err: any) => {
-      notify.error('Failed to generate payroll', { description: err.message })
+      notify.error(L('Failed to generate payroll', 'عمل القسيمة فشل'), { description: err.message })
     }
   })
 
@@ -150,7 +152,7 @@ export default function SalariesPage() {
       }>(`/api/teachers/${employeeId}/group-pay-summary?month=${encodeURIComponent(month)}`)
 
       if (summary.groups.length === 0 && summary.substituteAdjustments.length === 0) {
-        notify.error('No group teaching pay or substitute adjustments found for this teacher')
+        notify.error(L('No group teaching pay or substitute adjustments found for this teacher', 'مفيش أجر جروبات أو تسويات بديل للمدرب ده'))
         return
       }
 
@@ -176,7 +178,7 @@ export default function SalariesPage() {
         `Added earnings ${summary.totals.earnings}, bonuses ${summary.totals.bonuses}, deductions ${summary.totals.deductions} - review before saving`
       )
     } catch (err: any) {
-      notify.error('Failed to fetch group pay', { description: err?.message })
+      notify.error(L('Failed to fetch group pay', 'تحميل أجر الجروبات فشل'), { description: err?.message })
     } finally {
       setIsPullingGroupPay(false)
     }
@@ -185,7 +187,7 @@ export default function SalariesPage() {
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!employeeId || !month || !basicSalary) {
-      notify.error('Incomplete Fields', { description: 'Select an employee, specify payroll month, and provide basic salary.' })
+      notify.error(L('Incomplete Fields', 'في خانات ناقصة'), { description: 'Select an employee, specify payroll month, and provide basic salary.' })
       return
     }
 
@@ -207,7 +209,7 @@ export default function SalariesPage() {
   // Download PDF
   const handleDownloadPdf = async () => {
     if (!printContainerRef.current || !selectedSlip) {
-      notify.error('No slip selected or preview missing.')
+      notify.error(L('No slip selected or preview missing.', 'مفيش قسيمة مختارة.'))
       return
     }
 
@@ -226,12 +228,12 @@ export default function SalariesPage() {
         format: 'a4'
       })
 
-      notify.success('PDF Download Complete', {
+      notify.success(L('PDF Download Complete', 'الـ PDF اتنزّل'), {
         description: 'Official verified salary slip PDF saved to your device.',
       })
     } catch (err) {
       console.error(err)
-      notify.error('PDF Engine failed to save download.')
+      notify.error(L('PDF Engine failed to save download.', 'حفظ الـ PDF فشل'))
     } finally {
       setIsDownloading(false)
     }
@@ -244,7 +246,7 @@ export default function SalariesPage() {
   if (!['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'].includes(userRole)) {
     return (
       <AccessDenied
-        title="Payroll Access Restricted"
+        title={L('Payroll Access Restricted', 'المرتبات مقفولة')}
         message="The payroll ledger is restricted to administrators and accountants. Teachers can view their own salary slips from the HR &amp; Salary section in the Teacher Portal."
       />
     )
@@ -258,13 +260,13 @@ export default function SalariesPage() {
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-semibold mb-4">
             <Banknote className="w-3.5 h-3.5" />
-            Financial Payroll Desk
+            {L('Financial Payroll Desk', 'المرتبات')}
           </div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight sm:text-4xl">
-            Staff Salaries & Slips
+            {L('Staff Salaries & Slips', 'مرتبات الموظفين والقسايم')}
           </h1>
           <p className="mt-2 text-blue-100 max-w-2xl text-sm leading-relaxed">
-            Generate detailed salary certificates, manage monthly disbursements, and print high-fidelity corporate statements for teachers and account managers.
+            {L('Generate detailed salary certificates, manage monthly disbursements, and print high-fidelity corporate statements for teachers and account managers.', 'اعمل قسايم المرتبات، وأدير صرف المرتبات الشهرية، واطبع القسايم للمدربين والموظفين.')}
           </p>
         </div>
       </div>
@@ -278,10 +280,10 @@ export default function SalariesPage() {
               <CardHeader className="bg-slate-50 border-b border-slate-100 flex flex-row items-center justify-between py-4">
                 <div>
                   <CardTitle className="text-base font-bold text-slate-800">
-                    Salary Voucher Preview
+                    {L('Salary Voucher Preview', 'معاينة القسيمة')}
                   </CardTitle>
                   <CardDescription className="text-[11px] text-slate-500">
-                    High contrast official corporate print format.
+                    {L('High contrast official corporate print format.', 'شكل الطباعة الرسمي.')}
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -292,7 +294,7 @@ export default function SalariesPage() {
                     onClick={handleDownloadPdf}
                   >
                     {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                    Download PDF
+                    {L('Download PDF', 'نزّل PDF')}
                   </Button>
                   <Button 
                     size="sm" 
@@ -300,7 +302,7 @@ export default function SalariesPage() {
                     className="border-slate-350 hover:bg-slate-100 text-slate-700 font-bold h-8 text-xs"
                     onClick={() => setSelectedSlip(null)}
                   >
-                    Close Preview
+                    {L('Close Preview', 'اقفل المعاينة')}
                   </Button>
                 </div>
               </CardHeader>
@@ -334,7 +336,7 @@ export default function SalariesPage() {
                       </div>
                       <div className="text-right">
                         <span className="inline-block px-2.5 py-1 rounded bg-slate-900 text-white text-[10px] font-sans font-bold tracking-wider uppercase">
-                          Official Voucher
+                          {L('Official Voucher', 'قسيمة رسمية')}
                         </span>
                         <p className="text-[10px] text-slate-500 font-sans mt-1">
                           Voucher: #SAL-{selectedSlip.id.substring(3, 9).toUpperCase()}
@@ -345,18 +347,18 @@ export default function SalariesPage() {
                     {/* Metadata Subledger */}
                     <div className="grid grid-cols-2 gap-4 text-xs font-sans border-b border-slate-200 pb-4">
                       <div className="space-y-1">
-                        <p className="text-slate-500">Employee Details:</p>
+                        <p className="text-slate-500">{L('Employee Details:', 'بيانات الموظف:')}</p>
                         <p className="font-bold text-slate-900 text-sm">
                           {selectedSlip.employeeName}
                         </p>
                         <p className="text-[11px] text-slate-600">
-                          Role: <span className="font-semibold">{selectedSlip.employeeRole}</span>
+                          {L('Role:', 'الوظيفة:')} <span className="font-semibold">{selectedSlip.employeeRole}</span>
                         </p>
                         <p className="text-[11px] text-slate-600">
-                          Disbursed: <span className="font-semibold">{selectedSlip.month}</span>
+                          {L('Disbursed:', 'اتصرف:')} <span className="font-semibold">{selectedSlip.month}</span>
                         </p>
                         <p className="text-[11px] text-slate-600">
-                          Prepared by: <span className="font-semibold">{preparedBy}</span>
+                          {L('Prepared by:', 'إعداد:')} <span className="font-semibold">{preparedBy}</span>
                         </p>
                       </div>
                       <div className="space-y-1 text-right">
@@ -365,11 +367,11 @@ export default function SalariesPage() {
                           Main Branch Campus
                         </p>
                         <p className="text-[10px] text-slate-500">
-                          Date Issued: {new Date(selectedSlip.createdAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}
+                          {L('Date Issued:', 'تاريخ الإصدار:')} {new Date(selectedSlip.createdAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                         <p className="text-[10px] text-emerald-700 font-bold uppercase flex items-center justify-end gap-1 mt-1">
                           <CheckCircle className="w-3.5 h-3.5" />
-                          Disbursement {selectedSlip.status}
+                          {L('Disbursement', 'الصرف')} {selectedSlip.status}
                         </p>
                       </div>
                     </div>
@@ -378,35 +380,35 @@ export default function SalariesPage() {
                     <table className="w-full text-xs font-sans text-left border-collapse border border-slate-300">
                       <thead>
                         <tr className="bg-slate-900 text-white uppercase text-[9px] tracking-wider font-bold">
-                          <th className="p-2 border border-slate-700">Account Head Description</th>
-                          <th className="p-2 border border-slate-700 text-right">Amount (EGP)</th>
+                          <th className="p-2 border border-slate-700">{L('Account Head Description', 'البند')}</th>
+                          <th className="p-2 border border-slate-700 text-right">{L('Amount (EGP)', 'المبلغ (ج.م)')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
                         <tr>
-                          <td className="p-2 border border-slate-300 font-medium">Basic Monthly Salary</td>
+                          <td className="p-2 border border-slate-300 font-medium">{L('Basic Monthly Salary', 'المرتب الأساسي')}</td>
                           <td className="p-2 border border-slate-300 text-right font-bold">
                             {Number(selectedSlip.basicSalary).toLocaleString()} /-
                           </td>
                         </tr>
                         <tr>
-                          <td className="p-2 border border-slate-300 font-medium text-emerald-700">Allowances (Bonuses, Medical, Conveyance)</td>
+                          <td className="p-2 border border-slate-300 font-medium text-emerald-700">{L('Allowances (Bonuses, Medical, Conveyance)', 'البدلات (مكافآت، علاج، مواصلات)')}</td>
                           <td className="p-2 border border-slate-300 text-right font-bold text-emerald-700">
                             + {getAllowanceAmount(selectedSlip).toLocaleString()} /-
                           </td>
                         </tr>
                         <tr>
-                          <td className="p-2 border border-slate-300 font-medium text-rose-700">Deductions (Tax, Unexcused Leaves, Fund)</td>
+                          <td className="p-2 border border-slate-300 font-medium text-rose-700">{L('Deductions (Tax, Unexcused Leaves, Fund)', 'الخصومات (ضرايب، غياب، صندوق)')}</td>
                           <td className="p-2 border border-slate-300 text-right font-bold text-rose-700">
                             - {getDeductionAmount(selectedSlip).toLocaleString()} /-
                           </td>
                         </tr>
                         <tr className="bg-slate-100 font-bold border-t-[2px] border-slate-800 text-[13px]">
                           <td className="p-2 border border-slate-300 uppercase tracking-tight text-slate-900 font-extrabold">
-                            Net Disbursed Take-home Salary
+                            {L('Net Disbursed Take-home Salary', 'صافي المرتب')}
                           </td>
                           <td className="p-2 border border-slate-300 text-right text-slate-950 font-extrabold underline decoration-double">
-                            EGP {Number(selectedSlip.netSalary).toLocaleString()} /-
+                            {L('EGP', 'ج.م')} {Number(selectedSlip.netSalary).toLocaleString()} /-
                           </td>
                         </tr>
                       </tbody>
@@ -415,7 +417,7 @@ export default function SalariesPage() {
                     {/* Notes Section */}
                     {selectedSlip.notes && (
                       <div className="font-sans text-[11px] bg-slate-50 p-3 rounded border border-slate-200 leading-relaxed">
-                        <strong className="text-slate-700">Audit Ledger Note:</strong> "{selectedSlip.notes}"
+                        <strong className="text-slate-700">{L('Audit Ledger Note:', 'ملاحظة:')}</strong> "{selectedSlip.notes}"
                       </div>
                     )}
 
@@ -423,7 +425,7 @@ export default function SalariesPage() {
                     <div className="grid grid-cols-2 gap-8 pt-8 font-sans text-xs">
                       <div>
                         <div className="border-t border-slate-400 pt-1 text-slate-500 mt-6 text-center">
-                          Employee Acknowledgment Signature
+                          {L('Employee Acknowledgment Signature', 'توقيع الموظف بالاستلام')}
                         </div>
                       </div>
                       <div className="text-right">
@@ -431,7 +433,7 @@ export default function SalariesPage() {
                           TechNova Payroll
                         </p>
                         <div className="border-t border-slate-400 pt-1 text-slate-500 text-center">
-                          Authorized Officer Stamp & Signature
+                          {L('Authorized Officer Stamp & Signature', 'ختم وتوقيع المسؤول')}
                         </div>
                       </div>
                     </div>
@@ -451,24 +453,24 @@ export default function SalariesPage() {
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-slate-850 flex items-center gap-2">
                   <Plus className="w-5 h-5 text-indigo-600" />
-                  Generate Salary Slip
+                  {L('Generate Salary Slip', 'اعمل قسيمة مرتب')}
                 </CardTitle>
                 <CardDescription className="text-slate-500">
-                  Select a registered staff member, customize allowances or deductions, and issue a secured salary voucher record.
+                  {L('Select a registered staff member, customize allowances or deductions, and issue a secured salary voucher record.', 'اختار الموظف، وحدد البدلات والخصومات، واطلع القسيمة.')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleGenerate} className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Select Staff Employee
+                      {L('Select Staff Employee', 'اختار الموظف')}
                     </label>
                     <Select 
                       value={employeeId} 
                       onValueChange={handleEmployeeChange}
                     >
                       <SelectTrigger className="border-slate-300/80 bg-white">
-                        <SelectValue placeholder="Select teacher or accountant..." />
+                        <SelectValue placeholder={L('Select teacher or accountant...', 'اختار مدرب أو محاسب...')} />
                       </SelectTrigger>
                       <SelectContent>
                         {staff.map((s) => (
@@ -483,10 +485,10 @@ export default function SalariesPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                        Billing Month / Year
+                        {L('Billing Month / Year', 'الشهر / السنة')}
                       </label>
                       <Input
-                        placeholder="e.g. June 2026"
+                        placeholder={L('e.g. June 2026', 'مثلاً يونيو 2026')}
                         value={month}
                         onChange={(e) => setMonth(e.target.value)}
                         className="border-slate-300/80 bg-white"
@@ -495,11 +497,11 @@ export default function SalariesPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                        Basic Salary (EGP)
+                        {L('Basic Salary (EGP)', 'المرتب الأساسي (ج.م)')}
                       </label>
                       <Input
                         type="number"
-                        placeholder="Autofilled"
+                        placeholder={L('Autofilled', 'اتملى لوحده')}
                         value={basicSalary}
                         onChange={(e) => setBasicSalary(e.target.value)}
                         className="border-slate-300/80 bg-white"
@@ -512,7 +514,7 @@ export default function SalariesPage() {
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="block text-xs font-semibold text-slate-700">
-                          Allowances (EGP)
+                          {L('Allowances (EGP)', 'البدلات (ج.م)')}
                         </label>
                         {employeeId && (
                           <button
@@ -536,7 +538,7 @@ export default function SalariesPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                        Deductions (EGP)
+                        {L('Deductions (EGP)', 'الخصومات (ج.م)')}
                       </label>
                       <Input
                         type="number"
@@ -551,13 +553,13 @@ export default function SalariesPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Audit Remarks / Notes (Internal)
+                      {L('Audit Remarks / Notes (Internal)', 'ملاحظات داخلية')}
                     </label>
                     <textarea
                       rows={3}
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Specify optional bonuses or deductions reason..."
+                      placeholder={L('Specify optional bonuses or deductions reason...', 'سبب المكافأة أو الخصم (اختياري)...')}
                       className="w-full text-sm rounded-lg border border-slate-300/80 p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     />
                   </div>
@@ -571,7 +573,7 @@ export default function SalariesPage() {
                       <Loader2 className="w-4.5 h-4.5 animate-spin" />
                     ) : (
                       <>
-                        Compile & Generate Slip
+                        {L('Compile & Generate Slip', 'اعمل القسيمة')}
                         <Plus className="w-4.5 h-4.5" />
                       </>
                     )}
@@ -583,9 +585,9 @@ export default function SalariesPage() {
             <Card className="border border-slate-200 bg-slate-50/50 p-6 shadow-sm">
               <div className="flex flex-col items-center text-center space-y-2 py-10">
                 <FileText className="w-12 h-12 text-slate-400" />
-                <h3 className="font-bold text-slate-800 text-base">Select a Salary Slip</h3>
+                <h3 className="font-bold text-slate-800 text-base">{L('Select a Salary Slip', 'اختار قسيمة')}</h3>
                 <p className="text-xs text-slate-500">
-                  Select a processed billing month slip from your history ledger on the right to view, verify, and download your high-fidelity official printable PDF salary slip.
+                  {L('Select a processed billing month slip from your history ledger on the right to view, verify, and download your high-fidelity official printable PDF salary slip.', 'اختار قسيمة من السجل علشان تشوفها وتنزّلها PDF.')}
                 </p>
               </div>
             </Card>
@@ -598,23 +600,23 @@ export default function SalariesPage() {
             <CardHeader className="border-b border-slate-100 pb-4">
               <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <Banknote className="w-5 h-5 text-indigo-600" />
-                Disbursement Logs
+                {L('Disbursement Logs', 'سجل الصرف')}
               </CardTitle>
               <CardDescription className="text-slate-500 text-xs">
-                History of generated salary credits and payments.
+                {L('History of generated salary credits and payments.', 'سجل القسايم والمدفوعات.')}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
                 <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
                   <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-                  <p className="text-sm">Loading logs...</p>
+                  <p className="text-sm">{L('Loading logs...', 'بيحمّل السجل...')}</p>
                 </div>
               ) : slips.length === 0 ? (
                 <div className="py-16 text-center text-slate-400">
                   <Inbox className="w-12 h-12 mx-auto mb-2 text-slate-300" />
-                  <p className="text-sm font-semibold">No salary records found</p>
-                  <p className="text-xs">There are no monthly salary disburals posted in this record.</p>
+                  <p className="text-sm font-semibold">{L('No salary records found', 'مفيش مرتبات متسجلة')}</p>
+                  <p className="text-xs">{L('There are no monthly salary disburals posted in this record.', 'مفيش مرتبات اتصرفت في السجل ده.')}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
@@ -639,14 +641,14 @@ export default function SalariesPage() {
                             </span>
                           </div>
                           <p className="text-[10px] text-slate-400">
-                            Disbursed: {new Date(s.createdAt).toLocaleDateString()}
+                            {L('Disbursed:', 'اتصرف:')} {new Date(s.createdAt).toLocaleDateString()}
                           </p>
                         </div>
 
                         <div className="flex items-center gap-3 shrink-0">
                           <div className="text-right">
                             <p className="text-xs font-bold text-slate-900">
-                              EGP {Number(s.netSalary).toLocaleString()}
+                              {L('EGP', 'ج.م')} {Number(s.netSalary).toLocaleString()}
                             </p>
                             <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full uppercase">
                               {s.status}

@@ -18,6 +18,7 @@ import {
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
 import { notify } from '@/lib/notify'
 import { Loader2, Plus, Layers, GraduationCap, Pencil, Trash2, ChevronLeft } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Track {
   id: string
@@ -67,6 +68,7 @@ function apiErrorMessage(err: unknown, fallback: string): string {
 }
 
 export default function CourseConfigPage() {
+  useI18n() // re-render on a language switch
   // buttons follow the same permissions as the APIs (tracks / levels = class_sections, courses = subject_offerings)
   const { can } = useMyPermissions()
   const queryClient = useQueryClient()
@@ -93,7 +95,7 @@ export default function CourseConfigPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tracks'] })
-      notify.success('Track created')
+      notify.success(L('Track created', 'التراك اتعمل'))
       setTrackDialogOpen(false)
       setTrackForm({ name: '', minAge: '', maxAge: '', description: '' })
     },
@@ -150,7 +152,7 @@ export default function CourseConfigPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['academic-subjects-for-config'] })
       queryClient.invalidateQueries({ queryKey: ['tracks'] })
-      notify.success('Course created')
+      notify.success(L('Course created', 'الكورس اتعمل'))
       setCourseDialogOpen(false)
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to create course')),
@@ -167,7 +169,7 @@ export default function CourseConfigPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['academic-subjects-for-config'] })
-      notify.success('Course updated')
+      notify.success(L('Course updated', 'الكورس اتحدّث'))
       setCourseDialogOpen(false)
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to update course')),
@@ -178,7 +180,7 @@ export default function CourseConfigPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['academic-subjects-for-config'] })
       queryClient.invalidateQueries({ queryKey: ['tracks'] })
-      notify.success('Course deleted')
+      notify.success(L('Course deleted', 'الكورس اتمسح'))
       setDeleteCourseTarget(null)
       if (selectedCourseId === deleteCourseTarget?.id) setSelectedCourseId('')
     },
@@ -224,7 +226,7 @@ export default function CourseConfigPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['levels', selectedCourseId] })
       queryClient.invalidateQueries({ queryKey: ['academic-subjects-for-config'] })
-      notify.success('Level created')
+      notify.success(L('Level created', 'المستوى اتعمل'))
       setLevelDialogOpen(false)
       setLevelForm({ name: '', order: '', numberOfMonths: '', numberOfSessions: '', pricingType: 'MONTHLY', monthlyPrice: '', fullLevelPrice: '' })
     },
@@ -234,9 +236,9 @@ export default function CourseConfigPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Course Structure</h1>
+        <h1 className="text-xl font-bold text-slate-900">{L('Course Structure', 'هيكل الكورسات')}</h1>
         <div className="mt-2 print:hidden"><DataExchangeButtons dataset="courseStructure" /></div>
-        <CardDescription>Tracks → courses → levels, all in one place.</CardDescription>
+        <CardDescription>{L('Tracks → courses → levels, all in one place.', 'التراكات ← الكورسات ← المستويات، كلها في مكان واحد.')}</CardDescription>
       </div>
 
       {/* Tracks */}
@@ -244,12 +246,12 @@ export default function CourseConfigPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-600" /> Tracks
+              <Layers className="w-4 h-4 text-indigo-600" /> {L('Tracks', 'التراكات')}
             </CardTitle>
-            <CardDescription>Tap a track to manage its courses.</CardDescription>
+            <CardDescription>{L('Tap a track to manage its courses.', 'دوس على تراك علشان تدير كورساته.')}</CardDescription>
           </div>
           {can('class_sections', 'create') && <Button size="sm" className="gap-1.5" onClick={() => setTrackDialogOpen(true)}>
-            <Plus className="w-3.5 h-3.5" /> Add track
+            <Plus className="w-3.5 h-3.5" /> {L('Add track', 'ضيف تراك')}
           </Button>}
         </CardHeader>
         <CardContent>
@@ -284,7 +286,7 @@ export default function CourseConfigPage() {
                   selectedTrackId === 'unassigned' ? 'bg-slate-700 text-white border-slate-700' : 'border-dashed border-slate-300 text-slate-500 hover:bg-slate-50'
                 }`}
               >
-                Unassigned courses
+                {L('Unassigned courses', 'كورسات من غير تراك')}
               </button>
             </div>
           )}
@@ -298,16 +300,16 @@ export default function CourseConfigPage() {
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <GraduationCap className="w-4 h-4 text-indigo-600" />
-                Courses {selectedTrack ? `in ${selectedTrack.name}` : '(unassigned)'}
+                {L('Courses', 'الكورسات')} {selectedTrack ? `in ${selectedTrack.name}` : '(unassigned)'}
               </CardTitle>
             </div>
             {can('subject_offerings', 'create') && <Button size="sm" variant="outline" className="gap-1.5" onClick={openCreateCourse}>
-              <Plus className="w-3.5 h-3.5" /> Add course
+              <Plus className="w-3.5 h-3.5" /> {L('Add course', 'ضيف كورس')}
             </Button>}
           </CardHeader>
           <CardContent>
             {coursesInTrack.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">No courses here yet.</p>
+              <p className="text-sm text-slate-400 text-center py-6">{L('No courses here yet.', 'لسه مفيش كورسات هنا.')}</p>
             ) : (
               <div className="divide-y divide-slate-100">
                 {coursesInTrack.map((c) => (
@@ -319,7 +321,7 @@ export default function CourseConfigPage() {
                   >
                     <button type="button" className="text-left flex-1" onClick={() => setSelectedCourseId(c.id)}>
                       <p className="font-medium text-slate-800 text-sm">{c.name}</p>
-                      <p className="text-xs text-slate-400">{c.code} · {c._count?.levels ?? 0} levels</p>
+                      <p className="text-xs text-slate-400">{c.code} · {c._count?.levels ?? 0} {L('levels', 'مستوى')}</p>
                     </button>
                     <div className="flex items-center gap-1">
                       {can('subject_offerings', 'update') && <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditCourse(c)}>
@@ -343,29 +345,29 @@ export default function CourseConfigPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <Button variant="ghost" size="sm" className="text-xs -ml-2 mb-1 gap-1 text-slate-500" onClick={() => setSelectedCourseId('')}>
-                <ChevronLeft className="w-3.5 h-3.5" /> Back to courses
+                <ChevronLeft className="w-3.5 h-3.5" /> {L('Back to courses', 'رجوع للكورسات')}
               </Button>
-              <CardTitle className="text-base">Levels for {selectedCourse.name}</CardTitle>
+              <CardTitle className="text-base">{L('Levels for', 'مستويات')} {selectedCourse.name}</CardTitle>
             </div>
             {can('class_sections', 'create') && <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setLevelDialogOpen(true)}>
-              <Plus className="w-3.5 h-3.5" /> Add level
+              <Plus className="w-3.5 h-3.5" /> {L('Add level', 'ضيف مستوى')}
             </Button>}
           </CardHeader>
           <CardContent>
             {isLevelsLoading ? (
               <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
             ) : levels.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">No levels yet for this course.</p>
+              <p className="text-sm text-slate-400 text-center py-6">{L('No levels yet for this course.', 'لسه مفيش مستويات للكورس ده.')}</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Level</TableHead>
-                    <TableHead className="text-center">Duration</TableHead>
-                    <TableHead className="text-center">Sessions</TableHead>
-                    <TableHead className="text-center">Frequency</TableHead>
-                    <TableHead className="text-center">Pricing</TableHead>
-                    <TableHead className="text-center">Groups</TableHead>
+                    <TableHead>{L('Level', 'المستوى')}</TableHead>
+                    <TableHead className="text-center">{L('Duration', 'المدة')}</TableHead>
+                    <TableHead className="text-center">{L('Sessions', 'الحصص')}</TableHead>
+                    <TableHead className="text-center">{L('Frequency', 'التكرار')}</TableHead>
+                    <TableHead className="text-center">{L('Pricing', 'السعر')}</TableHead>
+                    <TableHead className="text-center">{L('Groups', 'الجروبات')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -375,7 +377,7 @@ export default function CourseConfigPage() {
                         <p className="font-medium text-slate-800">{l.name}</p>
                         <p className="text-xs text-slate-400">#{l.order}</p>
                       </TableCell>
-                      <TableCell className="text-center">{l.numberOfMonths} mo</TableCell>
+                      <TableCell className="text-center">{l.numberOfMonths} {L('mo', 'شهر')}</TableCell>
                       <TableCell className="text-center">{l.numberOfSessions}</TableCell>
                       <TableCell className="text-center text-xs text-slate-500">
                         {sessionsPerWeekLabel(l.numberOfMonths, l.numberOfSessions)}
@@ -399,16 +401,16 @@ export default function CourseConfigPage() {
       <Dialog open={trackDialogOpen} onOpenChange={setTrackDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New track</DialogTitle>
+            <DialogTitle>{L('New track', 'تراك جديد')}</DialogTitle>
             <DialogDescription>An age-based grouping above courses (e.g. &quot;Kids 4–7&quot;).</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input placeholder="Name" value={trackForm.name} onChange={(e) => setTrackForm({ ...trackForm, name: e.target.value })} />
+            <Input placeholder={L('Name', 'الاسم')} value={trackForm.name} onChange={(e) => setTrackForm({ ...trackForm, name: e.target.value })} />
             <div className="flex gap-3">
-              <Input placeholder="Min age" type="number" value={trackForm.minAge} onChange={(e) => setTrackForm({ ...trackForm, minAge: e.target.value })} />
-              <Input placeholder="Max age" type="number" value={trackForm.maxAge} onChange={(e) => setTrackForm({ ...trackForm, maxAge: e.target.value })} />
+              <Input placeholder={L('Min age', 'أقل سن')} type="number" value={trackForm.minAge} onChange={(e) => setTrackForm({ ...trackForm, minAge: e.target.value })} />
+              <Input placeholder={L('Max age', 'أكبر سن')} type="number" value={trackForm.maxAge} onChange={(e) => setTrackForm({ ...trackForm, maxAge: e.target.value })} />
             </div>
-            <Textarea placeholder="Description (optional)" value={trackForm.description} onChange={(e) => setTrackForm({ ...trackForm, description: e.target.value })} />
+            <Textarea placeholder={L('Description (optional)', 'الوصف (اختياري)')} value={trackForm.description} onChange={(e) => setTrackForm({ ...trackForm, description: e.target.value })} />
           </div>
           <DialogFooter>
             <Button
@@ -431,14 +433,14 @@ export default function CourseConfigPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input placeholder="Course name" value={courseForm.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })} />
+            <Input placeholder={L('Course name', 'اسم الكورس')} value={courseForm.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })} />
             <Input
-              placeholder="Code (e.g. ROBO)"
+              placeholder={L('Code (e.g. ROBO)', 'الكود (مثلاً ROBO)')}
               value={courseForm.code}
               disabled={!!editingCourse}
               onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value.toUpperCase() })}
             />
-            <Textarea placeholder="Description (optional)" value={courseForm.description} onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })} />
+            <Textarea placeholder={L('Description (optional)', 'الوصف (اختياري)')} value={courseForm.description} onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })} />
           </div>
           <DialogFooter>
             <Button
@@ -457,13 +459,13 @@ export default function CourseConfigPage() {
       <AlertDialog open={!!deleteCourseTarget} onOpenChange={(o) => { if (!o) setDeleteCourseTarget(null) }}>
         <AlertDialogContent className="rounded-2xl max-w-md p-6">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg font-bold text-slate-900">Delete {deleteCourseTarget?.name}?</AlertDialogTitle>
+            <AlertDialogTitle className="text-lg font-bold text-slate-900">{L('Delete', 'امسح')} {deleteCourseTarget?.name}?</AlertDialogTitle>
             <AlertDialogDescription className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed">
-              This is blocked if the course still has levels or is offered to any group — remove those first.
+              {L('This is blocked if the course still has levels or is offered to any group — remove those first.', 'مش هينفع لو الكورس لسه ليه مستويات أو جروبات — شيلهم الأول.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 gap-2 flex-col-reverse sm:flex-row">
-            <AlertDialogCancel className="h-10 text-xs sm:text-sm rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-10 text-xs sm:text-sm rounded-xl">{L('Cancel', 'إلغاء')}</AlertDialogCancel>
             <AlertDialogAction asChild>
               <Button variant="destructive" disabled={deleteCourseMutation.isPending} onClick={() => deleteCourseMutation.mutate()}>
                 {deleteCourseMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete'}
@@ -477,27 +479,27 @@ export default function CourseConfigPage() {
       <Dialog open={levelDialogOpen} onOpenChange={setLevelDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New level</DialogTitle>
-            <DialogDescription>For {selectedCourse?.name}.</DialogDescription>
+            <DialogTitle>{L('New level', 'مستوى جديد')}</DialogTitle>
+            <DialogDescription>{L('For', 'لـ')} {selectedCourse?.name}.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input placeholder="Level name (e.g. Level 1)" value={levelForm.name} onChange={(e) => setLevelForm({ ...levelForm, name: e.target.value })} />
-            <Input placeholder="Order (1, 2, 3...)" type="number" value={levelForm.order} onChange={(e) => setLevelForm({ ...levelForm, order: e.target.value })} />
+            <Input placeholder={L('Level name (e.g. Level 1)', 'اسم المستوى (مثلاً Level 1)')} value={levelForm.name} onChange={(e) => setLevelForm({ ...levelForm, name: e.target.value })} />
+            <Input placeholder={L('Order (1, 2, 3...)', 'الترتيب (1، 2، 3...)')} type="number" value={levelForm.order} onChange={(e) => setLevelForm({ ...levelForm, order: e.target.value })} />
             <div className="flex gap-3">
-              <Input placeholder="Months" type="number" value={levelForm.numberOfMonths} onChange={(e) => setLevelForm({ ...levelForm, numberOfMonths: e.target.value })} />
-              <Input placeholder="Sessions" type="number" value={levelForm.numberOfSessions} onChange={(e) => setLevelForm({ ...levelForm, numberOfSessions: e.target.value })} />
+              <Input placeholder={L('Months', 'شهور')} type="number" value={levelForm.numberOfMonths} onChange={(e) => setLevelForm({ ...levelForm, numberOfMonths: e.target.value })} />
+              <Input placeholder={L('Sessions', 'الحصص')} type="number" value={levelForm.numberOfSessions} onChange={(e) => setLevelForm({ ...levelForm, numberOfSessions: e.target.value })} />
             </div>
             <Select value={levelForm.pricingType} onValueChange={(v) => setLevelForm({ ...levelForm, pricingType: v as 'MONTHLY' | 'FULL_LEVEL' })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="MONTHLY">Monthly subscription</SelectItem>
-                <SelectItem value="FULL_LEVEL">Full-level price</SelectItem>
+                <SelectItem value="MONTHLY">{L('Monthly subscription', 'اشتراك شهري')}</SelectItem>
+                <SelectItem value="FULL_LEVEL">{L('Full-level price', 'سعر المستوى كامل')}</SelectItem>
               </SelectContent>
             </Select>
             {levelForm.pricingType === 'MONTHLY' ? (
-              <Input placeholder="Monthly price" type="number" value={levelForm.monthlyPrice} onChange={(e) => setLevelForm({ ...levelForm, monthlyPrice: e.target.value })} />
+              <Input placeholder={L('Monthly price', 'السعر الشهري')} type="number" value={levelForm.monthlyPrice} onChange={(e) => setLevelForm({ ...levelForm, monthlyPrice: e.target.value })} />
             ) : (
-              <Input placeholder="Full-level price" type="number" value={levelForm.fullLevelPrice} onChange={(e) => setLevelForm({ ...levelForm, fullLevelPrice: e.target.value })} />
+              <Input placeholder={L('Full-level price', 'سعر المستوى كامل')} type="number" value={levelForm.fullLevelPrice} onChange={(e) => setLevelForm({ ...levelForm, fullLevelPrice: e.target.value })} />
             )}
           </div>
           <DialogFooter>

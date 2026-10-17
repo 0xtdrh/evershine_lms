@@ -16,6 +16,7 @@ import Link from 'next/link'
 import { RoleInsights } from '@/components/dashboard/RoleInsights'
 import { BirthdayBanner } from '@/components/birthdays/BirthdayBanner'
 import { TeacherRatingsCard } from '@/components/dashboard/TeacherRatingsCard'
+import { L, useI18n } from '@/lib/i18n/client'
 
 const TEACHER_QUICK_LINKS = [
   {
@@ -93,6 +94,7 @@ const TEACHER_QUICK_LINKS = [
 ]
 
 export default function TeacherPortalIndexPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const router = useRouter()
 
@@ -123,16 +125,16 @@ export default function TeacherPortalIndexPage() {
         <div className="p-5 sm:p-8 lg:p-10">
           <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-3xl">
-              <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-slate-400">Teacher Portal</p>
+              <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-slate-400">{L('Teacher Portal', 'بوابة المدرب')}</p>
               <h1 className="mt-2 sm:mt-4 text-2xl font-semibold tracking-tight text-white sm:text-4xl">
-                Welcome back, {name}
+                {L('Welcome back,', 'أهلاً بيك تاني،')} {name}
               </h1>
               <p className="mt-2 sm:mt-3 max-w-2xl text-xs sm:text-sm leading-relaxed text-slate-300">
-                Manage your classes, student progress, announcements, and requests from a single professional portal built for classroom workflows.
+                {L('Manage your classes, student progress, announcements, and requests from a single professional portal built for classroom workflows.', 'تابع جروباتك وتقدّم الطلاب والإعلانات والطلبات من مكان واحد.')}
               </p>
             </div>
             <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-5 text-left sm:text-right shrink-0">
-              <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.35em] text-slate-400">Today</p>
+              <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.35em] text-slate-400">{L('Today', 'النهارده')}</p>
               <p className="mt-1 sm:mt-3 text-base sm:text-xl font-semibold text-white">
                 {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
@@ -145,12 +147,12 @@ export default function TeacherPortalIndexPage() {
       <Card className="rounded-2xl sm:rounded-[24px] border border-slate-200 bg-white/90 shadow-sm">
         <div className="p-4 sm:p-6 flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-slate-500 font-semibold">Leave review status</p>
-            <p className="mt-1 text-base sm:text-lg font-semibold text-slate-900">{pendingLeavesCount} pending student leave request{pendingLeavesCount === 1 ? '' : 's'}</p>
-            <p className="mt-1 text-xs sm:text-sm text-slate-600">Stay on top of approved, rejected, and pending leave workflows for your assigned students.</p>
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-slate-500 font-semibold">{L('Leave review status', 'حالة طلبات الإجازة')}</p>
+            <p className="mt-1 text-base sm:text-lg font-semibold text-slate-900">{pendingLeavesCount} {L('pending student leave request', 'طلب إجازة طالب مستني')}{pendingLeavesCount === 1 ? '' : 's'}</p>
+            <p className="mt-1 text-xs sm:text-sm text-slate-600">{L('Stay on top of approved, rejected, and pending leave workflows for your assigned students.', 'تابع طلبات إجازات طلابك.')}</p>
           </div>
           <Link href="/dashboard/teacher/leaves" className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl sm:rounded-2xl bg-slate-900 px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-800 shrink-0">
-            Open Student Leaves
+            {L('Open Student Leaves', 'افتح إجازات الطلاب')}
           </Link>
         </div>
       </Card>
@@ -162,8 +164,8 @@ export default function TeacherPortalIndexPage() {
       <div>
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] sm:tracking-[0.24em] text-slate-500">Quick access</h2>
-            <p className="mt-1 text-xs sm:text-sm text-slate-600">Open the most important teacher workflows with a single tap.</p>
+            <h2 className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] sm:tracking-[0.24em] text-slate-500">{L('Quick access', 'اختصارات')}</h2>
+            <p className="mt-1 text-xs sm:text-sm text-slate-600">{L('Open the most important teacher workflows with a single tap.', 'أهم حاجات المدرب بضغطة واحدة.')}</p>
           </div>
         </div>
 
@@ -191,13 +193,13 @@ export default function TeacherPortalIndexPage() {
       <Card className="rounded-2xl sm:rounded-[24px] border border-amber-100 bg-amber-50 p-4 sm:px-6 sm:py-5 text-amber-900 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <p className="font-semibold text-xs sm:text-sm">Reminder — Read-only student records</p>
+            <p className="font-semibold text-xs sm:text-sm">{L('Reminder — Read-only student records', 'تذكير — بيانات الطلاب للعرض بس')}</p>
             <p className="text-xs sm:text-sm text-amber-800/90 leading-relaxed">
-              You can view student profiles and class details here, but direct record edits are handled by the Admin team. Use <strong>Request Admin Action</strong> on the My Students page when follow-up is needed.
+              {L('You can view student profiles and class details here, but direct record edits are handled by the Admin team. Use', 'تقدر تشوف بيانات الطلاب والجروبات، بس التعديل بتعمله الإدارة. استخدم')} <strong>{L('Request Admin Action', 'اطلب من الإدارة')}</strong> {L('on the My Students page when follow-up is needed.', 'في صفحة طلابي لما تحتاج متابعة.')}
             </p>
           </div>
           <div className="inline-flex self-start sm:self-auto items-center gap-2 rounded-xl bg-amber-100/80 px-3 py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.15em] text-amber-900 shrink-0">
-            <span>Best practice</span>
+            <span>{L('Best practice', 'نصيحة')}</span>
           </div>
         </div>
       </Card>
@@ -291,13 +293,13 @@ function MyShiftsSummary() {
               )}
             </div>
             <div>
-              <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-slate-500 font-semibold">My Teaching Profile</p>
+              <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-slate-500 font-semibold">{L('My Teaching Profile', 'ملفي كمدرب')}</p>
               <p className="mt-1 text-base sm:text-lg font-semibold text-slate-900">
-                {assignments.totalSections} class section{assignments.totalSections !== 1 ? 's' : ''} · {assignments.totalStudents} student{assignments.totalStudents !== 1 ? 's' : ''}
+                {assignments.totalSections} {L('class section', 'جروب')}{assignments.totalSections !== 1 ? 's' : ''} · {assignments.totalStudents} {L('student', 'طالب')}{assignments.totalStudents !== 1 ? 's' : ''}
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                 {assignments.teacher?.name && <span>{assignments.teacher.name}</span>}
-                {assignments.teacher?.employeeId && <span>Employee ID: {assignments.teacher.employeeId}</span>}
+                {assignments.teacher?.employeeId && <span>{L('Employee ID:', 'الرقم الوظيفي:')} {assignments.teacher.employeeId}</span>}
                 {assignments.academicYear && <span>{assignments.academicYear}</span>}
               </div>
             </div>
@@ -334,11 +336,11 @@ function MyShiftsSummary() {
                   </div>
                 ))}
                 {shift.sections.length > 4 && (
-                  <p className="text-[10px] text-slate-400 font-medium">+{shift.sections.length - 4} more sections</p>
+                  <p className="text-[10px] text-slate-400 font-medium">+{shift.sections.length - 4} {L('more sections', 'جروبات تانية')}</p>
                 )}
               </div>
               <p className="mt-2.5 text-[10px] text-slate-500 font-medium border-t pt-1.5 border-slate-100">
-                {shift.sections.reduce((s, sec) => s + sec.studentCount, 0)} enrolled students
+                {shift.sections.reduce((s, sec) => s + sec.studentCount, 0)} {L('enrolled students', 'طالب مسجّل')}
               </p>
             </div>
           ))}

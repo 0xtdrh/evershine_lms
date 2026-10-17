@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { notify } from '@/lib/notify'
 import { Search, ShieldAlert, KeyRound, UserPlus, Loader2, RefreshCw } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ interface SystemUser {
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function CredentialManagementPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const role = (session?.user?.role as string) || ''
   const isSuperAdmin = role === 'SUPER_ADMIN'
@@ -55,7 +57,7 @@ export default function CredentialManagementPage() {
   if (!isSuperAdmin) {
     return (
       <AccessDenied
-        title="Credential Management"
+        title={L('Credential Management', 'إدارة الحسابات')}
         message="Only Super Administrators are authorized to manage system credentials."
       />
     )
@@ -68,19 +70,19 @@ export default function CredentialManagementPage() {
           <ShieldAlert className="h-4 w-4" />
           <p className="text-sm font-semibold uppercase tracking-[0.2em]">Security Ops</p>
         </div>
-        <h1 className="text-2xl font-black text-slate-900">Credential Management</h1>
+        <h1 className="text-2xl font-black text-slate-900">{L('Credential Management', 'إدارة الحسابات')}</h1>
         <p className="text-sm text-slate-500">
-          Provision finance staff and reset credentials for any user in the system.
+          {L('Provision finance staff and reset credentials for any user in the system.', 'اعمل حسابات المحاسبين وغيّر بيانات دخول أي مستخدم.')}
         </p>
       </div>
 
       <Tabs defaultValue="reset" className="space-y-4">
         <TabsList>
           <TabsTrigger value="reset" className="gap-2">
-            <KeyRound className="h-4 w-4" /> Reset Credentials
+            <KeyRound className="h-4 w-4" /> {L('Reset Credentials', 'تغيير بيانات الدخول')}
           </TabsTrigger>
           <TabsTrigger value="provision" className="gap-2">
-            <UserPlus className="h-4 w-4" /> Provision Account Manager
+            <UserPlus className="h-4 w-4" /> {L('Provision Account Manager', 'حساب محاسب جديد')}
           </TabsTrigger>
         </TabsList>
 
@@ -132,7 +134,7 @@ function ResetCredentialsTab() {
       })
     },
     onSuccess: () => {
-      notify.success('Credentials reset successfully', {
+      notify.success(L('Credentials reset successfully', 'بيانات الدخول اتغيّرت'), {
         description: `Updated access for ${selectedUser?.name}`,
       })
       queryClient.invalidateQueries({ queryKey: ['system-users-search'] })
@@ -142,7 +144,7 @@ function ResetCredentialsTab() {
       setQuery('')
     },
     onError: (e: unknown) => {
-      notify.error('Reset failed', { description: e instanceof Error ? e.message : 'Unknown error' })
+      notify.error(L('Reset failed', 'التغيير فشل'), { description: e instanceof Error ? e.message : 'Unknown error' })
     },
   })
 
@@ -151,14 +153,14 @@ function ResetCredentialsTab() {
       {/* Left: Search */}
       <Card className="h-fit">
         <CardHeader>
-          <CardTitle className="text-base">1. Locate User</CardTitle>
-          <CardDescription>Search globally by name or email.</CardDescription>
+          <CardTitle className="text-base">{L('1. Locate User', '1. دوّر على المستخدم')}</CardTitle>
+          <CardDescription>{L('Search globally by name or email.', 'دوّر بالاسم أو الإيميل.')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Search users…"
+              placeholder={L('Search users…', 'دوّر في المستخدمين…')}
               className="pl-9"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -166,7 +168,7 @@ function ResetCredentialsTab() {
           </div>
           {isFetching && (
             <p className="text-xs text-slate-400 flex items-center gap-2">
-              <Loader2 className="h-3 w-3 animate-spin" /> Searching…
+              <Loader2 className="h-3 w-3 animate-spin" /> {L('Searching…', 'بيدوّر…')}
             </p>
           )}
           {users.length > 0 && !selectedUser && (
@@ -196,7 +198,7 @@ function ResetCredentialsTab() {
       {/* Right: Reset Action */}
       <Card className={!selectedUser ? 'opacity-50 pointer-events-none' : ''}>
         <CardHeader>
-          <CardTitle className="text-base">2. Security Override</CardTitle>
+          <CardTitle className="text-base">{L('2. Security Override', '2. التغيير')}</CardTitle>
           <CardDescription>
             {selectedUser 
               ? `Update credentials for ${selectedUser.name} (${selectedUser.role}).`
@@ -206,17 +208,16 @@ function ResetCredentialsTab() {
         <CardContent className="space-y-4">
           {selectedUser && (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 mb-4">
-              <p className="text-sm font-semibold text-red-900 mb-1">Audit Warning</p>
+              <p className="text-sm font-semibold text-red-900 mb-1">{L('Audit Warning', 'تنبيه')}</p>
               <p className="text-xs text-red-800">
-                This action forcefully invalidates current sessions for <strong>{selectedUser.email}</strong>. 
-                A permanent audit record will log this override under your Super Admin credentials.
+                {L('This action forcefully invalidates current sessions for', 'ده هيخرّج من كل الأجهزة المستخدم')} <strong>{selectedUser.email}</strong>{L('. A permanent audit record will log this override under your Super Admin credentials.', '. وهيتسجل باسمك في سجل المراجعة.')}
               </p>
             </div>
           )}
 
           <div className="space-y-4 max-w-md">
             <div className="space-y-1">
-              <Label htmlFor="new-email">New Email Address</Label>
+              <Label htmlFor="new-email">{L('New Email Address', 'الإيميل الجديد')}</Label>
               <Input
                 id="new-email"
                 type="email"
@@ -226,15 +227,15 @@ function ResetCredentialsTab() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="new-password">New Password</Label>
+              <Label htmlFor="new-password">{L('New Password', 'الباسورد الجديد')}</Label>
               <Input
                 id="new-password"
                 type="text" // Type text so admin can see what they are setting
-                placeholder="Leave blank to keep current"
+                placeholder={L('Leave blank to keep current', 'سيبه فاضي علشان يفضل زي ما هو')}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
-              <p className="text-[10px] text-slate-400">Must be at least 8 characters if provided.</p>
+              <p className="text-[10px] text-slate-400">{L('Must be at least 8 characters if provided.', 'لو هتكتبه لازم 8 حروف على الأقل.')}</p>
             </div>
 
             <div className="pt-4 flex gap-3">
@@ -245,10 +246,10 @@ function ResetCredentialsTab() {
                 className="gap-2"
               >
                 {resetMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Execute Override
+                {L('Execute Override', 'نفّذ')}
               </Button>
               <Button variant="outline" onClick={() => setSelectedUser(null)}>
-                Cancel
+                {L('Cancel', 'إلغاء')}
               </Button>
             </div>
           </div>
@@ -286,23 +287,22 @@ function ProvisionAccountantTab() {
       })
     },
     onSuccess: () => {
-      notify.success('Account Manager provisioned', {
+      notify.success(L('Account Manager provisioned', 'حساب المحاسب اتعمل'), {
         description: `${formData.firstName} ${formData.lastName} can now access the finance portal.`,
       })
       setFormData({ firstName: '', lastName: '', email: '', password: '', phoneNumber: '', campusId: '', employeeId: '' })
     },
     onError: (e: unknown) => {
-      notify.error('Provisioning failed', { description: e instanceof Error ? e.message : 'Unknown error' })
+      notify.error(L('Provisioning failed', 'عمل الحساب فشل'), { description: e instanceof Error ? e.message : 'Unknown error' })
     },
   })
 
   return (
     <Card className="max-w-3xl border-teal-100">
       <CardHeader className="bg-teal-50/50 border-b border-teal-100 pb-6 rounded-t-xl">
-        <CardTitle className="text-teal-900">Provision Account Manager</CardTitle>
+        <CardTitle className="text-teal-900">{L('Provision Account Manager', 'حساب محاسب جديد')}</CardTitle>
         <CardDescription className="text-teal-700/70">
-          Create a new user with the ACCOUNTANT role. This grants them access to the Fee Collection Hub, 
-          Expense Ledger, and Campus Financial Reports.
+          {L('Create a new user with the ACCOUNTANT role. This grants them access to the Fee Collection Hub, Expense Ledger, and Campus Financial Reports.', 'اعمل مستخدم بدور محاسب. هيقدر يدخل التحصيل والمصاريف والتقارير المالية.')}
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
@@ -311,45 +311,45 @@ function ProvisionAccountantTab() {
           onSubmit={(e) => { e.preventDefault(); provisionMutation.mutate() }}
         >
           <div className="space-y-1">
-            <Label htmlFor="acc-first">First Name <span className="text-red-500">*</span></Label>
+            <Label htmlFor="acc-first">{L('First Name', 'الاسم الأول')} <span className="text-red-500">*</span></Label>
             <Input id="acc-first" required value={formData.firstName} onChange={(e) => setFormData(p => ({ ...p, firstName: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="acc-last">Last Name <span className="text-red-500">*</span></Label>
+            <Label htmlFor="acc-last">{L('Last Name', 'اسم العيلة')} <span className="text-red-500">*</span></Label>
             <Input id="acc-last" required value={formData.lastName} onChange={(e) => setFormData(p => ({ ...p, lastName: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="acc-email">Email (Login ID) <span className="text-red-500">*</span></Label>
+            <Label htmlFor="acc-email">{L('Email (Login ID)', 'الإيميل (للدخول)')} <span className="text-red-500">*</span></Label>
             <Input id="acc-email" type="email" required value={formData.email} onChange={(e) => setFormData(p => ({ ...p, email: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="acc-pass">Temporary Password <span className="text-red-500">*</span></Label>
+            <Label htmlFor="acc-pass">{L('Temporary Password', 'باسورد مؤقت')} <span className="text-red-500">*</span></Label>
             <Input id="acc-pass" required minLength={8} value={formData.password} onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="acc-phone">Phone Number <span className="text-red-500">*</span></Label>
+            <Label htmlFor="acc-phone">{L('Phone Number', 'التليفون')} <span className="text-red-500">*</span></Label>
             <Input id="acc-phone" required value={formData.phoneNumber} onChange={(e) => setFormData(p => ({ ...p, phoneNumber: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="acc-campus">Assigned Campus <span className="text-red-500">*</span></Label>
+            <Label htmlFor="acc-campus">{L('Assigned Campus', 'الفرع')} <span className="text-red-500">*</span></Label>
             <Select value={formData.campusId} onValueChange={(v) => setFormData(p => ({ ...p, campusId: v }))}>
-              <SelectTrigger id="acc-campus"><SelectValue placeholder="Select campus..." /></SelectTrigger>
+              <SelectTrigger id="acc-campus"><SelectValue placeholder={L('Select campus...', 'اختار الفرع...')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Campuses (Global Access)</SelectItem>
+                <SelectItem value="ALL">{L('All Campuses (Global Access)', 'كل الفروع')}</SelectItem>
                 {campuses.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1 md:col-span-2 max-w-sm">
-            <Label htmlFor="acc-emp">Employee ID (Optional)</Label>
-            <Input id="acc-emp" placeholder="Auto-generated if left blank" value={formData.employeeId} onChange={(e) => setFormData(p => ({ ...p, employeeId: e.target.value }))} />
-            <p className="text-[10px] text-slate-500 mt-1">Leave blank to auto-generate (e.g. ACC-2026-0001)</p>
+            <Label htmlFor="acc-emp">{L('Employee ID (Optional)', 'الرقم الوظيفي (اختياري)')}</Label>
+            <Input id="acc-emp" placeholder={L('Auto-generated if left blank', 'بيتعمل لوحده لو فاضي')} value={formData.employeeId} onChange={(e) => setFormData(p => ({ ...p, employeeId: e.target.value }))} />
+            <p className="text-[10px] text-slate-500 mt-1">{L('Leave blank to auto-generate (e.g. ACC-2026-0001)', 'سيبه فاضي وهيتعمل لوحده (مثلاً ACC-2026-0001)')}</p>
           </div>
           
           <div className="md:col-span-2 pt-4 border-t border-slate-100">
             <Button type="submit" disabled={provisionMutation.isPending} className="bg-teal-600 hover:bg-teal-700 text-white w-full sm:w-auto">
               {provisionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
-              Create Account Manager
+              {L('Create Account Manager', 'اعمل حساب المحاسب')}
             </Button>
           </div>
         </form>

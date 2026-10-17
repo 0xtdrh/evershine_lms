@@ -24,6 +24,7 @@ import {
   Phone, Mail, Hash,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,7 +159,7 @@ function RequestAdminDialog({ student, open, onClose }: RequestDialogProps) {
         }),
       }),
     onSuccess: () => {
-      notify.success('Request sent to Admin successfully')
+      notify.success(L('Request sent to Admin successfully', 'الطلب اتبعت للإدارة'))
       queryClient.invalidateQueries({ queryKey: ['teacher-applications'] })
       setReason('')
       onClose()
@@ -170,7 +171,7 @@ function RequestAdminDialog({ student, open, onClose }: RequestDialogProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!reason.trim()) { notify.error('Please provide a reason'); return }
+    if (!reason.trim()) { notify.error(L('Please provide a reason', 'اكتب السبب')); return }
     mutation.mutate()
   }
 
@@ -180,10 +181,10 @@ function RequestAdminDialog({ student, open, onClose }: RequestDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-amber-500" />
-            Request Admin Action
+            {L('Request Admin Action', 'اطلب من الإدارة')}
           </DialogTitle>
           <DialogDescription>
-            This request will be sent to the Admin for review and action. You cannot directly modify student records.
+            {L('This request will be sent to the Admin for review and action. You cannot directly modify student records.', 'الطلب هيروح للإدارة تراجعه وتنفّذه. مش هتقدر تعدّل بيانات الطالب بنفسك.')}
           </DialogDescription>
         </DialogHeader>
 
@@ -196,27 +197,27 @@ function RequestAdminDialog({ student, open, onClose }: RequestDialogProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Action Type</Label>
+            <Label>{L('Action Type', 'نوع الطلب')}</Label>
             <Select value={requestType} onValueChange={setRequestType}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="SUSPEND">Request Suspension</SelectItem>
-                <SelectItem value="RE_ENROLL">Request Re-Enrolment</SelectItem>
-                <SelectItem value="WITHDRAW">Request Withdrawal</SelectItem>
-                <SelectItem value="SECTION_CHANGE">Request Section Change</SelectItem>
-                <SelectItem value="OTHER">Other Request</SelectItem>
+                <SelectItem value="SUSPEND">{L('Request Suspension', 'طلب إيقاف')}</SelectItem>
+                <SelectItem value="RE_ENROLL">{L('Request Re-Enrolment', 'طلب إعادة تسجيل')}</SelectItem>
+                <SelectItem value="WITHDRAW">{L('Request Withdrawal', 'طلب انسحاب')}</SelectItem>
+                <SelectItem value="SECTION_CHANGE">{L('Request Section Change', 'طلب نقل جروب')}</SelectItem>
+                <SelectItem value="OTHER">{L('Other Request', 'طلب تاني')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Detailed Reason *</Label>
+            <Label>{L('Detailed Reason *', 'السبب بالتفصيل *')}</Label>
             <Textarea
               required
               rows={4}
-              placeholder="Explain why this action is needed. Be specific so the Admin can act on it quickly."
+              placeholder={L('Explain why this action is needed. Be specific so the Admin can act on it quickly.', 'اشرح ليه محتاج الإجراء ده بالتفصيل علشان الإدارة تتصرف بسرعة.')}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="resize-none"
@@ -224,7 +225,7 @@ function RequestAdminDialog({ student, open, onClose }: RequestDialogProps) {
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{L('Cancel', 'إلغاء')}</Button>
             <Button type="submit" disabled={mutation.isPending} className="gap-2">
               <SendHorizonal className="w-4 h-4" />
               {mutation.isPending ? 'Sending...' : 'Send to Admin'}
@@ -252,7 +253,7 @@ function StudentDetailDialog({ student, open, onClose, onRequestAction }: Studen
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Student Profile</DialogTitle>
+          <DialogTitle>{L('Student Profile', 'ملف الطالب')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {/* Avatar + Name */}
@@ -284,27 +285,27 @@ function StudentDetailDialog({ student, open, onClose, onRequestAction }: Studen
 
           {/* Grid: Academic & Campus Info */}
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <InfoRow icon={<Hash className="w-3.5 h-3.5" />} label="Reg. No" value={student.registrationNumber} mono />
-            <InfoRow icon={<Hash className="w-3.5 h-3.5" />} label="Roll No" value={getStudentRollNumber(student) ?? '—'} mono />
-            <InfoRow icon={<GraduationCap className="w-3.5 h-3.5" />} label="Class" value={getStudentClassLabel(student)} />
-            <InfoRow icon={<Building2 className="w-3.5 h-3.5" />} label="Campus" value={`${student.campus.name} — ${student.campus.city}`} />
+            <InfoRow icon={<Hash className="w-3.5 h-3.5" />} label={L('Reg. No', 'رقم القيد')} value={student.registrationNumber} mono />
+            <InfoRow icon={<Hash className="w-3.5 h-3.5" />} label={L('Roll No', 'رقم الجلوس')} value={getStudentRollNumber(student) ?? '—'} mono />
+            <InfoRow icon={<GraduationCap className="w-3.5 h-3.5" />} label={L('Class', 'الجروب')} value={getStudentClassLabel(student)} />
+            <InfoRow icon={<Building2 className="w-3.5 h-3.5" />} label={L('Campus', 'الفرع')} value={`${student.campus.name} — ${student.campus.city}`} />
           </div>
 
           {/* Contact */}
           <div className="border-t pt-3 grid grid-cols-2 gap-3 text-sm">
-            <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label="Phone" value={student.phoneNumber} />
-            <InfoRow icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={student.email ?? '—'} />
+            <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label={L('Phone', 'التليفون')} value={student.phoneNumber} />
+            <InfoRow icon={<Mail className="w-3.5 h-3.5" />} label={L('Email', 'الإيميل')} value={student.email ?? '—'} />
           </div>
         </div>
 
         <DialogFooter className="mt-4 flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
+          <Button variant="outline" onClick={onClose} className="flex-1">{L('Close', 'اقفل')}</Button>
           <Button
             variant="outline"
             className="flex-1 gap-2 text-amber-700 border-amber-200 hover:bg-amber-50"
             onClick={() => { onClose(); onRequestAction() }}
           >
-            <UserX className="w-4 h-4" /> Request Admin Action
+            <UserX className="w-4 h-4" /> {L('Request Admin Action', 'اطلب من الإدارة')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -329,6 +330,7 @@ function InfoRow({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TeacherMyStudentsPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const isTeacher = session?.user?.role === 'TEACHER'
 
@@ -382,7 +384,7 @@ export default function TeacherMyStudentsPage() {
       <div className="flex items-center justify-center min-h-[400px] text-gray-400">
         <div className="text-center space-y-2">
           <ShieldAlert className="w-10 h-10 mx-auto text-gray-300" />
-          <p className="text-sm font-medium">Access Restricted</p>
+          <p className="text-sm font-medium">{L('Access Restricted', 'الدخول مقفول')}</p>
         </div>
       </div>
     )
@@ -396,10 +398,10 @@ export default function TeacherMyStudentsPage() {
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
               <Users className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
-              My Students
+              {L('My Students', 'طلابي')}
             </h1>
             <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-slate-600 max-w-2xl">
-              View student records for your assigned classes, track enrollment status, and submit admin requests from a clean, teacher-first dashboard.
+              {L('View student records for your assigned classes, track enrollment status, and submit admin requests from a clean, teacher-first dashboard.', 'شوف بيانات طلاب جروباتك وحالتهم، وابعت طلبات للإدارة.')}
             </p>
           </div>
           <Button
@@ -408,38 +410,38 @@ export default function TeacherMyStudentsPage() {
             onClick={() => { setSelectedStudent(null); setRequestOpen(true) }}
           >
             <SendHorizonal className="w-4 h-4" />
-            Request Admin Action
+            {L('Request Admin Action', 'اطلب من الإدارة')}
           </Button>
         </div>
 
         <div className="grid gap-2.5 sm:gap-3 grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl sm:rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.28em] text-slate-500 font-semibold">Total students</p>
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.28em] text-slate-500 font-semibold">{L('Total students', 'عدد الطلاب')}</p>
             <p className="mt-1 sm:mt-3 text-xl sm:text-3xl font-semibold text-slate-900">
               {pagination ? pagination.total.toLocaleString() : students.length}
             </p>
-            <p className="mt-0.5 text-[10px] sm:text-sm text-slate-500 hidden sm:block">Across all matched records</p>
+            <p className="mt-0.5 text-[10px] sm:text-sm text-slate-500 hidden sm:block">{L('Across all matched records', 'في كل النتايج')}</p>
           </div>
           <div className="rounded-xl sm:rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.28em] text-slate-500 font-semibold">Active</p>
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.28em] text-slate-500 font-semibold">{L('Active', 'نشط')}</p>
             <p className="mt-1 sm:mt-3 text-xl sm:text-3xl font-semibold text-emerald-700">
               {(statusCounts.ACTIVE ?? 0).toLocaleString()}
             </p>
-            <p className="mt-0.5 text-[10px] sm:text-sm text-slate-500 hidden sm:block">On this page</p>
+            <p className="mt-0.5 text-[10px] sm:text-sm text-slate-500 hidden sm:block">{L('On this page', 'في الصفحة دي')}</p>
           </div>
           <div className="rounded-xl sm:rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.28em] text-slate-500 font-semibold">On leave</p>
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.28em] text-slate-500 font-semibold">{L('On leave', 'في إجازة')}</p>
             <p className="mt-1 sm:mt-3 text-xl sm:text-3xl font-semibold text-amber-700">
               {(statusCounts.ON_LEAVE ?? 0).toLocaleString()}
             </p>
-            <p className="mt-0.5 text-[10px] sm:text-sm text-slate-500 hidden sm:block">On this page</p>
+            <p className="mt-0.5 text-[10px] sm:text-sm text-slate-500 hidden sm:block">{L('On this page', 'في الصفحة دي')}</p>
           </div>
           <div className="rounded-xl sm:rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.28em] text-slate-500 font-semibold">Suspended</p>
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.28em] text-slate-500 font-semibold">{L('Suspended', 'موقوف')}</p>
             <p className="mt-1 sm:mt-3 text-xl sm:text-3xl font-semibold text-red-700">
               {(statusCounts.SUSPENDED ?? 0).toLocaleString()}
             </p>
-            <p className="mt-0.5 text-[10px] sm:text-sm text-slate-500 hidden sm:block">On this page</p>
+            <p className="mt-0.5 text-[10px] sm:text-sm text-slate-500 hidden sm:block">{L('On this page', 'في الصفحة دي')}</p>
           </div>
         </div>
       </div>
@@ -451,7 +453,7 @@ export default function TeacherMyStudentsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               type="search"
-              placeholder="Search name, reg no, roll, father…"
+              placeholder={L('Search name, reg no, roll, father…', 'دوّر بالاسم، رقم القيد، اسم الأب…')}
               className="pl-9 h-9 text-xs sm:text-sm"
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
@@ -465,10 +467,10 @@ export default function TeacherMyStudentsPage() {
               onValueChange={(v) => { setClassFilter(v === '_all' ? '' : v); setPage(1) }}
             >
               <SelectTrigger className="flex-1 sm:w-48 h-9 text-xs sm:text-sm">
-                <SelectValue placeholder="All Classes" />
+                <SelectValue placeholder={L('All Classes', 'كل الجروبات')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="_all">All Classes</SelectItem>
+                <SelectItem value="_all">{L('All Classes', 'كل الجروبات')}</SelectItem>
                 {classes.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {getClassOptionLabel(c)}
@@ -484,7 +486,7 @@ export default function TeacherMyStudentsPage() {
               onClick={() => setShowFilters((v) => !v)}
             >
               <Filter className="w-3.5 h-3.5" />
-              More{' '}
+              {L('More', 'المزيد')}{' '}
               {enrollmentFilter && (
                 <span className="w-2 h-2 bg-indigo-500 rounded-full inline-block" />
               )}
@@ -496,21 +498,21 @@ export default function TeacherMyStudentsPage() {
         {showFilters && (
           <div className="p-4 border-b bg-gray-50 flex flex-wrap gap-4 items-end">
             <div className="space-y-1 w-full sm:w-auto">
-              <label className="text-xs font-medium text-gray-600">Enrollment Status</label>
+              <label className="text-xs font-medium text-gray-600">{L('Enrollment Status', 'الحالة')}</label>
               <Select
                 value={enrollmentFilter || '_all'}
                 onValueChange={(v) => { setEnrollmentFilter(v === '_all' ? '' : v); setPage(1) }}
               >
                 <SelectTrigger className="h-8 text-sm w-full sm:w-44">
-                  <SelectValue placeholder="All statuses" />
+                  <SelectValue placeholder={L('All statuses', 'كل الحالات')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_all">All statuses</SelectItem>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="ON_LEAVE">On Leave</SelectItem>
-                  <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                  <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
-                  <SelectItem value="GRADUATED">Graduated</SelectItem>
+                  <SelectItem value="_all">{L('All statuses', 'كل الحالات')}</SelectItem>
+                  <SelectItem value="ACTIVE">{L('Active', 'نشط')}</SelectItem>
+                  <SelectItem value="ON_LEAVE">{L('On Leave', 'في إجازة')}</SelectItem>
+                  <SelectItem value="SUSPENDED">{L('Suspended', 'موقوف')}</SelectItem>
+                  <SelectItem value="WITHDRAWN">{L('Withdrawn', 'انسحب')}</SelectItem>
+                  <SelectItem value="GRADUATED">{L('Graduated', 'اتخرّج')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -525,7 +527,7 @@ export default function TeacherMyStudentsPage() {
                 setPage(1)
               }}
             >
-              Clear filters
+              {L('Clear filters', 'امسح الفلاتر')}
             </Button>
           </div>
         )}
@@ -541,7 +543,7 @@ export default function TeacherMyStudentsPage() {
           ) : students.length === 0 ? (
             <div className="p-8 text-center text-gray-400">
               <Users className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-              <p className="text-sm">No students found</p>
+              <p className="text-sm">{L('No students found', 'مفيش طلاب')}</p>
             </div>
           ) : (
             students.map((student) => (
@@ -584,22 +586,22 @@ export default function TeacherMyStudentsPage() {
 
                 <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-2 text-xs bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
                   <div className="min-w-0">
-                    <span className="text-gray-400 text-[10px] block uppercase">Reg / Roll</span>
+                    <span className="text-gray-400 text-[10px] block uppercase">{L('Reg / Roll', 'القيد / الجلوس')}</span>
                     <span className="font-mono text-gray-800 font-medium break-all leading-tight block">{student.registrationNumber}</span>
                     {getStudentRollNumber(student) && (
                       <span className="text-gray-400 block break-all leading-tight">
-                        Roll #{getStudentRollNumber(student)}
+                        {L('Roll #', 'رقم الجلوس')}{getStudentRollNumber(student)}
                       </span>
                     )}
                   </div>
                   <div className="min-w-0">
-                    <span className="text-gray-400 text-[10px] block uppercase">Class</span>
+                    <span className="text-gray-400 text-[10px] block uppercase">{L('Class', 'الجروب')}</span>
                     <span className="font-medium text-gray-800 line-clamp-2 leading-tight block">
                       {getStudentClassLabel(student)}
                     </span>
                   </div>
                   <div className="min-w-0">
-                    <span className="text-gray-400 text-[10px] block uppercase">Campus</span>
+                    <span className="text-gray-400 text-[10px] block uppercase">{L('Campus', 'الفرع')}</span>
                     <span className="font-semibold text-indigo-600">{student.campus.code}</span>
                   </div>
                 </div>
@@ -615,7 +617,7 @@ export default function TeacherMyStudentsPage() {
                       setDetailOpen(true)
                     }}
                   >
-                    View Details
+                    {L('View Details', 'التفاصيل')}
                   </Button>
                   <Button
                     variant="outline"
@@ -627,7 +629,7 @@ export default function TeacherMyStudentsPage() {
                       setRequestOpen(true)
                     }}
                   >
-                    <UserX className="w-3.5 h-3.5" /> Request Action
+                    <UserX className="w-3.5 h-3.5" /> {L('Request Action', 'اطلب إجراء')}
                   </Button>
                 </div>
               </div>
@@ -640,12 +642,12 @@ export default function TeacherMyStudentsPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50 text-xs uppercase tracking-wide">
-                <TableHead className="py-3">Student</TableHead>
-                <TableHead>Roll / Reg No.</TableHead>
-                <TableHead>Class</TableHead>
-                <TableHead>Campus</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead className="py-3">{L('Student', 'الطالب')}</TableHead>
+                <TableHead>{L('Roll / Reg No.', 'الجلوس / القيد')}</TableHead>
+                <TableHead>{L('Class', 'الجروب')}</TableHead>
+                <TableHead>{L('Campus', 'الفرع')}</TableHead>
+                <TableHead>{L('Status', 'الحالة')}</TableHead>
+                <TableHead className="text-right">{L('Action', 'إجراء')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -699,7 +701,7 @@ export default function TeacherMyStudentsPage() {
                     <TableCell>
                       <p className="font-mono text-xs text-gray-600">{student.registrationNumber}</p>
                       {getStudentRollNumber(student) && (
-                        <p className="text-[10px] text-gray-400">Roll #{getStudentRollNumber(student)}</p>
+                        <p className="text-[10px] text-gray-400">{L('Roll #', 'رقم الجلوس')}{getStudentRollNumber(student)}</p>
                       )}
                     </TableCell>
 
@@ -747,13 +749,13 @@ export default function TeacherMyStudentsPage() {
                             setDetailOpen(true)
                           }}
                         >
-                          View
+                          {L('View', 'عرض')}
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-7 px-2 text-amber-700 hover:text-amber-800 hover:bg-amber-50"
-                          title="Send a request to Admin"
+                          title={L('Send a request to Admin', 'ابعت طلب للإدارة')}
                           onClick={() => {
                             setSelectedStudent(student)
                             setRequestOpen(true)
@@ -774,7 +776,7 @@ export default function TeacherMyStudentsPage() {
         {pagination && pagination.totalPages > 1 && (
           <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-3 border-t bg-gray-50 gap-2.5">
             <p className="text-xs sm:text-sm text-gray-500">
-              Showing {((page - 1) * limit) + 1}–{Math.min(page * limit, pagination.total)} of {pagination.total}
+              {L('Showing', 'عرض')} {((page - 1) * limit) + 1}–{Math.min(page * limit, pagination.total)} {L('of', 'من')} {pagination.total}
             </p>
             <div className="flex items-center gap-2">
               <Button
@@ -805,10 +807,9 @@ export default function TeacherMyStudentsPage() {
       <div className="flex items-start gap-3 p-3.5 sm:p-4 bg-amber-50 border border-amber-100 rounded-xl text-xs sm:text-sm">
         <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
         <div>
-          <p className="font-semibold text-amber-800">Read-only view</p>
+          <p className="font-semibold text-amber-800">{L('Read-only view', 'للعرض بس')}</p>
           <p className="text-amber-700 text-xs mt-0.5 leading-relaxed">
-            You can view student academic details but cannot add, suspend, or modify student records directly.
-            Use the <strong>Request Admin Action</strong> button to submit a request — the Admin will review and act on it.
+            {L('You can view student academic details but cannot add, suspend, or modify student records directly. Use the', 'تقدر تشوف بيانات الطلاب بس مش هتقدر تضيف أو توقف أو تعدّل. استخدم زرار')} <strong>{L('Request Admin Action', 'اطلب من الإدارة')}</strong> {L('button to submit a request — the Admin will review and act on it.', 'علشان تبعت طلب — والإدارة هتراجعه.')}
           </p>
         </div>
       </div>

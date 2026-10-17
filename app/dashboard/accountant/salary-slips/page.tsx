@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Banknote, Plus, Search, X, Download, ChevronDown, ChevronUp, Loader2, FileText } from 'lucide-react'
 import { notify } from '@/lib/notify'
 import { motion, AnimatePresence } from 'framer-motion'
+import { L, useI18n } from '@/lib/i18n/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
         `/api/teachers/${teacherId}/group-pay-summary`
       )
       if (summary.groups.length === 0) {
-        notify.error('No group teaching pay found for this teacher this cycle')
+        notify.error(L('No group teaching pay found for this teacher this cycle', 'مفيش أجر جروبات للمدرب ده الشهر ده'))
         return
       }
       setCustomFields((f) => [
@@ -122,8 +123,8 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedEmployee) { notify.error('Select an employee first'); return }
-    if (!basicSalary || Number(basicSalary) <= 0) { notify.error('Basic salary is required'); return }
+    if (!selectedEmployee) { notify.error(L('Select an employee first', 'اختار موظف الأول')); return }
+    if (!basicSalary || Number(basicSalary) <= 0) { notify.error(L('Basic salary is required', 'المرتب الأساسي مطلوب')); return }
     setSubmitting(true)
     try {
       await fetchApi('/api/accountant/salary-slips', {
@@ -140,7 +141,7 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
           customFields: customFields.length > 0 ? customFields : null,
         }),
       })
-      notify.success('Salary slip issued successfully')
+      notify.success(L('Salary slip issued successfully', 'القسيمة اتطلعت'))
       onSuccess()
     } catch (err: any) {
       notify.error(err?.message ?? 'Failed to issue salary slip')
@@ -154,17 +155,17 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
-          <h2 className="font-black text-lg">Issue Salary Slip</h2>
+          <h2 className="font-black text-lg">{L('Issue Salary Slip', 'اطلع قسيمة مرتب')}</h2>
           <button onClick={onClose} className="hover:opacity-70"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 p-6 space-y-5">
           {/* Employee search */}
           <div>
-            <label className="text-xs font-black uppercase text-gray-500 block mb-1">Employee</label>
+            <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Employee', 'الموظف')}</label>
             {!selectedEmployee ? (
               <div className="space-y-2">
-                <Input placeholder="Search by name…" value={search} onChange={e => setSearch(e.target.value)} className="h-9" />
-                {empLoading && <p className="text-xs text-gray-400">Searching…</p>}
+                <Input placeholder={L('Search by name…', 'دوّر بالاسم…')} value={search} onChange={e => setSearch(e.target.value)} className="h-9" />
+                {empLoading && <p className="text-xs text-gray-400">{L('Searching…', 'بيدوّر…')}</p>}
                 {employees.length > 0 && (
                   <div className="border rounded-xl divide-y max-h-36 overflow-y-auto">
                     {employees.map((emp: any) => (
@@ -186,7 +187,7 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
                   <p className="font-black text-sm text-indigo-900">{selectedEmployee.firstName} {selectedEmployee.lastName}</p>
                   <p className="text-xs text-indigo-600">{selectedEmployee.designation} · {selectedEmployee.employeeId}</p>
                 </div>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedEmployee(null)}>Change</Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedEmployee(null)}>{L('Change', 'تغيير')}</Button>
               </div>
             )}
           </div>
@@ -194,15 +195,15 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
           {/* Month & Period */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Month</label>
-              <Input value={month} onChange={e => setMonth(e.target.value)} placeholder="June 2026" className="h-9 text-sm" />
+              <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Month', 'الشهر')}</label>
+              <Input value={month} onChange={e => setMonth(e.target.value)} placeholder={L('June 2026', 'يونيو 2026')} className="h-9 text-sm" />
             </div>
             <div>
-              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Period Start</label>
+              <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Period Start', 'بداية الفترة')}</label>
               <Input type="date" value={periodStart} onChange={e => setPeriodStart(e.target.value)} className="h-9 text-sm" />
             </div>
             <div>
-              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Period End</label>
+              <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Period End', 'نهاية الفترة')}</label>
               <Input type="date" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} className="h-9 text-sm" />
             </div>
           </div>
@@ -210,15 +211,15 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
           {/* Salary components */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Basic Salary (EGP)*</label>
+              <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Basic Salary (EGP)*', 'المرتب الأساسي (ج.م)*')}</label>
               <Input type="number" value={basicSalary} onChange={e => setBasicSalary(e.target.value)} min={1} placeholder="0" className="h-9 text-sm" required />
             </div>
             <div>
-              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Overtime (EGP)</label>
+              <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Overtime (EGP)', 'إضافي (ج.م)')}</label>
               <Input type="number" value={overtime} onChange={e => setOvertime(e.target.value)} min={0} className="h-9 text-sm" />
             </div>
             <div>
-              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Lunch Dues (EGP)</label>
+              <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Lunch Dues (EGP)', 'بدل غدا (ج.م)')}</label>
               <Input type="number" value={lunchDues} onChange={e => setLunchDues(e.target.value)} min={0} className="h-9 text-sm" />
             </div>
           </div>
@@ -226,27 +227,27 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
           {/* Custom fields */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-black uppercase text-gray-500">Additions / Deductions</label>
+              <label className="text-xs font-black uppercase text-gray-500">{L('Additions / Deductions', 'إضافات / خصومات')}</label>
               <div className="flex gap-2">
                 {selectedEmployee && (
                   <Button type="button" variant="outline" size="sm" onClick={pullInGroupPay} disabled={isPullingGroupPay} className="h-7 text-xs gap-1">
-                    {isPullingGroupPay ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Pull in group pay
+                    {isPullingGroupPay ? <Loader2 className="w-3 h-3 animate-spin" /> : null} {L('Pull in group pay', 'هات أجر الجروبات')}
                   </Button>
                 )}
                 <Button type="button" variant="outline" size="sm" onClick={addCustomField} className="h-7 text-xs gap-1">
-                  <Plus className="w-3 h-3" /> Add
+                  <Plus className="w-3 h-3" /> {L('Add', 'ضيف')}
                 </Button>
               </div>
             </div>
             {customFields.map((cf, i) => (
               <div key={i} className="flex gap-2 mb-2 items-center">
-                <Input placeholder="Label" value={cf.label} onChange={e => updateCF(i, 'label', e.target.value)} className="h-8 text-xs flex-1" />
-                <Input type="number" placeholder="Amount" value={cf.value} onChange={e => updateCF(i, 'value', Number(e.target.value))} className="h-8 text-xs w-28" />
+                <Input placeholder={L('Label', 'البند')} value={cf.label} onChange={e => updateCF(i, 'label', e.target.value)} className="h-8 text-xs flex-1" />
+                <Input type="number" placeholder={L('Amount', 'المبلغ')} value={cf.value} onChange={e => updateCF(i, 'value', Number(e.target.value))} className="h-8 text-xs w-28" />
                 <select value={cf.isDeduction ? 'deduction' : 'addition'}
                   onChange={e => updateCF(i, 'isDeduction', e.target.value === 'deduction')}
                   className="h-8 text-xs border rounded-md px-2">
-                  <option value="addition">+ Addition</option>
-                  <option value="deduction">- Deduction</option>
+                  <option value="addition">{L('+ Addition', '+ إضافة')}</option>
+                  <option value="deduction">{L('- Deduction', '- خصم')}</option>
                 </select>
                 <button type="button" onClick={() => removeCustomField(i)} className="text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
               </div>
@@ -255,46 +256,46 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 
           {/* Net summary */}
           <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-4 grid grid-cols-3 text-center border border-indigo-100">
-            <div><p className="text-xs text-gray-500 font-bold uppercase">Total Additions</p><p className="text-lg font-black text-emerald-700">EGP {additions.toLocaleString()}</p></div>
-            <div><p className="text-xs text-gray-500 font-bold uppercase">Total Deductions</p><p className="text-lg font-black text-red-600">EGP {deductions.toLocaleString()}</p></div>
-            <div><p className="text-xs text-gray-500 font-bold uppercase">Net Payable</p><p className={`text-xl font-black ${net < 0 ? 'text-red-600' : 'text-indigo-900'}`}>EGP {net.toLocaleString()}</p></div>
+            <div><p className="text-xs text-gray-500 font-bold uppercase">{L('Total Additions', 'إجمالي الإضافات')}</p><p className="text-lg font-black text-emerald-700">{L('EGP', 'ج.م')} {additions.toLocaleString()}</p></div>
+            <div><p className="text-xs text-gray-500 font-bold uppercase">{L('Total Deductions', 'إجمالي الخصومات')}</p><p className="text-lg font-black text-red-600">{L('EGP', 'ج.م')} {deductions.toLocaleString()}</p></div>
+            <div><p className="text-xs text-gray-500 font-bold uppercase">{L('Net Payable', 'الصافي')}</p><p className={`text-xl font-black ${net < 0 ? 'text-red-600' : 'text-indigo-900'}`}>{L('EGP', 'ج.م')} {net.toLocaleString()}</p></div>
           </div>
 
           {/* Payment source */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Payment Source</label>
+              <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Payment Source', 'طريقة الصرف')}</label>
               <select value={paymentSource} onChange={e => setPaymentSource(e.target.value as any)}
                 className="w-full h-9 text-sm border border-gray-200 rounded-lg px-2">
-                <option>Cash</option>
-                <option>Bank Transfer</option>
-                <option>Cheque</option>
+                <option>{L('Cash', 'كاش')}</option>
+                <option>{L('Bank Transfer', 'تحويل بنكي')}</option>
+                <option>{L('Cheque', 'شيك')}</option>
               </select>
             </div>
             {paymentSource !== 'Cash' && (
               <div>
-                <label className="text-xs font-black uppercase text-gray-500 block mb-1">Bank Name</label>
+                <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Bank Name', 'اسم البنك')}</label>
                 <Input value={bankName} onChange={e => setBankName(e.target.value)} placeholder="e.g. HBL" className="h-9 text-sm" />
               </div>
             )}
           </div>
           {paymentSource !== 'Cash' && (
             <div>
-              <label className="text-xs font-black uppercase text-gray-500 block mb-1">Account Number</label>
-              <Input value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder="IBAN or account no." className="h-9 text-sm" />
+              <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Account Number', 'رقم الحساب')}</label>
+              <Input value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder={L('IBAN or account no.', 'IBAN أو رقم الحساب')} className="h-9 text-sm" />
             </div>
           )}
           <div>
-            <label className="text-xs font-black uppercase text-gray-500 block mb-1">Notes</label>
+            <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Notes', 'ملاحظات')}</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300" />
           </div>
 
           <div className="flex justify-end gap-3 pt-2 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{L('Cancel', 'إلغاء')}</Button>
             <Button type="submit" disabled={submitting || net < 0} className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2">
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Issue Slip
+              {L('Issue Slip', 'اطلع القسيمة')}
             </Button>
           </div>
         </form>
@@ -328,7 +329,7 @@ function SlipRow({ slip }: { slip: SalarySlip }) {
         <div className="flex items-center gap-3 flex-shrink-0">
           <Badge className={`text-xs font-bold border ${statusColor}`}>{slip.status}</Badge>
           <Badge className="text-xs font-bold border border-amber-200 bg-amber-50 text-amber-700">{slip.approvalStatus ?? 'PENDING'}</Badge>
-          <span className="text-sm font-black text-indigo-900">EGP {Number(slip.netSalary).toLocaleString()}</span>
+          <span className="text-sm font-black text-indigo-900">{L('EGP', 'ج.م')} {Number(slip.netSalary).toLocaleString()}</span>
           {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </div>
       </button>
@@ -339,21 +340,21 @@ function SlipRow({ slip }: { slip: SalarySlip }) {
             className="overflow-hidden">
             <div className="px-5 pb-4 border-t border-gray-100 pt-4 space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                <div><p className="text-[10px] text-gray-400 uppercase font-bold">Basic Salary</p><p className="font-black">EGP {Number(slip.basicSalary).toLocaleString()}</p></div>
-                <div><p className="text-[10px] text-gray-400 uppercase font-bold">Overtime</p><p className="font-black text-emerald-700">+ EGP {Number(slip.overtimeAmount).toLocaleString()}</p></div>
-                <div><p className="text-[10px] text-gray-400 uppercase font-bold">Lunch Dues</p><p className="font-black text-red-600">- EGP {Number(slip.lunchDues).toLocaleString()}</p></div>
-                <div><p className="text-[10px] text-gray-400 uppercase font-bold">Payment</p><p className="font-black">{slip.paymentSource}</p></div>
+                <div><p className="text-[10px] text-gray-400 uppercase font-bold">{L('Basic Salary', 'المرتب الأساسي')}</p><p className="font-black">{L('EGP', 'ج.م')} {Number(slip.basicSalary).toLocaleString()}</p></div>
+                <div><p className="text-[10px] text-gray-400 uppercase font-bold">{L('Overtime', 'إضافي')}</p><p className="font-black text-emerald-700">{L('+ EGP', '+ ج.م')} {Number(slip.overtimeAmount).toLocaleString()}</p></div>
+                <div><p className="text-[10px] text-gray-400 uppercase font-bold">{L('Lunch Dues', 'بدل غدا')}</p><p className="font-black text-red-600">{L('- EGP', '- ج.م')} {Number(slip.lunchDues).toLocaleString()}</p></div>
+                <div><p className="text-[10px] text-gray-400 uppercase font-bold">{L('Payment', 'الصرف')}</p><p className="font-black">{slip.paymentSource}</p></div>
               </div>
 
               {slip.customFields && slip.customFields.length > 0 && (
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-2">Additions / Deductions</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-2">{L('Additions / Deductions', 'إضافات / خصومات')}</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {slip.customFields.map((cf, i) => (
                       <div key={i} className="flex justify-between bg-gray-50 rounded-lg px-3 py-1.5 text-xs">
                         <span className="text-gray-500 font-bold">{cf.label}</span>
                         <span className={`font-black ${cf.isDeduction ? 'text-red-600' : 'text-emerald-700'}`}>
-                          {cf.isDeduction ? '- ' : '+ '}EGP {Number(cf.value).toLocaleString()}
+                          {cf.isDeduction ? '- ' : '+ '}{L('EGP', 'ج.م')} {Number(cf.value).toLocaleString()}
                         </span>
                       </div>
                     ))}
@@ -368,7 +369,7 @@ function SlipRow({ slip }: { slip: SalarySlip }) {
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="gap-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50 text-xs h-8">
-                    <FileText className="w-3.5 h-3.5" /> View PDF
+                    <FileText className="w-3.5 h-3.5" /> {L('View PDF', 'شوف PDF')}
                   </Button>
                   <Button variant="outline" size="sm" className="gap-2 text-emerald-700 border-emerald-200 hover:bg-emerald-50 text-xs h-8" onClick={async () => {
                     try {
@@ -377,12 +378,12 @@ function SlipRow({ slip }: { slip: SalarySlip }) {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ salarySlipId: slip.id, reason: 'Authorized from salary slips page' }),
                       })
-                      notify.success('Salary authorized successfully')
+                      notify.success(L('Salary authorized successfully', 'المرتب اتعتمد'))
                     } catch (err: any) {
                       notify.error(err?.message ?? 'Unable to authorize salary')
                     }
                   }}>
-                    Authorize
+                    {L('Authorize', 'اعتمد')}
                   </Button>
                 </div>
               </div>
@@ -397,6 +398,7 @@ function SlipRow({ slip }: { slip: SalarySlip }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SalarySlipsPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const role = session?.user?.role ?? ''
   const canAccess = ['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(role)
@@ -428,7 +430,7 @@ export default function SalarySlipsPage() {
   }
 
   if (status === 'loading') return null
-  if (!canAccess) return <AccessDenied title="Payroll Access" message="Only finance staff can access salary slips." />
+  if (!canAccess) return <AccessDenied title={L('Payroll Access', 'المرتبات')} message="Only finance staff can access salary slips." />
 
   return (
     <div className="min-h-screen bg-slate-50/40 pb-16">
@@ -437,13 +439,13 @@ export default function SalarySlipsPage() {
         <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-white/5" />
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
           <div>
-            <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">Accountant · Payroll</p>
-            <h1 className="text-2xl sm:text-3xl font-black leading-tight">Salary Slips</h1>
-            <p className="text-blue-200 text-sm mt-1">Issue, track and export staff payroll records</p>
+            <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">{L('Accountant · Payroll', 'المحاسبة · المرتبات')}</p>
+            <h1 className="text-2xl sm:text-3xl font-black leading-tight">{L('Salary Slips', 'قسايم المرتبات')}</h1>
+            <p className="text-blue-200 text-sm mt-1">{L('Issue, track and export staff payroll records', 'اطلع وتابع وصدّر قسايم المرتبات')}</p>
           </div>
           <Button onClick={() => setShowModal(true)}
             className="bg-white text-indigo-700 hover:bg-indigo-50 font-black gap-2 shadow-lg">
-            <Plus className="w-4 h-4" /> Issue New Slip
+            <Plus className="w-4 h-4" /> {L('Issue New Slip', 'قسيمة جديدة')}
           </Button>
         </div>
       </div>
@@ -453,19 +455,19 @@ export default function SalarySlipsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <Card className="shadow-sm">
             <CardContent className="pt-4">
-              <p className="text-xs font-bold text-gray-400 uppercase mb-1">Slips Listed</p>
+              <p className="text-xs font-bold text-gray-400 uppercase mb-1">{L('Slips Listed', 'عدد القسايم')}</p>
               <p className="text-2xl font-black text-indigo-900">{pagination?.total ?? slips.length}</p>
             </CardContent>
           </Card>
           <Card className="shadow-sm">
             <CardContent className="pt-4">
-              <p className="text-xs font-bold text-gray-400 uppercase mb-1">Net Payable (page)</p>
-              <p className="text-2xl font-black text-indigo-900">EGP {totalNet.toLocaleString()}</p>
+              <p className="text-xs font-bold text-gray-400 uppercase mb-1">{L('Net Payable (page)', 'الصافي (الصفحة)')}</p>
+              <p className="text-2xl font-black text-indigo-900">{L('EGP', 'ج.م')} {totalNet.toLocaleString()}</p>
             </CardContent>
           </Card>
           <Card className="shadow-sm hidden sm:block">
             <CardContent className="pt-4">
-              <p className="text-xs font-bold text-gray-400 uppercase mb-1">Current Filter</p>
+              <p className="text-xs font-bold text-gray-400 uppercase mb-1">{L('Current Filter', 'الفلتر الحالي')}</p>
               <p className="text-sm font-black text-gray-700">{filterMonth || 'All months'} · {filterStatus || 'All statuses'}</p>
             </CardContent>
           </Card>
@@ -473,20 +475,20 @@ export default function SalarySlipsPage() {
 
         {/* Filters */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
-          <p className="text-xs font-black uppercase text-gray-400 mr-1">Filter</p>
-          <Input placeholder="Month (e.g. June 2026)" value={filterMonth}
+          <p className="text-xs font-black uppercase text-gray-400 mr-1">{L('Filter', 'فلتر')}</p>
+          <Input placeholder={L('Month (e.g. June 2026)', 'الشهر (مثلاً يونيو 2026)')} value={filterMonth}
             onChange={e => { setFilterMonth(e.target.value); setPage(1) }}
             className="h-9 text-sm w-48" />
           <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
             className="h-9 text-sm border border-gray-200 rounded-lg px-3">
-            <option value="">All Statuses</option>
-            <option value="ISSUED">Issued</option>
-            <option value="CANCELLED">Cancelled</option>
+            <option value="">{L('All Statuses', 'كل الحالات')}</option>
+            <option value="ISSUED">{L('Issued', 'اتطلعت')}</option>
+            <option value="CANCELLED">{L('Cancelled', 'اتلغت')}</option>
           </select>
           {(filterMonth || filterStatus) && (
             <Button variant="ghost" size="sm" className="h-9 gap-1 text-gray-500"
               onClick={() => { setFilterMonth(''); setFilterStatus(''); setPage(1) }}>
-              <X className="w-3.5 h-3.5" /> Clear
+              <X className="w-3.5 h-3.5" /> {L('Clear', 'امسح')}
             </Button>
           )}
         </div>
@@ -499,8 +501,8 @@ export default function SalarySlipsPage() {
         ) : slips.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
             <Banknote className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-            <p className="font-black text-gray-700">No salary slips found</p>
-            <p className="text-sm text-gray-400 mt-1">Issue a new slip using the button above.</p>
+            <p className="font-black text-gray-700">{L('No salary slips found', 'مفيش قسايم')}</p>
+            <p className="text-sm text-gray-400 mt-1">{L('Issue a new slip using the button above.', 'اطلع قسيمة جديدة من الزرار اللي فوق.')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -511,9 +513,9 @@ export default function SalarySlipsPage() {
         {/* Pagination */}
         {pagination && pagination.totalPages > 1 && (
           <div className="flex justify-center gap-3 pt-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-            <span className="text-sm font-bold text-gray-500 flex items-center px-2">Page {page} / {pagination.totalPages}</span>
-            <Button variant="outline" size="sm" disabled={page >= pagination.totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>{L('Previous', 'السابق')}</Button>
+            <span className="text-sm font-bold text-gray-500 flex items-center px-2">{L('Page', 'صفحة')} {page} / {pagination.totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= pagination.totalPages} onClick={() => setPage(p => p + 1)}>{L('Next', 'التالي')}</Button>
           </div>
         )}
       </div>
