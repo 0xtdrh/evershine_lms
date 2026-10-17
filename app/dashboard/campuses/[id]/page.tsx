@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft, Building2, Loader2, MapPin, Phone, MessageCircle, Clock, Users, Pencil } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Profile {
   campus: {
@@ -33,6 +34,7 @@ const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigit
 
 /** Branch profile: details, team and live numbers (phase A). */
 export default function CampusProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  useI18n() // re-render on a language switch
   const { id } = use(params)
   const qc = useQueryClient()
   const { data: session } = useSession()
@@ -66,12 +68,12 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
         maxStudents: form.maxStudents ? Number(form.maxStudents) : null,
       }),
     }),
-    onSuccess: () => { notify.success('Saved'); setEditing(false); qc.invalidateQueries({ queryKey: ['campus-profile', id] }) },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); setEditing(false); qc.invalidateQueries({ queryKey: ['campus-profile', id] }) },
     onError: (e: Error) => notify.error(e.message || 'Could not save'),
   })
   const f = (k: string) => ({ value: form[k] ?? '', onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value }) })
 
-  if (isLoading) return <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
+  if (isLoading) return <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> {L('Loading…', 'بيحمّل…')}</p>
   if (error || !data) return <p className="text-sm text-rose-600">{(error as Error)?.message ?? 'Not found'}</p>
   const c = data.campus
   const s = data.stats
@@ -87,10 +89,10 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="space-y-4">
-      <Link href="/dashboard/campuses" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800"><ArrowLeft className="h-4 w-4" /> Branches</Link>
+      <Link href="/dashboard/campuses" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800"><ArrowLeft className="h-4 w-4" /> {L('Branches', 'الفروع')}</Link>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900"><Building2 className="h-5 w-5 text-indigo-600" /> {c.name} <span className="text-sm font-normal text-slate-500">{c.code}</span></h1>
-        {canEdit && !editing && <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditing(true)}><Pencil className="h-3.5 w-3.5" /> Edit details</Button>}
+        {canEdit && !editing && <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditing(true)}><Pencil className="h-3.5 w-3.5" /> {L('Edit details', 'عدّل البيانات')}</Button>}
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
@@ -100,29 +102,29 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
       </div>
 
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Details</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">{L('Details', 'البيانات')}</CardTitle></CardHeader>
         <CardContent className="text-sm">
           {!editing ? (
             <div className="grid gap-2 md:grid-cols-2">
-              <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 text-slate-400" /> {c.address}{c.mapUrl && <a href={c.mapUrl} target="_blank" rel="noreferrer" className="ml-1 text-indigo-600 underline">map</a>}</p>
+              <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 text-slate-400" /> {c.address}{c.mapUrl && <a href={c.mapUrl} target="_blank" rel="noreferrer" className="ml-1 text-indigo-600 underline">{L('map', 'الخريطة')}</a>}</p>
               <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-slate-400" /> {c.phone} · {c.email}</p>
               <p className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-slate-400" /> {c.whatsapp ?? '—'}</p>
               <p className="flex items-start gap-2"><Clock className="mt-0.5 h-4 w-4 text-slate-400" /> <span className="whitespace-pre-wrap">{c.workingHours ?? '—'}</span></p>
-              <p className="flex items-center gap-2"><Users className="h-4 w-4 text-slate-400" /> {c.roomsCount ?? '—'} rooms · up to {c.maxStudents ?? '—'} students</p>
-              <p>Branch manager: <strong>{c.manager ?? '—'}</strong></p>
+              <p className="flex items-center gap-2"><Users className="h-4 w-4 text-slate-400" /> {c.roomsCount ?? '—'} {L('rooms · up to', 'قاعة · لحد')} {c.maxStudents ?? '—'} {L('students', 'طالب')}</p>
+              <p>{L('Branch manager:', 'مدير الفرع:')} <strong>{c.manager ?? '—'}</strong></p>
               {c.profileNotes && <p className="whitespace-pre-wrap text-slate-600 md:col-span-2">{c.profileNotes}</p>}
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-1 md:col-span-2"><Label>Address</Label><Input {...f('address')} /></div>
-              <div className="space-y-1"><Label>Phone</Label><Input {...f('phone')} /></div>
-              <div className="space-y-1"><Label>Email</Label><Input {...f('email')} /></div>
+              <div className="space-y-1 md:col-span-2"><Label>{L('Address', 'العنوان')}</Label><Input {...f('address')} /></div>
+              <div className="space-y-1"><Label>{L('Phone', 'التليفون')}</Label><Input {...f('phone')} /></div>
+              <div className="space-y-1"><Label>{L('Email', 'الإيميل')}</Label><Input {...f('email')} /></div>
               <div className="space-y-1"><Label>WhatsApp</Label><Input {...f('whatsapp')} placeholder="01xxxxxxxxx" /></div>
-              <div className="space-y-1"><Label>Map link</Label><Input {...f('mapUrl')} placeholder="https://maps.google.com/..." /></div>
-              <div className="space-y-1"><Label>Rooms</Label><Input type="number" min={0} {...f('roomsCount')} /></div>
-              <div className="space-y-1"><Label>Most students</Label><Input type="number" min={0} {...f('maxStudents')} /></div>
+              <div className="space-y-1"><Label>{L('Map link', 'لينك الخريطة')}</Label><Input {...f('mapUrl')} placeholder="https://maps.google.com/..." /></div>
+              <div className="space-y-1"><Label>{L('Rooms', 'القاعات')}</Label><Input type="number" min={0} {...f('roomsCount')} /></div>
+              <div className="space-y-1"><Label>{L('Most students', 'أقصى عدد طلاب')}</Label><Input type="number" min={0} {...f('maxStudents')} /></div>
               <div className="space-y-1 md:col-span-2">
-                <Label>Branch manager</Label>
+                <Label>{L('Branch manager', 'مدير الفرع')}</Label>
                 <Select value={form.managerUserId || 'none'} onValueChange={(v) => setForm({ ...form, managerUserId: v === 'none' ? '' : v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -131,11 +133,11 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1 md:col-span-2"><Label>Working hours</Label><Textarea rows={2} {...f('workingHours')} placeholder="Sat–Thu 10:00–21:00, Fri closed" /></div>
-              <div className="space-y-1 md:col-span-2"><Label>Notes</Label><Textarea rows={2} {...f('profileNotes')} /></div>
+              <div className="space-y-1 md:col-span-2"><Label>{L('Working hours', 'مواعيد العمل')}</Label><Textarea rows={2} {...f('workingHours')} placeholder={L('Sat–Thu 10:00–21:00, Fri closed', 'السبت–الخميس 10:00–21:00، الجمعة إجازة')} /></div>
+              <div className="space-y-1 md:col-span-2"><Label>{L('Notes', 'ملاحظات')}</Label><Textarea rows={2} {...f('profileNotes')} /></div>
               <div className="flex justify-end gap-2 md:col-span-2">
-                <Button variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
-                <Button disabled={save.isPending} onClick={() => save.mutate()}>Save</Button>
+                <Button variant="outline" onClick={() => setEditing(false)}>{L('Cancel', 'إلغاء')}</Button>
+                <Button disabled={save.isPending} onClick={() => save.mutate()}>{L('Save', 'حفظ')}</Button>
               </div>
             </div>
           )}
@@ -144,23 +146,23 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Staff ({data.team.staff.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">{L('Staff (', 'الموظفين (')}{data.team.staff.length})</CardTitle></CardHeader>
           <CardContent className="space-y-1 text-sm">
-            {data.team.staff.length === 0 && <p className="text-slate-500">No staff accounts in this branch.</p>}
+            {data.team.staff.length === 0 && <p className="text-slate-500">{L('No staff accounts in this branch.', 'مفيش حسابات موظفين في الفرع ده.')}</p>}
             {data.team.staff.map((m) => <p key={m.userId}>{m.name} <span className="text-xs text-slate-500">· {m.role}{m.department ? ` · ${m.department}` : ''}</span></p>)}
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Instructors ({data.team.instructors.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">{L('Instructors (', 'المدربين (')}{data.team.instructors.length})</CardTitle></CardHeader>
           <CardContent className="space-y-1 text-sm">
-            {data.team.instructors.length === 0 && <p className="text-slate-500">No instructors in this branch.</p>}
+            {data.team.instructors.length === 0 && <p className="text-slate-500">{L('No instructors in this branch.', 'مفيش مدربين في الفرع ده.')}</p>}
             {data.team.instructors.map((t) => <p key={t.id}>{t.name} <span className="text-xs text-slate-500">· {t.designation} · {t.phone}</span></p>)}
           </CardContent>
         </Card>
       </div>
       {/* Partners part 1-B2: this place's groups, students and instructors, with quick actions */}
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Groups · students · instructors</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">{L('Groups · students · instructors', 'الجروبات · الطلاب · المدربين')}</CardTitle></CardHeader>
         <CardContent><PlacePeople places={[{ id: c.id, name: c.name }]} /></CardContent>
       </Card>
     </div>

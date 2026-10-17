@@ -23,6 +23,7 @@ import type { SessionShift } from '@/lib/validation/shift'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface ActiveEnrollment {
   id: string
@@ -94,6 +95,7 @@ function formatSections(student: Student): string {
 }
 
 export default function StudentsListPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const queryClient = useQueryClient()
   const userRole = session?.user?.role as string | undefined
@@ -174,7 +176,7 @@ export default function StudentsListPage() {
       const res = await fetchApi<unknown[]>(`/api/exports/students?${exportParams}`)
       const rows = Array.isArray(res) ? res : (res as { data?: unknown[] })?.data ?? []
       downloadStudentsMasterExcel(rows as Parameters<typeof downloadStudentsMasterExcel>[0])
-      notify.success('Student register exported')
+      notify.success(L('Student register exported', 'سجل الطلاب اتصدّر'))
     } catch (err: unknown) {
       notify.error(err instanceof Error ? err.message : 'Export failed')
     } finally {
@@ -188,7 +190,7 @@ export default function StudentsListPage() {
     setSuspendingId(student.id)
     try {
       await fetchApi(`/api/students/${student.id}`, { method: 'DELETE' })
-      notify.success('Student suspended')
+      notify.success(L('Student suspended', 'الطالب اتوقف'))
       queryClient.invalidateQueries({ queryKey: ['students'] })
     } catch (err: unknown) {
       notify.error(err instanceof Error ? err.message : 'Failed to suspend')
@@ -201,7 +203,7 @@ export default function StudentsListPage() {
   if (!canViewStudents) {
     return (
       <AccessDenied
-        title="Student Directory Restricted"
+        title={L('Student Directory Restricted', 'دليل الطلاب مقفول')}
         message="The global student directory is for administrators and accountants only. Teachers can view assigned students from Teacher Portal → My Students."
       />
     )
@@ -220,14 +222,14 @@ export default function StudentsListPage() {
             <div className="p-2 bg-blue-100 rounded-lg text-blue-600 shrink-0">
               <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            Students Directory
+            {L('Students Directory', 'دليل الطلاب')}
           </h1>
           <div className="mt-2 print:hidden"><DataExchangeButtons dataset="students" /></div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium sm:ml-11">
             {pagination ? `${pagination.total.toLocaleString()} registered students` : 'Loading…'}
             <span className="mx-2 text-slate-300">•</span>
             <Link href="/dashboard/admissions" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">
-              View admissions queue
+              {L('View admissions queue', 'طلبات التسجيل')}
             </Link>
           </p>
         </div>
@@ -243,19 +245,19 @@ export default function StudentsListPage() {
               <Link href="/dashboard/admissions" className="flex-1 sm:flex-initial">
                 <Button variant="outline" size="sm" className="gap-2 w-full h-9 text-xs">
                   <ClipboardList className="w-3.5 h-3.5" />
-                  Queue
+                  {L('Queue', 'الطلبات')}
                 </Button>
               </Link>
               <Link href="/dashboard/students/import" className="flex-1 sm:flex-initial">
                 <Button variant="outline" size="sm" className="gap-2 w-full h-9 text-xs">
                   <FileUp className="w-3.5 h-3.5" />
-                  Import
+                  {L('Import', 'استيراد')}
                 </Button>
               </Link>
               <Link href="/dashboard/students/admission" className="w-full sm:w-auto">
                 <Button className="gap-2 w-full h-9 text-xs">
                   <Plus className="w-3.5 h-3.5" />
-                  New Admission
+                  {L('New Admission', 'تسجيل جديد')}
                 </Button>
               </Link>
             </>
@@ -269,7 +271,7 @@ export default function StudentsListPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               type="search"
-              placeholder="Search name, reg no, roll, father…"
+              placeholder={L('Search name, reg no, roll, father…', 'دوّر بالاسم، رقم القيد، اسم الأب…')}
               className="pl-9 h-9 text-xs sm:text-sm"
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
@@ -282,7 +284,7 @@ export default function StudentsListPage() {
             onClick={() => setShowFilters((v) => !v)}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
-            Filters
+            {L('Filters', 'الفلاتر')}
             {(feeStatusFilter || enrollmentFilter || campusFilter || batchFilter || classSectionFilter) && (
               <span className="w-2 h-2 bg-blue-500 rounded-full" />
             )}
@@ -300,21 +302,21 @@ export default function StudentsListPage() {
             >
               <div className="p-4 sm:p-5 border-b border-slate-100 bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600">Campus</label>
+              <label className="text-xs font-medium text-gray-600">{L('Campus', 'الفرع')}</label>
               <Select value={campusFilter || 'ALL'} onValueChange={(v) => { setCampusFilter(v === 'ALL' ? '' : v); setBatchFilter(''); setClassSectionFilter(''); setPage(1) }}>
-                <SelectTrigger className="h-8 text-xs sm:text-sm"><SelectValue placeholder="All campuses" /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs sm:text-sm"><SelectValue placeholder={L('All campuses', 'كل الفروع')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All campuses</SelectItem>
+                  <SelectItem value="ALL">{L('All campuses', 'كل الفروع')}</SelectItem>
                   {campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600">Group</label>
+              <label className="text-xs font-medium text-gray-600">{L('Group', 'الجروب')}</label>
               <Select value={classSectionFilter || 'ALL'} onValueChange={(v) => { setClassSectionFilter(v === 'ALL' ? '' : v); setPage(1) }} disabled={!campusFilter}>
-                <SelectTrigger className="h-8 text-xs sm:text-sm"><SelectValue placeholder="All sections" /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs sm:text-sm"><SelectValue placeholder={L('All sections', 'كل الجروبات')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All sections</SelectItem>
+                  <SelectItem value="ALL">{L('All sections', 'كل الجروبات')}</SelectItem>
                   {sections.map((s) => (
                     <SelectItem key={s.id} value={s.id}>{s.className}-{s.sectionName}</SelectItem>
                   ))}
@@ -322,29 +324,29 @@ export default function StudentsListPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600">Fee status</label>
+              <label className="text-xs font-medium text-gray-600">{L('Fee status', 'حالة الدفع')}</label>
               <Select value={feeStatusFilter || 'ALL'} onValueChange={(v) => { setFeeStatusFilter(v === 'ALL' ? '' : v); setPage(1) }}>
                 <SelectTrigger className="h-8 text-xs sm:text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All</SelectItem>
-                  <SelectItem value="PAID">Paid</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="PARTIALLY_PAID">Partially paid</SelectItem>
-                  <SelectItem value="OVERDUE">Overdue</SelectItem>
+                  <SelectItem value="ALL">{L('All', 'الكل')}</SelectItem>
+                  <SelectItem value="PAID">{L('Paid', 'مدفوع')}</SelectItem>
+                  <SelectItem value="PENDING">{L('Pending', 'مستني')}</SelectItem>
+                  <SelectItem value="PARTIALLY_PAID">{L('Partially paid', 'مدفوع جزء')}</SelectItem>
+                  <SelectItem value="OVERDUE">{L('Overdue', 'متأخر')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600">Enrollment</label>
+              <label className="text-xs font-medium text-gray-600">{L('Enrollment', 'الحالة')}</label>
               <Select value={enrollmentFilter || 'ALL'} onValueChange={(v) => { setEnrollmentFilter(v === 'ALL' ? '' : v); setPage(1) }}>
                 <SelectTrigger className="h-8 text-xs sm:text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All</SelectItem>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                  <SelectItem value="GRADUATED">Graduated</SelectItem>
-                  <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
-                  <SelectItem value="ON_LEAVE">On leave</SelectItem>
+                  <SelectItem value="ALL">{L('All', 'الكل')}</SelectItem>
+                  <SelectItem value="ACTIVE">{L('Active', 'نشط')}</SelectItem>
+                  <SelectItem value="SUSPENDED">{L('Suspended', 'موقوف')}</SelectItem>
+                  <SelectItem value="GRADUATED">{L('Graduated', 'اتخرّج')}</SelectItem>
+                  <SelectItem value="WITHDRAWN">{L('Withdrawn', 'انسحب')}</SelectItem>
+                  <SelectItem value="ON_LEAVE">{L('On leave', 'في إجازة')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -363,7 +365,7 @@ export default function StudentsListPage() {
                   setPage(1)
                 }}
               >
-                Clear all
+                {L('Clear all', 'امسح الكل')}
               </Button>
             </div>
           </div>
@@ -382,8 +384,8 @@ export default function StudentsListPage() {
           ) : students.length === 0 ? (
             <div className="p-8 text-center text-gray-400">
               <UserX className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-              <p className="text-sm font-medium">No students found</p>
-              <p className="text-xs text-gray-400 mt-1">Try adjusting search or filters.</p>
+              <p className="text-sm font-medium">{L('No students found', 'مفيش طلاب')}</p>
+              <p className="text-xs text-gray-400 mt-1">{L('Try adjusting search or filters.', 'جرّب تغيّر البحث أو الفلاتر.')}</p>
             </div>
           ) : (
             students.map((student) => (
@@ -414,27 +416,27 @@ export default function StudentsListPage() {
 
                 <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
                   <div>
-                    <span className="text-gray-400 text-[10px] block uppercase">Reg No</span>
+                    <span className="text-gray-400 text-[10px] block uppercase">{L('Reg No', 'رقم القيد')}</span>
                     <span className="font-mono text-gray-800 font-medium">{student.registrationNumber}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400 text-[10px] block uppercase">Class / Section</span>
+                    <span className="text-gray-400 text-[10px] block uppercase">{L('Class / Section', 'الجروب')}</span>
                     <span className="font-medium text-gray-800 truncate block">
                       {formatSections(student) || 'Unassigned'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-400 text-[10px] block uppercase">Campus</span>
+                    <span className="text-gray-400 text-[10px] block uppercase">{L('Campus', 'الفرع')}</span>
                     <span className="font-bold text-blue-600">{student.campus.code}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-2 pt-1">
                   <Button variant="outline" size="sm" className="h-8 text-xs text-blue-600 border-blue-200" onClick={() => setSelectedStudentId(student.id)}>
-                    Quick View
+                    {L('Quick View', 'نظرة سريعة')}
                   </Button>
                   <Link href={`/dashboard/students/${student.id}`}>
-                    <Button variant="outline" size="sm" className="h-8 text-xs">Profile</Button>
+                    <Button variant="outline" size="sm" className="h-8 text-xs">{L('Profile', 'الملف')}</Button>
                   </Link>
                   {canManage && student.enrollmentStatus !== 'SUSPENDED' && (
                     <Button
@@ -458,14 +460,14 @@ export default function StudentsListPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead>Student</TableHead>
-                <TableHead>Reg. #</TableHead>
-                <TableHead>Groups</TableHead>
-                <TableHead>Campus</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Fee</TableHead>
-                <TableHead>Last contact</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{L('Student', 'الطالب')}</TableHead>
+                <TableHead>{L('Reg. #', 'رقم القيد')}</TableHead>
+                <TableHead>{L('Groups', 'الجروبات')}</TableHead>
+                <TableHead>{L('Campus', 'الفرع')}</TableHead>
+                <TableHead>{L('Status', 'الحالة')}</TableHead>
+                <TableHead>{L('Fee', 'الدفع')}</TableHead>
+                <TableHead>{L('Last contact', 'آخر تواصل')}</TableHead>
+                <TableHead className="text-right">{L('Actions', 'إجراءات')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -476,7 +478,7 @@ export default function StudentsListPage() {
                   <TableCell colSpan={8} className="h-64">
                     <EmptyState 
                       icon={UserX}
-                      title="No students found"
+                      title={L('No students found', 'مفيش طلاب')}
                       description={search || feeStatusFilter || enrollmentFilter ? "Try adjusting your filters to find what you're looking for." : "There are currently no students in the directory."}
                     />
                   </TableCell>
@@ -501,7 +503,7 @@ export default function StudentsListPage() {
                     </TableCell>
                     <TableCell className="font-mono text-xs">{student.registrationNumber}</TableCell>
                     <TableCell>
-                      <div className="text-sm text-gray-800">{formatSections(student) || <span className="text-gray-400 text-xs">Unassigned</span>}</div>
+                      <div className="text-sm text-gray-800">{formatSections(student) || <span className="text-gray-400 text-xs">{L('Unassigned', 'مش في جروب')}</span>}</div>
                     </TableCell>
                     <TableCell className="text-sm">
                       <span className="font-bold text-blue-600 text-xs">{student.campus.code}</span>
@@ -520,15 +522,15 @@ export default function StudentsListPage() {
                       {student.lastContactAt ? (() => {
                         const days = Math.floor((Date.now() - new Date(student.lastContactAt).getTime()) / 86_400_000)
                         return <span className={days > 30 ? 'text-amber-700' : ''}>{days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`}</span>
-                      })() : <span className="text-gray-300">never</span>}
+                      })() : <span className="text-gray-300">{L('never', 'ولا مرة')}</span>}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="sm" className="text-blue-600 text-xs" onClick={() => setSelectedStudentId(student.id)}>
-                          View →
+                          {L('View →', 'عرض ←')}
                         </Button>
                         <Link href={`/dashboard/students/${student.id}`}>
-                          <Button variant="ghost" size="sm" className="text-xs hidden sm:inline-flex">Profile</Button>
+                          <Button variant="ghost" size="sm" className="text-xs hidden sm:inline-flex">{L('Profile', 'الملف')}</Button>
                         </Link>
                         {canManage && student.enrollmentStatus !== 'SUSPENDED' && (
                           <Button
@@ -553,7 +555,7 @@ export default function StudentsListPage() {
         {pagination && pagination.totalPages > 1 && (
           <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-3 border-t bg-gray-50 gap-2.5">
             <p className="text-xs sm:text-sm text-gray-500">
-              {((page - 1) * limit) + 1}–{Math.min(page * limit, pagination.total)} of {pagination.total}
+              {((page - 1) * limit) + 1}–{Math.min(page * limit, pagination.total)} {L('of', 'من')} {pagination.total}
             </p>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>

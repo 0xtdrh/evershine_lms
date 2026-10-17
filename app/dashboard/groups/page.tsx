@@ -25,6 +25,7 @@ import { GroupPricePanel } from '@/components/groups/GroupPricePanel'
 import { GroupRulesPanel } from '@/components/rules/GroupRulesPanel'
 import { ExtraSessionsPanel, type ExtraSessionRow } from '@/components/groups/ExtraSessionsPanel'
 import { FullGroupDialog } from '@/components/groups/FullGroupDialog'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Campus { id: string; name: string }
 interface AcademicYear { id: string; name: string; isActive: boolean }
@@ -110,9 +111,9 @@ function toDateInputValue(d: string | null): string {
 
 
 function statusBadge(status: GroupSummary['displayStatus']) {
-  if (status === 'COMPLETED') return <Badge className="bg-slate-100 text-slate-600 border-slate-200">Completed</Badge>
-  if (status === 'UPCOMING') return <Badge className="bg-amber-50 text-amber-700 border-amber-100">Upcoming</Badge>
-  return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100">Active</Badge>
+  if (status === 'COMPLETED') return <Badge className="bg-slate-100 text-slate-600 border-slate-200">{L('Completed', 'خلص')}</Badge>
+  if (status === 'UPCOMING') return <Badge className="bg-amber-50 text-amber-700 border-amber-100">{L('Upcoming', 'جاي')}</Badge>
+  return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100">{L('Active', 'شغال')}</Badge>
 }
 
 function apiErrorMessage(err: unknown, fallback: string): string {
@@ -124,6 +125,7 @@ function apiErrorMessage(err: unknown, fallback: string): string {
 }
 
 export default function GroupsPage() {
+  useI18n() // re-render on a language switch
   const queryClient = useQueryClient()
   const router = useRouter()
   const { data: session } = useSession()
@@ -221,7 +223,7 @@ export default function GroupsPage() {
     onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: ['group-detail', selectedGroupId] })
       queryClient.invalidateQueries({ queryKey: ['groups'] })
-      notify.success('Instructor updated')
+      notify.success(L('Instructor updated', 'المدرب اتحدّث'))
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to assign instructor')),
   })
@@ -272,7 +274,7 @@ export default function GroupsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] })
-      notify.success('Group created')
+      notify.success(L('Group created', 'الجروب اتعمل'))
       setCreateOpen(false)
       resetCreateForm()
     },
@@ -331,7 +333,7 @@ export default function GroupsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] })
       queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
-      notify.success('Group updated')
+      notify.success(L('Group updated', 'الجروب اتحدّث'))
       setEditOpen(false)
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to update group')),
@@ -343,7 +345,7 @@ export default function GroupsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] })
       queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
-      notify.success('Status updated')
+      notify.success(L('Status updated', 'الحالة اتحدّثت'))
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to update status')),
   })
@@ -389,8 +391,8 @@ export default function GroupsPage() {
     onSuccess: (res: { action: string; newGroupId: string | null }) => {
       queryClient.invalidateQueries({ queryKey: ['groups'] })
       setConfirmAdvance(false)
-      if (res.action === 'GROUP_COMPLETED') notify.success('This was the last level — the group is now marked Completed')
-      else notify.success('New group created for the continuing students')
+      if (res.action === 'GROUP_COMPLETED') notify.success(L('This was the last level — the group is now marked Completed', 'ده كان آخر مستوى — الجروب اتقفل'))
+      else notify.success(L('New group created for the continuing students', 'اتعمل جروب جديد للطلاب المكمّلين'))
       if (res.newGroupId) setSelectedGroupId(res.newGroupId)
       else setSelectedGroupId(null)
     },
@@ -450,7 +452,7 @@ export default function GroupsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group-financials', selectedGroupId] })
-      notify.success('Group pay rule updated')
+      notify.success(L('Group pay rule updated', 'قاعدة أجر الجروب اتحدّثت'))
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to update pay rule')),
   })
@@ -464,7 +466,7 @@ export default function GroupsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group-financials', selectedGroupId] })
-      notify.success('Adjustment added')
+      notify.success(L('Adjustment added', 'التسوية اتضافت'))
       setAdjustmentForm({ amount: '', reason: '' })
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to add adjustment')),
@@ -475,7 +477,7 @@ export default function GroupsPage() {
     onSuccess: (res: { generated: number; skipped: number }) => {
       queryClient.invalidateQueries({ queryKey: ['group-financials', selectedGroupId] })
       if (res.generated > 0) notify.success(`${res.generated} invoice${res.generated === 1 ? '' : 's'} generated`)
-      else notify.success('Everyone already has an invoice for this cycle')
+      else notify.success(L('Everyone already has an invoice for this cycle', 'الكل عنده فاتورة للشهر ده'))
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to generate invoices')),
   })
@@ -483,7 +485,7 @@ export default function GroupsPage() {
     mutationFn: () => fetchApi(`/api/groups/${selectedGroupId}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] })
-      notify.success('Group deleted')
+      notify.success(L('Group deleted', 'الجروب اتمسح'))
       setConfirmDelete(false)
       setSelectedGroupId(null)
     },
@@ -513,7 +515,7 @@ export default function GroupsPage() {
       queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
       queryClient.invalidateQueries({ queryKey: ['groups'] })
       queryClient.invalidateQueries({ queryKey: ['group-financials', selectedGroupId] })
-      notify.success('Student added')
+      notify.success(L('Student added', 'الطالب اتضاف'))
       setStudentQuery('')
     },
     onError: (err: unknown, studentId: string) => {
@@ -531,7 +533,7 @@ export default function GroupsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
       queryClient.invalidateQueries({ queryKey: ['groups'] })
-      notify.success('Student removed from group')
+      notify.success(L('Student removed from group', 'الطالب اتشال من الجروب'))
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to remove student')),
   })
@@ -540,13 +542,13 @@ export default function GroupsPage() {
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Groups</h1>
+          <h1 className="text-xl font-bold text-slate-900">{L('Groups', 'الجروبات')}</h1>
           <div className="mt-2 print:hidden"><DataExchangeButtons dataset="groups" /></div>
-          <CardDescription>Full control — create, edit, staff, and manage every group here.</CardDescription>
+          <CardDescription>{L('Full control — create, edit, staff, and manage every group here.', 'تحكم كامل — اعمل وعدّل وحدد المدربين وأدير كل جروب من هنا.')}</CardDescription>
         </div>
         {canCreateGroups && (
           <Button className="gap-1.5" onClick={() => setCreateOpen(true)}>
-            <Plus className="w-4 h-4" /> New group
+            <Plus className="w-4 h-4" /> {L('New group', 'جروب جديد')}
           </Button>
         )}
       </div>
@@ -561,7 +563,7 @@ export default function GroupsPage() {
               filter === f ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
-            {f === 'ACTIVE' ? 'Active' : f === 'UPCOMING' ? 'Upcoming' : 'Completed'}
+            {f === 'ACTIVE' ? L('Active', 'شغال') : f === 'UPCOMING' ? L('Upcoming', 'جاي') : L('Completed', 'خلص')}
             <span className={filter === f ? 'text-indigo-100 ml-1.5' : 'text-slate-400 ml-1.5'}>{counts[f]}</span>
           </button>
         ))}
@@ -570,7 +572,7 @@ export default function GroupsPage() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-slate-400 text-center py-16">No groups here.</p>
+        <p className="text-sm text-slate-400 text-center py-16">{L('No groups here.', 'مفيش جروبات هنا.')}</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {filtered.map((g) => (
@@ -589,8 +591,8 @@ export default function GroupsPage() {
               </p>
               <div className="mt-3 space-y-1 text-xs text-slate-500">
                 <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {g.campus.name}</p>
-                <p className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> {g.studentCount} students {g.teacher && `· ${g.teacher.name}`}</p>
-                <p className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {formatDate(g.startDate)} → cycle ends ≈ {formatDate(g.ends?.cycleEnd ?? null)} · level ≈ {formatDate(g.ends?.levelEnd ?? null)}</p>
+                <p className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> {g.studentCount} {L('students', 'طالب')} {g.teacher && `· ${g.teacher.name}`}</p>
+                <p className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {formatDate(g.startDate)} {L('→ cycle ends ≈', '← الشهر بيخلص ≈')} {formatDate(g.ends?.cycleEnd ?? null)} {L('· level ≈', '· المستوى ≈')} {formatDate(g.ends?.levelEnd ?? null)}</p>
                 {g.scheduleSlots && g.scheduleSlots.length > 0 && (
                   <p className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
@@ -624,19 +626,19 @@ export default function GroupsPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-xs text-slate-400">Branch</p>
+                  <p className="text-xs text-slate-400">{L('Branch', 'الفرع')}</p>
                   <p className="text-slate-800">{detail.campus.name}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400">Instructor</p>
+                  <p className="text-xs text-slate-400">{L('Instructor', 'المدرب')}</p>
                   <Select
                     value={detail.teacher?.id ?? 'none'}
                     disabled={!canSetInstructor}
                     onValueChange={(v) => assignInstructorMutation.mutate(v === 'none' ? null : v)}
                   >
-                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Not assigned" /></SelectTrigger>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder={L('Not assigned', 'مش متحدد')} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Not assigned</SelectItem>
+                      <SelectItem value="none">{L('Not assigned', 'مش متحدد')}</SelectItem>
                       {[...teacherOptions].sort((a, b) => (b.isQualified ? 1 : 0) - (a.isQualified ? 1 : 0)).map((t) => (
                         <SelectItem key={t.id} value={t.id}>
                           {t.firstName} {t.lastName}{t.isQualified ? ' ✓ Qualified' : ''}
@@ -646,14 +648,14 @@ export default function GroupsPage() {
                   </Select>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400">Starts</p>
+                  <p className="text-xs text-slate-400">{L('Starts', 'بيبدأ')}</p>
                   <p className={detail.startDate ? 'text-slate-800' : 'text-amber-600 font-medium'}>
                     {detail.startDate ? formatDate(detail.startDate) : 'Not started yet'}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">
-                    This cycle ends ≈{detail.ends ? ` (session ${detail.ends.sessionsDoneInCycle}/${detail.ends.sessionsPerCycle})` : ''}
+                    {L('This cycle ends ≈', 'الشهر ده بيخلص ≈')}{detail.ends ? ` (session ${detail.ends.sessionsDoneInCycle}/${detail.ends.sessionsPerCycle})` : ''}
                   </p>
                   <p className={detail.ends?.cycleEnd ? 'text-slate-800' : 'text-slate-400'}>
                     {detail.ends?.cycleEnd ? formatDate(detail.ends.cycleEnd) : '—'}
@@ -661,35 +663,35 @@ export default function GroupsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">
-                    Level ends ≈{detail.ends ? ` (cycle ${detail.ends.cycleNumber}/${detail.ends.cyclesInLevel})` : ''}
+                    {L('Level ends ≈', 'المستوى بيخلص ≈')}{detail.ends ? ` (cycle ${detail.ends.cycleNumber}/${detail.ends.cyclesInLevel})` : ''}
                   </p>
                   <p className={detail.ends?.levelEnd ? 'text-slate-800' : 'text-slate-400'}>
                     {detail.ends?.levelEnd ? formatDate(detail.ends.levelEnd) : '—'}
                   </p>
                   {detail.ends?.basis === 'ONE_MONTH_PER_CYCLE' && (
-                    <p className="text-[11px] text-amber-600">Add a weekly schedule for a better estimate</p>
+                    <p className="text-[11px] text-amber-600">{L('Add a weekly schedule for a better estimate', 'ضيف جدول أسبوعي علشان التقدير يبقى أدق')}</p>
                   )}
                 </div>
                 {detail.level && (
                   <div className="col-span-2">
-                    <p className="text-xs text-slate-400">Level pricing</p>
+                    <p className="text-xs text-slate-400">{L('Level pricing', 'سعر المستوى')}</p>
                     <p className="text-slate-800">
                       {detail.level.pricingType === 'MONTHLY'
                         ? `${detail.level.monthlyPrice ?? '—'} / month`
                         : `${detail.level.fullLevelPrice ?? '—'} full level`}
-                      {' · '}{detail.level.numberOfSessions} sessions over {detail.level.numberOfMonths} months
+                      {' · '}{detail.level.numberOfSessions} {L('sessions over', 'حصة على')} {detail.level.numberOfMonths} {L('months', 'شهور')}
                     </p>
                   </div>
                 )}
                 {detail.level?.pricingType === 'MONTHLY' && (
                   <div className="col-span-2">
-                    <p className="text-xs text-slate-400">Current billing cycle</p>
-                    <p className="text-slate-800">Month {detail.currentCycleNumber}</p>
+                    <p className="text-xs text-slate-400">{L('Current billing cycle', 'الشهر الحالي')}</p>
+                    <p className="text-slate-800">{L('Month', 'شهر')} {detail.currentCycleNumber}</p>
                   </div>
                 )}
                 {detail.scheduleSlots && detail.scheduleSlots.length > 0 && (
                   <div className="col-span-2">
-                    <p className="text-xs text-slate-400">Weekly schedule</p>
+                    <p className="text-xs text-slate-400">{L('Weekly schedule', 'الجدول الأسبوعي')}</p>
                     <p className="text-slate-800">
                       {detail.scheduleSlots.map((s) => `${DAY_NAMES[s.dayOfWeek]} ${s.time}`).join(', ')}
                     </p>
@@ -700,7 +702,7 @@ export default function GroupsPage() {
               <div className="flex flex-wrap gap-2">
                 {canEditGroups && (
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={openEdit}>
-                  <Pencil className="w-3.5 h-3.5" /> Edit
+                  <Pencil className="w-3.5 h-3.5" /> {L('Edit', 'تعديل')}
                 </Button>
                 )}
                 {!canEditGroups ? null : detail.status === 'ACTIVE' ? (
@@ -709,7 +711,7 @@ export default function GroupsPage() {
                     disabled={toggleStatusMutation.isPending}
                     onClick={() => toggleStatusMutation.mutate('COMPLETED')}
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Mark completed
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {L('Mark completed', 'اعتبره خلص')}
                   </Button>
                 ) : (
                   <Button
@@ -717,7 +719,7 @@ export default function GroupsPage() {
                     disabled={toggleStatusMutation.isPending}
                     onClick={() => toggleStatusMutation.mutate('ACTIVE')}
                   >
-                    Reopen
+                    {L('Reopen', 'افتحه تاني')}
                   </Button>
                 )}
                 {canEditGroups && detail.level && detail.status === 'ACTIVE' && isLastSessionOfCycle && (
@@ -725,21 +727,21 @@ export default function GroupsPage() {
                     size="sm" variant="outline" className="gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
                     onClick={openAdvanceDialog}
                   >
-                    Advance cycle
+                    {L('Advance cycle', 'رحّل للشهر الجاي')}
                   </Button>
                 )}
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setFinancialsOpen(true)}>
-                  <Wallet className="w-3.5 h-3.5" /> Financials
+                  <Wallet className="w-3.5 h-3.5" /> {L('Financials', 'الحسابات')}
                 </Button>
                 <Button
                   size="sm" variant="outline" className="gap-1.5"
                   onClick={() => router.push(`/dashboard/attendance/sections?classSectionId=${detail.id}`)}
                 >
-                  <Calendar className="w-3.5 h-3.5" /> Attendance
+                  <Calendar className="w-3.5 h-3.5" /> {L('Attendance', 'الحضور')}
                 </Button>
                 {canDeleteGroups && (
                 <Button size="sm" variant="ghost" className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
-                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                  <Trash2 className="w-3.5 h-3.5" /> {L('Delete', 'امسح')}
                 </Button>
                 )}
               </div>
@@ -764,11 +766,11 @@ export default function GroupsPage() {
               <div>
                 <p className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
                   <GraduationCap className="w-4 h-4 text-indigo-600" />
-                  Students ({detail.enrollments.filter((e) => e.status === 'ACTIVE').length}{detail.maxStudents ? `/${detail.maxStudents}` : ''})
+                  {L('Students (', 'الطلاب (')}{detail.enrollments.filter((e) => e.status === 'ACTIVE').length}{detail.maxStudents ? `/${detail.maxStudents}` : ''})
                 </p>
                 <div className="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-56 overflow-y-auto mb-2">
                   {detail.enrollments.filter((e) => e.status === 'ACTIVE').length === 0 ? (
-                    <p className="text-sm text-slate-400 text-center py-4">No students enrolled yet.</p>
+                    <p className="text-sm text-slate-400 text-center py-4">{L('No students enrolled yet.', 'لسه مفيش طلاب.')}</p>
                   ) : (
                     detail.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => (
                       <div key={e.id} className="flex items-center justify-between px-3 py-2 text-sm">
@@ -778,7 +780,7 @@ export default function GroupsPage() {
                             {e.withdrawalReason === 'PAYMENT_OVERDUE_WARNING' && (
                               <>
                                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 font-medium">
-                                  Payment overdue
+                                  {L('Payment overdue', 'الدفع متأخر')}
                                 </span>
                                 {canRemoveStudents && <button
                                   type="button"
@@ -786,24 +788,24 @@ export default function GroupsPage() {
                                   onClick={() => removeStudentMutation.mutate(e.id)}
                                   className="text-[10px] text-rose-600 hover:text-rose-700 underline underline-offset-2 font-medium disabled:opacity-50"
                                 >
-                                  Exclude
+                                  {L('Exclude', 'استبعاد')}
                                 </button>}
                               </>
                             )}
                           </p>
                           <p className="text-xs text-slate-400">
                             {e.student.registrationNumber}
-                            {e.student.campus.id !== detail.campusId && <span className="text-amber-600"> · home branch: {e.student.campus.name}</span>}
+                            {e.student.campus.id !== detail.campusId && <span className="text-amber-600"> {L('· home branch:', '· فرعه:')} {e.student.campus.name}</span>}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           {canMoveStudents && (
                             <Button
                               size="sm" variant="ghost" className="h-6 gap-1 px-1.5 text-xs text-indigo-600"
-                              title="Move to another group"
+                              title={L('Move to another group', 'انقل لجروب تاني')}
                               onClick={() => setMoving({ studentId: e.student.id, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}` })}
                             >
-                              <ArrowRightLeft className="w-3.5 h-3.5" /> Move
+                              <ArrowRightLeft className="w-3.5 h-3.5" /> {L('Move', 'نقل')}
                             </Button>
                           )}
                           {canRemoveStudents && <Button
@@ -820,7 +822,7 @@ export default function GroupsPage() {
                 </div>
 
                 {canEditGroups && <Input
-                  placeholder="Search by student name to add..."
+                  placeholder={L('Search by student name to add...', 'دوّر باسم الطالب علشان تضيفه...')}
                   value={studentQuery}
                   onChange={(e) => setStudentQuery(e.target.value)}
                 />}
@@ -850,7 +852,7 @@ export default function GroupsPage() {
       <Dialog open={financialsOpen} onOpenChange={setFinancialsOpen}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Financials — {detail?.label}</DialogTitle>
+            <DialogTitle>{L('Financials —', 'الحسابات —')} {detail?.label}</DialogTitle>
             <DialogDescription>Every invoice generated for this group, and what&apos;s been paid.</DialogDescription>
           </DialogHeader>
 
@@ -860,23 +862,23 @@ export default function GroupsPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="bg-slate-50 rounded-xl p-3">
-                  <p className="text-xs text-slate-400">Expected</p>
+                  <p className="text-xs text-slate-400">{L('Expected', 'المتوقع')}</p>
                   <p className="text-lg font-bold text-slate-800">{financials.totals.expected.toLocaleString()}</p>
                 </div>
                 <div className="bg-emerald-50 rounded-xl p-3">
-                  <p className="text-xs text-emerald-600">Collected</p>
+                  <p className="text-xs text-emerald-600">{L('Collected', 'المحصّل')}</p>
                   <p className="text-lg font-bold text-emerald-700">{financials.totals.collected.toLocaleString()}</p>
                 </div>
                 <div className="bg-rose-50 rounded-xl p-3">
-                  <p className="text-xs text-rose-600">Outstanding</p>
+                  <p className="text-xs text-rose-600">{L('Outstanding', 'المتبقي')}</p>
                   <p className="text-lg font-bold text-rose-700">{financials.totals.outstanding.toLocaleString()}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3">
-                  <p className="text-xs text-slate-400">Instructor pay</p>
+                  <p className="text-xs text-slate-400">{L('Instructor pay', 'أجر المدرب')}</p>
                   <p className="text-lg font-bold text-slate-800">{financials.totals.teacherPay.toLocaleString()}</p>
                 </div>
                 <div className="bg-indigo-50 rounded-xl p-3 col-span-2">
-                  <p className="text-xs text-indigo-600">Group profit</p>
+                  <p className="text-xs text-indigo-600">{L('Group profit', 'ربح الجروب')}</p>
                   <p className="text-lg font-bold text-indigo-700">{financials.totals.profit.toLocaleString()}</p>
                 </div>
               </div>
@@ -885,7 +887,7 @@ export default function GroupsPage() {
                 <div className="border border-slate-100 rounded-xl p-3 space-y-2">
                   <p className="text-sm font-medium text-slate-700">{financials.teacherPay.teacherName}&apos;s pay this cycle</p>
                   <p className="text-xs text-slate-500">
-                    Fixed {financials.teacherPay.fixedAmount.toLocaleString()}
+                    {L('Fixed', 'ثابت')} {financials.teacherPay.fixedAmount.toLocaleString()}
                     {financials.teacherPay.percentOfStudentPayment != null && ` · ${financials.teacherPay.percentOfStudentPayment}% of payments = ${financials.teacherPay.percentAmount.toLocaleString()}`}
                     {financials.teacherPay.perSessionAmount != null && ` · ${financials.teacherPay.sessionsCounted} sessions × ${financials.teacherPay.perSessionAmount} = ${financials.teacherPay.sessionAmount.toLocaleString()}`}
                     {financials.teacherPay.adjustmentsTotal !== 0 && ` · adjustments ${financials.teacherPay.adjustmentsTotal.toLocaleString()}`}
@@ -909,27 +911,27 @@ export default function GroupsPage() {
                     <summary className="cursor-pointer text-indigo-600">Set this group&apos;s pay rule</summary>
                     <div className="mt-2 space-y-2">
                       <div className="flex gap-2">
-                        <Input placeholder="Fixed" type="number" value={payForm.fixedAmount} onChange={(e) => setPayForm({ ...payForm, fixedAmount: e.target.value })} className="h-8 text-xs" />
-                        <Input placeholder="% of payments" type="number" value={payForm.percentOfStudentPayment} onChange={(e) => setPayForm({ ...payForm, percentOfStudentPayment: e.target.value })} className="h-8 text-xs" />
-                        <Input placeholder="Per session" type="number" value={payForm.perSessionAmount} onChange={(e) => setPayForm({ ...payForm, perSessionAmount: e.target.value })} className="h-8 text-xs" />
+                        <Input placeholder={L('Fixed', 'ثابت')} type="number" value={payForm.fixedAmount} onChange={(e) => setPayForm({ ...payForm, fixedAmount: e.target.value })} className="h-8 text-xs" />
+                        <Input placeholder={L('% of payments', '% من المدفوع')} type="number" value={payForm.percentOfStudentPayment} onChange={(e) => setPayForm({ ...payForm, percentOfStudentPayment: e.target.value })} className="h-8 text-xs" />
+                        <Input placeholder={L('Per session', 'للحصة')} type="number" value={payForm.perSessionAmount} onChange={(e) => setPayForm({ ...payForm, perSessionAmount: e.target.value })} className="h-8 text-xs" />
                       </div>
                       <Button size="sm" className="h-7 text-xs w-full" disabled={setInstructorPayMutation.isPending} onClick={() => setInstructorPayMutation.mutate()}>
-                        Save rule for this group
+                        {L('Save rule for this group', 'احفظ القاعدة للجروب ده')}
                       </Button>
                     </div>
                   </details>}
 
                   {canAddPayAdjust && <details className="text-xs">
-                    <summary className="cursor-pointer text-indigo-600">Add bonus / deduction</summary>
+                    <summary className="cursor-pointer text-indigo-600">{L('Add bonus / deduction', 'ضيف مكافأة / خصم')}</summary>
                     <div className="mt-2 space-y-2">
-                      <Input placeholder="Amount (negative for deduction)" type="number" value={adjustmentForm.amount} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })} className="h-8 text-xs" />
-                      <Input placeholder="Reason" value={adjustmentForm.reason} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, reason: e.target.value })} className="h-8 text-xs" />
+                      <Input placeholder={L('Amount (negative for deduction)', 'المبلغ (بالسالب للخصم)')} type="number" value={adjustmentForm.amount} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })} className="h-8 text-xs" />
+                      <Input placeholder={L('Reason', 'السبب')} value={adjustmentForm.reason} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, reason: e.target.value })} className="h-8 text-xs" />
                       <Button
                         size="sm" className="h-7 text-xs w-full"
                         disabled={!adjustmentForm.amount || !adjustmentForm.reason || addAdjustmentMutation.isPending}
                         onClick={() => addAdjustmentMutation.mutate()}
                       >
-                        Add
+                        {L('Add', 'ضيف')}
                       </Button>
                     </div>
                   </details>}
@@ -938,7 +940,7 @@ export default function GroupsPage() {
 
               {financials.substituteAdjustments && financials.substituteAdjustments.length > 0 && (
                 <div className="border border-amber-100 bg-amber-50/40 rounded-xl p-3 space-y-1.5">
-                  <p className="text-sm font-medium text-slate-700">Substitute coverage adjustments</p>
+                  <p className="text-sm font-medium text-slate-700">{L('Substitute coverage adjustments', 'تسويات الحصص البديلة')}</p>
                   {financials.substituteAdjustments.map((a) => (
                     <div key={a.id} className="flex items-start justify-between gap-3 text-xs">
                       <div>
@@ -959,11 +961,11 @@ export default function GroupsPage() {
                 onClick={() => generateInvoicesMutation.mutate()}
               >
                 {generateInvoicesMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wallet className="w-3.5 h-3.5" />}
-                Generate invoices for current cycle
+                {L('Generate invoices for current cycle', 'اعمل فواتير الشهر الحالي')}
               </Button>}
 
               {financials.students.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-6">No invoices generated for this group yet.</p>
+                <p className="text-sm text-slate-400 text-center py-6">{L('No invoices generated for this group yet.', 'لسه مفيش فواتير للجروب ده.')}</p>
               ) : (
                 <div className="space-y-3">
                   {financials.students.map((s) => (
@@ -989,7 +991,7 @@ export default function GroupsPage() {
                               </Badge>
                             </div>
                             <p className="text-slate-400 mt-0.5">
-                              {Number(inv.paidAmount).toLocaleString()} / {Number(inv.totalAmount).toLocaleString()} paid
+                              {Number(inv.paidAmount).toLocaleString()} / {Number(inv.totalAmount).toLocaleString()} {L('paid', 'مدفوع')}
                               {inv.payments.length > 0 && (
                                 <> · {inv.payments.map((p) => `${Number(p.amount).toLocaleString()} (${p.paymentMethod})`).join(', ')}</>
                               )}
@@ -1010,10 +1012,9 @@ export default function GroupsPage() {
       <Dialog open={confirmAdvance} onOpenChange={setConfirmAdvance}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Advance to the next cycle</DialogTitle>
+            <DialogTitle>{L('Advance to the next cycle', 'رحّل للشهر الجاي')}</DialogTitle>
             <DialogDescription>
-              This creates a new group for the next month/level and marks this one Completed. Uncheck anyone
-              who is not continuing — only checked students move to the new group.
+              {L('This creates a new group for the next month/level and marks this one Completed. Uncheck anyone who is not continuing — only checked students move to the new group.', 'ده بيعمل جروب جديد للشهر / المستوى الجاي وبيقفل الجروب ده. شيل العلامة من أي حد مش مكمّل — المعلّمين بس هيتنقلوا للجروب الجديد.')}
             </DialogDescription>
           </DialogHeader>
 
@@ -1024,7 +1025,7 @@ export default function GroupsPage() {
                   {e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`}
                   {e.withdrawalReason === 'PAYMENT_OVERDUE_WARNING' && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 font-medium">
-                      Payment overdue
+                      {L('Payment overdue', 'الدفع متأخر')}
                     </span>
                   )}
                   {(() => {
@@ -1047,7 +1048,7 @@ export default function GroupsPage() {
               </label>
             ))}
           </div>
-          <p className="text-xs text-slate-400">{continuingIds.size} of {detail?.enrollments.filter((e) => e.status === 'ACTIVE').length ?? 0} continuing</p>
+          <p className="text-xs text-slate-400">{continuingIds.size} {L('of', 'من')} {detail?.enrollments.filter((e) => e.status === 'ACTIVE').length ?? 0} {L('continuing', 'مكمّل')}</p>
 
           <DialogFooter>
             <Button disabled={advanceCycleMutation.isPending} onClick={() => advanceCycleMutation.mutate()}>
@@ -1061,53 +1062,53 @@ export default function GroupsPage() {
       <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) resetCreateForm() }}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New group</DialogTitle>
+            <DialogTitle>{L('New group', 'جروب جديد')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             {!isCampusLocked && (
               <Select value={createForm.campusId} onValueChange={(v) => setCreateForm({ ...createForm, campusId: v, batchId: '' })}>
-                <SelectTrigger><SelectValue placeholder="Branch" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={L('Branch', 'الفرع')} /></SelectTrigger>
                 <SelectContent>{campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             )}
             <div className="flex gap-3">
-              <Input placeholder="Group name" value={createForm.className} onChange={(e) => setCreateForm({ ...createForm, className: e.target.value })} />
-              <Input placeholder="Section (e.g. A)" value={createForm.sectionName} onChange={(e) => setCreateForm({ ...createForm, sectionName: e.target.value })} />
+              <Input placeholder={L('Group name', 'اسم الجروب')} value={createForm.className} onChange={(e) => setCreateForm({ ...createForm, className: e.target.value })} />
+              <Input placeholder={L('Section (e.g. A)', 'القسم (مثلاً A)')} value={createForm.sectionName} onChange={(e) => setCreateForm({ ...createForm, sectionName: e.target.value })} />
             </div>
-            <Input type="number" min={1} placeholder="Most students (empty = no limit)" value={createForm.maxStudents} onChange={(e) => setCreateForm({ ...createForm, maxStudents: e.target.value })} />
+            <Input type="number" min={1} placeholder={L('Most students (empty = no limit)', 'أقصى عدد (فاضي = من غير حد)')} value={createForm.maxStudents} onChange={(e) => setCreateForm({ ...createForm, maxStudents: e.target.value })} />
             <Select value={createForm.trackId} onValueChange={(v) => setCreateForm({ ...createForm, trackId: v, courseId: '', levelId: '' })}>
-              <SelectTrigger><SelectValue placeholder="Track" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={L('Track', 'التراك')} /></SelectTrigger>
               <SelectContent>{tracks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={createForm.courseId} onValueChange={(v) => setCreateForm({ ...createForm, courseId: v, levelId: '' })} disabled={!createForm.trackId}>
-              <SelectTrigger><SelectValue placeholder="Course" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={L('Course', 'الكورس')} /></SelectTrigger>
               <SelectContent>{coursesForCreate.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={createForm.levelId} onValueChange={(v) => setCreateForm({ ...createForm, levelId: v })} disabled={!createForm.courseId}>
-              <SelectTrigger><SelectValue placeholder="Level" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={L('Level', 'المستوى')} /></SelectTrigger>
               <SelectContent>{levelsForCreate.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
             </Select>
-            <Input type="date" placeholder="Start date" value={createForm.startDate} onChange={(e) => setCreateForm({ ...createForm, startDate: e.target.value })} />
+            <Input type="date" placeholder={L('Start date', 'تاريخ البداية')} value={createForm.startDate} onChange={(e) => setCreateForm({ ...createForm, startDate: e.target.value })} />
             <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
               <Checkbox
                 checked={createForm.requireFullPaymentToStart}
                 onCheckedChange={(checked) => setCreateForm({ ...createForm, requireFullPaymentToStart: checked })}
               />
-              Require everyone to pay before this group starts
+              {L('Require everyone to pay before this group starts', 'لازم الكل يدفع قبل ما الجروب يبدأ')}
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
               <Checkbox
                 checked={createForm.partialPaymentCounts}
                 onCheckedChange={(checked) => setCreateForm({ ...createForm, partialPaymentCounts: checked })}
               />
-              A partial payment counts as paid for this group
+              {L('A partial payment counts as paid for this group', 'الدفع الجزئي يتحسب مدفوع في الجروب ده')}
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
               <Checkbox
                 checked={createForm.installmentsAllowed}
                 onCheckedChange={(checked) => setCreateForm({ ...createForm, installmentsAllowed: checked })}
               />
-              Allow installment payments for this group
+              {L('Allow installment payments for this group', 'اسمح بالتقسيط في الجروب ده')}
             </label>
           </div>
           <DialogFooter>
@@ -1125,23 +1126,23 @@ export default function GroupsPage() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit group</DialogTitle>
+            <DialogTitle>{L('Edit group', 'تعديل الجروب')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex gap-3">
-              <Input placeholder="Group name" value={editForm.className} onChange={(e) => setEditForm({ ...editForm, className: e.target.value })} />
-              <Input placeholder="Section" value={editForm.sectionName} onChange={(e) => setEditForm({ ...editForm, sectionName: e.target.value })} />
+              <Input placeholder={L('Group name', 'اسم الجروب')} value={editForm.className} onChange={(e) => setEditForm({ ...editForm, className: e.target.value })} />
+              <Input placeholder={L('Section', 'القسم')} value={editForm.sectionName} onChange={(e) => setEditForm({ ...editForm, sectionName: e.target.value })} />
             </div>
             <Select value={editForm.trackId} onValueChange={(v) => setEditForm({ ...editForm, trackId: v, courseId: '', levelId: '' })}>
-              <SelectTrigger><SelectValue placeholder="Track" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={L('Track', 'التراك')} /></SelectTrigger>
               <SelectContent>{tracks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={editForm.courseId} onValueChange={(v) => setEditForm({ ...editForm, courseId: v, levelId: '' })} disabled={!editForm.trackId}>
-              <SelectTrigger><SelectValue placeholder="Course" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={L('Course', 'الكورس')} /></SelectTrigger>
               <SelectContent>{coursesForEdit.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={editForm.levelId} onValueChange={(v) => setEditForm({ ...editForm, levelId: v })} disabled={!editForm.courseId}>
-              <SelectTrigger><SelectValue placeholder="Level" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={L('Level', 'المستوى')} /></SelectTrigger>
               <SelectContent>{levelsForEdit.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
             </Select>
             <div className="flex gap-3">
@@ -1149,7 +1150,7 @@ export default function GroupsPage() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-medium text-slate-500">Weekly schedule</p>
+              <p className="text-xs font-medium text-slate-500">{L('Weekly schedule', 'الجدول الأسبوعي')}</p>
               {scheduleSlots.map((slot, i) => (
                 <div key={i} className="flex gap-2 items-center">
                   <Select value={String(slot.dayOfWeek)} onValueChange={(v) => {
@@ -1168,7 +1169,7 @@ export default function GroupsPage() {
                 </div>
               ))}
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setScheduleSlots([...scheduleSlots, { dayOfWeek: 0, time: '16:00' }])}>
-                <Plus className="w-3.5 h-3.5" /> Add time slot
+                <Plus className="w-3.5 h-3.5" /> {L('Add time slot', 'ضيف ميعاد')}
               </Button>
             </div>
 
@@ -1177,21 +1178,21 @@ export default function GroupsPage() {
                 checked={editForm.requireFullPaymentToStart}
                 onCheckedChange={(checked) => setEditForm({ ...editForm, requireFullPaymentToStart: checked })}
               />
-              Require everyone to pay before this group starts
+              {L('Require everyone to pay before this group starts', 'لازم الكل يدفع قبل ما الجروب يبدأ')}
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
               <Checkbox
                 checked={editForm.partialPaymentCounts}
                 onCheckedChange={(checked) => setEditForm({ ...editForm, partialPaymentCounts: checked })}
               />
-              A partial payment counts as paid for this group
+              {L('A partial payment counts as paid for this group', 'الدفع الجزئي يتحسب مدفوع في الجروب ده')}
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
               <Checkbox
                 checked={editForm.installmentsAllowed}
                 onCheckedChange={(checked) => setEditForm({ ...editForm, installmentsAllowed: checked })}
               />
-              Allow installment payments for this group
+              {L('Allow installment payments for this group', 'اسمح بالتقسيط في الجروب ده')}
             </label>
           </div>
           <DialogFooter>
@@ -1206,13 +1207,13 @@ export default function GroupsPage() {
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent className="rounded-2xl max-w-md p-6">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg font-bold text-slate-900">Delete {detail?.label}?</AlertDialogTitle>
+            <AlertDialogTitle className="text-lg font-bold text-slate-900">{L('Delete', 'امسح')} {detail?.label}?</AlertDialogTitle>
             <AlertDialogDescription className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed">
-              This is blocked while the group still has active students. Historical records (attendance, grades) are kept either way.
+              {L('This is blocked while the group still has active students. Historical records (attendance, grades) are kept either way.', 'مش هينفع طول ما في طلاب نشطين في الجروب. السجلات القديمة (الحضور والدرجات) بتفضل في كل الأحوال.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 gap-2 flex-col-reverse sm:flex-row">
-            <AlertDialogCancel className="h-10 text-xs sm:text-sm rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-10 text-xs sm:text-sm rounded-xl">{L('Cancel', 'إلغاء')}</AlertDialogCancel>
             <AlertDialogAction asChild>
               <Button variant="destructive" disabled={deleteGroupMutation.isPending} onClick={() => deleteGroupMutation.mutate()}>
                 {deleteGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete'}

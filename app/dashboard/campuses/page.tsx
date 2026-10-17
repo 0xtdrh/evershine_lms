@@ -1,7 +1,7 @@
 'use client'
 
 import { useMyPermissions } from '@/hooks/use-my-permissions'
-import { L } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchPaginatedApi, fetchApi } from '@/lib/api-client'
@@ -60,6 +60,7 @@ interface Campus {
 }
 
 export default function CampusesPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const queryClient = useQueryClient()
 
@@ -142,7 +143,7 @@ export default function CampusesPage() {
       })
     },
     onSuccess: () => {
-      notify.success('Campus created successfully!')
+      notify.success(L('Campus created successfully!', 'الفرع اتسجّل!'))
       queryClient.invalidateQueries({ queryKey: ['campuses'] })
       setIsCreateModalOpen(false)
       createForm.reset()
@@ -160,7 +161,7 @@ export default function CampusesPage() {
       })
     },
     onSuccess: () => {
-      notify.success('Campus details updated successfully!')
+      notify.success(L('Campus details updated successfully!', 'بيانات الفرع اتحدّثت!'))
       queryClient.invalidateQueries({ queryKey: ['campuses'] })
       setIsManageModalOpen(false)
     },
@@ -176,7 +177,7 @@ export default function CampusesPage() {
       })
     },
     onSuccess: () => {
-      notify.success('Campus branch deactivated successfully!')
+      notify.success(L('Campus branch deactivated successfully!', 'الفرع اتوقف!'))
       queryClient.invalidateQueries({ queryKey: ['campuses'] })
       setIsManageModalOpen(false)
     },
@@ -190,7 +191,7 @@ export default function CampusesPage() {
   if (!isAdminOrSuper) {
     return (
       <AccessDenied
-        title="Campus Management Restricted"
+        title={L('Campus Management Restricted', 'إدارة الفروع مقفولة')}
         message="Campus branch management is restricted to administrators only."
       />
     )
@@ -238,10 +239,10 @@ export default function CampusesPage() {
         <div>
           <div className="flex items-center gap-2">
             <Building2 className="w-6 h-6 text-indigo-600 animate-pulse" />
-            <h1 className="text-2xl font-black tracking-tight text-gray-900 leading-none">Campus branches</h1>
+            <h1 className="text-2xl font-black tracking-tight text-gray-900 leading-none">{L('Campus branches', 'الفروع')}</h1>
           </div>
           <p className="text-sm text-gray-500 mt-2">
-            View enrolled directory lists and control academic locations across boys and girls modules.
+            {L('View enrolled directory lists and control academic locations across boys and girls modules.', 'شوف الطلاب والمدربين في كل فرع وأدير الفروع.')}
           </p>
         </div>
         {isSuperAdmin && (
@@ -249,7 +250,7 @@ export default function CampusesPage() {
             className="gap-2 rounded-xl h-[42px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all shadow-sm hover:scale-[1.02]"
             onClick={() => setIsCreateModalOpen(true)}
           >
-            <Plus className="w-4 h-4" /> Add Campus
+            <Plus className="w-4 h-4" /> {L('Add Campus', 'ضيف فرع')}
           </Button>
         )}
       </div>
@@ -259,7 +260,7 @@ export default function CampusesPage() {
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search campuses by name, code or location..."
+            placeholder={L('Search campuses by name, code or location...', 'دوّر بالاسم أو الكود أو المكان...')}
             className="pl-9 h-[38px] border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm font-semibold placeholder:text-gray-400"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -287,9 +288,9 @@ export default function CampusesPage() {
         ) : campuses.length === 0 ? (
           <div className="col-span-full bg-white border rounded-2xl p-16 text-center text-gray-400 shadow-sm">
             <Building2 className="w-12 h-12 mx-auto mb-4 text-indigo-300 animate-bounce" />
-            <h3 className="font-extrabold text-gray-800 text-lg">No branch campuses found</h3>
+            <h3 className="font-extrabold text-gray-800 text-lg">{L('No branch campuses found', 'مفيش فروع')}</h3>
             <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
-              No registered physical branch fits your query criteria. Use the create action to register a new one.
+              {L('No registered physical branch fits your query criteria. Use the create action to register a new one.', 'مفيش فرع مطابق للبحث. استخدم «ضيف فرع» علشان تسجّل فرع جديد.')}
             </p>
           </div>
         ) : (
@@ -307,9 +308,9 @@ export default function CampusesPage() {
                     <CardTitle className="text-lg font-black text-gray-900 tracking-tight leading-snug group-hover:text-indigo-600 transition-colors">
                       <Link href={`/dashboard/campuses/${campus.id}`} className="hover:underline">{campus.name}</Link>
                     </CardTitle>
-                    <Link href={`/dashboard/campuses/${campus.id}`} className="text-[11px] font-semibold text-indigo-600 hover:underline">Open branch profile →</Link>
+                    <Link href={`/dashboard/campuses/${campus.id}`} className="text-[11px] font-semibold text-indigo-600 hover:underline">{L('Open branch profile →', 'افتح ملف الفرع ←')}</Link>
                     <CardDescription className="font-bold text-xs mt-1 text-indigo-500 font-mono tracking-wider">
-                      CODE: {campus.code}
+                      {L('CODE:', 'الكود:')} {campus.code}
                     </CardDescription>
 
                   </div>
@@ -333,13 +334,13 @@ export default function CampusesPage() {
                 {/* Sub-counts Metric Grid */}
                 <div className="grid grid-cols-3 gap-2 pt-2.5 text-center bg-gray-50/60 p-3 rounded-xl border border-gray-100/80">
                   <div>
-                    <p className="text-[9px] text-gray-400 font-black uppercase tracking-wider">Students</p>
+                    <p className="text-[9px] text-gray-400 font-black uppercase tracking-wider">{L('Students', 'الطلاب')}</p>
                     <p className="font-black text-indigo-600 text-sm mt-0.5">
                       {(campus._count?.students ?? 0).toLocaleString()}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[9px] text-gray-400 font-black uppercase tracking-wider">Teachers</p>
+                    <p className="text-[9px] text-gray-400 font-black uppercase tracking-wider">{L('Teachers', 'المدربين')}</p>
                     <p className="font-black text-blue-600 text-sm mt-0.5">
                       {(campus._count?.teachers ?? 0).toLocaleString()}
                     </p>
@@ -350,17 +351,17 @@ export default function CampusesPage() {
                 <div className="space-y-1.5 text-xs pt-3.5 border-t">
                   <div className="flex items-center gap-2 text-gray-600">
                     <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                    <span className="font-bold text-gray-400">Principal:</span>
+                    <span className="font-bold text-gray-400">{L('Principal:', 'المدير:')}</span>
                     <span className="text-gray-800 font-extrabold">{campus.principalName || 'Not Assigned'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                    <span className="font-bold text-gray-400">Phone:</span>
+                    <span className="font-bold text-gray-400">{L('Phone:', 'التليفون:')}</span>
                     <span className="text-gray-800 font-extrabold">{campus.phone}</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <Mail className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                    <span className="font-bold text-gray-400">Email:</span>
+                    <span className="font-bold text-gray-400">{L('Email:', 'الإيميل:')}</span>
                     <span className="text-gray-800 font-extrabold truncate">{campus.email}</span>
                   </div>
                 </div>
@@ -374,7 +375,7 @@ export default function CampusesPage() {
                       onClick={() => openManageCampus(campus)}
                     >
                       <Settings className="w-3.5 h-3.5" />
-                      Manage Campus & Directory
+                      {L('Manage Campus & Directory', 'إدارة الفرع')}
                     </Button>
                   </div>
                 )}
@@ -388,22 +389,22 @@ export default function CampusesPage() {
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent className="sm:max-w-[500px] rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black text-gray-900 tracking-tight">Add New Campus</DialogTitle>
+            <DialogTitle className="text-xl font-black text-gray-900 tracking-tight">{L('Add New Campus', 'فرع جديد')}</DialogTitle>
             <DialogDescription className="text-xs font-medium text-gray-500">
-              Create a new physical branch for TechNova.
+              {L('Create a new physical branch for TechNova.', 'سجّل فرع جديد لـ TechNova.')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-gray-600">Campus Name <span className="text-red-500">*</span></Label>
+                <Label className="text-xs font-bold text-gray-600">{L('Campus Name', 'اسم الفرع')} <span className="text-red-500">*</span></Label>
                 <Input placeholder="e.g. Boys Campus" className="rounded-xl" {...createForm.register('name')} />
                 {createForm.formState.errors.name && (
                   <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.name.message}</p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-gray-600">Campus Code <span className="text-red-500">*</span></Label>
+                <Label className="text-xs font-bold text-gray-600">{L('Campus Code', 'كود الفرع')} <span className="text-red-500">*</span></Label>
                 <Input placeholder="e.g. BC" className="rounded-xl uppercase" {...createForm.register('code')} />
                 {createForm.formState.errors.code && (
                   <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.code.message}</p>
@@ -412,7 +413,7 @@ export default function CampusesPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-gray-600">Address <span className="text-red-500">*</span></Label>
+              <Label className="text-xs font-bold text-gray-600">{L('Address', 'العنوان')} <span className="text-red-500">*</span></Label>
               <Input placeholder="123 Main St, Sector-G, Peshawar" className="rounded-xl" {...createForm.register('address')} />
               {createForm.formState.errors.address && (
                 <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.address.message}</p>
@@ -421,14 +422,14 @@ export default function CampusesPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-gray-600">Contact Number <span className="text-red-500">*</span></Label>
+                <Label className="text-xs font-bold text-gray-600">{L('Contact Number', 'رقم التواصل')} <span className="text-red-500">*</span></Label>
                 <Input placeholder="+923001234567" className="rounded-xl" {...createForm.register('phone')} />
                 {createForm.formState.errors.phone && (
                   <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.phone.message}</p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-gray-600">Email Address <span className="text-red-500">*</span></Label>
+                <Label className="text-xs font-bold text-gray-600">{L('Email Address', 'الإيميل')} <span className="text-red-500">*</span></Label>
                 <Input type="email" placeholder="branch@technova.com" className="rounded-xl" {...createForm.register('email')} />
                 {createForm.formState.errors.email && (
                   <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.email.message}</p>
@@ -437,7 +438,7 @@ export default function CampusesPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-gray-600">Principal Name <span className="text-red-500">*</span></Label>
+              <Label className="text-xs font-bold text-gray-600">{L('Principal Name', 'اسم المدير')} <span className="text-red-500">*</span></Label>
               <Input placeholder="Prof. John Doe" className="rounded-xl" {...createForm.register('principalName')} />
               {createForm.formState.errors.principalName && (
                 <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.principalName.message}</p>
@@ -446,11 +447,11 @@ export default function CampusesPage() {
 
             <DialogFooter className="pt-4 gap-2">
               <Button type="button" variant="outline" className="rounded-xl font-bold border-gray-200 text-gray-500" onClick={() => setIsCreateModalOpen(false)}>
-                Cancel
+                {L('Cancel', 'إلغاء')}
               </Button>
               <Button type="submit" disabled={createMutation.isPending} className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white">
                 {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Register Branch
+                {L('Register Branch', 'سجّل الفرع')}
               </Button>
             </DialogFooter>
           </form>
@@ -466,20 +467,20 @@ export default function CampusesPage() {
               {selectedCampus?.name}
             </DialogTitle>
             <DialogDescription className="text-xs font-semibold text-gray-400">
-              Update configurations, examine student rosters, or inspect academic specialization fields.
+              {L('Update configurations, examine student rosters, or inspect academic specialization fields.', 'عدّل البيانات وشوف الطلاب والمدربين.')}
             </DialogDescription>
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full mt-4">
             <TabsList className="grid w-full grid-cols-3 h-10 rounded-xl bg-gray-100 p-1">
               <TabsTrigger value="settings" className="font-extrabold text-xs rounded-lg gap-1.5">
-                <Settings className="w-3.5 h-3.5" /> settings
+                <Settings className="w-3.5 h-3.5" /> {L('settings', 'الإعدادات')}
               </TabsTrigger>
               <TabsTrigger value="students" className="font-extrabold text-xs rounded-lg gap-1.5">
-                <Users className="w-3.5 h-3.5" /> Enrolled Students
+                <Users className="w-3.5 h-3.5" /> {L('Enrolled Students', 'الطلاب')}
               </TabsTrigger>
               <TabsTrigger value="teachers" className="font-extrabold text-xs rounded-lg gap-1.5">
-                <GraduationCap className="w-3.5 h-3.5" /> Teachers Directory
+                <GraduationCap className="w-3.5 h-3.5" /> {L('Teachers Directory', 'المدربين')}
               </TabsTrigger>
             </TabsList>
 
@@ -488,14 +489,14 @@ export default function CampusesPage() {
               <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-gray-600">Campus Name <span className="text-red-500">*</span></Label>
+                    <Label className="text-xs font-bold text-gray-600">{L('Campus Name', 'اسم الفرع')} <span className="text-red-500">*</span></Label>
                     <Input placeholder="e.g. Boys Campus" className="rounded-xl" {...editForm.register('name')} />
                     {editForm.formState.errors.name && (
                       <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.name.message}</p>
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-gray-600">Campus Code <span className="text-red-500">*</span></Label>
+                    <Label className="text-xs font-bold text-gray-600">{L('Campus Code', 'كود الفرع')} <span className="text-red-500">*</span></Label>
                     <Input placeholder="e.g. BC" className="rounded-xl uppercase" {...editForm.register('code')} />
                     {editForm.formState.errors.code && (
                       <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.code.message}</p>
@@ -504,7 +505,7 @@ export default function CampusesPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-gray-600">Address <span className="text-red-500">*</span></Label>
+                  <Label className="text-xs font-bold text-gray-600">{L('Address', 'العنوان')} <span className="text-red-500">*</span></Label>
                   <Input placeholder="123 Main St, Sector-G, Peshawar" className="rounded-xl" {...editForm.register('address')} />
                   {editForm.formState.errors.address && (
                     <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.address.message}</p>
@@ -513,14 +514,14 @@ export default function CampusesPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-gray-600">Contact Number <span className="text-red-500">*</span></Label>
+                    <Label className="text-xs font-bold text-gray-600">{L('Contact Number', 'رقم التواصل')} <span className="text-red-500">*</span></Label>
                     <Input placeholder="+923001234567" className="rounded-xl" {...editForm.register('phone')} />
                     {editForm.formState.errors.phone && (
                       <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.phone.message}</p>
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-gray-600">Email Address <span className="text-red-500">*</span></Label>
+                    <Label className="text-xs font-bold text-gray-600">{L('Email Address', 'الإيميل')} <span className="text-red-500">*</span></Label>
                     <Input type="email" placeholder="branch@technova.com" className="rounded-xl" {...editForm.register('email')} />
                     {editForm.formState.errors.email && (
                       <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.email.message}</p>
@@ -529,7 +530,7 @@ export default function CampusesPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-gray-600">Principal Name <span className="text-red-500">*</span></Label>
+                  <Label className="text-xs font-bold text-gray-600">{L('Principal Name', 'اسم المدير')} <span className="text-red-500">*</span></Label>
                   <Input placeholder="Prof. John Doe" className="rounded-xl" {...editForm.register('principalName')} />
                   {editForm.formState.errors.principalName && (
                     <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.principalName.message}</p>
@@ -539,7 +540,7 @@ export default function CampusesPage() {
                 <div className="flex justify-end gap-2 pt-2">
                   <Button type="submit" disabled={editMutation.isPending} className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white">
                     {editMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Save Changes
+                    {L('Save Changes', 'احفظ التعديلات')}
                   </Button>
                 </div>
               </form>
@@ -548,13 +549,13 @@ export default function CampusesPage() {
               {canDeactivate && selectedCampus?.isActive && (
                 <div className="pt-6 border-t mt-6">
                   <h4 className="text-sm font-black text-red-600 flex items-center gap-1.5">
-                    <AlertCircle className="w-4 h-4" /> Danger Zone
+                    <AlertCircle className="w-4 h-4" /> {L('Danger Zone', 'منطقة خطر')}
                   </h4>
                   <div className="mt-2 border border-red-100 bg-red-50/50 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="max-w-md">
-                      <p className="text-xs font-extrabold text-red-900 leading-snug">Deactivate Campus Branch</p>
+                      <p className="text-xs font-extrabold text-red-900 leading-snug">{L('Deactivate Campus Branch', 'إيقاف الفرع')}</p>
                       <p className="text-[11px] text-red-700 mt-1 leading-relaxed">
-                        Deactivating this campus prevents registering any new students or classes. Historical audits, existing students, and grades are strictly preserved.
+                        {L('Deactivating this campus prevents registering any new students or classes. Historical audits, existing students, and grades are strictly preserved.', 'إيقاف الفرع بيمنع تسجيل طلاب أو جروبات جديدة. السجلات القديمة والطلاب الحاليين والدرجات بيفضلوا محفوظين.')}
                       </p>
                     </div>
                     <Button
@@ -569,7 +570,7 @@ export default function CampusesPage() {
                       }}
                     >
                       {deleteMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                      Deactivate Campus
+                      {L('Deactivate Campus', 'أوقف الفرع')}
                     </Button>
                   </div>
                 </div>
@@ -582,7 +583,7 @@ export default function CampusesPage() {
                 <div className="relative w-full max-w-xs">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                   <Input
-                    placeholder="Search enrolled students..."
+                    placeholder={L('Search enrolled students...', 'دوّر في الطلاب...')}
                     className="pl-8 h-[36px] text-xs rounded-xl"
                     value={studentSearch}
                     onChange={(e) => {
@@ -593,7 +594,7 @@ export default function CampusesPage() {
                 </div>
                 {studentsData && (
                   <div className="text-[11px] font-bold text-gray-400">
-                    Total Enrolled: <span className="text-indigo-600 font-extrabold">{studentsData.pagination.total}</span>
+                    {L('Total Enrolled:', 'عدد الطلاب:')} <span className="text-indigo-600 font-extrabold">{studentsData.pagination.total}</span>
                   </div>
                 )}
               </div>
@@ -607,19 +608,19 @@ export default function CampusesPage() {
               ) : !studentsData || studentsData.data.length === 0 ? (
                 <div className="border border-dashed rounded-2xl p-12 text-center text-gray-400">
                   <Users className="w-8 h-8 mx-auto mb-2 text-indigo-300" />
-                  <p className="text-xs font-bold text-gray-500">No students currently enrolled in this branch</p>
+                  <p className="text-xs font-bold text-gray-500">{L('No students currently enrolled in this branch', 'مفيش طلاب في الفرع ده')}</p>
                 </div>
               ) : (
                 <div className="border rounded-2xl overflow-hidden shadow-sm bg-white">
                   <Table>
                     <TableHeader className="bg-gray-50">
                       <TableRow>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Name</TableHead>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Reg #</TableHead>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Grade & Sec</TableHead>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Phone</TableHead>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Fee</TableHead>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10 text-right">Action</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">{L('Name', 'الاسم')}</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">{L('Reg #', 'رقم القيد')}</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">{L('Grade & Sec', 'الجروب')}</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">{L('Phone', 'التليفون')}</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">{L('Fee', 'الدفع')}</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10 text-right">{L('Action', 'إجراء')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -663,14 +664,14 @@ export default function CampusesPage() {
                                 })
                               }
                             >
-                              <ArrowRightLeft className="w-3 h-3" /> Transfer
+                              <ArrowRightLeft className="w-3 h-3" /> {L('Transfer', 'نقل')}
                             </button>
                             <Link
                               href={`/dashboard/students/${student.id}`}
                               className="text-[11px] font-black text-indigo-600 hover:text-indigo-800"
                               onClick={() => setIsManageModalOpen(false)}
                             >
-                              View →
+                              {L('View →', 'عرض ←')}
                             </Link>
                           </TableCell>
                         </TableRow>
@@ -688,10 +689,10 @@ export default function CampusesPage() {
                         onClick={() => setStudentPage((p) => p - 1)}
                         className="h-8 rounded-lg gap-1 border-gray-200 text-xs font-bold text-gray-500"
                       >
-                        <ArrowLeft className="w-3.5 h-3.5" /> Previous
+                        <ArrowLeft className="w-3.5 h-3.5" /> {L('Previous', 'السابق')}
                       </Button>
                       <span className="text-[11px] font-bold text-gray-400">
-                        Page {studentPage} of {studentsData.pagination.totalPages}
+                        {L('Page', 'صفحة')} {studentPage} {L('of', 'من')} {studentsData.pagination.totalPages}
                       </span>
                       <Button
                         variant="outline"
@@ -700,7 +701,7 @@ export default function CampusesPage() {
                         onClick={() => setStudentPage((p) => p + 1)}
                         className="h-8 rounded-lg gap-1 border-gray-200 text-xs font-bold text-gray-500"
                       >
-                        Next <ArrowRight className="w-3.5 h-3.5" />
+                        {L('Next', 'التالي')} <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                   )}
@@ -714,7 +715,7 @@ export default function CampusesPage() {
                 <div className="relative w-full max-w-xs">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                   <Input
-                    placeholder="Search teachers by specialty..."
+                    placeholder={L('Search teachers by specialty...', 'دوّر في المدربين بالتخصص...')}
                     className="pl-8 h-[36px] text-xs rounded-xl"
                     value={teacherSearch}
                     onChange={(e) => {
@@ -725,7 +726,7 @@ export default function CampusesPage() {
                 </div>
                 {teachersData && (
                   <div className="text-[11px] font-bold text-gray-400">
-                    Total Instructors: <span className="text-blue-600 font-extrabold">{teachersData.pagination.total}</span>
+                    {L('Total Instructors:', 'عدد المدربين:')} <span className="text-blue-600 font-extrabold">{teachersData.pagination.total}</span>
                   </div>
                 )}
               </div>
@@ -739,19 +740,19 @@ export default function CampusesPage() {
               ) : !teachersData || teachersData.data.length === 0 ? (
                 <div className="border border-dashed rounded-2xl p-12 text-center text-gray-400">
                   <GraduationCap className="w-8 h-8 mx-auto mb-2 text-indigo-300 animate-pulse" />
-                  <p className="text-xs font-bold text-gray-500">No teachers assigned to this branch location</p>
+                  <p className="text-xs font-bold text-gray-500">{L('No teachers assigned to this branch location', 'مفيش مدربين في الفرع ده')}</p>
                 </div>
               ) : (
                 <div className="border rounded-2xl overflow-hidden shadow-sm bg-white">
                   <Table>
                     <TableHeader className="bg-gray-50">
                       <TableRow>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Teacher</TableHead>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Emp ID</TableHead>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Designation</TableHead>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Specialization</TableHead>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">Contact</TableHead>
-                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10 text-right">Action</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">{L('Teacher', 'المدرب')}</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">{L('Emp ID', 'الرقم الوظيفي')}</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">{L('Designation', 'الوظيفة')}</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">{L('Specialization', 'التخصص')}</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10">{L('Contact', 'التواصل')}</TableHead>
+                        <TableHead className="text-xs font-black text-gray-500 uppercase h-10 text-right">{L('Action', 'إجراء')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -787,14 +788,14 @@ export default function CampusesPage() {
                                 })
                               }
                             >
-                              <ArrowRightLeft className="w-3 h-3" /> Transfer
+                              <ArrowRightLeft className="w-3 h-3" /> {L('Transfer', 'نقل')}
                             </button>
                             <Link
                               href={`/dashboard/teachers/${teacher.id}/edit`}
                               className="text-[11px] font-black text-indigo-600 hover:text-indigo-800"
                               onClick={() => setIsManageModalOpen(false)}
                             >
-                              Edit →
+                              {L('Edit →', 'تعديل ←')}
                             </Link>
                           </TableCell>
                         </TableRow>
@@ -812,10 +813,10 @@ export default function CampusesPage() {
                         onClick={() => setTeacherPage((p) => p - 1)}
                         className="h-8 rounded-lg gap-1 border-gray-200 text-xs font-bold text-gray-500"
                       >
-                        <ArrowLeft className="w-3.5 h-3.5" /> Previous
+                        <ArrowLeft className="w-3.5 h-3.5" /> {L('Previous', 'السابق')}
                       </Button>
                       <span className="text-[11px] font-bold text-gray-400">
-                        Page {teacherPage} of {teachersData.pagination.totalPages}
+                        {L('Page', 'صفحة')} {teacherPage} {L('of', 'من')} {teachersData.pagination.totalPages}
                       </span>
                       <Button
                         variant="outline"
@@ -824,7 +825,7 @@ export default function CampusesPage() {
                         onClick={() => setTeacherPage((p) => p + 1)}
                         className="h-8 rounded-lg gap-1 border-gray-200 text-xs font-bold text-gray-500"
                       >
-                        Next <ArrowRight className="w-3.5 h-3.5" />
+                        {L('Next', 'التالي')} <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                   )}
@@ -835,7 +836,7 @@ export default function CampusesPage() {
 
           <DialogFooter className="mt-4 pt-3 border-t">
             <Button variant="outline" className="rounded-xl font-bold border-gray-200 text-gray-500" onClick={() => setIsManageModalOpen(false)}>
-              Close Panel
+              {L('Close Panel', 'اقفل')}
             </Button>
           </DialogFooter>
         </DialogContent>

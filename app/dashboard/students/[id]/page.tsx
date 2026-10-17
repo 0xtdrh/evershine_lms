@@ -30,6 +30,7 @@ import { GuardianBirthdaysCard } from '@/components/birthdays/DateOfBirthCards'
 import { StudentReportsList } from '@/components/reports/StudentReportsList'
 import { StudentReferralCard } from '@/components/students/StudentReferralCard'
 import { StudentMarketingFlag } from '@/components/students/StudentMarketingFlag'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface StudentDetail {
   id: string
@@ -130,6 +131,7 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 export default function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  useI18n() // re-render on a language switch
   const { id } = use(params)
   const { data: session } = useSession()
   const role = session?.user?.role as string | undefined
@@ -196,7 +198,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
       <div className="max-w-4xl mx-auto">
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-center gap-3 text-red-700">
           <AlertCircle className="w-5 h-5" />
-          <span>Student not found or you don't have permission to view this profile.</span>
+          <span>{L('Student not found or you don\'t have permission to view this profile.', 'الطالب مش موجود أو مالكش صلاحية تشوف الملف ده.')}</span>
         </div>
       </div>
     )
@@ -213,7 +215,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             </Button>
           </Link>
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-indigo-600">Student profile</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-indigo-600">{L('Student profile', 'ملف الطالب')}</p>
             <h1 className="text-2xl font-semibold text-slate-900">
               {student.firstName} {student.lastName}
             </h1>
@@ -232,7 +234,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               <Link href={`/dashboard/students/${id}/edit`}>
                 <Button variant="outline" size="sm" className="gap-2">
                   <Pencil className="w-4 h-4" />
-                  Edit Profile
+                  {L('Edit Profile', 'عدّل الملف')}
                 </Button>
               </Link>
             </>
@@ -240,12 +242,12 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           {/* P1: passport (stamps, printing) — read by every staff role that may see the student */}
           {can('passport', 'read') && (
             <Link href={`/dashboard/passport?s=${id}`}>
-              <Button variant="outline" size="sm" className="gap-2">📘 Passport</Button>
+              <Button variant="outline" size="sm" className="gap-2">{L('📘 Passport', '📘 الباسبور')}</Button>
             </Link>
           )}
           {can('passport', 'read') && (
             <Link href={`/dashboard/profile?s=${id}`}>
-              <Button variant="outline" size="sm" className="gap-2">👤 Profile</Button>
+              <Button variant="outline" size="sm" className="gap-2">{L('👤 Profile', '👤 البروفايل')}</Button>
             </Link>
           )}
         </div>
@@ -298,27 +300,27 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-green-600" />
-                Fee Summary
+                {L('Fee Summary', 'ملخص المدفوعات')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Total Fee</span>
-                <span className="font-medium">EGP {Number(student.totalFeeAmount).toLocaleString()}</span>
+                <span className="text-gray-500">{L('Total Fee', 'إجمالي المطلوب')}</span>
+                <span className="font-medium">{L('EGP', 'ج.م')} {Number(student.totalFeeAmount).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Paid</span>
-                <span className="font-medium text-green-700">EGP {Number(student.paidAmount).toLocaleString()}</span>
+                <span className="text-gray-500">{L('Paid', 'المدفوع')}</span>
+                <span className="font-medium text-green-700">{L('EGP', 'ج.م')} {Number(student.paidAmount).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold border-t pt-2">
-                <span className="text-gray-600">Due</span>
+                <span className="text-gray-600">{L('Due', 'المتبقي')}</span>
                 <span className={Number(student.dueAmount) > 0 ? 'text-red-600' : 'text-gray-400'}>
-                  EGP {Number(student.dueAmount).toLocaleString()}
+                  {L('EGP', 'ج.م')} {Number(student.dueAmount).toLocaleString()}
                 </span>
               </div>
               <Link href={`/dashboard/fees?studentId=${student.id}`}>
                 <Button variant="outline" size="sm" className="w-full mt-2 text-xs gap-1.5">
-                  <FileText className="w-3.5 h-3.5" /> View Challans
+                  <FileText className="w-3.5 h-3.5" /> {L('View Challans', 'الفواتير')}
                 </Button>
               </Link>
             </CardContent>
@@ -329,7 +331,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <CalendarCheck className="w-4 h-4 text-purple-600" />
-                Attendance (Last 30)
+                {L('Attendance (Last 30)', 'الحضور (آخر 30)')}
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2">
@@ -348,20 +350,20 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           {/* Personal Info */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm text-gray-600">Personal Information</CardTitle>
+              <CardTitle className="text-sm text-gray-600">{L('Personal Information', 'البيانات الشخصية')}</CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="space-y-3">
-                <InfoRow label="Full Name (English)" value={`${student.firstName} ${student.lastName}`} />
-                <InfoRow label="Full Name (Arabic)" value={student.fullNameAr} />
-                <InfoRow label="Father's Name" value={student.fatherName} />
-                <InfoRow label="Date of Birth" value={new Date(student.dateOfBirth).toLocaleDateString('en-EG', { day: 'numeric', month: 'long', year: 'numeric' })} />
-                <InfoRow label="Age" value={`${Math.floor((Date.now() - new Date(student.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years`} />
-                <InfoRow label="Gender" value={student.gender} />
-                <InfoRow label="Blood Group" value={student.bloodGroup} />
-                <InfoRow label="Nationality" value={student.nationality} />
-                <InfoRow label="School" value={student.schoolName} />
-                <InfoRow label="School Grade" value={student.regularSchoolGrade} />
+                <InfoRow label={L('Full Name (English)', 'الاسم بالكامل (إنجليزي)')} value={`${student.firstName} ${student.lastName}`} />
+                <InfoRow label={L('Full Name (Arabic)', 'الاسم بالكامل (عربي)')} value={student.fullNameAr} />
+                <InfoRow label={L('Father\'s Name', 'اسم الأب')} value={student.fatherName} />
+                <InfoRow label={L('Date of Birth', 'تاريخ الميلاد')} value={new Date(student.dateOfBirth).toLocaleDateString('en-EG', { day: 'numeric', month: 'long', year: 'numeric' })} />
+                <InfoRow label={L('Age', 'السن')} value={`${Math.floor((Date.now() - new Date(student.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years`} />
+                <InfoRow label={L('Gender', 'النوع')} value={student.gender} />
+                <InfoRow label={L('Blood Group', 'فصيلة الدم')} value={student.bloodGroup} />
+                <InfoRow label={L('Nationality', 'الجنسية')} value={student.nationality} />
+                <InfoRow label={L('School', 'المدرسة')} value={student.schoolName} />
+                <InfoRow label={L('School Grade', 'سنة الدراسة')} value={student.regularSchoolGrade} />
               </dl>
             </CardContent>
           </Card>
@@ -369,15 +371,15 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           {/* Contact */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm text-gray-600">Contact & Address</CardTitle>
+              <CardTitle className="text-sm text-gray-600">{L('Contact & Address', 'التواصل والعنوان')}</CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="space-y-3">
-                <InfoRow label="Phone" value={student.phoneNumber} />
-                <InfoRow label="Emergency" value={student.emergencyContact} />
-                <InfoRow label="Email" value={student.email} />
-                <InfoRow label="Address" value={student.address} />
-                <InfoRow label="City" value={student.city} />
+                <InfoRow label={L('Phone', 'التليفون')} value={student.phoneNumber} />
+                <InfoRow label={L('Emergency', 'رقم الطوارئ')} value={student.emergencyContact} />
+                <InfoRow label={L('Email', 'الإيميل')} value={student.email} />
+                <InfoRow label={L('Address', 'العنوان')} value={student.address} />
+                <InfoRow label={L('City', 'المدينة')} value={student.city} />
               </dl>
             </CardContent>
           </Card>
@@ -385,16 +387,16 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           {/* Academic */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm text-gray-600">Academic Placement (Legacy)</CardTitle>
+              <CardTitle className="text-sm text-gray-600">{L('Academic Placement (Legacy)', 'التسكين القديم')}</CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="space-y-3">
-                <InfoRow label="Campus" value={student.campus.name} />
-                <InfoRow label="Class" value={student.class?.name} />
-                <InfoRow label="Section" value={student.section} />
-                <InfoRow label="Roll Number" value={student.rollNumber} />
-                <InfoRow label="Admission Date" value={new Date(student.admissionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} />
-                <InfoRow label="Adm. Number" value={student.admissionNumber} />
+                <InfoRow label={L('Campus', 'الفرع')} value={student.campus.name} />
+                <InfoRow label={L('Class', 'الفصل')} value={student.class?.name} />
+                <InfoRow label={L('Section', 'الجروب')} value={student.section} />
+                <InfoRow label={L('Roll Number', 'رقم الجلوس')} value={student.rollNumber} />
+                <InfoRow label={L('Admission Date', 'تاريخ التسجيل')} value={new Date(student.admissionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} />
+                <InfoRow label={L('Adm. Number', 'رقم التسجيل')} value={student.admissionNumber} />
               </dl>
             </CardContent>
           </Card>
@@ -460,9 +462,9 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           {engineAttendance.length > 0 && (
             <Card>
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm text-gray-600">Section Attendance (Engine)</CardTitle>
+                <CardTitle className="text-sm text-gray-600">{L('Section Attendance (Engine)', 'حضور الجروب')}</CardTitle>
                 <Link href="/dashboard/attendance/sections">
-                  <Button variant="ghost" size="sm" className="text-xs">Open roster</Button>
+                  <Button variant="ghost" size="sm" className="text-xs">{L('Open roster', 'افتح كشف الحضور')}</Button>
                 </Link>
               </CardHeader>
               <CardContent className="p-0 divide-y max-h-48 overflow-y-auto">
@@ -487,9 +489,9 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           {fees.length > 0 && (
             <Card>
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm text-gray-600">Recent Fee Challans</CardTitle>
+                <CardTitle className="text-sm text-gray-600">{L('Recent Fee Challans', 'آخر الفواتير')}</CardTitle>
                 <Link href={`/dashboard/fees?studentId=${student.id}`}>
-                  <Button variant="ghost" size="sm" className="text-xs">View all</Button>
+                  <Button variant="ghost" size="sm" className="text-xs">{L('View all', 'عرض الكل')}</Button>
                 </Link>
               </CardHeader>
               <CardContent className="p-0">
@@ -501,7 +503,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                         <p className="text-xs font-mono text-gray-400">{f.challanNumber}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium">EGP {Number(f.totalAmount).toLocaleString()}</p>
+                        <p className="text-sm font-medium">{L('EGP', 'ج.م')} {Number(f.totalAmount).toLocaleString()}</p>
                         <span className={`text-xs ${
                           f.status === 'PAID' ? 'text-green-600' :
                           f.status === 'OVERDUE' ? 'text-red-600' : 'text-yellow-600'
@@ -520,18 +522,18 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             <Card>
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-sm text-gray-900">Official Documents</p>
-                  <p className="text-xs text-gray-500">Generate and download official student records</p>
+                  <p className="font-medium text-sm text-gray-900">{L('Official Documents', 'المستندات الرسمية')}</p>
+                  <p className="text-xs text-gray-500">{L('Generate and download official student records', 'اطبع ونزّل مستندات الطالب الرسمية')}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Link href={`/dashboard/documents?studentId=${student.id}&doc=student_profile`}>
                     <Button variant="outline" size="sm" className="gap-2">
-                      <UserCircle className="w-4 h-4" /> Profile
+                      <UserCircle className="w-4 h-4" /> {L('Profile', 'الملف')}
                     </Button>
                   </Link>
                   <Link href={`/dashboard/documents?studentId=${student.id}&doc=id_card`}>
                     <Button variant="outline" size="sm" className="gap-2">
-                      <FileText className="w-4 h-4" /> ID Card
+                      <FileText className="w-4 h-4" /> {L('ID Card', 'الكارنيه')}
                     </Button>
                   </Link>
                 </div>

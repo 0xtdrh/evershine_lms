@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Cake, Loader2, MessageCircle, Printer } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Person {
   kind: 'STUDENT' | 'GUARDIAN' | 'STAFF'; id: string; name: string; role: string | null; dateOfBirth: string; daysAway: number; turns: number
@@ -29,6 +30,7 @@ const KIND: Record<Person['kind'], { label: string; cls: string }> = {
 }
 
 export default function BirthdaysPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const role = session?.user?.role
   const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
@@ -44,7 +46,7 @@ export default function BirthdaysPage() {
   const { data, isLoading } = useQuery({ queryKey: ['birthdays', qs.toString()], queryFn: () => fetchApi<{ today: string; people: Person[] }>(`/api/birthdays?${qs}`), enabled: allowed })
   if (!role) return null
   if (role && !permsReady) return null
-  if (!allowed) return <AccessDenied title="Birthdays" message="You don't have access to the birthdays page." />
+  if (!allowed) return <AccessDenied title={L('Birthdays', 'أعياد الميلاد')} message="You don't have access to the birthdays page." />
 
   const logWhatsApp = (p: Person) => {
     if (p.kind !== 'STUDENT') return
@@ -55,7 +57,7 @@ export default function BirthdaysPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><Cake className="h-7 w-7 text-pink-600" /> Birthdays</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><Cake className="h-7 w-7 text-pink-600" /> {L('Birthdays', 'أعياد الميلاد')}</h1>
         <p className="mt-1 text-sm text-slate-500">
           Students, parents and staff (Egypt time). Every morning the system greets them in the portal; WhatsApp goes automatically once it is connected — until then use the button.
           Parents and staff need a date of birth in their profile to appear here.
@@ -64,19 +66,19 @@ export default function BirthdaysPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Tabs value={range} onValueChange={setRange}>
           <TabsList>
-            <TabsTrigger value="today">Today</TabsTrigger>
-            <TabsTrigger value="week">This week</TabsTrigger>
-            <TabsTrigger value="month">Next 30 days</TabsTrigger>
+            <TabsTrigger value="today">{L('Today', 'النهارده')}</TabsTrigger>
+            <TabsTrigger value="week">{L('This week', 'الأسبوع ده')}</TabsTrigger>
+            <TabsTrigger value="month">{L('Next 30 days', 'الـ 30 يوم الجايين')}</TabsTrigger>
           </TabsList>
         </Tabs>
         {!isTeacher && (
           <Select value={kind} onValueChange={setKind}>
             <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">Everyone</SelectItem>
-              <SelectItem value="STUDENT">Students</SelectItem>
-              <SelectItem value="GUARDIAN">Parents</SelectItem>
-              <SelectItem value="STAFF">Staff</SelectItem>
+              <SelectItem value="ALL">{L('Everyone', 'الكل')}</SelectItem>
+              <SelectItem value="STUDENT">{L('Students', 'الطلاب')}</SelectItem>
+              <SelectItem value="GUARDIAN">{L('Parents', 'أولياء الأمور')}</SelectItem>
+              <SelectItem value="STAFF">{L('Staff', 'الموظفين')}</SelectItem>
             </SelectContent>
           </Select>
         )}
@@ -84,7 +86,7 @@ export default function BirthdaysPage() {
           <Select value={campusId} onValueChange={setCampusId}>
             <SelectTrigger className="h-9 w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All branches</SelectItem>
+              <SelectItem value="all">{L('All branches', 'كل الفروع')}</SelectItem>
               {(campuses ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -93,7 +95,7 @@ export default function BirthdaysPage() {
           <Select value={groupId} onValueChange={setGroupId}>
             <SelectTrigger className="h-9 w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All groups</SelectItem>
+              <SelectItem value="all">{L('All groups', 'كل الجروبات')}</SelectItem>
               {(groups ?? []).map((g) => <SelectItem key={g.id} value={g.id}>{g.label ?? g.name}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -101,7 +103,7 @@ export default function BirthdaysPage() {
       </div>
 
       {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : !data?.people.length ? (
-        <Card><CardContent className="py-10 text-center text-sm text-slate-500">No birthdays {range === 'today' ? 'today' : 'in this period'}.</CardContent></Card>
+        <Card><CardContent className="py-10 text-center text-sm text-slate-500">{L('No birthdays', 'مفيش أعياد ميلاد')} {range === 'today' ? 'today' : 'in this period'}.</CardContent></Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {data.people.map((p) => {
@@ -122,7 +124,7 @@ export default function BirthdaysPage() {
                     </div>
                     <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${KIND[p.kind].cls}`}>{KIND[p.kind].label}</span>
                   </div>
-                  <p className="text-sm"><strong>{when(p)}</strong> · turns {p.turns}</p>
+                  <p className="text-sm"><strong>{when(p)}</strong> {L('· turns', '· هيكمّل')} {p.turns}</p>
                   <div className="flex flex-wrap gap-2">
                     {wa && (
                       <Button asChild size="sm" className="h-8 gap-1 bg-emerald-600 hover:bg-emerald-700">
@@ -133,7 +135,7 @@ export default function BirthdaysPage() {
                     )}
                     {p.kind === 'STUDENT' && (
                       <Button asChild size="sm" variant="outline" className="h-8 gap-1">
-                        <a href={`/birthday-card/${p.id}`} target="_blank" rel="noopener noreferrer"><Printer className="h-3.5 w-3.5" /> Birthday certificate</a>
+                        <a href={`/birthday-card/${p.id}`} target="_blank" rel="noopener noreferrer"><Printer className="h-3.5 w-3.5" /> {L('Birthday certificate', 'شهادة عيد ميلاد')}</a>
                       </Button>
                     )}
                   </div>

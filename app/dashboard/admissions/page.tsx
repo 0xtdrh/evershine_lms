@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
 import { batchRequiresGenderSeparation, genderSeparationHint } from '@/lib/academic/gender-policy'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface AdmissionRequest {
   id: string
@@ -73,6 +74,7 @@ interface AdmissionRequest {
 }
 
 export default function AdmissionsDashboard() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const userRole = session?.user?.role as string | undefined
   const canManageAdmissions = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'BRANCH_MANAGER' || userRole === 'SECRETARY' || userRole === 'MARKETING'
@@ -292,7 +294,7 @@ export default function AdmissionsDashboard() {
       })
     },
     onSuccess: () => {
-      notify.success('Admission approved and student profile generated!')
+      notify.success(L('Admission approved and student profile generated!', 'اتوافق على التسجيل واتعمل ملف الطالب!'))
       queryClient.invalidateQueries({ queryKey: ['admissions'] })
       setSelectedRequest(null)
       resetAssignmentState()
@@ -313,7 +315,7 @@ export default function AdmissionsDashboard() {
       return res.json()
     },
     onSuccess: () => {
-      notify.success('Admission request declined')
+      notify.success(L('Admission request declined', 'طلب التسجيل اترفض'))
       queryClient.invalidateQueries({ queryKey: ['admissions'] })
       setSelectedRequest(null)
     },
@@ -325,7 +327,7 @@ export default function AdmissionsDashboard() {
       return fetchApi(`/api/admissions/${id}`, { method: 'DELETE' })
     },
     onSuccess: () => {
-      notify.success('Admission request deleted successfully')
+      notify.success(L('Admission request deleted successfully', 'طلب التسجيل اتمسح'))
       queryClient.invalidateQueries({ queryKey: ['admissions'] })
       setRequestToDelete(null)
     },
@@ -334,23 +336,23 @@ export default function AdmissionsDashboard() {
 
   const handleApprove = () => {
     if (!campusId || !rollNumber) {
-      notify.error('Please choose the branch and a roll number before approving')
+      notify.error(L('Please choose the branch and a roll number before approving', 'اختار الفرع ورقم الجلوس قبل الموافقة'))
       return
     }
     if (admissionFee < 0) {
-      notify.error('Admission fee must be zero or a positive number')
+      notify.error(L('Admission fee must be zero or a positive number', 'مصاريف التسجيل لازم تبقى صفر أو أكتر'))
       return
     }
     if (courseFee < 0) {
-      notify.error('Course fee must be zero or a positive number')
+      notify.error(L('Course fee must be zero or a positive number', 'مصاريف الكورس لازم تبقى صفر أو أكتر'))
       return
     }
     if (totalAcademicFee < 0) {
-      notify.error('Total academic fee must be zero or a positive number')
+      notify.error(L('Total academic fee must be zero or a positive number', 'الإجمالي لازم يبقى صفر أو أكتر'))
       return
     }
     if (totalAcademicFee < admissionFee + courseFee) {
-      notify.error('Total academic fee must be at least the sum of admission fee and course fee')
+      notify.error(L('Total academic fee must be at least the sum of admission fee and course fee', 'الإجمالي لازم يبقى على الأقل مجموع مصاريف التسجيل والكورس'))
       return
     }
     approveMutation.mutate()
@@ -361,7 +363,7 @@ export default function AdmissionsDashboard() {
   if (!canManageAdmissions) {
     return (
       <AccessDenied
-        title="Admissions Access Restricted"
+        title={L('Admissions Access Restricted', 'طلبات التسجيل مقفولة')}
         message="Only administrators can review and approve student admission requests. Teachers and students cannot access this module."
       />
     )
@@ -380,9 +382,9 @@ export default function AdmissionsDashboard() {
             <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
               <User className="w-6 h-6" />
             </div>
-            Admission Requests
+            {L('Admission Requests', 'طلبات التسجيل')}
           </h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium ml-11">Review online applications, place candidates in a branch, and generate student profiles.</p>
+          <p className="text-sm text-slate-500 mt-1 font-medium ml-11">{L('Review online applications, place candidates in a branch, and generate student profiles.', 'راجع طلبات الأونلاين، وسكّن المتقدمين في فرع، واعمل ملفات الطلاب.')}</p>
         </div>
       </motion.div>
 
@@ -392,7 +394,7 @@ export default function AdmissionsDashboard() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Search CNIC or Name..."
+                placeholder={L('Search CNIC or Name...', 'دوّر بالرقم القومي أو الاسم...')}
                 className="pl-9 bg-white border-slate-200"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -400,12 +402,12 @@ export default function AdmissionsDashboard() {
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px] bg-white border-slate-200">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={L('Status', 'الحالة')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="PENDING">Pending Review</SelectItem>
-                <SelectItem value="APPROVED">Approved</SelectItem>
-                <SelectItem value="DECLINED">Declined</SelectItem>
+                <SelectItem value="PENDING">{L('Pending Review', 'مستني مراجعة')}</SelectItem>
+                <SelectItem value="APPROVED">{L('Approved', 'اتوافق')}</SelectItem>
+                <SelectItem value="DECLINED">{L('Declined', 'اترفض')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -415,13 +417,13 @@ export default function AdmissionsDashboard() {
           <Table>
               <TableHeader className="bg-gray-50">
                 <TableRow>
-                  <TableHead>Applicant Name</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Preferred time</TableHead>
-                  <TableHead>Delivery Mode</TableHead>
-                  <TableHead>Applied Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead>{L('Applicant Name', 'اسم المتقدم')}</TableHead>
+                  <TableHead>{L('Phone', 'التليفون')}</TableHead>
+                  <TableHead>{L('Preferred time', 'الوقت المناسب')}</TableHead>
+                  <TableHead>{L('Delivery Mode', 'طريقة الحضور')}</TableHead>
+                  <TableHead>{L('Applied Date', 'تاريخ الطلب')}</TableHead>
+                  <TableHead>{L('Status', 'الحالة')}</TableHead>
+                  <TableHead className="text-right">{L('Action', 'إجراء')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -474,7 +476,7 @@ export default function AdmissionsDashboard() {
                           {req.status === 'PENDING' && (
                             <>
                               {(canApprove || canDecline) && <Button size="sm" onClick={() => openReviewDialog(req)} className="gap-2">
-                                Review & Assign <CheckCircle className="w-4 h-4" />
+                                {L('Review & Assign', 'راجع وسكّن')} <CheckCircle className="w-4 h-4" />
                               </Button>}
                                 {canDeleteRequest && <Button
                                   size="sm"
@@ -487,7 +489,7 @@ export default function AdmissionsDashboard() {
                             </>
                           )}
                           {req.status === 'APPROVED' && (
-                            <Badge variant="secondary" className="bg-green-50 text-green-700">Account Active</Badge>
+                            <Badge variant="secondary" className="bg-green-50 text-green-700">{L('Account Active', 'الحساب شغال')}</Badge>
                           )}
                           {req.status === 'DECLINED' && canDeleteRequest && (
                             <Button
@@ -496,7 +498,7 @@ export default function AdmissionsDashboard() {
                               className="text-red-600"
                               onClick={() => setRequestToDelete(req)}
                             >
-                              <Trash2 className="w-4 h-4" /> Delete
+                              <Trash2 className="w-4 h-4" /> {L('Delete', 'امسح')}
                             </Button>
                           )}
                         </div>
@@ -517,17 +519,17 @@ export default function AdmissionsDashboard() {
           onEscapeKeyDown={(event) => event.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>Review & Assign Candidate</DialogTitle>
+            <DialogTitle>{L('Review & Assign Candidate', 'راجع وسكّن المتقدم')}</DialogTitle>
             <DialogDescription>
-              Review the complete admission application and map the applicant to academic structures.
+              {L('Review the complete admission application and map the applicant to academic structures.', 'راجع الطلب كامل وسكّن المتقدم.')}
             </DialogDescription>
           </DialogHeader>
 
           {selectedRequest && (
             <Tabs defaultValue="review" className="w-full mt-2">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="review">Application Review</TabsTrigger>
-                <TabsTrigger value="assign">Assign & Approve</TabsTrigger>
+                <TabsTrigger value="review">{L('Application Review', 'مراجعة الطلب')}</TabsTrigger>
+                <TabsTrigger value="assign">{L('Assign & Approve', 'سكّن ووافق')}</TabsTrigger>
               </TabsList>
 
               {/* TAB 1: APPLICATION REVIEW */}
@@ -536,7 +538,7 @@ export default function AdmissionsDashboard() {
                 <div className="flex gap-4 bg-gray-50 p-4 rounded-lg border items-start">
                   <div className="w-24 h-24 shrink-0 bg-white border rounded-md overflow-hidden flex items-center justify-center">
                     {selectedRequest.passportPhotoUrl ? (
-                      <img src={selectedRequest.passportPhotoUrl} alt="Applicant Photo" className="w-full h-full object-cover" />
+                      <img src={selectedRequest.passportPhotoUrl} alt={L('Applicant Photo', 'صورة المتقدم')} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-blue-100 text-blue-700 flex items-center justify-center text-3xl font-bold">
                         {selectedRequest.firstName[0]}
@@ -546,10 +548,10 @@ export default function AdmissionsDashboard() {
                   <div className="flex-1">
                     <h3 className="font-bold text-xl text-gray-900">{selectedRequest.firstName} {selectedRequest.lastName}</h3>
                     <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm text-gray-600 mt-3">
-                      <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-400"/> Gender: <span className="font-medium text-slate-900">{selectedRequest.gender}</span></span>
-                      <span className="flex items-center gap-1.5"><Building2 className="w-4 h-4 text-slate-400"/> Delivery Mode: <span className="font-medium text-slate-900">{selectedRequest.deliveryMode}</span></span>
-                      <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-slate-400"/> Phone: <span className="font-medium text-slate-900">{selectedRequest.phoneNumber}</span></span>
-                      <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-slate-400"/> DOB: <span className="font-medium text-slate-900">{new Date(selectedRequest.dateOfBirth).toLocaleDateString()}</span></span>
+                      <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-400"/> {L('Gender:', 'النوع:')} <span className="font-medium text-slate-900">{selectedRequest.gender}</span></span>
+                      <span className="flex items-center gap-1.5"><Building2 className="w-4 h-4 text-slate-400"/> {L('Delivery Mode:', 'طريقة الحضور:')} <span className="font-medium text-slate-900">{selectedRequest.deliveryMode}</span></span>
+                      <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-slate-400"/> {L('Phone:', 'التليفون:')} <span className="font-medium text-slate-900">{selectedRequest.phoneNumber}</span></span>
+                      <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-slate-400"/> {L('DOB:', 'تاريخ الميلاد:')} <span className="font-medium text-slate-900">{new Date(selectedRequest.dateOfBirth).toLocaleDateString()}</span></span>
                     </div>
                   </div>
                 </div>
@@ -558,38 +560,38 @@ export default function AdmissionsDashboard() {
                   {/* Personal & Family */}
                   <div className="space-y-4">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">Family Details</h4>
+                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">{L('Family Details', 'بيانات الأسرة')}</h4>
                       <dl className="space-y-1 text-sm">
-                        <div className="flex justify-between"><dt className="text-slate-500">Father</dt><dd className="font-medium text-slate-900">{selectedRequest.fatherName}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Father Phone</dt><dd className="font-medium text-slate-900">{selectedRequest.fatherPhoneNumber || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Father Occ.</dt><dd className="font-medium text-slate-900">{selectedRequest.fatherOccupation || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Mother</dt><dd className="font-medium text-slate-900">{selectedRequest.motherName || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Mother Phone</dt><dd className="font-medium text-slate-900">{selectedRequest.motherPhoneNumber || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Mother Occ.</dt><dd className="font-medium text-slate-900">{selectedRequest.motherOccupation || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Parent Status</dt><dd className="font-medium text-slate-900">{selectedRequest.parentStatus || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Father', 'الأب')}</dt><dd className="font-medium text-slate-900">{selectedRequest.fatherName}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Father Phone', 'تليفون الأب')}</dt><dd className="font-medium text-slate-900">{selectedRequest.fatherPhoneNumber || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Father Occ.', 'شغل الأب')}</dt><dd className="font-medium text-slate-900">{selectedRequest.fatherOccupation || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Mother', 'الأم')}</dt><dd className="font-medium text-slate-900">{selectedRequest.motherName || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Mother Phone', 'تليفون الأم')}</dt><dd className="font-medium text-slate-900">{selectedRequest.motherPhoneNumber || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Mother Occ.', 'شغل الأم')}</dt><dd className="font-medium text-slate-900">{selectedRequest.motherOccupation || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Parent Status', 'حالة الوالدين')}</dt><dd className="font-medium text-slate-900">{selectedRequest.parentStatus || 'N/A'}</dd></div>
                       </dl>
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">Contact Info</h4>
+                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">{L('Contact Info', 'بيانات التواصل')}</h4>
                       <dl className="space-y-1 text-sm">
-                        <div className="flex justify-between"><dt className="text-slate-500">Phone</dt><dd className="font-medium text-slate-900">{selectedRequest.phoneNumber}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Emergency</dt><dd className="font-medium text-slate-900">{selectedRequest.emergencyContact || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Email</dt><dd className="font-medium text-slate-900">{selectedRequest.email || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">City</dt><dd className="font-medium text-slate-900">{selectedRequest.city || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Phone', 'التليفون')}</dt><dd className="font-medium text-slate-900">{selectedRequest.phoneNumber}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Emergency', 'رقم الطوارئ')}</dt><dd className="font-medium text-slate-900">{selectedRequest.emergencyContact || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Email', 'الإيميل')}</dt><dd className="font-medium text-slate-900">{selectedRequest.email || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('City', 'المدينة')}</dt><dd className="font-medium text-slate-900">{selectedRequest.city || 'N/A'}</dd></div>
                       </dl>
                     </div>
 
                     {selectedRequest.guardianFirstName && (
                       <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-sm">
                         <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                          <User className="w-4 h-4"/> Guardian Info
+                          <User className="w-4 h-4"/> {L('Guardian Info', 'بيانات ولي الأمر')}
                         </h4>
                         <dl className="space-y-1">
-                          <div className="flex justify-between"><dt className="text-blue-700">Name</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianFirstName} {selectedRequest.guardianLastName}</dd></div>
-                          <div className="flex justify-between"><dt className="text-blue-700">Relation</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianRelationship}</dd></div>
-                          <div className="flex justify-between"><dt className="text-blue-700">Phone</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianPhoneNumber}</dd></div>
-                          <div className="flex justify-between"><dt className="text-blue-700">Email</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianEmail || 'N/A'}</dd></div>
+                          <div className="flex justify-between"><dt className="text-blue-700">{L('Name', 'الاسم')}</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianFirstName} {selectedRequest.guardianLastName}</dd></div>
+                          <div className="flex justify-between"><dt className="text-blue-700">{L('Relation', 'صلة القرابة')}</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianRelationship}</dd></div>
+                          <div className="flex justify-between"><dt className="text-blue-700">{L('Phone', 'التليفون')}</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianPhoneNumber}</dd></div>
+                          <div className="flex justify-between"><dt className="text-blue-700">{L('Email', 'الإيميل')}</dt><dd className="font-medium text-slate-900">{selectedRequest.guardianEmail || 'N/A'}</dd></div>
                         </dl>
                       </div>
                     )}
@@ -598,38 +600,38 @@ export default function AdmissionsDashboard() {
                   {/* School Background & Documents */}
                   <div className="space-y-4">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">School Background</h4>
+                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">{L('School Background', 'المدرسة')}</h4>
                       <dl className="space-y-1 text-sm">
-                        <div className="flex justify-between"><dt className="text-slate-500">School</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.schoolName || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Grade</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.regularSchoolGrade || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Prior Experience</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.priorProgrammingExperience || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('School', 'المدرسة')}</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.schoolName || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Grade', 'السنة')}</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.regularSchoolGrade || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Prior Experience', 'خبرة سابقة')}</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.priorProgrammingExperience || 'N/A'}</dd></div>
                       </dl>
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">Medical & Additional</h4>
+                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1 mb-2">{L('Medical & Additional', 'بيانات طبية وإضافية')}</h4>
                       <dl className="space-y-1 text-sm">
-                        <div className="flex justify-between"><dt className="text-slate-500">Blood Group</dt><dd className="font-medium text-slate-900">{selectedRequest.bloodGroup || 'N/A'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Medical Notes</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.medicalNotes || 'None'}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Sibling at Academy</dt><dd className="font-medium text-slate-900">{selectedRequest.hasSiblingAtAcademy ? 'Yes' : 'No'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Blood Group', 'فصيلة الدم')}</dt><dd className="font-medium text-slate-900">{selectedRequest.bloodGroup || 'N/A'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Medical Notes', 'ملاحظات طبية')}</dt><dd className="font-medium text-slate-900 text-right">{selectedRequest.medicalNotes || 'None'}</dd></div>
+                        <div className="flex justify-between"><dt className="text-slate-500">{L('Sibling at Academy', 'أخ / أخت عندنا')}</dt><dd className="font-medium text-slate-900">{selectedRequest.hasSiblingAtAcademy ? 'Yes' : 'No'}</dd></div>
                         {selectedRequest.hasSiblingAtAcademy && selectedRequest.siblingName && (
                           <div className="mt-1 bg-blue-50 p-2 rounded border border-blue-100 text-blue-700 text-xs">
-                            <strong>Sibling:</strong> {selectedRequest.siblingName} ({selectedRequest.siblingClass || 'N/A'})
+                            <strong>{L('Sibling:', 'الأخ / الأخت:')}</strong> {selectedRequest.siblingName} ({selectedRequest.siblingClass || 'N/A'})
                           </div>
                         )}
                       </dl>
                     </div>
 
                     <div className="space-y-2">
-                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1">Documents Uploaded</h4>
+                      <h4 className="text-sm font-bold text-slate-900 border-b pb-1">{L('Documents Uploaded', 'المستندات المرفوعة')}</h4>
                       <div className="grid grid-cols-1 gap-2">
                         {selectedRequest.passportPhotoUrl ? (
                           <a href={selectedRequest.passportPhotoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline bg-blue-50 p-2 rounded">
-                            <CheckCircle className="w-4 h-4 text-emerald-500"/> Passport Photo
+                            <CheckCircle className="w-4 h-4 text-emerald-500"/> {L('Passport Photo', 'صورة شخصية')}
                           </a>
                         ) : (
                           <div className="flex items-center gap-2 text-sm text-slate-400 bg-slate-50 p-2 rounded">
-                            <XCircle className="w-4 h-4"/> Passport Photo
+                            <XCircle className="w-4 h-4"/> {L('Passport Photo', 'صورة شخصية')}
                           </div>
                         )}
                       </div>
@@ -647,9 +649,9 @@ export default function AdmissionsDashboard() {
                     }}
                     disabled={approveMutation.isPending || declineMutation.isPending}
                   >
-                    {declineMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />} Decline
+                    {declineMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />} {L('Decline', 'رفض')}
                   </Button>
-                  <Button variant="outline" onClick={closeReviewDialog} disabled={approveMutation.isPending}>Cancel</Button>
+                  <Button variant="outline" onClick={closeReviewDialog} disabled={approveMutation.isPending}>{L('Cancel', 'إلغاء')}</Button>
                 </div>
               </TabsContent>
 
@@ -658,10 +660,10 @@ export default function AdmissionsDashboard() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">1. Branch *</Label>
+                      <Label className="text-blue-900 font-semibold">{L('1. Branch *', '1. الفرع *')}</Label>
                       <Select value={campusId} onValueChange={(val) => { setCampusId(val); setClassId(''); setClassSectionId('') }}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select Campus" />
+                          <SelectValue placeholder={L('Select Campus', 'اختار الفرع')} />
                         </SelectTrigger>
                         <SelectContent>
                           {campuses.map((c: any) => (
@@ -679,23 +681,23 @@ export default function AdmissionsDashboard() {
                   {/* Batch, performance house and legacy class are switched off for TechNova (2026-10-03). */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">2. Class Mode *</Label>
+                      <Label className="text-blue-900 font-semibold">{L('2. Class Mode *', '2. طريقة الحضور *')}</Label>
                       <Select value={deliveryMode} onValueChange={(v) => setDeliveryMode(v as typeof deliveryMode)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="PHYSICAL">Physical (On-campus)</SelectItem>
-                          <SelectItem value="ONLINE">Online</SelectItem>
-                          <SelectItem value="HYBRID">Hybrid</SelectItem>
+                          <SelectItem value="PHYSICAL">{L('Physical (On-campus)', 'حضوري (في الفرع)')}</SelectItem>
+                          <SelectItem value="ONLINE">{L('Online', 'أونلاين')}</SelectItem>
+                          <SelectItem value="HYBRID">{L('Hybrid', 'مختلط')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>3. Group (optional)</Label>
+                    <Label>{L('3. Group (optional)', '3. الجروب (اختياري)')}</Label>
                     <Select value={classSectionId} onValueChange={setClassSectionId} disabled={!campusId}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Optional — or add the student to a group later" />
+                        <SelectValue placeholder={L('Optional — or add the student to a group later', 'اختياري — أو ضيف الطالب لجروب بعدين')} />
                       </SelectTrigger>
                       <SelectContent>
                         {classSections.map((s: { id: string; className: string; sectionName: string; shift?: { name: string }; deliveryMode: string }) => (
@@ -709,34 +711,34 @@ export default function AdmissionsDashboard() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">4. Roll Number *</Label>
-                      <Input placeholder="e.g. 101, 6A-01" value={rollNumber} onChange={e => setRollNumber(e.target.value)} required />
+                      <Label className="text-blue-900 font-semibold">{L('4. Roll Number *', '4. رقم الجلوس *')}</Label>
+                      <Input placeholder={L('e.g. 101, 6A-01', 'مثلاً 101')} value={rollNumber} onChange={e => setRollNumber(e.target.value)} required />
                     </div>
                     <div className="space-y-2">
-                      <Label>5. Section (Legacy class)</Label>
-                      <Input placeholder="e.g. A, B, Boys-1" value={section} onChange={e => setSection(e.target.value)} />
+                      <Label>{L('5. Section (Legacy class)', '5. الفصل القديم')}</Label>
+                      <Input placeholder={L('e.g. A, B, Boys-1', 'مثلاً A')} value={section} onChange={e => setSection(e.target.value)} />
                     </div>
                   </div>
 
                   <div className="space-y-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-slate-900">Academic fee assignment</h3>
+                        <h3 className="text-lg font-semibold text-slate-900">{L('Academic fee assignment', 'تحديد المصاريف')}</h3>
                         <p className="mt-1 text-sm text-slate-500">
-                          Review and confirm admission, course, and total academic fees before approving the applicant.
+                          {L('Review and confirm admission, course, and total academic fees before approving the applicant.', 'راجع وأكّد مصاريف التسجيل والكورس والإجمالي قبل الموافقة.')}
                         </p>
                       </div>
                       <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-                        Fee totals are editable
+                        {L('Fee totals are editable', 'الإجماليات قابلة للتعديل')}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                       <div className="space-y-2 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <Label className="text-slate-900 font-semibold">Admission Processing Fee</Label>
+                        <Label className="text-slate-900 font-semibold">{L('Admission Processing Fee', 'مصاريف التسجيل')}</Label>
                         <Input
                           type="number"
-                          placeholder="e.g. 2000"
+                          placeholder={L('e.g. 2000', 'مثلاً 2000')}
                           value={admissionFee}
                           onChange={e => setAdmissionFee(Number(e.target.value) || 0)}
                           min={0}
@@ -744,12 +746,12 @@ export default function AdmissionsDashboard() {
                           step="1"
                         />
                         <p className="text-xs text-slate-500">
-                          One-time admission fee captured at the time of approval.
+                          {L('One-time admission fee captured at the time of approval.', 'مصاريف تسجيل مرة واحدة بتتسجل وقت الموافقة.')}
                         </p>
                       </div>
 
                       <div className="space-y-2 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <Label className="text-slate-900 font-semibold">Courses & Stream Fee</Label>
+                        <Label className="text-slate-900 font-semibold">{L('Courses & Stream Fee', 'مصاريف الكورس')}</Label>
                         <Input
                           type="number"
                           min={0}
@@ -759,13 +761,13 @@ export default function AdmissionsDashboard() {
                           step="1"
                         />
                         <p className="text-xs text-slate-500">
-                          Monthly course/stream fee — set by the administration based on the student's enrolled program.
+                          {L('Monthly course/stream fee — set by the administration based on the student\'s enrolled program.', 'مصاريف الكورس الشهرية — الإدارة بتحددها حسب البرنامج.')}
                         </p>
                       </div>
 
                       <div className="space-y-2 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
-                          <Label className="text-slate-900 font-semibold">Total Academic Fee</Label>
+                          <Label className="text-slate-900 font-semibold">{L('Total Academic Fee', 'إجمالي المصاريف')}</Label>
                           <button
                             type="button"
                             className="text-xs font-medium text-slate-500 transition hover:text-slate-700"
@@ -774,7 +776,7 @@ export default function AdmissionsDashboard() {
                               setManualTotalOverride(false)
                             }}
                           >
-                            Reset
+                            {L('Reset', 'رجّع')}
                           </button>
                         </div>
                         <Input
@@ -799,46 +801,46 @@ export default function AdmissionsDashboard() {
                     <div className="grid gap-4 xl:grid-cols-2">
                       <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
                         <div className="flex items-center justify-between text-sm text-slate-600 mb-3">
-                          <span className="font-semibold text-slate-900">Fee summary</span>
+                          <span className="font-semibold text-slate-900">{L('Fee summary', 'ملخص المصاريف')}</span>
                           {manualTotalOverride ? (
-                            <Badge variant="secondary" className="bg-amber-100 text-amber-800">Manual override</Badge>
+                            <Badge variant="secondary" className="bg-amber-100 text-amber-800">{L('Manual override', 'تعديل يدوي')}</Badge>
                           ) : (
-                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">Auto-calculated</Badge>
+                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">{L('Auto-calculated', 'محسوب تلقائي')}</Badge>
                           )}
                         </div>
                         <div className="space-y-3 text-sm text-slate-700">
                           <div className="flex justify-between">
-                            <span>Admission Fee</span>
-                            <span className="font-medium">EGP {admissionFee.toLocaleString()}</span>
+                            <span>{L('Admission Fee', 'مصاريف التسجيل')}</span>
+                            <span className="font-medium">{L('EGP', 'ج.م')} {admissionFee.toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span>Course Fee</span>
-                            <span className="font-medium">EGP {courseFee.toLocaleString()}</span>
+                            <span>{L('Course Fee', 'مصاريف الكورس')}</span>
+                            <span className="font-medium">{L('EGP', 'ج.م')} {courseFee.toLocaleString()}</span>
                           </div>
                           <div className="border-t border-slate-200 pt-3 flex justify-between text-base font-semibold text-slate-900">
-                            <span>Total Academic Fee</span>
-                            <span>EGP {totalAcademicFee.toLocaleString()}</span>
+                            <span>{L('Total Academic Fee', 'إجمالي المصاريف')}</span>
+                            <span>{L('EGP', 'ج.م')} {totalAcademicFee.toLocaleString()}</span>
                           </div>
                         </div>
                       </div>
 
                       <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-900 mb-2">Approval guidance</h3>
+                        <h3 className="text-sm font-semibold text-slate-900 mb-2">{L('Approval guidance', 'إرشادات الموافقة')}</h3>
                         <p className="text-sm leading-6 text-slate-600">
-                          Total academic fee must equal or exceed admission fee + course fee. Use the reset action if the total should reflect the system suggestion.
+                          {L('Total academic fee must equal or exceed admission fee + course fee. Use the reset action if the total should reflect the system suggestion.', 'الإجمالي لازم يساوي أو يزيد عن مصاريف التسجيل + الكورس. استخدم «رجّع» لو عايز اقتراح السيستم.')}
                         </p>
                         <div className="mt-4 grid gap-2 text-sm text-slate-600">
                           <div className="flex items-center gap-2">
                             <span className="inline-flex h-2.5 w-2.5 rounded-full bg-blue-500" />
-                            System-calculated values are the recommended starting point.
+                            {L('System-calculated values are the recommended starting point.', 'قيم السيستم هي نقطة البداية المقترحة.')}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
-                            Override only for approved extra academic charges.
+                            {L('Override only for approved extra academic charges.', 'عدّل بس لو في مصاريف زيادة متوافق عليها.')}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                            Approved candidates receive a student profile and fee record immediately.
+                            {L('Approved candidates receive a student profile and fee record immediately.', 'المتقدم اللي بيتوافق عليه بيتعمله ملف طالب وفاتورة على طول.')}
                           </div>
                         </div>
                       </div>
@@ -847,17 +849,17 @@ export default function AdmissionsDashboard() {
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-xs text-amber-800 mt-6">
-                  <span className="font-bold">Note:</span> Approving immediately creates the student profile and registration number. Then add the student to a group (Groups page) and give the parent portal access from the student page.
+                  <span className="font-bold">{L('Note:', 'ملاحظة:')}</span> {L('Approving immediately creates the student profile and registration number. Then add the student to a group (Groups page) and give the parent portal access from the student page.', 'الموافقة بتعمل ملف الطالب ورقم القيد على طول. بعدها ضيف الطالب لجروب (صفحة الجروبات) وادّي ولي الأمر دخول البوابة من صفحة الطالب.')}
                 </div>
 
                 <DialogFooter className="mt-6 pt-4 border-t border-gray-100 flex justify-between sm:justify-between items-center w-full">
-                  <Button variant="outline" onClick={closeReviewDialog} disabled={approveMutation.isPending}>Cancel</Button>
+                  <Button variant="outline" onClick={closeReviewDialog} disabled={approveMutation.isPending}>{L('Cancel', 'إلغاء')}</Button>
                   <Button
                     onClick={handleApprove}
                     disabled={approveMutation.isPending || declineMutation.isPending || !campusId || !batchId || !rollNumber}
                     className={`bg-green-600 hover:bg-green-700 text-white min-w-[150px] ${canApprove ? '' : 'hidden'}`}
                   >
-                    {approveMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Approving...</> : <><CheckCircle className="w-4 h-4 mr-2" /> Approve & Enrol</>}
+                    {approveMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {L('Approving...', 'بيوافق...')}</> : <><CheckCircle className="w-4 h-4 mr-2" /> {L('Approve & Enrol', 'وافق وسجّل')}</>}
                   </Button>
                 </DialogFooter>
               </TabsContent>
@@ -870,17 +872,17 @@ export default function AdmissionsDashboard() {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertCircle className="w-5 h-5" /> Confirm Deletion
+              <AlertCircle className="w-5 h-5" /> {L('Confirm Deletion', 'تأكيد المسح')}
             </DialogTitle>
             <DialogDescription className="py-2">
-              Are you sure you want to delete the admission request for <span className="font-bold text-gray-900">{requestToDelete?.firstName} {requestToDelete?.lastName}</span>?
+              {L('Are you sure you want to delete the admission request for', 'متأكد إنك عايز تمسح طلب التسجيل بتاع')} <span className="font-bold text-gray-900">{requestToDelete?.firstName} {requestToDelete?.lastName}</span>?
               <br /><br />
-              This action is permanent and will remove all associated application data.
+              {L('This action is permanent and will remove all associated application data.', 'المسح نهائي وهيشيل كل بيانات الطلب.')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setRequestToDelete(null)} disabled={deleteMutation.isPending}>
-              Cancel
+              {L('Cancel', 'إلغاء')}
             </Button>
             <Button
               variant="destructive"
@@ -889,7 +891,7 @@ export default function AdmissionsDashboard() {
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
-              Delete Request
+              {L('Delete Request', 'امسح الطلب')}
             </Button>
           </DialogFooter>
         </DialogContent>

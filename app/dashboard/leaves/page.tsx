@@ -13,6 +13,7 @@ import { notify } from '@/lib/notify'
 import { CalendarDays, FileText, CheckCircle, X, XCircle, Clock, User, UserCheck, ArrowRight, ShieldAlert, Inbox, Loader2, Trash2, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface LeaveRequest {
   id: string
@@ -55,6 +56,7 @@ const getApiMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'An unexpected error occurred.'
 
 export default function LeavesPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const queryClient = useQueryClient()
   const userRole = session?.user?.role ?? ''
@@ -95,10 +97,10 @@ export default function LeavesPage() {
     mutationFn: (d) => fetchApi('/api/leaves', { method: 'POST', body: JSON.stringify(d) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leaves'] })
-      notify.success('Application Submitted', { description: 'Your request is awaiting admin review.' })
+      notify.success(L('Application Submitted', 'الطلب اتبعت'), { description: 'Your request is awaiting admin review.' })
       setStartDate(''); setEndDate(''); setReason('')
     },
-    onError: (e: unknown) => notify.error('Submission Failed', { description: getApiMessage(e) }),
+    onError: (e: unknown) => notify.error(L('Submission Failed', 'الإرسال فشل'), { description: getApiMessage(e) }),
   })
 
   const reviewMutation = useMutation<LeaveRequest, unknown, ReviewPayload>({
@@ -114,26 +116,26 @@ export default function LeavesPage() {
       setActionFeedback(`Leave request has been ${action.toLowerCase()} successfully. ${summary}`)
       setReviewId(null); setRemarks('')
     },
-    onError: (e: unknown) => notify.error('Review Failed', { description: getApiMessage(e) }),
+    onError: (e: unknown) => notify.error(L('Review Failed', 'المراجعة فشلت'), { description: getApiMessage(e) }),
   })
 
   const deleteMutation = useMutation<unknown, unknown, string>({
     mutationFn: (id: string) => fetchApi(`/api/leaves/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leaves'] })
-      notify.success('Request Removed', { description: 'The request has been deleted successfully.' })
+      notify.success(L('Request Removed', 'الطلب اتشال'), { description: 'The request has been deleted successfully.' })
       setActionFeedback('The pending leave request has been withdrawn and removed from your history.')
     },
-    onError: (e: unknown) => notify.error('Delete Failed', { description: getApiMessage(e) }),
+    onError: (e: unknown) => notify.error(L('Delete Failed', 'المسح فشل'), { description: getApiMessage(e) }),
   })
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!startDate || !endDate || !reason.trim()) {
-      notify.error('Missing Fields', { description: 'Fill in all required fields.' }); return
+      notify.error(L('Missing Fields', 'في خانات ناقصة'), { description: 'Fill in all required fields.' }); return
     }
     if (new Date(endDate) < new Date(startDate)) {
-      notify.error('Invalid Dates', { description: 'End date must be after start date.' }); return
+      notify.error(L('Invalid Dates', 'التواريخ غلط'), { description: 'End date must be after start date.' }); return
     }
     setIsSubmitting(true)
     try { await submitMutation.mutateAsync({ leaveType, startDate, endDate, reason }) }
@@ -152,8 +154,8 @@ export default function LeavesPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] max-w-md mx-auto text-center p-6 space-y-4">
         <div className="p-4 bg-rose-50 rounded-full border border-rose-200 text-rose-600"><Lock className="w-10 h-10" /></div>
-        <h2 className="text-2xl font-bold text-slate-800">Access Restricted</h2>
-        <p className="text-slate-500 text-sm">Leave management is available to teaching staff and account managers only.</p>
+        <h2 className="text-2xl font-bold text-slate-800">{L('Access Restricted', 'الدخول مقفول')}</h2>
+        <p className="text-slate-500 text-sm">{L('Leave management is available to teaching staff and account managers only.', 'إدارة الإجازات متاحة للي ليهم صلاحية الإجازات بس.')}</p>
       </div>
     )
   }
@@ -201,21 +203,21 @@ export default function LeavesPage() {
             <Card className="border-[2px] border-amber-500/40 bg-amber-50/60 shadow-md animate-in fade-in duration-200">
               <CardHeader>
                 <CardTitle className="text-amber-800 flex items-center gap-2 text-lg">
-                  <UserCheck className="w-5 h-5 text-amber-600" /> Evaluate Request
+                  <UserCheck className="w-5 h-5 text-amber-600" /> {L('Evaluate Request', 'راجع الطلب')}
                 </CardTitle>
                 <CardDescription className="text-amber-700/80">
-                  Set your decision and add optional feedback for the applicant.
+                  {L('Set your decision and add optional feedback for the applicant.', 'حدد قرارك وضيف ملاحظة لصاحب الطلب لو حابب.')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="bg-white border border-amber-200/50 p-4 rounded-xl text-sm space-y-1.5">
                   <p className="font-bold text-slate-800">{reviewTarget.applicantName} <span className="text-xs font-normal text-slate-500">({reviewTarget.applicantRole})</span></p>
-                  <p className="text-xs text-slate-500">Type: <strong>{reviewTarget.leaveType}</strong> &nbsp;|&nbsp; {new Date(reviewTarget.startDate).toLocaleDateString()} → {new Date(reviewTarget.endDate).toLocaleDateString()}</p>
+                  <p className="text-xs text-slate-500">{L('Type:', 'النوع:')} <strong>{reviewTarget.leaveType}</strong> &nbsp;|&nbsp; {new Date(reviewTarget.startDate).toLocaleDateString()} → {new Date(reviewTarget.endDate).toLocaleDateString()}</p>
                   <p className="text-slate-600 italic text-xs mt-1">&ldquo;{reviewTarget.reason}&rdquo;</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Feedback Remarks (optional)</label>
-                  <Input placeholder="e.g. Approved as per HR policy" value={remarks} onChange={e => setRemarks(e.target.value)} />
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">{L('Feedback Remarks (optional)', 'ملاحظات (اختياري)')}</label>
+                  <Input placeholder={L('e.g. Approved as per HR policy', 'مثلاً: موافقة حسب لايحة الموظفين')} value={remarks} onChange={e => setRemarks(e.target.value)} />
                 </div>
                 <div className="flex gap-3">
                   <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold" disabled={isReviewing} onClick={() => handleReview('APPROVED')}>
@@ -224,7 +226,7 @@ export default function LeavesPage() {
                   <Button className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold" disabled={isReviewing} onClick={() => handleReview('REJECTED')}>
                     {isReviewing ? <Loader2 className="w-4 h-4 animate-spin" /> : '❌ Reject'}
                   </Button>
-                  <Button variant="outline" onClick={() => { setReviewId(null); setRemarks('') }}>Cancel</Button>
+                  <Button variant="outline" onClick={() => { setReviewId(null); setRemarks('') }}>{L('Cancel', 'إلغاء')}</Button>
                 </div>
               </CardContent>
             </Card>
@@ -234,7 +236,7 @@ export default function LeavesPage() {
           {isAdmin && !reviewId && (
             <Card className="border border-slate-200 bg-slate-50/50 p-8 text-center shadow-sm">
               <ShieldAlert className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <h3 className="font-bold text-slate-700">Select a Request</h3>
+              <h3 className="font-bold text-slate-700">{L('Select a Request', 'اختار طلب')}</h3>
               <p className="text-xs text-slate-500 mt-1">Click &ldquo;Evaluate&rdquo; on a pending request from the list to open the review panel here.</p>
             </Card>
           )}
@@ -244,43 +246,43 @@ export default function LeavesPage() {
             <Card className="border border-slate-200/80 shadow-md">
               <CardHeader>
                 <CardTitle className="text-xl font-bold flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-indigo-600" /> Apply for Leave
+                  <FileText className="w-5 h-5 text-indigo-600" /> {L('Apply for Leave', 'اطلب إجازة')}
                 </CardTitle>
-                <CardDescription className="text-slate-500">Submit a formal absence request to the administration.</CardDescription>
+                <CardDescription className="text-slate-500">{L('Submit a formal absence request to the administration.', 'ابعت طلب إجازة رسمي للإدارة.')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Leave Type</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">{L('Leave Type', 'نوع الإجازة')}</label>
                     <Select value={leaveType} onValueChange={(v: LeaveRequest['leaveType']) => setLeaveType(v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="CASUAL">Casual Leave</SelectItem>
-                        <SelectItem value="SICK">Sick Leave</SelectItem>
-                        <SelectItem value="MATERNITY">Maternity Leave</SelectItem>
-                        <SelectItem value="EMERGENCY">Emergency Leave</SelectItem>
-                        <SelectItem value="OTHER">Other / Special</SelectItem>
+                        <SelectItem value="CASUAL">{L('Casual Leave', 'إجازة عارضة')}</SelectItem>
+                        <SelectItem value="SICK">{L('Sick Leave', 'إجازة مرضي')}</SelectItem>
+                        <SelectItem value="MATERNITY">{L('Maternity Leave', 'إجازة وضع')}</SelectItem>
+                        <SelectItem value="EMERGENCY">{L('Emergency Leave', 'إجازة طارئة')}</SelectItem>
+                        <SelectItem value="OTHER">{L('Other / Special', 'أخرى / خاصة')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">Start Date</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">{L('Start Date', 'من تاريخ')}</label>
                       <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">End Date</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">{L('End Date', 'لحد تاريخ')}</label>
                       <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Reason</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">{L('Reason', 'السبب')}</label>
                     <textarea rows={4} value={reason} onChange={e => setReason(e.target.value)}
-                      placeholder="Provide a detailed explanation..." required
+                      placeholder={L('Provide a detailed explanation...', 'اكتب السبب بالتفصيل...')} required
                       className="w-full text-sm rounded-lg border border-slate-300/80 p-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
                   </div>
                   <Button type="submit" disabled={isSubmitting} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 flex items-center justify-center gap-2">
-                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><span>Submit Application</span><ArrowRight className="w-4 h-4" /></>}
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><span>{L('Submit Application', 'ابعت الطلب')}</span><ArrowRight className="w-4 h-4" /></>}
                   </Button>
                 </form>
               </CardContent>
@@ -295,15 +297,15 @@ export default function LeavesPage() {
             <Card className="border-[2px] border-indigo-500/30 shadow-md">
               <CardHeader className="pb-3 border-b border-slate-100">
                 <CardTitle className="text-lg font-bold text-indigo-700 flex items-center gap-2">
-                  <ShieldAlert className="w-5 h-5" /> Pending Approvals
+                  <ShieldAlert className="w-5 h-5" /> {L('Pending Approvals', 'مستني موافقة')}
                   {pending.length > 0 && <span className="ml-1 bg-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">{pending.length}</span>}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {isLoading ? (
-                  <div className="py-10 flex items-center justify-center gap-2 text-slate-400"><Loader2 className="animate-spin w-5 h-5" /><span className="text-sm">Loading...</span></div>
+                  <div className="py-10 flex items-center justify-center gap-2 text-slate-400"><Loader2 className="animate-spin w-5 h-5" /><span className="text-sm">{L('Loading...', 'بيحمّل...')}</span></div>
                 ) : pending.length === 0 ? (
-                  <div className="py-12 text-center text-slate-400"><Inbox className="w-10 h-10 mx-auto mb-2 text-slate-300" /><p className="text-sm">No pending requests</p></div>
+                  <div className="py-12 text-center text-slate-400"><Inbox className="w-10 h-10 mx-auto mb-2 text-slate-300" /><p className="text-sm">{L('No pending requests', 'مفيش طلبات مستنية')}</p></div>
                 ) : (
                   <div className="divide-y divide-slate-100">
                     {pending.map(r => (
@@ -320,10 +322,10 @@ export default function LeavesPage() {
                         <div className="flex gap-2 shrink-0">
                           <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
                             onClick={() => { setReviewId(r.id); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
-                            Evaluate
+                            {L('Evaluate', 'راجع')}
                           </Button>
                           <Button size="sm" variant="ghost" className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 h-auto"
-                            onClick={() => { if (confirm('Remove this request and notify the applicant?')) deleteMutation.mutate(r.id) }}>
+                            onClick={() => { if (confirm(L('Remove this request and notify the applicant?', 'تشيل الطلب ده وتبلّغ صاحبه؟'))) deleteMutation.mutate(r.id) }}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -337,24 +339,24 @@ export default function LeavesPage() {
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-3xl border border-slate-200/80 bg-slate-50 p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Total Requests</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-500">{L('Total Requests', 'كل الطلبات')}</p>
               <p className="mt-3 text-3xl font-semibold text-slate-900">{leaves.length}</p>
               <p className="mt-2 text-xs text-slate-500">{isAdmin ? 'All leave requests in the system' : 'Your submitted leave applications'}</p>
             </div>
             <div className="rounded-3xl border border-amber-200/80 bg-amber-50/80 p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-[0.24em] text-amber-700">Pending</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-amber-700">{L('Pending', 'مستني')}</p>
               <p className="mt-3 text-3xl font-semibold text-amber-900">{pending.length}</p>
-              <p className="mt-2 text-xs text-amber-700">Requests awaiting review</p>
+              <p className="mt-2 text-xs text-amber-700">{L('Requests awaiting review', 'طلبات مستنية مراجعة')}</p>
             </div>
             <div className="rounded-3xl border border-emerald-200/80 bg-emerald-50/80 p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-[0.24em] text-emerald-700">Approved</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-emerald-700">{L('Approved', 'اتوافق')}</p>
               <p className="mt-3 text-3xl font-semibold text-emerald-900">{myApprovedCount}</p>
-              <p className="mt-2 text-xs text-emerald-700">Requests approved so far</p>
+              <p className="mt-2 text-xs text-emerald-700">{L('Requests approved so far', 'طلبات اتوافق عليها')}</p>
             </div>
             <div className="rounded-3xl border border-rose-200/80 bg-rose-50/80 p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-[0.24em] text-rose-700">Rejected</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-rose-700">{L('Rejected', 'اترفض')}</p>
               <p className="mt-3 text-3xl font-semibold text-rose-900">{myRejectedCount}</p>
-              <p className="mt-2 text-xs text-rose-700">Requests declined or withdrawn</p>
+              <p className="mt-2 text-xs text-rose-700">{L('Requests declined or withdrawn', 'طلبات اترفضت أو اتسحبت')}</p>
             </div>
           </div>
 
@@ -390,7 +392,7 @@ export default function LeavesPage() {
                               <span className="px-2 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-600">{r.leaveType}</span>
                             </div>
                             <p className="text-xs text-slate-500 mt-0.5">{new Date(r.startDate).toLocaleDateString()} → {new Date(r.endDate).toLocaleDateString()}</p>
-                            <p className="text-xs text-slate-500">Submitted on {new Date(r.createdAt).toLocaleDateString()}</p>
+                            <p className="text-xs text-slate-500">{L('Submitted on', 'اتبعت يوم')} {new Date(r.createdAt).toLocaleDateString()}</p>
                           </div>
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[r.status]}`}>
                             <Icon className="w-3.5 h-3.5" />{r.status}
@@ -420,12 +422,12 @@ export default function LeavesPage() {
                                 className="text-rose-600 hover:text-rose-800 hover:bg-rose-50"
                                 disabled={deleteMutation.isPending}
                                 onClick={() => {
-                                  if (confirm('Withdraw this pending leave request?')) {
+                                  if (confirm(L('Withdraw this pending leave request?', 'تسحب طلب الإجازة ده؟'))) {
                                     deleteMutation.mutate(r.id)
                                   }
                                 }}
                               >
-                                Withdraw Request
+                                {L('Withdraw Request', 'اسحب الطلب')}
                               </Button>
                             </div>
                           )}

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Award, Gift, Loader2 } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Report {
   totals: { referrals: number; rewarded: number; pending: number; rewardPaid: number }
@@ -30,34 +31,35 @@ function SettingsCard({ canEdit }: { canEdit: boolean }) {
   useEffect(() => { if (data) setS(data.settings) }, [data])
   const save = useMutation({
     mutationFn: () => fetchApi('/api/referrals/settings', { method: 'PUT', body: JSON.stringify(s) }),
-    onSuccess: () => { notify.success('Referral settings saved'); qc.invalidateQueries({ queryKey: ['referral-settings'] }) },
+    onSuccess: () => { notify.success(L('Referral settings saved', 'إعدادات الترشيح اتحفظت')); qc.invalidateQueries({ queryKey: ['referral-settings'] }) },
     onError: (e: Error) => notify.error(e.message),
   })
   if (!s) return null
   return (
     <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-base">Settings</CardTitle><CardDescription>Both can be switched on or off at any time; changes apply to new referrals / payments.</CardDescription></CardHeader>
+      <CardHeader className="pb-2"><CardTitle className="text-base">{L('Settings', 'الإعدادات')}</CardTitle><CardDescription>Both can be switched on or off at any time; changes apply to new referrals / payments.</CardDescription></CardHeader>
       <CardContent className="space-y-3 text-sm">
         <label className="flex flex-wrap items-center gap-2">
           <input type="checkbox" checked={s.rewardEnabled} disabled={!canEdit} onChange={(e) => setS({ ...s, rewardEnabled: e.target.checked })} />
-          Reward the parent who referred: <Input type="number" min={0} className="h-8 w-24" value={s.rewardAmount} disabled={!canEdit} onChange={(e) => setS({ ...s, rewardAmount: Number(e.target.value) || 0 })} /> EGP in the wallet when the new student pays the first invoice
+          {L('Reward the parent who referred:', 'مكافأة ولي الأمر اللي رشّح:')} <Input type="number" min={0} className="h-8 w-24" value={s.rewardAmount} disabled={!canEdit} onChange={(e) => setS({ ...s, rewardAmount: Number(e.target.value) || 0 })} /> {L('EGP in the wallet when the new student pays the first invoice', 'ج.م في المحفظة لما الطالب الجديد يدفع أول فاتورة')}
         </label>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2"><input type="checkbox" checked={s.welcomeEnabled} disabled={!canEdit} onChange={(e) => setS({ ...s, welcomeEnabled: e.target.checked })} /> Welcome discount for the new student:</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={s.welcomeEnabled} disabled={!canEdit} onChange={(e) => setS({ ...s, welcomeEnabled: e.target.checked })} /> {L('Welcome discount for the new student:', 'خصم ترحيب للطالب الجديد:')}</label>
           <Select value={s.welcomeTypeId ?? 'none'} onValueChange={(v) => setS({ ...s, welcomeTypeId: v === 'none' ? null : v })} disabled={!canEdit}>
-            <SelectTrigger className="h-8 w-56"><SelectValue placeholder="Choose a discount type" /></SelectTrigger>
+            <SelectTrigger className="h-8 w-56"><SelectValue placeholder={L('Choose a discount type', 'اختار نوع خصم')} /></SelectTrigger>
             <SelectContent><SelectItem value="none">—</SelectItem>{(data?.discountTypes ?? []).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
           </Select>
-          <span className="text-xs text-slate-500">Create it on the Discounts page first (e.g. “Referral welcome 10%”, duration “first cycle”).</span>
+          <span className="text-xs text-slate-500">{L('Create it on the Discounts page first (e.g. “Referral welcome 10%”, duration “first cycle”).', 'اعمله الأول من صفحة الخصومات (مثلاً «ترحيب إحالة 10%»، المدة «أول شهر»).')}</span>
         </div>
-        <label className="flex items-center gap-2">“TechNova Ambassador” from <Input type="number" min={1} className="h-8 w-16" value={s.ambassadorAt} disabled={!canEdit} onChange={(e) => setS({ ...s, ambassadorAt: Number(e.target.value) || 3 })} /> rewarded referrals</label>
-        {canEdit && <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>Save</Button>}
+        <label className="flex items-center gap-2">{L('“TechNova Ambassador” from', '«سفير TechNova» من')} <Input type="number" min={1} className="h-8 w-16" value={s.ambassadorAt} disabled={!canEdit} onChange={(e) => setS({ ...s, ambassadorAt: Number(e.target.value) || 3 })} /> {L('rewarded referrals', 'ترشيحات اتكافأت')}</label>
+        {canEdit && <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>{L('Save', 'حفظ')}</Button>}
       </CardContent>
     </Card>
   )
 }
 
 export default function ReferralsPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const role = session?.user?.role
   const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
@@ -65,12 +67,12 @@ export default function ReferralsPage() {
   const { data, isLoading } = useQuery({ queryKey: ['referrals'], queryFn: () => fetchApi<Report>('/api/referrals'), enabled: allowed })
   if (!role) return null
   if (role && !permsReady) return null
-  if (!allowed) return <AccessDenied title="Referrals" message="You don't have access to referrals." />
+  if (!allowed) return <AccessDenied title={L('Referrals', 'الترشيحات')} message="You don't have access to referrals." />
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><Gift className="h-7 w-7 text-indigo-600" /> Referrals</h1>
-        <p className="mt-1 text-sm text-slate-500">Every parent has a code in the portal. A new student is linked on the admission form, the online application, or the student page.</p>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><Gift className="h-7 w-7 text-indigo-600" /> {L('Referrals', 'الترشيحات')}</h1>
+        <p className="mt-1 text-sm text-slate-500">{L('Every parent has a code in the portal. A new student is linked on the admission form, the online application, or the student page.', 'كل ولي أمر ليه كود في البوابة. الطالب الجديد بيتربط من استمارة التسجيل، أو طلب الأونلاين، أو صفحة الطالب.')}</p>
       </div>
       {isLoading || !data ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : (
         <>
@@ -81,24 +83,24 @@ export default function ReferralsPage() {
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-base">Top referrers</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-base">{L('Top referrers', 'أكتر ناس رشّحت')}</CardTitle></CardHeader>
               <CardContent className="space-y-1 text-sm">
                 {data.top.map((t) => (
                   <div key={t.id} className="flex justify-between rounded border border-slate-100 px-2 py-1.5">
                     <span>{t.name} <span className="text-xs text-slate-400">{t.phone}</span>{t.ambassador && <Award className="ml-1 inline h-4 w-4 text-amber-500" />}</span>
-                    <span className="text-xs">{t.count} referred · {t.rewarded} paid · {t.reward} EGP</span>
+                    <span className="text-xs">{t.count} {L('referred ·', 'رشّح ·')} {t.rewarded} {L('paid ·', 'دفع ·')} {t.reward} {L('EGP', 'ج.م')}</span>
                   </div>
                 ))}
-                {!data.top.length && <p className="text-slate-500">No referrals yet.</p>}
+                {!data.top.length && <p className="text-slate-500">{L('No referrals yet.', 'لسه مفيش ترشيحات.')}</p>}
               </CardContent>
             </Card>
             <SettingsCard canEdit={can('referrals', 'update')} />
           </div>
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">All referrals</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base">{L('All referrals', 'كل الترشيحات')}</CardTitle></CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="text-left text-xs text-slate-500"><th className="py-1">Date</th><th>New student</th><th>Referred by</th><th>Code</th><th>Status</th></tr></thead>
+                <thead><tr className="text-left text-xs text-slate-500"><th className="py-1">{L('Date', 'التاريخ')}</th><th>{L('New student', 'الطالب الجديد')}</th><th>{L('Referred by', 'رشّحه')}</th><th>{L('Code', 'الكود')}</th><th>{L('Status', 'الحالة')}</th></tr></thead>
                 <tbody>
                   {data.rows.map((r) => (
                     <tr key={r.id} className="border-t border-slate-100">

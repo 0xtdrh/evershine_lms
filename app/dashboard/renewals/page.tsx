@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Loader2, RefreshCcw } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 type Status = 'PENDING' | 'YES' | 'NO'
 interface StudentRow {
@@ -43,6 +44,7 @@ const wa = (phone: string, text: string) => `https://wa.me/${phone.replace(/\D/g
 
 /** Who continues next month: parents' answers per group, WhatsApp reminders, churn reasons (phase A). */
 export default function RenewalsPage() {
+  useI18n() // re-render on a language switch
   const qc = useQueryClient()
   const { data: session } = useSession()
   const { data: perms } = useQuery({
@@ -61,12 +63,12 @@ export default function RenewalsPage() {
 
   const save = useMutation({
     mutationFn: () => fetchApi(`/api/renewals/${answer!.row.requestId}`, { method: 'PATCH', body: JSON.stringify({ answer: answer!.value, reason: answer!.value === 'NO' ? reason : null, note: note.trim() || null }) }),
-    onSuccess: () => { notify.success('Saved'); setAnswer(null); setNote(''); qc.invalidateQueries({ queryKey: ['renewals'] }) },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); setAnswer(null); setNote(''); qc.invalidateQueries({ queryKey: ['renewals'] }) },
     onError: (e: Error) => notify.error(e.message || 'Could not save'),
   })
   const saveSettings = useMutation({
     mutationFn: () => fetchApi('/api/renewals/settings', { method: 'PUT', body: JSON.stringify({ sessionsBefore: Number(before) }) }),
-    onSuccess: () => { notify.success('Saved'); qc.invalidateQueries({ queryKey: ['renewals'] }) },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['renewals'] }) },
     onError: (e: Error) => notify.error(e.message || 'Could not save'),
   })
   const logWhatsApp = (row: StudentRow) => {
@@ -81,28 +83,28 @@ export default function RenewalsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900"><RefreshCcw className="h-5 w-5 text-indigo-600" /> Renewals</h1>
-          <p className="text-sm text-slate-500">Parents are asked “continuing next month?” {data ? `${data.settings.sessionsBefore} session(s)` : ''} before the last session. Their answers appear here and in “Advance cycle”.</p>
+          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900"><RefreshCcw className="h-5 w-5 text-indigo-600" /> {L('Renewals', 'التجديدات')}</h1>
+          <p className="text-sm text-slate-500">{L('Parents are asked “continuing next month?”', 'أولياء الأمور بيتسألوا «مكمّلين الشهر الجاي؟»')} {data ? `${data.settings.sessionsBefore} session(s)` : ''} {L('before the last session. Their answers appear here and in “Advance cycle”.', 'قبل آخر حصة. ردودهم بتظهر هنا وفي «ترحيل الشهر».')}</p>
         </div>
         {canSettings && data && (
           <div className="flex items-end gap-2">
             <div className="space-y-1">
-              <Label className="text-xs">Ask how many sessions before the end</Label>
+              <Label className="text-xs">{L('Ask how many sessions before the end', 'اسأل قبل النهاية بكام حصة')}</Label>
               <Input className="h-8 w-24" type="number" min={0} max={20} placeholder={String(data.settings.sessionsBefore)} value={before} onChange={(e) => setBefore(e.target.value)} />
             </div>
-            <Button size="sm" variant="outline" className="h-8" disabled={before === '' || saveSettings.isPending} onClick={() => saveSettings.mutate()}>Save</Button>
+            <Button size="sm" variant="outline" className="h-8" disabled={before === '' || saveSettings.isPending} onClick={() => saveSettings.mutate()}>{L('Save', 'حفظ')}</Button>
           </div>
         )}
       </div>
 
-      {isLoading && <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>}
+      {isLoading && <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> {L('Loading…', 'بيحمّل…')}</p>}
       {error && <p className="text-sm text-rose-600">{(error as Error).message}</p>}
 
       {data && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Why students stopped (last 90 days)</CardTitle>
-            <CardDescription>{data.churn.total} answer(s) “not continuing”.</CardDescription>
+            <CardTitle className="text-sm">{L('Why students stopped (last 90 days)', 'الطلاب وقفوا ليه (آخر 90 يوم)')}</CardTitle>
+            <CardDescription>{data.churn.total} {L('answer(s) “not continuing”.', 'رد «مش مكمّل».')}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2 text-sm">
             {Object.keys(REASONS).map((k) => (
@@ -112,7 +114,7 @@ export default function RenewalsPage() {
         </Card>
       )}
 
-      {data && data.groups.length === 0 && <p className="text-sm text-slate-500">No group is close to its last session yet.</p>}
+      {data && data.groups.length === 0 && <p className="text-sm text-slate-500">{L('No group is close to its last session yet.', 'مفيش جروب قرّب من آخر حصة لسه.')}</p>}
       {data?.groups.map((g) => (
         <Card key={g.id}>
           <CardHeader className="pb-2">
@@ -120,9 +122,9 @@ export default function RenewalsPage() {
               <Link href={`/dashboard/groups?group=${g.id}`} className="hover:underline">{g.label}</Link>
               <span className="font-normal text-slate-500">{g.course} · {g.level} · {g.campus}</span>
               <span className="ml-auto flex gap-1.5 text-xs font-normal">
-                <span className={`rounded-full border px-2 py-0.5 ${STATUS_STYLE.YES}`}>{g.counts.yes} continuing</span>
-                <span className={`rounded-full border px-2 py-0.5 ${STATUS_STYLE.NO}`}>{g.counts.no} not</span>
-                <span className={`rounded-full border px-2 py-0.5 ${STATUS_STYLE.PENDING}`}>{g.counts.pending} no answer</span>
+                <span className={`rounded-full border px-2 py-0.5 ${STATUS_STYLE.YES}`}>{g.counts.yes} {L('continuing', 'مكمّل')}</span>
+                <span className={`rounded-full border px-2 py-0.5 ${STATUS_STYLE.NO}`}>{g.counts.no} {L('not', 'مش مكمّل')}</span>
+                <span className={`rounded-full border px-2 py-0.5 ${STATUS_STYLE.PENDING}`}>{g.counts.pending} {L('no answer', 'مردّش')}</span>
               </span>
             </CardTitle>
           </CardHeader>
@@ -135,7 +137,7 @@ export default function RenewalsPage() {
                     {s.status === 'YES' ? 'Continuing' : s.status === 'NO' ? `Not continuing${s.reason ? ` · ${REASONS[s.reason] ?? s.reason}` : ''}` : 'No answer yet'}
                   </span>
                   {s.respondedVia && <span className="ml-1 text-[11px] text-slate-400">({s.respondedVia === 'PARENT' ? 'parent, portal' : 'staff'})</span>}
-                  {s.earlyDiscount && <span className="ml-1 text-[11px] text-emerald-700">· early discount</span>}
+                  {s.earlyDiscount && <span className="ml-1 text-[11px] text-emerald-700">{L('· early discount', '· خصم تجديد بدري')}</span>}
                   {s.reasonNote && <span className="block text-xs text-slate-500">{s.reasonNote}</span>}
                 </span>
                 <span className="flex gap-1.5">
@@ -146,8 +148,8 @@ export default function RenewalsPage() {
                   )}
                   {canUpdate && (
                     <>
-                      <Button size="sm" variant="outline" className="h-7 text-xs text-emerald-700" onClick={() => setAnswer({ row: s, value: 'YES' })}>Continuing</Button>
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setAnswer({ row: s, value: 'NO' })}>Not continuing</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs text-emerald-700" onClick={() => setAnswer({ row: s, value: 'YES' })}>{L('Continuing', 'مكمّل')}</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setAnswer({ row: s, value: 'NO' })}>{L('Not continuing', 'مش مكمّل')}</Button>
                     </>
                   )}
                 </span>
@@ -166,7 +168,7 @@ export default function RenewalsPage() {
           <div className="space-y-3 text-sm">
             {answer?.value === 'NO' && (
               <div className="space-y-1">
-                <Label>Why?</Label>
+                <Label>{L('Why?', 'ليه؟')}</Label>
                 <Select value={reason} onValueChange={setReason}>
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>{Object.keys(REASONS).map((k) => <SelectItem key={k} value={k}>{REASONS[k]}</SelectItem>)}</SelectContent>
@@ -174,12 +176,12 @@ export default function RenewalsPage() {
               </div>
             )}
             <div className="space-y-1">
-              <Label>Note (optional)</Label>
+              <Label>{L('Note (optional)', 'ملاحظة (اختياري)')}</Label>
               <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setAnswer(null)}>Cancel</Button>
-              <Button disabled={save.isPending} onClick={() => save.mutate()}>Save</Button>
+              <Button variant="outline" onClick={() => setAnswer(null)}>{L('Cancel', 'إلغاء')}</Button>
+              <Button disabled={save.isPending} onClick={() => save.mutate()}>{L('Save', 'حفظ')}</Button>
             </div>
           </div>
         </DialogContent>

@@ -24,6 +24,7 @@ import {
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { L, useI18n } from '@/lib/i18n/client'
 
 // Shape returned by GET /api/dashboard
 interface DashboardData {
@@ -111,6 +112,7 @@ function SkeletonCard() {
 }
 
 export default function DashboardPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const router = useRouter()
   const [renderedAt] = useState(() => Date.now())
@@ -226,7 +228,7 @@ export default function DashboardPage() {
     <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-lg flex items-center gap-3 text-destructive">
       <AlertCircle className="w-5 h-5 flex-shrink-0" />
       <div>
-        <p className="font-medium">Failed to load dashboard</p>
+        <p className="font-medium">{L('Failed to load dashboard', 'الصفحة الرئيسية ماحمّلتش')}</p>
         <p className="text-sm">{(error as Error).message}</p>
       </div>
     </div>
@@ -237,7 +239,7 @@ export default function DashboardPage() {
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-sm text-slate-500">
           <div className="h-9 w-9 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <span>Opening your workspace…</span>
+          <span>{L('Opening your workspace…', 'بنفتح صفحتك…')}</span>
         </div>
       </div>
     )
@@ -281,40 +283,40 @@ export default function DashboardPage() {
               <School className="w-64 h-64" />
             </div>
             <CardContent className="p-8 relative z-10">
-              <h2 className="text-2xl font-bold mb-2">Welcome to TechNova!</h2>
+              <h2 className="text-2xl font-bold mb-2">{L('Welcome to TechNova!', 'أهلاً بيك في TechNova!')}</h2>
               <p className="text-blue-100 mb-4 max-w-md">
-                We're glad to have you here. This is your central hub for classes, results, and fee management.
+                {L('We\'re glad to have you here. This is your central hub for classes, results, and fee management.', 'مبسوطين إنك معانا. دي صفحتك الرئيسية للحصص والنتايج والمدفوعات.')}
               </p>
               <div className="flex gap-4 mb-6">
                 <Link
                   href="/dashboard/enrollment"
                   className="inline-flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 text-sm font-semibold text-white border border-white/30 hover:bg-white/30 transition-colors"
                 >
-                  <BookOpen className="w-4 h-4" /> My Courses
+                  <BookOpen className="w-4 h-4" /> {L('My Courses', 'كورساتي')}
                 </Link>
                 <Link
                   href="/dashboard/enrollment"
                   className="inline-flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 text-sm font-semibold text-white border border-white/30 hover:bg-white/30 transition-colors"
                 >
-                  <Award className="w-4 h-4" /> My Results
+                  <Award className="w-4 h-4" /> {L('My Results', 'نتايجي')}
                 </Link>
                 <Link
                   href="/dashboard/documents?doc=student_profile"
                   className="inline-flex items-center gap-2 rounded-lg bg-indigo-500/80 px-4 py-2 text-sm font-semibold text-white border border-indigo-400 hover:bg-indigo-500 transition-colors shadow-sm"
                 >
-                  <BookOpen className="w-4 h-4" /> Academic Profile
+                  <BookOpen className="w-4 h-4" /> {L('Academic Profile', 'الملف الدراسي')}
                 </Link>
               </div>
               <div className="flex flex-wrap gap-4">
                 <div className="bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20">
-                  <p className="text-xs text-blue-100 uppercase font-bold tracking-wider mb-1">Registration No</p>
+                  <p className="text-xs text-blue-100 uppercase font-bold tracking-wider mb-1">{L('Registration No', 'رقم القيد')}</p>
                   <p className="font-mono font-bold text-lg">{studentProfile?.registrationNumber || 'EA/2026/...'}</p>
                 </div>
                 <div className="bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20">
-                  <p className="text-xs text-blue-100 uppercase font-bold tracking-wider mb-1">Current Status</p>
+                  <p className="text-xs text-blue-100 uppercase font-bold tracking-wider mb-1">{L('Current Status', 'الحالة')}</p>
                   <p className="font-bold text-lg flex items-center gap-2">
                     <span className="inline-flex w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    Enrolled
+                    {L('Enrolled', 'مسجّل')}
                   </p>
                 </div>
               </div>
@@ -324,20 +326,20 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-blue-600" /> Academic Placement
+                <MapPin className="w-4 h-4 text-blue-600" /> {L('Academic Placement', 'التسكين')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                <span className="text-sm text-gray-500">Campus</span>
+                <span className="text-sm text-gray-500">{L('Campus', 'الفرع')}</span>
                 <span className="text-sm font-semibold">{studentProfile?.campus?.name || 'Loading...'}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                <span className="text-sm text-gray-500">Class</span>
+                <span className="text-sm text-gray-500">{L('Class', 'الجروب')}</span>
                 <span className="text-sm font-semibold">{studentProfile?.class?.name || 'Unassigned'}</span>
               </div>
               <div className="flex justify-between items-center py-2">
-                <span className="text-sm text-gray-500">Academic Year</span>
+                <span className="text-sm text-gray-500">{L('Academic Year', 'السنة الدراسية')}</span>
                 <span className="text-sm font-semibold">{studentProfile?.academicYear || '2026'}</span>
               </div>
             </CardContent>
@@ -371,11 +373,11 @@ export default function DashboardPage() {
                   
                   <div className="flex flex-wrap justify-center sm:justify-start gap-4 mt-4">
                     <div className="bg-white/10 backdrop-blur-md rounded-lg py-1.5 px-3 border border-white/20 text-center sm:text-left">
-                      <p className="text-[9px] text-indigo-100 uppercase font-bold tracking-wider">Employee ID</p>
+                      <p className="text-[9px] text-indigo-100 uppercase font-bold tracking-wider">{L('Employee ID', 'الرقم الوظيفي')}</p>
                       <p className="font-mono font-bold text-sm">{teacherProfile?.employeeId || 'TN-TCH-...'}</p>
                     </div>
                     <div className="bg-white/10 backdrop-blur-md rounded-lg py-1.5 px-3 border border-white/20 text-center sm:text-left">
-                      <p className="text-[9px] text-indigo-100 uppercase font-bold tracking-wider">Joining Date</p>
+                      <p className="text-[9px] text-indigo-100 uppercase font-bold tracking-wider">{L('Joining Date', 'تاريخ التعيين')}</p>
                       <p className="font-bold text-sm">
                         {teacherProfile?.joiningDate ? new Date(teacherProfile.joiningDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' }) : '--'}
                       </p>
@@ -389,16 +391,16 @@ export default function DashboardPage() {
           <Card className="shadow-md">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2 text-indigo-700">
-                <MapPin className="w-4 h-4" /> Academic Assignment
+                <MapPin className="w-4 h-4" /> {L('Academic Assignment', 'التكليف')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-xs text-gray-500 font-medium">Primary Campus</span>
+                <span className="text-xs text-gray-500 font-medium">{L('Primary Campus', 'الفرع الأساسي')}</span>
                 <span className="text-xs font-bold text-gray-800">{teacherProfile?.campus?.name || '—'}</span>
               </div>
               <div className="flex flex-col gap-1.5 py-1">
-                <span className="text-xs text-gray-500 font-medium">Assigned Classes</span>
+                <span className="text-xs text-gray-500 font-medium">{L('Assigned Classes', 'الجروبات')}</span>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {teacherProfile?.classes && teacherProfile.classes.length > 0 ? (
                     teacherProfile.classes
@@ -409,7 +411,7 @@ export default function DashboardPage() {
                         </span>
                       ))
                   ) : (
-                    <span className="text-xs text-gray-400 font-medium italic">No classes assigned</span>
+                    <span className="text-xs text-gray-400 font-medium italic">{L('No classes assigned', 'مفيش جروبات')}</span>
                   )}
                 </div>
               </div>
@@ -426,7 +428,7 @@ export default function DashboardPage() {
         ) : (
           <>
             <StatCard
-              title="Total Students"
+              title={L('Total Students', 'عدد الطلاب')}
               value={data?.students.total.toLocaleString() ?? 0}
               sub={`${data?.students.active ?? 0} currently active`}
               icon={Users}
@@ -434,7 +436,7 @@ export default function DashboardPage() {
               href="/dashboard/students"
             />
             <StatCard
-              title="Teaching Staff"
+              title={L('Teaching Staff', 'المدربين')}
               value={data?.teachers.total.toLocaleString() ?? 0}
               sub="Across all campuses"
               icon={GraduationCap}
@@ -442,7 +444,7 @@ export default function DashboardPage() {
               href="/dashboard/teachers"
             />
             <StatCard
-              title="Today's Attendance"
+              title={L('Today\'s Attendance', 'حضور النهارده')}
               value={`${data?.attendance.attendanceRate ?? 0}%`}
               sub={`${data?.attendance.todayPresent ?? 0} / ${data?.attendance.todayTotal ?? 0} students present`}
               icon={CheckCircle}
@@ -458,7 +460,7 @@ export default function DashboardPage() {
             {(isAdminOrAbove || isAccountant) && (
               <>
                 <StatCard
-                  title="Fee Collected"
+                  title={L('Fee Collected', 'المحصّل')}
                   value={`EGP ${(data?.finance.totalCollected ?? 0).toLocaleString()}`}
                   sub="Verified payments received"
                   icon={TrendingUp}
@@ -466,7 +468,7 @@ export default function DashboardPage() {
                   href="/dashboard/fees"
                 />
                 <StatCard
-                  title="Fee Pending"
+                  title={L('Fee Pending', 'المتبقي')}
                   value={`EGP ${(data?.finance.totalPending ?? 0).toLocaleString()}`}
                   sub={`${data?.students.feePending ?? 0} student accounts with open invoices`}
                   icon={DollarSign}
@@ -474,7 +476,7 @@ export default function DashboardPage() {
                   href="/dashboard/fees"
                 />
                 <StatCard
-                  title="Overdue Fees"
+                  title={L('Overdue Fees', 'المتأخر')}
                   value={data?.students.feeOverdue ?? 0}
                   sub="Student accounts with overdue invoices"
                   icon={AlertCircle}
@@ -483,7 +485,7 @@ export default function DashboardPage() {
                 />
                 {role === 'SUPER_ADMIN' && (
                   <StatCard
-                    title="Reserve Fund"
+                    title={L('Reserve Fund', 'الاحتياطي')}
                     value={`EGP ${(data?.finance.reserveFundBalance ?? 0).toLocaleString()}`}
                     sub={data?.finance.latestReserveContribution
                       ? `Latest: EGP ${data.finance.latestReserveContribution.amount.toLocaleString()} for ${data.finance.latestReserveContribution.periodLabel}`
@@ -504,7 +506,7 @@ export default function DashboardPage() {
       {role === 'STUDENT' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           <StatCard
-            title="Attendance"
+            title={L('Attendance', 'الحضور')}
             value="--"
             sub="Monthly average"
             icon={ClipboardCheck}
@@ -512,7 +514,7 @@ export default function DashboardPage() {
             href="/dashboard/attendance"
           />
           <StatCard
-            title="Pending Exams"
+            title={L('Pending Exams', 'امتحانات مستنية')}
             value="0"
             sub="Exams this week"
             icon={BookOpen}
@@ -520,7 +522,7 @@ export default function DashboardPage() {
             href="/dashboard/exams"
           />
           <StatCard
-            title="My Results"
+            title={L('My Results', 'نتايجي')}
             value="View →"
             sub="Latest performance"
             icon={Award}
@@ -528,7 +530,7 @@ export default function DashboardPage() {
             href="/dashboard/academics"
           />
           <StatCard
-            title="Fee Status"
+            title={L('Fee Status', 'حالة الدفع')}
             value={studentProfile?.dueAmount > 0 ? `EGP ${studentProfile.dueAmount.toLocaleString()}` : 'Paid'}
             sub={studentProfile?.dueAmount > 0 ? 'Payment pending' : 'No outstanding dues'}
             icon={CreditCard}
@@ -541,7 +543,7 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       {quickActions.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">Quick Actions</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-3">{L('Quick Actions', 'اختصارات')}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {quickActions.map((action) => (
               <Link key={action.href} href={action.href}>
@@ -564,11 +566,11 @@ export default function DashboardPage() {
           <Card className="shadow-md">
             <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-gray-50">
               <CardTitle className="text-base font-bold text-indigo-800 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-indigo-600" /> Today's Schedule
+                <Calendar className="w-5 h-5 text-indigo-600" /> {L('Today\'s Schedule', 'جدول النهارده')}
               </CardTitle>
               <Link href="/dashboard/timetable">
                 <Button variant="ghost" size="sm" className="text-xs text-indigo-700 hover:text-indigo-800 font-bold">
-                  View Full Timetable →
+                  {L('View Full Timetable →', 'الجدول كامل ←')}
                 </Button>
               </Link>
             </CardHeader>
@@ -581,7 +583,7 @@ export default function DashboardPage() {
               ) : todayClasses.length === 0 ? (
                 <div className="p-8 text-center text-gray-400 text-sm">
                   <ClipboardCheck className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                  No classes scheduled for today.
+                  {L('No classes scheduled for today.', 'مفيش حصص النهارده.')}
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
@@ -608,10 +610,10 @@ export default function DashboardPage() {
           /* Recent Admissions */
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="text-base font-semibold">Recent Admissions</CardTitle>
+              <CardTitle className="text-base font-semibold">{L('Recent Admissions', 'آخر التسجيلات')}</CardTitle>
               <Link href="/dashboard/students">
                 <Button variant="ghost" size="sm" className="text-xs text-gray-500">
-                  View all →
+                  {L('View all →', 'عرض الكل ←')}
                 </Button>
               </Link>
             </CardHeader>
@@ -630,7 +632,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               ) : (data?.recentAdmissions ?? []).length === 0 ? (
-                <div className="p-8 text-center text-gray-400 text-sm">No recent admissions</div>
+                <div className="p-8 text-center text-gray-400 text-sm">{L('No recent admissions', 'مفيش تسجيلات جديدة')}</div>
               ) : (
                 <div className="divide-y">
                   {(data?.recentAdmissions ?? []).map((s) => (
@@ -662,10 +664,10 @@ export default function DashboardPage() {
         {/* Upcoming Exams */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base font-semibold">Upcoming Exams</CardTitle>
+            <CardTitle className="text-base font-semibold">{L('Upcoming Exams', 'الامتحانات الجاية')}</CardTitle>
             <Link href="/dashboard/exams">
               <Button variant="ghost" size="sm" className="text-xs text-gray-500">
-                View all →
+                {L('View all →', 'عرض الكل ←')}
               </Button>
             </Link>
           </CardHeader>
@@ -685,7 +687,7 @@ export default function DashboardPage() {
             ) : (data?.upcomingExams ?? []).length === 0 ? (
               <div className="p-8 text-center text-gray-400 text-sm">
                 <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                No upcoming exams scheduled
+                {L('No upcoming exams scheduled', 'مفيش امتحانات جاية')}
               </div>
             ) : (
               <div className="divide-y">
@@ -730,13 +732,13 @@ export default function DashboardPage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">System Activity</p>
-            <h2 className="text-lg font-black text-slate-900">Latest cross-module activity</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">{L('System Activity', 'نشاط السيستم')}</p>
+            <h2 className="text-lg font-black text-slate-900">{L('Latest cross-module activity', 'آخر الحركات')}</h2>
           </div>
         </div>
         <div className="space-y-2">
           {activityFeed.length === 0 ? (
-            <p className="text-sm text-slate-500 py-4">No recent activity yet.</p>
+            <p className="text-sm text-slate-500 py-4">{L('No recent activity yet.', 'لسه مفيش نشاط.')}</p>
           ) : (
             activityFeed.map((item) => (
               <div key={item.id} className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700 hover:bg-slate-100 transition-colors duration-200">

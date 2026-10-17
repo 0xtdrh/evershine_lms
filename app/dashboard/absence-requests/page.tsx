@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { notify } from '@/lib/notify'
 import { Loader2, Clock, AlertTriangle } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 function apiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
@@ -51,6 +52,7 @@ function isUrgent(row: AbsenceRow): boolean {
 }
 
 export default function AbsenceRequestsPage() {
+  useI18n() // re-render on a language switch
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING')
   const [rejectDialogId, setRejectDialogId] = useState<string | null>(null)
@@ -90,7 +92,7 @@ export default function AbsenceRequestsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['substitute-suggestions', substituteDialogId] })
       queryClient.invalidateQueries({ queryKey: ['teacher-absences'] })
-      notify.success('Substitute requested — awaiting their acceptance')
+      notify.success(L('Substitute requested — awaiting their acceptance', 'اتطلب بديل — مستنيين موافقته'))
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to assign substitute')),
   })
@@ -113,7 +115,7 @@ export default function AbsenceRequestsPage() {
     mutationFn: (id: string) => fetchApi(`/api/teacher-absences/${id}/cancel`, { method: 'POST' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teacher-absences'] })
-      notify.success('Request cancelled')
+      notify.success(L('Request cancelled', 'الطلب اتلغى'))
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to cancel')),
   })
@@ -121,8 +123,8 @@ export default function AbsenceRequestsPage() {
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Absence Requests</h1>
-        <CardDescription>Teacher absence requests awaiting a decision, and their outcomes.</CardDescription>
+        <h1 className="text-xl font-bold text-slate-900">{L('Absence Requests', 'طلبات غياب المدربين')}</h1>
+        <CardDescription>{L('Teacher absence requests awaiting a decision, and their outcomes.', 'طلبات غياب المدربين المستنية قرار، ونتيجتها.')}</CardDescription>
       </div>
 
       <div className="flex gap-2">
@@ -136,7 +138,7 @@ export default function AbsenceRequestsPage() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-slate-400 text-center py-16">No {tab.toLowerCase()} requests.</p>
+        <p className="text-sm text-slate-400 text-center py-16">{L('No', 'مفيش')} {tab.toLowerCase()} {L('requests.', 'طلبات.')}</p>
       ) : (
         <div className="space-y-3">
           {rows.map((row) => (
@@ -146,8 +148,8 @@ export default function AbsenceRequestsPage() {
                   <div>
                     <p className="font-medium text-slate-800 flex items-center gap-1.5">
                       {row.teacher.firstName} {row.teacher.lastName}
-                      {row.isForceMajeure && <Badge variant="outline" className="text-rose-600 border-rose-200 text-[10px]">Force majeure</Badge>}
-                      {isUrgent(row) && <Badge variant="outline" className="text-amber-700 border-amber-300 text-[10px] gap-1"><AlertTriangle className="w-3 h-3" /> Urgent</Badge>}
+                      {row.isForceMajeure && <Badge variant="outline" className="text-rose-600 border-rose-200 text-[10px]">{L('Force majeure', 'ظرف قهري')}</Badge>}
+                      {isUrgent(row) && <Badge variant="outline" className="text-amber-700 border-amber-300 text-[10px] gap-1"><AlertTriangle className="w-3 h-3" /> {L('Urgent', 'عاجل')}</Badge>}
                     </p>
                     <p className="text-xs text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {row.date.slice(0, 10)} · {row.scope === 'FULL_DAY' ? 'Whole day' : row.classSection ? `${row.classSection.className} ${row.classSection.sectionName}` : 'One session'}</p>
                   </div>
@@ -157,13 +159,13 @@ export default function AbsenceRequestsPage() {
                 {row.status === 'PENDING' && (
                   <div className="flex gap-2 pt-1">
                     <Button size="sm" disabled={respondMutation.isPending} onClick={() => respondMutation.mutate({ id: row.id, decision: 'APPROVE' })}>
-                      Approve
+                      {L('Approve', 'موافقة')}
                     </Button>
                     <Button size="sm" variant="outline" className="text-red-600 border-red-200" onClick={() => setRejectDialogId(row.id)}>
-                      Reject
+                      {L('Reject', 'رفض')}
                     </Button>
                     <Button size="sm" variant="ghost" className="text-slate-500" disabled={cancelMutation.isPending} onClick={() => cancelMutation.mutate(row.id)}>
-                      Cancel
+                      {L('Cancel', 'إلغاء')}
                     </Button>
                   </div>
                 )}
@@ -173,16 +175,16 @@ export default function AbsenceRequestsPage() {
                     {row.substitutes.length === 0 ? (
                       <div className="flex items-center gap-2">
                         <Button size="sm" variant="outline" onClick={() => setSubstituteDialogId(row.id)}>
-                          Find a substitute
+                          {L('Find a substitute', 'دوّر على بديل')}
                         </Button>
                         <Button size="sm" variant="ghost" className="text-slate-500" disabled={cancelMutation.isPending} onClick={() => cancelMutation.mutate(row.id)}>
-                          Cancel
+                          {L('Cancel', 'إلغاء')}
                         </Button>
                       </div>
                     ) : (
                       row.substitutes.map((s, i) => (
                         <p key={i} className="text-xs text-slate-500">
-                          Substitute: {s.substituteTeacher.firstName} {s.substituteTeacher.lastName} — <Badge variant="outline" className="text-[10px]">{s.status}</Badge>
+                          {L('Substitute:', 'البديل:')} {s.substituteTeacher.firstName} {s.substituteTeacher.lastName} — <Badge variant="outline" className="text-[10px]">{s.status}</Badge>
                         </p>
                       ))
                     )}
@@ -190,10 +192,10 @@ export default function AbsenceRequestsPage() {
                 )}
 
                 {row.status === 'REJECTED' && (
-                  <Badge variant="outline" className="text-rose-600 border-rose-200">Rejected</Badge>
+                  <Badge variant="outline" className="text-rose-600 border-rose-200">{L('Rejected', 'اترفض')}</Badge>
                 )}
                 {row.status === 'CANCELLED' && (
-                  <Badge variant="outline" className="text-slate-500 border-slate-200">Cancelled</Badge>
+                  <Badge variant="outline" className="text-slate-500 border-slate-200">{L('Cancelled', 'اتلغى')}</Badge>
                 )}
               </CardContent>
             </Card>
@@ -205,10 +207,10 @@ export default function AbsenceRequestsPage() {
       <Dialog open={!!rejectDialogId} onOpenChange={(open) => !open && setRejectDialogId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject this request</DialogTitle>
-            <DialogDescription>Optional — let the teacher know why.</DialogDescription>
+            <DialogTitle>{L('Reject this request', 'ارفض الطلب ده')}</DialogTitle>
+            <DialogDescription>{L('Optional — let the teacher know why.', 'اختياري — قول للمدرب السبب.')}</DialogDescription>
           </DialogHeader>
-          <Textarea placeholder="Reason (optional)" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
+          <Textarea placeholder={L('Reason (optional)', 'السبب (اختياري)')} value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
           <DialogFooter>
             <Button
               variant="destructive"
@@ -225,13 +227,13 @@ export default function AbsenceRequestsPage() {
       <Dialog open={!!substituteDialogId} onOpenChange={(open) => !open && setSubstituteDialogId(null)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto max-w-lg">
           <DialogHeader>
-            <DialogTitle>Find a substitute</DialogTitle>
-            <DialogDescription>Qualified and free at that time. You can still pick anyone else if needed.</DialogDescription>
+            <DialogTitle>{L('Find a substitute', 'دوّر على بديل')}</DialogTitle>
+            <DialogDescription>{L('Qualified and free at that time. You can still pick anyone else if needed.', 'مؤهلين وفاضيين في الوقت ده. وتقدر تختار أي حد تاني لو محتاج.')}</DialogDescription>
           </DialogHeader>
           {suggestionsLoading ? (
             <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
           ) : suggestions.length === 0 ? (
-            <p className="text-sm text-slate-400">No affected sessions found.</p>
+            <p className="text-sm text-slate-400">{L('No affected sessions found.', 'مفيش حصص متأثرة.')}</p>
           ) : (
             <div className="space-y-3">
               {suggestions.map((sg) => (
@@ -239,24 +241,24 @@ export default function AbsenceRequestsPage() {
                   <p className="text-sm font-medium text-slate-800">{sg.groupLabel} · {sg.time}</p>
                   <p className="text-xs text-slate-400 mb-2">{sg.courseName} — {sg.levelName}</p>
                   {sg.existingAssignment ? (
-                    <Badge variant="outline">Substitute {sg.existingAssignment.status === 'CONFIRMED' ? 'confirmed' : 'pending'}</Badge>
+                    <Badge variant="outline">{L('Substitute', 'البديل')} {sg.existingAssignment.status === 'CONFIRMED' ? 'confirmed' : 'pending'}</Badge>
                   ) : sg.candidates.length === 0 ? (
                     <div className="space-y-2">
-                      <p className="text-xs text-rose-500">No qualified & available teacher found — pick manually from Staff Directory, or:</p>
+                      <p className="text-xs text-rose-500">{L('No qualified & available teacher found — pick manually from Staff Directory, or:', 'مفيش مدرب مؤهل وفاضي — اختار بنفسك من دليل الموظفين، أو:')}</p>
                       <div className="flex gap-2">
                         <Button
                           size="sm" variant="outline"
                           disabled={noSubstituteMutation.isPending}
                           onClick={() => noSubstituteMutation.mutate({ classSectionId: sg.classSectionId, action: 'CONTINUE' })}
                         >
-                          Continue anyway
+                          {L('Continue anyway', 'كمّل برضه')}
                         </Button>
                         <Button
                           size="sm" variant="outline" className="text-red-600 border-red-200"
                           disabled={noSubstituteMutation.isPending}
                           onClick={() => noSubstituteMutation.mutate({ classSectionId: sg.classSectionId, action: 'CANCEL_SESSION' })}
                         >
-                          Cancel session
+                          {L('Cancel session', 'إلغاء الحصة')}
                         </Button>
                       </div>
                     </div>

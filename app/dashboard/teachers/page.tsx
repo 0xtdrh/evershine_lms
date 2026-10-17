@@ -30,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Teacher {
   id: string
@@ -51,6 +52,7 @@ interface Teacher {
 }
 
 export default function TeachersPage() {
+  useI18n() // re-render on a language switch
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null)
@@ -72,7 +74,7 @@ export default function TeachersPage() {
       notify.success(`${name}'s profile deactivated successfully`)
       queryClient.invalidateQueries({ queryKey: ['teachers'] })
     } catch (err: any) {
-      notify.error('Failed to deactivate staff member', { description: err.message })
+      notify.error(L('Failed to deactivate staff member', 'إيقاف الموظف فشل'), { description: err.message })
     } finally {
       setDeletingTeacherId(null)
     }
@@ -98,7 +100,7 @@ export default function TeachersPage() {
   if (!canViewTeachers) {
     return (
       <AccessDenied
-        title="Staff Directory Restricted"
+        title={L('Staff Directory Restricted', 'دليل الموظفين مقفول')}
         message="The staff directory is restricted to administrators. You can view your own profile from the Staff HR Portal."
       />
     )
@@ -117,7 +119,7 @@ export default function TeachersPage() {
             <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
               <Users className="w-6 h-6" />
             </div>
-            Staff Directory
+            {L('Staff Directory', 'دليل الموظفين')}
           </h1>
           <div className="mt-2 print:hidden"><DataExchangeButtons dataset="instructors" /></div>
           <p className="text-sm text-slate-500 mt-1 font-medium ml-11">
@@ -128,7 +130,7 @@ export default function TeachersPage() {
           <Link href="/dashboard/teachers/new">
             <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg">
               <Plus className="w-4 h-4" />
-              Add Staff Member
+              {L('Add Staff Member', 'ضيف موظف')}
             </Button>
           </Link>
         )}
@@ -140,7 +142,7 @@ export default function TeachersPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               type="search"
-              placeholder="Search name, employee ID, specialization..."
+              placeholder={L('Search name, employee ID, specialization...', 'دوّر بالاسم، الرقم الوظيفي، التخصص...')}
               className="pl-9 bg-white border-slate-200"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1) }}
@@ -152,14 +154,14 @@ export default function TeachersPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead>Staff Member</TableHead>
-                <TableHead>Employee ID</TableHead>
-                <TableHead>Designation</TableHead>
-                <TableHead>Campus</TableHead>
-                <TableHead>Qualification</TableHead>
-                <TableHead>Experience</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead>{L('Staff Member', 'الموظف')}</TableHead>
+                <TableHead>{L('Employee ID', 'الرقم الوظيفي')}</TableHead>
+                <TableHead>{L('Designation', 'الوظيفة')}</TableHead>
+                <TableHead>{L('Campus', 'الفرع')}</TableHead>
+                <TableHead>{L('Qualification', 'المؤهل')}</TableHead>
+                <TableHead>{L('Experience', 'الخبرة')}</TableHead>
+                <TableHead>{L('Status', 'الحالة')}</TableHead>
+                <TableHead className="text-right">{L('Action', 'إجراء')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -176,7 +178,7 @@ export default function TeachersPage() {
                   <TableCell colSpan={8} className="h-64">
                     <EmptyState 
                       icon={UserX}
-                      title="No staff members found"
+                      title={L('No staff members found', 'مفيش موظفين')}
                       description={search ? "Try adjusting your search criteria." : "There are no staff members registered in the system yet."}
                     />
                   </TableCell>
@@ -228,7 +230,7 @@ export default function TeachersPage() {
                           className="text-xs text-blue-600 hover:bg-blue-50"
                           onClick={() => setSelectedTeacherId(t.id)}
                         >
-                          View →
+                          {L('View →', 'عرض ←')}
                         </Button>
                         {can('teachers', 'delete') && (
                           <Button
@@ -253,7 +255,7 @@ export default function TeachersPage() {
         {pagination && pagination.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50">
             <p className="text-sm text-slate-500 font-medium">
-              Showing {((page - 1) * limit) + 1}–{Math.min(page * limit, pagination.total)} of {pagination.total}
+              {L('Showing', 'عرض')} {((page - 1) * limit) + 1}–{Math.min(page * limit, pagination.total)} {L('of', 'من')} {pagination.total}
             </p>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className="h-8 w-8 p-0 border-slate-200">
@@ -321,9 +323,9 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
         classes: teacher.classes,
         photo: teacher.profilePicture,
       })
-      notify.success('PDF Profile downloaded successfully')
+      notify.success(L('PDF Profile downloaded successfully', 'ملف الـ PDF اتنزّل'))
     } catch (err: any) {
-      notify.error('Failed to generate profile PDF', { description: err.message })
+      notify.error(L('Failed to generate profile PDF', 'عمل الـ PDF فشل'), { description: err.message })
     } finally {
       setExportingPdf(false)
     }
@@ -334,8 +336,8 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
       <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto p-6 rounded-xl border shadow-lg bg-white">
         <DialogHeader className="pb-4 border-b flex flex-row items-center justify-between gap-4">
           <div>
-            <DialogTitle className="text-lg font-black text-gray-900">Staff Profile Detail</DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">Official staff record for TechNova.</DialogDescription>
+            <DialogTitle className="text-lg font-black text-gray-900">{L('Staff Profile Detail', 'ملف الموظف')}</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">{L('Official staff record for TechNova.', 'السجل الرسمي للموظف في TechNova.')}</DialogDescription>
           </div>
           {!isLoading && teacher && (
             <div className="flex gap-2 flex-shrink-0 flex-wrap">
@@ -351,22 +353,22 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
               </Button>
               <Link href={`/dashboard/teachers/${teacher.id}/attendance`}>
                 <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
-                  Attendance
+                  {L('Attendance', 'الحضور')}
                 </Button>
               </Link>
               <Link href={`/dashboard/teachers/${teacher.id}/edit`}>
                 <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
-                  Edit Profile
+                  {L('Edit Profile', 'عدّل الملف')}
                 </Button>
               </Link>
               <Link href={`/dashboard/teachers/${teacher.id}/compensation`}>
                 <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
-                  Pay Rule
+                  {L('Pay Rule', 'قاعدة الأجر')}
                 </Button>
               </Link>
               <Link href={`/dashboard/teachers/${teacher.id}/capabilities`}>
                 <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
-                  Capabilities
+                  {L('Capabilities', 'المؤهلات')}
                 </Button>
               </Link>
             </div>
@@ -376,10 +378,10 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
         {isLoading ? (
           <div className="py-12 flex flex-col items-center justify-center gap-3">
             <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs text-gray-500 font-medium">Fetching complete staff profile...</p>
+            <p className="text-xs text-gray-500 font-medium">{L('Fetching complete staff profile...', 'بيحمّل ملف الموظف...')}</p>
           </div>
         ) : !teacher ? (
-          <p className="py-6 text-center text-sm text-gray-400">Staff profile not found</p>
+          <p className="py-6 text-center text-sm text-gray-400">{L('Staff profile not found', 'ملف الموظف مش موجود')}</p>
         ) : (
           <div className="space-y-6 pt-4 text-gray-700">
             {/* Header info */}
@@ -403,7 +405,7 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 font-semibold">{teacher.designation} • {teacher.specialization || 'Generalist'}</p>
-                <p className="text-[10px] font-mono text-gray-400 mt-1">Employee ID: {teacher.employeeId}</p>
+                <p className="text-[10px] font-mono text-gray-400 mt-1">{L('Employee ID:', 'الرقم الوظيفي:')} {teacher.employeeId}</p>
                 {assignedShifts.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2 justify-center sm:justify-start">
                     {assignedShifts.map((s) => (
@@ -421,10 +423,10 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
 
             {/* Academic Placement */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Academic Assignment</h4>
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{L('Academic Assignment', 'التكليف')}</h4>
               <div className="grid grid-cols-3 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs">
                 <div>
-                  <span className="text-gray-500 block font-medium">Campus</span>
+                  <span className="text-gray-500 block font-medium">{L('Campus', 'الفرع')}</span>
                   <span className="font-bold text-gray-800">{teacher.campus?.name || 'N/A'}</span>
                 </div>
               </div>
@@ -432,7 +434,7 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
 
             {/* Assigned Classes */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Assigned Classes</h4>
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{L('Assigned Classes', 'الجروبات')}</h4>
               <div className="flex flex-wrap gap-1.5">
                 {teacher.classes && teacher.classes.length > 0 ? (
                   teacher.classes.map((c: any) => (
@@ -447,33 +449,33 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
                     </span>
                   ))
                 ) : (
-                  <span className="text-xs text-gray-400 font-medium italic">No classes assigned</span>
+                  <span className="text-xs text-gray-400 font-medium italic">{L('No classes assigned', 'مفيش جروبات')}</span>
                 )}
               </div>
             </div>
 
             {/* Contact & Personal details */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Contact & Personal Details</h4>
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{L('Contact & Personal Details', 'التواصل والبيانات الشخصية')}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs">
                 <div>
-                  <span className="text-gray-500 block font-medium">Phone Number</span>
+                  <span className="text-gray-500 block font-medium">{L('Phone Number', 'التليفون')}</span>
                   <span className="font-bold text-gray-800">{teacher.phoneNumber}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block font-medium">Email Address</span>
+                  <span className="text-gray-500 block font-medium">{L('Email Address', 'الإيميل')}</span>
                   <span className="font-bold text-gray-800">{teacher.email}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block font-medium">CNIC Number</span>
+                  <span className="text-gray-500 block font-medium">{L('CNIC Number', 'الرقم القومي')}</span>
                   <span className="font-bold text-gray-800">{teacher.cnic || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block font-medium">Emergency Contact</span>
+                  <span className="text-gray-500 block font-medium">{L('Emergency Contact', 'رقم الطوارئ')}</span>
                   <span className="font-bold text-gray-800">{teacher.emergencyContact || 'N/A'}</span>
                 </div>
                 <div className="sm:col-span-2">
-                  <span className="text-gray-500 block font-medium">Address</span>
+                  <span className="text-gray-500 block font-medium">{L('Address', 'العنوان')}</span>
                   <span className="font-bold text-gray-800">{teacher.address}, {teacher.city}</span>
                 </div>
               </div>
@@ -481,19 +483,19 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
 
             {/* Professional & Salary */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Professional & Financial Details</h4>
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{L('Professional & Financial Details', 'البيانات المهنية والمالية')}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs">
                 <div>
-                  <span className="text-gray-500 block font-medium">Qualification</span>
+                  <span className="text-gray-500 block font-medium">{L('Qualification', 'المؤهل')}</span>
                   <span className="font-bold text-gray-800 truncate block">{teacher.qualification}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block font-medium">Experience</span>
-                  <span className="font-bold text-gray-800">{teacher.experienceYears} Years</span>
+                  <span className="text-gray-500 block font-medium">{L('Experience', 'الخبرة')}</span>
+                  <span className="font-bold text-gray-800">{teacher.experienceYears} {L('Years', 'سنين')}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block font-medium">Monthly Salary</span>
-                  <span className="font-bold text-gray-800">EGP {teacher.monthlySalary?.toLocaleString() || 'N/A'}</span>
+                  <span className="text-gray-500 block font-medium">{L('Monthly Salary', 'المرتب الشهري')}</span>
+                  <span className="font-bold text-gray-800">{L('EGP', 'ج.م')} {teacher.monthlySalary?.toLocaleString() || 'N/A'}</span>
                 </div>
               </div>
             </div>

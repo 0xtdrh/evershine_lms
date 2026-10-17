@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Check, Loader2, Plus, Save, Trash2, Undo2, X } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface RefundRow {
   id: string
@@ -47,6 +48,7 @@ const STATUS_CLASS: Record<string, string> = {
 const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} EGP`
 
 export default function RefundsPage() {
+  useI18n() // re-render on a language switch
   const [urlTab, setUrlTab] = useUrlTab()
   const { data: session, status } = useSession()
   const role = session?.user?.role
@@ -67,14 +69,14 @@ export default function RefundsPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold"><Undo2 className="h-6 w-6" /> Refunds</h1>
-        <p className="text-sm text-muted-foreground">To refund, open the invoice and press “Refund”. Approvals, history and the rules are here.</p>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><Undo2 className="h-6 w-6" /> {L('Refunds', 'الاسترداد')}</h1>
+        <p className="text-sm text-muted-foreground">{L('To refund, open the invoice and press “Refund”. Approvals, history and the rules are here.', 'علشان ترجّع فلوس افتح الفاتورة واضغط «استرداد». الموافقات والسجل والقواعد هنا.')}</p>
       </div>
       <Tabs value={urlTab ?? (can.approve ? 'requests' : 'all')} onValueChange={setUrlTab}>
         <TabsList>
-          {can.approve && <TabsTrigger value="requests">Requests</TabsTrigger>}
-          <TabsTrigger value="all">All refunds</TabsTrigger>
-          {can.rules && <TabsTrigger value="rules">Rules</TabsTrigger>}
+          {can.approve && <TabsTrigger value="requests">{L('Requests', 'الطلبات')}</TabsTrigger>}
+          <TabsTrigger value="all">{L('All refunds', 'كل عمليات الاسترداد')}</TabsTrigger>
+          {can.rules && <TabsTrigger value="rules">{L('Rules', 'القواعد')}</TabsTrigger>}
         </TabsList>
         {can.approve && <TabsContent value="requests"><RefundList status="PENDING" canApprove /></TabsContent>}
         <TabsContent value="all"><RefundList status="ALL" canApprove={false} /></TabsContent>
@@ -99,8 +101,8 @@ function RefundList({ status, canApprove }: { status: string; canApprove: boolea
   return (
     <Card>
       <CardContent className="space-y-2 pt-6">
-        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {data?.length === 0 && <p className="text-sm text-muted-foreground">Nothing here.</p>}
+        {isLoading && <p className="text-sm text-muted-foreground">{L('Loading…', 'بيحمّل…')}</p>}
+        {data?.length === 0 && <p className="text-sm text-muted-foreground">{L('Nothing here.', 'مفيش حاجة هنا.')}</p>}
         {data?.map((r) => (
           <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2 text-sm">
             <div className="min-w-0">
@@ -118,11 +120,11 @@ function RefundList({ status, canApprove }: { status: string; canApprove: boolea
               </div>
             </div>
             <div className="flex gap-2">
-              {r.status === 'APPROVED' && <Link href={`/refunds/${r.id}`} className="text-sm text-blue-600 hover:underline">Receipt</Link>}
+              {r.status === 'APPROVED' && <Link href={`/refunds/${r.id}`} className="text-sm text-blue-600 hover:underline">{L('Receipt', 'الإيصال')}</Link>}
               {canApprove && r.status === 'PENDING' && (
                 <>
-                  <Button size="sm" onClick={() => act.mutate({ id: r.id, action: 'approve' })} disabled={act.isPending}><Check className="mr-1 h-4 w-4" /> Approve</Button>
-                  <Button size="sm" variant="outline" onClick={() => act.mutate({ id: r.id, action: 'reject', reason: window.prompt('Reason (optional)') ?? undefined })} disabled={act.isPending}><X className="mr-1 h-4 w-4" /> Reject</Button>
+                  <Button size="sm" onClick={() => act.mutate({ id: r.id, action: 'approve' })} disabled={act.isPending}><Check className="mr-1 h-4 w-4" /> {L('Approve', 'موافقة')}</Button>
+                  <Button size="sm" variant="outline" onClick={() => act.mutate({ id: r.id, action: 'reject', reason: window.prompt('Reason (optional)') ?? undefined })} disabled={act.isPending}><X className="mr-1 h-4 w-4" /> {L('Reject', 'رفض')}</Button>
                 </>
               )}
             </div>
@@ -141,7 +143,7 @@ function Rules({ canEdit }: { canEdit: boolean }) {
   useEffect(() => { if (data) setRules(data) }, [data])
   const save = useMutation({
     mutationFn: (rs: Rule[]) => fetchApi<Rule[]>('/api/refunds/rules', { method: 'PUT', body: JSON.stringify({ rules: rs }) }),
-    onSuccess: (rs) => { notify.success('Refund rules saved'); setRules(rs); qc.invalidateQueries({ queryKey: ['refund-rules'] }) },
+    onSuccess: (rs) => { notify.success(L('Refund rules saved', 'قواعد الاسترداد اتحفظت')); setRules(rs); qc.invalidateQueries({ queryKey: ['refund-rules'] }) },
     onError: (err: Error) => notify.error(err.message || 'Could not save'),
   })
   const listFor = useMemo(() => (scope: string) => {
@@ -151,14 +153,14 @@ function Rules({ canEdit }: { canEdit: boolean }) {
     if (scope === 'GROUP') return options?.groups ?? []
     return []
   }, [options])
-  if (!rules) return <p className="text-sm text-muted-foreground">Loading…</p>
+  if (!rules) return <p className="text-sm text-muted-foreground">{L('Loading…', 'بيحمّل…')}</p>
   const set = (i: number, patch: Partial<Rule>) => setRules(rules.map((r, k) => (k === i ? { ...r, ...patch } : r)))
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Refund rules</CardTitle>
+        <CardTitle className="text-base">{L('Refund rules', 'قواعد الاسترداد')}</CardTitle>
         <CardDescription>
-          The most specific rule wins (group › level › course › track › everywhere). With no rule, refunds are allowed with no admin fee and attended sessions are deducted.
+          {L('The most specific rule wins (group › level › course › track › everywhere). With no rule, refunds are allowed with no admin fee and attended sessions are deducted.', 'القاعدة الأدق هي اللي بتمشي (جروب › مستوى › كورس › تراك › الكل). من غير قاعدة، الاسترداد مسموح من غير مصاريف إدارية والحصص اللي حضرها بتتخصم.')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -172,36 +174,36 @@ function Rules({ canEdit }: { canEdit: boolean }) {
             </Select>
             {r.scopeType !== 'ALL' ? (
               <Select value={r.scopeId ?? undefined} onValueChange={(v) => set(i, { scopeId: v })} disabled={!canEdit}>
-                <SelectTrigger className="sm:col-span-2"><SelectValue placeholder="Which one" /></SelectTrigger>
+                <SelectTrigger className="sm:col-span-2"><SelectValue placeholder={L('Which one', 'أنهي واحد')} /></SelectTrigger>
                 <SelectContent>{listFor(r.scopeType).map((x) => <SelectItem key={x.id} value={x.id}>{x.name}</SelectItem>)}</SelectContent>
               </Select>
             ) : <div className="sm:col-span-2" />}
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={r.allowed} disabled={!canEdit} onChange={(e) => set(i, { allowed: e.target.checked })} /> Refunds allowed</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={r.allowed} disabled={!canEdit} onChange={(e) => set(i, { allowed: e.target.checked })} /> {L('Refunds allowed', 'الاسترداد مسموح')}</label>
             <div className="flex items-center gap-1 sm:col-span-2">
-              <span className="text-xs">Fee</span>
+              <span className="text-xs">{L('Fee', 'المصاريف')}</span>
               <Input type="number" min={0} className="w-24" value={r.adminFeeValue} disabled={!canEdit || !r.allowed} onChange={(e) => set(i, { adminFeeValue: Number(e.target.value) || 0 })} />
               <Select value={r.adminFeeType} onValueChange={(v) => set(i, { adminFeeType: v as Rule['adminFeeType'] })} disabled={!canEdit || !r.allowed}>
                 <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="FIXED">EGP</SelectItem><SelectItem value="PERCENT">%</SelectItem></SelectContent>
+                <SelectContent><SelectItem value="FIXED">{L('EGP', 'ج.م')}</SelectItem><SelectItem value="PERCENT">%</SelectItem></SelectContent>
               </Select>
             </div>
             <Select value={r.deductBasis} onValueChange={(v) => set(i, { deductBasis: v as Rule['deductBasis'] })} disabled={!canEdit || !r.allowed}>
               <SelectTrigger className="sm:col-span-3"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="ATTENDED">Deduct the sessions the student attended</SelectItem>
-                <SelectItem value="HELD">Deduct every session the group held</SelectItem>
+                <SelectItem value="ATTENDED">{L('Deduct the sessions the student attended', 'اخصم الحصص اللي الطالب حضرها')}</SelectItem>
+                <SelectItem value="HELD">{L('Deduct every session the group held', 'اخصم كل الحصص اللي الجروب عملها')}</SelectItem>
               </SelectContent>
             </Select>
-            {canEdit && <Button size="icon" variant="ghost" onClick={() => setRules(rules.filter((_, k) => k !== i))} aria-label="Remove"><Trash2 className="h-4 w-4 text-red-600" /></Button>}
+            {canEdit && <Button size="icon" variant="ghost" onClick={() => setRules(rules.filter((_, k) => k !== i))} aria-label={L('Remove', 'شيل')}><Trash2 className="h-4 w-4 text-red-600" /></Button>}
           </div>
         ))}
         {canEdit && (
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setRules([...rules, { scopeType: rules.some((r) => r.scopeType === 'ALL') ? 'TRACK' : 'ALL', scopeId: null, allowed: true, adminFeeType: 'FIXED', adminFeeValue: 0, deductBasis: 'ATTENDED' }])}>
-              <Plus className="mr-1 h-4 w-4" /> Add rule
+              <Plus className="mr-1 h-4 w-4" /> {L('Add rule', 'ضيف قاعدة')}
             </Button>
             <Button onClick={() => save.mutate(rules)} disabled={save.isPending}>
-              {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save rules
+              {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} {L('Save rules', 'احفظ القواعد')}
             </Button>
           </div>
         )}

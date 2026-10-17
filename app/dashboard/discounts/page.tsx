@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BadgePercent, Check, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { GiveDiscountDialog, valueText, type DiscountTypeOption } from '@/components/discounts/GiveDiscountDialog'
 import { ApplyToInvoicesDialog, type AffectedInvoice } from '@/components/discounts/ApplyToInvoicesDialog'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface TypeRow extends DiscountTypeOption {
   scopeType: string
@@ -67,6 +68,7 @@ const emptyType = (): Partial<TypeRow> => ({
 })
 
 export default function DiscountsPage() {
+  useI18n() // re-render on a language switch
   const [urlTab, setUrlTab] = useUrlTab()
   const { data: session, status } = useSession()
   const role = session?.user?.role
@@ -93,16 +95,16 @@ export default function DiscountsPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold"><BadgePercent className="h-6 w-6" /> Discounts</h1>
-        <p className="text-sm text-muted-foreground">Discount types, discounts given, approvals and the monthly report.</p>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><BadgePercent className="h-6 w-6" /> {L('Discounts', 'الخصومات')}</h1>
+        <p className="text-sm text-muted-foreground">{L('Discount types, discounts given, approvals and the monthly report.', 'أنواع الخصومات، والخصومات المتطبّقة، والموافقات، والتقرير الشهري.')}</p>
       </div>
       <Tabs value={urlTab ?? (can.approve ? 'requests' : 'given')} onValueChange={setUrlTab}>
         <TabsList className="flex-wrap">
-          {can.approve && <TabsTrigger value="requests">Requests</TabsTrigger>}
-          {can.read && <TabsTrigger value="given">Discounts</TabsTrigger>}
-          {can.types && <TabsTrigger value="types">Types</TabsTrigger>}
-          {can.read && <TabsTrigger value="report">Report</TabsTrigger>}
-          {can.rules && <TabsTrigger value="rules">Rules</TabsTrigger>}
+          {can.approve && <TabsTrigger value="requests">{L('Requests', 'الطلبات')}</TabsTrigger>}
+          {can.read && <TabsTrigger value="given">{L('Discounts', 'الخصومات')}</TabsTrigger>}
+          {can.types && <TabsTrigger value="types">{L('Types', 'الأنواع')}</TabsTrigger>}
+          {can.read && <TabsTrigger value="report">{L('Report', 'التقرير')}</TabsTrigger>}
+          {can.rules && <TabsTrigger value="rules">{L('Rules', 'القواعد')}</TabsTrigger>}
         </TabsList>
         {can.approve && <TabsContent value="requests"><Requests /></TabsContent>}
         {can.read && <TabsContent value="given"><Given canGive={can.give} canEnd={can.end} /></TabsContent>}
@@ -141,18 +143,18 @@ function Requests() {
   })
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Waiting for approval</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">{L('Waiting for approval', 'مستني موافقة')}</CardTitle></CardHeader>
       <CardContent className="space-y-2">
-        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {data?.length === 0 && <p className="text-sm text-muted-foreground">No requests.</p>}
+        {isLoading && <p className="text-sm text-muted-foreground">{L('Loading…', 'بيحمّل…')}</p>}
+        {data?.length === 0 && <p className="text-sm text-muted-foreground">{L('No requests.', 'مفيش طلبات.')}</p>}
         {data?.map((a) => (
           <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2 text-sm">
             <div className="min-w-0">
               <div className="font-medium">{a.discountType.name} · {a.discountType.valueType === 'PERCENT' ? `${a.value}%` : `${a.value} EGP`}</div>
-              <div className="text-xs text-muted-foreground">{who(a)} {where(a) && `· ${where(a)}`} · by {a.requestedBy ?? '—'}{a.reason ? ` · ${a.reason}` : ''}</div>
+              <div className="text-xs text-muted-foreground">{who(a)} {where(a) && `· ${where(a)}`} {L('· by', '· من')} {a.requestedBy ?? '—'}{a.reason ? ` · ${a.reason}` : ''}</div>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => act.mutate({ id: a.id, action: 'approve' })} disabled={act.isPending}><Check className="mr-1 h-4 w-4" /> Approve</Button>
+              <Button size="sm" onClick={() => act.mutate({ id: a.id, action: 'approve' })} disabled={act.isPending}><Check className="mr-1 h-4 w-4" /> {L('Approve', 'موافقة')}</Button>
               <Button
                 size="sm"
                 variant="outline"
@@ -162,7 +164,7 @@ function Requests() {
                 }}
                 disabled={act.isPending}
               >
-                <X className="mr-1 h-4 w-4" /> Reject
+                <X className="mr-1 h-4 w-4" /> {L('Reject', 'رفض')}
               </Button>
             </div>
           </div>
@@ -183,14 +185,14 @@ function Given({ canGive, canEnd }: { canGive: boolean; canEnd: boolean }) {
   })
   const end = useMutation({
     mutationFn: (id: string) => fetchApi(`/api/discounts/${id}`, { method: 'PATCH', body: JSON.stringify({ action: 'end' }) }),
-    onSuccess: () => { notify.success('Stopped from the next invoice'); qc.invalidateQueries({ queryKey: ['discounts'] }) },
+    onSuccess: () => { notify.success(L('Stopped from the next invoice', 'اتوقف من الفاتورة الجاية')); qc.invalidateQueries({ queryKey: ['discounts'] }) },
     onError: (err: Error) => notify.error(err.message || 'Could not stop it'),
   })
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base">Discounts given</CardTitle>
+          <CardTitle className="text-base">{L('Discounts given', 'الخصومات المتطبّقة')}</CardTitle>
           <div className="flex flex-wrap gap-2">
             <Select value={filter} onValueChange={setFilter}>
               <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
@@ -198,14 +200,14 @@ function Given({ canGive, canEnd }: { canGive: boolean; canEnd: boolean }) {
                 {['ACTIVE', 'PENDING', 'ENDED', 'REJECTED', 'ALL'].map((s) => <SelectItem key={s} value={s}>{s === 'ALL' ? 'All' : s}</SelectItem>)}
               </SelectContent>
             </Select>
-            {canGive && <Button variant="outline" onClick={() => setGroupDialog(true)}><Plus className="mr-1 h-4 w-4" /> Whole-group discount</Button>}
+            {canGive && <Button variant="outline" onClick={() => setGroupDialog(true)}><Plus className="mr-1 h-4 w-4" /> {L('Whole-group discount', 'خصم لجروب كامل')}</Button>}
           </div>
         </div>
-        <CardDescription>For one student, open the student page › Discounts › Add.</CardDescription>
+        <CardDescription>{L('For one student, open the student page › Discounts › Add.', 'لطالب واحد: افتح صفحة الطالب › الخصومات › إضافة.')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {data?.length === 0 && <p className="text-sm text-muted-foreground">Nothing here.</p>}
+        {isLoading && <p className="text-sm text-muted-foreground">{L('Loading…', 'بيحمّل…')}</p>}
+        {data?.length === 0 && <p className="text-sm text-muted-foreground">{L('Nothing here.', 'مفيش حاجة هنا.')}</p>}
         {data?.map((a) => (
           <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2 text-sm">
             <div className="min-w-0">
@@ -214,13 +216,13 @@ function Given({ canGive, canEnd }: { canGive: boolean; canEnd: boolean }) {
                 <span className={`ml-2 rounded border px-1.5 py-0.5 text-xs ${STATUS_CLASS[a.status] ?? ''}`}>{a.status}</span>
               </div>
               <div className="text-xs text-muted-foreground">
-                {who(a)} {where(a) && `· ${where(a)}`} · by {a.requestedBy ?? '—'}
+                {who(a)} {where(a) && `· ${where(a)}`} {L('· by', '· من')} {a.requestedBy ?? '—'}
                 {a.approvedBy && a.approvedBy !== a.requestedBy ? ` · approved by ${a.approvedBy}` : ''}
                 {a.reason ? ` · ${a.reason}` : ''}{a.rejectedReason ? ` · rejected: ${a.rejectedReason}` : ''}
               </div>
             </div>
             {canEnd && (a.status === 'ACTIVE' || a.status === 'PENDING') && (
-              <Button size="sm" variant="ghost" onClick={() => end.mutate(a.id)} disabled={end.isPending}>Stop</Button>
+              <Button size="sm" variant="ghost" onClick={() => end.mutate(a.id)} disabled={end.isPending}>{L('Stop', 'وقّف')}</Button>
             )}
           </div>
         ))}
@@ -249,13 +251,13 @@ function Types({ canEdit }: { canEdit: boolean }) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">Discount types</CardTitle>
-          {canEdit && <Button onClick={() => setEditing(emptyType())}><Plus className="mr-1 h-4 w-4" /> New type</Button>}
+          <CardTitle className="text-base">{L('Discount types', 'أنواع الخصومات')}</CardTitle>
+          {canEdit && <Button onClick={() => setEditing(emptyType())}><Plus className="mr-1 h-4 w-4" /> {L('New type', 'نوع جديد')}</Button>}
         </div>
         <CardDescription>Editing a type changes NEW invoices only; issued invoices keep their discount.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        {data?.length === 0 && <p className="text-sm text-muted-foreground">No types yet. Start with e.g. “Siblings 10%”, “Manual”, “Summer offer”.</p>}
+        {data?.length === 0 && <p className="text-sm text-muted-foreground">{L('No types yet. Start with e.g. “Siblings 10%”, “Manual”, “Summer offer”.', 'لسه مفيش أنواع. ابدأ مثلاً بـ «إخوات 10%»، «يدوي»، «عرض الصيف».')}</p>}
         {data?.map((t) => (
           <div key={t.id} className={`flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2 text-sm ${t.isActive ? '' : 'opacity-60'}`}>
             <div className="min-w-0">
@@ -269,8 +271,8 @@ function Types({ canEdit }: { canEdit: boolean }) {
             </div>
             {canEdit && (
               <div className="flex gap-1">
-                <Button size="icon" variant="ghost" onClick={() => setEditing(t)} aria-label="Edit"><Pencil className="h-4 w-4" /></Button>
-                <Button size="icon" variant="ghost" onClick={() => { if (window.confirm(`Delete "${t.name}"?`)) remove.mutate(t.id) }} aria-label="Delete"><Trash2 className="h-4 w-4 text-red-600" /></Button>
+                <Button size="icon" variant="ghost" onClick={() => setEditing(t)} aria-label={L('Edit', 'تعديل')}><Pencil className="h-4 w-4" /></Button>
+                <Button size="icon" variant="ghost" onClick={() => { if (window.confirm(`Delete "${t.name}"?`)) remove.mutate(t.id) }} aria-label={L('Delete', 'امسح')}><Trash2 className="h-4 w-4 text-red-600" /></Button>
               </div>
             )}
           </div>
@@ -299,7 +301,7 @@ function TypeDialog({ value, options, onClose }: { value: Partial<TypeRow>; opti
         ? fetchApi(`/api/discount-types/${t.id}`, { method: 'PATCH', body: JSON.stringify(body) })
         : fetchApi('/api/discount-types', { method: 'POST', body: JSON.stringify(body) })
     },
-    onSuccess: () => { notify.success('Saved'); qc.invalidateQueries({ queryKey: ['discount-types'] }); onClose() },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['discount-types'] }); onClose() },
     onError: (err: Error) => notify.error(err.message || 'Could not save'),
   })
   const scopeList = useMemo(() => {
@@ -332,13 +334,13 @@ function TypeDialog({ value, options, onClose }: { value: Partial<TypeRow>; opti
         <DialogHeader><DialogTitle>{t.id ? 'Edit discount type' : 'New discount type'}</DialogTitle></DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1 sm:col-span-2">
-            <Label>Name</Label>
-            <Input value={t.name ?? ''} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. Siblings, Summer offer, Manual" />
+            <Label>{L('Name', 'الاسم')}</Label>
+            <Input value={t.name ?? ''} onChange={(e) => set({ name: e.target.value })} placeholder={L('e.g. Siblings, Summer offer, Manual', 'مثلاً: إخوات، عرض الصيف، يدوي')} />
           </div>
           {pick('Kind', t.kind, (v) => set({ kind: v, ...(v === 'SIBLING' ? { autoApply: true } : {}) }), Object.entries(KIND).map(([value, label]) => ({ value, label })))}
           {pick('Value type', t.valueType, (v) => set({ valueType: v as 'PERCENT' | 'FIXED' }), [{ value: 'PERCENT', label: 'Percentage (%)' }, { value: 'FIXED', label: 'Fixed amount (EGP)' }])}
           <div className="space-y-1">
-            <Label>Value ({t.valueType === 'PERCENT' ? '%' : 'EGP'})</Label>
+            <Label>{L('Value (', 'القيمة (')}{t.valueType === 'PERCENT' ? '%' : 'EGP'})</Label>
             <Input type="number" min={0} value={t.value ?? ''} onChange={(e) => set({ value: e.target.value })} />
           </div>
           {pick('How long', t.duration, (v) => set({ duration: v }), Object.entries(DURATION).map(([value, label]) => ({ value, label })))}
@@ -347,7 +349,7 @@ function TypeDialog({ value, options, onClose }: { value: Partial<TypeRow>; opti
           </div>
           {t.editableValue && (
             <div className="space-y-1">
-              <Label>Maximum value</Label>
+              <Label>{L('Maximum value', 'أقصى قيمة')}</Label>
               <Input type="number" min={0} value={t.maxValue ?? ''} onChange={(e) => set({ maxValue: e.target.value === '' ? null : e.target.value })} />
             </div>
           )}
@@ -361,11 +363,11 @@ function TypeDialog({ value, options, onClose }: { value: Partial<TypeRow>; opti
           ])}
           {t.scopeType !== 'ALL' && pick('Which one', t.scopeId ?? undefined, (v) => set({ scopeId: v }), scopeList.map((x) => ({ value: x.id, label: x.name })))}
           <div className="space-y-1">
-            <Label>From (optional)</Label>
+            <Label>{L('From (optional)', 'من (اختياري)')}</Label>
             <Input type="date" value={t.validFrom ? String(t.validFrom).slice(0, 10) : ''} onChange={(e) => set({ validFrom: e.target.value || null })} />
           </div>
           <div className="space-y-1">
-            <Label>To (optional)</Label>
+            <Label>{L('To (optional)', 'لحد (اختياري)')}</Label>
             <Input type="date" value={t.validTo ? String(t.validTo).slice(0, 10) : ''} onChange={(e) => set({ validTo: e.target.value || null })} />
           </div>
           <div className="space-y-2 sm:col-span-2">
@@ -374,9 +376,9 @@ function TypeDialog({ value, options, onClose }: { value: Partial<TypeRow>; opti
           </div>
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{L('Cancel', 'إلغاء')}</Button>
           <Button onClick={() => save.mutate()} disabled={!t.name || save.isPending}>
-            {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save
+            {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {L('Save', 'حفظ')}
           </Button>
         </div>
       </DialogContent>
@@ -400,7 +402,7 @@ function ReportTab() {
       {rows.length === 0 ? <p className="text-sm text-muted-foreground">—</p> : rows.map((r) => (
         <div key={r.name} className="flex justify-between border-b py-1 text-sm">
           <span>{r.name} <span className="text-xs text-muted-foreground">({r.count})</span></span>
-          <span className="font-mono">{r.amount.toLocaleString()} EGP</span>
+          <span className="font-mono">{r.amount.toLocaleString()} {L('EGP', 'ج.م')}</span>
         </div>
       ))}
     </div>
@@ -408,16 +410,16 @@ function ReportTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Discounts on invoices issued in the period</CardTitle>
+        <CardTitle className="text-base">{L('Discounts on invoices issued in the period', 'الخصومات على الفواتير اللي طلعت في الفترة')}</CardTitle>
         <div className="flex flex-wrap items-end gap-2 pt-2">
-          <div className="space-y-1"><Label>From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-          <div className="space-y-1"><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+          <div className="space-y-1"><Label>{L('From', 'من')}</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+          <div className="space-y-1"><Label>{L('To', 'لحد')}</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
+        {isLoading ? <p className="text-sm text-muted-foreground">{L('Loading…', 'بيحمّل…')}</p> : (
           <>
-            <p className="text-lg font-semibold">Total: {data?.total.toLocaleString() ?? 0} EGP</p>
+            <p className="text-lg font-semibold">{L('Total:', 'الإجمالي:')} {data?.total.toLocaleString() ?? 0} {L('EGP', 'ج.م')}</p>
             <div className="grid gap-4 md:grid-cols-3">
               {table('By type', data?.byType)}
               {table('By group', data?.byGroup)}
@@ -438,49 +440,49 @@ function RulesTab({ canEdit }: { canEdit: boolean }) {
   const { data: types } = useQuery({ queryKey: ['discount-types'], queryFn: () => fetchApi<TypeRow[]>('/api/discount-types') })
   const save = useMutation({
     mutationFn: (v: Rules) => fetchApi<Rules>('/api/discounts/rules', { method: 'PUT', body: JSON.stringify(v) }),
-    onSuccess: () => { notify.success('Rules saved'); qc.invalidateQueries({ queryKey: ['discount-rules'] }) },
+    onSuccess: () => { notify.success(L('Rules saved', 'القواعد اتحفظت')); qc.invalidateQueries({ queryKey: ['discount-rules'] }) },
     onError: (err: Error) => notify.error(err.message || 'Could not save'),
   })
-  if (!r) return <p className="text-sm text-muted-foreground">Loading…</p>
+  if (!r) return <p className="text-sm text-muted-foreground">{L('Loading…', 'بيحمّل…')}</p>
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Rules</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">{L('Rules', 'القواعد')}</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" className="mt-1" checked={r.allowStacking} disabled={!canEdit} onChange={(e) => setR({ ...r, allowStacking: e.target.checked })} />
-          <span>A student can get more than one discount on the same invoice
-            <span className="block text-xs text-muted-foreground">Off: only the biggest discount applies. On: discounts marked “can be combined” add up.</span>
+          <span>{L('A student can get more than one discount on the same invoice', 'الطالب ممكن ياخد أكتر من خصم على نفس الفاتورة')}
+            <span className="block text-xs text-muted-foreground">{L('Off: only the biggest discount applies. On: discounts marked “can be combined” add up.', 'مقفول: أكبر خصم بس هو اللي بيتطبّق. مفتوح: الخصومات اللي عليها «ينفع يتجمع» بتتجمع.')}</span>
           </span>
         </label>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={r.maxTotalPercent !== null} disabled={!canEdit} onChange={(e) => setR({ ...r, maxTotalPercent: e.target.checked ? 50 : null })} />
-            Maximum total discount
+            {L('Maximum total discount', 'أقصى خصم إجمالي')}
           </label>
           {r.maxTotalPercent !== null && (
             <>
               <Input type="number" min={0} max={100} className="w-24" value={r.maxTotalPercent} disabled={!canEdit} onChange={(e) => setR({ ...r, maxTotalPercent: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })} />
-              <span>% of the price</span>
+              <span>{L('% of the price', '% من السعر')}</span>
             </>
           )}
         </div>
         <div className="space-y-1 text-sm">
-          <Label>Sibling discount goes to</Label>
+          <Label>{L('Sibling discount goes to', 'خصم الإخوات لمين')}</Label>
           <Select value={r.siblingAppliesTo} onValueChange={(v) => setR({ ...r, siblingAppliesTo: v as Rules['siblingAppliesTo'] })} disabled={!canEdit}>
             <SelectTrigger className="max-w-md"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="SECOND_AND_LATER">Every brother/sister except the first registered</SelectItem>
-              <SelectItem value="ALL">All brothers and sisters</SelectItem>
+              <SelectItem value="SECOND_AND_LATER">{L('Every brother/sister except the first registered', 'كل الإخوات ما عدا أول واحد اتسجّل')}</SelectItem>
+              <SelectItem value="ALL">{L('All brothers and sisters', 'كل الإخوات')}</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">Siblings = same parent phone, both in an active group now. Whether it is automatic is set on the sibling discount type.</p>
         </div>
         <div className="space-y-1 text-sm">
-          <Label>Early renewal discount</Label>
+          <Label>{L('Early renewal discount', 'خصم التجديد بدري')}</Label>
           <Select value={r.earlyRenewalTypeId ?? 'none'} onValueChange={(v) => setR({ ...r, earlyRenewalTypeId: v === 'none' ? null : v })} disabled={!canEdit}>
             <SelectTrigger className="max-w-md"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Off</SelectItem>
+              <SelectItem value="none">{L('Off', 'مقفول')}</SelectItem>
               {(types ?? []).filter((t) => t.isActive).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -490,11 +492,11 @@ function RulesTab({ canEdit }: { canEdit: boolean }) {
           </p>
         </div>
         <div className="space-y-1 text-sm">
-          <Label>Birthday discount</Label>
+          <Label>{L('Birthday discount', 'خصم عيد الميلاد')}</Label>
           <Select value={r.birthdayTypeId ?? 'none'} onValueChange={(v) => setR({ ...r, birthdayTypeId: v === 'none' ? null : v })} disabled={!canEdit}>
             <SelectTrigger className="max-w-md"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Off</SelectItem>
+              <SelectItem value="none">{L('Off', 'مقفول')}</SelectItem>
               {(types ?? []).filter((t) => t.isActive).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -502,7 +504,7 @@ function RulesTab({ canEdit }: { canEdit: boolean }) {
             On a student&apos;s birthday they get this discount on their next invoice (a gift). Create the type first (for example “Birthday gift 50 EGP”, duration “once”).
           </p>
         </div>
-        {canEdit && <Button onClick={() => save.mutate(r)} disabled={save.isPending}>{save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save rules</Button>}
+        {canEdit && <Button onClick={() => save.mutate(r)} disabled={save.isPending}>{save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {L('Save rules', 'احفظ القواعد')}</Button>}
       </CardContent>
     </Card>
   )
