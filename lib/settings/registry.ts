@@ -76,6 +76,7 @@ export const SETTING_CARDS: SettingCard[] = [
 
   // system & security
   { key: 'appearance', group: 'system', en: 'Appearance', ar: 'المظهر', descEn: 'Light / dark and the dark-mode colours (for you)', descAr: 'فاتح / غامق وألوان الوضع الغامق (ليك أنت)', href: '/dashboard/settings#appearance' },
+  { key: 'data', group: 'system', en: 'Import & Export', ar: 'الاستيراد والتصدير', descEn: 'Excel templates to add many rows, Excel / PDF exports, who imported / exported what', descAr: 'قوالب Excel لإضافة صفوف كتير، تصدير Excel / PDF، ومين استورد أو صدّر إيه', href: '/dashboard/data', perm: ['data_export', 'read'] },
   { key: 'permissions', group: 'system', en: 'Permissions', ar: 'الصلاحيات', descEn: 'What each role can do (+ per person / per place)', descAr: 'كل دور يقدر يعمل إيه (+ لكل شخص / لكل مكان)', href: '/dashboard/admin/permissions', roles: SUPER },
   { key: 'accounts', group: 'system', en: 'Accounts & passwords', ar: 'الحسابات وكلمات السر', descEn: 'Staff accounts, places, reset passwords, personal permissions', descAr: 'حسابات الموظفين، أماكنهم، تغيير كلمة السر، صلاحيات شخصية', href: '/dashboard/admin/credential-management', roles: SUPER },
   { key: 'login-locks', group: 'system', en: 'Login locks', ar: 'قفل الدخول', descEn: 'Unlock accounts after wrong passwords', descAr: 'فتح الحسابات المقفولة بعد كلمة سر غلط', href: '/dashboard/admin/login-locks', roles: SUPER },

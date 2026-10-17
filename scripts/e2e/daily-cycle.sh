@@ -1762,6 +1762,64 @@ check "4 payments sent at once: all saved" "$(grep -l '"success":true' "$PDIR"/*
 check "…each with its own receipt number (no duplicates)" "$(M "SELECT COUNT(*)=COUNT(DISTINCT receiptNumber) FROM FeePayment WHERE receiptNumber IS NOT NULL")" "1"
 check "the counter is at the highest receipt number" "$(M "SELECT c.value=MAX(CAST(SUBSTRING(p.receiptNumber,14) AS UNSIGNED)) FROM DocumentCounter c JOIN FeePayment p ON p.receiptNumber LIKE CONCAT(c.\`key\`,'%') WHERE c.\`key\` LIKE 'TN-RCPT-%' GROUP BY c.value")" "1"
 rm -rf "$PDIR"
+echo "== 53. import / export: Excel template, check before saving, import through the real APIs, export Excel / PDF, permissions + places"
+DX=$(mktemp -d)
+check "the tables an admin may import / export" "$(api GET /api/data | jq_ "sorted(x['key'] for x in d['data'] if x['import'])")" "['courseStructure', 'groups', 'instructors', 'students']"
+check "student template is a real Excel file with the dropdown lists" "$(curl -s -b "$JAR" -o "$DX/t.xlsx" -w '%{http_code}' "$B/api/data/students/template?lang=en")/$(head -c 2 "$DX/t.xlsx")" "200/PK"
+CNAME=$(M "SELECT name FROM Campus WHERE id='$CAMPUS'")
+IGRP=$(M "SELECT id FROM ClassSection WHERE campusId='$CAMPUS' AND status='ACTIVE' AND levelId IS NOT NULL AND (maxStudents IS NULL OR maxStudents>20) ORDER BY createdAt DESC LIMIT 1")
+IGNAME=$(M "SELECT CONCAT(className,' ',sectionName,' · ','$CNAME') FROM ClassSection WHERE id='$IGRP'")
+cat > "$DX/rows.json" <<JSON
+[{"First name":"Importa","Last name":"Kid","Full Arabic name":"Importa Kid One","Father name":"Sami","Gender":"Male","Date of birth":"21/03/2016","Student / home phone":"01077770001","Emergency phone":"01077770001","Address":"Hurghada street 1","City":"Hurghada","Branch / place":"$CNAME","Group (optional)":"$IGNAME","Parent first name":"Sami","Parent last name":"Kid","Parent phone":"01077770009"},
+ {"First name":"Importb","Last name":"Kid","Full Arabic name":"Importb Kid Two","Father name":"Sami","Gender":"Female","Date of birth":"2017-05-02","Student / home phone":"1077770002","Emergency phone":"01077770002","Address":"Hurghada street 2","City":"Hurghada","Branch / place":"$CNAME","Parent first name":"Sami","Parent phone":"01077770009"},
+ {"First name":"Badrow","Last name":"Kid","Full Arabic name":"Bad Row Kid","Father name":"X","Gender":"Robot","Date of birth":"32/13/2016","Student / home phone":"12","Emergency phone":"01077770003","Address":"Somewhere far","City":"Hurghada","Branch / place":"Planet Mars"}]
+JSON
+node scripts/e2e/fill-template.cjs "$DX/t.xlsx" "$DX/filled.xlsx" "$DX/rows.json"
+PRE=$(curl -s -b "$JAR" -F "file=@$DX/filled.xlsx" "$B/api/data/students/import")
+check "upload is checked first: 3 rows, 2 ready, the bad one explained (nothing saved yet)" "$(echo "$PRE" | jq_ "(len(d['data']['rows']), d['data']['valid'], len([e for e in d['data']['rows'][2]['errors']]))")/$(M "SELECT COUNT(*) FROM Student WHERE firstName IN ('Importa','Importb')")" "(3, 2, 4)/0"
+GOOD=$(echo "$PRE" | python -c "import sys,json;d=json.load(sys.stdin)['data'];print(json.dumps({'rows':[{'row':r['row'],'values':r['values']} for r in d['rows'] if not r['errors']],'fileName':'filled.xlsx'}))")
+COM=$(api POST /api/data/students/import/commit "$GOOD")
+check "import through the real admission API: both saved" "$(echo "$COM" | jq_ "(d['data']['created'], d['data']['failed'])")" "(2, 0)"
+check "…registration numbers TN/YYYY/NNNN, phone fixed (leading 0), ONE parent found by phone for both" "$(M "SELECT CONCAT(SUM(registrationNumber LIKE 'TN/____/____'),'/',SUM(phoneNumber='01077770002')) FROM Student WHERE firstName IN ('Importa','Importb')")/$(M "SELECT COUNT(*) FROM Guardian WHERE phoneNumber='01077770009'")" "2/1/1"
+IA=$(M "SELECT id FROM Student WHERE firstName='Importa'")
+check "…the group row joined the group and got its invoice (same as by hand)" "$(M "SELECT COUNT(*) FROM StudentEnrollment WHERE studentId='$IA' AND classSectionId='$IGRP' AND status='ACTIVE'")/$(M "SELECT COUNT(*)>0 FROM FeeInvoice WHERE studentId='$IA'")" "1/1"
+check "import log: who, file, 2 done" "$(M "SELECT CONCAT(created,'/',failed,'/',fileName) FROM DataExchangeLog WHERE kind='IMPORT' AND dataset='students' ORDER BY createdAt DESC LIMIT 1")" "2/0/filled.xlsx"
+BAD=$(echo "$PRE" | python -c "import sys,json;d=json.load(sys.stdin)['data'];print(json.dumps({'rows':[{'row':r['row'],'values':r['values'],'reason':'; '.join(e['en'] for e in r['errors'])} for r in d['rows'] if r['errors']],'lang':'en'}))")
+check "rows to fix come back as an Excel file" "$(curl -s -b "$JAR" -o "$DX/fix.xlsx" -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d "$BAD" "$B/api/data/students/import/failures")/$(head -c 2 "$DX/fix.xlsx")" "200/PK"
+check "a secretary without the import permission cannot import (Permissions page can give it)" "$(secapi GET /api/data | jq_ "any(x['key']=='students' and x['import'] for x in d['data'])")/$(curl -s -b "$SECJ" -F "file=@$DX/filled.xlsx" -o /dev/null -w '%{http_code}' "$B/api/data/students/import")" "False/403"
+check "export Excel: a real file, logged" "$(curl -s -b "$JAR" -o "$DX/e.xlsx" -w '%{http_code}' "$B/api/data/students/export?format=xlsx&lang=ar")/$(head -c 2 "$DX/e.xlsx")/$(M "SELECT COUNT(*)>0 FROM DataExchangeLog WHERE kind='EXPORT' AND dataset='students' AND format='xlsx'")" "200/PK/1"
+check "export rows = every student (Super Admin sees all places)" "$(api GET "/api/data/students/export?format=json" | jq_ "d['data']['count']")" "$(M "SELECT COUNT(*) FROM Student")"
+BJ=$(mktemp); login_jar m0secb@e2e.local E2eSecB12345 "$BJ" 10.0.1.93 >/dev/null
+check "another branch's secretary exports only her place's students" "$(curl -s -b "$BJ" "$B/api/data/students/export?format=json" | jq_ "d['data']['count']")" "$(M "SELECT COUNT(*) FROM Student WHERE campusId='$PB'")"
+rm -f "$BJ"
+check "printable PDF page opens" "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$B/reports/data/invoices?lang=ar")" "200"
+curl -s -b "$JAR" -o "$DX/c.xlsx" "$B/api/data/courseStructure/template?lang=en"
+cat > "$DX/c.json" <<JSON
+[{"Track":"E2E Drones","Course":"SkyKids","Level":"Level 1","Level order":1,"Sessions":8,"Months":1,"Pricing":"Monthly","Price (EGP)":700},
+ {"Track":"E2E Drones","Course":"SkyKids","Level":"Level 2","Level order":2,"Sessions":8,"Months":1,"Pricing":"Monthly","Price (EGP)":750}]
+JSON
+node scripts/e2e/fill-template.cjs "$DX/c.xlsx" "$DX/cf.xlsx" "$DX/c.json"
+CP=$(curl -s -b "$JAR" -F "file=@$DX/cf.xlsx" "$B/api/data/courseStructure/import")
+CG=$(echo "$CP" | python -c "import sys,json;d=json.load(sys.stdin)['data'];print(json.dumps({'rows':[{'row':r['row'],'values':r['values']} for r in d['rows'] if not r['errors']]}))")
+check "course structure: missing track + course made once, both levels added" "$(api POST /api/data/courseStructure/import/commit "$CG" | jq_ "d['data']['created']")/$(M "SELECT COUNT(*) FROM Level l JOIN AcademicSubject s ON s.id=l.subjectId JOIN Track t ON t.id=s.trackId WHERE t.name='E2E Drones'")/$(M "SELECT COUNT(*) FROM Track WHERE name='E2E Drones'")" "2/2/1"
+LNAME="SkyKids — Level 1"
+curl -s -b "$JAR" -o "$DX/g.xlsx" "$B/api/data/groups/template?lang=en"
+cat > "$DX/g.json" <<JSON
+[{"Group name":"E2E Imported Group","Section":"Z","Branch / place":"$CNAME","Course — level":"$LNAME","Schedule":"Sun 16:00, Wed 4:30 pm","Max students":10}]
+JSON
+node scripts/e2e/fill-template.cjs "$DX/g.xlsx" "$DX/gf.xlsx" "$DX/g.json"
+GP=$(curl -s -b "$JAR" -F "file=@$DX/gf.xlsx" "$B/api/data/groups/import")
+GG=$(echo "$GP" | python -c "import sys,json;d=json.load(sys.stdin)['data'];print(json.dumps({'rows':[{'row':r['row'],'values':r['values']} for r in d['rows'] if not r['errors']]}))")
+check "groups: made through the Groups API with its schedule (shift picked from the time)" "$(api POST /api/data/groups/import/commit "$GG" | jq_ "d['data']['created']")/$(M "SELECT CONCAT(maxStudents,'/',JSON_LENGTH(scheduleSlots)) FROM ClassSection WHERE className='E2E Imported Group'")" "1/10/2"
+curl -s -b "$JAR" -o "$DX/i.xlsx" "$B/api/data/instructors/template?lang=en"
+cat > "$DX/i.json" <<JSON
+[{"First name":"Imported","Last name":"Coach","National ID":"29001011234567","Gender":"Female","Date of birth":"1995-06-01","Phone":"01077770050","Email (login)":"imported.coach@e2e.local","Address":"Hurghada 10","City":"Hurghada","Emergency phone":"01077770051","Job title":"Instructor","Joining date":"2026-09-01","Branch / place":"$CNAME"}]
+JSON
+node scripts/e2e/fill-template.cjs "$DX/i.xlsx" "$DX/if.xlsx" "$DX/i.json"
+IP=$(curl -s -b "$JAR" -F "file=@$DX/if.xlsx" "$B/api/data/instructors/import")
+IG=$(echo "$IP" | python -c "import sys,json;d=json.load(sys.stdin)['data'];print(json.dumps({'rows':[{'row':r['row'],'values':r['values']} for r in d['rows'] if not r['errors']]}))")
+check "instructors: 14-digit Egyptian national ID accepted, login made with the email" "$(api POST /api/data/instructors/import/commit "$IG" | jq_ "d['data']['created']")/$(M "SELECT COUNT(*) FROM Teacher t JOIN User u ON u.id=t.userId WHERE t.cnic='29001011234567' AND u.email='imported.coach@e2e.local'")" "1/1"
+rm -rf "$DX"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

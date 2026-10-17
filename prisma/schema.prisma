@@ -1475,6 +1475,24 @@ model Announcement {
   @@index([status])
 }
 
+/// Phase 6 (2026-10-17): who imported / exported which table, when and how many rows (Import & Export centre).
+model DataExchangeLog {
+  id        String   @id @default(cuid())
+  kind      String   @db.VarChar(6) // IMPORT | EXPORT
+  dataset   String   @db.VarChar(30)
+  format    String?  @db.VarChar(5) // xlsx | pdf | json
+  fileName  String?  @db.VarChar(200)
+  rows      Int      @default(0)
+  created   Int      @default(0)
+  failed    Int      @default(0)
+  userId    String
+  campusId  String? // the person's main place (branch managers see their branch's log)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
 /// Document numbers (2026-10-17): the last number issued per prefix (e.g. "TN-RCPT-2026-"). The row is locked while a
 /// number is issued, so two payments at the same moment never get the same receipt (lib/ids/counter.ts).
 model DocumentCounter {

@@ -34,9 +34,10 @@ export const createTeacherSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters').trim(),
   lastName: z.string().min(2, 'Last name must be at least 2 characters').trim(),
   cnic: z.string()
-    .min(1, 'CNIC is required')
+    .min(1, 'National ID is required')
     .transform(v => v.trim().replace(/[-\s]/g, ''))
-    .refine(v => /^\d{13}$/.test(v), 'CNIC must be 13 digits'),
+    // Egyptian national ID = 14 digits (13 kept for old template rows). Stored in the `cnic` column.
+    .refine(v => /^\d{13,14}$/.test(v), 'National ID must be 14 digits'),
   dateOfBirth: z.string().datetime({ message: 'dateOfBirth must be an ISO datetime string' }),
   gender: genderEnum,
 

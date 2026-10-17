@@ -21,8 +21,8 @@ export const HUBS: { key: HubKey; en: string; ar: string; items: string[] }[] = 
   { key: 'money', en: 'Money', ar: 'الفلوس', items: ['Accounting Hub', 'Fees', 'Fee Collection', 'Wallet & Top-ups', 'Discounts', 'Refunds', 'Expense Ledger', 'Financial Reports', 'Groups Financials'] },
   { key: 'communication', en: 'Communication', ar: 'التواصل', items: ['Announcements', 'My Announcements', 'Complaints', 'Referrals', 'Ratings'] },
   { key: 'places', en: 'Branches & partners', ar: 'الفروع والشركاء', items: ['Campuses', 'Partners'] },
-  { key: 'reports', en: 'Reports', ar: 'التقارير', items: ['Reports Centre', 'Attendance Report', 'Groups Financials', 'Financial Reports', 'Instructor Performance', 'Substitute Reconciliation', 'Ratings'] },
-  { key: 'settings', en: 'Settings', ar: 'الإعدادات', items: ['Settings Centre', 'Platform', 'Agreements', 'Notifications', 'Permissions', 'Credential Management', 'Backups', 'Settings'] },
+  { key: 'reports', en: 'Reports', ar: 'التقارير', items: ['Reports Centre', 'Import & Export', 'Attendance Report', 'Groups Financials', 'Financial Reports', 'Instructor Performance', 'Substitute Reconciliation', 'Ratings'] },
+  { key: 'settings', en: 'Settings', ar: 'الإعدادات', items: ['Settings Centre', 'Import & Export', 'Platform', 'Agreements', 'Notifications', 'Permissions', 'Credential Management', 'Backups', 'Settings'] },
 ]
 
 /** Old template screens (replaced by newer TechNova screens) — Super Admin only, never deleted here. */

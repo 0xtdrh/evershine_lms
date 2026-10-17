@@ -1,5 +1,6 @@
 'use client'
 
+import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -94,6 +95,7 @@ export default function AccountantFeesPage() {
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-600">Finance</p>
         <h1 className="text-2xl font-black text-slate-900">Fee Collection Hub</h1>
+        <div className="mt-2 print:hidden"><DataExchangeButtons dataset="payments" /></div>
         <p className="text-sm text-slate-500">Issue invoices, track defaulters, and export payment reports.</p>
       </div>
       <Card className="border-teal-100 bg-white shadow-sm">

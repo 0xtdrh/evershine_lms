@@ -23,9 +23,9 @@ const teacherSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters').trim(),
   lastName: z.string().min(2, 'Last name must be at least 2 characters').trim(),
   cnic: z.string()
-    .min(1, 'CNIC is required')
+    .min(1, 'National ID is required')
     .transform(v => v.trim().replace(/[-\s]/g, ''))
-    .refine(v => /^\d{13}$/.test(v), 'CNIC must be 13 digits'),
+    .refine(v => /^\d{13,14}$/.test(v), 'National ID must be 14 digits'),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   gender: z.enum(['MALE', 'FEMALE'], { required_error: 'Gender is required' }),
   qualification: z.string().trim().optional().default(''),
@@ -280,8 +280,8 @@ export default function NewTeacherPage() {
               <Input {...field('lastName')} />{err('lastName')}
             </div>
             <div className="space-y-1.5">
-              <Label>CNIC (13 digits, no dashes)</Label>
-              <Input {...field('cnic')} placeholder="3420012345678" />{err('cnic')}
+              <Label>National ID (14 digits, no dashes)</Label>
+              <Input {...field('cnic')} placeholder="29001011234567" />{err('cnic')}
             </div>
             <div className="space-y-1.5">
               <Label>Date of Birth</Label>

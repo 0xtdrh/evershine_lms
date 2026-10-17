@@ -1,5 +1,6 @@
 'use client'
 
+import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -216,6 +217,7 @@ export default function StudentsListPage() {
             </div>
             Students Directory
           </h1>
+          <div className="mt-2 print:hidden"><DataExchangeButtons dataset="students" /></div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium sm:ml-11">
             {pagination ? `${pagination.total.toLocaleString()} registered students` : 'Loading…'}
             <span className="mx-2 text-slate-300">•</span>

@@ -1,5 +1,6 @@
 'use client'
 
+import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchPaginatedApi, fetchApi } from '@/lib/api-client'
@@ -116,6 +117,7 @@ export default function TeachersPage() {
             </div>
             Staff Directory
           </h1>
+          <div className="mt-2 print:hidden"><DataExchangeButtons dataset="instructors" /></div>
           <p className="text-sm text-slate-500 mt-1 font-medium ml-11">
             {pagination ? `${pagination.total.toLocaleString()} staff members` : 'Loading...'}
           </p>

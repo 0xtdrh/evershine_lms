@@ -1,5 +1,6 @@
 'use client'
 
+import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useMemo, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -530,6 +531,7 @@ export default function GroupsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Groups</h1>
+          <div className="mt-2 print:hidden"><DataExchangeButtons dataset="groups" /></div>
           <CardDescription>Full control — create, edit, staff, and manage every group here.</CardDescription>
         </div>
         <Button className="gap-1.5" onClick={() => setCreateOpen(true)}>

@@ -1,5 +1,6 @@
 'use client'
 
+import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -291,6 +292,7 @@ export default function FeesManagementPage() {
             </div>
             {isAdmin ? L('Invoices', 'الفواتير') : L('My invoices', 'فواتيري')}
           </h1>
+          <div className="mt-2 print:hidden"><DataExchangeButtons dataset="invoices" /></div>
           <p className="text-sm text-slate-500 mt-1 font-medium ml-11">
             {pagination ? `${pagination.total.toLocaleString()} ${L('invoices', 'فاتورة')}` : L('Loading…', 'بيحمّل…')}
           </p>

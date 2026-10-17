@@ -1,5 +1,6 @@
 'use client'
 
+import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -180,6 +181,7 @@ export default function WaitingListPage() {
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             <Hourglass className="h-6 w-6" /> Waiting List
           </h1>
+          <div className="mt-2 print:hidden"><DataExchangeButtons dataset="waitingList" /></div>
           <p className="text-sm text-muted-foreground">Students waiting for a group, per course and level.</p>
         </div>
         <div className="flex flex-wrap gap-2">

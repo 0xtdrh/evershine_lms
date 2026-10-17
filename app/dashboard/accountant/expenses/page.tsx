@@ -1,5 +1,6 @@
 'use client'
 
+import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -359,6 +360,7 @@ export default function AccountantExpensesPage() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-600">Expenses</p>
           <h1 className="text-2xl font-black text-slate-900">Record and review campus expenses</h1>
+          <div className="mt-2 print:hidden"><DataExchangeButtons dataset="expenses" /></div>
           <p className="text-sm text-slate-500">This path uses the manual proof-style workflow: account managers record expenses directly, and they appear immediately in finance reports with approval set to true by default.</p>
         </div>
         <div className="flex items-center gap-2">

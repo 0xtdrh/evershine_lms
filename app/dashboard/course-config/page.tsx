@@ -1,5 +1,6 @@
 'use client'
 
+import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi, ApiError } from '@/lib/api-client'
@@ -231,6 +232,7 @@ export default function CourseConfigPage() {
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
       <div>
         <h1 className="text-xl font-bold text-slate-900">Course Structure</h1>
+        <div className="mt-2 print:hidden"><DataExchangeButtons dataset="courseStructure" /></div>
         <CardDescription>Tracks → courses → levels, all in one place.</CardDescription>
       </div>
 
