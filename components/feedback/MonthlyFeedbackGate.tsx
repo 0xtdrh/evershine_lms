@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { LIKERT_LABELS } from '@/lib/validation/feedback'
 import { notify } from '@/lib/notify'
 import { Loader2 } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 type Likert = keyof typeof LIKERT_LABELS
 
@@ -66,7 +67,7 @@ export function MonthlyFeedbackGate({ children }: { children: React.ReactNode })
         body: JSON.stringify(payload),
       }),
     onSuccess: () => {
-      notify.success('Thank you — your feedback was recorded.')
+      notify.success(L('Thank you — your feedback was recorded.', 'شكراً — تقييمك اتسجل.'))
       setAnswers({})
       setComments('')
       qc.invalidateQueries({ queryKey: ['feedback-pending'] })
@@ -88,7 +89,7 @@ export function MonthlyFeedbackGate({ children }: { children: React.ReactNode })
 
   const handleSubmit = () => {
     if (!allAnswered) {
-      notify.error('Please select a response for every question before continuing.')
+      notify.error(L('Please select a response for every question before continuing.', 'اختار إجابة لكل سؤال الأول.'))
       return
     }
     submit.mutate({
@@ -109,10 +110,9 @@ export function MonthlyFeedbackGate({ children }: { children: React.ReactNode })
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>Monthly teacher feedback — {data.cycle.label}</DialogTitle>
+            <DialogTitle>{L('Monthly teacher feedback —', 'تقييم المدرب الشهري —')} {data.cycle.label}</DialogTitle>
             <DialogDescription>
-              TechNova collects confidential student feedback each month. Please complete
-              feedback for all assigned teachers before using the portal ({remaining} remaining).
+              {L('TechNova collects confidential student feedback each month. Please complete feedback for all assigned teachers before using the portal (', 'TechNova بتجمع تقييم سري من الطلاب كل شهر. كمّل تقييم كل مدربينك قبل ما تستخدم البوابة (')}{remaining} {L('remaining).', 'باقي).')}
             </DialogDescription>
           </DialogHeader>
 
@@ -122,7 +122,7 @@ export function MonthlyFeedbackGate({ children }: { children: React.ReactNode })
               <p className="text-blue-800">
                 {teacher.campusName} · {teacher.classSectionLabel}
               </p>
-              <p className="text-blue-700 text-xs mt-1">Subjects: {teacher.subjects.join(', ')}</p>
+              <p className="text-blue-700 text-xs mt-1">{L('Subjects:', 'المواد:')} {teacher.subjects.join(', ')}</p>
             </div>
 
             {questions.map((q) => (
@@ -145,11 +145,11 @@ export function MonthlyFeedbackGate({ children }: { children: React.ReactNode })
             ))}
 
             <div>
-              <Label>Suggestions or comments (optional)</Label>
+              <Label>{L('Suggestions or comments (optional)', 'اقتراحات أو ملاحظات (اختياري)')}</Label>
               <Textarea
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
-                placeholder="Share anything else you would like administration to know…"
+                placeholder={L('Share anything else you would like administration to know…', 'اكتب أي حاجة تحب الإدارة تعرفها…')}
                 rows={3}
               />
             </div>
@@ -159,7 +159,7 @@ export function MonthlyFeedbackGate({ children }: { children: React.ReactNode })
             <Button onClick={handleSubmit} disabled={submit.isPending || !allAnswered} className="w-full">
               {submit.isPending ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting…
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> {L('Submitting…', 'بيبعت…')}
                 </>
               ) : remaining > 1 ? (
                 'Submit and continue to next teacher'

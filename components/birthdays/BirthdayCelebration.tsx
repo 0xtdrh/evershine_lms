@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 interface Me { self: { name: string; turns: number; studentId?: string } | null; children: { studentId: string; name: string; turns: number }[] }
 
@@ -76,7 +77,7 @@ function Balloons({ onClose }: { onClose: () => void }) {
       {items.map((b, i) => (
         <span key={i} className="absolute bottom-[-3rem] text-3xl" style={{ left: `${(i * 37) % 70}%`, animation: `tn-balloon ${11 + i * 2}s linear ${i * 2.3}s infinite` }}>{b}</span>
       ))}
-      <button type="button" onClick={onClose} title="Hide the balloons for today" className="pointer-events-auto absolute right-1 top-20 rounded-full bg-white/90 p-1 text-slate-500 shadow hover:text-slate-800">
+      <button type="button" onClick={onClose} title={L('Hide the balloons for today', 'اخفي البالونات النهارده')} className="pointer-events-auto absolute right-1 top-20 rounded-full bg-white/90 p-1 text-slate-500 shadow hover:text-slate-800">
         <X className="h-3.5 w-3.5" />
       </button>
     </div>
@@ -118,14 +119,14 @@ export function BirthdayCelebration() {
       {welcome && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 print:hidden" role="dialog" aria-modal="true" onClick={() => setWelcome(false)}>
           <div className="keep-light relative w-full max-w-md overflow-hidden rounded-3xl border-4 border-amber-300 bg-gradient-to-br from-pink-50 via-white to-amber-50 p-6 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="absolute right-3 top-3 text-slate-400 hover:text-slate-700" onClick={() => setWelcome(false)} aria-label="Close"><X className="h-5 w-5" /></button>
+            <button type="button" className="absolute right-3 top-3 text-slate-400 hover:text-slate-700" onClick={() => setWelcome(false)} aria-label={L('Close', 'اقفل')}><X className="h-5 w-5" /></button>
             <div className="text-6xl">🎂</div>
             <h2 className="mt-3 text-2xl font-black text-pink-700">{title}</h2>
             <p className="mt-2 text-sm text-slate-700">{sub}</p>
             <div className="mt-5 flex flex-wrap justify-center gap-2">
               {cards.map((c) => (
                 <Button key={c.id} asChild className="bg-pink-600 hover:bg-pink-700">
-                  <a href={`/birthday-card/${c.id}`} target="_blank" rel="noopener noreferrer">Open {cards.length > 1 ? `${c.name}'s ` : 'the '}birthday certificate</a>
+                  <a href={`/birthday-card/${c.id}`} target="_blank" rel="noopener noreferrer">{L('Open', 'افتح')} {cards.length > 1 ? `${c.name}'s ` : 'the '}{L('birthday certificate', 'شهادة عيد الميلاد')}</a>
                 </Button>
               ))}
               <Button variant="outline" onClick={() => setWelcome(false)}>Let&apos;s go</Button>

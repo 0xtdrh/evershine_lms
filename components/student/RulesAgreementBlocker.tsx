@@ -5,6 +5,7 @@ import { Check, ClipboardList, ShieldAlert, Award } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { notify } from '@/lib/notify'
 import { useRouter } from 'next/navigation'
+import { L } from '@/lib/i18n/client'
 
 const AGREEMENT_RULES = [
   'Fee once deposited is neither refundable nor adjustable in any case.',
@@ -54,7 +55,7 @@ export function RulesAgreementBlocker() {
 
   const handleAccept = async () => {
     if (!allChecked) {
-      notify.error('Please check and accept all the rules and regulations to proceed.')
+      notify.error(L('Please check and accept all the rules and regulations to proceed.', 'علّم ووافق على كل القواعد علشان تكمّل.'))
       return
     }
 
@@ -67,7 +68,7 @@ export function RulesAgreementBlocker() {
       
       const result = await res.json()
       if (res.ok && result.success) {
-        notify.success('Rules and Regulations accepted successfully. Welcome to your portal!')
+        notify.success(L('Rules and Regulations accepted successfully. Welcome to your portal!', 'وافقت على القواعد. أهلاً بيك!'))
         setRulesAccepted(true)
         router.refresh()
       } else {
@@ -113,7 +114,7 @@ export function RulesAgreementBlocker() {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
           <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 text-sm text-slate-600 font-medium">
-            👋 Welcome to your TechNova student portal! Before accessing your dashboard for the first time, you must review and agree to the institution's official rules and regulations below. Please read and mark each checkbox to acknowledge.
+            {L('👋 Welcome to your TechNova student portal! Before accessing your dashboard for the first time, you must review and agree to the institution\'s official rules and regulations below. Please read and mark each checkbox to acknowledge.', '👋 أهلاً بيك في بوابة TechNova! قبل ما تدخل أول مرة لازم تقرا القواعد الرسمية وتوافق عليها. اقرا وعلّم على كل واحدة.')}
           </div>
 
           <div className="space-y-3">
@@ -164,11 +165,11 @@ export function RulesAgreementBlocker() {
               onClick={handleCheckAll}
               className="text-xs font-bold border-slate-300 hover:bg-slate-100 text-slate-700 h-9"
             >
-              Check All Rules
+              {L('Check All Rules', 'علّم على الكل')}
             </Button>
             <p className="text-[11px] text-slate-400 font-bold hidden sm:flex items-center">
               <ShieldAlert className="w-3.5 h-3.5 mr-1 text-slate-400" />
-              Legally binding agreement
+              {L('Legally binding agreement', 'اتفاق ملزم')}
             </p>
           </div>
           <Button

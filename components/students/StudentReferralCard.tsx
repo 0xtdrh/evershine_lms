@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Gift } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 interface Ref { id: string; code: string; status: string; reward: number; createdAt: string; referrer: { name: string; phone: string } | null }
 
@@ -18,24 +19,24 @@ export function StudentReferralCard({ studentId, canLink }: { studentId: string;
   const { data, isLoading } = useQuery({ queryKey: ['student-referral', studentId], queryFn: () => fetchApi<Ref | null>(`/api/referrals?studentId=${studentId}`) })
   const link = useMutation({
     mutationFn: () => fetchApi('/api/referrals', { method: 'POST', body: JSON.stringify({ studentId, codeOrPhone: value }) }),
-    onSuccess: () => { notify.success('Referral linked'); setValue(''); qc.invalidateQueries({ queryKey: ['student-referral', studentId] }) },
+    onSuccess: () => { notify.success(L('Referral linked', 'الترشيح اتربط')); setValue(''); qc.invalidateQueries({ queryKey: ['student-referral', studentId] }) },
     onError: (e: Error) => notify.error(e.message),
   })
   if (isLoading) return null
   if (!data && !canLink) return null
   return (
     <Card>
-      <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Gift className="h-4 w-4 text-indigo-600" /> Referral</CardTitle></CardHeader>
+      <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Gift className="h-4 w-4 text-indigo-600" /> {L('Referral', 'الترشيح')}</CardTitle></CardHeader>
       <CardContent className="text-sm">
         {data ? (
           <p>
-            Referred by <strong>{data.referrer?.name ?? '—'}</strong> ({data.referrer?.phone}) · code {data.code} ·{' '}
+            {L('Referred by', 'رشّحه')} <strong>{data.referrer?.name ?? '—'}</strong> ({data.referrer?.phone}) · code {data.code} ·{' '}
             {data.status === 'REWARDED' ? (data.reward ? `reward ${data.reward} EGP given` : 'done (no reward was switched on)') : 'reward when the first invoice is paid'}
           </p>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
-            <Input className="h-8 w-64" placeholder="Referral code (TN-REF-…) or parent phone" value={value} onChange={(e) => setValue(e.target.value)} />
-            <Button size="sm" className="h-8" disabled={value.trim().length < 3 || link.isPending} onClick={() => link.mutate()}>Link</Button>
+            <Input className="h-8 w-64" placeholder={L('Referral code (TN-REF-…) or parent phone', 'كود الترشيح (TN-REF-…) أو تليفون ولي الأمر')} value={value} onChange={(e) => setValue(e.target.value)} />
+            <Button size="sm" className="h-8" disabled={value.trim().length < 3 || link.isPending} onClick={() => link.mutate()}>{L('Link', 'اربط')}</Button>
           </div>
         )}
       </CardContent>

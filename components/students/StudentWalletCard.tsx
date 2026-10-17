@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { PaymentMethodSelect } from '@/components/fees/PaymentMethodSelect'
 import { WalletLedger, type LedgerRow } from '@/components/wallet/WalletLedger'
 import { Wallet, Plus, ArrowRightLeft, Undo2, FileText } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 interface WalletData {
   balance: number
@@ -76,21 +77,21 @@ export function StudentWalletCard({ studentId }: { studentId: string }) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between gap-2 text-sm">
-          <span className="flex items-center gap-2"><Wallet className="h-4 w-4" /> Wallet</span>
-          <span className="font-mono text-base">{data.balance.toLocaleString()} EGP</span>
+          <span className="flex items-center gap-2"><Wallet className="h-4 w-4" /> {L('Wallet', 'المحفظة')}</span>
+          <span className="font-mono text-base">{data.balance.toLocaleString()} {L('EGP', 'ج.م')}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {canTopUp && (
           <div className="flex flex-wrap gap-1.5">
-            <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => setMode('topup')}><Plus className="h-3.5 w-3.5" /> Top up</Button>
-            {(data.siblings?.length ?? 0) > 0 && data.balance > 0 && <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setMode('transfer')}><ArrowRightLeft className="h-3.5 w-3.5" /> To a sibling</Button>}
-            {data.withdrawalAllowed && data.balance > 0 && <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setMode('withdraw')}><Undo2 className="h-3.5 w-3.5" /> Withdraw</Button>}
-            <Link href={`/wallet-statement/${studentId}`} target="_blank"><Button size="sm" variant="ghost" className="h-7 gap-1 text-xs"><FileText className="h-3.5 w-3.5" /> Statement</Button></Link>
+            <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => setMode('topup')}><Plus className="h-3.5 w-3.5" /> {L('Top up', 'اشحن')}</Button>
+            {(data.siblings?.length ?? 0) > 0 && data.balance > 0 && <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setMode('transfer')}><ArrowRightLeft className="h-3.5 w-3.5" /> {L('To a sibling', 'لأخ / أخت')}</Button>}
+            {data.withdrawalAllowed && data.balance > 0 && <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setMode('withdraw')}><Undo2 className="h-3.5 w-3.5" /> {L('Withdraw', 'اسحب')}</Button>}
+            <Link href={`/wallet-statement/${studentId}`} target="_blank"><Button size="sm" variant="ghost" className="h-7 gap-1 text-xs"><FileText className="h-3.5 w-3.5" /> {L('Statement', 'كشف الحساب')}</Button></Link>
           </div>
         )}
-        {(data.pendingTopUps ?? 0) > 0 && <p className="text-xs text-amber-700">{data.pendingTopUps} uploaded top-up(s) waiting for approval (Wallet page).</p>}
-        {(data.pendingWithdrawals ?? []).map((w) => <p key={w.id} className="text-xs text-amber-700">Withdrawal of {w.amount} EGP by {w.payoutMethod} waiting for approval.</p>)}
+        {(data.pendingTopUps ?? 0) > 0 && <p className="text-xs text-amber-700">{data.pendingTopUps} {L('uploaded top-up(s) waiting for approval (Wallet page).', 'شحن مرفوع مستني موافقة (صفحة المحفظة).')}</p>}
+        {(data.pendingWithdrawals ?? []).map((w) => <p key={w.id} className="text-xs text-amber-700">{L('Withdrawal of', 'سحب بمبلغ')} {w.amount} {L('EGP by', 'ج.م عن طريق')} {w.payoutMethod} {L('waiting for approval.', 'مستني موافقة.')}</p>)}
         <WalletLedger rows={data.transactions} />
       </CardContent>
 
@@ -105,23 +106,23 @@ export function StudentWalletCard({ studentId }: { studentId: string }) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm">
-            <div className="space-y-1"><Label>Amount (EGP)</Label><Input type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+            <div className="space-y-1"><Label>{L('Amount (EGP)', 'المبلغ (ج.م)')}</Label><Input type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
             {(mode === 'topup' || mode === 'withdraw') && (
               <div className="space-y-1"><Label>{mode === 'topup' ? 'Paid by' : 'Money goes back by'}</Label><PaymentMethodSelect value={method} onValueChange={setMethod} /></div>
             )}
-            {mode === 'topup' && <div className="space-y-1"><Label>Transaction no. (optional)</Label><Input value={ref} onChange={(e) => setRef(e.target.value)} /></div>}
+            {mode === 'topup' && <div className="space-y-1"><Label>{L('Transaction no. (optional)', 'رقم العملية (اختياري)')}</Label><Input value={ref} onChange={(e) => setRef(e.target.value)} /></div>}
             {mode === 'transfer' && (
               <div className="space-y-1">
-                <Label>To</Label>
+                <Label>{L('To', 'لـ')}</Label>
                 <Select value={toId} onValueChange={setToId}>
-                  <SelectTrigger><SelectValue placeholder="Choose the sibling" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={L('Choose the sibling', 'اختار الأخ / الأخت')} /></SelectTrigger>
                   <SelectContent>{(data.siblings ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             )}
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={close}>Cancel</Button>
-              <Button disabled={!(Number(amount) > 0) || (mode === 'transfer' && !toId) || send.isPending} onClick={() => send.mutate()}>Confirm</Button>
+              <Button variant="outline" onClick={close}>{L('Cancel', 'إلغاء')}</Button>
+              <Button disabled={!(Number(amount) > 0) || (mode === 'transfer' && !toId) || send.isPending} onClick={() => send.mutate()}>{L('Confirm', 'تأكيد')}</Button>
             </div>
           </div>
         </DialogContent>

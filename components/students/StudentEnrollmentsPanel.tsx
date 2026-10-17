@@ -13,6 +13,7 @@ import { GraduationCap, Plus, Loader2, Pencil, Trash2, RotateCcw, Check, X, Chev
 import { notify } from '@/lib/notify'
 import type { SessionShift } from '@/lib/validation/shift'
 import Link from 'next/link'
+import { L } from '@/lib/i18n/client'
 
 export interface StudentEnrollmentRow {
   id: string
@@ -132,7 +133,7 @@ export function StudentEnrollmentsPanel({
         body: JSON.stringify({ classSectionId, rollNumber, deliveryMode }),
       }),
     onSuccess: () => {
-      notify.success('Section enrollment added')
+      notify.success(L('Section enrollment added', 'التسكين اتضاف'))
       qc.invalidateQueries({ queryKey: ['student-enrollments', studentId] })
       qc.invalidateQueries({ queryKey: ['student', studentId] })
       setShowAdd(false)
@@ -149,7 +150,7 @@ export function StudentEnrollmentsPanel({
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      notify.success('Enrollment updated')
+      notify.success(L('Enrollment updated', 'التسكين اتحدّث'))
       qc.invalidateQueries({ queryKey: ['student-enrollments', studentId] })
       setEditingId(null)
     },
@@ -163,7 +164,7 @@ export function StudentEnrollmentsPanel({
     mutationFn: (id: string) =>
       fetchApi(`/api/student-enrollments/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
-      notify.success('Student withdrawn from section. Historical records are preserved.')
+      notify.success(L('Student withdrawn from section. Historical records are preserved.', 'الطالب اتسحب. السجلات القديمة محفوظة.'))
       qc.invalidateQueries({ queryKey: ['student-enrollments', studentId] })
       qc.invalidateQueries({ queryKey: ['student', studentId] })
     },
@@ -178,7 +179,7 @@ export function StudentEnrollmentsPanel({
         body: JSON.stringify({ classSectionId: sectionId, rollNumber: roll, deliveryMode: 'PHYSICAL' }),
       }),
     onSuccess: () => {
-      notify.success('Student re-enrolled successfully')
+      notify.success(L('Student re-enrolled successfully', 'الطالب اتسجّل تاني'))
       qc.invalidateQueries({ queryKey: ['student-enrollments', studentId] })
       qc.invalidateQueries({ queryKey: ['student', studentId] })
       setReEnrollingId(null)
@@ -194,7 +195,7 @@ export function StudentEnrollmentsPanel({
     mutationFn: (enrollmentId: string) =>
       fetchApi(`/api/student-enrollments/${enrollmentId}/auto-enroll-subjects`, { method: 'POST' }),
     onSuccess: () => {
-      notify.success('Mandatory subjects enrolled successfully')
+      notify.success(L('Mandatory subjects enrolled successfully', 'المواد الإجبارية اتسجلت'))
       qc.invalidateQueries({ queryKey: ['student-enrollments', studentId] })
     },
     onError: (err: Error) => notify.error(err.message || 'Failed to auto-enroll subjects'),
@@ -209,7 +210,7 @@ export function StudentEnrollmentsPanel({
 
   function handleWithdraw(e: StudentEnrollmentRow) {
     if (e.academicYear.isLocked) {
-      notify.error('Cannot withdraw from a locked academic year.')
+      notify.error(L('Cannot withdraw from a locked academic year.', 'مش هينفع السحب من سنة دراسية مقفولة.'))
       return
     }
     if (!confirm(`Withdraw ${e.classSection.className}-${e.classSection.sectionName} enrollment?\nHistorical attendance and marks will be preserved.`)) return
@@ -225,16 +226,16 @@ export function StudentEnrollmentsPanel({
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
               <GraduationCap className="w-4 h-4 text-indigo-600" />
-              Academic Engine Enrollments
+              {L('Academic Engine Enrollments', 'التسكين القديم')}
             </CardTitle>
             <CardDescription className="text-xs">
-              Section placements with full lifecycle management (edit · withdraw · re-enroll).
+              {L('Section placements with full lifecycle management (edit · withdraw · re-enroll).', 'التسكين في الفصول القديمة (تعديل · سحب · إعادة).')}
             </CardDescription>
           </div>
           {canManage && (
             <Button variant="outline" size="sm" className="gap-1 text-xs h-8 shrink-0" onClick={() => setShowAdd((v) => !v)}>
               <Plus className="w-3.5 h-3.5" />
-              Add section
+              {L('Add section', 'ضيف فصل')}
             </Button>
           )}
         </div>
@@ -245,7 +246,7 @@ export function StudentEnrollmentsPanel({
         {showAdd && canManage && (
           <div className="p-3 rounded-lg border border-indigo-200 bg-indigo-50/50 space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-indigo-800">New section enrollment</p>
+              <p className="text-xs font-semibold text-indigo-800">{L('New section enrollment', 'تسكين جديد')}</p>
               <Button
                 type="button"
                 variant="ghost"
@@ -257,20 +258,20 @@ export function StudentEnrollmentsPanel({
               </Button>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Class section</Label>
+              <Label className="text-xs">{L('Class section', 'الفصل')}</Label>
               <Select value={classSectionId} onValueChange={setClassSectionId} disabled={sectionsLoading}>
                 <SelectTrigger className="h-9 text-sm bg-white">
                   {sectionsLoading
-                    ? <span className="flex items-center gap-1.5 text-gray-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading sections…</span>
-                    : <SelectValue placeholder="Select section" />
+                    ? <span className="flex items-center gap-1.5 text-gray-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> {L('Loading sections…', 'بيحمّل الفصول…')}</span>
+                    : <SelectValue placeholder={L('Select section', 'اختار الفصل')} />
                   }
                 </SelectTrigger>
                 <SelectContent>
                   {sections.length === 0 && !sectionsLoading ? (
                     <div className="py-4 px-3 text-center text-xs text-gray-500">
-                      <p>No active class sections available.</p>
+                      <p>{L('No active class sections available.', 'مفيش فصول.')}</p>
                       <Link href="/dashboard/academic-engine" className="text-indigo-600 underline font-medium mt-1 inline-block">
-                        Create sections in Academic Engine
+                        {L('Create sections in Academic Engine', 'اعمل فصول من الشاشة القديمة')}
                       </Link>
                     </div>
                   ) : (
@@ -286,17 +287,17 @@ export function StudentEnrollmentsPanel({
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Roll number</Label>
+                <Label className="text-xs">{L('Roll number', 'رقم الجلوس')}</Label>
                 <Input className="h-9 text-sm bg-white" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Delivery</Label>
+                <Label className="text-xs">{L('Delivery', 'الحضور')}</Label>
                 <Select value={deliveryMode} onValueChange={(v) => setDeliveryMode(v as typeof deliveryMode)}>
                   <SelectTrigger className="h-9 text-sm bg-white"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PHYSICAL">Physical</SelectItem>
-                    <SelectItem value="ONLINE">Online</SelectItem>
-                    <SelectItem value="HYBRID">Hybrid</SelectItem>
+                    <SelectItem value="PHYSICAL">{L('Physical', 'حضوري')}</SelectItem>
+                    <SelectItem value="ONLINE">{L('Online', 'أونلاين')}</SelectItem>
+                    <SelectItem value="HYBRID">{L('Hybrid', 'مختلط')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -305,19 +306,19 @@ export function StudentEnrollmentsPanel({
               <Button size="sm" className="flex-1" disabled={!classSectionId || !rollNumber || addMutation.isPending} onClick={() => addMutation.mutate()}>
                 {addMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save enrollment'}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowAdd(false)}>{L('Cancel', 'إلغاء')}</Button>
             </div>
           </div>
         )}
 
         {/* ── Active enrollments ──────────────────────────────────────── */}
         {isLoading ? (
-          <p className="text-xs text-gray-400">Loading enrollments…</p>
+          <p className="text-xs text-gray-400">{L('Loading enrollments…', 'بيحمّل…')}</p>
         ) : active.length === 0 ? (
           <p className="text-xs text-gray-500">
-            No active section enrollments. Use{' '}
-            <Link href="/dashboard/academic" className="text-blue-600 underline">Academic Engine</Link>
-            {' '}or add a section above.
+            {L('No active section enrollments. Use', 'مفيش تسكين. استخدم')}{' '}
+            <Link href="/dashboard/academic" className="text-blue-600 underline">{L('Academic Engine', 'الشاشة القديمة')}</Link>
+            {' '}{L('or add a section above.', 'أو ضيف فصل فوق.')}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -331,23 +332,23 @@ export function StudentEnrollmentsPanel({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">
-                        {e.classSection.className} — Section {e.classSection.sectionName}
-                        <span className="text-gray-400 font-normal ml-1">· Roll {e.rollNumber}</span>
+                        {e.classSection.className} {L('— Section', '— فصل')} {e.classSection.sectionName}
+                        <span className="text-gray-400 font-normal ml-1">{L('· Roll', '· جلوس')} {e.rollNumber}</span>
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
                         {e.academicYear.name} · {e.classSection.campus.code} · {e.deliveryMode}
                       </p>
                       {e.subjectEnrollments && e.subjectEnrollments.length > 0 && (
                         <p className="text-[10px] text-gray-400 mt-1">
-                          {e.subjectEnrollments.length} subject(s) enrolled
+                          {e.subjectEnrollments.length} {L('subject(s) enrolled', 'مادة')}
                         </p>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <Badge variant="outline" className="text-[10px]">{e.status}</Badge>
-                      {isLocked && <Badge variant="secondary" className="text-[10px]">Locked</Badge>}
+                      {isLocked && <Badge variant="secondary" className="text-[10px]">{L('Locked', 'مقفول')}</Badge>}
                       <Link href={`/dashboard/attendance/sections?sectionId=${e.classSection.id}`}>
-                        <Button variant="ghost" size="sm" className="text-xs h-7">Attendance</Button>
+                        <Button variant="ghost" size="sm" className="text-xs h-7">{L('Attendance', 'الحضور')}</Button>
                       </Link>
                       {/* Auto-enroll button: shown when FIXED section has no subject assignments yet */}
                       {canManage && !isLocked && (!e.subjectEnrollments || e.subjectEnrollments.length === 0) && (
@@ -355,12 +356,12 @@ export function StudentEnrollmentsPanel({
                           variant="ghost"
                           size="sm"
                           className="h-7 text-xs gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                          title="Auto-enroll mandatory subjects for this FIXED section"
+                          title={L('Auto-enroll mandatory subjects for this FIXED section', 'سجّل المواد الإجبارية لوحدها')}
                           disabled={autoEnrollMutation.isPending}
                           onClick={() => autoEnrollMutation.mutate(e.id)}
                         >
                           {autoEnrollMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
-                          Subjects
+                          {L('Subjects', 'المواد')}
                         </Button>
                       )}
                       {canManage && !isLocked && (
@@ -369,7 +370,7 @@ export function StudentEnrollmentsPanel({
                             variant="ghost"
                             size="sm"
                             className="h-7 w-7 p-0 text-slate-500 hover:text-indigo-600"
-                            title="Edit roll number / delivery mode"
+                            title={L('Edit roll number / delivery mode', 'عدّل رقم الجلوس / طريقة الحضور')}
                             onClick={() => isEditing ? setEditingId(null) : startEdit(e)}
                           >
                             <Pencil className="w-3.5 h-3.5" />
@@ -378,7 +379,7 @@ export function StudentEnrollmentsPanel({
                             variant="ghost"
                             size="sm"
                             className="h-7 w-7 p-0 text-slate-500 hover:text-red-600"
-                            title="Withdraw from this section"
+                            title={L('Withdraw from this section', 'اسحب من الفصل ده')}
                             disabled={withdrawMutation.isPending}
                             onClick={() => handleWithdraw(e)}
                           >
@@ -393,7 +394,7 @@ export function StudentEnrollmentsPanel({
                   {isEditing && canManage && (
                     <div className="border-t border-indigo-100 bg-indigo-50/40 px-3 py-2.5 flex flex-col sm:flex-row gap-2 items-end">
                       <div className="space-y-1 flex-1">
-                        <Label className="text-xs">Roll number</Label>
+                        <Label className="text-xs">{L('Roll number', 'رقم الجلوس')}</Label>
                         <Input
                           className="h-8 text-xs bg-white"
                           value={editForm.rollNumber}
@@ -401,16 +402,16 @@ export function StudentEnrollmentsPanel({
                         />
                       </div>
                       <div className="space-y-1 w-40">
-                        <Label className="text-xs">Delivery mode</Label>
+                        <Label className="text-xs">{L('Delivery mode', 'طريقة الحضور')}</Label>
                         <Select
                           value={editForm.deliveryMode}
                           onValueChange={(v) => setEditForm((f) => ({ ...f, deliveryMode: v as InlineEditState['deliveryMode'] }))}
                         >
                           <SelectTrigger className="h-8 text-xs bg-white"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="PHYSICAL">Physical</SelectItem>
-                            <SelectItem value="ONLINE">Online</SelectItem>
-                            <SelectItem value="HYBRID">Hybrid</SelectItem>
+                            <SelectItem value="PHYSICAL">{L('Physical', 'حضوري')}</SelectItem>
+                            <SelectItem value="ONLINE">{L('Online', 'أونلاين')}</SelectItem>
+                            <SelectItem value="HYBRID">{L('Hybrid', 'مختلط')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -422,7 +423,7 @@ export function StudentEnrollmentsPanel({
                           onClick={() => updateMutation.mutate({ id: e.id, data: editForm })}
                         >
                           {updateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                          Save
+                          {L('Save', 'حفظ')}
                         </Button>
                         <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditingId(null)}>
                           <X className="w-3.5 h-3.5" />
@@ -444,7 +445,7 @@ export function StudentEnrollmentsPanel({
               onClick={() => setShowHistory((v) => !v)}
             >
               {showHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              {withdrawn.length} historical enrollment{withdrawn.length !== 1 ? 's' : ''} on record
+              {withdrawn.length} {L('historical enrollment', 'تسكين قديم')}{withdrawn.length !== 1 ? 's' : ''} {L('on record', 'متسجل')}
             </button>
 
             {showHistory && (
@@ -457,7 +458,7 @@ export function StudentEnrollmentsPanel({
                         <span className="text-gray-400 font-normal ml-1">· {e.academicYear.name}</span>
                       </p>
                       <p className="text-[10px] text-gray-400 mt-0.5">
-                        {e.classSection.campus.code} · Roll {e.rollNumber} · {e.deliveryMode}
+                        {e.classSection.campus.code} {L('· Roll', '· جلوس')} {e.rollNumber} · {e.deliveryMode}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -471,7 +472,7 @@ export function StudentEnrollmentsPanel({
                           <div className="flex items-center gap-1">
                             <Input
                               className="h-7 w-24 text-xs"
-                              placeholder="Roll no."
+                              placeholder={L('Roll no.', 'رقم الجلوس')}
                               value={reEnrollRoll}
                               onChange={(ev) => setReEnrollRoll(ev.target.value)}
                             />
@@ -479,7 +480,7 @@ export function StudentEnrollmentsPanel({
                               value={classSectionId || e.classSection.id}
                               onValueChange={setClassSectionId}
                             >
-                              <SelectTrigger className="h-7 w-40 text-xs"><SelectValue placeholder="Section" /></SelectTrigger>
+                              <SelectTrigger className="h-7 w-40 text-xs"><SelectValue placeholder={L('Section', 'الفصل')} /></SelectTrigger>
                               <SelectContent>
                                 {sections.length > 0
                                   ? sections.map((s) => (
@@ -488,7 +489,7 @@ export function StudentEnrollmentsPanel({
                                     </SelectItem>
                                   ))
                                   : <SelectItem value={e.classSection.id}>
-                                    {e.classSection.className}-{e.classSection.sectionName} (same)
+                                    {e.classSection.className}-{e.classSection.sectionName} {L('(same)', '(نفسه)')}
                                   </SelectItem>
                                 }
                               </SelectContent>
@@ -516,7 +517,7 @@ export function StudentEnrollmentsPanel({
                             onClick={() => { setReEnrollingId(e.id); setReEnrollRoll(e.rollNumber); setClassSectionId(e.classSection.id) }}
                           >
                             <RotateCcw className="w-3 h-3" />
-                            Re-enroll
+                            {L('Re-enroll', 'سجّل تاني')}
                           </Button>
                         )
                       )}

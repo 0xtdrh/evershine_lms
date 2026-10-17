@@ -5,6 +5,7 @@ import { ChevronRight, ListChecks, MessageSquareText, ShieldAlert } from 'lucide
 import { Button } from '@/components/ui/button'
 import { notify } from '@/lib/notify'
 import { useRouter } from 'next/navigation'
+import { L } from '@/lib/i18n/client'
 
 interface FeedbackData {
   openCycle: { id: string; label: string } | null
@@ -111,7 +112,7 @@ export function CompulsoryFeedbackBlocker() {
 
   const handleNext = async () => {
     if (!isCurrentStepComplete) {
-      notify.error('Please answer all questions before proceeding.')
+      notify.error(L('Please answer all questions before proceeding.', 'جاوب على كل الأسئلة الأول.'))
       return
     }
 
@@ -140,7 +141,7 @@ export function CompulsoryFeedbackBlocker() {
         })
         const result = await res.json()
         if (res.ok && result.success) {
-          notify.success('Feedback submitted successfully. Thank you!')
+          notify.success(L('Feedback submitted successfully. Thank you!', 'التقييم اتبعت. شكراً!'))
           setIsOpen(false)
           router.refresh()
         } else {
@@ -179,7 +180,7 @@ export function CompulsoryFeedbackBlocker() {
             <div>
               <h2 className="text-xl sm:text-2xl font-black">{data.openCycle.label}</h2>
               <p className="text-blue-100 text-sm font-medium mt-1">
-                Compulsory Monthly Feedback — Reviewed by Administration Only
+                {L('Compulsory Monthly Feedback — Reviewed by Administration Only', 'التقييم الشهري الإجباري — الإدارة بس اللي بتشوفه')}
               </p>
             </div>
           </div>
@@ -198,7 +199,7 @@ export function CompulsoryFeedbackBlocker() {
           <div className="flex-1 overflow-y-auto p-6 sm:p-8">
             <div className="mb-6">
               <p className="text-xs font-black uppercase text-indigo-600 tracking-wider mb-1">
-                Step {currentStepIndex + 1} of {steps.length}
+                {L('Step', 'خطوة')} {currentStepIndex + 1} {L('of', 'من')} {steps.length}
               </p>
               <h3 className="text-2xl font-black text-gray-900">{currentStep.title}</h3>
               <p className="text-gray-500 text-sm font-medium mt-1">{currentStep.subtitle}</p>
@@ -236,7 +237,7 @@ export function CompulsoryFeedbackBlocker() {
               {/* Per-section suggestions textarea */}
               <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-5">
                 <label className="text-[13px] font-black text-indigo-700 uppercase tracking-wider block mb-2">
-                  💬 Suggestions for Improvement (Optional)
+                  {L('💬 Suggestions for Improvement (Optional)', '💬 اقتراحات للتحسين (اختياري)')}
                 </label>
                 <textarea
                   rows={3}
@@ -259,7 +260,7 @@ export function CompulsoryFeedbackBlocker() {
         <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex-shrink-0 flex items-center justify-between">
           <p className="text-xs text-gray-400 font-bold hidden sm:flex items-center gap-1">
             <ShieldAlert className="w-3.5 h-3.5 inline mr-1" />
-            Admin-only access — your identity is protected
+            {L('Admin-only access — your identity is protected', 'للإدارة بس — هويتك محمية')}
           </p>
           <Button
             onClick={handleNext}

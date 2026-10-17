@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Star } from 'lucide-react'
 import { ParentReferralCard } from './ParentReferralCard'
+import { L } from '@/lib/i18n/client'
 
 interface PendingSession { classSectionId: string; group: string; date: string }
 interface PendingSurvey { classSectionId: string; group: string; course: string | null; level: string | null; kind: 'MONTHLY' | 'LEVEL' }
@@ -41,7 +42,7 @@ function SurveyForm({ child, s, onDone }: { child: Child; s: PendingSurvey; onDo
   const send = useMutation({
     mutationFn: () => fetchApi('/api/ratings/parent', { method: 'POST', body: JSON.stringify({ type: 'survey', studentId: child.studentId, classSectionId: s.classSectionId, ...r, recommend, comment: comment || null }) }),
     onSuccess: () => {
-      notify.success('Thank you for your rating!')
+      notify.success(L('Thank you for your rating!', 'شكراً على تقييمك!'))
       // Phase D: a parent who would recommend us (9–10) sees their referral code right away.
       if (recommend != null && recommend >= 9) setPromoter(true)
       else onDone()
@@ -51,9 +52,9 @@ function SurveyForm({ child, s, onDone }: { child: Child; s: PendingSurvey; onDo
   if (promoter) {
     return (
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-emerald-700">Thank you! 💚 Would you share TechNova with a friend?</p>
+        <p className="text-sm font-semibold text-emerald-700">{L('Thank you! 💚 Would you share TechNova with a friend?', 'شكراً! 💚 تحب ترشّح TechNova لصاحبك؟')}</p>
         <ParentReferralCard compact />
-        <Button size="sm" variant="outline" onClick={onDone}>Done</Button>
+        <Button size="sm" variant="outline" onClick={onDone}>{L('Done', 'تم')}</Button>
       </div>
     )
   }
@@ -79,8 +80,8 @@ function SurveyForm({ child, s, onDone }: { child: Child; s: PendingSurvey; onDo
           </div>
         </div>
       )}
-      <textarea className="min-h-[56px] w-full rounded-md border border-slate-200 bg-white p-2 text-sm" maxLength={1000} placeholder="Anything you'd like to tell us? (optional)" value={comment} onChange={(e) => setComment(e.target.value)} />
-      <div className="flex justify-end"><Button size="sm" disabled={!r.sessionsRating || !r.teacherRating || !r.companyRating || send.isPending} onClick={() => send.mutate()}>Send</Button></div>
+      <textarea className="min-h-[56px] w-full rounded-md border border-slate-200 bg-white p-2 text-sm" maxLength={1000} placeholder={L('Anything you\'d like to tell us? (optional)', 'حابب تقولنا حاجة؟ (اختياري)')} value={comment} onChange={(e) => setComment(e.target.value)} />
+      <div className="flex justify-end"><Button size="sm" disabled={!r.sessionsRating || !r.teacherRating || !r.companyRating || send.isPending} onClick={() => send.mutate()}>{L('Send', 'ابعت')}</Button></div>
     </div>
   )
 }
@@ -92,7 +93,7 @@ export function ParentRatingsCard() {
   const refresh = () => qc.invalidateQueries({ queryKey: ['parent-ratings'] })
   const face = useMutation({
     mutationFn: (p: { studentId: string; classSectionId: string; sessionDate: string; rating: number }) => fetchApi('/api/ratings/parent', { method: 'POST', body: JSON.stringify({ type: 'session', ...p }) }),
-    onSuccess: () => { notify.success('Thank you!'); refresh() },
+    onSuccess: () => { notify.success(L('Thank you!', 'شكراً!')); refresh() },
     onError: (e: Error) => notify.error(e.message),
   })
   const children = (data?.children ?? []).filter((c) => c.sessions.length || c.surveys.length)
@@ -100,15 +101,15 @@ export function ParentRatingsCard() {
   return (
     <Card className="border-amber-200">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base"><Star className="h-5 w-5 fill-amber-400 text-amber-400" /> Your opinion</CardTitle>
-        <CardDescription>A few taps help us improve. Only the management sees names.</CardDescription>
+        <CardTitle className="flex items-center gap-2 text-base"><Star className="h-5 w-5 fill-amber-400 text-amber-400" /> {L('Your opinion', 'رأيك')}</CardTitle>
+        <CardDescription>{L('A few taps help us improve. Only the management sees names.', 'كام ضغطة بتساعدنا نتحسن. الإدارة بس اللي بتشوف الأسامي.')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {children.map((c) => (
           <div key={c.studentId} className="space-y-3">
             {c.sessions.map((s) => (
               <div key={`${s.classSectionId}|${s.date}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
-                <span>How was {c.name.split(' ')[0]}&apos;s session on {fmt(s.date)} ({s.group})?</span>
+                <span>{L('How was', 'إيه رأيك في')} {c.name.split(' ')[0]}&apos;s session on {fmt(s.date)} ({s.group})?</span>
                 <div className="flex gap-1">
                   {FACES.map((x) => (
                     <button key={x.v} type="button" title={x.l} className="rounded-lg px-1.5 text-2xl hover:bg-slate-100" disabled={face.isPending}

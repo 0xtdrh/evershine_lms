@@ -7,6 +7,7 @@ import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Loader2 } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 export interface AffectedInvoice {
   id: string
@@ -55,9 +56,9 @@ export function ApplyToInvoicesDialog({
     <Dialog open={!!assignmentId && invoices.length > 0} onOpenChange={(o) => !o && onDone()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Apply to the current invoice too?</DialogTitle>
+          <DialogTitle>{L('Apply to the current invoice too?', 'تطبّقه على الفاتورة الحالية كمان؟')}</DialogTitle>
           <DialogDescription>
-            The discount will be applied to every new invoice. These invoices are not fully paid yet — choose if they should get it too.
+            {L('The discount will be applied to every new invoice. These invoices are not fully paid yet — choose if they should get it too.', 'الخصم هيتطبّق على كل فاتورة جديدة. الفواتير دي لسه مش مدفوعة كلها — اختار لو عايزها تاخده.')}
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-72 space-y-2 overflow-y-auto">
@@ -73,17 +74,17 @@ export function ApplyToInvoicesDialog({
                 <span className="font-medium">{i.month}</span>
                 {i.student && <span className="text-muted-foreground"> · {i.student.firstName} {i.student.lastName}</span>}
                 <span className="block text-xs text-muted-foreground">
-                  {i.challanNumber} · total {Number(i.totalAmount).toLocaleString()} EGP · paid {Number(i.paidAmount).toLocaleString()}
+                  {i.challanNumber} {L('· total', '· الإجمالي')} {Number(i.totalAmount).toLocaleString()} {L('EGP · paid', 'ج.م · مدفوع')} {Number(i.paidAmount).toLocaleString()}
                 </span>
               </span>
             </label>
           ))}
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="outline" onClick={onDone}>No, only future invoices</Button>
+          <Button variant="outline" onClick={onDone}>{L('No, only future invoices', 'لأ، الفواتير الجاية بس')}</Button>
           <Button onClick={() => apply.mutate()} disabled={selected.length === 0 || apply.isPending}>
             {apply.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Yes, apply to {selected.length} invoice(s)
+            {L('Yes, apply to', 'أيوه، طبّقه على')} {selected.length} {L('invoice(s)', 'فاتورة')}
           </Button>
         </div>
       </DialogContent>

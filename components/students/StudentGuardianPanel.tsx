@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Users, Plus, Loader2, Unlink, Pencil, Check, X } from 'lucide-react'
 import { notify } from '@/lib/notify'
+import { L } from '@/lib/i18n/client'
 
 interface Guardian {
   id: string
@@ -42,7 +43,7 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
     mutationFn: ({ id, phone }: { id: string; phone: string }) =>
       fetchApi(`/api/guardians/${id}/phone`, { method: 'PATCH', body: JSON.stringify({ phoneNumber: phone }) }),
     onSuccess: () => {
-      notify.success('Phone updated', { description: 'The parent now signs in with the new number.' })
+      notify.success(L('Phone updated', 'التليفون اتحدّث'), { description: 'The parent now signs in with the new number.' })
       qc.invalidateQueries({ queryKey: ['student', studentId] })
       setEditing(null)
     },
@@ -53,7 +54,7 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
     mutationFn: (guardianId: string) =>
       fetchApi(`/api/students/${studentId}/guardians/${guardianId}`, { method: 'DELETE' }),
     onSuccess: () => {
-      notify.success('Guardian unlinked')
+      notify.success(L('Guardian unlinked', 'ولي الأمر اتشال'))
       qc.invalidateQueries({ queryKey: ['student', studentId] })
     },
     onError: (err: Error) => notify.error(err.message || 'Failed to unlink'),
@@ -66,7 +67,7 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
         body: JSON.stringify(form),
       }),
     onSuccess: () => {
-      notify.success('Guardian linked')
+      notify.success(L('Guardian linked', 'ولي الأمر اتربط'))
       qc.invalidateQueries({ queryKey: ['student', studentId] })
       setShowForm(false)
       setForm({ firstName: '', lastName: '', phoneNumber: '', email: '', relationship: 'Father' })
@@ -81,23 +82,23 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
               <Users className="w-4 h-4 text-emerald-600" />
-              Guardians / Parents
+              {L('Guardians / Parents', 'أولياء الأمور')}
             </CardTitle>
             <CardDescription className="text-xs">
-              Portal login for fee proofs and child academic view.
+              {L('Portal login for fee proofs and child academic view.', 'دخول البوابة للدفع ومتابعة الابن.')}
             </CardDescription>
           </div>
           {canManage && (
             <Button variant="outline" size="sm" className="gap-1 text-xs h-8" onClick={() => setShowForm((v) => !v)}>
               <Plus className="w-3.5 h-3.5" />
-              Link guardian
+              {L('Link guardian', 'اربط ولي أمر')}
             </Button>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {guardians.length === 0 && !showForm && (
-          <p className="text-xs text-gray-500">No guardians linked yet.</p>
+          <p className="text-xs text-gray-500">{L('No guardians linked yet.', 'لسه مفيش ولي أمر مربوط.')}</p>
         )}
         {guardians.map((g) => (
           <div key={g.id} className="p-3 rounded-lg border bg-gray-50/80 flex justify-between gap-2">
@@ -125,14 +126,14 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
                 <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
                   {g.relationship} · {g.phoneNumber}
                   {canManage && (
-                    <button type="button" title="Change phone (also the portal login number)"
+                    <button type="button" title={L('Change phone (also the portal login number)', 'غيّر التليفون (وده كمان رقم دخول البوابة)')}
                       className="text-gray-400 hover:text-gray-700" onClick={() => setEditing({ id: g.id, phone: g.phoneNumber })}>
                       <Pencil className="h-3 w-3" />
                     </button>
                   )}
                 </p>
               )}
-              <p className="text-[11px] text-gray-400">Portal login: this phone number</p>
+              <p className="text-[11px] text-gray-400">{L('Portal login: this phone number', 'الدخول للبوابة: رقم التليفون ده')}</p>
               {g.email && <p className="text-xs text-gray-400">{g.email}</p>}
             </div>
             {canManage && (
@@ -156,25 +157,25 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
           <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/40 space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">First name</Label>
+                <Label className="text-xs">{L('First name', 'الاسم الأول')}</Label>
                 <Input className="h-9 text-sm bg-white" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Last name</Label>
+                <Label className="text-xs">{L('Last name', 'اسم العيلة')}</Label>
                 <Input className="h-9 text-sm bg-white" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Phone</Label>
+              <Label className="text-xs">{L('Phone', 'التليفون')}</Label>
               <Input className="h-9 text-sm bg-white" value={form.phoneNumber} onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Email (optional)</Label>
+                <Label className="text-xs">{L('Email (optional)', 'الإيميل (اختياري)')}</Label>
                 <Input type="email" className="h-9 text-sm bg-white" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Relationship</Label>
+                <Label className="text-xs">{L('Relationship', 'صلة القرابة')}</Label>
                 <Input className="h-9 text-sm bg-white" value={form.relationship} onChange={(e) => setForm({ ...form, relationship: e.target.value })} />
               </div>
             </div>

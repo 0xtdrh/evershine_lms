@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { ArrowRightLeft } from 'lucide-react'
 import { TransferStudentDialog } from '@/components/groups/TransferStudentDialog'
+import { L } from '@/lib/i18n/client'
 
 interface TransferRow {
   id: string
@@ -51,18 +52,18 @@ export function StudentTransferCard({ studentId, studentName, groups }: { studen
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm"><ArrowRightLeft className="h-4 w-4" /> Groups &amp; moves</CardTitle>
-        <CardDescription>Move the student to another group: the money and discounts move with them.</CardDescription>
+        <CardDescription>{L('Move the student to another group: the money and discounts move with them.', 'انقل الطالب لجروب تاني: الفلوس والخصومات بتتنقل معاه.')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {groups.length === 0 ? (
-          <p className="text-slate-500">Not in any group right now.</p>
+          <p className="text-slate-500">{L('Not in any group right now.', 'مش في أي جروب دلوقتي.')}</p>
         ) : (
           groups.map((g) => (
             <div key={g.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
               <span className="text-slate-800">{g.name}</span>
               {canMove && (
                 <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => setFromId(g.id)}>
-                  <ArrowRightLeft className="h-3.5 w-3.5" /> Move
+                  <ArrowRightLeft className="h-3.5 w-3.5" /> {L('Move', 'نقل')}
                 </Button>
               )}
             </div>
@@ -70,12 +71,12 @@ export function StudentTransferCard({ studentId, studentName, groups }: { studen
         )}
         {(history?.length ?? 0) > 0 && (
           <div className="space-y-1.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Moves</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{L('Moves', 'مرات النقل')}</p>
             {history!.map((t) => (
               <div key={t.id} className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
                 <p className="font-medium text-slate-800">{name(t.from)} → {name(t.to)}</p>
                 <p>
-                  {new Date(t.createdAt).toLocaleDateString('en-GB')} · {t.sessionsCounted} session(s) kept ({money(t.consumedAmount)})
+                  {new Date(t.createdAt).toLocaleDateString('en-GB')} · {t.sessionsCounted} {L('session(s) kept (', 'حصة اتحسبت (')}{money(t.consumedAmount)})
                   {t.creditAmount > 0 && ` · credit ${money(t.creditAmount)} → ${t.creditTo === 'NEW_INVOICE' ? `new invoice (${money(t.creditApplied)})` : 'wallet'}`}
                   {t.cancelledAmount > 0 && ` · ${money(t.cancelledAmount)} cancelled`}
                   {t.by && ` · by ${t.by}`}

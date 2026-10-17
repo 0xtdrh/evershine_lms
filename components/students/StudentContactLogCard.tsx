@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PhoneCall, Plus, Check } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 interface ContactRow {
   id: string
@@ -67,12 +68,12 @@ export function StudentContactLogCard({ studentId }: { studentId: string }) {
           followUpAt: form.followUpAt ? new Date(form.followUpAt).toISOString() : null,
         }),
       }),
-    onSuccess: () => { notify.success('Contact logged'); setOpen(false); setForm({ ...form, summary: '', followUpAt: '' }); refresh() },
+    onSuccess: () => { notify.success(L('Contact logged', 'التواصل اتسجل')); setOpen(false); setForm({ ...form, summary: '', followUpAt: '' }); refresh() },
     onError: (e: Error) => notify.error(e.message || 'Could not save'),
   })
   const done = useMutation({
     mutationFn: (id: string) => fetchApi(`/api/contact-logs/${id}`, { method: 'PATCH', body: JSON.stringify({ followUpDone: true }) }),
-    onSuccess: () => { notify.success('Follow-up done'); refresh() },
+    onSuccess: () => { notify.success(L('Follow-up done', 'المتابعة تمت')); refresh() },
   })
   if (!canRead) return null
 
@@ -80,13 +81,13 @@ export function StudentContactLogCard({ studentId }: { studentId: string }) {
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-sm"><PhoneCall className="h-4 w-4" /> Contact with parents</CardTitle>
-          {canCreate && <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setOpen(true)}><Plus className="h-3.5 w-3.5" /> Log contact</Button>}
+          <CardTitle className="flex items-center gap-2 text-sm"><PhoneCall className="h-4 w-4" /> {L('Contact with parents', 'التواصل مع أولياء الأمور')}</CardTitle>
+          {canCreate && <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setOpen(true)}><Plus className="h-3.5 w-3.5" /> {L('Log contact', 'سجّل تواصل')}</Button>}
         </div>
-        <CardDescription>Calls, WhatsApp, meetings and visits, plus messages the system sent.</CardDescription>
+        <CardDescription>{L('Calls, WhatsApp, meetings and visits, plus messages the system sent.', 'المكالمات والواتساب والمقابلات والزيارات، والرسايل اللي السيستم بعتها.')}</CardDescription>
       </CardHeader>
       <CardContent className="max-h-80 space-y-2 overflow-y-auto text-sm">
-        {(data?.logs ?? []).length === 0 && <p className="text-slate-500">Nothing logged yet.</p>}
+        {(data?.logs ?? []).length === 0 && <p className="text-slate-500">{L('Nothing logged yet.', 'لسه مفيش حاجة متسجلة.')}</p>}
         {(data?.logs ?? []).map((r) => (
           <div key={r.id} className={`rounded-lg border px-3 py-2 ${r.auto ? 'border-slate-100 bg-slate-50' : 'border-slate-200'}`}>
             <div className="flex flex-wrap items-center justify-between gap-1 text-xs text-slate-500">
@@ -96,9 +97,9 @@ export function StudentContactLogCard({ studentId }: { studentId: string }) {
             <p className="mt-0.5 whitespace-pre-wrap text-slate-800">{r.summary}</p>
             {r.followUpAt && (
               <p className={`mt-1 flex items-center gap-2 text-xs ${r.followUpDoneAt ? 'text-emerald-700' : new Date(r.followUpAt) < new Date() ? 'font-semibold text-rose-600' : 'text-amber-700'}`}>
-                Follow-up {new Date(r.followUpAt).toLocaleDateString('en-GB')}{r.followUpDoneAt ? ' · done' : ''}
+                {L('Follow-up', 'متابعة')} {new Date(r.followUpAt).toLocaleDateString('en-GB')}{r.followUpDoneAt ? ' · done' : ''}
                 {!r.followUpDoneAt && canUpdate && (
-                  <button type="button" className="inline-flex items-center gap-0.5 underline" onClick={() => done.mutate(r.id)}><Check className="h-3 w-3" /> Mark done</button>
+                  <button type="button" className="inline-flex items-center gap-0.5 underline" onClick={() => done.mutate(r.id)}><Check className="h-3 w-3" /> {L('Mark done', 'تم')}</button>
                 )}
               </p>
             )}
@@ -109,34 +110,34 @@ export function StudentContactLogCard({ studentId }: { studentId: string }) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Log contact with a parent</DialogTitle>
-            <DialogDescription>Write what was said, and set a follow-up date if you need to call again.</DialogDescription>
+            <DialogTitle>{L('Log contact with a parent', 'سجّل تواصل مع ولي أمر')}</DialogTitle>
+            <DialogDescription>{L('Write what was said, and set a follow-up date if you need to call again.', 'اكتب اللي اتقال، وحدد ميعاد متابعة لو هتكلمه تاني.')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label>Type</Label>
+                <Label>{L('Type', 'النوع')}</Label>
                 <Select value={form.channel} onValueChange={(v) => setForm({ ...form, channel: v })}>
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>{['CALL', 'WHATSAPP', 'MEETING', 'VISIT'].map((c) => <SelectItem key={c} value={c}>{CHANNEL_LABEL[c]}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Who started it</Label>
+                <Label>{L('Who started it', 'مين بدأ')}</Label>
                 <Select value={form.direction} onValueChange={(v) => setForm({ ...form, direction: v })}>
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="OUT">We contacted them</SelectItem><SelectItem value="IN">They contacted us</SelectItem></SelectContent>
+                  <SelectContent><SelectItem value="OUT">{L('We contacted them', 'احنا كلمناهم')}</SelectItem><SelectItem value="IN">{L('They contacted us', 'هما كلمونا')}</SelectItem></SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Reason</Label>
+                <Label>{L('Reason', 'السبب')}</Label>
                 <Select value={form.reason} onValueChange={(v) => setForm({ ...form, reason: v })}>
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>{Object.keys(REASON_LABEL).map((r) => <SelectItem key={r} value={r}>{REASON_LABEL[r]}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Parent</Label>
+                <Label>{L('Parent', 'ولي الأمر')}</Label>
                 <Select value={form.guardianId || 'none'} onValueChange={(v) => setForm({ ...form, guardianId: v === 'none' ? '' : v })}>
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -147,16 +148,16 @@ export function StudentContactLogCard({ studentId }: { studentId: string }) {
               </div>
             </div>
             <div className="space-y-1">
-              <Label>What was said</Label>
+              <Label>{L('What was said', 'اللي اتقال')}</Label>
               <Textarea rows={3} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
             </div>
             <div className="space-y-1">
-              <Label>Follow-up date (optional)</Label>
+              <Label>{L('Follow-up date (optional)', 'ميعاد المتابعة (اختياري)')}</Label>
               <Input type="date" value={form.followUpAt} onChange={(e) => setForm({ ...form, followUpAt: e.target.value })} />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button disabled={form.summary.trim().length < 2 || add.isPending} onClick={() => add.mutate()}>Save</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>{L('Cancel', 'إلغاء')}</Button>
+              <Button disabled={form.summary.trim().length < 2 || add.isPending} onClick={() => add.mutate()}>{L('Save', 'حفظ')}</Button>
             </div>
           </div>
         </DialogContent>

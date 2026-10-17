@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { GraduationCap, CreditCard, FileText, Pencil, MapPin, ShieldCheck, Sparkles, Phone } from 'lucide-react'
 import type { SessionShift } from '@/lib/validation/shift'
 import type { StudentEnrollmentRow } from './StudentEnrollmentsPanel'
+import { L } from '@/lib/i18n/client'
 
 interface StudentDetail {
   id: string
@@ -91,8 +92,8 @@ export function StudentQuickViewDialog({
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 p-0 shadow-2xl">
         <div className="rounded-t-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-sky-500 p-5 text-white">
           <DialogHeader className="space-y-1 text-white">
-            <DialogTitle className="text-xl font-semibold">Student Profile</DialogTitle>
-            <DialogDescription className="text-indigo-100">Quick overview — polished for fast admin review and clear next actions.</DialogDescription>
+            <DialogTitle className="text-xl font-semibold">{L('Student Profile', 'ملف الطالب')}</DialogTitle>
+            <DialogDescription className="text-indigo-100">{L('Quick overview — polished for fast admin review and clear next actions.', 'نظرة سريعة على الطالب.')}</DialogDescription>
           </DialogHeader>
         </div>
 
@@ -115,7 +116,7 @@ export function StudentQuickViewDialog({
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-xl font-semibold text-slate-900">{student.firstName} {student.lastName}</p>
-                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Profile</span>
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{L('Profile', 'الملف')}</span>
                   </div>
                   <p className="text-sm text-slate-500">{student.fatherName}</p>
                   <p className="font-mono text-xs text-slate-400">{student.registrationNumber}</p>
@@ -132,24 +133,24 @@ export function StudentQuickViewDialog({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <InfoCard icon={<MapPin className="h-4 w-4" />} label="Branch" value={student.campus.name} accent="from-indigo-50 to-blue-50" />
-              <InfoCard icon={<GraduationCap className="h-4 w-4" />} label="Class" value={student.class?.name ?? 'Not assigned yet'} accent="from-emerald-50 to-green-50" />
-              <InfoCard icon={<Phone className="h-4 w-4" />} label="Contact" value={student.phoneNumber} accent="from-amber-50 to-orange-50" />
-              <InfoCard icon={<ShieldCheck className="h-4 w-4" />} label="Enrollment" value={student.enrollmentStatus.replace('_', ' ')} accent="from-violet-50 to-fuchsia-50" />
+              <InfoCard icon={<MapPin className="h-4 w-4" />} label={L('Branch', 'الفرع')} value={student.campus.name} accent="from-indigo-50 to-blue-50" />
+              <InfoCard icon={<GraduationCap className="h-4 w-4" />} label={L('Class', 'الجروب')} value={student.class?.name ?? 'Not assigned yet'} accent="from-emerald-50 to-green-50" />
+              <InfoCard icon={<Phone className="h-4 w-4" />} label={L('Contact', 'التواصل')} value={student.phoneNumber} accent="from-amber-50 to-orange-50" />
+              <InfoCard icon={<ShieldCheck className="h-4 w-4" />} label={L('Enrollment', 'الحالة')} value={student.enrollmentStatus.replace('_', ' ')} accent="from-violet-50 to-fuchsia-50" />
             </div>
 
             {activeEnrollments.length > 0 && (
               <div className="rounded-3xl border border-indigo-100 bg-indigo-50/70 p-4 shadow-sm">
                 <div className="mb-3 flex items-center gap-2 text-indigo-900">
                   <Sparkles className="h-4 w-4" />
-                  <p className="text-sm font-semibold">Active sections</p>
+                  <p className="text-sm font-semibold">{L('Active sections', 'الجروبات')}</p>
                 </div>
                 <div className="space-y-2">
                   {activeEnrollments.map((e) => {
                     return (
                       <div key={e.id} className="flex flex-col gap-1 rounded-2xl border border-white/70 bg-white/90 p-3 text-sm text-slate-700 sm:flex-row sm:items-center sm:justify-between">
                         <span className="font-medium">{e.classSection.className}-{e.classSection.sectionName}</span>
-                        <span className="text-xs text-slate-500">Roll {e.rollNumber}</span>
+                        <span className="text-xs text-slate-500">{L('Roll', 'الجلوس')} {e.rollNumber}</span>
                       </div>
                     )
                   })}
@@ -159,30 +160,30 @@ export function StudentQuickViewDialog({
 
             {Number(student.dueAmount) > 0 && (
               <div className="rounded-2xl border border-red-100 bg-red-50/80 p-3 text-sm text-red-700">
-                <p className="flex items-center gap-2 font-semibold"><CreditCard className="h-4 w-4" /> Outstanding balance: EGP {Number(student.dueAmount).toLocaleString()}</p>
+                <p className="flex items-center gap-2 font-semibold"><CreditCard className="h-4 w-4" /> {L('Outstanding balance: EGP', 'المتبقي: ج.م')} {Number(student.dueAmount).toLocaleString()}</p>
               </div>
             )}
 
             <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
               <Link href={`/dashboard/students/${student.id}`}>
-                <Button size="sm" variant="default" className="gap-1.5">Full profile</Button>
+                <Button size="sm" variant="default" className="gap-1.5">{L('Full profile', 'الملف كامل')}</Button>
               </Link>
               {canEdit && (
                 <Link href={`/dashboard/students/${student.id}/edit`}>
                   <Button size="sm" variant="outline" className="gap-1.5">
-                    <Pencil className="h-3.5 w-3.5" /> Edit
+                    <Pencil className="h-3.5 w-3.5" /> {L('Edit', 'تعديل')}
                   </Button>
                 </Link>
               )}
               {(isAdmin || isStudentUser) && (
                 <Link href={`/dashboard/documents?studentId=${student.id}&doc=id_card`}>
                   <Button size="sm" variant="outline" className="gap-1.5">
-                    <FileText className="h-3.5 w-3.5" /> ID Card
+                    <FileText className="h-3.5 w-3.5" /> {L('ID Card', 'الكارنيه')}
                   </Button>
                 </Link>
               )}
               <Link href={`/dashboard/fees?studentId=${student.id}`}>
-                <Button size="sm" variant="ghost" className="gap-1.5 text-slate-600">Fees</Button>
+                <Button size="sm" variant="ghost" className="gap-1.5 text-slate-600">{L('Fees', 'الفواتير')}</Button>
               </Link>
             </div>
           </div>

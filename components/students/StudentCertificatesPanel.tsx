@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { notify } from '@/lib/notify'
 import { Award, ShieldCheck, ShieldX, EyeOff, Eye, Loader2 } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 interface CertificateRow {
   id: string
@@ -32,7 +33,7 @@ export function StudentCertificatesPanel({ studentId }: { studentId: string }) {
       queryClient.invalidateQueries({ queryKey: ['student-certificates', studentId] })
       notify.success(vars.isRevealed ? 'Certificate revealed' : 'Certificate hidden again')
     },
-    onError: () => notify.error('Failed to update certificate visibility'),
+    onError: () => notify.error(L('Failed to update certificate visibility', 'تحديث الشهادة فشل')),
   })
 
   return (
@@ -40,17 +41,17 @@ export function StudentCertificatesPanel({ studentId }: { studentId: string }) {
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
           <Award className="w-4 h-4 text-amber-600" />
-          Certificates
+          {L('Certificates', 'الشهادات')}
         </CardTitle>
         <CardDescription className="text-xs">
-          Every certificate issued to this student, including ones still awaiting the reveal ceremony.
+          {L('Every certificate issued to this student, including ones still awaiting the reveal ceremony.', 'كل شهادات الطالب، ومنها اللي لسه مستنية الحفلة.')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         {isLoading ? (
           <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-gray-400" /></div>
         ) : !certificates || certificates.length === 0 ? (
-          <p className="text-xs text-gray-500">No certificates issued yet.</p>
+          <p className="text-xs text-gray-500">{L('No certificates issued yet.', 'لسه مفيش شهادات.')}</p>
         ) : (
           certificates.map((c) => (
             <div key={c.id} className="p-3 rounded-lg border bg-gray-50/80 flex items-center justify-between gap-2">
@@ -60,11 +61,11 @@ export function StudentCertificatesPanel({ studentId }: { studentId: string }) {
               </div>
               <div className="flex items-center gap-1.5">
                 {c.status === 'REVOKED' ? (
-                  <Badge variant="outline" className="text-red-600 border-red-200 gap-1 text-[10px]"><ShieldX className="w-3 h-3" /> Revoked</Badge>
+                  <Badge variant="outline" className="text-red-600 border-red-200 gap-1 text-[10px]"><ShieldX className="w-3 h-3" /> {L('Revoked', 'اتلغت')}</Badge>
                 ) : !c.isRevealed ? (
-                  <Badge variant="outline" className="text-amber-600 border-amber-200 gap-1 text-[10px]"><EyeOff className="w-3 h-3" /> Hidden</Badge>
+                  <Badge variant="outline" className="text-amber-600 border-amber-200 gap-1 text-[10px]"><EyeOff className="w-3 h-3" /> {L('Hidden', 'مخفية')}</Badge>
                 ) : (
-                  <Badge className="bg-emerald-100 text-emerald-800 border-0 gap-1 text-[10px]"><ShieldCheck className="w-3 h-3" /> Revealed</Badge>
+                  <Badge className="bg-emerald-100 text-emerald-800 border-0 gap-1 text-[10px]"><ShieldCheck className="w-3 h-3" /> {L('Revealed', 'ظاهرة')}</Badge>
                 )}
                 {c.status === 'VALID' && (
                   <Button
@@ -74,7 +75,7 @@ export function StudentCertificatesPanel({ studentId }: { studentId: string }) {
                     disabled={toggleReveal.isPending}
                     onClick={() => toggleReveal.mutate({ id: c.id, isRevealed: !c.isRevealed })}
                   >
-                    {c.isRevealed ? <><EyeOff className="w-3 h-3" /> Hide</> : <><Eye className="w-3 h-3" /> Reveal</>}
+                    {c.isRevealed ? <><EyeOff className="w-3 h-3" /> {L('Hide', 'اخفي')}</> : <><Eye className="w-3 h-3" /> {L('Reveal', 'أظهر')}</>}
                   </Button>
                 )}
               </div>

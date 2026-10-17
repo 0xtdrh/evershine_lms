@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Clock, Loader2, Send } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 interface Session { classSectionId: string; group: string; date: string; time: string; sessionNumber: number | null; totalSessions: number; past: boolean }
 interface Excuse { id: string; group: string; sessionDate: string; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'; decisionNote: string | null }
@@ -47,21 +48,21 @@ export function ChildExcusesCard({ studentId, childName }: { studentId: string; 
   })
   const withdraw = useMutation({
     mutationFn: (id: string) => fetchApi(`/api/guardian-portal/excuses/${id}`, { method: 'DELETE' }),
-    onSuccess: () => { notify.success('Excuse withdrawn'); refresh() },
+    onSuccess: () => { notify.success(L('Excuse withdrawn', 'العذر اتسحب')); refresh() },
     onError: (e: Error) => notify.error(e.message),
   })
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base"><Clock className="h-5 w-5 text-rose-600" /> Absence excuse</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-base"><Clock className="h-5 w-5 text-rose-600" /> {L('Absence excuse', 'عذر غياب')}</CardTitle>
         <CardDescription>{childName.split(' ')[0]} can&apos;t come to a session? Choose the session and write the reason. The instructor sees it in the attendance sheet.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : (
           <div className="space-y-3 rounded-lg border border-slate-200 p-3">
             <div className="space-y-1">
-              <Label>Session</Label>
+              <Label>{L('Session', 'الحصة')}</Label>
               <Select value={key} onValueChange={setKey}>
                 <SelectTrigger><SelectValue placeholder={data?.sessions.length ? 'Choose the session' : 'No session can be excused now'} /></SelectTrigger>
                 <SelectContent>
@@ -74,19 +75,19 @@ export function ChildExcusesCard({ studentId, childName }: { studentId: string; 
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Reason</Label>
-              <textarea className="min-h-[70px] w-full rounded-md border border-slate-200 bg-white p-2 text-sm" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. he has a cold" />
+              <Label>{L('Reason', 'السبب')}</Label>
+              <textarea className="min-h-[70px] w-full rounded-md border border-slate-200 bg-white p-2 text-sm" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={L('e.g. he has a cold', 'مثلاً: عنده برد')} />
             </div>
             <div className="flex justify-end">
               <Button size="sm" className="gap-1.5" disabled={!key || reason.trim().length < 2 || send.isPending} onClick={() => send.mutate()}>
-                {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send excuse
+                {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {L('Send excuse', 'ابعت العذر')}
               </Button>
             </div>
           </div>
         )}
         {(data?.excuses ?? []).length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase text-slate-500">Sent</p>
+            <p className="text-xs font-semibold uppercase text-slate-500">{L('Sent', 'اتبعت')}</p>
             {data!.excuses.map((e) => (
               <div key={e.id} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-slate-100 p-2.5 text-sm">
                 <div>
@@ -97,7 +98,7 @@ export function ChildExcusesCard({ studentId, childName }: { studentId: string; 
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${BADGE[e.status]}`}>{LABEL[e.status]}</span>
                   {(e.status === 'PENDING' || (e.status === 'APPROVED' && e.sessionDate > new Date().toISOString().slice(0, 10))) && (
-                    <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={withdraw.isPending} onClick={() => withdraw.mutate(e.id)}>Withdraw</Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={withdraw.isPending} onClick={() => withdraw.mutate(e.id)}>{L('Withdraw', 'اسحب')}</Button>
                   )}
                 </div>
               </div>

@@ -7,6 +7,7 @@ import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Users, Hourglass, ArrowRight } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 export interface Seats { max: number | null; count: number; free: number | null; full: boolean; waiting: number }
 export interface WaitingRow { id: string; position: number; since: string; notes: string | null; student: { id: string; name: string; registrationNumber: string } }
@@ -38,7 +39,7 @@ export function GroupCapacityPanel({
 
   const save = useMutation({
     mutationFn: () => fetchApi(`/api/groups/${groupId}`, { method: 'PATCH', body: JSON.stringify({ maxStudents: max.trim() ? Number(max) : null }) }),
-    onSuccess: () => { notify.success('Saved'); refresh() },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); refresh() },
     onError: (e: Error) => notify.error(e.message || 'Could not save'),
   })
   const { data: others, isFetching } = useQuery({
@@ -49,7 +50,7 @@ export function GroupCapacityPanel({
   const place = useMutation({
     mutationFn: ({ studentId, toGroupId }: { studentId: string; toGroupId: string }) =>
       fetchApi(`/api/groups/${toGroupId}/students`, { method: 'POST', body: JSON.stringify({ studentId }) }),
-    onSuccess: () => { notify.success('Student added to the group'); setOpenFor(null); refresh() },
+    onSuccess: () => { notify.success(L('Student added to the group', 'الطالب اتضاف للجروب')); setOpenFor(null); refresh() },
     onError: (e: Error) => notify.error(e.message || 'Could not add the student'),
   })
 
@@ -58,44 +59,44 @@ export function GroupCapacityPanel({
       <div className="flex flex-wrap items-center gap-2">
         <Users className="h-4 w-4 text-indigo-600" />
         <span className="font-medium text-slate-700">
-          {seats.count}{seats.max != null ? `/${seats.max}` : ''} students
-          {seats.full && <span className="ml-1.5 rounded-full border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600">Full</span>}
-          {seats.waiting > 0 && <span className="ml-1.5 text-amber-700">· {seats.waiting} waiting</span>}
+          {seats.count}{seats.max != null ? `/${seats.max}` : ''} {L('students', 'طالب')}
+          {seats.full && <span className="ml-1.5 rounded-full border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600">{L('Full', 'مليان')}</span>}
+          {seats.waiting > 0 && <span className="ml-1.5 text-amber-700">· {seats.waiting} {L('waiting', 'مستني')}</span>}
         </span>
         {canEdit && (
           <span className="ml-auto flex items-center gap-1.5">
-            <span className="text-xs text-slate-500">Most students</span>
-            <Input className="h-7 w-20 text-xs" type="number" min={1} placeholder="no limit" value={max} onChange={(e) => setMax(e.target.value)} />
-            <Button size="sm" variant="outline" className="h-7 text-xs" disabled={save.isPending} onClick={() => save.mutate()}>Save</Button>
+            <span className="text-xs text-slate-500">{L('Most students', 'أقصى عدد')}</span>
+            <Input className="h-7 w-20 text-xs" type="number" min={1} placeholder={L('no limit', 'من غير حد')} value={max} onChange={(e) => setMax(e.target.value)} />
+            <Button size="sm" variant="outline" className="h-7 text-xs" disabled={save.isPending} onClick={() => save.mutate()}>{L('Save', 'حفظ')}</Button>
           </span>
         )}
       </div>
 
       {waiting.length > 0 && (
         <div className="space-y-1.5">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-700"><Hourglass className="h-3.5 w-3.5" /> Waiting for this group</p>
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-700"><Hourglass className="h-3.5 w-3.5" /> {L('Waiting for this group', 'مستنيين الجروب ده')}</p>
           {waiting.map((w) => (
             <div key={w.id} className="rounded-lg border border-amber-100 bg-amber-50/50 px-2.5 py-1.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-800">#{w.position} {w.student.name} <span className="text-xs text-slate-400">{w.student.registrationNumber} · since {new Date(w.since).toLocaleDateString('en-GB')}</span></span>
+                <span className="text-slate-800">#{w.position} {w.student.name} <span className="text-xs text-slate-400">{w.student.registrationNumber} {L('· since', '· من')} {new Date(w.since).toLocaleDateString('en-GB')}</span></span>
                 <span className="flex gap-1.5">
                   {!seats.full && (
-                    <Button size="sm" className="h-6 text-[11px]" disabled={place.isPending} onClick={() => place.mutate({ studentId: w.student.id, toGroupId: groupId })}>Add here</Button>
+                    <Button size="sm" className="h-6 text-[11px]" disabled={place.isPending} onClick={() => place.mutate({ studentId: w.student.id, toGroupId: groupId })}>{L('Add here', 'ضيف هنا')}</Button>
                   )}
                   {levelId && (
-                    <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => setOpenFor(openFor === w.id ? null : w.id)}>Other groups</Button>
+                    <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => setOpenFor(openFor === w.id ? null : w.id)}>{L('Other groups', 'جروبات تانية')}</Button>
                   )}
                 </span>
               </div>
               {openFor === w.id && (
                 <div className="mt-1.5 space-y-1">
-                  {isFetching && <p className="text-xs text-slate-400">Looking for groups with free seats…</p>}
-                  {!isFetching && (others ?? []).length === 0 && <p className="text-xs text-slate-500">No other group of this level has a free seat.</p>}
+                  {isFetching && <p className="text-xs text-slate-400">{L('Looking for groups with free seats…', 'بيدوّر على جروبات فيها أماكن…')}</p>}
+                  {!isFetching && (others ?? []).length === 0 && <p className="text-xs text-slate-500">{L('No other group of this level has a free seat.', 'مفيش جروب تاني في المستوى ده فيه مكان.')}</p>}
                   {(others ?? []).map((g) => (
                     <div key={g.id} className="flex items-center justify-between gap-2 rounded border border-slate-200 bg-white px-2 py-1 text-xs">
                       <span>{g.label} · {slots(g.scheduleSlots)}{g.teacher ? ` · ${g.teacher}` : ''} · {g.free == null ? 'no limit' : `${g.free} free`}{g.campus ? ` · ${g.campus.name}` : ''}</span>
                       <Button size="sm" variant="ghost" className="h-6 gap-1 text-[11px] text-indigo-600" disabled={place.isPending} onClick={() => place.mutate({ studentId: w.student.id, toGroupId: g.id })}>
-                        Put in this group <ArrowRight className="h-3 w-3" />
+                        {L('Put in this group', 'حطه في الجروب ده')} <ArrowRight className="h-3 w-3" />
                       </Button>
                     </div>
                   ))}

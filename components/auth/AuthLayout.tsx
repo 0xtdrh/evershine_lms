@@ -25,6 +25,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Shield, ArrowLeft } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
+import { L } from '@/lib/i18n/client'
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 
@@ -95,13 +96,13 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
             <AcademyLogo variant="compact" className="h-10 w-10" />
             <div>
               <p className="text-sm font-bold tracking-wide text-slate-800">TechNova</p>
-              <p className="text-xs text-slate-500">Management System</p>
+              <p className="text-xs text-slate-500">{L('Management System', 'نظام الإدارة')}</p>
             </div>
           </Link>
           <ThemeToggle className="ml-auto" />
           <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
             <Shield className="w-3.5 h-3.5" />
-            Secured Portal
+            {L('Secured Portal', 'بوابة آمنة')}
           </span>
         </div>
       </header>
@@ -133,7 +134,7 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
               {/* Academy name — matches homepage font treatment */}
               <div>
                 <p className="text-[10px] font-bold tracking-[0.3em] text-blue-700 uppercase mb-1">
-                  Official Portal
+                  {L('Official Portal', 'البوابة الرسمية')}
                 </p>
                 <h2 className="text-lg font-extrabold text-slate-900 tracking-wide uppercase leading-none" style={{ fontFamily: 'var(--font-manrope)' }}>
                   TechNova
@@ -215,11 +216,11 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
           {...fadeUp(1.0)}
           className="flex items-center justify-center gap-5 mt-5 text-[11px] text-slate-400"
         >
-          <Link href="/" className="hover:text-blue-700 transition-colors">Home</Link>
+          <Link href="/" className="hover:text-blue-700 transition-colors">{L('Home', 'الرئيسية')}</Link>
           <span aria-hidden>·</span>
-          <Link href="/forgot-password" className="hover:text-blue-700 transition-colors">Forgot password</Link>
+          <Link href="/forgot-password" className="hover:text-blue-700 transition-colors">{L('Forgot password', 'نسيت الباسورد')}</Link>
           <span aria-hidden>·</span>
-          <span>El Kawthar, Hurghada</span>
+          <span>{L('El Kawthar, Hurghada', 'الكوثر، الغردقة')}</span>
         </motion.div>
         <PolicyLinks className="mt-2" />
 
@@ -228,7 +229,7 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
           {...fadeUp(1.1)}
           className="text-center text-[10px] text-slate-400 mt-2"
         >
-          © {new Date().getFullYear()} TechNova. All rights reserved.
+          © {new Date().getFullYear()} {L('TechNova. All rights reserved.', 'TechNova. كل الحقوق محفوظة.')}
         </motion.p>
       </motion.div>
     </main>

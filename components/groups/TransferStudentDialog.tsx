@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ArrowRightLeft, Loader2 } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 interface GroupRow {
   id: string
@@ -155,13 +156,13 @@ export function TransferStudentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><ArrowRightLeft className="h-4 w-4" /> Move {studentName} to another group</DialogTitle>
-          <DialogDescription>Any course, level or time. Attendance history stays with the student.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2"><ArrowRightLeft className="h-4 w-4" /> {L('Move', 'نقل')} {studentName} {L('to another group', 'لجروب تاني')}</DialogTitle>
+          <DialogDescription>{L('Any course, level or time. Attendance history stays with the student.', 'أي كورس أو مستوى أو ميعاد. سجل الحضور بيفضل مع الطالب.')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 text-sm">
           <div className="space-y-1.5">
-            <Label>New group</Label>
+            <Label>{L('New group', 'الجروب الجديد')}</Label>
             <Select value={toId} onValueChange={setToId} disabled={groupsLoading}>
               <SelectTrigger><SelectValue placeholder={groupsLoading ? 'Loading groups…' : 'Choose the group'} /></SelectTrigger>
               <SelectContent>
@@ -176,7 +177,7 @@ export function TransferStudentDialog({
             </Select>
           </div>
 
-          {toId && previewLoading && <p className="flex items-center gap-2 text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Calculating…</p>}
+          {toId && previewLoading && <p className="flex items-center gap-2 text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> {L('Calculating…', 'بيحسب…')}</p>}
           {toId && previewError && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700">{(previewError as Error).message}</p>}
 
           {preview && !previewLoading && (
@@ -184,27 +185,27 @@ export function TransferStudentDialog({
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                 <p className="font-semibold text-slate-800">{preview.from.label} → {preview.to.label}</p>
                 <p className="text-xs text-slate-500">
-                  {preview.to.course?.name} · {preview.to.level?.name}{preview.to.teacher ? ` · ${preview.to.teacher.name}` : ''} · price {money(preview.to.price)}
+                  {preview.to.course?.name} · {preview.to.level?.name}{preview.to.teacher ? ` · ${preview.to.teacher.name}` : ''} {L('· price', '· السعر')} {money(preview.to.price)}
                 </p>
                 {preview.toSeats && (
                   <p className={`mt-1 text-xs ${full ? 'font-semibold text-rose-700' : 'text-slate-500'}`}>
-                    {preview.toSeats.count}{preview.toSeats.max != null ? `/${preview.toSeats.max}` : ''} students{full ? ' · this group is full' : preview.toSeats.free != null ? ` · ${preview.toSeats.free} free` : ''}
+                    {preview.toSeats.count}{preview.toSeats.max != null ? `/${preview.toSeats.max}` : ''} {L('students', 'طالب')}{full ? ' · this group is full' : preview.toSeats.free != null ? ` · ${preview.toSeats.free} free` : ''}
                   </p>
                 )}
                 {full && (canOverride ? (
-                  <label className="mt-1 flex items-center gap-2 text-xs text-rose-700"><input type="checkbox" checked={overrideCapacity} onChange={(e) => setOverrideCapacity(e.target.checked)} /> Move anyway (over the limit)</label>
+                  <label className="mt-1 flex items-center gap-2 text-xs text-rose-700"><input type="checkbox" checked={overrideCapacity} onChange={(e) => setOverrideCapacity(e.target.checked)} /> {L('Move anyway (over the limit)', 'انقل برضه (فوق الحد)')}</label>
                 ) : (
-                  <p className="mt-1 text-xs text-rose-700">Choose another group, or ask someone with the “Group capacity” permission.</p>
+                  <p className="mt-1 text-xs text-rose-700">{L('Choose another group, or ask someone with the “Group capacity” permission.', 'اختار جروب تاني، أو اطلب من حد عنده صلاحية «سعة الجروب».')}</p>
                 ))}
                 {preview.newGroupInvoice && (
-                  <p className="mt-1 text-xs text-amber-700">The student already has invoice {preview.newGroupInvoice.challanNumber} in the new group; it is used instead of a new one.</p>
+                  <p className="mt-1 text-xs text-amber-700">{L('The student already has invoice', 'الطالب عنده فاتورة')} {preview.newGroupInvoice.challanNumber} in the new group; it is used instead of a new one.</p>
                 )}
               </div>
 
               <div className="space-y-1">
-                <p className="font-semibold text-slate-700">Money (old group)</p>
+                <p className="font-semibold text-slate-700">{L('Money (old group)', 'الفلوس (الجروب القديم)')}</p>
                 {!inv ? (
-                  <p className="text-slate-500">No invoice in the old group: nothing to move.</p>
+                  <p className="text-slate-500">{L('No invoice in the old group: nothing to move.', 'مفيش فاتورة في الجروب القديم: مفيش حاجة تتنقل.')}</p>
                 ) : (
                   <div className="space-y-0.5 rounded-lg border border-slate-200 px-3 py-2">
                     <Row k={`Paid on ${inv.challanNumber}`} v={money(inv.netPaid)} />
@@ -213,31 +214,31 @@ export function TransferStudentDialog({
                       v={`− ${money(inv.consumed)}`}
                     />
                     <Row k="Credit left over" v={money(inv.credit)} strong />
-                    {inv.owed > 0 && <p className="text-xs text-amber-700">{money(inv.owed)} is still due on the old invoice for the sessions counted.</p>}
-                    {inv.cancelled > 0 && <p className="text-xs text-slate-500">{money(inv.cancelled)} unpaid on the old invoice will be cancelled.</p>}
+                    {inv.owed > 0 && <p className="text-xs text-amber-700">{money(inv.owed)} {L('is still due on the old invoice for the sessions counted.', 'لسه مستحق على الفاتورة القديمة للحصص المحسوبة.')}</p>}
+                    {inv.cancelled > 0 && <p className="text-xs text-slate-500">{money(inv.cancelled)} {L('unpaid on the old invoice will be cancelled.', 'مش مدفوع على الفاتورة القديمة هيتلغي.')}</p>}
                   </div>
                 )}
                 {hasCredit && (
                   <div className="space-y-1 pt-1">
-                    <p className="text-xs font-medium text-slate-600">Where does the {money(inv!.credit)} go?</p>
-                    <label className="flex items-center gap-2"><input type="radio" checked={creditTo === 'NEW_INVOICE'} onChange={() => setCreditTo('NEW_INVOICE')} /> Take it off the new group’s invoice</label>
-                    <label className="flex items-center gap-2"><input type="radio" checked={creditTo === 'WALLET'} onChange={() => setCreditTo('WALLET')} /> Put it in the student wallet</label>
+                    <p className="text-xs font-medium text-slate-600">{L('Where does the', 'الـ')} {money(inv!.credit)} {L('go?', 'تروح فين؟')}</p>
+                    <label className="flex items-center gap-2"><input type="radio" checked={creditTo === 'NEW_INVOICE'} onChange={() => setCreditTo('NEW_INVOICE')} /> {L('Take it off the new group’s invoice', 'اخصمها من فاتورة الجروب الجديد')}</label>
+                    <label className="flex items-center gap-2"><input type="radio" checked={creditTo === 'WALLET'} onChange={() => setCreditTo('WALLET')} /> {L('Put it in the student wallet', 'حطها في محفظة الطالب')}</label>
                   </div>
                 )}
               </div>
 
               {preview.discounts.length > 0 && (
                 <div className="space-y-2">
-                  <p className="font-semibold text-slate-700">Discounts: what happens to each?</p>
+                  <p className="font-semibold text-slate-700">{L('Discounts: what happens to each?', 'الخصومات: كل واحد يحصله إيه؟')}</p>
                   {preview.discounts.map((d) => (
                     <div key={d.assignmentId} className="rounded-lg border border-slate-200 px-3 py-2">
                       <p className="text-slate-800">
                         {d.typeName} · {d.valueType === 'PERCENT' ? `${d.value}%` : money(d.value)}
                         <span className="text-xs text-slate-500"> · {SCOPE_LABEL[d.scope]}{d.status === 'PENDING' ? ' · waiting for approval' : ''}</span>
                       </p>
-                      {!d.typeFitsNewGroup && <p className="text-xs text-amber-700">This discount type is limited to another track/course/level, so it will not apply in the new group.</p>}
+                      {!d.typeFitsNewGroup && <p className="text-xs text-amber-700">{L('This discount type is limited to another track/course/level, so it will not apply in the new group.', 'نوع الخصم ده لتراك / كورس / مستوى تاني، فمش هيتطبّق في الجروب الجديد.')}</p>}
                       <Select value={decisions[d.assignmentId] ?? ''} onValueChange={(v) => setDecisions((s) => ({ ...s, [d.assignmentId]: v as Action }))}>
-                        <SelectTrigger className="mt-1 h-8"><SelectValue placeholder="Choose" /></SelectTrigger>
+                        <SelectTrigger className="mt-1 h-8"><SelectValue placeholder={L('Choose', 'اختار')} /></SelectTrigger>
                         <SelectContent>
                           {d.options.map((o) => <SelectItem key={o} value={o}>{ACTION_LABEL[o]}{o === d.suggested ? ' (suggested)' : ''}</SelectItem>)}
                         </SelectContent>
@@ -248,14 +249,14 @@ export function TransferStudentDialog({
               )}
 
               <div className="space-y-1.5">
-                <Label>Reason (optional)</Label>
-                <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. another time suits the family" />
+                <Label>{L('Reason (optional)', 'السبب (اختياري)')}</Label>
+                <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={L('e.g. another time suits the family', 'مثلاً: ميعاد تاني مناسب للأسرة')} />
               </div>
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => onOpenChange(false)}>{L('Cancel', 'إلغاء')}</Button>
                 <Button onClick={() => send.mutate()} disabled={!ready || send.isPending} className="gap-2">
-                  {send.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Move the student
+                  {send.isPending && <Loader2 className="h-4 w-4 animate-spin" />} {L('Move the student', 'انقل الطالب')}
                 </Button>
               </div>
             </>

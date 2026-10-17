@@ -7,6 +7,7 @@ import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { ChevronRight, MessageSquareHeart, ShieldCheck, Star, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { L } from '@/lib/i18n/client'
 
 type Question = { id: string; text: string; category: string; orderIndex: number }
 
@@ -78,7 +79,7 @@ export function GuardianFeedbackModal() {
         body: JSON.stringify(payload),
       }),
     onSuccess: () => {
-      notify.success('Thank you for your feedback! Your input helps us improve.')
+      notify.success(L('Thank you for your feedback! Your input helps us improve.', 'شكراً على رأيك! بيساعدنا نتحسن.'))
       setIsOpen(false)
       setDismissed(true)
       qc.invalidateQueries({ queryKey: ['guardian-feedback-pending'] })
@@ -104,7 +105,7 @@ export function GuardianFeedbackModal() {
 
   const handleSubmitOrNext = () => {
     if (!allAnswered) {
-      notify.error('Please answer all questions before proceeding.')
+      notify.error(L('Please answer all questions before proceeding.', 'جاوب على كل الأسئلة الأول.'))
       return
     }
 
@@ -133,7 +134,7 @@ export function GuardianFeedbackModal() {
           <button
             onClick={handleDismiss}
             className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
-            title="Remind me later"
+            title={L('Remind me later', 'فكّرني بعدين')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -147,7 +148,7 @@ export function GuardianFeedbackModal() {
             <div>
               <h2 className="text-xl sm:text-2xl font-black">{data.cycle.label}</h2>
               <p className="text-white/80 text-sm font-medium mt-1">
-                Monthly Service Feedback — Your opinion matters!
+                {L('Monthly Service Feedback — Your opinion matters!', 'تقييم الخدمة الشهري — رأيك يهمنا!')}
               </p>
             </div>
           </div>
@@ -165,7 +166,7 @@ export function GuardianFeedbackModal() {
         <div className="flex-1 overflow-y-auto p-6 sm:p-8">
           <div className="mb-6">
             <p className="text-xs font-black uppercase text-violet-600 tracking-wider mb-1">
-              Step {currentStepIndex + 1} of {steps.length}
+              {L('Step', 'خطوة')} {currentStepIndex + 1} {L('of', 'من')} {steps.length}
             </p>
             <h3 className="text-2xl font-black text-gray-900">{currentStep.title}</h3>
             <p className="text-gray-500 text-sm font-medium mt-1">{currentStep.subtitle}</p>
@@ -199,7 +200,7 @@ export function GuardianFeedbackModal() {
             {/* Per-step suggestions */}
             <div className="bg-violet-50/70 border border-violet-100 rounded-2xl p-5">
               <label className="text-[13px] font-black text-violet-700 uppercase tracking-wider block mb-2">
-                💬 Suggestions for Improvement (Optional)
+                {L('💬 Suggestions for Improvement (Optional)', '💬 اقتراحات للتحسين (اختياري)')}
               </label>
               <textarea
                 rows={3}
@@ -211,7 +212,7 @@ export function GuardianFeedbackModal() {
                 className="w-full rounded-xl border border-violet-200 bg-white text-sm text-gray-700 px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-violet-400 placeholder:text-gray-400"
               />
               <p className="text-[11px] text-violet-500 font-medium mt-1.5 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3" /> Responses are confidential — reviewed by administration only.
+                <ShieldCheck className="w-3 h-3" /> {L('Responses are confidential — reviewed by administration only.', 'الردود سرية — الإدارة بس اللي بتشوفها.')}
               </p>
             </div>
           </div>
@@ -223,7 +224,7 @@ export function GuardianFeedbackModal() {
             onClick={handleDismiss}
             className="text-xs text-gray-400 hover:text-gray-600 font-semibold transition-colors"
           >
-            Remind me later
+            {L('Remind me later', 'فكّرني بعدين')}
           </button>
           <Button
             onClick={handleSubmitOrNext}

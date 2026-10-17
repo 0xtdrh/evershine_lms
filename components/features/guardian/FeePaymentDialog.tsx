@@ -18,6 +18,7 @@ import { Upload, Loader2, FileText, ImageIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { PaymentAccountsList } from '@/components/fees/PaymentAccountsList'
 import { PayOnlineButton } from '@/components/fees/PayOnlineButton'
+import { L } from '@/lib/i18n/client'
 
 interface FeePaymentDialogProps {
   open: boolean
@@ -41,7 +42,7 @@ export function FeePaymentDialog({ open, onOpenChange, studentId, invoice }: Fee
     if (e.target.files && e.target.files[0]) {
       const selected = e.target.files[0]
       if (selected.size > 4 * 1024 * 1024) {
-        notify.error('File exceeds maximum size of 4MB')
+        notify.error(L('File exceeds maximum size of 4MB', 'الملف أكبر من 4 ميجا'))
         e.target.value = ''
         return
       }
@@ -87,25 +88,25 @@ export function FeePaymentDialog({ open, onOpenChange, studentId, invoice }: Fee
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Upload Payment Proof</DialogTitle>
+          <DialogTitle>{L('Upload Payment Proof', 'ارفع إيصال الدفع')}</DialogTitle>
           <DialogDescription>
-            Upload a clear image or PDF of your bank deposit slip or online transfer receipt.
+            {L('Upload a clear image or PDF of your bank deposit slip or online transfer receipt.', 'ارفع صورة واضحة أو PDF لإيصال الإيداع أو التحويل.')}
           </DialogDescription>
         </DialogHeader>
 
         {invoice && (
           <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-slate-500">Challan No.</span>
+              <span className="text-sm font-medium text-slate-500">{L('Challan No.', 'رقم الفاتورة')}</span>
               <span className="font-semibold">{invoice.challanNumber}</span>
             </div>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-slate-500">Month</span>
+              <span className="text-sm font-medium text-slate-500">{L('Month', 'الشهر')}</span>
               <span className="font-semibold">{invoice.month}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-slate-500">Remaining Due</span>
-              <span className="font-bold text-red-600">EGP {remainingAmount.toLocaleString()}</span>
+              <span className="text-sm font-medium text-slate-500">{L('Remaining Due', 'المتبقي')}</span>
+              <span className="font-bold text-red-600">{L('EGP', 'ج.م')} {remainingAmount.toLocaleString()}</span>
             </div>
           </div>
         )}
@@ -135,10 +136,10 @@ export function FeePaymentDialog({ open, onOpenChange, studentId, invoice }: Fee
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="remarks">Remarks / Transaction Details</Label>
+            <Label htmlFor="remarks">{L('Remarks / Transaction Details', 'ملاحظات / بيانات التحويل')}</Label>
             <Textarea
               id="remarks"
-              placeholder="E.g., Transferred via HBL App on [Date], Ref: 123456789"
+              placeholder={L('E.g., Transferred via HBL App on [Date], Ref: 123456789', 'مثلاً: اتحوّل من InstaPay يوم [التاريخ]، رقم العملية: 123456789')}
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               disabled={uploadMutation.isPending}
@@ -154,12 +155,12 @@ export function FeePaymentDialog({ open, onOpenChange, studentId, invoice }: Fee
             {uploadMutation.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Uploading...
+                {L('Uploading...', 'بيرفع...')}
               </>
             ) : (
               <>
                 <Upload className="w-4 h-4 mr-2" />
-                Submit Payment Proof
+                {L('Submit Payment Proof', 'ابعت الإيصال')}
               </>
             )}
           </Button>

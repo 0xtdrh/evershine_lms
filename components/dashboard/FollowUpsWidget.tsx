@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { PhoneCall } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 /** "You have N parent follow-ups today" banner (phase A). Hidden when there is nothing to do. */
 export function FollowUpsWidget() {
@@ -27,10 +28,10 @@ export function FollowUpsWidget() {
     <Link href="/dashboard/follow-ups" className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 hover:bg-indigo-100">
       <PhoneCall className="h-5 w-5 text-indigo-600" />
       <span>
-        You have <strong>{c.today}</strong> parent follow-up{c.today === 1 ? '' : 's'} today
-        {c.overdue > 0 && <> and <strong className="text-rose-700">{c.overdue} overdue</strong></>}.
+        {L('You have', 'عندك')} <strong>{c.today}</strong> {L('parent follow-up', 'متابعة ولي أمر')}{c.today === 1 ? '' : 's'} {L('today', 'النهارده')}
+        {c.overdue > 0 && <> {L('and', 'و')} <strong className="text-rose-700">{c.overdue} {L('overdue', 'متأخرة')}</strong></>}.
       </span>
-      <span className="ml-auto text-xs font-semibold">Open →</span>
+      <span className="ml-auto text-xs font-semibold">{L('Open →', 'افتح ←')}</span>
     </Link>
   )
 }

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { notify } from '@/lib/notify'
 import { FileText, ImageIcon, Upload, Loader2 } from 'lucide-react'
 import { PaymentAccountsList } from '@/components/fees/PaymentAccountsList'
+import { L } from '@/lib/i18n/client'
 
 export interface FeeInvoiceSummary {
   id: string
@@ -72,7 +73,7 @@ export function PaymentProofUploadModal({
 
     const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']
     if (!allowedTypes.includes(file.type)) {
-      notify.error('Only JPG, PNG, or PDF files are accepted')
+      notify.error(L('Only JPG, PNG, or PDF files are accepted', 'بيقبل JPG أو PNG أو PDF بس'))
       event.target.value = ''
       setProofFile(null)
       return
@@ -106,12 +107,12 @@ export function PaymentProofUploadModal({
     event.preventDefault()
 
     if (!proofFile) {
-      notify.error('Please select a payment proof document')
+      notify.error(L('Please select a payment proof document', 'اختار ملف الإيصال'))
       return
     }
 
     if (!proofRemarks.trim()) {
-      notify.error('Please provide a brief remark about the transaction')
+      notify.error(L('Please provide a brief remark about the transaction', 'اكتب ملاحظة قصيرة عن العملية'))
       return
     }
 
@@ -119,7 +120,7 @@ export function PaymentProofUploadModal({
     if (proofAmount.trim()) {
       const n = Number(proofAmount)
       if (!Number.isFinite(n) || n <= 0) {
-        notify.error('Enter a valid amount, or leave it blank to pay the full remaining balance')
+        notify.error(L('Enter a valid amount, or leave it blank to pay the full remaining balance', 'اكتب مبلغ صحيح، أو سيبه فاضي علشان تدفع المتبقي كله'))
         return
       }
       if (n > remaining) {
@@ -130,7 +131,7 @@ export function PaymentProofUploadModal({
     }
 
     if (!uploadEndpoint) {
-      notify.error('Upload endpoint is not configured')
+      notify.error(L('Upload endpoint is not configured', 'الرفع مش متظبط'))
       return
     }
 
@@ -204,31 +205,31 @@ export function PaymentProofUploadModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5 text-blue-600" />
-            Upload Payment Receipt
+            {L('Upload Payment Receipt', 'ارفع إيصال الدفع')}
           </DialogTitle>
           <DialogDescription>
-            Submit your bank deposit slip or screenshot for verification.
+            {L('Submit your bank deposit slip or screenshot for verification.', 'ابعت إيصال الإيداع أو صورة الشاشة علشان نراجعه.')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="bg-slate-50 p-4 rounded-3xl border border-slate-200 mb-4">
           <div className="flex justify-between items-center gap-3">
             <div>
-              <p className="text-xs text-slate-500">Challan</p>
+              <p className="text-xs text-slate-500">{L('Challan', 'الفاتورة')}</p>
               <p className="font-semibold text-slate-900">{invoice.challanNumber}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Month</p>
+              <p className="text-xs text-slate-500">{L('Month', 'الشهر')}</p>
               <p className="font-semibold text-slate-900">{invoice.month}</p>
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-700">
             <div className="rounded-2xl bg-white p-3 border border-slate-200">
-              <p className="text-xs text-slate-500">Remaining Due</p>
-              <p className="font-semibold text-red-600">EGP {remaining.toLocaleString()}</p>
+              <p className="text-xs text-slate-500">{L('Remaining Due', 'المتبقي')}</p>
+              <p className="font-semibold text-red-600">{L('EGP', 'ج.م')} {remaining.toLocaleString()}</p>
             </div>
             <div className="rounded-2xl bg-white p-3 border border-slate-200">
-              <p className="text-xs text-slate-500">Attachment</p>
+              <p className="text-xs text-slate-500">{L('Attachment', 'المرفق')}</p>
               <p className="font-semibold text-slate-900">JPG, PNG, PDF</p>
             </div>
           </div>
@@ -238,7 +239,7 @@ export function PaymentProofUploadModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="proof-file">Proof Document</Label>
+            <Label htmlFor="proof-file">{L('Proof Document', 'الإيصال')}</Label>
             <div className="flex items-center gap-3">
               <Input
                 id="proof-file"
@@ -255,7 +256,7 @@ export function PaymentProofUploadModal({
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-slate-500">Max file size {Math.round(maxFileSize / 1024 / 1024)}MB.</p>
+            <p className="text-xs text-slate-500">{L('Max file size', 'أقصى حجم')} {Math.round(maxFileSize / 1024 / 1024)}MB.</p>
           </div>
 
           <div className="space-y-2">
@@ -274,10 +275,10 @@ export function PaymentProofUploadModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="remarks">Remarks / Transaction ID</Label>
+            <Label htmlFor="remarks">{L('Remarks / Transaction ID', 'ملاحظات / رقم العملية')}</Label>
             <Textarea
               id="remarks"
-              placeholder="Enter bank transfer details or deposit slip notes"
+              placeholder={L('Enter bank transfer details or deposit slip notes', 'اكتب بيانات التحويل أو الإيداع')}
               value={proofRemarks}
               onChange={(event) => setProofRemarks(event.target.value)}
               disabled={isUploading}
@@ -287,13 +288,13 @@ export function PaymentProofUploadModal({
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => { resetForm(); onOpenChange(false) }} disabled={isUploading}>
-              Cancel
+              {L('Cancel', 'إلغاء')}
             </Button>
             <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isUploading || !proofFile || !proofRemarks.trim()}>
               {isUploading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading...
+                  {L('Uploading...', 'بيرفع...')}
                 </>
               ) : (
                 'Submit Receipt'

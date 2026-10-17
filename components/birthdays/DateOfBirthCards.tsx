@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Cake } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 function DobRow({ label, value, onSave, saving }: { label: string; value: string | null; onSave: (v: string | null) => void; saving: boolean }) {
   const [v, setV] = useState(value ?? '')
@@ -16,7 +17,7 @@ function DobRow({ label, value, onSave, saving }: { label: string; value: string
     <div className="flex flex-wrap items-center gap-2 text-sm">
       <span className="min-w-[140px] font-medium text-slate-700">{label}</span>
       <Input type="date" className="h-8 w-44" value={v} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setV(e.target.value)} />
-      <Button size="sm" variant="outline" className="h-8" disabled={saving || v === (value ?? '')} onClick={() => onSave(v || null)}>Save</Button>
+      <Button size="sm" variant="outline" className="h-8" disabled={saving || v === (value ?? '')} onClick={() => onSave(v || null)}>{L('Save', 'حفظ')}</Button>
     </div>
   )
 }
@@ -27,16 +28,16 @@ export function MyDateOfBirthCard() {
   const { data } = useQuery({ queryKey: ['my-dob'], queryFn: () => fetchApi<{ dateOfBirth: string | null }>('/api/users/date-of-birth') })
   const save = useMutation({
     mutationFn: (dateOfBirth: string | null) => fetchApi('/api/users/date-of-birth', { method: 'PUT', body: JSON.stringify({ dateOfBirth }) }),
-    onSuccess: () => { notify.success('Saved'); qc.invalidateQueries({ queryKey: ['my-dob'] }) },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['my-dob'] }) },
     onError: (e: Error) => notify.error(e.message),
   })
   return (
     <Card className="rounded-xl border bg-white shadow-sm">
       <CardHeader className="border-b bg-gray-50/50 py-4">
-        <CardTitle className="flex items-center gap-2 text-sm font-bold text-gray-900"><Cake className="h-4 w-4 text-pink-600" /> Date of birth</CardTitle>
-        <CardDescription className="text-xs">Optional — so we can wish you a happy birthday 🎂</CardDescription>
+        <CardTitle className="flex items-center gap-2 text-sm font-bold text-gray-900"><Cake className="h-4 w-4 text-pink-600" /> {L('Date of birth', 'تاريخ الميلاد')}</CardTitle>
+        <CardDescription className="text-xs">{L('Optional — so we can wish you a happy birthday 🎂', 'اختياري — علشان نقولك كل سنة وانت طيب 🎂')}</CardDescription>
       </CardHeader>
-      <CardContent className="pt-4"><DobRow label="Your birthday" value={data?.dateOfBirth ?? null} saving={save.isPending} onSave={(v) => save.mutate(v)} /></CardContent>
+      <CardContent className="pt-4"><DobRow label={L('Your birthday', 'عيد ميلادك')} value={data?.dateOfBirth ?? null} saving={save.isPending} onSave={(v) => save.mutate(v)} /></CardContent>
     </Card>
   )
 }
@@ -48,7 +49,7 @@ export function GuardianBirthdaysCard({ guardians, canEdit }: { guardians: { id:
   const { data } = useQuery({ queryKey: ['guardian-dobs', ids], queryFn: () => fetchApi<Record<string, string | null>>(`/api/users/date-of-birth?guardianIds=${ids}`), enabled: !!ids })
   const save = useMutation({
     mutationFn: (p: { guardianId: string; dateOfBirth: string | null }) => fetchApi('/api/users/date-of-birth', { method: 'PUT', body: JSON.stringify(p) }),
-    onSuccess: () => { notify.success('Saved'); qc.invalidateQueries({ queryKey: ['guardian-dobs', ids] }) },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['guardian-dobs', ids] }) },
     onError: (e: Error) => notify.error(e.message),
   })
   if (!guardians.length) return null
@@ -56,7 +57,7 @@ export function GuardianBirthdaysCard({ guardians, canEdit }: { guardians: { id:
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm"><Cake className="h-4 w-4 text-pink-600" /> Parents&apos; birthdays</CardTitle>
-        <CardDescription>Optional. Parents with a date here are greeted on their birthday.</CardDescription>
+        <CardDescription>{L('Optional. Parents with a date here are greeted on their birthday.', 'اختياري. أولياء الأمور اللي ليهم تاريخ هنا بيتهنّوا في عيد ميلادهم.')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         {guardians.map((g) => canEdit

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2 } from 'lucide-react'
 import { ApplyToInvoicesDialog, type AffectedInvoice } from './ApplyToInvoicesDialog'
+import { L } from '@/lib/i18n/client'
 
 export interface DiscountTypeOption {
   id: string
@@ -93,8 +94,8 @@ export function GiveDiscountDialog({
     },
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ['discounts'] })
-      if (r.assignment.status === 'PENDING') notify.success('Sent to a manager for approval')
-      else notify.success('Discount added')
+      if (r.assignment.status === 'PENDING') notify.success(L('Sent to a manager for approval', 'اتبعت لمدير للموافقة'))
+      else notify.success(L('Discount added', 'الخصم اتضاف'))
       onOpenChange(false)
       reset()
       if (r.affectedInvoices?.length) setAsk({ id: r.assignment.id, invoices: r.affectedInvoices })
@@ -112,14 +113,14 @@ export function GiveDiscountDialog({
           <DialogHeader>
             <DialogTitle>{student ? `Discount for ${student.name}` : 'Discount for a whole group'}</DialogTitle>
             <DialogDescription>
-              Applied automatically to new invoices. Students added to the group later get a group discount too.
+              {L('Applied automatically to new invoices. Students added to the group later get a group discount too.', 'بيتطبّق لوحده على الفواتير الجديدة. والطلاب اللي هيتضافوا للجروب بعدين هياخدوه برضه.')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label>Discount type</Label>
+              <Label>{L('Discount type', 'نوع الخصم')}</Label>
               <Select value={typeId} onValueChange={(v) => { setTypeId(v); setValue('') }}>
-                <SelectTrigger><SelectValue placeholder="Choose…" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={L('Choose…', 'اختار…')} /></SelectTrigger>
                 <SelectContent>
                   {manualTypes.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
@@ -130,34 +131,34 @@ export function GiveDiscountDialog({
                 </SelectContent>
               </Select>
               {types && manualTypes.length === 0 && (
-                <p className="text-xs text-muted-foreground">No discount types yet. Create them in Discounts › Types.</p>
+                <p className="text-xs text-muted-foreground">{L('No discount types yet. Create them in Discounts › Types.', 'لسه مفيش أنواع خصم. اعملها من الخصومات › الأنواع.')}</p>
               )}
             </div>
 
             {type?.editableValue && (
               <div className="space-y-1">
-                <Label>Value ({type.valueType === 'PERCENT' ? '%' : 'EGP'}){max !== undefined ? ` — max ${max}` : ''}</Label>
+                <Label>{L('Value (', 'القيمة (')}{type.valueType === 'PERCENT' ? '%' : 'EGP'}){max !== undefined ? ` — max ${max}` : ''}</Label>
                 <Input type="number" min={0} max={max} value={value} placeholder={String(Number(type.value))} onChange={(e) => setValue(e.target.value)} />
               </div>
             )}
 
             {student ? (
               <div className="space-y-1">
-                <Label>Where</Label>
+                <Label>{L('Where', 'فين')}</Label>
                 <Select value={target} onValueChange={setTarget}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">All the student&apos;s groups</SelectItem>
-                    {studentGroups.map((g) => <SelectItem key={g.id} value={`group:${g.id}`}>Only in group {g.name}</SelectItem>)}
-                    {(options?.tracks ?? []).map((t) => <SelectItem key={t.id} value={`track:${t.id}`}>Only in track {t.name}</SelectItem>)}
+                    {studentGroups.map((g) => <SelectItem key={g.id} value={`group:${g.id}`}>{L('Only in group', 'في جروب بس')} {g.name}</SelectItem>)}
+                    {(options?.tracks ?? []).map((t) => <SelectItem key={t.id} value={`track:${t.id}`}>{L('Only in track', 'في تراك بس')} {t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             ) : (
               <div className="space-y-1">
-                <Label>Group</Label>
+                <Label>{L('Group', 'الجروب')}</Label>
                 <Select value={groupId} onValueChange={setGroupId}>
-                  <SelectTrigger><SelectValue placeholder="Choose a group…" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={L('Choose a group…', 'اختار جروب…')} /></SelectTrigger>
                   <SelectContent>
                     {(options?.groups ?? []).map((g) => <SelectItem key={g.id} value={g.id}>{g.name}{g.detail ? ` — ${g.detail}` : ''}</SelectItem>)}
                   </SelectContent>
@@ -166,11 +167,11 @@ export function GiveDiscountDialog({
             )}
 
             <div className="space-y-1">
-              <Label>Reason</Label>
-              <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why this discount (kept in the record)" />
+              <Label>{L('Reason', 'السبب')}</Label>
+              <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={L('Why this discount (kept in the record)', 'سبب الخصم (بيتسجل)')} />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>{L('Cancel', 'إلغاء')}</Button>
               <Button onClick={() => give.mutate()} disabled={!ready || give.isPending}>
                 {give.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {type?.approvalMode === 'STAFF_WITH_APPROVAL' ? 'Send for approval' : 'Add discount'}

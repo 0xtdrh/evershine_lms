@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Copy, KeyRound, Loader2, MessageCircle } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 interface Guardian { id: string; firstName: string; lastName: string; phoneNumber: string; relationship?: string }
 
@@ -69,7 +70,7 @@ export function StudentPortalAccessCard({ studentId, studentName, guardians, has
       await navigator.clipboard.writeText(text)
       notify.success(`${what} copied`)
     } catch {
-      notify.error('Copy failed. Select the text and copy it manually.')
+      notify.error(L('Copy failed. Select the text and copy it manually.', 'النسخ فشل. حدد النص وانسخه بنفسك.'))
     }
   }
 
@@ -85,19 +86,19 @@ export function StudentPortalAccessCard({ studentId, studentName, guardians, has
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm"><KeyRound className="h-4 w-4" /> Portal access</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-sm"><KeyRound className="h-4 w-4" /> {L('Portal access', 'دخول البوابة')}</CardTitle>
         <CardDescription>
-          Create a temporary password and send it. It must be changed at first sign-in.
+          {L('Create a temporary password and send it. It must be changed at first sign-in.', 'اعمل باسورد مؤقت وابعته. لازم يتغيّر أول ما يدخل.')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        {targets.length === 0 && <p className="text-sm text-muted-foreground">No parent or student account yet.</p>}
+        {targets.length === 0 && <p className="text-sm text-muted-foreground">{L('No parent or student account yet.', 'لسه مفيش حساب لولي أمر أو طالب.')}</p>}
         {targets.map((t) => (
           <div key={t.target === 'guardian' ? t.guardianId : 'student'} className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2">
             <span className="min-w-0 break-words text-sm">{t.label}</span>
             <Button size="sm" variant="outline" disabled={issue.isPending} onClick={() => setConfirm(t)}>
               {issue.isPending && issue.variables === t ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-              Temporary password
+              {L('Temporary password', 'باسورد مؤقت')}
             </Button>
           </div>
         ))}
@@ -106,20 +107,20 @@ export function StudentPortalAccessCard({ studentId, studentName, guardians, has
       <AlertDialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Create a new temporary password?</AlertDialogTitle>
+            <AlertDialogTitle>{L('Create a new temporary password?', 'تعمل باسورد مؤقت جديد؟')}</AlertDialogTitle>
             <AlertDialogDescription>
-              For {confirm?.label}. Their current password will stop working right away; send them the new one.
+              {L('For', 'لـ')} {confirm?.label}. Their current password will stop working right away; send them the new one.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{L('Cancel', 'إلغاء')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (confirm) issue.mutate(confirm)
                 setConfirm(null)
               }}
             >
-              Create password
+              {L('Create password', 'اعمل الباسورد')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -128,9 +129,9 @@ export function StudentPortalAccessCard({ studentId, studentName, guardians, has
       <Dialog open={!!issued} onOpenChange={(o) => !o && setIssued(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Temporary password for {issued?.accountName}</DialogTitle>
+            <DialogTitle>{L('Temporary password for', 'باسورد مؤقت لـ')} {issued?.accountName}</DialogTitle>
             <DialogDescription>
-              Shown only once. If you close this before sending it, create a new one.
+              {L('Shown only once. If you close this before sending it, create a new one.', 'بيظهر مرة واحدة بس. لو قفلت قبل ما تبعته اعمل واحد جديد.')}
             </DialogDescription>
           </DialogHeader>
           {issued && (
@@ -139,10 +140,10 @@ export function StudentPortalAccessCard({ studentId, studentName, guardians, has
                 <div className="min-w-0">
                   <div className="text-xs text-muted-foreground">{issued.target === 'guardian' ? 'Login (phone)' : 'Login'}</div>
                   <div className="break-all font-mono text-sm">{issued.loginId}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">Password</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{L('Password', 'الباسورد')}</div>
                   <div className="select-all font-mono text-lg font-semibold">{issued.password}</div>
                 </div>
-                <Button size="icon" variant="ghost" onClick={() => copy(issued.password, 'Password')} aria-label="Copy password">
+                <Button size="icon" variant="ghost" onClick={() => copy(issued.password, 'Password')} aria-label={L('Copy password', 'انسخ الباسورد')}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
@@ -155,7 +156,7 @@ export function StudentPortalAccessCard({ studentId, studentName, guardians, has
               />
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => copy(issued.message, 'Message')}>
-                  <Copy className="mr-2 h-4 w-4" /> Copy message
+                  <Copy className="mr-2 h-4 w-4" /> {L('Copy message', 'انسخ الرسالة')}
                 </Button>
                 {issued.whatsappTo ? (
                   <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
@@ -172,7 +173,7 @@ export function StudentPortalAccessCard({ studentId, studentName, guardians, has
                         }).catch(() => undefined)
                       }}
                     >
-                      <MessageCircle className="mr-2 h-4 w-4" /> Send on WhatsApp
+                      <MessageCircle className="mr-2 h-4 w-4" /> {L('Send on WhatsApp', 'ابعت واتساب')}
                     </a>
                   </Button>
                 ) : (

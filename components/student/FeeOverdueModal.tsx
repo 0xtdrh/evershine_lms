@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { L } from '@/lib/i18n/client'
 
 interface OverdueData {
   hasOverdue: boolean
@@ -97,7 +98,7 @@ export function FeeOverdueModal() {
             type="button"
             onClick={handleClose}
             className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
-            aria-label="Close overdue reminder"
+            aria-label={L('Close overdue reminder', 'اقفل التذكير')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -105,28 +106,28 @@ export function FeeOverdueModal() {
           <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-5 backdrop-blur shadow-inner ring-4 ring-white/30">
             <AlertTriangle className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-2xl font-black text-center mb-1 tracking-tight">Fee Overdue Reminder</h2>
+          <h2 className="text-2xl font-black text-center mb-1 tracking-tight">{L('Fee Overdue Reminder', 'تذكير بفلوس متأخرة')}</h2>
           <p className="text-red-100 text-sm font-medium text-center max-w-xs leading-relaxed">
-            You have an overdue fee reminder. Close this notice to continue using your portal, or open your fee details when convenient.
+            {L('You have an overdue fee reminder. Close this notice to continue using your portal, or open your fee details when convenient.', 'عندك فلوس متأخرة. اقفل التنبيه ده وكمّل، أو افتح الفواتير لما يناسبك.')}
           </p>
         </div>
 
         <div className="p-6">
           <div className="bg-red-50 border border-red-100 rounded-2xl p-5 mb-6">
             <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-bold text-red-800">Pending Invoices</span>
+              <span className="text-sm font-bold text-red-800">{L('Pending Invoices', 'فواتير مستنية')}</span>
               <span className="text-sm font-black text-red-600 bg-red-100 px-2.5 py-1 rounded-full">
-                {data.overdueCount} overdue
+                {data.overdueCount} {L('overdue', 'متأخرة')}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-bold text-red-800">Total Amount Due</span>
-              <span className="text-2xl font-black text-red-600">EGP {data.totalOverdue.toLocaleString()}</span>
+              <span className="text-sm font-bold text-red-800">{L('Total Amount Due', 'إجمالي المطلوب')}</span>
+              <span className="text-2xl font-black text-red-600">{L('EGP', 'ج.م')} {data.totalOverdue.toLocaleString()}</span>
             </div>
             {isGuardian && data.invoices.slice(0, 2).map((invoice) => (
               <div key={invoice.id} className="mt-3 flex items-center justify-between gap-3 border-t border-red-100 pt-3 text-xs text-red-700">
                 <span className="truncate">{invoice.studentName || 'Student'} · {invoice.month}</span>
-                <span className="shrink-0 font-bold">EGP {invoice.outstandingAmount.toLocaleString()}</span>
+                <span className="shrink-0 font-bold">{L('EGP', 'ج.م')} {invoice.outstandingAmount.toLocaleString()}</span>
               </div>
             ))}
           </div>
@@ -134,7 +135,7 @@ export function FeeOverdueModal() {
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-6">
             <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-amber-800 font-medium leading-relaxed">
-              This is a reminder only. Your portal access is not blocked. You can close it now and return to it on your next login if the balance remains unpaid.
+              {L('This is a reminder only. Your portal access is not blocked. You can close it now and return to it on your next login if the balance remains unpaid.', 'ده تذكير بس، والبوابة مش مقفولة. تقدر تقفله دلوقتي، وهيظهر تاني في الدخول الجاي لو لسه مادفعتش.')}
             </p>
           </div>
 
@@ -146,7 +147,7 @@ export function FeeOverdueModal() {
           </Link>
 
           <p className="text-center text-[11px] text-gray-400 font-medium mt-4">
-            For help, contact Accounts Office support.
+            {L('For help, contact Accounts Office support.', 'للمساعدة كلّم الحسابات.')}
           </p>
         </div>
       </div>

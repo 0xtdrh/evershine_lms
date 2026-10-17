@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { RefreshCcw } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 interface Row { id: string; studentName: string; group: string; course: string | null; level: string | null; status: 'PENDING' | 'YES' | 'NO'; reason: string | null; earlyDiscount: boolean }
 
@@ -35,8 +36,8 @@ export function ParentRenewalsCard() {
   return (
     <Card className="border-indigo-200">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm"><RefreshCcw className="h-4 w-4 text-indigo-600" /> Continuing next month?</CardTitle>
-        <CardDescription>The current month is ending soon. Please let us know.</CardDescription>
+        <CardTitle className="flex items-center gap-2 text-sm"><RefreshCcw className="h-4 w-4 text-indigo-600" /> {L('Continuing next month?', 'مكمّلين الشهر الجاي؟')}</CardTitle>
+        <CardDescription>{L('The current month is ending soon. Please let us know.', 'الشهر الحالي قرّب يخلص. قولّنا لو سمحت.')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
         {rows.map((r) => (
@@ -44,8 +45,8 @@ export function ParentRenewalsCard() {
             <p className="font-medium text-slate-800">{r.studentName} <span className="text-xs font-normal text-slate-500">· {r.course} {r.level} · {r.group}</span></p>
             {r.status === 'PENDING' && noFor !== r.id && (
               <div className="mt-1.5 flex flex-wrap gap-2">
-                <Button size="sm" className="h-8" disabled={answer.isPending} onClick={() => answer.mutate({ id: r.id, value: 'YES' })}>Yes, continuing</Button>
-                <Button size="sm" variant="outline" className="h-8" onClick={() => setNoFor(r.id)}>No</Button>
+                <Button size="sm" className="h-8" disabled={answer.isPending} onClick={() => answer.mutate({ id: r.id, value: 'YES' })}>{L('Yes, continuing', 'أيوه، مكمّلين')}</Button>
+                <Button size="sm" variant="outline" className="h-8" onClick={() => setNoFor(r.id)}>{L('No', 'لأ')}</Button>
               </div>
             )}
             {noFor === r.id && (
@@ -56,19 +57,19 @@ export function ParentRenewalsCard() {
                     <button key={k} type="button" onClick={() => setReason(k)} className={`rounded-full border px-2.5 py-1 text-xs ${reason === k ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600'}`}>{REASONS[k]}</button>
                   ))}
                 </div>
-                <Textarea rows={2} placeholder="Anything else? (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+                <Textarea rows={2} placeholder={L('Anything else? (optional)', 'حاجة تانية؟ (اختياري)')} value={note} onChange={(e) => setNote(e.target.value)} />
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setNoFor(null)}>Back</Button>
-                  <Button size="sm" disabled={!reason || answer.isPending} onClick={() => answer.mutate({ id: r.id, value: 'NO' })}>Send</Button>
+                  <Button size="sm" variant="outline" onClick={() => setNoFor(null)}>{L('Back', 'رجوع')}</Button>
+                  <Button size="sm" disabled={!reason || answer.isPending} onClick={() => answer.mutate({ id: r.id, value: 'NO' })}>{L('Send', 'ابعت')}</Button>
                 </div>
               </div>
             )}
             {r.status !== 'PENDING' && (
               <p className="mt-1 text-xs text-slate-600">
-                Your answer: <strong>{r.status === 'YES' ? 'continuing' : `not continuing${r.reason ? ` (${REASONS[r.reason] ?? r.reason})` : ''}`}</strong>
-                {r.earlyDiscount && <span className="text-emerald-700"> · early-confirmation discount on next month</span>}
+                {L('Your answer:', 'ردّك:')} <strong>{r.status === 'YES' ? 'continuing' : `not continuing${r.reason ? ` (${REASONS[r.reason] ?? r.reason})` : ''}`}</strong>
+                {r.earlyDiscount && <span className="text-emerald-700"> {L('· early-confirmation discount on next month', '· خصم التأكيد بدري على الشهر الجاي')}</span>}
                 {r.status === 'NO' && (
-                  <button type="button" className="ml-2 underline" disabled={answer.isPending} onClick={() => answer.mutate({ id: r.id, value: 'YES' })}>Changed my mind: continuing</button>
+                  <button type="button" className="ml-2 underline" disabled={answer.isPending} onClick={() => answer.mutate({ id: r.id, value: 'YES' })}>{L('Changed my mind: continuing', 'غيّرت رأيي: مكمّلين')}</button>
                 )}
               </p>
             )}
