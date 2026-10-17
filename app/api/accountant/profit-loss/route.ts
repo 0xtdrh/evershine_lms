@@ -16,6 +16,7 @@
  *   remainingAmount         = grossMargin - superAdminAllocation
  */
 
+import { expenseCategoryNamer } from '@/lib/treasury/expense-category'
 import { onePlace } from '@/lib/places/rules'
 import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
@@ -240,11 +241,12 @@ export async function POST(req: NextRequest) {
       take: 1000,
     })
 
-    const expenseItems = await prisma.expense.findMany({
+    const namer = await expenseCategoryNamer()
+    const expenseItems = (await prisma.expense.findMany({
       where: expenseWhere,
-      select: { id: true, title: true, category: true, amount: true, date: true },
+      select: { id: true, title: true, category: true, categoryId: true, amount: true, date: true },
       take: 1000,
-    })
+    })).map(({ categoryId, ...e }) => { const n = namer({ categoryId, category: e.category }); return { ...e, category: n.en, categoryAr: n.ar } })
 
     // Refunds approved in the period are taken off the income (cash back and
     // wallet credit alike; wallet money comes back as income when it is spent).

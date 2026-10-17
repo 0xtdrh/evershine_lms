@@ -1589,6 +1589,10 @@ model MoneyMovement {
   partnerPaymentId String?       @unique
   transferId       String?
   cashCountId      String?       @unique
+  /// FIN-3: matched with a bank statement line (null = not checked against the bank yet)
+  reconciledAt     DateTime?
+  reconciledById   String?
+  bankRef          String?       @db.VarChar(100)
   createdAt        DateTime      @default(now())
   account          MoneyAccount? @relation(fields: [accountId], references: [id])
 

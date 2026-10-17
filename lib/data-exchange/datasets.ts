@@ -177,7 +177,8 @@ export async function exportRows(key: DatasetKey, user: Who, f: ExportFilters): 
         where: AND({ isDeleted: false }, campusWhere(places), onlyCampus, dateRange(f) ? { date: dateRange(f) } : {}) as Prisma.ExpenseWhereInput,
         include: { campus: { select: { name: true } } }, orderBy: { date: 'desc' }, take: LIMIT,
       })
-      return rows.map((e) => ({ date: ymd(e.date), category: e.category, description: [e.title, e.description].filter(Boolean).join(' — '), amount: money(e.amount), campus: e.campus?.name ?? '', method: e.paymentSource ?? '' }))
+      const namer = await (await import('@/lib/treasury/expense-category')).expenseCategoryNamer()
+      return rows.map((e) => ({ date: ymd(e.date), category: namer({ categoryId: e.categoryId, category: e.category }).ar, description: [e.title, e.description].filter(Boolean).join(' — '), amount: money(e.amount), campus: e.campus?.name ?? '', method: e.paymentSource ?? '' }))
     }
   }
 }

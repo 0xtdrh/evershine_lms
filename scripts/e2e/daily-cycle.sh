@@ -1889,6 +1889,26 @@ api POST /api/accountant/expenses "{\"title\":\"E2E rent again\",\"amount\":150,
 check "budget vs actual: 150 spent of 100 → over (150%)" "$(api GET "/api/budgets?year=$BY&month=$BMO&campusId=$CAMPUS" | jq_ "[(float(r['budget']), float(r['actual']), r['pct'], r['status']) for r in d['data']['rows'] if r['categoryId']=='$TCAT']")" "[(100.0, 150.0, 150, 'OVER')]"
 check "'your work today' warns about the budget" "$(api GET /api/today | jq_ "any(t['key']=='budgetOver' for t in d['data']['tasks'])")" "True"
 check "a secretary cannot set fees or budgets" "$(secapi POST /api/fee-types '{"nameEn":"X fee","nameAr":"رسم","amount":1,"frequency":"ONCE"}' | jq_ "d['success']")/$(secapi PUT /api/budgets "{\"year\":$BY,\"month\":$BMO,\"campusId\":\"$CAMPUS\",\"categoryId\":\"$TCAT\",\"amount\":1}" | jq_ "d['success']")" "False/False"
+echo "== 56. FIN-3 cash flow + forecast, where every pound went, bank reconciliation, category names in reports"
+CF=$(api GET "/api/finance/cashflow?months=3")
+check "cash flow: 3 months, this month last, in − out = net, forecast present" "$(echo "$CF" | jq_ "(len(d['data']['months']), d['data']['months'][-1]['month']=='$(date -u +%Y-%m)', all(abs(r['in']-r['out']-r['net'])<0.01 for r in d['data']['months']), 'balanceAfter' in d['data']['forecast'])")" "(3, True, True, True)"
+check "transfers between our accounts are not counted as money in / out" "$(echo "$CF" | jq_ "any('TRANSFER' in r['byKind'] for r in d['data']['months'])")" "False"
+WH=$(api GET "/api/finance/where?from=$(date -u +%Y-%m)-01&to=$(D 0)")
+check "where every pound: kept = in − out, and free = balance − families' wallets" "$(echo "$WH" | jq_ "(abs(d['data']['totalIn']-d['data']['totalOut']-d['data']['kept'])<0.01, abs(d['data']['now']['balance']-d['data']['now']['prepaid']-d['data']['now']['free'])<0.01)")" "(True, True)"
+check "expenses are split by the owner's category names (E2E Rent)" "$(echo "$WH" | jq_ "any(l.get('category')=='E2E Rent' and bool(l.get('categoryAr')) and l['amount']>=150 for l in d['data']['out'])")" "True"
+check "a secretary cannot open cash flow / reconciliation" "$(secapi GET /api/finance/cashflow | jq_ "d['success']")/$(secapi GET /api/treasury/reconcile | jq_ "d['success']")" "False/False"
+TRFN=$(M "SELECT number FROM MoneyTransfer WHERE id='$TTID'")
+STM=$(mktemp --suffix=.csv)
+printf 'Date,Description,Debit,Credit,Reference\n%s,Deposit from branch,,100.00,%s\n%s,Bank fees,15.00,,BF-1\n' "$(D 0)" "$TRFN" "$(D 0)" > "$STM"
+RC=$(curl -s -b "$JAR" -F "accountId=$TBANK" -F "file=@$STM" $B/api/treasury/reconcile)
+check "statement (debit / credit columns) read: the deposit matches the transfer, the bank fee is bank-only" "$(echo "$RC" | jq_ "(d['data']['lines'], [m['move']['kind'] for m in d['data']['matched']], [float(l['amount']) for l in d['data']['bankOnly']])")" "(2, ['TRANSFER'], [-15.0])"
+MID=$(echo "$RC" | jq_ "d['data']['matched'][0]['move']['id']")
+api POST /api/treasury/reconcile/confirm "{\"accountId\":\"$TBANK\",\"pairs\":[{\"moveId\":\"$MID\",\"bankRef\":\"$TRFN\"}]}" >/dev/null
+check "confirmed → the movement carries the bank reference and the date it was matched" "$(M "SELECT CONCAT(reconciledAt IS NOT NULL,'/',bankRef='$TRFN') FROM MoneyMovement WHERE id='$MID'")" "1/1"
+check "comparing the same statement again: already matched, nothing new" "$(curl -s -b "$JAR" -F "accountId=$TBANK" -F "file=@$STM" $B/api/treasury/reconcile | jq_ "(d['data']['already'], len(d['data']['matched']))")" "(1, 0)"
+check "undo takes a match back" "$(api POST /api/treasury/reconcile/confirm "{\"accountId\":\"$TBANK\",\"undo\":\"$MID\"}" | jq_ "d['data']['undone']")/$(M "SELECT reconciledAt IS NULL FROM MoneyMovement WHERE id='$MID'")" "1/1"
+rm -f "$STM"
+check "'your work today' knows the new money tasks (no error)" "$(api GET /api/today | jq_ "d['success']")" "True"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

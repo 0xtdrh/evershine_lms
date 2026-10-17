@@ -49,6 +49,7 @@ const { mockAuth, mockPrisma, mockTx } = vi.hoisted(() => {
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
 vi.mock('@/lib/places/server', () => import('./helpers/places-mock'))
+vi.mock('@/lib/treasury/expense-category', () => ({ expenseCategoryNamer: async () => (e: { category: string }) => ({ en: e.category, ar: e.category }) }))
 
 import { POST } from '../app/api/accountant/profit-loss/route'
 

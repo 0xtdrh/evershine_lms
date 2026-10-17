@@ -3,6 +3,7 @@
  * Streams an Excel export of expenses based on query filters.
  */
 
+import { expenseCategoryNamer } from '@/lib/treasury/expense-category'
 import { campusWhere, narrow } from '@/lib/places/rules'
 import { requestPlaces } from '@/lib/places/server'
 import { NextRequest, NextResponse } from 'next/server'
@@ -64,6 +65,7 @@ export async function GET(request: NextRequest) {
       description: true,
       amount: true,
       category: true,
+      categoryId: true,
       date: true,
       campusId: true,
       campus: { select: { name: true } },
@@ -86,7 +88,10 @@ export async function GET(request: NextRequest) {
     },
   })
 
-  const workbook = await buildExpenseReport(expenses as unknown as Parameters<typeof buildExpenseReport>[0], { start: startDate, end: endDate, category })
+  // FIN-3: show the owner's category names
+  const namer = await expenseCategoryNamer()
+  const named = expenses.map((e) => ({ ...e, category: namer({ categoryId: (e as { categoryId?: string | null }).categoryId, category: e.category }).en }))
+  const workbook = await buildExpenseReport(named as unknown as Parameters<typeof buildExpenseReport>[0], { start: startDate, end: endDate, category })
 
   // Use a modern approach for streaming the ExcelJS workbook into a Web Response.
   // ExcelJS writes a Buffer-like payload; convert it to a pure ArrayBuffer for NextResponse compatibility.

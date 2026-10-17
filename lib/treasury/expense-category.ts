@@ -18,6 +18,20 @@ export async function resolveExpenseCategory(categoryId?: string | null, categor
   return null
 }
 
+/**
+ * FIN-3: the display name of an expense's category (editable category first, else the built-in key's category) —
+ * so reports (P&L, expense export) show the owner's names instead of the old fixed keys.
+ */
+export async function expenseCategoryNamer(): Promise<(e: { categoryId?: string | null; category: string }) => { en: string; ar: string }> {
+  const defs = await expenseCategories(true)
+  const byId = new Map(defs.map((d) => [d.id, d]))
+  const byKey = new Map(defs.map((d) => [d.key, d]))
+  return (e) => {
+    const d = (e.categoryId && byId.get(e.categoryId)) || byKey.get(e.category)
+    return d ? { en: d.nameEn, ar: d.nameAr } : { en: e.category, ar: e.category }
+  }
+}
+
 /** Filter by an editable category (old rows without a categoryId match through the built-in key). */
 export async function expenseCategoryWhere(categoryId: string) {
   const def = await prisma.expenseCategoryDef.findUnique({ where: { id: categoryId } })
