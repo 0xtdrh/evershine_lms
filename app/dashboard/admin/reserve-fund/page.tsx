@@ -21,6 +21,7 @@ import {
   Coins
 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { L, useI18n } from '@/lib/i18n/client'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ interface ReserveResponse {
 }
 
 export default function ReserveFundPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const role = session?.user?.role ?? ''
   const isSuperAdmin = role === 'SUPER_ADMIN'
@@ -98,7 +100,7 @@ export default function ReserveFundPage() {
   if (!isSuperAdmin) {
     return (
       <AccessDenied
-        title="Access Restricted"
+        title={L('Access Restricted', 'الدخول مقفول')}
         message="Only Super Administrators have permission to view the institutional reserve fund ledger."
       />
     )
@@ -112,13 +114,13 @@ export default function ReserveFundPage() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
           <div>
             <p className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-1">
-              Governance & Capital Reserve
+              {L('Governance & Capital Reserve', 'الاحتياطي')}
             </p>
             <h1 className="text-2xl sm:text-3xl font-black leading-tight flex items-center gap-2">
-              <ShieldCheck className="w-8 h-8 text-indigo-400" /> Reserve Fund Ledger
+              <ShieldCheck className="w-8 h-8 text-indigo-400" /> {L('Reserve Fund Ledger', 'دفتر الاحتياطي')}
             </h1>
             <p className="text-indigo-300 text-sm mt-1">
-              Append-only institutional reserve allocation ledger (5% of P&L allocations)
+              {L('Append-only institutional reserve allocation ledger (5% of P&L allocations)', 'سجل مبالغ الاحتياطي (5% من كشوف الأرباح)')}
             </p>
           </div>
         </div>
@@ -130,20 +132,20 @@ export default function ReserveFundPage() {
           <Card className="shadow-sm border-indigo-100 bg-white">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                <Coins className="w-3.5 h-3.5 text-indigo-500" /> Current Cumulative Reserve Balance
+                <Coins className="w-3.5 h-3.5 text-indigo-500" /> {L('Current Cumulative Reserve Balance', 'رصيد الاحتياطي الحالي')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-black text-indigo-950">{formatCurrency(balance)}</p>
               <p className="text-xs text-gray-400 mt-1">
-                Aggregated from all campus allocations snapshot cycles.
+                {L('Aggregated from all campus allocations snapshot cycles.', 'مجموع كل كشوف الفروع.')}
               </p>
             </CardContent>
           </Card>
           <Card className="shadow-sm border-indigo-100 bg-white">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                <History className="w-3.5 h-3.5 text-indigo-500" /> Latest Allocation
+                <History className="w-3.5 h-3.5 text-indigo-500" /> {L('Latest Allocation', 'آخر مبلغ')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -159,7 +161,7 @@ export default function ReserveFundPage() {
 
         {/* Filters bar */}
         <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-xs font-black uppercase text-gray-400">Filters</span>
+          <span className="text-xs font-black uppercase text-gray-400">{L('Filters', 'الفلاتر')}</span>
           <select
             value={campusId}
             onChange={(e) => {
@@ -168,7 +170,7 @@ export default function ReserveFundPage() {
             }}
             className="h-9 border border-gray-200 rounded-lg px-2 text-sm bg-white"
           >
-            <option value="">All Campuses</option>
+            <option value="">{L('All Campuses', 'كل الفروع')}</option>
             {campuses.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name} ({c.code})
@@ -180,7 +182,7 @@ export default function ReserveFundPage() {
             <Calendar className="w-4 h-4 text-gray-400" />
             <Input
               type="number"
-              placeholder="Year (e.g. 2026)"
+              placeholder={L('Year (e.g. 2026)', 'السنة (مثلاً 2026)')}
               value={year}
               onChange={(e) => {
                 setYear(e.target.value)
@@ -201,7 +203,7 @@ export default function ReserveFundPage() {
               }}
               className="text-gray-400 hover:text-gray-600 gap-1 h-8"
             >
-              <X className="w-3.5 h-3.5" /> Clear
+              <X className="w-3.5 h-3.5" /> {L('Clear', 'امسح')}
             </Button>
           )}
         </div>
@@ -214,9 +216,9 @@ export default function ReserveFundPage() {
         ) : entries.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
             <History className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-            <p className="font-black text-gray-700">Reserve ledger is empty</p>
+            <p className="font-black text-gray-700">{L('Reserve ledger is empty', 'الدفتر فاضي')}</p>
             <p className="text-sm text-gray-400 mt-1">
-              Allocations will appear here as soon as accountants finalize P&L snapshot cycles.
+              {L('Allocations will appear here as soon as accountants finalize P&L snapshot cycles.', 'المبالغ هتظهر هنا لما المحاسبين يعملوا كشوف الأرباح.')}
             </p>
           </div>
         ) : (
@@ -225,11 +227,11 @@ export default function ReserveFundPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100 text-[10px] uppercase font-black tracking-wider text-gray-400">
-                    <th className="px-5 py-3.5">Date</th>
-                    <th className="px-5 py-3.5">Period</th>
-                    <th className="px-5 py-3.5">Contribution Amount</th>
-                    <th className="px-5 py-3.5">Cumulative Total</th>
-                    <th className="px-5 py-3.5">Audit Note</th>
+                    <th className="px-5 py-3.5">{L('Date', 'التاريخ')}</th>
+                    <th className="px-5 py-3.5">{L('Period', 'الفترة')}</th>
+                    <th className="px-5 py-3.5">{L('Contribution Amount', 'المبلغ')}</th>
+                    <th className="px-5 py-3.5">{L('Cumulative Total', 'الإجمالي التراكمي')}</th>
+                    <th className="px-5 py-3.5">{L('Audit Note', 'ملاحظة')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 text-sm">
@@ -267,10 +269,10 @@ export default function ReserveFundPage() {
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
-              Previous
+              {L('Previous', 'السابق')}
             </Button>
             <span className="text-sm font-bold text-gray-500 flex items-center px-2">
-              Page {page} / {pagination.totalPages}
+              {L('Page', 'صفحة')} {page} / {pagination.totalPages}
             </span>
             <Button
               variant="outline"
@@ -278,7 +280,7 @@ export default function ReserveFundPage() {
               disabled={page >= pagination.totalPages}
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              {L('Next', 'التالي')}
             </Button>
           </div>
         )}

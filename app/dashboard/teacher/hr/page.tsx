@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { SESSION_SHIFT_LABELS } from '@/lib/validation/shift'
 import type { SessionShift } from '@/lib/validation/shift'
 import { useSession } from 'next-auth/react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface SalarySlip { id: string; month: string; netSalary: number; status: string; createdAt: string }
 interface Application { id: string; title: string; description: string; type: string; status: string; createdAt: string; adminReply: string | null }
@@ -112,6 +113,7 @@ function hrStatusCardClass(status?: string | null) {
 }
 
 export default function TeacherHRPage() {
+  useI18n() // re-render on a language switch
   const queryClient = useQueryClient()
   const { data: session } = useSession()
   const isTeacher = session?.user?.role === 'TEACHER'
@@ -139,13 +141,13 @@ export default function TeacherHRPage() {
 
   const applyMutation = useMutation({
     mutationFn: (data: typeof formData) => fetchApi('/api/teacher-portal/applications', { method: 'POST', body: JSON.stringify(data) }),
-    onSuccess: () => { notify.success('Application submitted successfully'); queryClient.invalidateQueries({ queryKey: ['teacher-applications'] }); setIsApplying(false); setFormData({ type: 'LEAVE', title: '', description: '' }) },
+    onSuccess: () => { notify.success(L('Application submitted successfully', 'الطلب اتبعت')); queryClient.invalidateQueries({ queryKey: ['teacher-applications'] }); setIsApplying(false); setFormData({ type: 'LEAVE', title: '', description: '' }) },
     onError: (err: unknown) => notify.error(getErrorMessage(err, 'Failed to submit application')),
   })
 
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); applyMutation.mutate(formData) }
 
-  if (!isTeacher) return <div className="p-8 text-center text-gray-500">Access Restricted</div>
+  if (!isTeacher) return <div className="p-8 text-center text-gray-500">{L('Access Restricted', 'الدخول مقفول')}</div>
 
   const activeShift = checkInData ? detectActiveShift(checkInData.shifts) : null
   const stats = checkInData?.monthlyStats
@@ -155,8 +157,8 @@ export default function TeacherHRPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">My HR Portal</h1>
-        <p className="text-gray-500">View your attendance records, salary slips, and applications.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">{L('My HR Portal', 'شؤون الموظفين')}</h1>
+        <p className="text-gray-500">{L('View your attendance records, salary slips, and applications.', 'حضورك، وقسايم مرتبك، وطلباتك.')}</p>
       </div>
 
       <div className="flex border-b border-gray-200 flex-wrap">
@@ -175,15 +177,15 @@ export default function TeacherHRPage() {
           <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-sm text-indigo-850 dark:text-indigo-900 flex items-start gap-3 shadow-sm">
             <Info className="w-5 h-5 mt-0.5 text-indigo-600 flex-shrink-0" />
             <div>
-              <p className="font-bold text-indigo-905">Official HR Attendance Log</p>
+              <p className="font-bold text-indigo-905">{L('Official HR Attendance Log', 'سجل الحضور الرسمي')}</p>
               <p className="text-xs mt-0.5 opacity-90 leading-relaxed">
-                Your attendance and check-in times are officially managed by the campus administration. Discrepancies, leaves, or corrections must be processed through your campus administrator or by submitting an application.
+                {L('Your attendance and check-in times are officially managed by the campus administration. Discrepancies, leaves, or corrections must be processed through your campus administrator or by submitting an application.', 'حضورك ومواعيد وصولك بتسجّلها إدارة الفرع. أي تصحيح أو إجازة بيتم عن طريق إدارة الفرع أو بطلب.')}
               </p>
             </div>
           </div>
 
           {isLoadingCheckIn ? (
-            <div className="flex items-center gap-2 text-gray-500 py-16 justify-center"><Loader2 className="w-5 h-5 animate-spin" /> Loading attendance data…</div>
+            <div className="flex items-center gap-2 text-gray-500 py-16 justify-center"><Loader2 className="w-5 h-5 animate-spin" /> {L('Loading attendance data…', 'بيحمّل الحضور…')}</div>
           ) : (
             <>
               {/* ── Main Attendance Card ───────────────────────────────── */}
@@ -228,11 +230,11 @@ export default function TeacherHRPage() {
                     ) : (
                       <div className="space-y-3">
                         <p className="text-sm text-slate-500">
-                          Attendance is recorded by campus administration.
+                          {L('Attendance is recorded by campus administration.', 'الحضور بتسجّله إدارة الفرع.')}
                           {activeShift ? ` Grace period: ${activeShift.lateGraceMinutes} minutes after shift start.` : ''}
                         </p>
                         <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200">
-                          Not marked yet
+                          {L('Not marked yet', 'لسه ماتسجلش')}
                         </Badge>
                       </div>
                     )}
@@ -267,26 +269,26 @@ export default function TeacherHRPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
                     <p className="text-2xl font-bold text-emerald-700">{stats.present}</p>
-                    <p className="text-xs text-emerald-600 font-medium mt-1">Present</p>
+                    <p className="text-xs text-emerald-600 font-medium mt-1">{L('Present', 'حاضر')}</p>
                   </div>
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
                     <p className="text-2xl font-bold text-amber-700">{stats.late}</p>
-                    <p className="text-xs text-amber-600 font-medium mt-1">Late</p>
+                    <p className="text-xs text-amber-600 font-medium mt-1">{L('Late', 'متأخر')}</p>
                   </div>
                   <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
                     <p className="text-2xl font-bold text-red-700">{stats.absent}</p>
-                    <p className="text-xs text-red-600 font-medium mt-1">Absent</p>
+                    <p className="text-xs text-red-600 font-medium mt-1">{L('Absent', 'غايب')}</p>
                   </div>
                   <div className={`border rounded-xl p-4 text-center ${graceRemaining > 0 ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}`}>
                     <p className="text-2xl font-bold flex items-center justify-center gap-1">
                       {graceRemaining > 0 ? <ShieldCheck className="w-5 h-5 text-blue-600" /> : <ShieldAlert className="w-5 h-5 text-orange-600" />}
                       <span className={graceRemaining > 0 ? 'text-blue-700' : 'text-orange-700'}>{graceRemaining}</span>
                     </p>
-                    <p className={`text-xs font-medium mt-1 ${graceRemaining > 0 ? 'text-blue-600' : 'text-orange-600'}`}>Grace Left</p>
+                    <p className={`text-xs font-medium mt-1 ${graceRemaining > 0 ? 'text-blue-600' : 'text-orange-600'}`}>{L('Grace Left', 'السماح الباقي')}</p>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-slate-700">EGP {stats.totalPenalty}</p>
-                    <p className="text-xs text-slate-500 font-medium mt-1">Total Penalty</p>
+                    <p className="text-2xl font-bold text-slate-700">{L('EGP', 'ج.م')} {stats.totalPenalty}</p>
+                    <p className="text-xs text-slate-500 font-medium mt-1">{L('Total Penalty', 'إجمالي الجزاءات')}</p>
                   </div>
                 </div>
               )}
@@ -311,18 +313,18 @@ export default function TeacherHRPage() {
                 </CardHeader>
                 <CardContent>
                   {(checkInData?.history ?? []).length === 0 ? (
-                    <p className="text-sm text-gray-500 py-4 text-center">No attendance records this month.</p>
+                    <p className="text-sm text-gray-500 py-4 text-center">{L('No attendance records this month.', 'مفيش حضور متسجل الشهر ده.')}</p>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
                       <Table>
                         <TableHeader className="bg-slate-50">
                           <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Shift</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Check-in</TableHead>
-                            <TableHead>Late</TableHead>
-                            <TableHead className="text-right">Penalty</TableHead>
+                            <TableHead>{L('Date', 'التاريخ')}</TableHead>
+                            <TableHead>{L('Shift', 'الوردية')}</TableHead>
+                            <TableHead>{L('Status', 'الحالة')}</TableHead>
+                            <TableHead>{L('Check-in', 'الوصول')}</TableHead>
+                            <TableHead>{L('Late', 'متأخر')}</TableHead>
+                            <TableHead className="text-right">{L('Penalty', 'الجزاء')}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -361,22 +363,22 @@ export default function TeacherHRPage() {
       {/* ═══════ SALARY TAB ═══════ */}
       {activeTab === 'salary' && (
         <Card className="border-gray-200 shadow-sm">
-          <CardHeader className="pb-4"><CardTitle className="text-lg">Salary History</CardTitle><CardDescription>View your monthly processed salary slips.</CardDescription></CardHeader>
+          <CardHeader className="pb-4"><CardTitle className="text-lg">{L('Salary History', 'سجل المرتبات')}</CardTitle><CardDescription>{L('View your monthly processed salary slips.', 'قسايم مرتبك الشهرية.')}</CardDescription></CardHeader>
           <CardContent>
-            {isLoadingSalary ? (<div className="text-center py-8 text-gray-500">Loading salary data...</div>
+            {isLoadingSalary ? (<div className="text-center py-8 text-gray-500">{L('Loading salary data...', 'بيحمّل المرتبات...')}</div>
             ) : !salarySlips?.length ? (
-              <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed"><Wallet className="w-8 h-8 text-gray-400 mx-auto mb-3" /><h3 className="text-sm font-medium text-gray-900">No salary slips generated</h3><p className="text-sm text-gray-500 mt-1">Your salary slips will appear here once processed by the accountant.</p></div>
+              <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed"><Wallet className="w-8 h-8 text-gray-400 mx-auto mb-3" /><h3 className="text-sm font-medium text-gray-900">{L('No salary slips generated', 'مفيش قسايم')}</h3><p className="text-sm text-gray-500 mt-1">{L('Your salary slips will appear here once processed by the accountant.', 'القسايم هتظهر هنا لما المحاسب يطلعها.')}</p></div>
             ) : (
               <div className="border rounded-lg overflow-hidden">
                 <Table>
-                  <TableHeader className="bg-gray-50"><TableRow><TableHead>Month</TableHead><TableHead>Generated On</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Net Salary</TableHead></TableRow></TableHeader>
+                  <TableHeader className="bg-gray-50"><TableRow><TableHead>{L('Month', 'الشهر')}</TableHead><TableHead>{L('Generated On', 'اتعملت يوم')}</TableHead><TableHead>{L('Status', 'الحالة')}</TableHead><TableHead className="text-right">{L('Net Salary', 'صافي المرتب')}</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {salarySlips?.map((slip) => (
                       <TableRow key={slip.id}>
                         <TableCell className="font-medium text-gray-900">{slip.month}</TableCell>
                         <TableCell className="text-sm text-gray-500">{new Date(slip.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell><span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${slip.status === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{slip.status}</span></TableCell>
-                        <TableCell className="text-right font-medium text-gray-900">EGP {Number(slip.netSalary).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-medium text-gray-900">{L('EGP', 'ج.م')} {Number(slip.netSalary).toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -392,40 +394,40 @@ export default function TeacherHRPage() {
         <div className="space-y-6">
           <div className="flex justify-end">
             <Button onClick={() => setIsApplying(!isApplying)} className="gap-2">
-              {isApplying ? 'Cancel Application' : <><Send className="w-4 h-4" /> New Application</>}
+              {isApplying ? 'Cancel Application' : <><Send className="w-4 h-4" /> {L('New Application', 'طلب جديد')}</>}
             </Button>
           </div>
           {isApplying && (
             <Card className="border-indigo-100 shadow-sm">
-              <CardHeader className="bg-indigo-50/50 pb-4"><CardTitle className="text-lg">Submit New Application</CardTitle><CardDescription>Submit leave requests, advance salary requests, or general applications to HR.</CardDescription></CardHeader>
+              <CardHeader className="bg-indigo-50/50 pb-4"><CardTitle className="text-lg">{L('Submit New Application', 'ابعت طلب جديد')}</CardTitle><CardDescription>{L('Submit leave requests, advance salary requests, or general applications to HR.', 'ابعت طلب إجازة، أو سلفة، أو أي طلب لشؤون الموظفين.')}</CardDescription></CardHeader>
               <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Application Type</Label>
+                      <Label>{L('Application Type', 'نوع الطلب')}</Label>
                       <Select value={formData.type} onValueChange={(val) => setFormData(prev => ({ ...prev, type: val }))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="LEAVE">Leave Request</SelectItem>
-                          <SelectItem value="ADVANCE_SALARY">Advance Salary Request</SelectItem>
-                          <SelectItem value="PROGRESS_UPDATE">Course Progress Update</SelectItem>
-                          <SelectItem value="OTHER">Other Query</SelectItem>
+                          <SelectItem value="LEAVE">{L('Leave Request', 'طلب إجازة')}</SelectItem>
+                          <SelectItem value="ADVANCE_SALARY">{L('Advance Salary Request', 'طلب سلفة')}</SelectItem>
+                          <SelectItem value="PROGRESS_UPDATE">{L('Course Progress Update', 'تحديث سير الكورس')}</SelectItem>
+                          <SelectItem value="OTHER">{L('Other Query', 'استفسار تاني')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2"><Label>Subject / Title *</Label><Input required placeholder="e.g. Sick leave for 2 days" value={formData.title} onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))} /></div>
+                    <div className="space-y-2"><Label>{L('Subject / Title *', 'العنوان *')}</Label><Input required placeholder={L('e.g. Sick leave for 2 days', 'مثلاً: إجازة مرضي يومين')} value={formData.title} onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))} /></div>
                   </div>
-                  <div className="space-y-2"><Label>Details / Reason *</Label><Textarea required rows={4} placeholder="Provide detailed reasons for your application..." value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} /></div>
+                  <div className="space-y-2"><Label>{L('Details / Reason *', 'التفاصيل / السبب *')}</Label><Textarea required rows={4} placeholder={L('Provide detailed reasons for your application...', 'اكتب السبب بالتفصيل...')} value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} /></div>
                   <div className="flex justify-end pt-2"><Button type="submit" disabled={applyMutation.isPending}>{applyMutation.isPending ? 'Submitting...' : 'Submit to Admin'}</Button></div>
                 </form>
               </CardContent>
             </Card>
           )}
           <Card className="border-gray-200 shadow-sm">
-            <CardHeader className="pb-4"><CardTitle className="text-lg">Previous Applications</CardTitle></CardHeader>
+            <CardHeader className="pb-4"><CardTitle className="text-lg">{L('Previous Applications', 'الطلبات السابقة')}</CardTitle></CardHeader>
             <CardContent>
-              {isLoadingApps ? (<div className="text-center py-8 text-gray-500">Loading applications...</div>
-              ) : !applications?.length ? (<div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed text-sm text-gray-500">No applications found.</div>
+              {isLoadingApps ? (<div className="text-center py-8 text-gray-500">{L('Loading applications...', 'بيحمّل الطلبات...')}</div>
+              ) : !applications?.length ? (<div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed text-sm text-gray-500">{L('No applications found.', 'مفيش طلبات.')}</div>
               ) : (
                 <div className="space-y-4">
                   {applications?.map((app) => (
@@ -440,7 +442,7 @@ export default function TeacherHRPage() {
                         </div>
                         <h3 className="font-semibold text-gray-900">{app.title}</h3>
                         <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{app.description}</p>
-                        {app.adminReply && (<div className="mt-3 p-3 bg-gray-50 rounded-md border text-sm text-gray-800"><strong>Admin Reply:</strong> {app.adminReply}</div>)}
+                        {app.adminReply && (<div className="mt-3 p-3 bg-gray-50 rounded-md border text-sm text-gray-800"><strong>{L('Admin Reply:', 'رد الإدارة:')}</strong> {app.adminReply}</div>)}
                       </div>
                       <div className="text-xs text-gray-400 md:text-right flex items-start gap-1 justify-end"><Calendar className="w-3.5 h-3.5" />{new Date(app.createdAt).toLocaleDateString()}</div>
                     </div>

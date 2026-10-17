@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AlertTriangle, Loader2, Trash2 } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 const norm = (v: string) => v.normalize('NFKC').replace(new RegExp(`[${String.fromCharCode(0x0640)}${String.fromCharCode(0x200b)}-${String.fromCharCode(0x200f)}]`, 'g'), '').replace(/\s+/g, ' ').trim()
 
@@ -17,6 +18,7 @@ interface Row { table: string; toDelete: number; kept: number }
 interface Preview { ready: boolean; reason?: string; rows: Row[]; totalToDelete: number; confirmation: string }
 
 export default function WipeTestDataPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
   const qc = useQueryClient()
@@ -34,7 +36,7 @@ export default function WipeTestDataPage() {
         body: JSON.stringify({ confirm: typed }),
       }),
     onSuccess: (r) => {
-      notify.success('Test data deleted', { description: `Backup taken first: ${r.backupFile}` })
+      notify.success(L('Test data deleted', 'بيانات التجربة اتمسحت'), { description: `Backup taken first: ${r.backupFile}` })
       setTyped('')
       qc.invalidateQueries()
     },
@@ -51,23 +53,23 @@ export default function WipeTestDataPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold"><Trash2 className="h-6 w-6" /> Delete test data</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><Trash2 className="h-6 w-6" /> {L('Delete test data', 'مسح بيانات التجربة')}</h1>
         <p className="text-sm text-muted-foreground">
           One-time cleanup before going live. A backup is taken automatically first; if anything goes wrong, nothing is deleted.
         </p>
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{L('Loading…', 'بيحمّل…')}</p>
       ) : !data?.ready ? (
         <p className="text-sm text-red-600">{data?.reason}</p>
       ) : (
         <>
           <Card className="border-red-300">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-700"><AlertTriangle className="h-5 w-5" /> {data.totalToDelete} rows will be deleted</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-red-700"><AlertTriangle className="h-5 w-5" /> {data.totalToDelete} {L('rows will be deleted', 'سطر هيتمسح')}</CardTitle>
               <CardDescription>
-                Kept: Super Admin accounts, TechNova Company, the 5 Nova tracks with their levels, and settings (permissions, certificate designs, feedback questions).
+                {L('Kept: Super Admin accounts, TechNova Company, the 5 Nova tracks with their levels, and settings (permissions, certificate designs, feedback questions).', 'اللي هيفضل: حسابات Super Admin، وشركة TechNova، وتراكات Nova الخمسة بمستوياتها، والإعدادات (الصلاحيات، تصميمات الشهادات، أسئلة التقييم).')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -81,7 +83,7 @@ export default function WipeTestDataPage() {
               </div>
               <div className="space-y-2">
                 <p className="text-sm">
-                  To confirm, type exactly: <strong className="select-all">{data.confirmation}</strong>
+                  {L('To confirm, type exactly:', 'علشان تأكّد، اكتب بالظبط:')} <strong className="select-all">{data.confirmation}</strong>
                 </p>
                 <Input dir="rtl" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={data.confirmation} />
                 <Button
@@ -90,14 +92,14 @@ export default function WipeTestDataPage() {
                   onClick={() => wipe.mutate()}
                 >
                   {wipe.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Back up, then delete all test data
+                  {L('Back up, then delete all test data', 'خد نسخة، وبعدين امسح كل بيانات التجربة')}
                 </Button>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-base">Kept</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{L('Kept', 'هيفضل')}</CardTitle></CardHeader>
             <CardContent className="grid gap-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
               {keeping.map((r) => (
                 <div key={r.table} className="flex justify-between rounded border px-2 py-1">

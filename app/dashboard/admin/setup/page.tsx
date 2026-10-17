@@ -9,10 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, Circle, Loader2, Wand2 } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Step { key: string; title: string; status: 'DONE' | 'TODO'; detail: string }
 
 export default function InitialSetupPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
   const qc = useQueryClient()
@@ -25,7 +27,7 @@ export default function InitialSetupPage() {
   const apply = useMutation({
     mutationFn: () => fetchApi<{ steps: Step[] }>('/api/admin/setup', { method: 'POST' }),
     onSuccess: () => {
-      notify.success('Setup applied')
+      notify.success(L('Setup applied', 'الإعداد اتطبّق'))
       qc.invalidateQueries()
     },
     onError: (err: Error) => notify.error(err.message || 'Setup failed'),
@@ -41,7 +43,7 @@ export default function InitialSetupPage() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold"><Wand2 className="h-6 w-6" /> Initial Setup</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold"><Wand2 className="h-6 w-6" /> {L('Initial Setup', 'الإعداد الأولي')}</h1>
           <p className="text-sm text-muted-foreground">
             Sets TechNova&apos;s base data. Review the list, then apply. Safe to run again: finished steps are skipped.
           </p>
@@ -54,12 +56,12 @@ export default function InitialSetupPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>What will be set</CardTitle>
-          <CardDescription>Take a backup first (Admin → Backups → Back up now).</CardDescription>
+          <CardTitle>{L('What will be set', 'اللي هيتظبط')}</CardTitle>
+          <CardDescription>{L('Take a backup first (Admin → Backups → Back up now).', 'خد نسخة احتياطي الأول (الإعدادات ← النسخ الاحتياطي ← خد نسخة دلوقتي).')}</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-sm text-muted-foreground">{L('Loading…', 'بيحمّل…')}</p>
           ) : (
             <div className="divide-y rounded-md border">
               {steps.map((s) => (

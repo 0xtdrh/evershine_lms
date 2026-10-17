@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Banknote, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface SalarySlip {
   id: string
@@ -58,7 +59,7 @@ function SlipCard({ slip }: { slip: SalarySlip }) {
           <Badge className={`text-xs font-bold border ${slip.status === 'ISSUED' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
             {slip.status}
           </Badge>
-          <span className="font-black text-indigo-900 text-sm">EGP {Number(slip.netSalary).toLocaleString()}</span>
+          <span className="font-black text-indigo-900 text-sm">{L('EGP', 'ج.م')} {Number(slip.netSalary).toLocaleString()}</span>
           {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </div>
       </button>
@@ -70,19 +71,19 @@ function SlipCard({ slip }: { slip: SalarySlip }) {
               {/* Breakdown grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                 <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Basic Salary</p>
-                  <p className="font-black text-gray-900">EGP {Number(slip.basicSalary).toLocaleString()}</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">{L('Basic Salary', 'المرتب الأساسي')}</p>
+                  <p className="font-black text-gray-900">{L('EGP', 'ج.م')} {Number(slip.basicSalary).toLocaleString()}</p>
                 </div>
                 {Number(slip.overtimeAmount) > 0 && (
                   <div className="bg-emerald-50 rounded-xl p-3">
-                    <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Overtime</p>
-                    <p className="font-black text-emerald-700">+ EGP {Number(slip.overtimeAmount).toLocaleString()}</p>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">{L('Overtime', 'إضافي')}</p>
+                    <p className="font-black text-emerald-700">{L('+ EGP', '+ ج.م')} {Number(slip.overtimeAmount).toLocaleString()}</p>
                   </div>
                 )}
                 {Number(slip.lunchDues) > 0 && (
                   <div className="bg-red-50 rounded-xl p-3">
-                    <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Lunch Dues</p>
-                    <p className="font-black text-red-600">- EGP {Number(slip.lunchDues).toLocaleString()}</p>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">{L('Lunch Dues', 'بدل غدا')}</p>
+                    <p className="font-black text-red-600">{L('- EGP', '- ج.م')} {Number(slip.lunchDues).toLocaleString()}</p>
                   </div>
                 )}
               </div>
@@ -90,13 +91,13 @@ function SlipCard({ slip }: { slip: SalarySlip }) {
               {/* Custom fields */}
               {slip.customFields && slip.customFields.length > 0 && (
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-2">Other Components</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-2">{L('Other Components', 'بنود تانية')}</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {slip.customFields.map((cf, i) => (
                       <div key={i} className="flex justify-between bg-gray-50 rounded-lg px-3 py-2 text-xs">
                         <span className="text-gray-600 font-bold">{cf.label}</span>
                         <span className={`font-black ${cf.isDeduction ? 'text-red-600' : 'text-emerald-700'}`}>
-                          {cf.isDeduction ? '-' : '+'} EGP {Number(cf.value).toLocaleString()}
+                          {cf.isDeduction ? '-' : '+'} {L('EGP', 'ج.م')} {Number(cf.value).toLocaleString()}
                         </span>
                       </div>
                     ))}
@@ -107,33 +108,33 @@ function SlipCard({ slip }: { slip: SalarySlip }) {
               {/* Net payable summary bar */}
               <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl p-4 text-white grid grid-cols-3 text-center gap-2">
                 <div>
-                  <p className="text-[10px] text-indigo-200 uppercase font-bold">Gross</p>
-                  <p className="font-black text-sm">EGP {Number(slip.totalAdditions).toLocaleString()}</p>
+                  <p className="text-[10px] text-indigo-200 uppercase font-bold">{L('Gross', 'الإجمالي')}</p>
+                  <p className="font-black text-sm">{L('EGP', 'ج.م')} {Number(slip.totalAdditions).toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-indigo-200 uppercase font-bold">Deductions</p>
-                  <p className="font-black text-sm text-red-300">- EGP {Number(slip.totalDeductions).toLocaleString()}</p>
+                  <p className="text-[10px] text-indigo-200 uppercase font-bold">{L('Deductions', 'الخصومات')}</p>
+                  <p className="font-black text-sm text-red-300">{L('- EGP', '- ج.م')} {Number(slip.totalDeductions).toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-indigo-200 uppercase font-bold">Net Payable</p>
-                  <p className="font-black text-lg">EGP {Number(slip.netSalary).toLocaleString()}</p>
+                  <p className="text-[10px] text-indigo-200 uppercase font-bold">{L('Net Payable', 'الصافي')}</p>
+                  <p className="font-black text-lg">{L('EGP', 'ج.م')} {Number(slip.netSalary).toLocaleString()}</p>
                 </div>
               </div>
 
               {/* Progress bar */}
               <div>
-                <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Net / Gross Ratio</p>
+                <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">{L('Net / Gross Ratio', 'نسبة الصافي للإجمالي')}</p>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div className="h-2 rounded-full bg-indigo-500 transition-all" style={{ width: `${Math.min(100, pct)}%` }} />
                 </div>
-                <p className="text-[10px] text-gray-400 mt-0.5">{pct}% of gross retained after deductions</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{pct}{L('% of gross retained after deductions', '% من الإجمالي بعد الخصومات')}</p>
               </div>
 
               {/* Payment meta */}
               <div className="flex flex-wrap gap-3 text-xs text-gray-500 border-t border-gray-100 pt-3">
-                <span className="font-bold">Payment via: <span className="font-black text-gray-700">{slip.paymentSource}</span></span>
-                {slip.bankName && <span className="font-bold">Bank: <span className="font-black text-gray-700">{slip.bankName}</span></span>}
-                {slip.accountNumber && <span className="font-bold">Account: <span className="font-black text-gray-700 font-mono">{slip.accountNumber}</span></span>}
+                <span className="font-bold">{L('Payment via:', 'الصرف عن طريق:')} <span className="font-black text-gray-700">{slip.paymentSource}</span></span>
+                {slip.bankName && <span className="font-bold">{L('Bank:', 'البنك:')} <span className="font-black text-gray-700">{slip.bankName}</span></span>}
+                {slip.accountNumber && <span className="font-bold">{L('Account:', 'الحساب:')} <span className="font-black text-gray-700 font-mono">{slip.accountNumber}</span></span>}
                 {slip.notes && <span className="italic">{slip.notes}</span>}
               </div>
             </div>
@@ -145,6 +146,7 @@ function SlipCard({ slip }: { slip: SalarySlip }) {
 }
 
 export default function TeacherSalaryPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const role = session?.user?.role ?? ''
   const [page, setPage] = useState(1)
@@ -167,9 +169,9 @@ export default function TeacherSalaryPage() {
         className="bg-gradient-to-br from-indigo-700 via-blue-700 to-blue-800 text-white px-4 sm:px-6 lg:px-8 pt-8 pb-16 relative overflow-hidden">
         <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-white/5" />
         <div className="max-w-3xl mx-auto relative z-10">
-          <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">My Account</p>
-          <h1 className="text-2xl sm:text-3xl font-black">My Salary Slips</h1>
-          <p className="text-blue-200 text-sm mt-1">View your monthly payroll records issued by the academy</p>
+          <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">{L('My Account', 'حسابي')}</p>
+          <h1 className="text-2xl sm:text-3xl font-black">{L('My Salary Slips', 'قسايم مرتبي')}</h1>
+          <p className="text-blue-200 text-sm mt-1">{L('View your monthly payroll records issued by the academy', 'قسايم مرتبك الشهرية')}</p>
         </div>
       </motion.div>
 
@@ -182,17 +184,17 @@ export default function TeacherSalaryPage() {
           <motion.div variants={fadeUp(0.2)}
             className="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
             <Banknote className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-            <p className="font-black text-gray-700">No salary slips yet</p>
-            <p className="text-sm text-gray-400 mt-1">Your payroll records will appear here once issued by the accountant.</p>
+            <p className="font-black text-gray-700">{L('No salary slips yet', 'لسه مفيش قسايم')}</p>
+            <p className="text-sm text-gray-400 mt-1">{L('Your payroll records will appear here once issued by the accountant.', 'القسايم هتظهر هنا لما المحاسب يطلعها.')}</p>
           </motion.div>
         ) : (
           <>
             {slips.map(slip => <SlipCard key={slip.id} slip={slip} />)}
             {pagination && pagination.totalPages > 1 && (
               <div className="flex justify-center gap-3 pt-2">
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-                <span className="text-sm font-bold text-gray-500 flex items-center px-2">Page {page} / {pagination.totalPages}</span>
-                <Button variant="outline" size="sm" disabled={page >= pagination.totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>{L('Previous', 'السابق')}</Button>
+                <span className="text-sm font-bold text-gray-500 flex items-center px-2">{L('Page', 'صفحة')} {page} / {pagination.totalPages}</span>
+                <Button variant="outline" size="sm" disabled={page >= pagination.totalPages} onClick={() => setPage(p => p + 1)}>{L('Next', 'التالي')}</Button>
               </div>
             )}
           </>

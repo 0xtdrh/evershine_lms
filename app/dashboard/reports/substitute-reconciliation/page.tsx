@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { notify } from '@/lib/notify'
 import { Loader2 } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 function apiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
@@ -38,6 +39,7 @@ interface ReconciliationRow {
 }
 
 export default function SubstituteReconciliationPage() {
+  useI18n() // re-render on a language switch
   const queryClient = useQueryClient()
 
   const { data: rows = [], isLoading } = useQuery<ReconciliationRow[]>({
@@ -93,7 +95,7 @@ export default function SubstituteReconciliationPage() {
       fetchApi(`/api/groups/${classSectionId}/pay-adjustments?adjustmentId=${adjustmentId}`, { method: 'DELETE' }),
     onSuccess: () => {
       refresh()
-      notify.success('Removed')
+      notify.success(L('Removed', 'اتشال'))
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to remove')),
   })
@@ -107,14 +109,14 @@ export default function SubstituteReconciliationPage() {
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Substitute Reconciliation</h1>
-        <CardDescription>Every confirmed substitute-covered session — settle the extra pay and the missed pay here.</CardDescription>
+        <h1 className="text-xl font-bold text-slate-900">{L('Substitute Reconciliation', 'تسوية الحصص البديلة')}</h1>
+        <CardDescription>{L('Every confirmed substitute-covered session — settle the extra pay and the missed pay here.', 'كل حصة غطاها بديل — سوّي الأجر الزيادة والخصم هنا.')}</CardDescription>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-slate-400 text-center py-16">No substitute-covered sessions yet.</p>
+        <p className="text-sm text-slate-400 text-center py-16">{L('No substitute-covered sessions yet.', 'لسه مفيش حصص بديلة.')}</p>
       ) : (
         <div className="space-y-3">
           {rows.map((row) => (
@@ -125,7 +127,7 @@ export default function SubstituteReconciliationPage() {
                     {row.groupLabel} — {row.date.slice(0, 10)}
                     {row.sessionNumber && (
                       <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-200">
-                        Session {row.sessionNumber} of {row.totalSessions}
+                        {L('Session', 'حصة')} {row.sessionNumber} {L('of', 'من')} {row.totalSessions}
                       </Badge>
                     )}
                   </p>
@@ -134,45 +136,45 @@ export default function SubstituteReconciliationPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="border border-emerald-100 bg-emerald-50/40 rounded-lg p-2.5 space-y-1">
-                    <p className="text-xs text-emerald-700 font-medium">Extra session — {row.substituteTeacher.name}</p>
+                    <p className="text-xs text-emerald-700 font-medium">{L('Extra session —', 'حصة زيادة —')} {row.substituteTeacher.name}</p>
                     {row.substituteAdjustment ? (
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-semibold text-emerald-700">
-                          Bonus: +{Math.abs(row.substituteAdjustment.amount).toLocaleString()}
+                          {L('Bonus: +', 'مكافأة: +')}{Math.abs(row.substituteAdjustment.amount).toLocaleString()}
                         </span>
                         <Button
                           size="sm" variant="ghost" className="h-6 text-[11px] text-red-600"
                           disabled={removeMutation.isPending}
                           onClick={() => confirmRemove(row, row.substituteAdjustment!, 'bonus')}
                         >
-                          Remove
+                          {L('Remove', 'شيل')}
                         </Button>
                       </div>
                     ) : (
                       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openDialog(row, 'bonus')}>
-                        + Bonus{row.suggestedBonusAmount ? ` (${row.suggestedBonusAmount})` : ''}
+                        {L('+ Bonus', '+ مكافأة')}{row.suggestedBonusAmount ? ` (${row.suggestedBonusAmount})` : ''}
                       </Button>
                     )}
                   </div>
 
                   <div className="border border-rose-100 bg-rose-50/40 rounded-lg p-2.5 space-y-1">
-                    <p className="text-xs text-rose-700 font-medium">Missed session — {row.originalTeacher.name}</p>
+                    <p className="text-xs text-rose-700 font-medium">{L('Missed session —', 'حصة فايتة —')} {row.originalTeacher.name}</p>
                     {row.originalAdjustment ? (
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-semibold text-rose-700">
-                          Deduction: -{Math.abs(row.originalAdjustment.amount).toLocaleString()}
+                          {L('Deduction: -', 'خصم: -')}{Math.abs(row.originalAdjustment.amount).toLocaleString()}
                         </span>
                         <Button
                           size="sm" variant="ghost" className="h-6 text-[11px] text-red-600"
                           disabled={removeMutation.isPending}
                           onClick={() => confirmRemove(row, row.originalAdjustment!, 'deduction')}
                         >
-                          Remove
+                          {L('Remove', 'شيل')}
                         </Button>
                       </div>
                     ) : (
                       <Button size="sm" variant="outline" className="h-7 text-xs text-red-600 border-red-200" onClick={() => openDialog(row, 'deduction')}>
-                        + Deduction{row.suggestedDeductionAmount ? ` (${row.suggestedDeductionAmount})` : ''}
+                        {L('+ Deduction', '+ خصم')}{row.suggestedDeductionAmount ? ` (${row.suggestedDeductionAmount})` : ''}
                       </Button>
                     )}
                   </div>
@@ -188,10 +190,10 @@ export default function SubstituteReconciliationPage() {
           <DialogHeader>
             <DialogTitle>{dialog?.kind === 'bonus' ? 'Add bonus' : 'Add deduction'}</DialogTitle>
             <DialogDescription>
-              {dialog?.kind === 'bonus' ? dialog.row.substituteTeacher.name : dialog?.row.originalTeacher.name} — {dialog?.row.groupLabel} on {dialog?.row.date.slice(0, 10)}
+              {dialog?.kind === 'bonus' ? dialog.row.substituteTeacher.name : dialog?.row.originalTeacher.name} — {dialog?.row.groupLabel} {L('on', 'يوم')} {dialog?.row.date.slice(0, 10)}
             </DialogDescription>
           </DialogHeader>
-          <Input type="number" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <Input type="number" placeholder={L('Amount', 'المبلغ')} value={amount} onChange={(e) => setAmount(e.target.value)} />
           <p className="text-xs text-slate-400">
             {amount
               ? 'Filled in from this group\u2019s per-session rate \u2014 adjust if needed.'

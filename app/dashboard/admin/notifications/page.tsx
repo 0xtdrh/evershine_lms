@@ -12,10 +12,12 @@ import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { BellRing, Loader2 } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Event { key: string; label: string; description: string; audience: 'PARENT' | 'STAFF'; on: boolean }
 
 export default function NotificationSettingsPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const role = session?.user?.role
   const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
@@ -27,12 +29,12 @@ export default function NotificationSettingsPage() {
   useEffect(() => { if (data) setOn(Object.fromEntries(data.events.map((e) => [e.key, e.on]))) }, [data])
   const save = useMutation({
     mutationFn: () => fetchApi('/api/notifications/settings', { method: 'PUT', body: JSON.stringify({ switches: on }) }),
-    onSuccess: () => { notify.success('Notification settings saved'); qc.invalidateQueries({ queryKey: ['notification-settings'] }) },
+    onSuccess: () => { notify.success(L('Notification settings saved', 'إعدادات الإشعارات اتحفظت')); qc.invalidateQueries({ queryKey: ['notification-settings'] }) },
     onError: (e: Error) => notify.error(e.message),
   })
   if (!role) return null
   if (role && !permsReady) return null
-  if (!allowed) return <AccessDenied title="Notifications" message="You don't have access to notification settings." />
+  if (!allowed) return <AccessDenied title={L('Notifications', 'الإشعارات')} message="You don't have access to notification settings." />
   const section = (aud: Event['audience'], title: string, desc: string) => (
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-base">{title}</CardTitle><CardDescription>{desc}</CardDescription></CardHeader>
@@ -49,9 +51,9 @@ export default function NotificationSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><BellRing className="h-7 w-7 text-indigo-600" /> Notifications</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><BellRing className="h-7 w-7 text-indigo-600" /> {L('Notifications', 'الإشعارات')}</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Turn each notification on or off for everyone. Parents cannot turn them off themselves.
+          {L('Turn each notification on or off for everyone. Parents cannot turn them off themselves.', 'شغّل أو اقفل كل إشعار للكل. أولياء الأمور مش بيقدروا يقفلوها بنفسهم.')}
           {data && (data.whatsappAuto ? ' WhatsApp is connected: parent notifications also go to WhatsApp.' : ' WhatsApp is not connected yet: notifications appear in the portal (the bell); WhatsApp starts automatically once it is set up.')}
         </p>
       </div>
@@ -59,7 +61,7 @@ export default function NotificationSettingsPage() {
         <>
           {section('PARENT', 'To parents and students', 'Shown in the portal bell (and WhatsApp once connected).')}
           {section('STAFF', 'To staff', 'Shown in the staff bell.')}
-          {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save</Button>}
+          {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {L('Save', 'حفظ')}</Button>}
         </>
       )}
     </div>

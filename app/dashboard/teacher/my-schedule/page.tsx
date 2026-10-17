@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { notify } from '@/lib/notify'
 import { Loader2, Clock } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 function apiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
@@ -52,6 +53,7 @@ interface MyAbsenceRow {
 }
 
 export default function MySchedulePage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const queryClient = useQueryClient()
 
@@ -103,7 +105,7 @@ export default function MySchedulePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-week', teacherId] })
       queryClient.invalidateQueries({ queryKey: ['my-absences'] })
-      notify.success('Absence request submitted')
+      notify.success(L('Absence request submitted', 'طلب الغياب اتبعت'))
       setExcuseTarget(null)
       setPickerGroupId(null)
       setPickedDate(null)
@@ -118,13 +120,13 @@ export default function MySchedulePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-absences'] })
       queryClient.invalidateQueries({ queryKey: ['my-week', teacherId] })
-      notify.success('Request cancelled')
+      notify.success(L('Request cancelled', 'الطلب اتلغى'))
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to cancel')),
   })
 
   if (!teacherId) {
-    return <p className="p-6 text-sm text-slate-400 text-center">This page is for teacher accounts.</p>
+    return <p className="p-6 text-sm text-slate-400 text-center">{L('This page is for teacher accounts.', 'الصفحة دي لحسابات المدربين.')}</p>
   }
 
   const openWholeDay = (date: string) => setExcuseTarget({ date, classSectionId: null, wholeDay: true })
@@ -137,7 +139,7 @@ export default function MySchedulePage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-6">
-      <h1 className="text-xl font-bold text-slate-900">My Schedule</h1>
+      <h1 className="text-xl font-bold text-slate-900">{L('My Schedule', 'جدولي')}</h1>
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
@@ -149,13 +151,13 @@ export default function MySchedulePage() {
                 <CardTitle className="text-sm">{new Date(day.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</CardTitle>
                 {day.sessions.length > 0 && (
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openWholeDay(day.date)}>
-                    Excuse whole day
+                    {L('Excuse whole day', 'اعتذر عن اليوم كله')}
                   </Button>
                 )}
               </CardHeader>
               <CardContent className="space-y-2 pt-0">
                 {day.sessions.length === 0 ? (
-                  <p className="text-xs text-slate-400">No sessions.</p>
+                  <p className="text-xs text-slate-400">{L('No sessions.', 'مفيش حصص.')}</p>
                 ) : (
                   day.sessions.map((s) => (
                     <div key={`${s.classSectionId}-${s.time}`} className={`flex items-center justify-between border rounded-lg px-3 py-2 text-sm ${s.isCancelled ? 'border-rose-200 bg-rose-50/40' : 'border-slate-100'}`}>
@@ -164,16 +166,16 @@ export default function MySchedulePage() {
                           <Clock className="w-3 h-3 text-slate-400" /> {s.time} · {s.className} {s.sectionName}
                           {s.isSubstituteCoverageHere && (
                             <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-200">
-                              Substitute{s.coveringForName ? ` for ${s.coveringForName}` : ''}
+                              {L('Substitute', 'بديل')}{s.coveringForName ? ` for ${s.coveringForName}` : ''}
                               {s.sessionNumber ? ` · Session ${s.sessionNumber} of ${s.totalSessions}` : ''}
                             </Badge>
                           )}
-                          {s.isCancelled && <Badge variant="outline" className="text-[10px] text-rose-600 border-rose-200">Cancelled</Badge>}
+                          {s.isCancelled && <Badge variant="outline" className="text-[10px] text-rose-600 border-rose-200">{L('Cancelled', 'اتلغت')}</Badge>}
                         </p>
                         <p className="text-xs text-slate-400">{s.courseName} — {s.levelName}</p>
                       </div>
                       {s.isCancelled || s.isSubstituteCoverageHere ? null : s.hasNotStarted ? (
-                        <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">Not started yet</Badge>
+                        <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">{L('Not started yet', 'لسه مابدأتش')}</Badge>
                       ) : s.absenceStatus ? (
                         <div className="flex flex-col items-end gap-0.5">
                           <Badge variant="outline" className="text-[10px]">{s.absenceStatus}</Badge>
@@ -181,12 +183,12 @@ export default function MySchedulePage() {
                             className="text-[10px] text-indigo-600 hover:text-indigo-700 underline underline-offset-2"
                             onClick={() => openSessionPicker(s.classSectionId)}
                           >
-                            Excuse another session
+                            {L('Excuse another session', 'اعتذر عن حصة تانية')}
                           </button>
                         </div>
                       ) : (
                         <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openSessionPicker(s.classSectionId)}>
-                          Excuse
+                          {L('Excuse', 'اعتذر')}
                         </Button>
                       )}
                     </div>
@@ -199,9 +201,9 @@ export default function MySchedulePage() {
       )}
 
       <div>
-        <h2 className="text-sm font-semibold text-slate-700 mb-2">My requests</h2>
+        <h2 className="text-sm font-semibold text-slate-700 mb-2">{L('My requests', 'طلباتي')}</h2>
         {myAbsences.length === 0 ? (
-          <p className="text-sm text-slate-400">None yet.</p>
+          <p className="text-sm text-slate-400">{L('None yet.', 'لسه مفيش.')}</p>
         ) : (
           <div className="space-y-2">
             {myAbsences.map((a) => (
@@ -214,7 +216,7 @@ export default function MySchedulePage() {
                   <Badge variant="outline" className="text-[10px]">{a.status}</Badge>
                   {(a.status === 'PENDING' || a.status === 'APPROVED') && (
                     <Button size="sm" variant="ghost" className="h-6 text-[10px] text-red-600" disabled={cancelMutation.isPending} onClick={() => cancelMutation.mutate(a.id)}>
-                      Cancel
+                      {L('Cancel', 'إلغاء')}
                     </Button>
                   )}
                 </div>
@@ -228,25 +230,25 @@ export default function MySchedulePage() {
       <Dialog open={!!pickerGroupId} onOpenChange={(open) => !open && setPickerGroupId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Which session?</DialogTitle>
+            <DialogTitle>{L('Which session?', 'أنهي حصة؟')}</DialogTitle>
             <DialogDescription>Pick exactly one remaining session in this group&apos;s current cycle.</DialogDescription>
           </DialogHeader>
           {remainingLoading ? (
             <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
           ) : remainingSessions.length === 0 ? (
-            <p className="text-sm text-slate-400">No upcoming sessions found for this cycle.</p>
+            <p className="text-sm text-slate-400">{L('No upcoming sessions found for this cycle.', 'مفيش حصص جاية في الشهر ده.')}</p>
           ) : (
             <div className="space-y-1.5 max-h-64 overflow-y-auto">
               {remainingSessions.map((rs) => (
                 <label key={rs.date} className="flex items-center gap-2 border border-slate-100 rounded-lg px-3 py-2 text-sm cursor-pointer hover:bg-slate-50">
                   <input type="radio" name="session-pick" checked={pickedDate === rs.date} onChange={() => setPickedDate(rs.date)} />
-                  Session {rs.sessionNumber} of {rs.totalSessions} — {rs.date} · {rs.time}
+                  {L('Session', 'حصة')} {rs.sessionNumber} {L('of', 'من')} {rs.totalSessions} — {rs.date} · {rs.time}
                 </label>
               ))}
             </div>
           )}
           <DialogFooter>
-            <Button disabled={!pickedDate} onClick={proceedToReason}>Next</Button>
+            <Button disabled={!pickedDate} onClick={proceedToReason}>{L('Next', 'الجاية')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -257,13 +259,13 @@ export default function MySchedulePage() {
           <DialogHeader>
             <DialogTitle>{excuseTarget?.wholeDay ? 'Excuse whole day' : 'Excuse this session'}</DialogTitle>
             <DialogDescription>
-              {excuseTarget?.date} — needs at least 6 hours notice unless force-majeure.
+              {excuseTarget?.date} {L('— needs at least 6 hours notice unless force-majeure.', '— لازم قبلها بـ 6 ساعات على الأقل إلا لو ظرف قهري.')}
             </DialogDescription>
           </DialogHeader>
-          <Textarea placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Textarea placeholder={L('Reason', 'السبب')} value={reason} onChange={(e) => setReason(e.target.value)} />
           <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
             <Checkbox checked={isForceMajeure} onCheckedChange={setIsForceMajeure} />
-            This is a force-majeure emergency (severe illness, bereavement)
+            {L('This is a force-majeure emergency (severe illness, bereavement)', 'ده ظرف قهري (مرض شديد، وفاة)')}
           </label>
           <DialogFooter>
             <Button disabled={!reason || submitMutation.isPending} onClick={() => submitMutation.mutate()}>

@@ -5,6 +5,7 @@ import { fetchApi } from '@/lib/api-client'
 import { CardDescription } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
 import { Loader2 } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface BranchTotal {
   campusId: string
@@ -23,6 +24,7 @@ interface Summary {
 }
 
 export default function GroupsFinancialsSummaryPage() {
+  useI18n() // re-render on a language switch
   const { data, isLoading } = useQuery<Summary>({
     queryKey: ['groups-financials-summary'],
     queryFn: () => fetchApi('/api/reports/groups-financials-summary'),
@@ -31,7 +33,7 @@ export default function GroupsFinancialsSummaryPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-4xl mx-auto">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Groups Financial Summary</h1>
+        <h1 className="text-xl font-bold text-slate-900">{L('Groups Financial Summary', 'ملخص ماليات الجروبات')}</h1>
         <CardDescription>Every branch&apos;s totals, and the company-wide total.</CardDescription>
       </div>
 
@@ -57,13 +59,13 @@ export default function GroupsFinancialsSummaryPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Branch</TableHead>
-                <TableHead className="text-center">Groups</TableHead>
-                <TableHead className="text-center">Expected</TableHead>
-                <TableHead className="text-center">Collected</TableHead>
-                <TableHead className="text-center">Outstanding</TableHead>
-                <TableHead className="text-center">Instructor pay</TableHead>
-                <TableHead className="text-center">Profit</TableHead>
+                <TableHead>{L('Branch', 'الفرع')}</TableHead>
+                <TableHead className="text-center">{L('Groups', 'الجروبات')}</TableHead>
+                <TableHead className="text-center">{L('Expected', 'المتوقع')}</TableHead>
+                <TableHead className="text-center">{L('Collected', 'المحصّل')}</TableHead>
+                <TableHead className="text-center">{L('Outstanding', 'المتبقي')}</TableHead>
+                <TableHead className="text-center">{L('Instructor pay', 'أجر المدرب')}</TableHead>
+                <TableHead className="text-center">{L('Profit', 'الربح')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

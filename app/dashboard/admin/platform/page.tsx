@@ -13,10 +13,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, Power } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Data { modules: Record<string, boolean>; language: { staff: 'en' | 'ar'; portal: 'en' | 'ar' }; catalog: { key: string; label: string; labelAr: string }[] }
 
 export default function PlatformPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const role = session?.user?.role
   const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
@@ -29,22 +31,22 @@ export default function PlatformPage() {
   useEffect(() => { if (data) { setModules(data.modules); setLanguage(data.language) } }, [data])
   const save = useMutation({
     mutationFn: () => fetchApi('/api/platform/settings', { method: 'PUT', body: JSON.stringify({ modules, language }) }),
-    onSuccess: () => { notify.success('Saved'); qc.invalidateQueries({ queryKey: ['platform-settings'] }) },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['platform-settings'] }) },
     onError: (e: Error) => notify.error(e.message),
   })
   if (!role) return null
   if (role && !permsReady) return null
-  if (!allowed) return <AccessDenied title="Platform" message="You don't have access to the platform settings." />
+  if (!allowed) return <AccessDenied title={L('Platform', 'المنصة')} message="You don't have access to the platform settings." />
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><Power className="h-7 w-7 text-indigo-600" /> Platform</h1>
-        <p className="mt-1 text-sm text-slate-500">Switch whole parts of TechNova on or off — turn them on step by step at launch, or off at once if something goes wrong. Data is never deleted by switching off.</p>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><Power className="h-7 w-7 text-indigo-600" /> {L('Platform', 'المنصة')}</h1>
+        <p className="mt-1 text-sm text-slate-500">{L('Switch whole parts of TechNova on or off — turn them on step by step at launch, or off at once if something goes wrong. Data is never deleted by switching off.', 'شغّل أو اقفل أجزاء كاملة من TechNova — شغّلها خطوة بخطوة في الإطلاق، أو اقفلها مرة واحدة لو في مشكلة. القفل عمره ما بيمسح بيانات.')}</p>
       </div>
       {!data ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : (
         <>
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Modules</CardTitle><CardDescription>Modules that are still being built stay off until they are ready.</CardDescription></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base">{L('Modules', 'الأجزاء')}</CardTitle><CardDescription>{L('Modules that are still being built stay off until they are ready.', 'الأجزاء اللي لسه بتتعمل بتفضل مقفولة لحد ما تجهز.')}</CardDescription></CardHeader>
             <CardContent className="divide-y divide-slate-100">
               {data.catalog.map((m) => (
                 <label key={m.key} className="flex cursor-pointer items-center justify-between gap-3 py-2.5">
@@ -55,20 +57,20 @@ export default function PlatformPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Default language</CardTitle><CardDescription>Used until a person picks a language with the EN / عربي button in the header.</CardDescription></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base">{L('Default language', 'اللغة الافتراضية')}</CardTitle><CardDescription>{L('Used until a person picks a language with the EN / عربي button in the header.', 'بتتستخدم لحد ما الشخص يختار لغة من زرار EN / عربي فوق.')}</CardDescription></CardHeader>
             <CardContent className="flex flex-wrap gap-4 text-sm">
               {(['staff', 'portal'] as const).map((k) => (
                 <label key={k} className="flex items-center gap-2">
                   {k === 'staff' ? 'Staff' : 'Parents & students'}
                   <Select value={language[k]} onValueChange={(v) => setLanguage({ ...language, [k]: v as 'en' | 'ar' })} disabled={!canEdit}>
                     <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="en">English</SelectItem><SelectItem value="ar">العربية</SelectItem></SelectContent>
+                    <SelectContent><SelectItem value="en">{L('English', 'English')}</SelectItem><SelectItem value="ar">العربية</SelectItem></SelectContent>
                   </Select>
                 </label>
               ))}
             </CardContent>
           </Card>
-          {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save</Button>}
+          {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{L('Save', 'حفظ')}</Button>}
         </>
       )}
     </div>

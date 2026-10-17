@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Bell, Download, FileSignature, Loader2, Plus, Users } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Agreement {
   id: string; key: string; titleEn: string; titleAr: string; bodyEn: string; bodyAr: string; audience: 'PARENT' | 'STUDENT' | 'STAFF'
@@ -33,37 +34,37 @@ function Editor({ a, onClose }: { a: Agreement | null; onClose: () => void }) {
     mutationFn: () => a
       ? fetchApi(`/api/agreements/${a.id}`, { method: 'PATCH', body: JSON.stringify({ ...f, key: undefined }) })
       : fetchApi('/api/agreements', { method: 'POST', body: JSON.stringify(f) }),
-    onSuccess: () => { notify.success('Saved'); qc.invalidateQueries({ queryKey: ['agreements'] }); onClose() },
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['agreements'] }); onClose() },
     onError: (e: Error) => notify.error(e.message),
   })
   const textChanged = !!a && (f.titleEn !== a.titleEn || f.titleAr !== a.titleAr || f.bodyEn !== a.bodyEn || f.bodyAr !== a.bodyAr)
   return (
     <div className="space-y-3 text-sm">
       <div className="grid gap-2 sm:grid-cols-3">
-        <label className="space-y-1"><span className="text-xs text-slate-500">Key</span><Input value={f.key} disabled={!!a} onChange={(e) => setF({ ...f, key: e.target.value })} placeholder="e.g. parent-rules" /></label>
-        <label className="space-y-1"><span className="text-xs text-slate-500">For</span>
+        <label className="space-y-1"><span className="text-xs text-slate-500">{L('Key', 'المفتاح')}</span><Input value={f.key} disabled={!!a} onChange={(e) => setF({ ...f, key: e.target.value })} placeholder={L('e.g. parent-rules', 'مثلاً parent-rules')} /></label>
+        <label className="space-y-1"><span className="text-xs text-slate-500">{L('For', 'لمين')}</span>
           <Select value={f.audience} onValueChange={(v) => setF({ ...f, audience: v as typeof f.audience })} disabled={!!a}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{Object.entries(AUD).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent>
           </Select>
         </label>
-        <label className="space-y-1"><span className="text-xs text-slate-500">Grace days after a new version</span><Input type="number" min={0} max={60} value={f.graceDays} onChange={(e) => setF({ ...f, graceDays: Number(e.target.value) || 0 })} /></label>
+        <label className="space-y-1"><span className="text-xs text-slate-500">{L('Grace days after a new version', 'أيام سماح بعد النسخة الجديدة')}</span><Input type="number" min={0} max={60} value={f.graceDays} onChange={(e) => setF({ ...f, graceDays: Number(e.target.value) || 0 })} /></label>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="space-y-1"><span className="text-xs text-slate-500">Title (English)</span><Input value={f.titleEn} onChange={(e) => setF({ ...f, titleEn: e.target.value })} /></label>
+        <label className="space-y-1"><span className="text-xs text-slate-500">{L('Title (English)', 'العنوان (إنجليزي)')}</span><Input value={f.titleEn} onChange={(e) => setF({ ...f, titleEn: e.target.value })} /></label>
         <label className="space-y-1" dir="rtl"><span className="text-xs text-slate-500">العنوان (عربي)</span><Input value={f.titleAr} onChange={(e) => setF({ ...f, titleAr: e.target.value })} /></label>
-        <label className="space-y-1"><span className="text-xs text-slate-500">Text (English)</span><textarea className="min-h-[220px] w-full rounded-md border border-slate-200 bg-white p-2" value={f.bodyEn} onChange={(e) => setF({ ...f, bodyEn: e.target.value })} /></label>
+        <label className="space-y-1"><span className="text-xs text-slate-500">{L('Text (English)', 'النص (إنجليزي)')}</span><textarea className="min-h-[220px] w-full rounded-md border border-slate-200 bg-white p-2" value={f.bodyEn} onChange={(e) => setF({ ...f, bodyEn: e.target.value })} /></label>
         <label className="space-y-1" dir="rtl"><span className="text-xs text-slate-500">النص (عربي)</span><textarea className="min-h-[220px] w-full rounded-md border border-slate-200 bg-white p-2" value={f.bodyAr} onChange={(e) => setF({ ...f, bodyAr: e.target.value })} /></label>
       </div>
       <div className="flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2"><input type="checkbox" checked={f.isActive} onChange={(e) => setF({ ...f, isActive: e.target.checked })} /> Switched on (shown to users)</label>
-        <label className="flex items-center gap-2"><input type="checkbox" checked={f.mandatory} onChange={(e) => setF({ ...f, mandatory: e.target.checked })} /> Mandatory (blocks the portal until accepted)</label>
-        <label className="flex items-center gap-2"><input type="checkbox" checked={f.isPublic} onChange={(e) => setF({ ...f, isPublic: e.target.checked })} /> Public page (anyone can read it at /policies/{f.key || 'key'}, e.g. for Paymob)</label>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={f.isActive} onChange={(e) => setF({ ...f, isActive: e.target.checked })} /> {L('Switched on (shown to users)', 'شغالة (بتظهر للمستخدمين)')}</label>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={f.mandatory} onChange={(e) => setF({ ...f, mandatory: e.target.checked })} /> {L('Mandatory (blocks the portal until accepted)', 'إجبارية (بتقفل البوابة لحد الموافقة)')}</label>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={f.isPublic} onChange={(e) => setF({ ...f, isPublic: e.target.checked })} /> {L('Public page (anyone can read it at /policies/', 'صفحة عامة (أي حد يقدر يقراها على /policies/')}{f.key || 'key'}{L(', e.g. for Paymob)', '، مثلاً علشان Paymob)')}</label>
       </div>
-      {textChanged && <p className="rounded bg-amber-50 p-2 text-xs text-amber-800">You changed the text: saving publishes version {a!.version + 1} and everyone must accept again{f.graceDays ? ` (within ${f.graceDays} day(s))` : ''}.</p>}
+      {textChanged && <p className="rounded bg-amber-50 p-2 text-xs text-amber-800">{L('You changed the text: saving publishes version', 'انت غيّرت النص: الحفظ هينشر النسخة')} {a!.version + 1} {L('and everyone must accept again', 'والكل لازم يوافق تاني')}{f.graceDays ? ` (within ${f.graceDays} day(s))` : ''}.</p>}
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save</Button>
+        <Button variant="outline" onClick={onClose}>{L('Cancel', 'إلغاء')}</Button>
+        <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{L('Save', 'حفظ')}</Button>
       </div>
     </div>
   )
@@ -82,10 +83,10 @@ function StatusView({ id, canRemind }: { id: string; canRemind: boolean }) {
   return (
     <div className="space-y-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant={show === 'pending' ? 'default' : 'outline'} onClick={() => setShow('pending')}>Pending ({data.pending})</Button>
-        <Button size="sm" variant={show === 'accepted' ? 'default' : 'outline'} onClick={() => setShow('accepted')}>Accepted ({data.accepted})</Button>
-        {canRemind && data.pending > 0 && <Button size="sm" variant="outline" className="gap-1" onClick={() => remind.mutate()} disabled={remind.isPending}><Bell className="h-4 w-4" /> Remind pending</Button>}
-        <Button size="sm" variant="ghost" className="gap-1" asChild><a href={`/api/agreements/${id}?format=csv`}><Download className="h-4 w-4" /> Export</a></Button>
+        <Button size="sm" variant={show === 'pending' ? 'default' : 'outline'} onClick={() => setShow('pending')}>{L('Pending (', 'مستنيين (')}{data.pending})</Button>
+        <Button size="sm" variant={show === 'accepted' ? 'default' : 'outline'} onClick={() => setShow('accepted')}>{L('Accepted (', 'وافقوا (')}{data.accepted})</Button>
+        {canRemind && data.pending > 0 && <Button size="sm" variant="outline" className="gap-1" onClick={() => remind.mutate()} disabled={remind.isPending}><Bell className="h-4 w-4" /> {L('Remind pending', 'فكّر اللي مستنيين')}</Button>}
+        <Button size="sm" variant="ghost" className="gap-1" asChild><a href={`/api/agreements/${id}?format=csv`}><Download className="h-4 w-4" /> {L('Export', 'تصدير')}</a></Button>
       </div>
       <div className="max-h-[50vh] space-y-1 overflow-y-auto">
         {rows.map((r) => (
@@ -94,13 +95,14 @@ function StatusView({ id, canRemind }: { id: string; canRemind: boolean }) {
             <span className="text-xs text-slate-500">{r.acceptedAt ? new Date(r.acceptedAt).toLocaleString('en-GB') : 'not yet'}</span>
           </div>
         ))}
-        {!rows.length && <p className="text-slate-500">Nobody.</p>}
+        {!rows.length && <p className="text-slate-500">{L('Nobody.', 'ولا حد.')}</p>}
       </div>
     </div>
   )
 }
 
 export default function AgreementsPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const role = session?.user?.role
   const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
@@ -111,18 +113,17 @@ export default function AgreementsPage() {
   const { data, isLoading } = useQuery({ queryKey: ['agreements'], queryFn: () => fetchApi<Agreement[]>('/api/agreements'), enabled: allowed })
   if (!role) return null
   if (role && !permsReady) return null
-  if (!allowed) return <AccessDenied title="Agreements" message="You don't have access to agreements." />
+  if (!allowed) return <AccessDenied title={L('Agreements', 'الاتفاقيات')} message="You don't have access to agreements." />
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><FileSignature className="h-7 w-7 text-indigo-600" /> Agreements</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><FileSignature className="h-7 w-7 text-indigo-600" /> {L('Agreements', 'الاتفاقيات')}</h1>
           <p className="mt-1 text-sm text-slate-500">
-            What parents, students and staff must accept. Switched-on mandatory agreements block the portal until accepted. Changing a text publishes a new version that everyone accepts again.
-            The starting texts are DRAFTS — review them (ideally with a lawyer) before switching them on.
+            {L('What parents, students and staff must accept. Switched-on mandatory agreements block the portal until accepted. Changing a text publishes a new version that everyone accepts again. The starting texts are DRAFTS — review them (ideally with a lawyer) before switching them on.', 'اللي أولياء الأمور والطلاب والموظفين لازم يوافقوا عليه. الاتفاقيات الإجبارية الشغالة بتقفل البوابة لحد الموافقة. تغيير النص بينشر نسخة جديدة والكل بيوافق تاني. النصوص الأولى مسودات — راجعها (ويُفضّل مع محامي) قبل ما تشغّلها.')}
           </p>
         </div>
-        {can('agreements', 'create') && <Button className="gap-1" onClick={() => setEdit('new')}><Plus className="h-4 w-4" /> New agreement</Button>}
+        {can('agreements', 'create') && <Button className="gap-1" onClick={() => setEdit('new')}><Plus className="h-4 w-4" /> {L('New agreement', 'اتفاقية جديدة')}</Button>}
       </div>
       {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : (
         <div className="grid gap-3 md:grid-cols-2">
@@ -133,18 +134,18 @@ export default function AgreementsPage() {
                   <span>{a.titleEn} <span className="text-sm font-normal text-slate-400" dir="rtl">· {a.titleAr}</span></span>
                   <span className={`rounded-full border px-2 py-0.5 text-xs ${a.isActive ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>{a.isActive ? 'On' : 'Off'}</span>
                 </CardTitle>
-                <CardDescription>{AUD[a.audience]} · version {a.version} · {a.mandatory ? 'mandatory' : 'optional'}{a.isPublic ? ' · public page' : ''} · {a.acceptedCurrent} accepted this version</CardDescription>
+                <CardDescription>{AUD[a.audience]} {L('· version', '· نسخة')} {a.version} · {a.mandatory ? 'mandatory' : 'optional'}{a.isPublic ? ' · public page' : ''} · {a.acceptedCurrent} {L('accepted this version', 'وافقوا على النسخة دي')}</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
-                {canEdit && <Button size="sm" variant="outline" onClick={() => setEdit(a)}>Edit</Button>}
-                <Button size="sm" variant="outline" className="gap-1" onClick={() => setStatus(a.id)}><Users className="h-4 w-4" /> Who accepted</Button>
+                {canEdit && <Button size="sm" variant="outline" onClick={() => setEdit(a)}>{L('Edit', 'تعديل')}</Button>}
+                <Button size="sm" variant="outline" className="gap-1" onClick={() => setStatus(a.id)}><Users className="h-4 w-4" /> {L('Who accepted', 'مين وافق')}</Button>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
       <GroupRulesEditor canEdit={canEdit} />
-      <p className="text-xs text-slate-500">Public policies (ticked "Public page") are at <a className="text-indigo-700 hover:underline" href="/policies" target="_blank" rel="noopener">/policies</a> — no login needed (Paymob asks for the refund policy and the terms on the website).</p>
+      <p className="text-xs text-slate-500">{L('Public policies (ticked "Public page") are at', 'السياسات العامة (اللي عليها «صفحة عامة») موجودة على')} <a className="text-indigo-700 hover:underline" href="/policies" target="_blank" rel="noopener">/policies</a> {L('— no login needed (Paymob asks for the refund policy and the terms on the website).', '— من غير تسجيل دخول (Paymob بيطلب سياسة الاسترداد والشروط على الموقع).')}</p>
       <Dialog open={!!edit} onOpenChange={(o) => { if (!o) setEdit(null) }}>
         <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
           <DialogHeader><DialogTitle>{edit === 'new' ? 'New agreement' : 'Edit agreement'}</DialogTitle></DialogHeader>
@@ -153,7 +154,7 @@ export default function AgreementsPage() {
       </Dialog>
       <Dialog open={!!status} onOpenChange={(o) => { if (!o) setStatus(null) }}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Who accepted the current version</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{L('Who accepted the current version', 'مين وافق على النسخة الحالية')}</DialogTitle></DialogHeader>
           {status && <StatusView id={status} canRemind={canEdit} />}
         </DialogContent>
       </Dialog>

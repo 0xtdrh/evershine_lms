@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { notify } from '@/lib/notify'
 import { Loader2, Save, Plus, Trash2, Percent, SlidersHorizontal } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface SubjectOption { id: string; name: string; code: string }
 
@@ -75,25 +76,26 @@ function WeightForm({
       </div>
       <div className="flex items-center gap-3">
         <Badge variant={Math.abs(total - 100) < 0.01 ? 'default' : 'destructive'} className={Math.abs(total - 100) < 0.01 ? 'bg-emerald-100 text-emerald-800 border-0' : ''}>
-          Total: {total}%
+          {L('Total:', 'الإجمالي:')} {total}%
         </Badge>
-        {Math.abs(total - 100) >= 0.01 && <span className="text-xs text-red-600">Must add up to exactly 100%</span>}
+        {Math.abs(total - 100) >= 0.01 && <span className="text-xs text-red-600">{L('Must add up to exactly 100%', 'لازم المجموع يبقى 100% بالظبط')}</span>}
       </div>
       <div className="max-w-xs space-y-1">
-        <label className="text-[11px] uppercase font-bold text-slate-500">Pass Threshold</label>
+        <label className="text-[11px] uppercase font-bold text-slate-500">{L('Pass Threshold', 'درجة النجاح')}</label>
         <div className="relative">
           <Input type="number" min={0} max={100} value={form.passThreshold} onChange={(e) => setForm({ ...form, passThreshold: e.target.value })} className="pr-7" />
           <Percent className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2" />
         </div>
       </div>
       <Button onClick={onSave} disabled={isSaving || Math.abs(total - 100) >= 0.01} className="gap-2">
-        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
+        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {L('Save', 'حفظ')}
       </Button>
     </div>
   )
 }
 
 export default function GradingConfigPage() {
+  useI18n() // re-render on a language switch
   const queryClient = useQueryClient()
   const [globalForm, setGlobalForm] = useState<FormState | null>(null)
   const [addingSubjectId, setAddingSubjectId] = useState('')
@@ -114,16 +116,16 @@ export default function GradingConfigPage() {
       fetchApi('/api/grading-config', { method: 'POST', body: JSON.stringify(payload) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grading-config'] })
-      notify.success('Grading configuration saved')
+      notify.success(L('Grading configuration saved', 'الأوزان اتحفظت'))
     },
-    onError: () => notify.error('Failed to save — check the weights add up to 100%'),
+    onError: () => notify.error(L('Failed to save — check the weights add up to 100%', 'الحفظ فشل — اتأكد إن المجموع 100%')),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (subjectId: string) => fetchApi(`/api/grading-config?subjectId=${subjectId}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grading-config'] })
-      notify.success('Override removed — this course now uses the global default')
+      notify.success(L('Override removed — this course now uses the global default', 'الأوزان الخاصة اتشالت — الكورس رجع للافتراضي'))
     },
   })
 
@@ -149,15 +151,15 @@ export default function GradingConfigPage() {
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <SlidersHorizontal className="w-6 h-6 text-indigo-600" /> Grading Weights
+          <SlidersHorizontal className="w-6 h-6 text-indigo-600" /> {L('Grading Weights', 'أوزان الدرجات')}
         </h1>
-        <p className="text-sm text-slate-500 mt-1">Set the default component weights for all courses, or override them for a specific course.</p>
+        <p className="text-sm text-slate-500 mt-1">{L('Set the default component weights for all courses, or override them for a specific course.', 'حدد الأوزان الافتراضية لكل الكورسات، أو أوزان مختلفة لكورس معيّن.')}</p>
       </div>
 
       <Card className="border-t-4 border-t-indigo-500">
         <CardHeader>
-          <CardTitle className="text-base">Global Default</CardTitle>
-          <CardDescription>Applies to any course that doesn't have its own override below.</CardDescription>
+          <CardTitle className="text-base">{L('Global Default', 'الافتراضي')}</CardTitle>
+          <CardDescription>{L('Applies to any course that doesn\'t have its own override below.', 'بيتطبّق على أي كورس مالوش أوزان خاصة تحت.')}</CardDescription>
         </CardHeader>
         <CardContent>
           <WeightForm
@@ -170,7 +172,7 @@ export default function GradingConfigPage() {
       </Card>
 
       <div>
-        <h2 className="text-sm font-bold text-slate-700 mb-2">Per-Course Overrides</h2>
+        <h2 className="text-sm font-bold text-slate-700 mb-2">{L('Per-Course Overrides', 'أوزان خاصة لكورسات')}</h2>
         <div className="space-y-4">
           {data.overrides.map((o) => {
             const f = overrideForms[o.subjectId!] ?? toFormState(o)
@@ -179,7 +181,7 @@ export default function GradingConfigPage() {
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm">{o.subject?.name}</CardTitle>
                   <Button variant="ghost" size="sm" className="text-red-600 gap-1" onClick={() => deleteMutation.mutate(o.subjectId!)}>
-                    <Trash2 className="w-3.5 h-3.5" /> Remove override
+                    <Trash2 className="w-3.5 h-3.5" /> {L('Remove override', 'شيل الأوزان الخاصة')}
                   </Button>
                 </CardHeader>
                 <CardContent>
@@ -197,7 +199,7 @@ export default function GradingConfigPage() {
           <Card className="border-dashed">
             <CardContent className="pt-6 flex items-center gap-3">
               <Select value={addingSubjectId} onValueChange={setAddingSubjectId}>
-                <SelectTrigger className="max-w-xs"><SelectValue placeholder="Add an override for a course..." /></SelectTrigger>
+                <SelectTrigger className="max-w-xs"><SelectValue placeholder={L('Add an override for a course...', 'ضيف أوزان خاصة لكورس...')} /></SelectTrigger>
                 <SelectContent>
                   {availableSubjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
@@ -214,7 +216,7 @@ export default function GradingConfigPage() {
                   setAddingSubjectId('')
                 }}
               >
-                <Plus className="w-4 h-4" /> Add
+                <Plus className="w-4 h-4" /> {L('Add', 'ضيف')}
               </Button>
             </CardContent>
           </Card>

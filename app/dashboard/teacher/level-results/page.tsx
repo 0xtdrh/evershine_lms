@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { notify } from '@/lib/notify'
 import { Loader2, Save, CheckCircle2, Award, GraduationCap } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface SubjectOffering {
   id: string
@@ -56,6 +57,7 @@ type DraftState = Record<string, {
 }>
 
 export default function LevelResultsPage() {
+  useI18n() // re-render on a language switch
   const queryClient = useQueryClient()
   const [selectedOfferingId, setSelectedOfferingId] = useState('')
   const [draft, setDraft] = useState<DraftState>({})
@@ -135,10 +137,10 @@ export default function LevelResultsPage() {
       if (res?.certificateIssued) {
         notify.success(`🎉 ${row.student.firstName} passed! A certificate has been issued (hidden until the ceremony).`)
       } else {
-        notify.success('Scores saved')
+        notify.success(L('Scores saved', 'الدرجات اتحفظت'))
       }
     },
-    onError: () => notify.error('Failed to save scores'),
+    onError: () => notify.error(L('Failed to save scores', 'حفظ الدرجات فشل')),
     onSettled: () => setSavingId(null),
   })
 
@@ -146,9 +148,9 @@ export default function LevelResultsPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <GraduationCap className="w-6 h-6 text-indigo-600" /> Level Results
+          <GraduationCap className="w-6 h-6 text-indigo-600" /> {L('Level Results', 'نتايج المستوى')}
         </h1>
-        <p className="text-sm text-slate-500 mt-1">Enter each component score — the final grade and pass/fail is calculated automatically.</p>
+        <p className="text-sm text-slate-500 mt-1">{L('Enter each component score — the final grade and pass/fail is calculated automatically.', 'اكتب درجة كل جزء — الدرجة النهائية والنجاح بيتحسبوا لوحدهم.')}</p>
       </div>
 
       <Card>
@@ -173,7 +175,7 @@ export default function LevelResultsPage() {
           <CardHeader>
             <CardTitle className="text-base">{selectedOffering.subject.name} — {selectedOffering.classSection.className} {selectedOffering.classSection.sectionName}</CardTitle>
             <CardDescription>
-              Weights: Homework {data.config.homeworkWeight}% · Tasks {data.config.taskWeight}% · Instructor {data.config.instructorWeight}% · Project {data.config.projectWeight}% · MCQ {data.config.mcqWeight}% — Pass mark: {data.config.passThreshold}%
+              {L('Weights: Homework', 'الأوزان: الواجبات')} {data.config.homeworkWeight}{L('% · Tasks', '% · المهام')} {data.config.taskWeight}{L('% · Instructor', '% · المدرب')} {data.config.instructorWeight}{L('% · Project', '% · المشروع')} {data.config.projectWeight}{L('% · MCQ', '% · الاختيارات')} {data.config.mcqWeight}{L('% — Pass mark:', '% — درجة النجاح:')} {data.config.passThreshold}%
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -188,10 +190,10 @@ export default function LevelResultsPage() {
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-slate-900">{row.student.firstName} {row.student.lastName}</span>
                         {row.result?.passed === true && (
-                          <Badge className="bg-emerald-100 text-emerald-800 border-0 gap-1"><Award className="w-3 h-3" /> Passed</Badge>
+                          <Badge className="bg-emerald-100 text-emerald-800 border-0 gap-1"><Award className="w-3 h-3" /> {L('Passed', 'نجح')}</Badge>
                         )}
                         {row.result?.passed === false && (
-                          <Badge variant="outline" className="text-amber-700 border-amber-300">Not yet passing</Badge>
+                          <Badge variant="outline" className="text-amber-700 border-amber-300">{L('Not yet passing', 'لسه مانجحش')}</Badge>
                         )}
                       </div>
                       {row.result?.finalScore != null && (
@@ -200,33 +202,33 @@ export default function LevelResultsPage() {
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                       <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-slate-400">Homework</label>
+                        <label className="text-[10px] uppercase font-bold text-slate-400">{L('Homework', 'الواجبات')}</label>
                         <Input type="number" min={0} max={100} value={getDraftValue(row, 'homeworkScore')} onChange={(e) => updateDraft(row.studentEnrollmentId, 'homeworkScore', e.target.value)} />
-                        {row.lms?.homework != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'homeworkScore', String(row.lms!.homework))}>LMS: {row.lms.homework}% · use</button>}
+                        {row.lms?.homework != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'homeworkScore', String(row.lms!.homework))}>{L('LMS:', 'المنصة:')} {row.lms.homework}{L('% · use', '% · استخدم')}</button>}
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-slate-400">Tasks</label>
+                        <label className="text-[10px] uppercase font-bold text-slate-400">{L('Tasks', 'المهام')}</label>
                         <Input type="number" min={0} max={100} value={getDraftValue(row, 'taskScore')} onChange={(e) => updateDraft(row.studentEnrollmentId, 'taskScore', e.target.value)} />
-                        {row.lms?.task != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'taskScore', String(row.lms!.task))}>LMS: {row.lms.task}% · use</button>}
+                        {row.lms?.task != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'taskScore', String(row.lms!.task))}>{L('LMS:', 'المنصة:')} {row.lms.task}{L('% · use', '% · استخدم')}</button>}
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-slate-400">Instructor</label>
+                        <label className="text-[10px] uppercase font-bold text-slate-400">{L('Instructor', 'المدرب')}</label>
                         <Input type="number" min={0} max={100} value={getDraftValue(row, 'instructorScore')} onChange={(e) => updateDraft(row.studentEnrollmentId, 'instructorScore', e.target.value)} />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-slate-400">Project</label>
+                        <label className="text-[10px] uppercase font-bold text-slate-400">{L('Project', 'المشروع')}</label>
                         <Input type="number" min={0} max={100} value={getDraftValue(row, 'projectScore')} onChange={(e) => updateDraft(row.studentEnrollmentId, 'projectScore', e.target.value)} />
-                        {row.lms?.project != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'projectScore', String(row.lms!.project))}>LMS: {row.lms.project}% · use</button>}
+                        {row.lms?.project != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'projectScore', String(row.lms!.project))}>{L('LMS:', 'المنصة:')} {row.lms.project}{L('% · use', '% · استخدم')}</button>}
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-slate-400">MCQ</label>
+                        <label className="text-[10px] uppercase font-bold text-slate-400">{L('MCQ', 'الاختيارات')}</label>
                         <Input type="number" min={0} max={100} value={getDraftValue(row, 'mcqScore')} onChange={(e) => updateDraft(row.studentEnrollmentId, 'mcqScore', e.target.value)} />
-                        {row.lms?.mcq != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'mcqScore', String(row.lms!.mcq))}>LMS: {row.lms.mcq}% · use</button>}
+                        {row.lms?.mcq != null && <button type="button" className="text-[10px] text-indigo-600 underline" onClick={() => updateDraft(row.studentEnrollmentId, 'mcqScore', String(row.lms!.mcq))}>{L('LMS:', 'المنصة:')} {row.lms.mcq}{L('% · use', '% · استخدم')}</button>}
                       </div>
                     </div>
                     <div className="mt-3 space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-400">Instructor Feedback {row.result?.passed === true ? '' : '(required to pass)'}</label>
-                      <Textarea rows={2} value={getDraftValue(row, 'instructorFeedback')} onChange={(e) => updateDraft(row.studentEnrollmentId, 'instructorFeedback', e.target.value)} placeholder="Notes on the student's performance this level..." />
+                      <label className="text-[10px] uppercase font-bold text-slate-400">{L('Instructor Feedback', 'ملاحظات المدرب')} {row.result?.passed === true ? '' : '(required to pass)'}</label>
+                      <Textarea rows={2} value={getDraftValue(row, 'instructorFeedback')} onChange={(e) => updateDraft(row.studentEnrollmentId, 'instructorFeedback', e.target.value)} placeholder={L('Notes on the student\'s performance this level...', 'ملاحظات على أداء الطالب في المستوى ده...')} />
                     </div>
                     <div className="flex justify-end mt-3">
                       <Button
@@ -236,7 +238,7 @@ export default function LevelResultsPage() {
                         className="gap-2"
                       >
                         {saveMutation.isPending && savingId === row.studentEnrollmentId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        Save
+                        {L('Save', 'حفظ')}
                       </Button>
                     </div>
                   </div>

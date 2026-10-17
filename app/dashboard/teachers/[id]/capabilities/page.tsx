@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { notify } from '@/lib/notify'
 import { Loader2, ChevronLeft, X } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 function apiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
@@ -42,6 +43,7 @@ interface CredentialRow {
 }
 
 export default function TeacherCapabilitiesPage() {
+  useI18n() // re-render on a language switch
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -81,7 +83,7 @@ export default function TeacherCapabilitiesPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teacher-qualified', params.id] })
-      notify.success('Added')
+      notify.success(L('Added', 'اتضاف'))
       setQualTrackId(''); setQualCourseId(''); setQualLevelId('')
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to add')),
@@ -117,7 +119,7 @@ export default function TeacherCapabilitiesPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teacher-credentials', params.id] })
-      notify.success('Added')
+      notify.success(L('Added', 'اتضاف'))
       setCredTitle(''); setCredInstitution(''); setCredDate('')
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to add')),
@@ -132,15 +134,15 @@ export default function TeacherCapabilitiesPage() {
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-4">
       <Button variant="ghost" size="sm" className="gap-1 text-slate-500 -ml-2" onClick={() => router.back()}>
-        <ChevronLeft className="w-4 h-4" /> Back
+        <ChevronLeft className="w-4 h-4" /> {L('Back', 'رجوع')}
       </Button>
 
       {/* Teaching capabilities */}
       <Card>
         <CardHeader>
-          <CardTitle>What this teacher can teach</CardTitle>
+          <CardTitle>{L('What this teacher can teach', 'المدرب ده يقدر يدرّس إيه')}</CardTitle>
           <CardDescription>
-            Used to suggest substitutes — a whole track covers every course in it, a course covers every level of it.
+            {L('Used to suggest substitutes — a whole track covers every course in it, a course covers every level of it.', 'بيتستخدم في اقتراح البدلاء — التراك بيغطي كل كورساته، والكورس بيغطي كل مستوياته.')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -148,7 +150,7 @@ export default function TeacherCapabilitiesPage() {
             <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
           ) : (
             <div className="flex flex-wrap gap-2">
-              {qualified.length === 0 && <p className="text-sm text-slate-400">Nothing added yet.</p>}
+              {qualified.length === 0 && <p className="text-sm text-slate-400">{L('Nothing added yet.', 'لسه مفيش حاجة.')}</p>}
               {qualified.map((q) => (
                 <Badge key={q.id} variant="outline" className="gap-1.5 pr-1">
                   {q.track ? `Track: ${q.track.name}` : q.subject ? `Course: ${q.subject.name}` : `${q.level?.subject.name} — ${q.level?.name}`}
@@ -165,15 +167,15 @@ export default function TeacherCapabilitiesPage() {
               <Select value={qualScope} onValueChange={(v) => setQualScope(v as typeof qualScope)}>
                 <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="track">Track</SelectItem>
-                  <SelectItem value="course">Course</SelectItem>
-                  <SelectItem value="level">Level</SelectItem>
+                  <SelectItem value="track">{L('Track', 'التراك')}</SelectItem>
+                  <SelectItem value="course">{L('Course', 'الكورس')}</SelectItem>
+                  <SelectItem value="level">{L('Level', 'المستوى')}</SelectItem>
                 </SelectContent>
               </Select>
 
               {qualScope === 'track' && (
                 <Select value={qualTrackId} onValueChange={setQualTrackId}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Pick a track" /></SelectTrigger>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder={L('Pick a track', 'اختار تراك')} /></SelectTrigger>
                   <SelectContent>
                     {tracks.filter((t) => !addedTrackIds.has(t.id)).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                   </SelectContent>
@@ -181,7 +183,7 @@ export default function TeacherCapabilitiesPage() {
               )}
               {qualScope === 'course' && (
                 <Select value={qualCourseId} onValueChange={setQualCourseId}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Pick a course" /></SelectTrigger>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder={L('Pick a course', 'اختار كورس')} /></SelectTrigger>
                   <SelectContent>
                     {courses.filter((c) => !addedCourseIds.has(c.id)).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
@@ -190,13 +192,13 @@ export default function TeacherCapabilitiesPage() {
               {qualScope === 'level' && (
                 <>
                   <Select value={qualCourseId} onValueChange={(v) => { setQualCourseId(v); setQualLevelId('') }}>
-                    <SelectTrigger className="flex-1"><SelectValue placeholder="Course" /></SelectTrigger>
+                    <SelectTrigger className="flex-1"><SelectValue placeholder={L('Course', 'الكورس')} /></SelectTrigger>
                     <SelectContent>
                       {courses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={qualLevelId} onValueChange={setQualLevelId} disabled={!qualCourseId}>
-                    <SelectTrigger className="flex-1"><SelectValue placeholder="Level" /></SelectTrigger>
+                    <SelectTrigger className="flex-1"><SelectValue placeholder={L('Level', 'المستوى')} /></SelectTrigger>
                     <SelectContent>
                       {levelsForCourse.filter((l) => !addedLevelIds.has(l.id)).map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
                     </SelectContent>
@@ -223,13 +225,13 @@ export default function TeacherCapabilitiesPage() {
       {/* Credentials */}
       <Card>
         <CardHeader>
-          <CardTitle>Qualifications, training & certificates</CardTitle>
+          <CardTitle>{L('Qualifications, training & certificates', 'المؤهلات والتدريبات والشهادات')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {cLoading ? (
             <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
           ) : credentials.length === 0 ? (
-            <p className="text-sm text-slate-400">Nothing added yet.</p>
+            <p className="text-sm text-slate-400">{L('Nothing added yet.', 'لسه مفيش حاجة.')}</p>
           ) : (
             <div className="space-y-2">
               {credentials.map((c) => (
@@ -251,15 +253,15 @@ export default function TeacherCapabilitiesPage() {
               <Select value={credType} onValueChange={(v) => setCredType(v as typeof credType)}>
                 <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="QUALIFICATION">Qualification</SelectItem>
-                  <SelectItem value="TRAINING">Training</SelectItem>
-                  <SelectItem value="CERTIFICATE">Certificate</SelectItem>
+                  <SelectItem value="QUALIFICATION">{L('Qualification', 'مؤهل')}</SelectItem>
+                  <SelectItem value="TRAINING">{L('Training', 'تدريب')}</SelectItem>
+                  <SelectItem value="CERTIFICATE">{L('Certificate', 'شهادة')}</SelectItem>
                 </SelectContent>
               </Select>
-              <Input placeholder="Title" value={credTitle} onChange={(e) => setCredTitle(e.target.value)} className="flex-1" />
+              <Input placeholder={L('Title', 'العنوان')} value={credTitle} onChange={(e) => setCredTitle(e.target.value)} className="flex-1" />
             </div>
             <div className="flex gap-2">
-              <Input placeholder="Institution (optional)" value={credInstitution} onChange={(e) => setCredInstitution(e.target.value)} />
+              <Input placeholder={L('Institution (optional)', 'الجهة (اختياري)')} value={credInstitution} onChange={(e) => setCredInstitution(e.target.value)} />
               <Input type="date" value={credDate} onChange={(e) => setCredDate(e.target.value)} />
             </div>
             <Button size="sm" className="w-full" disabled={!credTitle || addCredentialMutation.isPending} onClick={() => addCredentialMutation.mutate()}>

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { notify } from '@/lib/notify'
 import { Loader2 } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 function apiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
@@ -33,6 +34,7 @@ interface SubstituteData {
 }
 
 export default function MySubstitutionsPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const queryClient = useQueryClient()
 
@@ -54,27 +56,27 @@ export default function MySubstitutionsPage() {
       fetchApi(`/api/substitute-assignments/${id}/respond`, { method: 'POST', body: JSON.stringify({ decision }) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-substitutions', teacherId] })
-      notify.success('Response recorded')
+      notify.success(L('Response recorded', 'ردّك اتسجل'))
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to respond')),
   })
 
   if (session?.user?.role !== 'TEACHER') {
-    return <p className="p-6 text-sm text-slate-400 text-center">This page is for teacher accounts.</p>
+    return <p className="p-6 text-sm text-slate-400 text-center">{L('This page is for teacher accounts.', 'الصفحة دي لحسابات المدربين.')}</p>
   }
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-6">
-      <h1 className="text-xl font-bold text-slate-900">My Substitutions</h1>
+      <h1 className="text-xl font-bold text-slate-900">{L('My Substitutions', 'حصصي البديلة')}</h1>
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : (
         <>
           <div>
-            <h2 className="text-sm font-semibold text-slate-700 mb-2">Sessions I covered</h2>
+            <h2 className="text-sm font-semibold text-slate-700 mb-2">{L('Sessions I covered', 'الحصص اللي غطيتها')}</h2>
             {(!data || data.asSubstitute.length === 0) ? (
-              <p className="text-sm text-slate-400">Nothing yet.</p>
+              <p className="text-sm text-slate-400">{L('Nothing yet.', 'لسه مفيش.')}</p>
             ) : (
               <div className="space-y-2">
                 {data.asSubstitute.map((day) => (
@@ -85,18 +87,18 @@ export default function MySubstitutionsPage() {
                         <div key={s.id} className="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-2 text-sm">
                           <div>
                             <p className="text-slate-800">
-                              {s.sessionNumber ? <span className="font-semibold text-indigo-600">Session {s.sessionNumber} of {s.totalSessions} · </span> : null}
-                              {s.groupLabel} — covering for {s.originalTeacherName}
+                              {s.sessionNumber ? <span className="font-semibold text-indigo-600">{L('Session', 'حصة')} {s.sessionNumber} {L('of', 'من')} {s.totalSessions} · </span> : null}
+                              {s.groupLabel} {L('— covering for', '— بدل')} {s.originalTeacherName}
                             </p>
                             <p className="text-xs text-slate-400">{s.courseName} — {s.levelName}</p>
                           </div>
                           {s.status === 'PENDING_SUBSTITUTE_APPROVAL' ? (
                             <div className="flex gap-1.5">
                               <Button size="sm" className="h-7 text-xs" disabled={respondMutation.isPending} onClick={() => respondMutation.mutate({ id: s.id, decision: 'ACCEPT' })}>
-                                Accept
+                                {L('Accept', 'قبول')}
                               </Button>
                               <Button size="sm" variant="outline" className="h-7 text-xs text-red-600 border-red-200" disabled={respondMutation.isPending} onClick={() => respondMutation.mutate({ id: s.id, decision: 'DECLINE' })}>
-                                Decline
+                                {L('Decline', 'رفض')}
                               </Button>
                             </div>
                           ) : (
@@ -112,9 +114,9 @@ export default function MySubstitutionsPage() {
           </div>
 
           <div>
-            <h2 className="text-sm font-semibold text-slate-700 mb-2">My absence requests</h2>
+            <h2 className="text-sm font-semibold text-slate-700 mb-2">{L('My absence requests', 'طلبات غيابي')}</h2>
             {(!data || data.asAbsent.length === 0) ? (
-              <p className="text-sm text-slate-400">Nothing yet.</p>
+              <p className="text-sm text-slate-400">{L('Nothing yet.', 'لسه مفيش.')}</p>
             ) : (
               <div className="space-y-2">
                 {data.asAbsent.map((day) => (
@@ -129,7 +131,7 @@ export default function MySubstitutionsPage() {
                           </div>
                           <p className="text-xs text-slate-400">{it.reason}</p>
                           {it.substitutes.map((s, i) => (
-                            <p key={i} className="text-xs text-indigo-600 mt-1">Substitute: {s.name} ({s.status})</p>
+                            <p key={i} className="text-xs text-indigo-600 mt-1">{L('Substitute:', 'البديل:')} {s.name} ({s.status})</p>
                           ))}
                         </div>
                       ))}

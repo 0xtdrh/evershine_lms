@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
 import { Loader2, TrendingUp, AlertTriangle, CalendarCheck, Users } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Campus { id: string; name: string; code: string }
 
@@ -53,13 +54,14 @@ interface AttendanceReport {
 }
 
 function rateBadge(rate: number | null) {
-  if (rate === null) return <Badge variant="outline" className="text-slate-400">No data</Badge>
+  if (rate === null) return <Badge variant="outline" className="text-slate-400">{L('No data', 'مفيش بيانات')}</Badge>
   if (rate >= 90) return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100">{rate}%</Badge>
   if (rate >= 75) return <Badge className="bg-amber-50 text-amber-700 border-amber-100">{rate}%</Badge>
   return <Badge className="bg-rose-50 text-rose-700 border-rose-100">{rate}%</Badge>
 }
 
 export default function AttendanceReportPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const role = session?.user?.role as string | undefined
   const [campusId, setCampusId] = useState<string>('all')
@@ -80,16 +82,16 @@ export default function AttendanceReportPage() {
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Attendance Report</h1>
+          <h1 className="text-xl font-bold text-slate-900">{L('Attendance Report', 'تقرير الحضور')}</h1>
           <CardDescription>
             {report?.academicYear ? `Academic year ${report.academicYear.name}` : 'No active academic year'}
           </CardDescription>
         </div>
         {role === 'SUPER_ADMIN' && (
           <Select value={campusId} onValueChange={setCampusId}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="All campuses" /></SelectTrigger>
+            <SelectTrigger className="w-48"><SelectValue placeholder={L('All campuses', 'كل الفروع')} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All campuses</SelectItem>
+              <SelectItem value="all">{L('All campuses', 'كل الفروع')}</SelectItem>
               {campuses.map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
@@ -101,7 +103,7 @@ export default function AttendanceReportPage() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : !report ? (
-        <p className="text-sm text-slate-400 text-center py-16">Could not load the attendance report.</p>
+        <p className="text-sm text-slate-400 text-center py-16">{L('Could not load the attendance report.', 'تقرير الحضور ماحمّلش.')}</p>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -114,7 +116,7 @@ export default function AttendanceReportPage() {
                   <p className="text-2xl font-bold text-slate-900">
                     {report.overallRate === null ? '—' : `${report.overallRate}%`}
                   </p>
-                  <p className="text-xs text-slate-500">Overall attendance rate</p>
+                  <p className="text-xs text-slate-500">{L('Overall attendance rate', 'نسبة الحضور الكلية')}</p>
                 </div>
               </CardContent>
             </Card>
@@ -125,7 +127,7 @@ export default function AttendanceReportPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-slate-900">{report.totalRecordsMarked}</p>
-                  <p className="text-xs text-slate-500">Attendance days marked</p>
+                  <p className="text-xs text-slate-500">{L('Attendance days marked', 'أيام الحضور المتسجلة')}</p>
                 </div>
               </CardContent>
             </Card>
@@ -137,7 +139,7 @@ export default function AttendanceReportPage() {
                 <div>
                   <p className="text-2xl font-bold text-slate-900">{report.atRiskStudents.length}</p>
                   <p className="text-xs text-slate-500">
-                    At risk ({report.consecutiveAbsenceThreshold}+ consecutive unexcused absences)
+                    {L('At risk (', 'في خطر (')}{report.consecutiveAbsenceThreshold}{L('+ consecutive unexcused absences)', '+ غياب متتالي من غير عذر)')}
                   </p>
                 </div>
               </CardContent>
@@ -148,23 +150,23 @@ export default function AttendanceReportPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-600" />
-                Students at risk
+                {L('Students at risk', 'طلاب في خطر')}
               </CardTitle>
               <CardDescription>
-                {report.consecutiveAbsenceThreshold} or more consecutive unexcused absences, most recent first.
+                {report.consecutiveAbsenceThreshold} {L('or more consecutive unexcused absences, most recent first.', 'أو أكتر غياب متتالي من غير عذر، الأحدث الأول.')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {report.atRiskStudents.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-6">No students currently at risk.</p>
+                <p className="text-sm text-slate-400 text-center py-6">{L('No students currently at risk.', 'مفيش طلاب في خطر دلوقتي.')}</p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Group</TableHead>
-                      <TableHead className="text-center">Consecutive absences</TableHead>
-                      <TableHead className="text-center">Overall rate</TableHead>
+                      <TableHead>{L('Student', 'الطالب')}</TableHead>
+                      <TableHead>{L('Group', 'الجروب')}</TableHead>
+                      <TableHead className="text-center">{L('Consecutive absences', 'غياب متتالي')}</TableHead>
+                      <TableHead className="text-center">{L('Overall rate', 'النسبة الكلية')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -180,7 +182,7 @@ export default function AttendanceReportPage() {
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge className="bg-rose-50 text-rose-700 border-rose-100">
-                            {s.consecutiveUnexcusedAbsences} days
+                            {s.consecutiveUnexcusedAbsences} {L('days', 'يوم')}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">{rateBadge(s.attendanceRate)}</TableCell>
@@ -196,24 +198,24 @@ export default function AttendanceReportPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="w-4 h-4 text-slate-600" />
-                By group
+                {L('By group', 'حسب الجروب')}
               </CardTitle>
-              <CardDescription>Attendance rate per class section, active academic year.</CardDescription>
+              <CardDescription>{L('Attendance rate per class section, active academic year.', 'نسبة الحضور لكل جروب.')}</CardDescription>
             </CardHeader>
             <CardContent>
               {report.groups.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-6">No attendance has been marked yet.</p>
+                <p className="text-sm text-slate-400 text-center py-6">{L('No attendance has been marked yet.', 'لسه مفيش حضور متسجل.')}</p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Group</TableHead>
-                      <TableHead className="text-center">Students</TableHead>
-                      <TableHead className="text-center">Present</TableHead>
-                      <TableHead className="text-center">Absent</TableHead>
-                      <TableHead className="text-center">Late</TableHead>
-                      <TableHead className="text-center">Excused</TableHead>
-                      <TableHead className="text-center">Rate</TableHead>
+                      <TableHead>{L('Group', 'الجروب')}</TableHead>
+                      <TableHead className="text-center">{L('Students', 'الطلاب')}</TableHead>
+                      <TableHead className="text-center">{L('Present', 'حاضر')}</TableHead>
+                      <TableHead className="text-center">{L('Absent', 'غايب')}</TableHead>
+                      <TableHead className="text-center">{L('Late', 'متأخر')}</TableHead>
+                      <TableHead className="text-center">{L('Excused', 'بعذر')}</TableHead>
+                      <TableHead className="text-center">{L('Rate', 'النسبة')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

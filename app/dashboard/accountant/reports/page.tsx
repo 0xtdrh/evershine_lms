@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { notify } from '@/lib/notify'
 import { motion, AnimatePresence } from 'framer-motion'
+import { L, useI18n } from '@/lib/i18n/client'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -98,11 +99,11 @@ function GeneratePLModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!periodLabel) {
-      notify.error('Period label is required')
+      notify.error(L('Period label is required', 'اسم الفترة مطلوب'))
       return
     }
     if (!periodStart || !periodEnd) {
-      notify.error('Period date range is required')
+      notify.error(L('Period date range is required', 'تواريخ الفترة مطلوبة'))
       return
     }
     setSubmitting(true)
@@ -120,7 +121,7 @@ function GeneratePLModal({
           notes: notes || undefined,
         }),
       })
-      notify.success('P&L Statement generated successfully')
+      notify.success(L('P&L Statement generated successfully', 'الكشف اتعمل'))
       onSuccess(createdStatement)
     } catch (err: any) {
       notify.error(err?.message ?? 'Failed to generate P&L statement')
@@ -137,7 +138,7 @@ function GeneratePLModal({
         className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-teal-600 to-emerald-600 text-white">
-          <h2 className="font-black text-lg">Generate P&L Snapshot</h2>
+          <h2 className="font-black text-lg">{L('Generate P&L Snapshot', 'اعمل كشف أرباح وخسائر')}</h2>
           <button onClick={onClose} className="hover:opacity-70">
             <X className="w-5 h-5" />
           </button>
@@ -145,10 +146,10 @@ function GeneratePLModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="text-xs font-black uppercase text-gray-500 block mb-1">
-              Period Label
+              {L('Period Label', 'اسم الفترة')}
             </label>
             <Input
-              placeholder="e.g. June 2026"
+              placeholder={L('e.g. June 2026', 'مثلاً يونيو 2026')}
               value={periodLabel}
               onChange={(e) => setPeriodLabel(e.target.value)}
               className="h-9 text-sm"
@@ -159,7 +160,7 @@ function GeneratePLModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-black uppercase text-gray-500 block mb-1">
-                Start Date
+                {L('Start Date', 'من تاريخ')}
               </label>
               <Input
                 type="date"
@@ -171,7 +172,7 @@ function GeneratePLModal({
             </div>
             <div>
               <label className="text-xs font-black uppercase text-gray-500 block mb-1">
-                End Date
+                {L('End Date', 'لحد تاريخ')}
               </label>
               <Input
                 type="date"
@@ -185,15 +186,15 @@ function GeneratePLModal({
 
           <div>
             <label className="text-xs font-black uppercase text-gray-500 block mb-1">
-              Campus scope
+              {L('Campus scope', 'الفرع')}
             </label>
             {showCampusSelector ? (
               <Select value={campusId} onValueChange={(v) => setCampusId(v)}>
                 <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Select campus" />
+                  <SelectValue placeholder={L('Select campus', 'اختار الفرع')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Campuses</SelectItem>
+                  <SelectItem value="all">{L('All Campuses', 'كل الفروع')}</SelectItem>
                   {campuses.map((campus) => (
                     <SelectItem key={campus.id} value={campus.id}>
                       {campus.name}
@@ -203,17 +204,17 @@ function GeneratePLModal({
               </Select>
             ) : (
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                Campus context is fixed to your assigned campus for this P&L snapshot.
+                {L('Campus context is fixed to your assigned campus for this P&L snapshot.', 'الكشف ده لفرعك بس.')}
               </div>
             )}
             <p className="text-[10px] text-gray-400 mt-1">
-              Choose the campus whose expenses, payroll, and P&L allocation you want to snapshot. Only paid salary slips and approved expenses for that campus are included.
+              {L('Choose the campus whose expenses, payroll, and P&L allocation you want to snapshot. Only paid salary slips and approved expenses for that campus are included.', 'اختار الفرع اللي عايز كشفه. بيدخل فيه المرتبات المصروفة والمصاريف المعتمدة للفرع ده بس.')}
             </p>
           </div>
 
           <div>
             <label className="text-xs font-black uppercase text-gray-500 block mb-1">
-              SuperAdmin profit share %
+              {L('SuperAdmin profit share %', 'نسبة ربح المالك %')}
             </label>
             <Input
               type="number"
@@ -230,27 +231,27 @@ function GeneratePLModal({
           </div>
 
           <div>
-            <label className="text-xs font-black uppercase text-gray-500 block mb-1">Reserve fund contribution (EGP)</label>
-            <Input type="number" min={0} value={reserveContribution} onChange={(e) => setReserveContribution(e.target.value)} placeholder="Optional — use 25% default" className="h-9 text-sm" />
-            <p className="text-[10px] text-gray-400 mt-1">Account Manager selects a specific amount up to the SuperAdmin allocation. The remaining allocation is the monthly draw.</p>
+            <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Reserve fund contribution (EGP)', 'مبلغ الاحتياطي (ج.م)')}</label>
+            <Input type="number" min={0} value={reserveContribution} onChange={(e) => setReserveContribution(e.target.value)} placeholder={L('Optional — use 25% default', 'اختياري — الافتراضي 25%')} className="h-9 text-sm" />
+            <p className="text-[10px] text-gray-400 mt-1">{L('Account Manager selects a specific amount up to the SuperAdmin allocation. The remaining allocation is the monthly draw.', 'المحاسب بيحدد مبلغ لحد نصيب المالك. الباقي هو السحب الشهري.')}</p>
           </div>
 
           <div>
             <label className="text-xs font-black uppercase text-gray-500 block mb-1">
-              Notes
+              {L('Notes', 'ملاحظات')}
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="Add optional notes for this period..."
+              placeholder={L('Add optional notes for this period...', 'ملاحظات للفترة (اختياري)...')}
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-teal-300"
             />
           </div>
 
           <div className="flex justify-end gap-3 pt-2 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {L('Cancel', 'إلغاء')}
             </Button>
             <Button
               type="submit"
@@ -258,7 +259,7 @@ function GeneratePLModal({
               className="bg-teal-600 hover:bg-teal-700 text-white gap-2"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Generate
+              {L('Generate', 'اعمل')}
             </Button>
           </div>
         </form>
@@ -324,19 +325,19 @@ function PLCard({ statement, onRecreate }: { statement: ProfitLossStatement; onR
             <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-4 text-sm">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Total Income</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">{L('Total Income', 'إجمالي الدخل')}</p>
                   <p className="font-black text-emerald-700">{formatCurrency(statement.totalIncome)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Total Expenses</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">{L('Total Expenses', 'إجمالي المصاريف')}</p>
                   <p className="font-black text-red-600">{formatCurrency(statement.totalExpenses)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Gross Margin</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">{L('Gross Margin', 'الربح')}</p>
                   <p className="font-black text-slate-900">{formatCurrency(statement.grossMargin)}</p>
                 </div>
                 <div className="bg-teal-50 rounded-xl p-3">
-                  <p className="text-[10px] text-teal-600 uppercase font-bold mb-0.5">Reserve Fund Total</p>
+                  <p className="text-[10px] text-teal-600 uppercase font-bold mb-0.5">{L('Reserve Fund Total', 'إجمالي الاحتياطي')}</p>
                   <p className="font-black text-teal-800">
                     {statement.reserveEntry
                       ? formatCurrency(statement.reserveEntry.cumulativeTotal)
@@ -348,23 +349,23 @@ function PLCard({ statement, onRecreate }: { statement: ProfitLossStatement; onR
               {/* Profit Allocations */}
               <div className="border-t border-gray-100 pt-3">
                 <p className="text-xs font-black text-gray-500 uppercase mb-2">
-                  Distributions ({statement.profitPercentage}% Profit Share)
+                  {L('Distributions (', 'التوزيع (')}{statement.profitPercentage}{L('% Profit Share)', '% نسبة ربح)')}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex justify-between items-center bg-gray-50 rounded-lg p-2.5">
-                    <span className="text-xs text-gray-600">SuperAdmin Allocation</span>
+                    <span className="text-xs text-gray-600">{L('SuperAdmin Allocation', 'نصيب المالك')}</span>
                     <span className="font-black text-slate-700">
                       {formatCurrency(statement.superAdminAllocation)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center bg-gray-50 rounded-lg p-2.5">
-                    <span className="text-xs text-gray-600">SuperAdmin Monthly Draw (15%)</span>
+                    <span className="text-xs text-gray-600">{L('SuperAdmin Monthly Draw (15%)', 'سحب المالك الشهري (15%)')}</span>
                     <span className="font-black text-blue-700">
                       {formatCurrency(statement.superAdminMonthlyDraw)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center bg-teal-50/50 rounded-lg p-2.5">
-                    <span className="text-xs text-teal-700">Reserve Contribution (5%)</span>
+                    <span className="text-xs text-teal-700">{L('Reserve Contribution (5%)', 'الاحتياطي (5%)')}</span>
                     <span className="font-black text-teal-700">
                       {formatCurrency(statement.reserveContribution)}
                     </span>
@@ -373,8 +374,8 @@ function PLCard({ statement, onRecreate }: { statement: ProfitLossStatement; onR
               </div>
 
               <div className="flex justify-between items-center border-t border-gray-100 pt-3 text-xs text-gray-400">
-                <span>Remaining Campus Funds: {formatCurrency(statement.remainingAmount)}</span>
-                <span>Generated on {formatDate(statement.createdAt)}</span>
+                <span>{L('Remaining Campus Funds:', 'الباقي للفرع:')} {formatCurrency(statement.remainingAmount)}</span>
+                <span>{L('Generated on', 'اتعمل يوم')} {formatDate(statement.createdAt)}</span>
               </div>
 
               <div className="flex gap-2 pt-3 border-t border-gray-100">
@@ -383,18 +384,18 @@ function PLCard({ statement, onRecreate }: { statement: ProfitLossStatement; onR
                   size="sm"
                       onClick={async (e) => {
                     e.stopPropagation()
-                    if (!confirm('Delete this P&L snapshot? This action cannot be undone.')) return
+                    if (!confirm(L('Delete this P&L snapshot? This action cannot be undone.', 'تمسح الكشف ده؟ مش هينفع ترجّعه.'))) return
                     try {
                       const res = await fetchApi(`/api/accountant/profit-loss/${statement.id}`, { method: 'DELETE' })
-                      notify.success('Snapshot deleted')
+                      notify.success(L('Snapshot deleted', 'الكشف اتمسح'))
                       qc.invalidateQueries({ queryKey: ['profit-loss-statements'] })
                       qc.invalidateQueries({ queryKey: ['profit-loss-latest', statement.campusId ?? ''] })
                     } catch (err) {
-                      notify.error('Failed to delete snapshot')
+                      notify.error(L('Failed to delete snapshot', 'مسح الكشف فشل'))
                     }
                   }}
                 >
-                  Delete
+                  {L('Delete', 'امسح')}
                 </Button>
 
                 <Button
@@ -402,18 +403,18 @@ function PLCard({ statement, onRecreate }: { statement: ProfitLossStatement; onR
                   size="sm"
                   onClick={async (e) => {
                     e.stopPropagation()
-                    if (!confirm('Regenerate this P&L snapshot now? This will replace the existing snapshot.')) return
+                    if (!confirm(L('Regenerate this P&L snapshot now? This will replace the existing snapshot.', 'تعمل الكشف تاني؟ هيحل محل القديم.'))) return
                     try {
                       await fetchApi(`/api/accountant/profit-loss/${statement.id}/regenerate`, { method: 'POST' })
-                      notify.success('Snapshot regenerated')
+                      notify.success(L('Snapshot regenerated', 'الكشف اتعمل تاني'))
                       qc.invalidateQueries({ queryKey: ['profit-loss-statements'] })
                       qc.invalidateQueries({ queryKey: ['profit-loss-latest', statement.campusId ?? ''] })
                     } catch (err) {
-                      notify.error('Failed to regenerate snapshot')
+                      notify.error(L('Failed to regenerate snapshot', 'عمل الكشف تاني فشل'))
                     }
                   }}
                 >
-                  Regenerate
+                  {L('Regenerate', 'اعمله تاني')}
                 </Button>
               </div>
             </div>
@@ -427,6 +428,7 @@ function PLCard({ statement, onRecreate }: { statement: ProfitLossStatement; onR
 // ─── Main Reports Dashboard Page ─────────────────────────────────────────────
 
 export default function AccountantReportsPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const role = session?.user?.role ?? ''
   const canAccess = ['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(role)
@@ -503,7 +505,7 @@ export default function AccountantReportsPage() {
     const downloadParams = new URLSearchParams(ledgerParams)
     downloadParams.set('export', 'excel')
     window.open(`/api/accountant/reports/expense-ledger?${downloadParams.toString()}`, '_blank')
-    notify.success('Unified ledger download started')
+    notify.success(L('Unified ledger download started', 'تنزيل الدفتر بدأ'))
   }
 
   const handlePLExport = () => {
@@ -512,7 +514,7 @@ export default function AccountantReportsPage() {
     if (plYear) downloadParams.set('year', plYear)
     if (plCampusId && plCampusId !== 'all') downloadParams.set('campusId', plCampusId)
     window.open(`/api/accountant/profit-loss?${downloadParams.toString()}`, '_blank')
-    notify.success('P&L export started')
+    notify.success(L('P&L export started', 'تصدير الكشف بدأ'))
   }
 
   const handlePLSuccess = (statement?: ProfitLossStatement) => {
@@ -529,7 +531,7 @@ export default function AccountantReportsPage() {
 
   if (status === 'loading') return null
   if (!canAccess) {
-    return <AccessDenied title="Reports Denied" message="Only finance personnel can access reports." />
+    return <AccessDenied title={L('Reports Denied', 'التقارير مقفولة')} message="Only finance personnel can access reports." />
   }
 
   return (
@@ -540,11 +542,11 @@ export default function AccountantReportsPage() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
           <div>
             <p className="text-teal-200 text-xs font-bold uppercase tracking-widest mb-1">
-              Accountant Workspace
+              {L('Accountant Workspace', 'المحاسبة')}
             </p>
-            <h1 className="text-2xl sm:text-3xl font-black leading-tight">Financial Reports</h1>
+            <h1 className="text-2xl sm:text-3xl font-black leading-tight">{L('Financial Reports', 'التقارير المالية')}</h1>
             <p className="text-teal-200 text-sm mt-1">
-              Unified transaction ledgers and period P&L statements
+              {L('Unified transaction ledgers and period P&L statements', 'دفتر الحركات وكشوف الأرباح والخسائر')}
             </p>
           </div>
           {activeTab === 'pl' && (
@@ -552,7 +554,7 @@ export default function AccountantReportsPage() {
               onClick={() => setShowPLModal(true)}
               className="bg-white text-teal-800 hover:bg-teal-50 font-black gap-2 shadow-lg"
             >
-              <Plus className="w-4 h-4" /> Create P&L Snapshot
+              <Plus className="w-4 h-4" /> {L('Create P&L Snapshot', 'كشف أرباح وخسائر جديد')}
             </Button>
           )}
         </div>
@@ -564,19 +566,19 @@ export default function AccountantReportsPage() {
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.24em] text-teal-600 mb-2">
-                  Profit & Loss Management
+                  {L('Profit & Loss Management', 'الأرباح والخسائر')}
                 </p>
                 <h2 className="text-2xl font-black text-slate-900 mb-2">
-                  Create audited P&L snapshots and track reserve fund allocations
+                  {L('Create audited P&L snapshots and track reserve fund allocations', 'اعمل كشوف أرباح وخسائر وتابع الاحتياطي')}
                 </h2>
                 <p className="text-sm text-slate-500 max-w-2xl">
-                  The system aggregates live fee income, approved expenses, and paid payroll records for a selected period. Each generated P&L statement persists a reserve fund contribution automatically.
+                  {L('The system aggregates live fee income, approved expenses, and paid payroll records for a selected period. Each generated P&L statement persists a reserve fund contribution automatically.', 'السيستم بيجمع الدخل والمصاريف المعتمدة والمرتبات المصروفة للفترة. وكل كشف بيسجّل مبلغ الاحتياطي لوحده.')}
                 </p>
                 <p className="text-sm text-slate-500 max-w-2xl mt-3">
-                  Campus expense collection and salary payouts are reconciled before P&L is calculated. This makes the snapshot a professional snapshot of net operational performance.
+                  {L('Campus expense collection and salary payouts are reconciled before P&L is calculated. This makes the snapshot a professional snapshot of net operational performance.', 'المصاريف والمرتبات بتتراجع قبل حساب الربح، فالكشف بيوضح الأداء الحقيقي.')}
                 </p>
                 <p className="text-sm text-slate-500 max-w-2xl mt-3">
-                  Expense collection is campus-aware: only approved operational expenses and paid salary slips for the chosen campus and date range are included in the snapshot.
+                  {L('Expense collection is campus-aware: only approved operational expenses and paid salary slips for the chosen campus and date range are included in the snapshot.', 'المصاريف حسب الفرع: بيدخل المعتمد والمرتبات المصروفة للفرع والفترة المختارة بس.')}
                 </p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   {[
@@ -600,14 +602,14 @@ export default function AccountantReportsPage() {
                   }}
                   className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white gap-2 h-11"
                 >
-                  <Plus className="w-4 h-4" /> Create P&L Snapshot
+                  <Plus className="w-4 h-4" /> {L('Create P&L Snapshot', 'كشف أرباح وخسائر جديد')}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handlePLExport}
                   className="w-full sm:w-auto gap-2 border-teal-200 text-teal-700 h-11"
                 >
-                  <FileSpreadsheet className="w-4 h-4" /> Export P&L
+                  <FileSpreadsheet className="w-4 h-4" /> {L('Export P&L', 'صدّر الكشف')}
                 </Button>
               </div>
             </div>
@@ -615,23 +617,23 @@ export default function AccountantReportsPage() {
 
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400 mb-3">
-              Latest Snapshot
+              {L('Latest Snapshot', 'آخر كشف')}
             </p>
             {createdSnapshot && (
               <div className="rounded-3xl border border-teal-200 bg-teal-50 p-4 mb-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-teal-700">Recently created snapshot</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-teal-700">{L('Recently created snapshot', 'آخر كشف اتعمل')}</p>
                 <p className="mt-1 text-lg font-black text-slate-900">{createdSnapshot.periodLabel}</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 text-sm text-slate-700">
                   <div className="rounded-2xl bg-white p-3 border border-teal-100">
-                    <p className="text-[10px] uppercase text-teal-500">Gross margin</p>
+                    <p className="text-[10px] uppercase text-teal-500">{L('Gross margin', 'الربح')}</p>
                     <p className="font-black text-slate-900">{formatCurrency(createdSnapshot.grossMargin)}</p>
                   </div>
                   <div className="rounded-2xl bg-white p-3 border border-teal-100">
-                    <p className="text-[10px] uppercase text-teal-500">Reserve contribution</p>
+                    <p className="text-[10px] uppercase text-teal-500">{L('Reserve contribution', 'الاحتياطي')}</p>
                     <p className="font-black text-teal-700">{formatCurrency(createdSnapshot.reserveContribution)}</p>
                   </div>
                   <div className="rounded-2xl bg-white p-3 border border-teal-100">
-                    <p className="text-[10px] uppercase text-teal-500">Remaining amount</p>
+                    <p className="text-[10px] uppercase text-teal-500">{L('Remaining amount', 'الباقي')}</p>
                     <p className="font-black text-slate-900">{formatCurrency(createdSnapshot.remainingAmount)}</p>
                   </div>
                 </div>
@@ -640,31 +642,31 @@ export default function AccountantReportsPage() {
             {latestSnapshot ? (
               <div className="space-y-4">
                 <div className="rounded-3xl bg-white p-4 border border-slate-200">
-                  <p className="text-sm text-slate-500">Period</p>
+                  <p className="text-sm text-slate-500">{L('Period', 'الفترة')}</p>
                   <p className="font-black text-slate-900">{latestSnapshot.periodLabel}</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-3xl bg-white p-4 border border-slate-200">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Gross margin</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{L('Gross margin', 'الربح')}</p>
                     <p className="mt-2 text-xl font-black text-slate-900">{formatCurrency(latestSnapshot.grossMargin)}</p>
                   </div>
                   <div className="rounded-3xl bg-white p-4 border border-slate-200">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Reserve contribution</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{L('Reserve contribution', 'الاحتياطي')}</p>
                     <p className="mt-2 text-xl font-black text-teal-700">{formatCurrency(latestSnapshot.reserveContribution)}</p>
                   </div>
                   <div className="rounded-3xl bg-white p-4 border border-slate-200">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">SuperAdmin allocation</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{L('SuperAdmin allocation', 'نصيب المالك')}</p>
                     <p className="mt-2 text-xl font-black text-slate-900">{formatCurrency(latestSnapshot.superAdminAllocation)}</p>
                   </div>
                   <div className="rounded-3xl bg-white p-4 border border-slate-200">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Remaining amount</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{L('Remaining amount', 'الباقي')}</p>
                     <p className="mt-2 text-xl font-black text-slate-900">{formatCurrency(latestSnapshot.remainingAmount)}</p>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="rounded-3xl bg-white p-6 border border-slate-200 text-sm text-slate-500">
-                No P&L snapshot has been generated yet. Create one to begin tracking profit, reserve, and allocation performance for your campus.
+                {L('No P&L snapshot has been generated yet. Create one to begin tracking profit, reserve, and allocation performance for your campus.', 'لسه مفيش كشوف. اعمل واحد علشان تبدأ تتابع الربح والاحتياطي.')}
               </div>
             )}
           </div>
@@ -681,7 +683,7 @@ export default function AccountantReportsPage() {
                 : 'text-gray-500 hover:bg-gray-50'
             }`}
           >
-            <Receipt className="w-4 h-4" /> Unified Ledger
+            <Receipt className="w-4 h-4" /> {L('Unified Ledger', 'دفتر الحركات')}
           </button>
           <button
             type="button"
@@ -692,7 +694,7 @@ export default function AccountantReportsPage() {
                 : 'text-gray-500 hover:bg-gray-50'
             }`}
           >
-            <TrendingUp className="w-4 h-4" /> P&L Statements
+            <TrendingUp className="w-4 h-4" /> {L('P&L Statements', 'كشوف الأرباح والخسائر')}
           </button>
         </div>
 
@@ -701,7 +703,7 @@ export default function AccountantReportsPage() {
           <div className="space-y-4">
             {/* Filter controls */}
             <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-wrap items-center gap-3 text-sm">
-              <span className="text-xs font-black uppercase text-gray-400">Filters</span>
+              <span className="text-xs font-black uppercase text-gray-400">{L('Filters', 'الفلاتر')}</span>
               <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-2 py-1 bg-white">
                 <Calendar className="w-4 h-4 text-gray-400" />
                 <Input
@@ -711,7 +713,7 @@ export default function AccountantReportsPage() {
                   className="border-0 p-0 h-7 text-xs w-28 focus-visible:ring-0"
                 />
               </div>
-              <span className="text-gray-300">to</span>
+              <span className="text-gray-300">{L('to', 'لحد')}</span>
               <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-2 py-1 bg-white">
                 <Calendar className="w-4 h-4 text-gray-400" />
                 <Input
@@ -727,10 +729,10 @@ export default function AccountantReportsPage() {
                 onChange={(e) => setLedgerMethod(e.target.value)}
                 className="h-9 border border-gray-200 rounded-lg px-2"
               >
-                <option value="">All payment sources</option>
-                <option value="Cash">Cash</option>
-                <option value="Bank Transfer">Bank Transfer</option>
-                <option value="Cheque">Cheque</option>
+                <option value="">{L('All payment sources', 'كل طرق الدفع')}</option>
+                <option value="Cash">{L('Cash', 'كاش')}</option>
+                <option value="Bank Transfer">{L('Bank Transfer', 'تحويل بنكي')}</option>
+                <option value="Cheque">{L('Cheque', 'شيك')}</option>
               </select>
 
               {(ledgerStart || ledgerEnd || ledgerMethod) && (
@@ -744,7 +746,7 @@ export default function AccountantReportsPage() {
                   }}
                   className="text-gray-400 hover:text-gray-600 gap-1 h-8"
                 >
-                  <X className="w-3.5 h-3.5" /> Clear
+                  <X className="w-3.5 h-3.5" /> {L('Clear', 'امسح')}
                 </Button>
               )}
 
@@ -754,7 +756,7 @@ export default function AccountantReportsPage() {
                 onClick={handleExcelExport}
                 className="ml-auto border-teal-200 text-teal-700 hover:bg-teal-50 gap-1.5 h-9"
               >
-                <FileSpreadsheet className="w-4 h-4" /> Export Excel
+                <FileSpreadsheet className="w-4 h-4" /> {L('Export Excel', 'صدّر Excel')}
               </Button>
             </div>
 
@@ -766,9 +768,9 @@ export default function AccountantReportsPage() {
             ) : ledgerEntries.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
                 <Receipt className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                <p className="font-black text-gray-700">No transactions listed</p>
+                <p className="font-black text-gray-700">{L('No transactions listed', 'مفيش حركات')}</p>
                 <p className="text-sm text-gray-400 mt-1">
-                  Adjust date boundaries or records filter settings.
+                  {L('Adjust date boundaries or records filter settings.', 'غيّر التواريخ أو الفلاتر.')}
                 </p>
               </div>
             ) : (
@@ -777,12 +779,12 @@ export default function AccountantReportsPage() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-100 text-[10px] uppercase font-black tracking-wider text-gray-400">
-                        <th className="px-5 py-3.5">Date</th>
-                        <th className="px-5 py-3.5">Type</th>
-                        <th className="px-5 py-3.5">Category</th>
-                        <th className="px-5 py-3.5">Payee / Title</th>
-                        <th className="px-5 py-3.5">Method</th>
-                        <th className="px-5 py-3.5 text-right">Amount</th>
+                        <th className="px-5 py-3.5">{L('Date', 'التاريخ')}</th>
+                        <th className="px-5 py-3.5">{L('Type', 'النوع')}</th>
+                        <th className="px-5 py-3.5">{L('Category', 'البند')}</th>
+                        <th className="px-5 py-3.5">{L('Payee / Title', 'المستفيد / البيان')}</th>
+                        <th className="px-5 py-3.5">{L('Method', 'الطريقة')}</th>
+                        <th className="px-5 py-3.5 text-right">{L('Amount', 'المبلغ')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50 text-sm">
@@ -830,10 +832,10 @@ export default function AccountantReportsPage() {
             {/* Filter Year and Campus */}
             <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm grid gap-3 lg:grid-cols-[auto_1fr_auto] items-center text-sm">
               <div className="flex flex-wrap items-center gap-3">
-                <span className="text-xs font-black uppercase text-gray-400">Filter</span>
+                <span className="text-xs font-black uppercase text-gray-400">{L('Filter', 'فلتر')}</span>
                 <Input
                   type="number"
-                  placeholder="Year"
+                  placeholder={L('Year', 'السنة')}
                   value={plYear}
                   onChange={(e) => {
                     setPlYear(e.target.value)
@@ -847,10 +849,10 @@ export default function AccountantReportsPage() {
                     setPlPage(1)
                   }}>
                     <SelectTrigger className="h-9 w-44 text-sm">
-                      <SelectValue placeholder="Select campus" />
+                      <SelectValue placeholder={L('Select campus', 'اختار الفرع')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All campuses</SelectItem>
+                      <SelectItem value="all">{L('All campuses', 'كل الفروع')}</SelectItem>
                       {campuses.map((campus) => (
                         <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>
                       ))}
@@ -870,7 +872,7 @@ export default function AccountantReportsPage() {
                   onClick={handlePLExport}
                   className="gap-2 border-teal-200 text-teal-700 hover:bg-teal-50 h-9"
                 >
-                  <FileSpreadsheet className="w-4 h-4" /> Export P&L
+                  <FileSpreadsheet className="w-4 h-4" /> {L('Export P&L', 'صدّر الكشف')}
                 </Button>
               </div>
             </div>
@@ -880,7 +882,7 @@ export default function AccountantReportsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-teal-600 font-black mb-1">
-                      Recently created snapshot
+                      {L('Recently created snapshot', 'آخر كشف اتعمل')}
                     </p>
                     <p className="text-lg font-black text-slate-900">{createdSnapshot.periodLabel}</p>
                   </div>
@@ -890,20 +892,20 @@ export default function AccountantReportsPage() {
                     onClick={() => setCreatedSnapshot(null)}
                     className="text-teal-700"
                   >
-                    Clear
+                    {L('Clear', 'امسح')}
                   </Button>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
                   <div className="rounded-2xl bg-teal-50 p-3">
-                    <p className="text-[10px] uppercase text-teal-700">Gross margin</p>
+                    <p className="text-[10px] uppercase text-teal-700">{L('Gross margin', 'الربح')}</p>
                     <p className="font-black text-slate-900">{formatCurrency(createdSnapshot.grossMargin)}</p>
                   </div>
                   <div className="rounded-2xl bg-white p-3 border border-teal-100">
-                    <p className="text-[10px] uppercase text-teal-700">Reserve contribution</p>
+                    <p className="text-[10px] uppercase text-teal-700">{L('Reserve contribution', 'الاحتياطي')}</p>
                     <p className="font-black text-teal-700">{formatCurrency(createdSnapshot.reserveContribution)}</p>
                   </div>
                   <div className="rounded-2xl bg-white p-3 border border-teal-100">
-                    <p className="text-[10px] uppercase text-teal-700">Remaining amount</p>
+                    <p className="text-[10px] uppercase text-teal-700">{L('Remaining amount', 'الباقي')}</p>
                     <p className="font-black text-slate-900">{formatCurrency(createdSnapshot.remainingAmount)}</p>
                   </div>
                 </div>
@@ -918,9 +920,9 @@ export default function AccountantReportsPage() {
             ) : plStatements.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
                 <TrendingUp className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                <p className="font-black text-gray-700">No statements generated yet</p>
+                <p className="font-black text-gray-700">{L('No statements generated yet', 'لسه مفيش كشوف')}</p>
                 <p className="text-sm text-gray-400 mt-1">
-                  Click the button at the top to compile your first financial snapshot.
+                  {L('Click the button at the top to compile your first financial snapshot.', 'دوس الزرار اللي فوق علشان تعمل أول كشف.')}
                 </p>
               </div>
             ) : (
@@ -947,10 +949,10 @@ export default function AccountantReportsPage() {
                   disabled={plPage <= 1}
                   onClick={() => setPlPage((p) => p - 1)}
                 >
-                  Previous
+                  {L('Previous', 'السابق')}
                 </Button>
                 <span className="text-sm font-bold text-gray-500 flex items-center px-2">
-                  Page {plPage} / {plPagination.totalPages}
+                  {L('Page', 'صفحة')} {plPage} / {plPagination.totalPages}
                 </span>
                 <Button
                   variant="outline"
@@ -958,7 +960,7 @@ export default function AccountantReportsPage() {
                   disabled={plPage >= plPagination.totalPages}
                   onClick={() => setPlPage((p) => p + 1)}
                 >
-                  Next
+                  {L('Next', 'التالي')}
                 </Button>
               </div>
             )}

@@ -9,6 +9,7 @@ import {
   CheckCircle, XCircle, Clock, CalendarDays, User, ShieldCheck
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface StudentLeave {
   id: string
@@ -31,6 +32,7 @@ interface StudentLeave {
 }
 
 export default function TeacherStudentLeavesPage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const isTeacher = session?.user?.role === 'TEACHER'
 
@@ -40,7 +42,7 @@ export default function TeacherStudentLeavesPage() {
     enabled: isTeacher
   })
 
-  if (!isTeacher) return <div className="p-8 text-center text-gray-500">Access Restricted</div>
+  if (!isTeacher) return <div className="p-8 text-center text-gray-500">{L('Access Restricted', 'الدخول مقفول')}</div>
 
   const pendingLeaves = leaves.filter(l => l.status === 'PENDING')
   const pastLeaves = leaves.filter(l => l.status !== 'PENDING')
@@ -48,9 +50,9 @@ export default function TeacherStudentLeavesPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Student Leaves</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">{L('Student Leaves', 'إجازات الطلاب')}</h1>
         <p className="text-gray-500">
-          Review leave applications for assigned students. Approval decisions are handled by Admin and Super Admin.
+          {L('Review leave applications for assigned students. Approval decisions are handled by Admin and Super Admin.', 'شوف طلبات إجازة طلابك. الموافقة بتاعة الإدارة.')}
         </p>
       </div>
 
@@ -58,24 +60,24 @@ export default function TeacherStudentLeavesPage() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base text-indigo-950">
             <ShieldCheck className="h-5 w-5 text-indigo-600" />
-            Teacher attendance guidance
+            {L('Teacher attendance guidance', 'إرشادات الحضور للمدرب')}
           </CardTitle>
           <CardDescription className="text-indigo-900/80">
-            Pending leave requests do not change attendance automatically. Mark attendance from the attendance module according to the final approved leave or holiday status shown by administration.
+            {L('Pending leave requests do not change attendance automatically. Mark attendance from the attendance module according to the final approved leave or holiday status shown by administration.', 'طلبات الإجازة المستنية مش بتغيّر الحضور لوحدها. سجّل الحضور حسب الحالة النهائية اللي الإدارة وافقت عليها.')}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2 text-sm text-indigo-950 sm:grid-cols-3">
           <div className="rounded-xl border border-indigo-100 bg-white/70 p-3">
-            <p className="font-semibold">Pending</p>
-            <p className="mt-1 text-xs text-indigo-900/75">Wait for admin review before treating it as approved leave.</p>
+            <p className="font-semibold">{L('Pending', 'مستني')}</p>
+            <p className="mt-1 text-xs text-indigo-900/75">{L('Wait for admin review before treating it as approved leave.', 'استنى مراجعة الإدارة قبل ما تعتبرها إجازة.')}</p>
           </div>
           <div className="rounded-xl border border-indigo-100 bg-white/70 p-3">
-            <p className="font-semibold">Approved</p>
-            <p className="mt-1 text-xs text-indigo-900/75">Use the approved status when recording attendance for the covered dates.</p>
+            <p className="font-semibold">{L('Approved', 'اتوافق')}</p>
+            <p className="mt-1 text-xs text-indigo-900/75">{L('Use the approved status when recording attendance for the covered dates.', 'استخدم الحالة دي وانت بتسجّل حضور الأيام دي.')}</p>
           </div>
           <div className="rounded-xl border border-indigo-100 bg-white/70 p-3">
-            <p className="font-semibold">Holiday missing?</p>
-            <p className="mt-1 text-xs text-indigo-900/75">Ask the admin office to publish or correct the holiday before final attendance review.</p>
+            <p className="font-semibold">{L('Holiday missing?', 'في إجازة رسمية ناقصة؟')}</p>
+            <p className="mt-1 text-xs text-indigo-900/75">{L('Ask the admin office to publish or correct the holiday before final attendance review.', 'قول للإدارة تضيف أو تصحح الإجازة قبل مراجعة الحضور.')}</p>
           </div>
         </CardContent>
       </Card>
@@ -83,13 +85,13 @@ export default function TeacherStudentLeavesPage() {
       <div className="space-y-6">
         <section>
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-amber-500" /> Pending Requests ({pendingLeaves.length})
+            <Clock className="w-5 h-5 text-amber-500" /> {L('Pending Requests (', 'طلبات مستنية (')}{pendingLeaves.length})
           </h2>
           {isLoading ? (
-            <div className="text-center py-8 text-gray-500 border rounded-xl border-dashed">Loading...</div>
+            <div className="text-center py-8 text-gray-500 border rounded-xl border-dashed">{L('Loading...', 'بيحمّل...')}</div>
           ) : pendingLeaves.length === 0 ? (
             <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed">
-              <p className="text-sm text-gray-500">No pending leave requests.</p>
+              <p className="text-sm text-gray-500">{L('No pending leave requests.', 'مفيش طلبات مستنية.')}</p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
@@ -108,7 +110,7 @@ export default function TeacherStudentLeavesPage() {
                         </p>
                       </div>
                       <div className="text-right text-xs">
-                        <div className="text-gray-400">Applied on</div>
+                        <div className="text-gray-400">{L('Applied on', 'اتطلب يوم')}</div>
                         <div className="font-medium text-gray-700">{new Date(leave.createdAt).toLocaleDateString()}</div>
                       </div>
                     </div>
@@ -116,10 +118,10 @@ export default function TeacherStudentLeavesPage() {
                     <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm space-y-2">
                       <div className="flex items-center gap-2 text-indigo-700 font-medium">
                         <CalendarDays className="w-4 h-4" />
-                        {new Date(leave.startDate).toLocaleDateString()} to {new Date(leave.endDate).toLocaleDateString()}
+                        {new Date(leave.startDate).toLocaleDateString()} {L('to', 'لحد')} {new Date(leave.endDate).toLocaleDateString()}
                       </div>
                       <div className="text-gray-700">
-                        <span className="font-medium">Reason: </span>
+                        <span className="font-medium">{L('Reason:', 'السبب:')} </span>
                         {leave.reason}
                       </div>
                     </div>
@@ -135,11 +137,11 @@ export default function TeacherStudentLeavesPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 mt-8">Past History</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 mt-8">{L('Past History', 'السجل')}</h2>
           <Card>
             <div className="divide-y">
               {pastLeaves.length === 0 && !isLoading && (
-                <div className="text-center py-8 text-sm text-gray-500">No past leave requests found.</div>
+                <div className="text-center py-8 text-sm text-gray-500">{L('No past leave requests found.', 'مفيش طلبات قديمة.')}</div>
               )}
               {pastLeaves.map((leave) => (
                 <div key={leave.id} className="p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">

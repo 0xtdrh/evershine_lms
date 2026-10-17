@@ -18,6 +18,7 @@ import { notify } from '@/lib/notify'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface ImportResult {
   results: Array<{
@@ -31,6 +32,7 @@ interface ImportResult {
 }
 
 export default function StudentImportPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const role = session?.user?.role
   const fileRef = useRef<HTMLInputElement>(null)
@@ -43,7 +45,7 @@ export default function StudentImportPage() {
   if (role !== 'SUPER_ADMIN' && role !== 'ADMIN') {
     return (
       <AccessDenied
-        title="Bulk Import Restricted"
+        title={L('Bulk Import Restricted', 'الاستيراد مقفول')}
         message="Only administrators can bulk-import student records."
       />
     )
@@ -55,14 +57,14 @@ export default function StudentImportPage() {
     setParsedRows(rows)
     setPreviewCount(rows.length)
     setOutcome(null)
-    if (rows.length === 0) notify.error('No valid rows found — check headers match the template')
+    if (rows.length === 0) notify.error(L('No valid rows found — check headers match the template', 'مفيش سطور صحيحة — اتأكد إن العناوين زي النموذج'))
     else notify.success(`Parsed ${rows.length} student row(s)`)
   }
 
   const runImport = async () => {
     const validated = studentBulkImportSchema.safeParse({ rows: parsedRows })
     if (!validated.success) {
-      notify.error('Validation failed', {
+      notify.error(L('Validation failed', 'في أخطاء'), {
         description: validated.error.errors[0]?.message ?? 'Check required columns',
       })
       return
@@ -92,9 +94,9 @@ export default function StudentImportPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bulk Student Import</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{L('Bulk Student Import', 'استيراد طلاب')}</h1>
           <p className="text-sm text-gray-500">
-            Upload Excel (.xlsx) using the official template. Max 500 students per run.
+            {L('Upload Excel (.xlsx) using the official template. Max 500 students per run.', 'ارفع ملف Excel (.xlsx) بالنموذج الرسمي. أقصى 500 طالب في المرة.')}
           </p>
         </div>
       </div>
@@ -103,16 +105,16 @@ export default function StudentImportPage() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-green-600" />
-            Step 1 — Download template
+            {L('Step 1 — Download template', 'الخطوة 1 — نزّل النموذج')}
           </CardTitle>
           <CardDescription>
-            Use exact column headers. The campus code must match your branch (Campuses page).
+            {L('Use exact column headers. The campus code must match your branch (Campuses page).', 'استخدم نفس عناوين الأعمدة. كود الفرع لازم يطابق فرعك (صفحة الفروع).')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="outline" className="gap-2" onClick={() => downloadStudentImportTemplate()}>
             <Download className="w-4 h-4" />
-            Download .xlsx template
+            {L('Download .xlsx template', 'نزّل نموذج .xlsx')}
           </Button>
         </CardContent>
       </Card>
@@ -121,7 +123,7 @@ export default function StudentImportPage() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Upload className="w-5 h-5 text-blue-600" />
-            Step 2 — Upload filled file
+            {L('Step 2 — Upload filled file', 'الخطوة 2 — ارفع الملف المليان')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -137,11 +139,11 @@ export default function StudentImportPage() {
           />
           <Button variant="outline" className="gap-2" onClick={() => fileRef.current?.click()}>
             <Upload className="w-4 h-4" />
-            Choose file
+            {L('Choose file', 'اختار الملف')}
           </Button>
           {previewCount > 0 && (
             <p className="text-sm text-gray-600">
-              Ready to import <strong>{previewCount}</strong> student(s).
+              {L('Ready to import', 'جاهز للاستيراد')} <strong>{previewCount}</strong> {L('student(s).', 'طالب.')}
             </p>
           )}
           <Button
@@ -168,29 +170,29 @@ export default function StudentImportPage() {
                 importRow: r.row,
               }))
             downloadStudentImportFailuresExcel(failedRows)
-            notify.success('Failed rows exported — fix and re-import')
+            notify.success(L('Failed rows exported — fix and re-import', 'السطور اللي فشلت اتصدّرت — صلّحها واستورد تاني'))
           }}
         >
           <Download className="w-4 h-4" />
-          Download failed rows (.xlsx)
+          {L('Download failed rows (.xlsx)', 'نزّل السطور اللي فشلت (.xlsx)')}
         </Button>
       )}
 
       {outcome && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Import results</CardTitle>
+            <CardTitle className="text-lg">{L('Import results', 'نتيجة الاستيراد')}</CardTitle>
             <CardDescription>
-              {outcome.created} created · {outcome.failed} failed
+              {outcome.created} {L('created ·', 'اتعمل ·')} {outcome.failed} {L('failed', 'فشل')}
             </CardDescription>
           </CardHeader>
           <CardContent className="max-h-80 overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Row</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Detail</TableHead>
+                  <TableHead>{L('Row', 'السطر')}</TableHead>
+                  <TableHead>{L('Status', 'الحالة')}</TableHead>
+                  <TableHead>{L('Detail', 'التفاصيل')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

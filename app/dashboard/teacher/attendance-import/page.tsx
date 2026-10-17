@@ -31,6 +31,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { notify } from '@/lib/notify'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface RowValidationError {
   row: number
@@ -38,6 +39,7 @@ interface RowValidationError {
 }
 
 export default function TeacherAttendanceImportPage() {
+  useI18n() // re-render on a language switch
   const [file,             setFile]             = useState<File | null>(null)
   const [isDragOver,       setIsDragOver]       = useState(false)
   const [isUploading,      setIsUploading]      = useState(false)
@@ -60,7 +62,7 @@ export default function TeacherAttendanceImportPage() {
     if (dropped && (dropped.name.endsWith('.xlsx') || dropped.name.endsWith('.xls'))) {
       selectFile(dropped)
     } else {
-      notify.error('Only Excel files (.xlsx or .xls) are accepted')
+      notify.error(L('Only Excel files (.xlsx or .xls) are accepted', 'ملفات Excel بس (.xlsx أو .xls)'))
     }
   }
 
@@ -103,7 +105,7 @@ export default function TeacherAttendanceImportPage() {
       if (!res.ok) {
         if (data?.rowErrors?.length > 0) {
           setValidationErrors(data.rowErrors)
-          notify.error('Validation failed. Review the errors below and fix your file.')
+          notify.error(L('Validation failed. Review the errors below and fix your file.', 'في أخطاء. راجعها تحت وصلّح الملف.'))
         } else {
           notify.error(data?.message || 'Import failed. Please try again.')
         }
@@ -113,7 +115,7 @@ export default function TeacherAttendanceImportPage() {
         setFile(null)
       }
     } catch {
-      notify.error('A network error occurred. Please check your connection and try again.')
+      notify.error(L('A network error occurred. Please check your connection and try again.', 'في مشكلة في الشبكة. اتأكد من النت وجرّب تاني.'))
     } finally {
       setIsUploading(false)
     }
@@ -132,14 +134,14 @@ export default function TeacherAttendanceImportPage() {
             className="inline-flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-800 font-medium mb-2 transition-colors"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
-            Back to Attendance
+            {L('Back to Attendance', 'رجوع للحضور')}
           </Link>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
             <UploadCloud className="w-6 h-6 text-emerald-600" />
-            Import Student Attendance
+            {L('Import Student Attendance', 'استيراد حضور الطلاب')}
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Upload a biometric Excel export to bulk-update attendance records for your class sections.
+            {L('Upload a biometric Excel export to bulk-update attendance records for your class sections.', 'ارفع ملف Excel من جهاز البصمة علشان تحدّث حضور جروباتك مرة واحدة.')}
           </p>
         </div>
       </div>
@@ -154,13 +156,13 @@ export default function TeacherAttendanceImportPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2 text-emerald-800">
                 <ShieldCheck className="w-4 h-4" />
-                Your Import Scope
+                {L('Your Import Scope', 'حدود الاستيراد')}
               </CardTitle>
             </CardHeader>
             <CardContent className="text-xs text-emerald-700 space-y-2 leading-relaxed">
-              <p>• You can only import attendance for <strong>class sections you are assigned to teach</strong>.</p>
-              <p>• Rows referencing other sections will be rejected with a row-level error.</p>
-              <p>• All imports are logged with your identity for audit trail purposes.</p>
+              <p>{L('• You can only import attendance for', '• تقدر تستورد حضور')} <strong>{L('class sections you are assigned to teach', 'الجروبات اللي انت مدربها بس')}</strong>.</p>
+              <p>{L('• Rows referencing other sections will be rejected with a row-level error.', '• السطور اللي فيها جروبات تانية هتترفض.')}</p>
+              <p>{L('• All imports are logged with your identity for audit trail purposes.', '• كل استيراد بيتسجل باسمك.')}</p>
             </CardContent>
           </Card>
 
@@ -169,7 +171,7 @@ export default function TeacherAttendanceImportPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-700">
                 <Info className="w-4 h-4 text-slate-500" />
-                Required Excel Columns
+                {L('Required Excel Columns', 'أعمدة Excel المطلوبة')}
               </CardTitle>
             </CardHeader>
             <CardContent className="text-xs text-slate-600 space-y-1.5">
@@ -195,10 +197,10 @@ export default function TeacherAttendanceImportPage() {
           <Card className="shadow-md border-slate-200">
             <CardHeader>
               <CardTitle className="text-lg font-bold text-slate-900">
-                Student Attendance Ingestion
+                {L('Student Attendance Ingestion', 'استيراد الحضور')}
               </CardTitle>
               <CardDescription>
-                Download the schema template, fill it with your biometric data, then upload it here.
+                {L('Download the schema template, fill it with your biometric data, then upload it here.', 'نزّل النموذج، املاه ببيانات البصمة، وارفعه هنا.')}
               </CardDescription>
             </CardHeader>
 
@@ -207,9 +209,9 @@ export default function TeacherAttendanceImportPage() {
               {/* Template download strip */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4">
                 <div>
-                  <p className="font-semibold text-sm text-slate-800">Download Schema Template</p>
+                  <p className="font-semibold text-sm text-slate-800">{L('Download Schema Template', 'نزّل النموذج')}</p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Fill this template with your biometric export data before uploading.
+                    {L('Fill this template with your biometric export data before uploading.', 'املا النموذج ده ببيانات البصمة قبل الرفع.')}
                   </p>
                 </div>
                 <Button
@@ -219,7 +221,7 @@ export default function TeacherAttendanceImportPage() {
                   className="flex items-center gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-500 shrink-0"
                 >
                   <FileSpreadsheet className="w-4 h-4" />
-                  Get Excel Template
+                  {L('Get Excel Template', 'نزّل نموذج Excel')}
                 </Button>
               </div>
 
@@ -253,16 +255,16 @@ export default function TeacherAttendanceImportPage() {
                   <div className="space-y-0.5">
                     <p className="font-semibold text-emerald-700 text-sm">{file.name}</p>
                     <p className="text-xs text-slate-400">
-                      {(file.size / 1024).toFixed(1)} KB · Click to change file
+                      {(file.size / 1024).toFixed(1)} {L('KB · Click to change file', 'KB · دوس علشان تغيّر الملف')}
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-0.5">
                     <p className="font-medium text-slate-700 text-sm">
-                      Drag & drop your Excel file here, or click to browse
+                      {L('Drag & drop your Excel file here, or click to browse', 'اسحب ملف Excel هنا أو دوس علشان تختاره')}
                     </p>
                     <p className="text-xs text-slate-400">
-                      Accepts .xlsx and .xls formats only
+                      {L('Accepts .xlsx and .xls formats only', 'بيقبل .xlsx و .xls بس')}
                     </p>
                   </div>
                 )}
@@ -273,9 +275,8 @@ export default function TeacherAttendanceImportPage() {
                 <div className="flex items-start gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                   <div className="text-sm text-emerald-800">
-                    <strong>Import Successful:</strong> {successCount} attendance record
-                    {successCount !== 1 ? 's' : ''} have been upserted into the database.
-                    Updated statuses are now live.
+                    <strong>{L('Import Successful:', 'الاستيراد نجح:')}</strong> {successCount} {L('attendance record', 'سجل حضور')}
+                    {successCount !== 1 ? 's' : ''} {L('have been upserted into the database. Updated statuses are now live.', 'اتسجلوا. الحالات الجديدة ظاهرة دلوقتي.')}
                   </div>
                 </div>
               )}
@@ -289,7 +290,7 @@ export default function TeacherAttendanceImportPage() {
                     disabled={isUploading}
                     size="sm"
                   >
-                    Clear
+                    {L('Clear', 'امسح')}
                   </Button>
                   <Button
                     id="teacher-import-submit-btn"
@@ -301,11 +302,11 @@ export default function TeacherAttendanceImportPage() {
                     {isUploading ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Processing…
+                        {L('Processing…', 'بيشتغل…')}
                       </>
                     ) : (
                       <>
-                        Start Import
+                        {L('Start Import', 'ابدأ الاستيراد')}
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -318,16 +319,16 @@ export default function TeacherAttendanceImportPage() {
                 <div className="space-y-3 pt-4 border-t border-slate-200">
                   <div className="flex items-center gap-2 text-rose-600 font-semibold text-sm">
                     <AlertTriangle className="w-4 h-4" />
-                    {validationErrors.length} Row{validationErrors.length !== 1 ? 's' : ''} Failed Validation
-                    <span className="font-normal text-rose-500">— No records were imported.</span>
+                    {validationErrors.length} {L('Row', 'سطر')}{validationErrors.length !== 1 ? 's' : ''} {L('Failed Validation', 'فيه أخطاء')}
+                    <span className="font-normal text-rose-500">{L('— No records were imported.', '— ماتستوردش أي حاجة.')}</span>
                   </div>
 
                   <div className="max-h-72 overflow-y-auto rounded-lg border border-rose-200">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
                         <tr className="bg-rose-50 text-rose-800 font-semibold border-b border-rose-200">
-                          <th className="p-3 w-20">Row #</th>
-                          <th className="p-3">Validation Errors</th>
+                          <th className="p-3 w-20">{L('Row #', 'رقم السطر')}</th>
+                          <th className="p-3">{L('Validation Errors', 'الأخطاء')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-rose-100">
@@ -346,7 +347,7 @@ export default function TeacherAttendanceImportPage() {
                   </div>
 
                   <p className="text-xs text-slate-500">
-                    Fix all highlighted rows in your Excel file and re-upload. Partial imports are not allowed.
+                    {L('Fix all highlighted rows in your Excel file and re-upload. Partial imports are not allowed.', 'صلّح السطور اللي فيها أخطاء وارفع تاني. مفيش استيراد جزئي.')}
                   </p>
                 </div>
               )}
@@ -359,20 +360,19 @@ export default function TeacherAttendanceImportPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                 <Download className="w-4 h-4 text-slate-500" />
-                How to Import Biometric Attendance
+                {L('How to Import Biometric Attendance', 'إزاي تستورد حضور البصمة')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ol className="text-xs text-slate-600 space-y-2 list-decimal pl-4">
-                <li>Click <strong>Get Excel Template</strong> above to download the schema file.</li>
-                <li>Open the template and fill in the <strong>Template</strong> sheet with your biometric data.</li>
+                <li>{L('Click', 'دوس')} <strong>{L('Get Excel Template', 'نزّل نموذج Excel')}</strong> {L('above to download the schema file.', 'فوق علشان تنزّل النموذج.')}</li>
+                <li>{L('Open the template and fill in the', 'افتح النموذج واملا')} <strong>{L('Template', 'النموذج')}</strong> {L('sheet with your biometric data.', 'ببيانات البصمة.')}</li>
                 <li>
-                  For each student, enter their <strong>Student ID</strong> (Roll No. or Registration No.)
-                  and the exact <strong>Class Section ID</strong> from the LMS.
+                  {L('For each student, enter their', 'لكل طالب اكتب')} <strong>{L('Student ID', 'كود الطالب')}</strong> {L('(Roll No. or Registration No.) and the exact', '(رقم الجلوس أو القيد) و')} <strong>{L('Class Section ID', 'كود الجروب')}</strong> {L('from the LMS.', 'من السيستم.')}
                 </li>
-                <li>Set the <strong>Status</strong> column to one of: <code>PRESENT</code>, <code>ABSENT</code>, <code>LATE</code>, or <code>EXCUSED</code>.</li>
-                <li>Save the file as <strong>.xlsx</strong>, then drag it into the upload zone above.</li>
-                <li>Click <strong>Start Import</strong>. Any errors will be shown row by row before any data is saved.</li>
+                <li>{L('Set the', 'خلّي')} <strong>{L('Status', 'الحالة')}</strong> {L('column to one of:', 'واحدة من:')} <code>PRESENT</code>, <code>ABSENT</code>, <code>LATE</code>{L(', or', '، أو')} <code>EXCUSED</code>.</li>
+                <li>{L('Save the file as', 'احفظ الملف')} <strong>.xlsx</strong>{L(', then drag it into the upload zone above.', '، واسحبه في مكان الرفع فوق.')}</li>
+                <li>{L('Click', 'دوس')} <strong>{L('Start Import', 'ابدأ الاستيراد')}</strong>{L('. Any errors will be shown row by row before any data is saved.', '. أي خطأ هيظهر سطر بسطر قبل ما يتحفظ أي حاجة.')}</li>
               </ol>
             </CardContent>
           </Card>

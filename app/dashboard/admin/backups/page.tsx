@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { notify } from '@/lib/notify'
 import { DatabaseBackup, Download, Loader2, RefreshCw } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface StoredBackup {
   id: string
@@ -38,6 +39,7 @@ function formatDate(value: string) {
 }
 
 export default function BackupsPage() {
+  useI18n() // re-render on a language switch
   const { status, data: session } = useSession()
   const queryClient = useQueryClient()
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
@@ -69,10 +71,10 @@ export default function BackupsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <DatabaseBackup className="h-6 w-6" /> Database Backups
+            <DatabaseBackup className="h-6 w-6" /> {L('Database Backups', 'النسخ الاحتياطي')}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Automatic daily backup (about 3–4 AM Cairo time). The newest {backupsQuery.data?.keep ?? 7} are kept.
+            {L('Automatic daily backup (about 3–4 AM Cairo time). The newest', 'نسخة احتياطي تلقائي كل يوم (حوالي 3–4 الفجر بتوقيت القاهرة). آخر')} {backupsQuery.data?.keep ?? 7} {L('are kept.', 'بيتحفظوا.')}
           </p>
         </div>
         <Button onClick={() => runMutation.mutate()} disabled={runMutation.isPending}>
@@ -83,24 +85,24 @@ export default function BackupsPage() {
 
       {latestAgeHours !== null && latestAgeHours > 26 && (
         <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-          The latest backup is {Math.floor(latestAgeHours)} hours old. The daily backup may be failing.
+          {L('The latest backup is', 'آخر نسخة عمرها')} {Math.floor(latestAgeHours)} {L('hours old. The daily backup may be failing.', 'ساعة. ممكن النسخة اليومية بتفشل.')}
         </div>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle>Stored backups</CardTitle>
+          <CardTitle>{L('Stored backups', 'النسخ المحفوظة')}</CardTitle>
           <CardDescription>
-            Each file is a complete gzipped SQL dump. It contains personal data: keep downloaded copies private.
+            {L('Each file is a complete gzipped SQL dump. It contains personal data: keep downloaded copies private.', 'كل ملف نسخة كاملة من قاعدة البيانات. فيه بيانات شخصية: خلّي النسخ اللي بتنزّلها في مكان آمن.')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {backupsQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-sm text-muted-foreground">{L('Loading…', 'بيحمّل…')}</p>
           ) : backupsQuery.isError ? (
             <p className="text-sm text-red-600">{(backupsQuery.error as Error).message}</p>
           ) : backups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No backups yet. Press “Back up now”.</p>
+            <p className="text-sm text-muted-foreground">{L('No backups yet. Press “Back up now”.', 'لسه مفيش نسخ. دوس «خد نسخة دلوقتي».')}</p>
           ) : (
             <div className="divide-y rounded-md border">
               {backups.map((b) => (
@@ -114,7 +116,7 @@ export default function BackupsPage() {
                   </div>
                   <Button asChild variant="outline" size="sm">
                     <a href={`/api/admin/backups/download?id=${encodeURIComponent(b.id)}`}>
-                      <Download className="mr-2 h-4 w-4" /> Download
+                      <Download className="mr-2 h-4 w-4" /> {L('Download', 'تنزيل')}
                     </a>
                   </Button>
                 </div>

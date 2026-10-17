@@ -16,6 +16,7 @@ import { Scale, Loader2 } from 'lucide-react'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import { L, useI18n } from '@/lib/i18n/client'
 
 type FeePolicy = {
   id: string
@@ -50,6 +51,7 @@ type TeacherPolicy = {
 }
 
 export default function PoliciesPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const qc = useQueryClient()
   const role = session?.user?.role
@@ -140,7 +142,7 @@ export default function PoliciesPage() {
         body: JSON.stringify({ isActive: false }),
       }),
     onSuccess: () => {
-      notify.success('Fee policy deactivated')
+      notify.success(L('Fee policy deactivated', 'السياسة اتوقفت'))
       qc.invalidateQueries({ queryKey: ['fee-policies'] })
     },
     onError: (e: Error) => notify.error(e.message),
@@ -153,7 +155,7 @@ export default function PoliciesPage() {
         body: JSON.stringify({ isActive: false }),
       }),
     onSuccess: () => {
-      notify.success('Teacher policy deactivated')
+      notify.success(L('Teacher policy deactivated', 'سياسة المدربين اتوقفت'))
       qc.invalidateQueries({ queryKey: ['teacher-policies'] })
     },
     onError: (e: Error) => notify.error(e.message),
@@ -189,7 +191,7 @@ export default function PoliciesPage() {
   if (!allowed) {
     return (
       <AccessDenied
-        title="Penalty policies"
+        title={L('Penalty policies', 'سياسات الغرامات')}
         message="Administrators configure fee and teacher lateness policies here."
       />
     )
@@ -200,31 +202,31 @@ export default function PoliciesPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Scale className="w-7 h-7 text-amber-600" />
-          Penalty Policies
+          {L('Penalty Policies', 'سياسات الغرامات')}
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Configure late-payment and leave rules.
+          {L('Configure late-payment and leave rules.', 'قواعد التأخير في الدفع والإجازات.')}
         </p>
       </div>
 
       <Tabs defaultValue="fees">
         <TabsList>
-          <TabsTrigger value="fees">Fee late penalties</TabsTrigger>
-          <TabsTrigger value="teachers">Teacher lateness</TabsTrigger>
+          <TabsTrigger value="fees">{L('Fee late penalties', 'غرامات تأخير الدفع')}</TabsTrigger>
+          <TabsTrigger value="teachers">{L('Teacher lateness', 'تأخير المدربين')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="fees" className="mt-4">
           <div className="grid lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">New fee policy</CardTitle>
+                <CardTitle className="text-base">{L('New fee policy', 'سياسة جديدة')}</CardTitle>
                 <CardDescription>
-                  Leave the branch empty for the global default. Cron: <code className="text-xs">/api/cron/fee-penalties</code>
+                  {L('Leave the branch empty for the global default. Cron:', 'سيب الفرع فاضي للافتراضي. المهمة:')} <code className="text-xs">/api/cron/fee-penalties</code>
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <Label>Campus (optional)</Label>
+                  <Label>{L('Campus (optional)', 'الفرع (اختياري)')}</Label>
                   <Select
                     value={feeForm.campusId || 'global'}
                     onValueChange={(v) =>
@@ -233,37 +235,37 @@ export default function PoliciesPage() {
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="global">All campuses</SelectItem>
+                      <SelectItem value="global">{L('All campuses', 'كل الفروع')}</SelectItem>
                       {(campuses ?? []).map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Grace days after due date</Label><Input type="number" value={feeForm.graceDays} onChange={(e) => setFeeForm({ ...feeForm, graceDays: Number(e.target.value) })} /></div>
+                <div><Label>{L('Grace days after due date', 'أيام سماح بعد الميعاد')}</Label><Input type="number" value={feeForm.graceDays} onChange={(e) => setFeeForm({ ...feeForm, graceDays: Number(e.target.value) })} /></div>
                 <div>
-                  <Label>Penalty type</Label>
+                  <Label>{L('Penalty type', 'نوع الغرامة')}</Label>
                   <Select value={feeForm.penaltyType} onValueChange={(v) => setFeeForm({ ...feeForm, penaltyType: v as 'FIXED' })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="FIXED">Fixed (EGP)</SelectItem>
-                      <SelectItem value="PERCENTAGE">Percentage of balance</SelectItem>
+                      <SelectItem value="FIXED">{L('Fixed (EGP)', 'ثابتة (ج.م)')}</SelectItem>
+                      <SelectItem value="PERCENTAGE">{L('Percentage of balance', 'نسبة من المتبقي')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Penalty value</Label><Input type="number" value={feeForm.penaltyValue} onChange={(e) => setFeeForm({ ...feeForm, penaltyValue: Number(e.target.value) })} /></div>
-                <div><Label>Max penalty cap (optional)</Label><Input value={feeForm.maxPenalty} onChange={(e) => setFeeForm({ ...feeForm, maxPenalty: e.target.value })} placeholder="e.g. 5000" /></div>
+                <div><Label>{L('Penalty value', 'قيمة الغرامة')}</Label><Input type="number" value={feeForm.penaltyValue} onChange={(e) => setFeeForm({ ...feeForm, penaltyValue: Number(e.target.value) })} /></div>
+                <div><Label>{L('Max penalty cap (optional)', 'أقصى غرامة (اختياري)')}</Label><Input value={feeForm.maxPenalty} onChange={(e) => setFeeForm({ ...feeForm, maxPenalty: e.target.value })} placeholder={L('e.g. 5000', 'مثلاً 5000')} /></div>
                 <div className="border-t border-indigo-100 pt-3 mt-1">
                   {/* Student absence fines hidden (owner, 2026-10-02): lib/penalties/assessments.ts STUDENT_ABSENCE_PENALTIES_ENABLED */}
-                  <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2 mt-3">Leave reference (no student charge)</p>
+                  <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2 mt-3">{L('Leave reference (no student charge)', 'مرجع الإجازات (من غير غرامة على الطالب)')}</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-indigo-700">Allowed Leaves/Month</Label>
+                      <Label className="text-indigo-700">{L('Allowed Leaves/Month', 'إجازات مسموحة / شهر')}</Label>
                       <Input type="number" min={0} value={feeForm.allowedLeavesPerMonth}
                         onChange={(e) => setFeeForm({ ...feeForm, allowedLeavesPerMonth: Number(e.target.value) })} />
                     </div>
                     <div>
-                      <Label className="text-indigo-700">Leave Penalty (EGP)</Label>
+                      <Label className="text-indigo-700">{L('Leave Penalty (EGP)', 'غرامة الإجازة (ج.م)')}</Label>
                       <Input type="number" min={0} value={feeForm.leavePenaltyAmount}
                         onChange={(e) => setFeeForm({ ...feeForm, leavePenaltyAmount: Number(e.target.value) })} />
                     </div>
@@ -273,27 +275,27 @@ export default function PoliciesPage() {
                 <Button onClick={() => createFee.mutate()} disabled={createFee.isPending}>
                   {createFee.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : editingFeeId ? 'Update fee policy' : 'Save fee policy'}
                 </Button>
-                {editingFeeId && <Button variant="outline" onClick={() => setEditingFeeId(null)}>Cancel edit</Button>}
+                {editingFeeId && <Button variant="outline" onClick={() => setEditingFeeId(null)}>{L('Cancel edit', 'إلغاء التعديل')}</Button>}
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="text-base">Active policies</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{L('Active policies', 'السياسات الشغالة')}</CardTitle></CardHeader>
               <CardContent>
                 {loadingFee ? (
-                  <p className="text-sm text-gray-500">Loading…</p>
+                  <p className="text-sm text-gray-500">{L('Loading…', 'بيحمّل…')}</p>
                 ) : (feePolicies ?? []).length === 0 ? (
                   <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    No policies yet. Create one before the fee penalty cron runs.
+                    {L('No policies yet. Create one before the fee penalty cron runs.', 'لسه مفيش سياسات.')}
                   </p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Scope</TableHead>
-                        <TableHead>Grace</TableHead>
-                        <TableHead>Late Fee Penalty</TableHead>
-                        <TableHead>Leave Allowance</TableHead>
-                        <TableHead>Leave Penalty</TableHead>
+                        <TableHead>{L('Scope', 'النطاق')}</TableHead>
+                        <TableHead>{L('Grace', 'السماح')}</TableHead>
+                        <TableHead>{L('Late Fee Penalty', 'غرامة التأخير')}</TableHead>
+                        <TableHead>{L('Leave Allowance', 'الإجازات المسموحة')}</TableHead>
+                        <TableHead>{L('Leave Penalty', 'غرامة الإجازة')}</TableHead>
                         <TableHead />
                       </TableRow>
                     </TableHeader>
@@ -308,22 +310,22 @@ export default function PoliciesPage() {
                             {p.penaltyType === 'FIXED' ? `EGP ${p.penaltyValue}` : `${p.penaltyValue}%`}
                             {p.maxPenalty != null ? ` (max ${p.maxPenalty})` : ''}
                           </TableCell>
-                          <TableCell className="text-indigo-700 font-semibold">{p.allowedLeavesPerMonth ?? 1}/mo</TableCell>
-                          <TableCell className="text-red-600 font-semibold">EGP {Number(p.leavePenaltyAmount ?? 0).toLocaleString()}</TableCell>
+                          <TableCell className="text-indigo-700 font-semibold">{p.allowedLeavesPerMonth ?? 1}{L('/mo', '/شهر')}</TableCell>
+                          <TableCell className="text-red-600 font-semibold">{L('EGP', 'ج.م')} {Number(p.leavePenaltyAmount ?? 0).toLocaleString()}</TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline" className="mr-2" onClick={() => {
                               setEditingFeeId(p.id)
                               setFeeForm({ campusId: p.campusId ?? '', batchId: p.batchId ?? '', graceDays: p.graceDays, penaltyType: p.penaltyType as 'FIXED' | 'PERCENTAGE', penaltyValue: Number(p.penaltyValue), maxPenalty: p.maxPenalty == null ? '' : String(p.maxPenalty), allowedLeavesPerMonth: p.allowedLeavesPerMonth ?? 1, leavePenaltyAmount: Number(p.leavePenaltyAmount ?? 0), allowedAbsencesPerMonth: p.allowedAbsencesPerMonth ?? 3, absencePenaltyAmount: Number(p.absencePenaltyAmount ?? 0) })
-                            }}>Edit</Button>
+                            }}>{L('Edit', 'تعديل')}</Button>
                             <Button
                               size="sm"
                               variant="outline"
                               disabled={deactivateFee.isPending}
                               onClick={() => {
-                                if (confirm('Deactivate this fee policy?')) deactivateFee.mutate(p.id)
+                                if (confirm(L('Deactivate this fee policy?', 'توقّف السياسة دي؟'))) deactivateFee.mutate(p.id)
                               }}
                             >
-                              Deactivate
+                              {L('Deactivate', 'وقّف')}
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -340,54 +342,54 @@ export default function PoliciesPage() {
           <div className="grid lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Teacher lateness policy</CardTitle>
+                <CardTitle className="text-base">{L('Teacher lateness policy', 'سياسة تأخير المدربين')}</CardTitle>
                 <CardDescription>
-                  Applied on HR check-in. Cron marks absent if no check-in: <code className="text-xs">/api/cron/teacher-attendance</code>
+                  {L('Applied on HR check-in. Cron marks absent if no check-in:', 'بتتطبّق على تسجيل الوصول. المهمة بتسجّل غياب لو مفيش وصول:')} <code className="text-xs">/api/cron/teacher-attendance</code>
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <Label>Campus (optional)</Label>
+                  <Label>{L('Campus (optional)', 'الفرع (اختياري)')}</Label>
                   <Select
                     value={teacherForm.campusId || 'global'}
                     onValueChange={(v) => setTeacherForm({ ...teacherForm, campusId: v === 'global' ? '' : v })}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="global">All campuses</SelectItem>
+                      <SelectItem value="global">{L('All campuses', 'كل الفروع')}</SelectItem>
                       {(campuses ?? []).map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Late count before multiplier</Label><Input type="number" min={1} value={teacherForm.lateThreshold} onChange={(e) => setTeacherForm({ ...teacherForm, lateThreshold: Number(e.target.value) })} /></div>
+                <div><Label>{L('Late count before multiplier', 'عدد مرات التأخير قبل المضاعفة')}</Label><Input type="number" min={1} value={teacherForm.lateThreshold} onChange={(e) => setTeacherForm({ ...teacherForm, lateThreshold: Number(e.target.value) })} /></div>
                 <div>
-                  <Label>Penalty type</Label>
+                  <Label>{L('Penalty type', 'نوع الغرامة')}</Label>
                   <Select value={teacherForm.penaltyType} onValueChange={(v) => setTeacherForm({ ...teacherForm, penaltyType: v as 'FIXED' })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="FIXED">Fixed (EGP)</SelectItem>
-                      <SelectItem value="PERCENTAGE">% of monthly salary</SelectItem>
+                      <SelectItem value="FIXED">{L('Fixed (EGP)', 'ثابتة (ج.م)')}</SelectItem>
+                      <SelectItem value="PERCENTAGE">{L('% of monthly salary', '% من المرتب الشهري')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Penalty value</Label><Input type="number" value={teacherForm.penaltyValue} onChange={(e) => setTeacherForm({ ...teacherForm, penaltyValue: Number(e.target.value) })} /></div>
-                <div><Label>Repeat multiplier (optional)</Label><Input value={teacherForm.repeatMultiplier} onChange={(e) => setTeacherForm({ ...teacherForm, repeatMultiplier: e.target.value })} placeholder="e.g. 2" /></div>
+                <div><Label>{L('Penalty value', 'قيمة الغرامة')}</Label><Input type="number" value={teacherForm.penaltyValue} onChange={(e) => setTeacherForm({ ...teacherForm, penaltyValue: Number(e.target.value) })} /></div>
+                <div><Label>{L('Repeat multiplier (optional)', 'مضاعف التكرار (اختياري)')}</Label><Input value={teacherForm.repeatMultiplier} onChange={(e) => setTeacherForm({ ...teacherForm, repeatMultiplier: e.target.value })} placeholder={L('e.g. 2', 'مثلاً 2')} /></div>
                 <div className="border-t border-emerald-100 pt-3 mt-1">
-                  <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">Attendance and leave rule</p>
+                  <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">{L('Attendance and leave rule', 'قاعدة الحضور والإجازة')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label className="text-emerald-700">Late grace (minutes)</Label><Input type="number" min={0} max={180} value={teacherForm.lateGraceMinutes} onChange={(e) => setTeacherForm({ ...teacherForm, lateGraceMinutes: Number(e.target.value) })} /></div>
-                    <div><Label className="text-emerald-700">Free late passes/Month</Label><Input type="number" min={0} value={teacherForm.freeLatePasses} onChange={(e) => setTeacherForm({ ...teacherForm, freeLatePasses: Number(e.target.value) })} /></div>
+                    <div><Label className="text-emerald-700">{L('Late grace (minutes)', 'سماح التأخير (دقايق)')}</Label><Input type="number" min={0} max={180} value={teacherForm.lateGraceMinutes} onChange={(e) => setTeacherForm({ ...teacherForm, lateGraceMinutes: Number(e.target.value) })} /></div>
+                    <div><Label className="text-emerald-700">{L('Free late passes/Month', 'مرات تأخير مسموحة / شهر')}</Label><Input type="number" min={0} value={teacherForm.freeLatePasses} onChange={(e) => setTeacherForm({ ...teacherForm, freeLatePasses: Number(e.target.value) })} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-emerald-700">Allowed Leaves/Month</Label>
+                      <Label className="text-emerald-700">{L('Allowed Leaves/Month', 'إجازات مسموحة / شهر')}</Label>
                       <Input type="number" min={0} value={teacherForm.allowedLeavesPerMonth}
                         onChange={(e) => setTeacherForm({ ...teacherForm, allowedLeavesPerMonth: Number(e.target.value) })} />
                     </div>
                     <div>
-                      <Label className="text-emerald-700">Leave Deduction (EGP)</Label>
+                      <Label className="text-emerald-700">{L('Leave Deduction (EGP)', 'خصم الإجازة (ج.م)')}</Label>
                       <Input type="number" min={0} value={teacherForm.leavePenaltyAmount}
                         onChange={(e) => setTeacherForm({ ...teacherForm, leavePenaltyAmount: Number(e.target.value) })} />
                     </div>
@@ -397,14 +399,14 @@ export default function PoliciesPage() {
                 <Button onClick={() => createTeacher.mutate()} disabled={createTeacher.isPending}>
                   {createTeacher.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : editingTeacherId ? 'Update teacher policy' : 'Save teacher policy'}
                 </Button>
-                {editingTeacherId && <Button variant="outline" onClick={() => setEditingTeacherId(null)}>Cancel edit</Button>}
+                {editingTeacherId && <Button variant="outline" onClick={() => setEditingTeacherId(null)}>{L('Cancel edit', 'إلغاء التعديل')}</Button>}
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="text-base">Active policies</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{L('Active policies', 'السياسات الشغالة')}</CardTitle></CardHeader>
               <CardContent>
                 {loadingTeacher ? (
-                  <p className="text-sm text-gray-500">Loading…</p>
+                  <p className="text-sm text-gray-500">{L('Loading…', 'بيحمّل…')}</p>
                 ) : (teacherPolicies ?? []).length === 0 ? (
                   <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
                     No policies yet. Teachers can still check in; penalties apply once configured.
@@ -413,11 +415,11 @@ export default function PoliciesPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Campus</TableHead>
-                        <TableHead>Lateness Rule</TableHead>
-                        <TableHead>Leave Allowance</TableHead>
-                        <TableHead>Leave Deduction</TableHead>
-                        <TableHead>Grace / Free passes</TableHead>
+                        <TableHead>{L('Campus', 'الفرع')}</TableHead>
+                        <TableHead>{L('Lateness Rule', 'قاعدة التأخير')}</TableHead>
+                        <TableHead>{L('Leave Allowance', 'الإجازات المسموحة')}</TableHead>
+                        <TableHead>{L('Leave Deduction', 'خصم الإجازة')}</TableHead>
+                        <TableHead>{L('Grace / Free passes', 'السماح / المرات المسموحة')}</TableHead>
                         <TableHead />
                       </TableRow>
                     </TableHeader>
@@ -426,27 +428,27 @@ export default function PoliciesPage() {
                         <TableRow key={p.id}>
                           <TableCell>{p.campus?.name ?? 'Global'}</TableCell>
                           <TableCell className="text-sm">
-                            After {p.lateThreshold} lates/mo:{' '}
+                            {L('After', 'بعد')} {p.lateThreshold} {L('lates/mo:', 'تأخير/شهر:')}{' '}
                             {p.penaltyType === 'FIXED' ? `EGP ${p.penaltyValue}` : `${p.penaltyValue}% salary`}
                             {p.repeatMultiplier ? ` ×${p.repeatMultiplier}` : ''}
                           </TableCell>
-                          <TableCell className="text-emerald-700 font-semibold">{p.allowedLeavesPerMonth ?? 1}/mo</TableCell>
-                          <TableCell className="text-red-600 font-semibold">EGP {Number(p.leavePenaltyAmount ?? 0).toLocaleString()}</TableCell>
+                          <TableCell className="text-emerald-700 font-semibold">{p.allowedLeavesPerMonth ?? 1}{L('/mo', '/شهر')}</TableCell>
+                          <TableCell className="text-red-600 font-semibold">{L('EGP', 'ج.م')} {Number(p.leavePenaltyAmount ?? 0).toLocaleString()}</TableCell>
                           <TableCell className="text-emerald-700 font-semibold">{p.lateGraceMinutes ?? 25}m / {p.freeLatePasses ?? 0}</TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline" className="mr-2" onClick={() => {
                               setEditingTeacherId(p.id)
                               setTeacherForm({ campusId: p.campusId ?? '', lateThreshold: p.lateThreshold, penaltyType: p.penaltyType as 'FIXED' | 'PERCENTAGE', penaltyValue: Number(p.penaltyValue), repeatMultiplier: p.repeatMultiplier == null ? '' : String(p.repeatMultiplier), allowedLeavesPerMonth: p.allowedLeavesPerMonth ?? 1, leavePenaltyAmount: Number(p.leavePenaltyAmount ?? 0), lateGraceMinutes: p.lateGraceMinutes ?? 25, freeLatePasses: p.freeLatePasses ?? 0 })
-                            }}>Edit</Button>
+                            }}>{L('Edit', 'تعديل')}</Button>
                             <Button
                               size="sm"
                               variant="outline"
                               disabled={deactivateTeacher.isPending}
                               onClick={() => {
-                                if (confirm('Deactivate this teacher policy?')) deactivateTeacher.mutate(p.id)
+                                if (confirm(L('Deactivate this teacher policy?', 'توقّف سياسة المدربين دي؟'))) deactivateTeacher.mutate(p.id)
                               }}
                             >
-                              Deactivate
+                              {L('Deactivate', 'وقّف')}
                             </Button>
                           </TableCell>
                         </TableRow>

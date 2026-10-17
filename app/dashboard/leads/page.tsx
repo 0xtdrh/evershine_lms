@@ -29,6 +29,7 @@ import {
   Pause,
   RotateCcw,
 } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -111,6 +112,7 @@ function TypeBadge({ type }: { type: string }) {
 type Tab = 'inquiries' | 'admissions' | 'staff'
 
 export default function LeadsPage() {
+  useI18n() // re-render on a language switch
   const [activeTab, setActiveTab] = useState<Tab>('inquiries')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -164,15 +166,15 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Landing Page Leads</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage inquiries, student admissions, and staff applications from the landing page.</p>
+          <h1 className="text-2xl font-bold text-gray-900">{L('Landing Page Leads', 'طلبات الموقع')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{L('Manage inquiries, student admissions, and staff applications from the landing page.', 'استفسارات الموقع وطلبات التسجيل وطلبات التوظيف.')}</p>
         </div>
         <a
           href={getExportUrl()}
           className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
         >
           <Download className="w-4 h-4" />
-          Download Excel
+          {L('Download Excel', 'نزّل Excel')}
         </a>
       </div>
 
@@ -209,7 +211,7 @@ export default function LeadsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
-            placeholder="Search by name, email, phone, CNIC..."
+            placeholder={L('Search by name, email, phone, CNIC...', 'دوّر بالاسم، الإيميل، التليفون، الرقم القومي...')}
             className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -231,8 +233,8 @@ export default function LeadsPage() {
       {activeTab === 'admissions' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 text-center text-gray-500">
           <GraduationCap className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p className="font-semibold">Student Admissions</p>
-          <p className="text-sm mt-1">Admissions are managed from the <a href="/dashboard/admissions" className="text-blue-600 hover:underline font-medium">Admissions page</a>. Use the Download Excel button above to export all admission data.</p>
+          <p className="font-semibold">{L('Student Admissions', 'طلبات التسجيل')}</p>
+          <p className="text-sm mt-1">{L('Admissions are managed from the', 'طلبات التسجيل بتتدار من')} <a href="/dashboard/admissions" className="text-blue-600 hover:underline font-medium">{L('Admissions page', 'صفحة التسجيل')}</a>{L('. Use the Download Excel button above to export all admission data.', '. استخدم زرار «نزّل Excel» علشان تصدّر كل البيانات.')}</p>
         </div>
       )}
       {activeTab === 'staff' && (
@@ -278,8 +280,8 @@ function InquiriesTable({ searchQuery, statusFilter, page, setPage }: {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
         <Inbox className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-        <p className="font-semibold">No inquiries found</p>
-        <p className="text-sm mt-1">Visitor inquiries from the contact form will appear here.</p>
+        <p className="font-semibold">{L('No inquiries found', 'مفيش استفسارات')}</p>
+        <p className="text-sm mt-1">{L('Visitor inquiries from the contact form will appear here.', 'استفسارات الزوار من فورم التواصل هتظهر هنا.')}</p>
       </div>
     )
   }
@@ -290,12 +292,12 @@ function InquiriesTable({ searchQuery, statusFilter, page, setPage }: {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Phone</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Message</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
-              <th className="text-right px-4 py-3 font-semibold text-gray-600">Actions</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Name', 'الاسم')}</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Phone', 'التليفون')}</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">{L('Message', 'الرسالة')}</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Status', 'الحالة')}</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Date', 'التاريخ')}</th>
+              <th className="text-right px-4 py-3 font-semibold text-gray-600">{L('Actions', 'إجراءات')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -317,7 +319,7 @@ function InquiriesTable({ searchQuery, statusFilter, page, setPage }: {
                       <button
                         onClick={() => handleAction(inq.id, 'resolve')}
                         className="p-1.5 rounded-md hover:bg-green-50 text-green-600 transition-colors"
-                        title="Mark Resolved"
+                        title={L('Mark Resolved', 'اتحلت')}
                       >
                         <CheckCircle className="w-4 h-4" />
                       </button>
@@ -326,7 +328,7 @@ function InquiriesTable({ searchQuery, statusFilter, page, setPage }: {
                       <button
                         onClick={() => handleAction(inq.id, 'spam')}
                         className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 transition-colors"
-                        title="Mark as Spam"
+                        title={L('Mark as Spam', 'سبام')}
                       >
                         <Ban className="w-4 h-4" />
                       </button>
@@ -347,15 +349,15 @@ function InquiriesTable({ searchQuery, statusFilter, page, setPage }: {
             onClick={() => setPage(page - 1)}
             className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40"
           >
-            Previous
+            {L('Previous', 'السابق')}
           </button>
-          <span className="text-sm text-gray-500">Page {page} of {totalPages}</span>
+          <span className="text-sm text-gray-500">{L('Page', 'صفحة')} {page} {L('of', 'من')} {totalPages}</span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage(page + 1)}
             className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40"
           >
-            Next
+            {L('Next', 'التالي')}
           </button>
         </div>
       )}
@@ -403,8 +405,8 @@ function StaffTable({ searchQuery, statusFilter, page, setPage }: {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
         <Briefcase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-        <p className="font-semibold">No staff applications found</p>
-        <p className="text-sm mt-1">Teacher, accountant, and admin staff applications from the landing page will appear here.</p>
+        <p className="font-semibold">{L('No staff applications found', 'مفيش طلبات توظيف')}</p>
+        <p className="text-sm mt-1">{L('Teacher, accountant, and admin staff applications from the landing page will appear here.', 'طلبات التوظيف من الموقع هتظهر هنا.')}</p>
       </div>
     )
   }
@@ -415,13 +417,13 @@ function StaffTable({ searchQuery, statusFilter, page, setPage }: {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Type</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Qualification</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">Experience</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
-              <th className="text-right px-4 py-3 font-semibold text-gray-600">Actions</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Name', 'الاسم')}</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Type', 'النوع')}</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">{L('Qualification', 'المؤهل')}</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">{L('Experience', 'الخبرة')}</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Status', 'الحالة')}</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Date', 'التاريخ')}</th>
+              <th className="text-right px-4 py-3 font-semibold text-gray-600">{L('Actions', 'إجراءات')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -433,7 +435,7 @@ function StaffTable({ searchQuery, statusFilter, page, setPage }: {
                 </td>
                 <td className="px-4 py-3"><TypeBadge type={app.applicantType} /></td>
                 <td className="px-4 py-3 text-gray-700 hidden md:table-cell">{app.qualification}</td>
-                <td className="px-4 py-3 text-gray-700 hidden lg:table-cell">{app.experienceYears} yr{app.experienceYears !== 1 ? 's' : ''}</td>
+                <td className="px-4 py-3 text-gray-700 hidden lg:table-cell">{app.experienceYears} {L('yr', 'سنة')}{app.experienceYears !== 1 ? 's' : ''}</td>
                 <td className="px-4 py-3"><StatusBadge status={app.status} /></td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{new Date(app.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                 <td className="px-4 py-3 text-right">
@@ -449,7 +451,7 @@ function StaffTable({ searchQuery, statusFilter, page, setPage }: {
                               if (reason) handleReview(app.id, 'decline', { reason })
                             }}
                             className="p-1.5 rounded-md hover:bg-red-50 text-red-500 transition-colors"
-                            title="Decline"
+                            title={L('Decline', 'رفض')}
                           >
                             <XCircle className="w-4 h-4" />
                           </button>
@@ -461,7 +463,7 @@ function StaffTable({ searchQuery, statusFilter, page, setPage }: {
                               if (date) handleReview(app.id, 'schedule_interview', { interviewDate: date })
                             }}
                             className="p-1.5 rounded-md hover:bg-purple-50 text-purple-500 transition-colors"
-                            title="Schedule Interview"
+                            title={L('Schedule Interview', 'حدد مقابلة')}
                           >
                             <Calendar className="w-4 h-4" />
                           </button>
@@ -470,7 +472,7 @@ function StaffTable({ searchQuery, statusFilter, page, setPage }: {
                           <button
                             onClick={() => handleReview(app.id, 'reopen')}
                             className="p-1.5 rounded-md hover:bg-blue-50 text-blue-500 transition-colors"
-                            title="Reopen"
+                            title={L('Reopen', 'افتح تاني')}
                           >
                             <RotateCcw className="w-4 h-4" />
                           </button>
@@ -479,7 +481,7 @@ function StaffTable({ searchQuery, statusFilter, page, setPage }: {
                           <button
                             onClick={() => handleReview(app.id, 'hold')}
                             className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 transition-colors"
-                            title="Put on Hold"
+                            title={L('Put on Hold', 'أجّل')}
                           >
                             <Pause className="w-4 h-4" />
                           </button>
@@ -502,15 +504,15 @@ function StaffTable({ searchQuery, statusFilter, page, setPage }: {
             onClick={() => setPage(page - 1)}
             className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40"
           >
-            Previous
+            {L('Previous', 'السابق')}
           </button>
-          <span className="text-sm text-gray-500">Page {page} of {totalPages}</span>
+          <span className="text-sm text-gray-500">{L('Page', 'صفحة')} {page} {L('of', 'من')} {totalPages}</span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage(page + 1)}
             className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40"
           >
-            Next
+            {L('Next', 'التالي')}
           </button>
         </div>
       )}

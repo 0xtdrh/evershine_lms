@@ -16,6 +16,7 @@ import {
 import { notify } from '@/lib/notify'
 import { Loader2, Eye, EyeOff, Sparkles, PartyPopper, CheckSquare, Square, Download, History } from 'lucide-react'
 import { buildCertificatesPdf, safeFilename, type PrintCertificate } from '@/lib/certificates/pdf-renderer'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface PrintBatchDetail {
   batch: { id: string; label: string; mode: string; totalCount: number; printedBy: string; printedByName: string | null; createdAt: string }
@@ -34,6 +35,7 @@ interface CertificateRow {
 type StatusFilter = 'pending' | 'revealed' | 'all'
 
 export default function CertificateRevealPage() {
+  useI18n() // re-render on a language switch
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -53,7 +55,7 @@ export default function CertificateRevealPage() {
       setConfirmAll(false)
       notify.success(`${res.revealedCount} certificate${res.revealedCount === 1 ? '' : 's'} ${vars.isRevealed ? 'revealed' : 'hidden'}`)
     },
-    onError: () => notify.error('Failed to update certificates'),
+    onError: () => notify.error(L('Failed to update certificates', 'تحديث الشهادات فشل')),
   })
 
   const [isPrinting, setIsPrinting] = useState(false)
@@ -129,17 +131,17 @@ export default function CertificateRevealPage() {
     mutationFn: () => fetchApi(`/api/certificates/print/${selectedBatchId}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['certificate-print-history'] })
-      notify.success('Print batch deleted')
+      notify.success(L('Print batch deleted', 'دفعة الطباعة اتمسحت'))
       closeBatchDialog()
     },
-    onError: () => notify.error('Failed to delete this print batch'),
+    onError: () => notify.error(L('Failed to delete this print batch', 'مسح الدفعة فشل')),
   })
 
   const handleRemoveFromBatch = (certId: string) => {
     if (!batchDetail) return
     const nextIds = batchDetail.certificates.filter((c) => c.id !== certId).map((c) => c.id)
     if (nextIds.length === 0) {
-      notify.error('A print batch must contain at least one certificate — delete the batch instead')
+      notify.error(L('A print batch must contain at least one certificate — delete the batch instead', 'الدفعة لازم فيها شهادة واحدة على الأقل — امسح الدفعة بدل كده'))
       return
     }
     updateBatchMutation.mutate(nextIds)
@@ -158,7 +160,7 @@ export default function CertificateRevealPage() {
     try {
       const pdf = await buildCertificatesPdf(batchDetail.certificates)
       if (!pdf) {
-        notify.error('None of these certificates have a design template to render')
+        notify.error(L('None of these certificates have a design template to render', 'مفيش ولا شهادة ليها تصميم'))
         return
       }
       pdf.save(`${safeFilename(batchDetail.batch.label)}.pdf`)
@@ -185,12 +187,12 @@ export default function CertificateRevealPage() {
       )
 
       if (res.certificates.every((c) => !c.template)) {
-        notify.error('None of the selected certificates have a design template. Upload one in Certificate Designer first.')
+        notify.error(L('None of the selected certificates have a design template. Upload one in Certificate Designer first.', 'الشهادات المختارة مالهاش تصميم. ارفع تصميم من مصمم الشهادات الأول.'))
         return
       }
 
       const pdf = await buildCertificatesPdf(res.certificates)
-      if (!pdf) { notify.error('Nothing to render'); return }
+      if (!pdf) { notify.error(L('Nothing to render', 'مفيش حاجة تتطبع')); return }
       pdf.save(`${safeFilename(label)}.pdf`)
 
       queryClient.invalidateQueries({ queryKey: ['certificate-print-history'] })
@@ -233,39 +235,39 @@ export default function CertificateRevealPage() {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-amber-500" /> Certificate Reveal
+            <Sparkles className="w-6 h-6 text-amber-500" /> {L('Certificate Reveal', 'إظهار الشهادات')}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Certificates are hidden from students & parents until you reveal them — typically at the annual ceremony.</p>
+          <p className="text-sm text-slate-500 mt-1">{L('Certificates are hidden from students & parents until you reveal them — typically at the annual ceremony.', 'الشهادات مخفية عن الطلاب وأولياء الأمور لحد ما تظهرها — غالباً في الحفلة السنوية.')}</p>
         </div>
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as StatusFilter); setSelectedIds(new Set()) }}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="pending">Pending only</SelectItem>
-            <SelectItem value="revealed">Revealed only</SelectItem>
-            <SelectItem value="all">All certificates</SelectItem>
+            <SelectItem value="pending">{L('Pending only', 'المستنية بس')}</SelectItem>
+            <SelectItem value="revealed">{L('Revealed only', 'الظاهرة بس')}</SelectItem>
+            <SelectItem value="all">{L('All certificates', 'كل الشهادات')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {selectedIds.size > 0 && (
         <div className="sticky top-2 z-10 bg-indigo-600 text-white rounded-xl px-4 py-2.5 flex items-center justify-between shadow-lg">
-          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <span className="text-sm font-medium">{selectedIds.size} {L('selected', 'مختارة')}</span>
           <div className="flex gap-2">
             {!allSelectedAreRevealed && (
               <Button size="sm" variant="secondary" className="gap-1.5" disabled={revealMutation.isPending}
                 onClick={() => revealMutation.mutate({ scope: 'certificates', certificateIds: Array.from(selectedIds), isRevealed: true })}>
-                <Eye className="w-3.5 h-3.5" /> Reveal Selected
+                <Eye className="w-3.5 h-3.5" /> {L('Reveal Selected', 'أظهر المختار')}
               </Button>
             )}
             <Button size="sm" variant="secondary" className="gap-1.5" disabled={revealMutation.isPending}
               onClick={() => revealMutation.mutate({ scope: 'certificates', certificateIds: Array.from(selectedIds), isRevealed: false })}>
-              <EyeOff className="w-3.5 h-3.5" /> Hide Selected
+              <EyeOff className="w-3.5 h-3.5" /> {L('Hide Selected', 'اخفي المختار')}
             </Button>
             <Button size="sm" variant="secondary" className="gap-1.5" disabled={isPrinting}
               onClick={handleDownload}>
-              {isPrinting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} Download as PDF
+              {isPrinting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} {L('Download as PDF', 'نزّل PDF')}
             </Button>
-            <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-indigo-500" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+            <Button size="sm" variant="ghost" className="text-white hover:text-white hover:bg-indigo-500" onClick={() => setSelectedIds(new Set())}>{L('Clear', 'امسح')}</Button>
           </div>
         </div>
       )}
@@ -273,16 +275,16 @@ export default function CertificateRevealPage() {
       {statusFilter !== 'revealed' && certificates.some((c) => !c.isRevealed) && (
         confirmAll ? (
           <div className="flex items-center gap-2 justify-end">
-            <span className="text-sm text-amber-700 font-medium">Reveal every pending certificate?</span>
+            <span className="text-sm text-amber-700 font-medium">{L('Reveal every pending certificate?', 'تظهر كل الشهادات المستنية؟')}</span>
             <Button size="sm" variant="destructive" onClick={() => revealMutation.mutate({ scope: 'all', isRevealed: true })} disabled={revealMutation.isPending}>
               {revealMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm'}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setConfirmAll(false)}>Cancel</Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirmAll(false)}>{L('Cancel', 'إلغاء')}</Button>
           </div>
         ) : (
           <div className="flex justify-end">
             <Button className="gap-2 bg-amber-500 hover:bg-amber-600" onClick={() => setConfirmAll(true)}>
-              <PartyPopper className="w-4 h-4" /> Reveal All Pending
+              <PartyPopper className="w-4 h-4" /> {L('Reveal All Pending', 'أظهر كل المستني')}
             </Button>
           </div>
         )
@@ -291,14 +293,14 @@ export default function CertificateRevealPage() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : certificates.length === 0 ? (
-        <Card><CardContent className="py-16 text-center text-slate-400">No certificates match this filter.</CardContent></Card>
+        <Card><CardContent className="py-16 text-center text-slate-400">{L('No certificates match this filter.', 'مفيش شهادات مطابقة.')}</CardContent></Card>
       ) : (
         bySubject.map((group) => (
           <Card key={group.subjectId ?? 'none'}>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
                 <CardTitle className="text-base">{group.subjectName}</CardTitle>
-                <CardDescription>{group.items.length} certificate{group.items.length === 1 ? '' : 's'}</CardDescription>
+                <CardDescription>{group.items.length} {L('certificate', 'شهادة')}{group.items.length === 1 ? '' : 's'}</CardDescription>
               </div>
               <Button
                 size="sm"
@@ -320,7 +322,7 @@ export default function CertificateRevealPage() {
                     {selectedIds.has(c.id) ? <CheckSquare className="w-4 h-4 text-indigo-600 shrink-0" /> : <Square className="w-4 h-4 text-slate-300 shrink-0" />}
                     <Badge variant="outline" className="text-[10px] text-slate-400 font-mono">{c.certificateNumber}</Badge>
                     <span className="text-sm font-medium text-slate-800">{c.student.firstName} {c.student.lastName}</span>
-                    {c.isRevealed && <Badge className="bg-emerald-100 text-emerald-800 border-0 text-[10px]">Revealed</Badge>}
+                    {c.isRevealed && <Badge className="bg-emerald-100 text-emerald-800 border-0 text-[10px]">{L('Revealed', 'ظاهرة')}</Badge>}
                   </button>
                   <Button
                     size="sm"
@@ -329,7 +331,7 @@ export default function CertificateRevealPage() {
                     disabled={revealMutation.isPending}
                     onClick={() => revealMutation.mutate({ scope: 'certificate', certificateId: c.id, isRevealed: !c.isRevealed })}
                   >
-                    {c.isRevealed ? <><EyeOff className="w-3.5 h-3.5" /> Hide</> : <><Eye className="w-3.5 h-3.5" /> Reveal</>}
+                    {c.isRevealed ? <><EyeOff className="w-3.5 h-3.5" /> {L('Hide', 'اخفي')}</> : <><Eye className="w-3.5 h-3.5" /> {L('Reveal', 'أظهر')}</>}
                   </Button>
                 </div>
               ))}
@@ -342,9 +344,9 @@ export default function CertificateRevealPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <History className="w-4 h-4 text-slate-500" /> Print History
+              <History className="w-4 h-4 text-slate-500" /> {L('Print History', 'سجل الطباعة')}
             </CardTitle>
-            <CardDescription>Every certificate export, so you can trace what was printed for each ceremony.</CardDescription>
+            <CardDescription>{L('Every certificate export, so you can trace what was printed for each ceremony.', 'كل طباعة للشهادات، علشان تعرف إيه اتطبع في كل حفلة.')}</CardDescription>
           </CardHeader>
           <CardContent className="divide-y divide-slate-100">
             {printHistory.map((b) => (
@@ -360,7 +362,7 @@ export default function CertificateRevealPage() {
                     {new Date(b.createdAt).toLocaleDateString('en-EG', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
-                <Badge variant="outline" className="text-[10px]">{b.totalCount} certificate{b.totalCount === 1 ? '' : 's'}</Badge>
+                <Badge variant="outline" className="text-[10px]">{b.totalCount} {L('certificate', 'شهادة')}{b.totalCount === 1 ? '' : 's'}</Badge>
               </button>
             ))}
           </CardContent>
@@ -374,10 +376,10 @@ export default function CertificateRevealPage() {
             <DialogDescription>
               {batchDetail && (
                 <>
-                  Created {new Date(batchDetail.batch.createdAt).toLocaleDateString('en-EG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {L('Created', 'اتعمل')} {new Date(batchDetail.batch.createdAt).toLocaleDateString('en-EG', { day: 'numeric', month: 'short', year: 'numeric' })}
                   {' · '}
-                  {batchDetail.certificates.length} certificate{batchDetail.certificates.length === 1 ? '' : 's'}
-                  {batchDetail.batch.printedByName && <> · Printed by {batchDetail.batch.printedByName}</>}
+                  {batchDetail.certificates.length} {L('certificate', 'شهادة')}{batchDetail.certificates.length === 1 ? '' : 's'}
+                  {batchDetail.batch.printedByName && <> {L('· Printed by', '· طبعها')} {batchDetail.batch.printedByName}</>}
                 </>
               )}
             </DialogDescription>
@@ -389,7 +391,7 @@ export default function CertificateRevealPage() {
             <div className="space-y-4">
               <div className="border border-slate-100 rounded-xl divide-y divide-slate-100">
                 {batchDetail.certificates.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-4">No certificates in this batch.</p>
+                  <p className="text-sm text-slate-400 text-center py-4">{L('No certificates in this batch.', 'مفيش شهادات في الدفعة دي.')}</p>
                 ) : (
                   batchDetail.certificates.map((c) => (
                     <div key={c.id} className="flex items-center justify-between px-3 py-2 text-sm">
@@ -404,7 +406,7 @@ export default function CertificateRevealPage() {
                         disabled={updateBatchMutation.isPending}
                         onClick={() => handleRemoveFromBatch(c.id)}
                       >
-                        Remove
+                        {L('Remove', 'شيل')}
                       </Button>
                     </div>
                   ))
@@ -412,9 +414,9 @@ export default function CertificateRevealPage() {
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs font-medium text-slate-500">Add a certificate</p>
+                <p className="text-xs font-medium text-slate-500">{L('Add a certificate', 'ضيف شهادة')}</p>
                 <Input
-                  placeholder="Search by student name or certificate number..."
+                  placeholder={L('Search by student name or certificate number...', 'دوّر باسم الطالب أو رقم الشهادة...')}
                   value={addQuery}
                   onChange={(e) => setAddQuery(e.target.value)}
                 />
@@ -444,7 +446,7 @@ export default function CertificateRevealPage() {
               className="text-red-600 hover:text-red-700 hover:bg-red-50"
               onClick={() => setConfirmDeleteBatch(true)}
             >
-              Delete Batch
+              {L('Delete Batch', 'امسح الدفعة')}
             </Button>
             <Button
               className="gap-1.5"
@@ -452,7 +454,7 @@ export default function CertificateRevealPage() {
               onClick={handleRedownloadBatch}
             >
               {isRedownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              Re-download PDF
+              {L('Re-download PDF', 'نزّل الـ PDF تاني')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -461,13 +463,13 @@ export default function CertificateRevealPage() {
       <AlertDialog open={confirmDeleteBatch} onOpenChange={setConfirmDeleteBatch}>
         <AlertDialogContent className="rounded-2xl max-w-md p-6">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg font-bold text-slate-900">Delete this print batch?</AlertDialogTitle>
+            <AlertDialogTitle className="text-lg font-bold text-slate-900">{L('Delete this print batch?', 'تمسح دفعة الطباعة دي؟')}</AlertDialogTitle>
             <AlertDialogDescription className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed">
-              This only removes the print-history record. The certificates themselves are not affected and stay available to reveal or print again.
+              {L('This only removes the print-history record. The certificates themselves are not affected and stay available to reveal or print again.', 'ده بيشيل سجل الطباعة بس. الشهادات نفسها مش بتتأثر وتقدر تظهرها أو تطبعها تاني.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 gap-2 flex-col-reverse sm:flex-row">
-            <AlertDialogCancel className="h-10 text-xs sm:text-sm rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-10 text-xs sm:text-sm rounded-xl">{L('Cancel', 'إلغاء')}</AlertDialogCancel>
             <AlertDialogAction asChild>
               <Button
                 variant="destructive"
