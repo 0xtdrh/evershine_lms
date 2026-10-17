@@ -2,12 +2,12 @@
 
 /** Phase C: birthdays of students, parents and staff — today / this week / this month. */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
-import { checkPermission } from '@/lib/rbac'
 import { whatsappNumber } from '@/lib/students/portal-password'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent } from '@/components/ui/card'
@@ -31,7 +31,8 @@ const KIND: Record<Person['kind'], { label: string; cls: string }> = {
 export default function BirthdaysPage() {
   const { data: session } = useSession()
   const role = session?.user?.role
-  const allowed = !!role && checkPermission(role, 'birthdays', 'read')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('birthdays', 'read')
   const isTeacher = role === 'TEACHER'
   const [range, setRange] = useState('today')
   const [kind, setKind] = useState('ALL')
@@ -42,6 +43,7 @@ export default function BirthdaysPage() {
   const qs = new URLSearchParams({ range, kind, ...(campusId !== 'all' && { campusId }), ...(groupId !== 'all' && { groupId }) })
   const { data, isLoading } = useQuery({ queryKey: ['birthdays', qs.toString()], queryFn: () => fetchApi<{ today: string; people: Person[] }>(`/api/birthdays?${qs}`), enabled: allowed })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title="Birthdays" message="You don't have access to the birthdays page." />
 
   const logWhatsApp = (p: Person) => {

@@ -1,5 +1,6 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -75,6 +76,11 @@ export default function AdmissionsDashboard() {
   const { data: session, status } = useSession()
   const userRole = session?.user?.role as string | undefined
   const canManageAdmissions = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'BRANCH_MANAGER' || userRole === 'SECRETARY' || userRole === 'MARKETING'
+  // action buttons follow the same permissions as the APIs (approve / decline / delete)
+  const { can } = useMyPermissions()
+  const canApprove = can('admissions', 'approve')
+  const canDecline = can('admissions', 'update')
+  const canDeleteRequest = can('admissions', 'delete')
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('PENDING')
@@ -467,23 +473,23 @@ export default function AdmissionsDashboard() {
                         <div className="flex justify-end gap-2">
                           {req.status === 'PENDING' && (
                             <>
-                              <Button size="sm" onClick={() => openReviewDialog(req)} className="gap-2">
+                              {(canApprove || canDecline) && <Button size="sm" onClick={() => openReviewDialog(req)} className="gap-2">
                                 Review & Assign <CheckCircle className="w-4 h-4" />
-                              </Button>
-                                <Button
+                              </Button>}
+                                {canDeleteRequest && <Button
                                   size="sm"
                                   variant="ghost"
                                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                   onClick={() => setRequestToDelete(req)}
                                 >
                                   <Trash2 className="w-4 h-4" />
-                                </Button>
+                                </Button>}
                             </>
                           )}
                           {req.status === 'APPROVED' && (
                             <Badge variant="secondary" className="bg-green-50 text-green-700">Account Active</Badge>
                           )}
-                          {req.status === 'DECLINED' && (
+                          {req.status === 'DECLINED' && canDeleteRequest && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -632,7 +638,7 @@ export default function AdmissionsDashboard() {
                 </div>
 
                 <div className="flex justify-between pt-4 border-t border-slate-200">
-                  <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                  <Button variant="outline" className={`text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 ${canDecline ? '' : 'invisible'}`}
                     onClick={() => {
                       const reason = prompt('Reason for declining this application (Optional):')
                       if (reason !== null) {
@@ -849,7 +855,7 @@ export default function AdmissionsDashboard() {
                   <Button
                     onClick={handleApprove}
                     disabled={approveMutation.isPending || declineMutation.isPending || !campusId || !batchId || !rollNumber}
-                    className="bg-green-600 hover:bg-green-700 text-white min-w-[150px]"
+                    className={`bg-green-600 hover:bg-green-700 text-white min-w-[150px] ${canApprove ? '' : 'hidden'}`}
                   >
                     {approveMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Approving...</> : <><CheckCircle className="w-4 h-4 mr-2" /> Approve & Enrol</>}
                   </Button>

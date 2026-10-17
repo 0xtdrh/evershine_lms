@@ -1,5 +1,6 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { FormEvent, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
@@ -57,8 +58,10 @@ export default function LeavesPage() {
   const { data: session } = useSession()
   const queryClient = useQueryClient()
   const userRole = session?.user?.role ?? ''
-  const isAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN'
-  const canApply = userRole === 'TEACHER' || userRole === 'ACCOUNTANT' || userRole === 'STUDENT'
+  // reviewers = leaves:approve, applicants = leaves:create (Permissions page decides, like the API)
+  const { can } = useMyPermissions()
+  const isAdmin = can('leaves', 'approve')
+  const canApply = can('leaves', 'create')
 
   // Form state (applicants only)
   const [leaveType, setLeaveType] = useState<LeaveRequest['leaveType']>('CASUAL')

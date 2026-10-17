@@ -2,28 +2,31 @@
 
 /** LMS hub for staff — every LMS page in one place, grouped, with what is waiting (bilingual). */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
+import type { AcademicResource, Action } from '@/lib/rbac'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
-import { checkPermission } from '@/lib/rbac'
 import { useI18n } from '@/lib/i18n/client'
 import { AccessDenied } from '@/components/AccessDenied'
 import { LmsAnalytics } from '@/components/lms/LmsAnalytics'
 import { Card, CardContent } from '@/components/ui/card'
 import { Award, BarChart3, BookOpen, CheckCircle2, FileText, ClipboardCheck, ClipboardList, GraduationCap, Images, Library, ListChecks, Power, Settings2, Table2 } from 'lucide-react'
 
-type Perm = Parameters<typeof checkPermission>[1]
-interface Tile { href: string; en: string; ar: string; descEn: string; descAr: string; icon: React.ComponentType<{ className?: string }>; perm?: [Perm, Parameters<typeof checkPermission>[2]]; count?: number; countEn?: string; countAr?: string }
+type Perm = AcademicResource
+interface Tile { href: string; en: string; ar: string; descEn: string; descAr: string; icon: React.ComponentType<{ className?: string }>; perm?: [Perm, Action]; count?: number; countEn?: string; countAr?: string }
 
 export default function LmsHubPage() {
   const { data: session } = useSession()
   const { locale, dir } = useI18n()
   const ar = locale === 'ar'
   const role = session?.user?.role ?? ''
-  const allowed = !!role && checkPermission(role, 'curriculum', 'read')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('curriculum', 'read')
   const { data: n } = useQuery({ queryKey: ['lms-hub'], queryFn: () => fetchApi<{ toGrade: number; quizReview: number; inReview: number; myPerformance?: boolean }>('/api/lms/hub'), enabled: allowed, refetchInterval: 60_000 })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title="LMS" message="You don't have access to the LMS." />
   const teacher = role === 'TEACHER'
   const groups: { en: string; ar: string; tiles: Tile[] }[] = [
@@ -57,7 +60,7 @@ export default function LmsHubPage() {
       ],
     },
   ]
-  const visible = (t: Tile) => !t.perm || checkPermission(role, t.perm[0], t.perm[1])
+  const visible = (t: Tile) => !t.perm || can(t.perm[0], t.perm[1])
   return (
     <div className="space-y-6" dir={dir}>
       <div>

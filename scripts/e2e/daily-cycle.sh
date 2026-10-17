@@ -637,7 +637,11 @@ M "UPDATE ClassSection SET scheduleSlots='$EVERYDAY' WHERE id IN ('$SG1','$SG2')
 api POST /api/groups/$SG1/instructor "{\"teacherId\":\"$CALT\"}" >/dev/null
 SCH=$(mkstu Sched 01066660031 '' ''); api POST /api/groups/$SG1/students "{\"studentId\":\"$SCH\"}" >/dev/null
 SCHE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$SCH' AND classSectionId='$SG1'")
-D() { date -u -d "$1 days" +%F; }
+# Dates are built in CAIRO time like the app (cairoToday): between 21:00 and 24:00 UTC Cairo is already on the next
+# day. Git Bash has no zoneinfo, so Node gives the offset once (2 h winter / 3 h summer time).
+CAIRO_OFF=$(node -e "const d=new Date();const c=new Date(d.toLocaleString('en-US',{timeZone:'Africa/Cairo'}));const u=new Date(d.toLocaleString('en-US',{timeZone:'UTC'}));console.log(Math.round((c-u)/3600000))")
+cairo() { date -u -d "@$(( $(date -u +%s) + CAIRO_OFF * 3600 + ${2:-0} * 86400 ))" "$1"; }
+D() { cairo +%F "$1"; }
 sess $SG1 "$(D -3)" "$(rec $SCHE PRESENT)" >/dev/null
 M "INSERT INTO CancelledSession (id, classSectionId, date, reason, cancelledBy, createdAt) VALUES ('cs-e2e-1','$SG1','$(D 1)','Holiday','$SA_ID',NOW(3))"
 CAL=$(api GET "/api/groups/schedule?from=$(D -5)&to=$(D 6)")
@@ -918,7 +922,7 @@ check "monthly report: attendance session by session" "$(pget "/api/students/$W2
 check "printable report page opens" "$(curl -s -o /dev/null -w '%{http_code}' -b "$WJ" "$B/reports/student/$W2?kind=MONTHLY&group=$WB")" "200"
 M "UPDATE ClassSection SET status='ACTIVE', completedAt=NULL WHERE id='$WB'"
 # 6) birthdays (students, parents, staff) + birthday discount
-TODAYMD=$(date -u +%m-%d)
+TODAYMD=$(cairo +%m-%d)
 GW=$(M "SELECT userId FROM Guardian WHERE phoneNumber='01066660099'")
 M "UPDATE Student SET dateOfBirth='2019-$TODAYMD' WHERE id='$W1'"
 M "UPDATE User SET dateOfBirth='1985-$TODAYMD' WHERE id='$GW'"
@@ -1883,7 +1887,7 @@ api POST /api/wallet/topups "{\"studentId\":\"$FS1\",\"amount\":100,\"method\":\
 check "pay-first = fees: a 100 top-up pays the fee before the monthly price" "$(M "SELECT status FROM FeeInvoice WHERE id='$FINV'")/$(M "SELECT CAST(paidAmount AS DECIMAL(10,0)) FROM FeeInvoice WHERE studentId='$FS1' AND classSectionId='$FG' LIMIT 1")" "PAID/0"
 check "paid → the block is lifted" "$(api GET /api/groups/$FG | jq_ "'$FS1' in d['data']['feeBlocked']")" "False"
 api PUT /api/fee-types/settings '{"payFirst":"TUITION"}' >/dev/null
-YM=$(date -u +%Y-%m); BY=${YM%-*}; BMO=$((10#${YM#*-}))
+YM=$(cairo +%Y-%m); BY=${YM%-*}; BMO=$((10#${YM#*-}))
 api PUT /api/budgets "{\"year\":$BY,\"month\":$BMO,\"campusId\":\"$CAMPUS\",\"categoryId\":\"$TCAT\",\"amount\":100}" >/dev/null
 api POST /api/accountant/expenses "{\"title\":\"E2E rent again\",\"amount\":150,\"categoryId\":\"$TCAT\",\"date\":\"$(D 0)\",\"campusId\":\"$CAMPUS\",\"paymentSource\":\"Cash\"}" >/dev/null
 check "budget vs actual: 150 spent of 100 → over (150%)" "$(api GET "/api/budgets?year=$BY&month=$BMO&campusId=$CAMPUS" | jq_ "[(float(r['budget']), float(r['actual']), r['pct'], r['status']) for r in d['data']['rows'] if r['categoryId']=='$TCAT']")" "[(100.0, 150.0, 150, 'OVER')]"
@@ -1891,9 +1895,9 @@ check "'your work today' warns about the budget" "$(api GET /api/today | jq_ "an
 check "a secretary cannot set fees or budgets" "$(secapi POST /api/fee-types '{"nameEn":"X fee","nameAr":"رسم","amount":1,"frequency":"ONCE"}' | jq_ "d['success']")/$(secapi PUT /api/budgets "{\"year\":$BY,\"month\":$BMO,\"campusId\":\"$CAMPUS\",\"categoryId\":\"$TCAT\",\"amount\":1}" | jq_ "d['success']")" "False/False"
 echo "== 56. FIN-3 cash flow + forecast, where every pound went, bank reconciliation, category names in reports"
 CF=$(api GET "/api/finance/cashflow?months=3")
-check "cash flow: 3 months, this month last, in − out = net, forecast present" "$(echo "$CF" | jq_ "(len(d['data']['months']), d['data']['months'][-1]['month']=='$(date -u +%Y-%m)', all(abs(r['in']-r['out']-r['net'])<0.01 for r in d['data']['months']), 'balanceAfter' in d['data']['forecast'])")" "(3, True, True, True)"
+check "cash flow: 3 months, this month last, in − out = net, forecast present" "$(echo "$CF" | jq_ "(len(d['data']['months']), d['data']['months'][-1]['month']=='$(cairo +%Y-%m)', all(abs(r['in']-r['out']-r['net'])<0.01 for r in d['data']['months']), 'balanceAfter' in d['data']['forecast'])")" "(3, True, True, True)"
 check "transfers between our accounts are not counted as money in / out" "$(echo "$CF" | jq_ "any('TRANSFER' in r['byKind'] for r in d['data']['months'])")" "False"
-WH=$(api GET "/api/finance/where?from=$(date -u +%Y-%m)-01&to=$(D 0)")
+WH=$(api GET "/api/finance/where?from=$(cairo +%Y-%m)-01&to=$(D 0)")
 check "where every pound: kept = in − out, and free = balance − families' wallets" "$(echo "$WH" | jq_ "(abs(d['data']['totalIn']-d['data']['totalOut']-d['data']['kept'])<0.01, abs(d['data']['now']['balance']-d['data']['now']['prepaid']-d['data']['now']['free'])<0.01)")" "(True, True)"
 check "expenses are split by the owner's category names (E2E Rent)" "$(echo "$WH" | jq_ "any(l.get('category')=='E2E Rent' and bool(l.get('categoryAr')) and l['amount']>=150 for l in d['data']['out'])")" "True"
 check "a secretary cannot open cash flow / reconciliation" "$(secapi GET /api/finance/cashflow | jq_ "d['success']")/$(secapi GET /api/treasury/reconcile | jq_ "d['success']")" "False/False"

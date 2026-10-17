@@ -137,6 +137,15 @@ export default function GroupsPage() {
   const canEditGroups = !!myPerms?.permissions?.class_sections?.includes('update')
   const canEditPrice = !!myPerms?.permissions?.fees?.includes('update')
   const canRecordSessions = !!myPerms?.permissions?.attendance?.includes('create')
+  // buttons follow the same permissions as their APIs (hidden when the API would refuse)
+  const perm = (r: string, a: string) => !!myPerms?.permissions?.[r]?.includes(a)
+  const canCreateGroups = perm('class_sections', 'create')
+  const canDeleteGroups = perm('class_sections', 'delete')
+  const canSetInstructor = perm('subject_offerings', 'update')
+  const canRemoveStudents = perm('students', 'delete')
+  const canSetPay = perm('fees', 'update')
+  const canAddPayAdjust = perm('fees', 'create')
+  const canMakeInvoices = perm('fees', 'create')
   const [moving, setMoving] = useState<{ studentId: string; name: string } | null>(null)
   const role = session?.user?.role as string | undefined
   const myCampusId = session?.user?.campusId as string | undefined
@@ -535,9 +544,11 @@ export default function GroupsPage() {
           <div className="mt-2 print:hidden"><DataExchangeButtons dataset="groups" /></div>
           <CardDescription>Full control — create, edit, staff, and manage every group here.</CardDescription>
         </div>
-        <Button className="gap-1.5" onClick={() => setCreateOpen(true)}>
-          <Plus className="w-4 h-4" /> New group
-        </Button>
+        {canCreateGroups && (
+          <Button className="gap-1.5" onClick={() => setCreateOpen(true)}>
+            <Plus className="w-4 h-4" /> New group
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-2">
@@ -620,6 +631,7 @@ export default function GroupsPage() {
                   <p className="text-xs text-slate-400">Instructor</p>
                   <Select
                     value={detail.teacher?.id ?? 'none'}
+                    disabled={!canSetInstructor}
                     onValueChange={(v) => assignInstructorMutation.mutate(v === 'none' ? null : v)}
                   >
                     <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Not assigned" /></SelectTrigger>
@@ -686,10 +698,12 @@ export default function GroupsPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
+                {canEditGroups && (
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={openEdit}>
                   <Pencil className="w-3.5 h-3.5" /> Edit
                 </Button>
-                {detail.status === 'ACTIVE' ? (
+                )}
+                {!canEditGroups ? null : detail.status === 'ACTIVE' ? (
                   <Button
                     size="sm" variant="outline" className="gap-1.5"
                     disabled={toggleStatusMutation.isPending}
@@ -706,7 +720,7 @@ export default function GroupsPage() {
                     Reopen
                   </Button>
                 )}
-                {detail.level && detail.status === 'ACTIVE' && isLastSessionOfCycle && (
+                {canEditGroups && detail.level && detail.status === 'ACTIVE' && isLastSessionOfCycle && (
                   <Button
                     size="sm" variant="outline" className="gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
                     onClick={openAdvanceDialog}
@@ -723,9 +737,11 @@ export default function GroupsPage() {
                 >
                   <Calendar className="w-3.5 h-3.5" /> Attendance
                 </Button>
+                {canDeleteGroups && (
                 <Button size="sm" variant="ghost" className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete
                 </Button>
+                )}
               </div>
 
               {detail.seats && (
@@ -764,14 +780,14 @@ export default function GroupsPage() {
                                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 font-medium">
                                   Payment overdue
                                 </span>
-                                <button
+                                {canRemoveStudents && <button
                                   type="button"
                                   disabled={removeStudentMutation.isPending}
                                   onClick={() => removeStudentMutation.mutate(e.id)}
                                   className="text-[10px] text-rose-600 hover:text-rose-700 underline underline-offset-2 font-medium disabled:opacity-50"
                                 >
                                   Exclude
-                                </button>
+                                </button>}
                               </>
                             )}
                           </p>
@@ -790,25 +806,25 @@ export default function GroupsPage() {
                               <ArrowRightLeft className="w-3.5 h-3.5" /> Move
                             </Button>
                           )}
-                          <Button
+                          {canRemoveStudents && <Button
                             size="sm" variant="ghost" className="h-6 w-6 p-0"
                             disabled={removeStudentMutation.isPending}
                             onClick={() => removeStudentMutation.mutate(e.id)}
                           >
                             <X className="w-3.5 h-3.5 text-red-500" />
-                          </Button>
+                          </Button>}
                         </div>
                       </div>
                     ))
                   )}
                 </div>
 
-                <Input
+                {canEditGroups && <Input
                   placeholder="Search by student name to add..."
                   value={studentQuery}
                   onChange={(e) => setStudentQuery(e.target.value)}
-                />
-                {studentResults.length > 0 && (
+                />}
+                {canEditGroups && studentResults.length > 0 && (
                   <div className="border border-slate-100 rounded-xl divide-y divide-slate-100 max-h-40 overflow-y-auto mt-2">
                     {studentResults.map((s) => (
                       <button
@@ -889,7 +905,7 @@ export default function GroupsPage() {
                     </div>
                   )}
 
-                  <details className="text-xs">
+                  {canSetPay && <details className="text-xs">
                     <summary className="cursor-pointer text-indigo-600">Set this group&apos;s pay rule</summary>
                     <div className="mt-2 space-y-2">
                       <div className="flex gap-2">
@@ -901,9 +917,9 @@ export default function GroupsPage() {
                         Save rule for this group
                       </Button>
                     </div>
-                  </details>
+                  </details>}
 
-                  <details className="text-xs">
+                  {canAddPayAdjust && <details className="text-xs">
                     <summary className="cursor-pointer text-indigo-600">Add bonus / deduction</summary>
                     <div className="mt-2 space-y-2">
                       <Input placeholder="Amount (negative for deduction)" type="number" value={adjustmentForm.amount} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })} className="h-8 text-xs" />
@@ -916,7 +932,7 @@ export default function GroupsPage() {
                         Add
                       </Button>
                     </div>
-                  </details>
+                  </details>}
                 </div>
               )}
 
@@ -937,14 +953,14 @@ export default function GroupsPage() {
                 </div>
               )}
 
-              <Button
+              {canMakeInvoices && <Button
                 size="sm" variant="outline" className="w-full gap-1.5"
                 disabled={generateInvoicesMutation.isPending}
                 onClick={() => generateInvoicesMutation.mutate()}
               >
                 {generateInvoicesMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wallet className="w-3.5 h-3.5" />}
                 Generate invoices for current cycle
-              </Button>
+              </Button>}
 
               {financials.students.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-6">No invoices generated for this group yet.</p>

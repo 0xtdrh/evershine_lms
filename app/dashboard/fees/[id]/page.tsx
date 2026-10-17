@@ -1,5 +1,6 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -119,6 +120,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
   
   const { data: session } = useSession()
   const role = (session?.user?.role as string) || ''
+  const { can } = useMyPermissions()
 
   // Student upload state
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -446,7 +448,8 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
   // Double check if challan can be deleted (only if ISSUED/unpaid)
   const canDelete = invoice.status === 'ISSUED' && paid === 0
   
-  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'].includes(role)
+  // pay / edit / verify / cancel = fees:update, delete = fees:delete — the same permissions the APIs check
+  const isAdmin = !['STUDENT', 'PARENT', 'GUARDIAN', 'TEACHER'].includes(role) && can('fees', 'update')
   const isStudentOrGuardian = ['STUDENT', 'PARENT', 'GUARDIAN'].includes(role)
   const canEdit = isAdmin && paid === 0 && ['ISSUED', 'OVERDUE'].includes(invoice.status)
   const openEditDialog = () => {
@@ -560,7 +563,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
           )}
 
           {/* Delete (Admin only & Unpaid) */}
-          {isAdmin && canDelete && (
+          {can('fees', 'delete') && canDelete && (
             <Button 
               variant="outline" 
               onClick={() => { if(confirm('Are you sure you want to permanently delete this unpaid fee invoice?')) deleteMutation.mutate() }}

@@ -1,5 +1,6 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -96,9 +97,13 @@ export default function StudentsListPage() {
   const { data: session, status } = useSession()
   const queryClient = useQueryClient()
   const userRole = session?.user?.role as string | undefined
-  const canManage = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'BRANCH_MANAGER' || userRole === 'SECRETARY'
-  const canExport = canManage || userRole === 'ACCOUNTANT'
-  const canViewStudents = ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'].includes(userRole ?? '')
+  // buttons follow the effective permissions (role + Permissions page + place / personal overrides) like the APIs
+  const { can, ready: permsReady } = useMyPermissions()
+  const isPortalOrTeacher = ['TEACHER', 'STUDENT', 'PARENT', 'GUARDIAN'].includes(userRole ?? '')
+  const canManage = can('students', 'update')
+  const canAdmit = can('students', 'create')
+  const canViewStudents = !isPortalOrTeacher && can('students', 'read') // teachers use Teacher Portal → My Students
+  const canExport = canViewStudents
 
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -192,7 +197,7 @@ export default function StudentsListPage() {
     }
   }
 
-  if (status === 'loading') return null
+  if (status === 'loading' || (status === 'authenticated' && !permsReady)) return null
   if (!canViewStudents) {
     return (
       <AccessDenied
@@ -233,7 +238,7 @@ export default function StudentsListPage() {
               {exporting ? 'Exporting…' : 'Export Excel'}
             </Button>
           )}
-          {canManage && (
+          {canAdmit && (
             <>
               <Link href="/dashboard/admissions" className="flex-1 sm:flex-initial">
                 <Button variant="outline" size="sm" className="gap-2 w-full h-9 text-xs">

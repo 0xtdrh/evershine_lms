@@ -2,11 +2,11 @@
 
 /** LMS L1: curriculum library — Track > Course > Level, with the curriculum status of each level. */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
-import { checkPermission } from '@/lib/rbac'
 import { L, useI18n } from '@/lib/i18n/client'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,9 +19,11 @@ export default function CurriculumPage() {
   const { data: session } = useSession()
   const { t } = useI18n()
   const role = session?.user?.role
-  const allowed = !!role && checkPermission(role, 'curriculum', 'read')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('curriculum', 'read')
   const { data, isLoading } = useQuery({ queryKey: ['curriculum-tree'], queryFn: () => fetchApi<Tree>('/api/curriculum/tree'), enabled: allowed })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title={L('Curriculum', 'المنهج')} message={L("You don't have access to the curriculum.", 'مش عندك صلاحية للمنهج.')} />
   return (
     <div className="space-y-6">

@@ -6,13 +6,13 @@
  * Staff with complaints permissions: the queue, phone complaints, the monthly report, settings.
  */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { checkPermission } from '@/lib/rbac'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -186,8 +186,9 @@ export default function ComplaintsPage() {
   const { data: session } = useSession()
   useI18n() // re-render on a language switch
   const role = session?.user?.role ?? ''
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
   const portal = ['STUDENT', 'PARENT', 'GUARDIAN'].includes(role)
-  const staffRead = !!role && checkPermission(role, 'complaints', 'read')
+  const staffRead = can('complaints', 'read')
   const [open, setOpen] = useState<string | null>(null)
   const [status, setStatus] = useState('OPEN')
   const [kind, setKind] = useState('all')
@@ -220,8 +221,8 @@ export default function ComplaintsPage() {
         <Tabs value={urlTab ?? 'queue'} onValueChange={setUrlTab}>
           <TabsList>
             <TabsTrigger value="queue">{L('Queue', 'الطابور')}</TabsTrigger>
-            {checkPermission(role, 'complaints', 'create') && <TabsTrigger value="phone">{L('Record by phone', 'تسجيل من التليفون')}</TabsTrigger>}
-            {checkPermission(role, 'complaints', 'export') && <TabsTrigger value="report">{L('Report', 'التقرير')}</TabsTrigger>}
+            {can('complaints', 'create') && <TabsTrigger value="phone">{L('Record by phone', 'تسجيل من التليفون')}</TabsTrigger>}
+            {can('complaints', 'export') && <TabsTrigger value="report">{L('Report', 'التقرير')}</TabsTrigger>}
           </TabsList>
           <TabsContent value="queue" className="mt-4 space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -245,7 +246,7 @@ export default function ComplaintsPage() {
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : <RowList rows={rows} onOpen={setOpen} staff />}
           </TabsContent>
           <TabsContent value="phone" className="mt-4"><Card><CardContent className="pt-5"><NewMessageForm portal={false} onDone={refresh} /></CardContent></Card></TabsContent>
-          <TabsContent value="report" className="mt-4"><ReportTab canEdit={checkPermission(role, 'complaints', 'export')} /></TabsContent>
+          <TabsContent value="report" className="mt-4"><ReportTab canEdit={can('complaints', 'export')} /></TabsContent>
         </Tabs>
       )}
 

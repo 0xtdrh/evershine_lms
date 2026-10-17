@@ -1,10 +1,10 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { use } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi, fetchPaginatedApi } from '@/lib/api-client'
 import { useSession } from 'next-auth/react'
-import { checkPermission } from '@/lib/rbac'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -135,6 +135,10 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   const role = session?.user?.role as string | undefined
   const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN'
   const isStudentUser = role === 'STUDENT'
+  // action buttons follow the effective permissions, the same ones the APIs check
+  const { can } = useMyPermissions()
+  const isStaff = !!role && !['TEACHER', 'STUDENT', 'PARENT', 'GUARDIAN'].includes(role)
+  const canEditStudent = isStaff && can('students', 'update')
 
   const { data: student, isLoading, error } = useQuery<StudentDetail>({
     queryKey: ['student', id],
@@ -217,7 +221,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          {isAdmin && (
+          {canEditStudent && (
             <>
               <StudentAdminToolbar
                 studentId={student.id}
@@ -234,12 +238,12 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             </>
           )}
           {/* P1: passport (stamps, printing) — read by every staff role that may see the student */}
-          {session?.user?.role && checkPermission(session.user.role, 'passport', 'read') && (
+          {can('passport', 'read') && (
             <Link href={`/dashboard/passport?s=${id}`}>
               <Button variant="outline" size="sm" className="gap-2">📘 Passport</Button>
             </Link>
           )}
-          {session?.user?.role && checkPermission(session.user.role, 'passport', 'read') && (
+          {can('passport', 'read') && (
             <Link href={`/dashboard/profile?s=${id}`}>
               <Button variant="outline" size="sm" className="gap-2">👤 Profile</Button>
             </Link>
@@ -399,23 +403,23 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             studentId={student.id}
             campusId={student.campus.id}
             batchId={student.batch?.id}
-            canManage={isAdmin}
+            canManage={canEditStudent}
           />
 
           <StudentPromotionPanel
             studentId={student.id}
             studentName={`${student.firstName} ${student.lastName}`}
             enrollments={student.enrollments ?? []}
-            canManage={isAdmin}
+            canManage={canEditStudent}
           />
 
           <StudentGuardianPanel
             studentId={student.id}
             guardians={student.guardians ?? []}
-            canManage={isAdmin}
+            canManage={canEditStudent}
           />
 
-          <GuardianBirthdaysCard guardians={student.guardians ?? []} canEdit={isAdmin || role === 'BRANCH_MANAGER' || role === 'SECRETARY'} />
+          <GuardianBirthdaysCard guardians={student.guardians ?? []} canEdit={canEditStudent} />
 
           <StudentReportsList studentId={student.id} />
 
@@ -423,12 +427,12 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
           <StudentMarketingFlag studentId={student.id} canEdit={isAdmin || role === 'BRANCH_MANAGER'} />
 
-          <StudentPortalAccessCard
+          {can('account_management', 'update') && <StudentPortalAccessCard
             studentId={student.id}
             studentName={`${student.firstName} ${student.lastName}`}
             guardians={student.guardians ?? []}
             hasStudentAccount={!!student.user}
-          />
+          />}
 
           <StudentDiscountsCard
             studentId={student.id}

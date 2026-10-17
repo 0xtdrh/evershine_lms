@@ -2,12 +2,12 @@
 
 /** LMS L3: rubric library — reusable grading tables (criteria × levels with points), for every course or one course. */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { checkPermission } from '@/lib/rbac'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -89,9 +89,10 @@ export default function RubricsPage() {
   useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const role = session?.user?.role
-  const allowed = !!role && checkPermission(role, 'curriculum', 'read')
-  const canEdit = !!role && checkPermission(role, 'curriculum', 'update')
-  const canDelete = !!role && checkPermission(role, 'curriculum', 'delete')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('curriculum', 'read')
+  const canEdit = can('curriculum', 'update')
+  const canDelete = can('curriculum', 'delete')
   const qc = useQueryClient()
   const { data, isLoading } = useQuery({ queryKey: ['rubrics', 'all'], queryFn: () => fetchApi<Rubric[]>('/api/rubrics'), enabled: allowed })
   const { data: tree } = useQuery({ queryKey: ['curriculum-tree'], queryFn: () => fetchApi<Tree>('/api/curriculum/tree'), enabled: allowed })
@@ -99,6 +100,7 @@ export default function RubricsPage() {
   const [edit, setEdit] = useState<ReturnType<typeof blank> | null>(null)
   const del = useMutation({ mutationFn: (id: string) => fetchApi(`/api/rubrics/${id}`, { method: 'DELETE' }), onSuccess: () => qc.invalidateQueries({ queryKey: ['rubrics'] }) })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title={L('Rubrics', 'جداول التصحيح')} message={L("You don't have access to rubrics.", 'مش عندك صلاحية لجداول التصحيح.')} />
   return (
     <div className="space-y-5">

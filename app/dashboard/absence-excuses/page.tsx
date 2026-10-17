@@ -2,13 +2,13 @@
 
 /** Phase C: parents' absence excuses — review, history, settings (docs/design-phase-c.md). */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { checkPermission } from '@/lib/rbac'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -130,8 +130,10 @@ export default function AbsenceExcusesPage() {
   const [urlTab, setUrlTab] = useUrlTab()
   const { data: session } = useSession()
   const role = session?.user?.role
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
   if (!role) return null
-  if (!checkPermission(role, 'absence_excuses', 'read')) return <AccessDenied title="Absence excuses" message="You don't have access to absence excuses." />
+  if (role && !permsReady) return null
+  if (!can('absence_excuses', 'read')) return <AccessDenied title="Absence excuses" message="You don't have access to absence excuses." />
   return (
     <div className="space-y-6">
       <div>
@@ -146,7 +148,7 @@ export default function AbsenceExcusesPage() {
         </TabsList>
         <TabsContent value="pending" className="mt-4"><ExcuseList status="PENDING" /></TabsContent>
         <TabsContent value="all" className="mt-4"><ExcuseList status="ALL" /></TabsContent>
-        {role !== 'TEACHER' && <TabsContent value="settings" className="mt-4"><ExcuseSettings canEdit={checkPermission(role, 'absence_excuses', 'update')} /></TabsContent>}
+        {role !== 'TEACHER' && <TabsContent value="settings" className="mt-4"><ExcuseSettings canEdit={can('absence_excuses', 'update')} /></TabsContent>}
       </Tabs>
     </div>
   )

@@ -2,12 +2,12 @@
 
 /** Platform: master switches for whole modules + the default language for staff and for the portal. */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { checkPermission } from '@/lib/rbac'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,8 +19,9 @@ interface Data { modules: Record<string, boolean>; language: { staff: 'en' | 'ar
 export default function PlatformPage() {
   const { data: session } = useSession()
   const role = session?.user?.role
-  const allowed = !!role && checkPermission(role, 'platform_settings', 'read')
-  const canEdit = !!role && checkPermission(role, 'platform_settings', 'update')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('platform_settings', 'read')
+  const canEdit = can('platform_settings', 'update')
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['platform-settings'], queryFn: () => fetchApi<Data>('/api/platform/settings'), enabled: allowed })
   const [modules, setModules] = useState<Record<string, boolean>>({})
@@ -32,6 +33,7 @@ export default function PlatformPage() {
     onError: (e: Error) => notify.error(e.message),
   })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title="Platform" message="You don't have access to the platform settings." />
   return (
     <div className="space-y-6">

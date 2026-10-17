@@ -1,5 +1,6 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -61,6 +62,10 @@ function StudentCell({ s }: { s: WStudent }) {
 export default function WaitingListPage() {
   const { data: session } = useSession()
   const role = session?.user?.role as string | undefined
+  const { can } = useMyPermissions()
+  const canAddToGroup = can('class_sections', 'update') // POST /api/groups/[id]/students
+  const canWish = can('waiting_list', 'create')
+  const canCancelWish = can('waiting_list', 'update')
   const queryClient = useQueryClient()
 
   const [campusFilter, setCampusFilter] = useState<string>('ALL')
@@ -165,12 +170,12 @@ export default function WaitingListPage() {
 
   const actions = (s: WStudent, opts: { courseId?: string | null; levelId?: string | null } = {}) => (
     <div className="flex flex-wrap gap-2">
-      <Button size="sm" variant="outline" onClick={() => { setAddTo({ student: s, preferCourseId: opts.courseId, preferLevelId: opts.levelId }); setGroupId('') }}>
+      {canAddToGroup && <Button size="sm" variant="outline" onClick={() => { setAddTo({ student: s, preferCourseId: opts.courseId, preferLevelId: opts.levelId }); setGroupId('') }}>
         <UserPlus className="mr-1 h-4 w-4" /> Add to group
-      </Button>
-      <Button size="sm" variant="ghost" onClick={() => openWish(s, opts.courseId ?? '', opts.levelId ?? null)}>
+      </Button>}
+      {canWish && <Button size="sm" variant="ghost" onClick={() => openWish(s, opts.courseId ?? '', opts.levelId ?? null)}>
         <ListPlus className="mr-1 h-4 w-4" /> Waiting list
-      </Button>
+      </Button>}
     </div>
   )
 
@@ -328,12 +333,12 @@ export default function WaitingListPage() {
                     {w.notes && <p className="text-xs text-muted-foreground">{w.notes}</p>}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => { setAddTo({ student: w.student, preferCourseId: w.course.id, preferLevelId: w.level?.id }); setGroupId('') }}>
+                    {canAddToGroup && <Button size="sm" variant="outline" onClick={() => { setAddTo({ student: w.student, preferCourseId: w.course.id, preferLevelId: w.level?.id }); setGroupId('') }}>
                       <UserPlus className="mr-1 h-4 w-4" /> Add to group
-                    </Button>
-                    <Button size="sm" variant="ghost" disabled={cancelWish.isPending} onClick={() => cancelWish.mutate(w.id)}>
+                    </Button>}
+                    {canCancelWish && <Button size="sm" variant="ghost" disabled={cancelWish.isPending} onClick={() => cancelWish.mutate(w.id)}>
                       <X className="mr-1 h-4 w-4" /> Remove
-                    </Button>
+                    </Button>}
                   </div>
                 </div>
               ))}

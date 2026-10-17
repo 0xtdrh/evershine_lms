@@ -2,12 +2,12 @@
 
 /** Phase C: student and parent ratings — averages per instructor, latest surveys, low ratings. */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
-import { checkPermission } from '@/lib/rbac'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -27,10 +27,12 @@ const tone = (v: number | null, of: number) => (v == null ? '' : v / of < 0.5 ? 
 export default function RatingsPage() {
   const { data: session } = useSession()
   const role = session?.user?.role
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
   const [days, setDays] = useState('90')
-  const allowed = !!role && checkPermission(role, 'ratings', 'read')
+  const allowed = can('ratings', 'read')
   const { data, isLoading } = useQuery({ queryKey: ['ratings-overview', days], queryFn: () => fetchApi<Overview>(`/api/ratings/overview?days=${days}`), enabled: allowed })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title="Ratings" message="You don't have access to ratings." />
   return (
     <div className="space-y-6">

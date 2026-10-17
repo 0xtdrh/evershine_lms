@@ -6,13 +6,13 @@
  * booklet price, company stamp + signature).
  */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { checkPermission } from '@/lib/rbac'
 import { L, useI18n } from '@/lib/i18n/client'
 import { AccessDenied } from '@/components/AccessDenied'
 import QRScannerModal from '@/components/QRScannerModal'
@@ -226,12 +226,14 @@ export default function PassportAdminPage() {
   const ar = locale === 'ar'
   const qc = useQueryClient()
   const role = session?.user?.role ?? ''
-  const allowed = !!role && checkPermission(role, 'passport', 'read')
-  const canEdit = !!role && checkPermission(role, 'passport', 'approve')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('passport', 'read')
+  const canEdit = can('passport', 'approve')
   const { data, isLoading } = useQuery({ queryKey: ['passport-stamps'], queryFn: () => fetchApi<Stamp[]>('/api/passport/stamps'), enabled: allowed })
   const [edit, setEdit] = useState<Partial<Stamp> | null>(null)
   const [scan, setScan] = useState<Stamp | null>(null)
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title={L('Passport', 'الجواز')} message={L("You don't have access to the passport settings.", 'مش عندك صلاحية لإعدادات الجواز.')} />
   const download = async (s: Stamp) => {
     const url = await stampPng({ ...s, nameAr: s.nameAr || s.nameEn, date: null }, ar, { size: 2000, mono: true })

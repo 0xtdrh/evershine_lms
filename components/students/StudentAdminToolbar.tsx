@@ -1,5 +1,6 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -29,6 +30,8 @@ export function StudentAdminToolbar({
   const [busy, setBusy] = useState(false)
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
+  const { can } = useMyPermissions()
+  const canSuspend = can('students', 'update') // PATCH /api/students/[id], /reactivate
 
   const primaryEnrollment = enrollments.find((e) => e.status === 'ACTIVE')
 
@@ -84,7 +87,7 @@ export function StudentAdminToolbar({
           <ArrowUpCircle className="w-3.5 h-3.5" /> Promote
         </Button>
       </Link>
-      {enrollmentStatus === 'SUSPENDED' ? (
+      {!canSuspend ? null : enrollmentStatus === 'SUSPENDED' ? (
         <Button
           variant="outline"
           size="sm"

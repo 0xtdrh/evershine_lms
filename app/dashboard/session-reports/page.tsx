@@ -5,6 +5,7 @@
  * to review, sessions without attendance) and the settings. Secretaries read only; instructors see their groups.
  */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -12,7 +13,6 @@ import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { checkPermission } from '@/lib/rbac'
 import { L, useI18n } from '@/lib/i18n/client'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Button } from '@/components/ui/button'
@@ -100,8 +100,9 @@ export default function SessionReportsPage() {
   const { data: session } = useSession()
   const { dir } = useI18n()
   const role = session?.user?.role ?? ''
-  const allowed = !!role && checkPermission(role, 'session_reports', 'read')
-  const canSettings = !!role && checkPermission(role, 'session_reports', 'approve')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('session_reports', 'read')
+  const canSettings = can('session_reports', 'approve')
   const [from, setFrom] = useState(ymd(new Date(Date.now() - 14 * DAY)))
   const [to, setTo] = useState(ymd(new Date()))
   const [status, setStatus] = useState('ALL')
@@ -109,6 +110,7 @@ export default function SessionReportsPage() {
   const qs = new URLSearchParams({ from, to, ...(status !== 'ALL' ? { status } : {}) }).toString()
   const { data, isLoading } = useQuery({ queryKey: ['session-reports', qs], queryFn: () => fetchApi<ListData>(`/api/session-reports?${qs}`), enabled: allowed })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title={L('Session reports', 'تقارير الحصص')} message={L("You don't have access to session reports.", 'مش عندك صلاحية لتقارير الحصص.')} />
   const incomplete = (data?.reports ?? []).filter((r) => r.missing.length)
   const notDone = incomplete.length + (data?.noAttendance.length ?? 0)

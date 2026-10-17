@@ -1,5 +1,6 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -58,7 +59,8 @@ export default function TeachersPage() {
   const { data: session, status } = useSession()
   const queryClient = useQueryClient()
   const role = session?.user?.role as string | undefined
-  const canAdd = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER'
+  const { can } = useMyPermissions()
+  const canAdd = can('teachers', 'create') // same permission as POST /api/teachers
   const canViewTeachers = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'SECRETARY'
   const limit = 20
 
@@ -228,7 +230,7 @@ export default function TeachersPage() {
                         >
                           View →
                         </Button>
-                        {canAdd && (
+                        {can('teachers', 'delete') && (
                           <Button
                             variant="ghost"
                             size="sm"

@@ -2,13 +2,13 @@
 
 /** Phase D: referrals — who referred whom, top referrers / ambassadors, reward settings. */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { checkPermission } from '@/lib/rbac'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -60,9 +60,11 @@ function SettingsCard({ canEdit }: { canEdit: boolean }) {
 export default function ReferralsPage() {
   const { data: session } = useSession()
   const role = session?.user?.role
-  const allowed = !!role && checkPermission(role, 'referrals', 'read')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('referrals', 'read')
   const { data, isLoading } = useQuery({ queryKey: ['referrals'], queryFn: () => fetchApi<Report>('/api/referrals'), enabled: allowed })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title="Referrals" message="You don't have access to referrals." />
   return (
     <div className="space-y-6">
@@ -90,7 +92,7 @@ export default function ReferralsPage() {
                 {!data.top.length && <p className="text-slate-500">No referrals yet.</p>}
               </CardContent>
             </Card>
-            <SettingsCard canEdit={checkPermission(role, 'referrals', 'update')} />
+            <SettingsCard canEdit={can('referrals', 'update')} />
           </div>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-base">All referrals</CardTitle></CardHeader>

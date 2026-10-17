@@ -1,5 +1,6 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -66,6 +67,8 @@ function apiErrorMessage(err: unknown, fallback: string): string {
 }
 
 export default function CourseConfigPage() {
+  // buttons follow the same permissions as the APIs (tracks / levels = class_sections, courses = subject_offerings)
+  const { can } = useMyPermissions()
   const queryClient = useQueryClient()
 
   // ── Tracks ────────────────────────────────────────────────────────────
@@ -245,9 +248,9 @@ export default function CourseConfigPage() {
             </CardTitle>
             <CardDescription>Tap a track to manage its courses.</CardDescription>
           </div>
-          <Button size="sm" className="gap-1.5" onClick={() => setTrackDialogOpen(true)}>
+          {can('class_sections', 'create') && <Button size="sm" className="gap-1.5" onClick={() => setTrackDialogOpen(true)}>
             <Plus className="w-3.5 h-3.5" /> Add track
-          </Button>
+          </Button>}
         </CardHeader>
         <CardContent>
           {isTracksLoading ? (
@@ -298,9 +301,9 @@ export default function CourseConfigPage() {
                 Courses {selectedTrack ? `in ${selectedTrack.name}` : '(unassigned)'}
               </CardTitle>
             </div>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={openCreateCourse}>
+            {can('subject_offerings', 'create') && <Button size="sm" variant="outline" className="gap-1.5" onClick={openCreateCourse}>
               <Plus className="w-3.5 h-3.5" /> Add course
-            </Button>
+            </Button>}
           </CardHeader>
           <CardContent>
             {coursesInTrack.length === 0 ? (
@@ -319,12 +322,12 @@ export default function CourseConfigPage() {
                       <p className="text-xs text-slate-400">{c.code} · {c._count?.levels ?? 0} levels</p>
                     </button>
                     <div className="flex items-center gap-1">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditCourse(c)}>
+                      {can('subject_offerings', 'update') && <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditCourse(c)}>
                         <Pencil className="w-3.5 h-3.5 text-slate-500" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setDeleteCourseTarget(c)}>
+                      </Button>}
+                      {can('subject_offerings', 'delete') && <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setDeleteCourseTarget(c)}>
                         <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                      </Button>
+                      </Button>}
                     </div>
                   </div>
                 ))}
@@ -344,9 +347,9 @@ export default function CourseConfigPage() {
               </Button>
               <CardTitle className="text-base">Levels for {selectedCourse.name}</CardTitle>
             </div>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setLevelDialogOpen(true)}>
+            {can('class_sections', 'create') && <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setLevelDialogOpen(true)}>
               <Plus className="w-3.5 h-3.5" /> Add level
-            </Button>
+            </Button>}
           </CardHeader>
           <CardContent>
             {isLevelsLoading ? (

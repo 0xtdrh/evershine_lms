@@ -2,12 +2,12 @@
 
 /** LMS L4: question bank — questions of a course (and level), with difficulty; quizzes can draw random questions from it. */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { checkPermission } from '@/lib/rbac'
 import { AccessDenied } from '@/components/AccessDenied'
 import { QuestionEditor, typeLabel, blankQuestion, cleanQuestion, type Q } from '@/components/quizzes/QuestionEditor'
 import { Card, CardContent } from '@/components/ui/card'
@@ -27,9 +27,10 @@ export default function QuestionBankPage() {
   useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const role = session?.user?.role
-  const allowed = !!role && checkPermission(role, 'curriculum', 'read')
-  const canEdit = !!role && checkPermission(role, 'curriculum', 'update')
-  const canDelete = !!role && checkPermission(role, 'curriculum', 'delete')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('curriculum', 'read')
+  const canEdit = can('curriculum', 'update')
+  const canDelete = can('curriculum', 'delete')
   const qc = useQueryClient()
   const { data: tree } = useQuery({ queryKey: ['curriculum-tree'], queryFn: () => fetchApi<Tree>('/api/curriculum/tree'), enabled: allowed })
   const courses = (tree?.tree ?? []).flatMap((t) => t.courses)
@@ -50,6 +51,7 @@ export default function QuestionBankPage() {
   })
   const del = useMutation({ mutationFn: (id: string) => fetchApi(`/api/questions/${id}`, { method: 'DELETE' }), onSuccess: () => qc.invalidateQueries({ queryKey: ['questions'] }) })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title={L('Question bank', 'بنك الأسئلة')} message={L("You don't have access to the question bank.", 'مش عندك صلاحية لبنك الأسئلة.')} />
   return (
     <div className="space-y-5">

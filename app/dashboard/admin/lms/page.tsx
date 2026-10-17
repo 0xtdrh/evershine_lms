@@ -2,12 +2,12 @@
 
 /** LMS settings: how lessons open (company default + per level), watermark, kid mode age. Groups can override on their lesson panel. */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { checkPermission } from '@/lib/rbac'
 import { AccessDenied } from '@/components/AccessDenied'
 import { modeLabel } from '@/components/lms/GroupLessonsPanel'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -107,8 +107,9 @@ export default function LmsSettingsPage() {
   useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const role = session?.user?.role
-  const allowed = !!role && checkPermission(role, 'curriculum', 'read')
-  const canEdit = !!role && checkPermission(role, 'curriculum', 'approve')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('curriculum', 'read')
+  const canEdit = can('curriculum', 'approve')
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['lms-settings'], queryFn: () => fetchApi<Data>('/api/lessons/settings'), enabled: allowed })
   const [f, setF] = useState<Settings | null>(null)
@@ -119,6 +120,7 @@ export default function LmsSettingsPage() {
     onError: (e: Error) => notify.error(e.message),
   })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title={L('LMS settings', 'إعدادات المنصة')} message={L("You don't have access to the LMS settings.", 'مش عندك صلاحية لإعدادات المنصة.')} />
   return (
     <div className="space-y-6">

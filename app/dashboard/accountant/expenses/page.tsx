@@ -1,5 +1,6 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useI18n } from '@/lib/i18n/client'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useMemo, useState } from 'react'
@@ -49,7 +50,10 @@ export default function AccountantExpensesPage() {
   const catId = (v: string | null | undefined) => categoryDefs.find((c) => c.id === v || c.key === v)?.id ?? v ?? ''
   const catName = (e: { categoryId?: string | null; category: string }) => { const c = categoryDefs.find((d) => d.id === e.categoryId) ?? categoryDefs.find((d) => d.key === e.category); return c ? (ar ? c.nameAr : c.nameEn) : e.category }
   const role = (session?.user?.role as string) || ''
-  const canAccess = ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'].includes(role)
+  // the page and its buttons follow the expense permissions (Permissions page / overrides), like the APIs
+  const { can, ready: permsReady } = useMyPermissions()
+  const canAccess = !['STUDENT', 'PARENT', 'GUARDIAN', 'TEACHER'].includes(role) && can('expenses', 'read')
+  const canCreate = can('expenses', 'create'), canUpdate = can('expenses', 'update'), canDelete = can('expenses', 'delete'), canExport = can('expenses', 'export')
 
   const queryClient = useQueryClient()
   const userCampusId = (session?.user as any)?.campusId
@@ -274,6 +278,7 @@ export default function AccountantExpensesPage() {
   })
 
   if (status === 'loading') return null
+  if (!permsReady && !!role) return null
   if (!canAccess) {
     return (
       <AccessDenied
@@ -397,8 +402,8 @@ export default function AccountantExpensesPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-        <Card>
+      <div className={`grid gap-6 ${canCreate ? 'lg:grid-cols-[420px_1fr]' : ''}`}>
+        {canCreate && <Card>
           <CardHeader>
             <CardTitle>New expense</CardTitle>
             <CardDescription>Record a campus cost directly to the finance ledger.</CardDescription>
@@ -491,7 +496,7 @@ export default function AccountantExpensesPage() {
               {mutation.isPending ? 'Saving…' : isLoadingExpenseColumns ? 'Checking schema…' : 'Record expense'}
             </Button>
           </CardContent>
-        </Card>
+        </Card>}
 
         <Card>
           <CardHeader>
@@ -521,9 +526,9 @@ export default function AccountantExpensesPage() {
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-slate-500">Filter the ledger instantly; export the current view to Excel for finance reporting.</p>
-              <Button variant="outline" onClick={exportExpenses} className="gap-2 border-teal-200 text-teal-700 hover:bg-teal-50">
+              {canExport && <Button variant="outline" onClick={exportExpenses} className="gap-2 border-teal-200 text-teal-700 hover:bg-teal-50">
                 <Download className="h-4 w-4" /> Export Excel
-              </Button>
+              </Button>}
             </div>
           </CardContent>
           <CardContent className="space-y-3">
@@ -553,15 +558,15 @@ export default function AccountantExpensesPage() {
                     <div className="flex flex-col items-start gap-3 text-right md:items-end">
                       <span className="text-sm font-semibold text-slate-900">{formatCurrency(item.amount)}</span>
                       <div className="flex flex-wrap gap-2">
-                        <Button
+                        {canUpdate && <Button
                           variant="outline"
                           size="sm"
                           className="gap-2 border-slate-300 text-slate-700"
                           onClick={() => openEditModal(item)}
                         >
                           <Edit3 className="h-4 w-4" /> Edit
-                        </Button>
-                        <Button
+                        </Button>}
+                        {canDelete && <Button
                           variant="outline"
                           size="sm"
                           className="gap-2 border-red-200 text-red-700 hover:bg-red-50"
@@ -569,7 +574,7 @@ export default function AccountantExpensesPage() {
                           disabled={isDeletingExpense}
                         >
                           <Trash2 className="h-4 w-4" /> Delete
-                        </Button>
+                        </Button>}
                       </div>
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { L } from '@/lib/i18n/client'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -63,8 +64,11 @@ export default function CampusesPage() {
   const queryClient = useQueryClient()
 
   const role = session?.user?.role ?? 'STUDENT'
-  const isSuperAdmin = role === 'SUPER_ADMIN'
-  const isAdminOrSuper = role === 'SUPER_ADMIN' || role === 'ADMIN'
+  // buttons follow the branch permissions (create / update / deactivate), like the APIs
+  const { can } = useMyPermissions()
+  const isSuperAdmin = can('campuses', 'create')
+  const canDeactivate = can('campuses', 'delete')
+  const isAdminOrSuper = can('campuses', 'update')
 
   // Primary page search & creation states
   const [search, setSearch] = useState('')
@@ -541,7 +545,7 @@ export default function CampusesPage() {
               </form>
 
               {/* Danger Zone Soft Deactivation */}
-              {isSuperAdmin && selectedCampus?.isActive && (
+              {canDeactivate && selectedCampus?.isActive && (
                 <div className="pt-6 border-t mt-6">
                   <h4 className="text-sm font-black text-red-600 flex items-center gap-1.5">
                     <AlertCircle className="w-4 h-4" /> Danger Zone

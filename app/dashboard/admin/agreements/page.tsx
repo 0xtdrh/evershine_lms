@@ -2,13 +2,13 @@
 
 /** Agreements centre: write the agreements, publish versions, see who accepted, remind, export. */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { GroupRulesEditor } from '@/components/rules/GroupRulesEditor'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { checkPermission } from '@/lib/rbac'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -103,12 +103,14 @@ function StatusView({ id, canRemind }: { id: string; canRemind: boolean }) {
 export default function AgreementsPage() {
   const { data: session } = useSession()
   const role = session?.user?.role
-  const allowed = !!role && checkPermission(role, 'agreements', 'read')
-  const canEdit = !!role && checkPermission(role, 'agreements', 'update')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('agreements', 'read')
+  const canEdit = can('agreements', 'update')
   const [edit, setEdit] = useState<Agreement | 'new' | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const { data, isLoading } = useQuery({ queryKey: ['agreements'], queryFn: () => fetchApi<Agreement[]>('/api/agreements'), enabled: allowed })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title="Agreements" message="You don't have access to agreements." />
   return (
     <div className="space-y-6">
@@ -120,7 +122,7 @@ export default function AgreementsPage() {
             The starting texts are DRAFTS — review them (ideally with a lawyer) before switching them on.
           </p>
         </div>
-        {checkPermission(role, 'agreements', 'create') && <Button className="gap-1" onClick={() => setEdit('new')}><Plus className="h-4 w-4" /> New agreement</Button>}
+        {can('agreements', 'create') && <Button className="gap-1" onClick={() => setEdit('new')}><Plus className="h-4 w-4" /> New agreement</Button>}
       </div>
       {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : (
         <div className="grid gap-3 md:grid-cols-2">

@@ -2,12 +2,12 @@
 
 /** Phase C: switch each notification type on or off for everyone. */
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { checkPermission } from '@/lib/rbac'
 import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,8 +18,9 @@ interface Event { key: string; label: string; description: string; audience: 'PA
 export default function NotificationSettingsPage() {
   const { data: session } = useSession()
   const role = session?.user?.role
-  const allowed = !!role && checkPermission(role, 'notification_settings', 'read')
-  const canEdit = !!role && checkPermission(role, 'notification_settings', 'update')
+  const { can, ready: permsReady } = useMyPermissions() // effective permissions (Permissions page + overrides)
+  const allowed = can('notification_settings', 'read')
+  const canEdit = can('notification_settings', 'update')
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['notification-settings'], queryFn: () => fetchApi<{ whatsappAuto: boolean; events: Event[] }>('/api/notifications/settings'), enabled: allowed })
   const [on, setOn] = useState<Record<string, boolean>>({})
@@ -30,6 +31,7 @@ export default function NotificationSettingsPage() {
     onError: (e: Error) => notify.error(e.message),
   })
   if (!role) return null
+  if (role && !permsReady) return null
   if (!allowed) return <AccessDenied title="Notifications" message="You don't have access to notification settings." />
   const section = (aud: Event['audience'], title: string, desc: string) => (
     <Card>
