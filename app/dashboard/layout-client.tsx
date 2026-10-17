@@ -109,6 +109,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { name: 'Dashboard',       href: '/dashboard',              icon: LayoutDashboard },
+  { name: 'User Guide',      href: '/dashboard/guide',        icon: BookOpen },
   { name: 'Admin Workspace', href: '/dashboard/admin',        icon: ShieldCheck,     roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Permissions',     href: '/dashboard/admin/permissions',      icon: ShieldCheck,     roles: ['SUPER_ADMIN'] },
   { name: 'Notifications',   href: '/dashboard/admin/notifications',    icon: BellRing,        roles: ['SUPER_ADMIN', 'ADMIN'] },

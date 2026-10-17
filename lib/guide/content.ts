@@ -1,0 +1,139 @@
+/**
+ * User guide — what each role does in TechNova, step by step, with a link to the screen. Written in Egyptian Arabic
+ * (the staff's language) with English technical words; section titles also in English. Shown at /dashboard/guide:
+ * each person sees the sections of their role (admins see every role). tests/guide.test.ts checks every link has a page.
+ * When a new feature is added, add its step here too (one system).
+ */
+
+export type GuideRole = 'SETUP' | 'SECRETARY' | 'ACCOUNTANT' | 'BRANCH_MANAGER' | 'TEACHER' | 'PARENT' | 'STUDENT' | 'FAQ'
+
+export interface GuideStep { title: string; body: string; href?: string }
+export interface GuideSection { key: GuideRole; en: string; ar: string; who: string; steps: GuideStep[] }
+
+/** Which sections each signed-in role sees (admins see all, to train others). */
+export const SECTIONS_FOR_ROLE: Record<string, GuideRole[]> = {
+  SUPER_ADMIN: ['SETUP', 'SECRETARY', 'ACCOUNTANT', 'BRANCH_MANAGER', 'TEACHER', 'PARENT', 'STUDENT', 'FAQ'],
+  ADMIN: ['SETUP', 'SECRETARY', 'ACCOUNTANT', 'BRANCH_MANAGER', 'TEACHER', 'PARENT', 'STUDENT', 'FAQ'],
+  BRANCH_MANAGER: ['BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT', 'TEACHER', 'PARENT', 'FAQ'],
+  SECRETARY: ['SECRETARY', 'PARENT', 'FAQ'],
+  ACCOUNTANT: ['ACCOUNTANT', 'FAQ'],
+  MARKETING: ['SECRETARY', 'FAQ'],
+  TEACHER: ['TEACHER', 'FAQ'],
+  PARENT: ['PARENT', 'FAQ'],
+  GUARDIAN: ['PARENT', 'FAQ'],
+  STUDENT: ['STUDENT', 'FAQ'],
+}
+
+export const GUIDE: GuideSection[] = [
+  {
+    key: 'SETUP', en: 'First setup (owner / admin)', ar: 'أول إعداد للسيستم (المالك / الأدمن)', who: 'Super Admin · Admin',
+    steps: [
+      { title: 'خد نسخة احتياطي', body: 'قبل أي إدخال بيانات حقيقية: الإعدادات ← النسخ الاحتياطي ← «خد نسخة دلوقتي». السيستم بياخد نسخة لوحده كل يوم الفجر وبيحتفظ بآخر 7.', href: '/dashboard/admin/backups' },
+      { title: 'الفروع', body: 'ضيف الفروع الحقيقية بالعنوان والتليفون ومواعيد العمل وعدد القاعات. افتح أي فرع علشان تشوف ملفه (الجروبات والطلاب والمدربين).', href: '/dashboard/campuses' },
+      { title: 'هيكل الكورسات والأسعار', body: 'التراك ← الكورس ← المستوى. لكل مستوى: عدد الحصص، المدة بالشهور، والسعر (شهري أو المستوى كامل). ممكن سعر مختلف لفرع أو لجروب من صفحة الجروب.', href: '/dashboard/course-config' },
+      { title: 'إعدادات الدفع', body: 'الحسابات اللي الأهالي بيحوّلوا عليها (InstaPay، بنك، محفظة)، وطرق الدفع اللي الموظفين بيسجّلوا بيها، وأيام استحقاق الفاتورة، وشكل الإيصال. ماتكتبش أي حساب جوه الكود — كله من هنا.', href: '/dashboard/admin/finance-settings' },
+      { title: 'الخزن والحسابات', body: 'من نفس الصفحة (حسابات الفلوس): اعمل خزنة لكل فرع وحساب البنك، واربط كل طريقة دفع بالحساب اللي الفلوس بتروحه. من غير الربط ده الفلوس بتظهر «مش متسجلة على حساب».', href: '/dashboard/admin/finance-settings' },
+      { title: 'الرسوم الإضافية', body: 'رسوم التسجيل، الكيت، رسوم المنصة… مبلغها وكل إمتى، إجبارية ولا اختيارية، والاستثناءات (فرع / شريك / طالب / كورس)، واللي يحصل لو ماتدفعتش.', href: '/dashboard/fee-types' },
+      { title: 'الموظفين والصلاحيات', body: 'اعمل حسابات الموظفين (كل واحد بدوره وفرعه). صفحة الصلاحيات بتحدد كل دور يقدر يعمل إيه، وتقدر تدّي استثناء لشخص أو لفرع. الأزرار في الشاشات بتظهر بس للي عنده صلاحية.', href: '/dashboard/admin/permissions' },
+      { title: 'المدربين', body: 'ضيف المدربين، وحدد أجر كل واحد (ثابت / نسبة / بالحصة) والكورسات اللي يقدر يدرّسها — دي بتستخدم في اقتراح البدلاء.', href: '/dashboard/teachers' },
+      { title: 'استيراد البيانات القديمة', body: 'من «استيراد وتصدير»: نزّل نموذج Excel، املاه (طلاب، أولياء أمور، جروبات، مدربين)، وارفعه. السيستم بيراجع كل سطر قبل الحفظ وبيقولك على الغلط.', href: '/dashboard/data' },
+      { title: 'الاتفاقيات والسياسات', body: 'المسودات (الشروط، سياسة الاسترداد، الحضور، الدفع…) مقفولة لحد ما تراجعها مع محامي. علّم «صفحة عامة» على الشروط والاسترداد علشان Paymob.', href: '/dashboard/admin/agreements' },
+      { title: 'تشغيل الأنظمة والإشعارات', body: 'شغّل الأجزاء خطوة بخطوة (المنصة التعليمية، الاتفاقيات…) واختار الإشعارات اللي تتبعت. القفل مش بيمسح بيانات.', href: '/dashboard/admin/platform' },
+      { title: 'مركز الإعدادات', body: 'كل الإعدادات في مكان واحد، مقسّمة: الفلوس، الطلاب، التعليم، التواصل، النظام.', href: '/dashboard/settings-center' },
+    ],
+  },
+  {
+    key: 'SECRETARY', en: 'Front desk (secretary)', ar: 'الاستقبال (السكرتارية)', who: 'Secretary · Branch manager',
+    steps: [
+      { title: 'ابدأ يومك من «شغلك النهارده»', body: 'الصفحة الرئيسية فيها كل حاجة مستنياك: إيصالات تتراجع، متابعات، أعذار، جروبات خلّصت الشهر، أعياد ميلاد… دوس على أي واحدة تروح لها.', href: '/dashboard' },
+      { title: 'تسجيل طالب جديد', body: 'الطلاب ← «تسجيل جديد». اكتب بيانات الطالب وولي الأمر (رقم التليفون هو دخول ولي الأمر للبوابة). لو اخترت جروب، الطالب بيتضاف وفاتورة الشهر بتتعمل لوحدها.', href: '/dashboard/students/admission' },
+      { title: 'طلبات الأونلاين', body: 'الطلبات اللي جت من الموقع: راجعها، اختار الفرع والجروب، ووافق — بيتعمل ملف الطالب ورقم القيد.', href: '/dashboard/admissions' },
+      { title: 'إضافة طالب لجروب', body: 'الجروبات ← افتح الجروب ← دوّر باسم الطالب. لو الجروب مليان السيستم بيعرض قايمة الانتظار أو جروب تاني فيه مكان.', href: '/dashboard/groups' },
+      { title: 'قايمة الانتظار', body: 'الطلاب المستنيين كورس / مستوى، واللي خلّصوا ومكمّلوش، والجروبات اللي لسه مابدأتش. «ضيف لجروب» من هنا على طول.', href: '/dashboard/waiting-list' },
+      { title: 'تحصيل الفلوس', body: 'افتح الفاتورة ← «دفع». أو اشحن محفظة الطالب (المحفظة ← اشحن) والمحفظة بتدفع الفواتير المفتوحة لوحدها. كل دفعة ليها إيصال TN-RCPT تطبعه أو تبعته واتساب.', href: '/dashboard/wallet' },
+      { title: 'الحضور', body: 'الحضور ← اختار الجروب والتاريخ وسجّل. أول حضور للجروب بيحدد تاريخ بدايته، والأعذار المقبولة بتتسجل «بعذر» لوحدها.', href: '/dashboard/attendance/sections' },
+      { title: 'التواصل مع الأهالي', body: 'من صفحة الطالب ← «سجّل تواصل»: اكتب اللي اتقال وحدد ميعاد متابعة. المتابعات المستحقة بتظهر في «المتابعات» وفي شغل النهارده.', href: '/dashboard/follow-ups' },
+      { title: 'التجديدات', body: 'قبل آخر الشهر بحصتين السيستم بيسأل الأهالي «مكمّلين؟». تابع اللي مردّوش، وسجّل سبب اللي مش مكمّل.', href: '/dashboard/renewals' },
+      { title: 'دخول ولي الأمر للبوابة', body: 'صفحة الطالب ← «دخول البوابة» ← اعمل باسورد مؤقت وابعته واتساب. لازم يغيّره أول ما يدخل. ماتكتبش الباسورد في أي ملاحظة.', href: '/dashboard/students' },
+      { title: 'الشكاوى', body: 'سجّل الشكوى اللي جت بالتليفون، وحدد المسؤول. لازم تترد خلال 24 ساعة وإلا بتتصعّد.', href: '/dashboard/complaints' },
+    ],
+  },
+  {
+    key: 'ACCOUNTANT', en: 'Money (accountant)', ar: 'الفلوس (المحاسب)', who: 'Accountant · Branch manager · Admin',
+    steps: [
+      { title: 'مراجعة إيصالات التحويل', body: 'الأهالي بيرفعوا صورة التحويل. اتأكد إن الفلوس وصلت وبعدين وافق — الفاتورة بتتدفع أو المحفظة بتتشحن.', href: '/dashboard/wallet?tab=approve' },
+      { title: 'التحصيل والفواتير المتأخرة', body: 'التحصيل: مين دفع ومين لأ، وتصدير Excel للمتأخرين.', href: '/dashboard/accountant/fees' },
+      { title: 'الاسترداد', body: 'من الفاتورة ← «استرداد»: السيستم بيقترح المبلغ (المدفوع − الحصص اللي اتحضرت − المصاريف الإدارية). كاش أو رصيد في المحفظة. الموافقة لحد عنده الصلاحية.', href: '/dashboard/refunds' },
+      { title: 'المصاريف', body: 'سجّل كل مصروف ببنده وطريقة الدفع (كاش / بنك) — بيطلع من الخزنة أو الحساب لوحده. البنود بتضيفها وتعدّلها من «بنود المصاريف».', href: '/dashboard/accountant/expenses' },
+      { title: 'الخزن والجرد اليومي', body: 'رصيد كل خزنة وحساب لحظة بلحظة. آخر اليوم اعمل جرد: لو في فرق بيحتاج موافقة مدير. التحويل من الخزنة للبنك بيحتاج شخص تاني يوافق.', href: '/dashboard/treasury' },
+      { title: 'مطابقة كشف البنك', body: 'نزّل كشف الحساب Excel أو CSV من البنك وارفعه: السيستم بيطابق كل سطر مع حركة بنفس المبلغ في حدود 3 أيام، وبيوريك اللي في البنك بس واللي في السيستم بس.', href: '/dashboard/treasury?tab=reconcile' },
+      { title: 'التدفق النقدي وكل جنيه راح فين', body: 'الفلوس اللي دخلت وخرجت كل شهر، وتوقع الـ 30 يوم الجايين، والمتاح فعلاً بعد فلوس محافظ الأهالي.', href: '/dashboard/treasury?tab=cashflow' },
+      { title: 'الميزانية', body: 'حدد ميزانية شهرية لكل بند مصاريف (لفرع أو للشركة) وتابع المصروف مقابلها. لو بند عدّى الميزانية بيظهر في شغل النهارده.', href: '/dashboard/treasury?tab=budget' },
+      { title: 'المرتبات', body: 'اعمل قسيمة المرتب — «هات أجر الجروبات» بيجيب أجر المدرب من جروباته والتسويات (بدائل، مكافآت، خصومات).', href: '/dashboard/salaries' },
+      { title: 'التقارير المالية', body: 'كشف الأرباح والخسائر لكل فرع وفترة، ودفتر الحركات، وكل التقارير في مركز التقارير.', href: '/dashboard/accountant/reports' },
+    ],
+  },
+  {
+    key: 'BRANCH_MANAGER', en: 'Branch manager', ar: 'مدير الفرع', who: 'Branch manager · Admin',
+    steps: [
+      { title: 'شغل النهارده', body: 'كل الموافقات المستنياك: خصومات، استرداد، فروق جرد، تحويلات، طلبات غياب مدربين، إعلانات. الأحمر لازم يتعمل النهارده.', href: '/dashboard' },
+      { title: 'غياب المدربين والبدلاء', body: 'وافق على طلب الغياب، والسيستم بيقترح بدلاء مؤهلين وفاضيين. البديل لازم يوافق. التسوية المالية في «تسوية الحصص البديلة».', href: '/dashboard/absence-requests' },
+      { title: 'الإجازات الرسمية والحصص التعويضية', body: 'ضيف الإجازة (للفرع أو الشركة) والحصص بتتأجل لوحدها والأهالي بيتبلغوا. الحصة التعويضية من صفحة الجروب.', href: '/dashboard/holidays' },
+      { title: 'ترحيل الجروبات', body: 'لما الجروب يخلّص الشهر: «رحّل للشهر الجاي» — اختار مين مكمّل، والسيستم بيعمل جروب جديد بالمكمّلين وفواتيرهم.', href: '/dashboard/groups' },
+      { title: 'الخصومات', body: 'أنواع الخصومات وقواعدها (إخوات، تجديد بدري، عيد ميلاد…) والموافقة على الخصومات اليدوي.', href: '/dashboard/discounts' },
+      { title: 'التقارير', body: 'الحضور، ماليات الجروبات، أداء المدربين، التقييمات… كلها في مركز التقارير.', href: '/dashboard/reports-center' },
+      { title: 'الإجازات', body: 'طلبات إجازات الموظفين: وافق أو ارفض مع ملاحظة.', href: '/dashboard/leaves' },
+    ],
+  },
+  {
+    key: 'TEACHER', en: 'Instructor', ar: 'المدرب', who: 'Instructor',
+    steps: [
+      { title: 'جدولك', body: 'كل حصصك (وحصص البديل اللي قبلتها) في «تقويمي». الإجازات الرسمية والحصص التعويضية بتظهر عليه.', href: '/dashboard/schedule' },
+      { title: 'تسجيل الحضور وفتح الدرس', body: 'من الحضور: سجّل حضور الحصة. نفس الشاشة فيها درس الحصة من المنهج — بيتفتح للطلاب بعد الحضور (أو حسب الإعداد).', href: '/dashboard/attendance/sections' },
+      { title: 'الواجبات والتصحيح', body: 'الواجبات اللي الطلاب سلّموها مستنية تصحيح: ادّي درجة وملاحظة (وتقدر تسجّل ملاحظة صوتية).', href: '/dashboard/assignments' },
+      { title: 'الكويزات', body: 'نتايج الكويزات والأسئلة اللي محتاجة تصحيح يدوي.', href: '/dashboard/quizzes' },
+      { title: 'تقرير الحصة', body: 'بيتعمل لما تسجّل الحضور: ضيف ملاحظتك عن كل طالب، وبيتبعت للأهالي بعد الحصة (لو الإدارة مشغّلاه).', href: '/dashboard/session-reports' },
+      { title: 'نتايج المستوى', body: 'آخر المستوى: اكتب درجات الأجزاء — الدرجة النهائية والنجاح بيتحسبوا لوحدهم، والشهادة بتطلع لما الطالب ينجح ويكمّل التقييم.', href: '/dashboard/teacher/level-results' },
+      { title: 'طلب غياب', body: 'من «جدولي»: اعتذر عن يوم أو حصة. لازم قبلها بـ 6 ساعات إلا لو ظرف قهري.', href: '/dashboard/teacher/my-schedule' },
+      { title: 'الحصص البديلة', body: 'لما حد يطلبك بديل: وافق أو ارفض من هنا.', href: '/dashboard/teacher/my-substitutions' },
+      { title: 'مرتبك', body: 'قسايم مرتبك الشهرية.', href: '/dashboard/teacher/salary' },
+    ],
+  },
+  {
+    key: 'PARENT', en: 'Parents', ar: 'أولياء الأمور', who: 'Parent',
+    steps: [
+      { title: 'الدخول', body: 'بتدخل برقم تليفونك والباسورد المؤقت اللي الفرع بعتهولك، وبتغيّره أول مرة. نسيت الباسورد؟ كلّم الفرع يعملك واحد جديد.' },
+      { title: 'أولادي', body: 'لكل ابن: الحصص الجاية، الحضور، الفواتير، المحفظة، التقارير الشهرية، الشهادات.', href: '/dashboard/my-children' },
+      { title: 'الدفع', body: 'ادفع أونلاين (كارت / محفظة)، أو حوّل وارفع صورة الإيصال، أو اشحن المحفظة والمحفظة بتدفع الفواتير لوحدها.', href: '/dashboard/my-children' },
+      { title: 'عذر غياب', body: 'لو ابنك هيغيب: ابعت العذر من كارت الحصص قبلها أو بعدها بيومين (حسب قواعد الفرع).', href: '/dashboard/my-children' },
+      { title: 'التجديد والتقييم', body: 'قبل آخر الشهر هيوصلك سؤال «مكمّلين؟» — ردّك بيحجز مكان ابنك (وممكن خصم تجديد بدري). وآخر كل شهر قيّم الحصص والمدرب.', href: '/dashboard/my-children' },
+      { title: 'الإعلانات والشكاوى', body: 'الإعلانات المهمة بتطلب منك «قريت». ولو عندك مشكلة ابعت شكوى وهتترد خلال 24 ساعة.', href: '/dashboard/announcements' },
+      { title: 'رشّح صاحبك', body: 'ليك كود ترشيح: لما صاحبك يسجّل ويدفع أول فاتورة بتاخد مكافأة في المحفظة.', href: '/dashboard/referrals' },
+    ],
+  },
+  {
+    key: 'STUDENT', en: 'Students', ar: 'الطلاب', who: 'Student',
+    steps: [
+      { title: 'دروسي', body: 'دروس كل حصة بتتفتح بعد ما تحضرها. شوف الفيديوهات والملفات وكمّل الأنشطة.', href: '/dashboard/learning' },
+      { title: 'الواجبات والكويزات', body: 'سلّم الواجب قبل الميعاد (ملف، لينك، أو كود)، وحل الكويز في الوقت المحدد.', href: '/dashboard/learning' },
+      { title: 'الباسبور والبروفايل', body: 'الأختام اللي جمعتها، وشهادات المستويات، ومشاريعك وأهدافك.', href: '/dashboard/passport' },
+    ],
+  },
+  {
+    key: 'FAQ', en: 'Common questions', ar: 'أسئلة شائعة وحل مشاكل', who: '',
+    steps: [
+      { title: 'حد مش قادر يدخل (الحساب اتقفل)', body: 'بعد كذا باسورد غلط الدخول بيقف شوية. الأدمن يقدر يفتحه من «قفل الدخول»، أو يعمل باسورد مؤقت جديد.', href: '/dashboard/admin/login-locks' },
+      { title: 'الطالب مش ظاهر عند المدرب', body: 'اتأكد إن المدرب متحدد للجروب (صفحة الجروب ← المدرب) وإن الطالب في الجروب ده.', href: '/dashboard/groups' },
+      { title: 'فلوس «مش متسجلة على حساب»', body: 'طريقة الدفع دي مش مربوطة بخزنة أو حساب. اربطها من الإعدادات ← الدفع ← حسابات الفلوس، والحركات القديمة بتتسجل لوحدها.', href: '/dashboard/admin/finance-settings' },
+      { title: 'الجروب مليان', body: 'السيستم بيعرض قايمة الانتظار أو جروب تاني فيه مكان. التجاوز محتاج صلاحية «سعة الجروب».', href: '/dashboard/waiting-list' },
+      { title: 'زرار مش ظاهر عندي', body: 'الأزرار بتظهر حسب صلاحيتك. لو محتاجها اطلب من الأدمن يعدّل صلاحية دورك أو يديك استثناء.' },
+      { title: 'أغيّر لغة الشاشة', body: 'زرار EN / عربي فوق. الإشعارات بتوصل باللغة اللي على الشاشة.' },
+      { title: 'فين التقارير؟', body: 'كل التقارير (الطلاب، الفلوس، الموظفين، التعليم، الشركاء) في مركز التقارير، ومعظمها بيتصدّر Excel أو يتطبع.', href: '/dashboard/reports-center' },
+    ],
+  },
+]
+
+export function sectionsFor(role: string): GuideSection[] {
+  const keys = SECTIONS_FOR_ROLE[role] ?? ['FAQ']
+  return keys.map((k) => GUIDE.find((s) => s.key === k)!).filter(Boolean)
+}

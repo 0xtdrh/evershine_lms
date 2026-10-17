@@ -11,7 +11,7 @@ export type HubKey = (typeof HUB_KEYS)[number]
 
 /** Each hub and its pages, in tab order. */
 export const HUBS: { key: HubKey; en: string; ar: string; items: string[] }[] = [
-  { key: 'home', en: 'Home', ar: 'الرئيسية', items: ['Dashboard', 'My Calendar', 'My Schedule', 'My Substitutions'] },
+  { key: 'home', en: 'Home', ar: 'الرئيسية', items: ['Dashboard', 'My Calendar', 'My Schedule', 'My Substitutions', 'User Guide'] },
   { key: 'admissions', en: 'Admissions', ar: 'التسجيل', items: ['Admissions', 'Landing Leads'] },
   { key: 'students', en: 'Students', ar: 'الطلاب', items: ['Students', 'My Students', 'Waiting List', 'Follow-ups', 'Renewals', 'Absence Excuses', 'Birthdays'] },
   { key: 'groups', en: 'Groups', ar: 'الجروبات', items: ['Groups', 'Groups Schedule', 'Attendance', 'Student Attendance', 'Import Attendance', 'Holidays', 'Attendance Report'] },
@@ -35,7 +35,7 @@ export const LEGACY_ITEMS = new Set([
 export const LEGACY_HUB = { key: 'legacy' as HubKey, en: 'Old screens', ar: 'شاشات قديمة' }
 
 /** Portal pages (parents / students): they keep a short flat menu. */
-const PORTAL_ITEMS = new Set(['My Children', 'My Learning', 'My Passport', 'My Profile', 'Certificates'])
+const PORTAL_ITEMS = new Set(['User Guide', 'My Children', 'My Learning', 'My Passport', 'My Profile', 'Certificates'])
 
 export function hubOf(name: string): HubKey {
   if (LEGACY_ITEMS.has(name)) return 'legacy'

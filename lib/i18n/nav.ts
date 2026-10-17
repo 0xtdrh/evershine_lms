@@ -5,7 +5,7 @@
 
 export const NAV_AR: Record<string, string> = {
   'Dashboard': 'الرئيسية', 'Admin Workspace': 'مساحة الإدارة', 'Permissions': 'الصلاحيات', 'Notifications': 'الإشعارات',
-  'Settings Centre': 'مركز الإعدادات', 'Settings': 'الإعدادات', 'Platform': 'تشغيل الأنظمة', 'Agreements': 'الموافقات',
+  'Settings Centre': 'مركز الإعدادات', 'User Guide': 'دليل الاستخدام', 'Settings': 'الإعدادات', 'Platform': 'تشغيل الأنظمة', 'Agreements': 'الموافقات',
   'Role Assumptions': 'الدخول بدور آخر', 'Credential Management': 'إدارة الحسابات', 'Backups': 'النسخ الاحتياطي',
   'Admissions': 'طلبات الالتحاق', 'Landing Leads': 'عملاء الموقع', 'Students': 'الطلبة', 'Waiting List': 'قائمة الانتظار',
   'Staff Directory': 'الموظفين', 'Fees': 'الفواتير', 'Accounting Hub': 'ملخص الحسابات', 'Fee Collection': 'التحصيل',
