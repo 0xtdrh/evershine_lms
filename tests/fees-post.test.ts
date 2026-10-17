@@ -9,6 +9,9 @@ const { mockAuth, mockCheckPermission, mockPrisma, mockTx } = vi.hoisted(() => {
     feeInvoice: { create: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     auditLog: { create: vi.fn() },
     student: { update: vi.fn() },
+    // locked document counter (lib/ids/counter.ts): empty counter, no stored numbers → 00001
+    $executeRawUnsafe: vi.fn().mockResolvedValue(1),
+    $queryRawUnsafe: vi.fn(async (sql: string) => (sql.includes('DocumentCounter') ? [{ value: 0 }] : [{ m: null }])),
   }
 
   const mockPrisma = {

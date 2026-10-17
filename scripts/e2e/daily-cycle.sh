@@ -1751,6 +1751,17 @@ api PUT /api/announcements/settings '{"teachersCanSend":false}' >/dev/null
 check "setting off → instructors cannot send" "$(curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d "{\"title\":\"Homework\",\"body\":\"Again please.\",\"audiences\":[\"PARENT\"],\"scopeType\":\"GROUP\",\"scopeIds\":[\"$TG\"]}" $B/api/announcements | jq_ "d['success']")" "False"
 api PUT /api/announcements/settings '{"teachersCanSend":true}' >/dev/null
 rm -f "$TJ" "$AWJ"
+echo "== 52. document numbers: payments at the same moment get different receipt numbers (locked counter)"
+# payable invoices: issued, nothing refunded, the student still active in an active group
+PAR=$(M "SELECT CONCAT(i.id,':',CAST(i.totalAmount-i.paidAmount AS DECIMAL(10,2))) FROM FeeInvoice i JOIN StudentEnrollment e ON e.studentId=i.studentId AND e.classSectionId=i.classSectionId AND e.status='ACTIVE' JOIN ClassSection g ON g.id=i.classSectionId AND g.status='ACTIVE' WHERE i.status='ISSUED' AND i.totalAmount>i.paidAmount AND i.refundedAmount=0 AND i.proofStatus IS NULL GROUP BY i.id ORDER BY i.createdAt DESC LIMIT 4")
+PDIR=$(mktemp -d); i=0; PIDS=""
+for row in $PAR; do i=$((i+1)); ( api POST /api/fees/${row%%:*}/payments "{\"amount\":${row##*:},\"paymentMethod\":\"Cash\"}" > "$PDIR/$i.json" ) & PIDS="$PIDS $!"; done
+wait $PIDS   # only these requests (a bare wait would also wait for the app server)
+for f in "$PDIR"/*.json; do grep -q '"success":true' "$f" || echo "    refused: $(head -c 300 "$f")"; done
+check "4 payments sent at once: all saved" "$(grep -l '"success":true' "$PDIR"/*.json | wc -l | tr -d ' ')" "$(echo "$PAR" | wc -w | tr -d ' ')"
+check "…each with its own receipt number (no duplicates)" "$(M "SELECT COUNT(*)=COUNT(DISTINCT receiptNumber) FROM FeePayment WHERE receiptNumber IS NOT NULL")" "1"
+check "the counter is at the highest receipt number" "$(M "SELECT c.value=MAX(CAST(SUBSTRING(p.receiptNumber,14) AS UNSIGNED)) FROM DocumentCounter c JOIN FeePayment p ON p.receiptNumber LIKE CONCAT(c.\`key\`,'%') WHERE c.\`key\` LIKE 'TN-RCPT-%' GROUP BY c.value")" "1"
+rm -rf "$PDIR"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

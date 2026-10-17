@@ -231,7 +231,7 @@ export async function approveTopUp(topUpId: string, userId: string): Promise<Wal
       if (claimed.count !== 1) throw new Error('HANDLED')
       for (let attempt = 0; ; attempt++) {
         const { nextTopUpNumber } = await import('./numbers')
-        number = await nextTopUpNumber(tx)
+        number = await nextTopUpNumber(tx, { resync: attempt > 0 })
         try {
           await tx.walletTopUp.update({ where: { id: topUpId }, data: { status: 'APPROVED', topUpNumber: number, approvedById: userId, approvedAt: new Date() } })
           break
@@ -327,7 +327,7 @@ export async function decideWithdrawal(id: string, userId: string, approve: bool
       const bal = await walletBalance(w.studentId, tx)
       if (bal + 0.001 < Number(w.amount)) throw new Error(`NOT_ENOUGH:${bal}`)
       for (let attempt = 0; ; attempt++) {
-        number = await nextWithdrawalNumber(tx)
+        number = await nextWithdrawalNumber(tx, { resync: attempt > 0 })
         try {
           const upd = await tx.walletWithdrawal.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'APPROVED', withdrawalNumber: number, approvedById: userId, approvedAt: new Date() } })
           if (upd.count !== 1) throw new Error('HANDLED')

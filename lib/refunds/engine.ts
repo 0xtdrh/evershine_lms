@@ -17,7 +17,8 @@
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
-import { isUniqueConflictOn, nextInSequence } from '@/lib/ids/sequence'
+import { isUniqueConflictOn } from '@/lib/ids/sequence'
+import { takeNumber } from '@/lib/ids/counter'
 import { groupContext, type GroupContext } from '@/lib/discounts/engine'
 import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
 import { PaymentRefusedError, recordPayment } from '@/lib/fees/record-payment'
@@ -189,10 +190,9 @@ export async function requestRefund(input: {
   return { ok: true, refundId: refund.id, status: 'PENDING', refundNumber: null }
 }
 
-export async function nextRefundNumber(db: Db) {
-  const prefix = `TN-RFND-${new Date().getFullYear()}-`
-  const rows = await db.refund.findMany({ where: { refundNumber: { startsWith: prefix } }, select: { refundNumber: true } })
-  return nextInSequence(rows.map((r) => r.refundNumber!).filter(Boolean), prefix, 5)
+/** TN-RFND-YYYY-NNNNN from the locked counter (lib/ids/counter.ts). */
+export async function nextRefundNumber(db: Db, opts: { resync?: boolean } = {}) {
+  return takeNumber(db, { prefix: `TN-RFND-${new Date().getFullYear()}-`, pad: 5, table: 'Refund', column: 'refundNumber' }, opts)
 }
 
 export async function approveRefund(refundId: string, userId: string): Promise<RefundOutcome> {
@@ -216,7 +216,7 @@ export async function approveRefund(refundId: string, userId: string): Promise<R
 
       let refundNumber = ''
       for (let attempt = 0; ; attempt++) {
-        refundNumber = await nextRefundNumber(tx)
+        refundNumber = await nextRefundNumber(tx, { resync: attempt > 0 })
         try {
           await tx.refund.update({ where: { id: refundId }, data: { status: 'APPROVED', approvedById: userId, approvedAt: new Date(), refundNumber } })
           break

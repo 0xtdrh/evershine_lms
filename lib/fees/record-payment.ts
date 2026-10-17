@@ -15,7 +15,8 @@
 
 import type { InvoiceStatus, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { isUniqueConflictOn, nextInSequence } from '@/lib/ids/sequence'
+import { isUniqueConflictOn } from '@/lib/ids/sequence'
+import { takeNumber } from '@/lib/ids/counter'
 import { InvoiceChangedError, refreshGroupAfterPayment, updateInvoiceIfUnchanged } from '@/lib/fees/guarded-payment'
 import { isActivePaymentMethod } from '@/lib/fees/payment-settings'
 import { errorResponse, errors } from '@/lib/api-response'
@@ -65,11 +66,9 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 /** Throw from onTx to cancel the payment with a clear message (e.g. not enough in the wallet). */
 export class PaymentRefusedError extends Error {}
 
-/** Next receipt number TN-RCPT-YYYY-NNNNN (highest + 1; callers retry on a clash). */
-export async function nextReceiptNumber(db: Prisma.TransactionClient | typeof prisma = prisma) {
-  const prefix = `TN-RCPT-${new Date().getFullYear()}-`
-  const rows = await db.feePayment.findMany({ where: { receiptNumber: { startsWith: prefix } }, select: { receiptNumber: true } })
-  return nextInSequence(rows.map((r) => r.receiptNumber!).filter(Boolean), prefix, 5)
+/** Next receipt number TN-RCPT-YYYY-NNNNN from the locked counter (lib/ids/counter.ts): safe for payments at the same moment. */
+export async function nextReceiptNumber(db: Prisma.TransactionClient | typeof prisma = prisma, opts: { resync?: boolean } = {}) {
+  return takeNumber(db, { prefix: `TN-RCPT-${new Date().getFullYear()}-`, pad: 5, table: 'FeePayment', column: 'receiptNumber' }, opts)
 }
 
 /** Methods the system records by itself (not picked from the list by staff). */
@@ -115,7 +114,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<RecordPa
       // Receipt number: retry if two payments take the same number at once.
       let payment: Awaited<ReturnType<typeof tx.feePayment.create>> | null = null
       for (let attempt = 0; !payment; attempt++) {
-        const receiptNumber = await nextReceiptNumber(tx)
+        const receiptNumber = await nextReceiptNumber(tx, { resync: attempt > 0 })
         try {
           payment = await tx.feePayment.create({
             data: {

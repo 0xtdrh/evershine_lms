@@ -1475,6 +1475,14 @@ model Announcement {
   @@index([status])
 }
 
+/// Document numbers (2026-10-17): the last number issued per prefix (e.g. "TN-RCPT-2026-"). The row is locked while a
+/// number is issued, so two payments at the same moment never get the same receipt (lib/ids/counter.ts).
+model DocumentCounter {
+  key       String   @id @db.VarChar(40)
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
 /// 5-D: who an announcement reaches (made when it is delivered), with read / "I read it" confirmation.
 model AnnouncementRecipient {
   id             String    @id @default(cuid())

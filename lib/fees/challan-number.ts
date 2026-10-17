@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { isUniqueConflictOn, nextInSequence } from '@/lib/ids/sequence'
+import { isUniqueConflictOn } from '@/lib/ids/sequence'
+import { takeNumber } from '@/lib/ids/counter'
 
 /**
  * Invoice numbers: TN-INV-YYYY-NNNNN (numbering restarts each year), e.g.
@@ -16,14 +17,11 @@ import { isUniqueConflictOn, nextInSequence } from '@/lib/ids/sequence'
  */
 export async function generateChallanNumber(
   _academicYear?: string,
-  tx: Prisma.TransactionClient | typeof prisma = prisma
+  tx: Prisma.TransactionClient | typeof prisma = prisma,
+  opts: { resync?: boolean } = {}
 ): Promise<string> {
-  const prefix = `TN-INV-${new Date().getFullYear()}-`
-  const rows = await tx.feeInvoice.findMany({
-    where: { challanNumber: { startsWith: prefix } },
-    select: { challanNumber: true },
-  })
-  return nextInSequence(rows.map((r) => r.challanNumber), prefix, 5)
+  // locked counter (lib/ids/counter.ts): safe when two invoices are made at the same moment
+  return takeNumber(tx, { prefix: `TN-INV-${new Date().getFullYear()}-`, pad: 5, table: 'FeeInvoice', column: 'challanNumber' }, opts)
 }
 
 /** Runs `create(number)` with a fresh invoice number, retrying on a number clash. */
@@ -32,7 +30,7 @@ export async function createWithInvoiceNumber<T>(
   tx: Prisma.TransactionClient | typeof prisma = prisma
 ): Promise<T> {
   for (let attempt = 0; ; attempt++) {
-    const challanNumber = await generateChallanNumber(undefined, tx)
+    const challanNumber = await generateChallanNumber(undefined, tx, { resync: attempt > 0 })
     try {
       return await create(challanNumber)
     } catch (err) {

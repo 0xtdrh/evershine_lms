@@ -338,7 +338,7 @@ export async function executeTransfer(input: ExecuteTransferInput): Promise<Exec
           })
           refundId = refund.id
           for (let attempt = 0; ; attempt++) {
-            refundNumber = await nextRefundNumber(tx)
+            refundNumber = await nextRefundNumber(tx, { resync: attempt > 0 })
             try {
               await tx.refund.update({ where: { id: refund.id }, data: { status: 'APPROVED', approvedById: input.userId, approvedAt: new Date(), refundNumber } })
               break

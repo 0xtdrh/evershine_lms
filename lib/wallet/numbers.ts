@@ -5,20 +5,19 @@
 
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { isUniqueConflictOn, nextInSequence } from '@/lib/ids/sequence'
+import { isUniqueConflictOn } from '@/lib/ids/sequence'
+import { takeNumber } from '@/lib/ids/counter'
 
 type Db = Prisma.TransactionClient | typeof prisma
 
-export async function nextTopUpNumber(db: Db = prisma) {
-  const prefix = `TN-TOPUP-${new Date().getFullYear()}-`
-  const rows = await db.walletTopUp.findMany({ where: { topUpNumber: { startsWith: prefix } }, select: { topUpNumber: true } })
-  return nextInSequence(rows.map((r) => r.topUpNumber!).filter(Boolean), prefix, 5)
+/** TN-TOPUP-YYYY-NNNNN from the locked counter (lib/ids/counter.ts). */
+export async function nextTopUpNumber(db: Db = prisma, opts: { resync?: boolean } = {}) {
+  return takeNumber(db, { prefix: `TN-TOPUP-${new Date().getFullYear()}-`, pad: 5, table: 'WalletTopUp', column: 'topUpNumber' }, opts)
 }
 
-export async function nextWithdrawalNumber(db: Db = prisma) {
-  const prefix = `TN-WDRW-${new Date().getFullYear()}-`
-  const rows = await db.walletWithdrawal.findMany({ where: { withdrawalNumber: { startsWith: prefix } }, select: { withdrawalNumber: true } })
-  return nextInSequence(rows.map((r) => r.withdrawalNumber!).filter(Boolean), prefix, 5)
+/** TN-WDRW-YYYY-NNNNN from the locked counter (lib/ids/counter.ts). */
+export async function nextWithdrawalNumber(db: Db = prisma, opts: { resync?: boolean } = {}) {
+  return takeNumber(db, { prefix: `TN-WDRW-${new Date().getFullYear()}-`, pad: 5, table: 'WalletWithdrawal', column: 'withdrawalNumber' }, opts)
 }
 
 /** Creates an APPROVED top-up with its number (retries on a number clash) and credits the wallet. */
@@ -40,7 +39,7 @@ export async function createApprovedTopUp(
 ) {
   let row: { id: string; topUpNumber: string | null } | null = null
   for (let attempt = 0; !row; attempt++) {
-    const topUpNumber = await nextTopUpNumber(tx)
+    const topUpNumber = await nextTopUpNumber(tx, { resync: attempt > 0 })
     try {
       row = await tx.walletTopUp.create({
         data: {
