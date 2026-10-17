@@ -1819,6 +1819,10 @@ node scripts/e2e/fill-template.cjs "$DX/i.xlsx" "$DX/if.xlsx" "$DX/i.json"
 IP=$(curl -s -b "$JAR" -F "file=@$DX/if.xlsx" "$B/api/data/instructors/import")
 IG=$(echo "$IP" | python -c "import sys,json;d=json.load(sys.stdin)['data'];print(json.dumps({'rows':[{'row':r['row'],'values':r['values']} for r in d['rows'] if not r['errors']]}))")
 check "instructors: 14-digit Egyptian national ID accepted, login made with the email" "$(api POST /api/data/instructors/import/commit "$IG" | jq_ "d['data']['created']")/$(M "SELECT COUNT(*) FROM Teacher t JOIN User u ON u.id=t.userId WHERE t.cnic='29001011234567' AND u.email='imported.coach@e2e.local'")" "1/1"
+ADMB=$(stu Admbill 01077770070 '' '' | python -c "import sys,json;d=json.load(sys.stdin);d['classSectionId']='$IGRP';print(json.dumps(d))")
+ADMR=$(api POST /api/students "$ADMB")
+ADMID=$(echo "$ADMR" | jq_ "d['data']['id']")
+check "admission form with a group bills the month at once (same as Add to group)" "$(M "SELECT COUNT(*) FROM StudentEnrollment WHERE studentId='$ADMID' AND classSectionId='$IGRP' AND status='ACTIVE'")/$(M "SELECT COUNT(*) FROM FeeInvoice WHERE studentId='$ADMID' AND classSectionId='$IGRP'")" "1/1"
 rm -rf "$DX"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"

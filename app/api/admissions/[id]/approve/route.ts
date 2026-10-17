@@ -353,6 +353,13 @@ export async function POST(
           rollNumber,
           deliveryMode,
         })
+        // Same as "Add to group" (owner 2026-10-17): bill the group's current month right away (idempotent).
+        try {
+          const { generateMissingCycleInvoices } = await import('@/lib/groups/generate-invoices')
+          await generateMissingCycleInvoices(resolvedSectionId, session.user.id, result.id)
+        } catch (billErr) {
+          console.error('[ADMISSIONS_APPROVE] first invoice', billErr)
+        }
       }
     } catch (enrollmentErr) {
       console.error('[ADMISSIONS_APPROVE] enrollment', enrollmentErr)

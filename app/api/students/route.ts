@@ -444,6 +444,16 @@ export async function POST(request: NextRequest) {
         deliveryMode: data.deliveryMode,
       })
       enrollmentId = result?.enrollmentId ?? null
+      if (enrollmentId) {
+        // Same as "Add to group" (owner 2026-10-17): bill the group's current month right away (idempotent).
+        try {
+          const { generateMissingCycleInvoices } = await import('@/lib/groups/generate-invoices')
+          await generateMissingCycleInvoices(data.classSectionId, session.user.id, student.id)
+        } catch (billErr) {
+          logStudentCreateFailure('first-invoice', billErr)
+          enrollmentNote = 'Added to the group, but the invoice was not made: use "Generate invoices" on the group page.'
+        }
+      }
       if (!enrollmentId) {
         // No active/unlocked academic year — enrollment silently skipped
         enrollmentNote = 'No active academic year found. Enrollment was not created.'
