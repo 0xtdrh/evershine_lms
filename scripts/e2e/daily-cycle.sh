@@ -1949,6 +1949,7 @@ OLDFN=$(M "SELECT firstName FROM Student WHERE id='$LK'")
 api PATCH /api/students/$LK '{"firstName":"Auditname"}' >/dev/null
 check "changing a student is logged by itself: who, and the old → new name" "$(api GET "/api/audit-log?type=Student&entityId=$LK&action=UPDATE" | jq_ "[(r['userId']=='$ME', r['changes']['changed'].get('firstName')) for r in d['data']['rows'] if isinstance(r['changes'], dict) and 'changed' in r['changes']][:1]")" "[(True, ['$OLDFN', 'Auditname'])]"
 api PATCH /api/students/$LK "{\"firstName\":\"$OLDFN\"}" >/dev/null
+check "each change is logged once (no doubles)" "$(M "SELECT COUNT(*) FROM (SELECT COUNT(*) c FROM AuditLog WHERE JSON_EXTRACT(changes,'$.auto')=true GROUP BY entityType, entityId, action, CAST(changes AS CHAR(1000)), timestamp HAVING c > 1) x")" "0"
 check "passwords and tokens never reach the change log" "$(M "SELECT COUNT(*) FROM AuditLog WHERE changes LIKE '%passwordHash%' OR changes LIKE '%resetToken%'")" "0"
 check "a secretary cannot read the change log, usage or data health" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/audit-log)/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/usage)/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/data-health)" "403/403/403"
 TODAYC=$(D 0)
