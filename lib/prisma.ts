@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { withAutoAudit } from '@/lib/audit/auto'
-import { currentActorId } from '@/lib/audit/actor'
+import { currentActorId, runWithActor } from '@/lib/audit/actor'
 
 // WHY singleton: Next.js hot reload creates new module instances on each change.
 // Without this, development exhausts the MySQL connection pool.
@@ -64,6 +64,15 @@ function makeLazyPrisma(): PrismaClient {
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const value = (client as any)[prop]
+      // 2026-10-18: keep "who is acting" inside interactive transactions (the change log reads it there)
+      if (prop === '$transaction' && typeof value === 'function') {
+        const tx = value.bind(client)
+        return (arg: unknown, opts?: unknown) => {
+          if (typeof arg !== 'function') return tx(arg, opts)
+          const actor = currentActorId()
+          return tx((t: unknown) => runWithActor(actor, () => (arg as (x: unknown) => unknown)(t)), opts)
+        }
+      }
       return typeof value === 'function' ? value.bind(client) : value
     },
   })

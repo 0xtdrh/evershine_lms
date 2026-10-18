@@ -1914,6 +1914,7 @@ check "undo takes a match back" "$(api POST /api/treasury/reconcile/confirm "{\"
 rm -f "$STM"
 check "'your work today' knows the new money tasks (no error)" "$(api GET /api/today | jq_ "d['success']")" "True"
 echo "== 57. Lesson gates per session (homework / quiz before the next lesson), instructor opens for one student, voice homework"
+M "UPDATE ClassSection SET currentCycleNumber=1 WHERE id='$LG'"
 GLS=$(api GET /api/groups/$LG/lessons)
 GED=$(echo "$GLS" | jq_ "d['data']['edition']['id']")
 RF=$(echo "$GLS" | jq_ "d['data']['range']['from']"); RN=$((RF + 1))
@@ -1946,17 +1947,17 @@ echo "== 58. Change log (automatic, old → new), usage (visits / time / sign-in
 ME=$(M "SELECT id FROM User WHERE email='$SA_EMAIL'")
 OLDFN=$(M "SELECT firstName FROM Student WHERE id='$LK'")
 api PATCH /api/students/$LK '{"firstName":"Auditname"}' >/dev/null
-check "changing a student is logged by itself: who, and the old → new name" "$(api GET "/api/audit-log?type=Student&entityId=$LK&action=UPDATE" | jq_ "[(r['userId']=='$ME', r['changes']['changed'].get('firstName')) for r in d['data']['rows']][:1]")" "[(True, ['$OLDFN', 'Auditname'])]"
+check "changing a student is logged by itself: who, and the old → new name" "$(api GET "/api/audit-log?type=Student&entityId=$LK&action=UPDATE" | jq_ "[(r['userId']=='$ME', r['changes']['changed'].get('firstName')) for r in d['data']['rows'] if isinstance(r['changes'], dict) and 'changed' in r['changes']][:1]")" "[(True, ['$OLDFN', 'Auditname'])]"
 api PATCH /api/students/$LK "{\"firstName\":\"$OLDFN\"}" >/dev/null
 check "passwords and tokens never reach the change log" "$(M "SELECT COUNT(*) FROM AuditLog WHERE changes LIKE '%passwordHash%' OR changes LIKE '%resetToken%'")" "0"
 check "a secretary cannot read the change log, usage or data health" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/audit-log)/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/usage)/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/data-health)" "403/403/403"
 TODAYC=$(D 0)
 M "DELETE FROM UserActivityDay WHERE userId='$ME' AND day='$TODAYC'"
 api POST /api/activity/ping >/dev/null
-M "UPDATE UserActivityDay SET lastAt = DATE_SUB(NOW(3), INTERVAL 60 SECOND) WHERE userId='$ME' AND day='$TODAYC'"
+M "UPDATE UserActivityDay SET lastAt = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 60 SECOND) WHERE userId='$ME' AND day='$TODAYC'"
 api POST /api/activity/ping >/dev/null
 check "usage: first ping = 1 visit; a ping a minute later adds about a minute of active time" "$(M "SELECT CONCAT(visits,'/',activeSeconds BETWEEN 55 AND 65) FROM UserActivityDay WHERE userId='$ME' AND day='$TODAYC'")" "1/1"
-M "UPDATE UserActivityDay SET lastAt = DATE_SUB(NOW(3), INTERVAL 45 MINUTE) WHERE userId='$ME' AND day='$TODAYC'"
+M "UPDATE UserActivityDay SET lastAt = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 45 MINUTE) WHERE userId='$ME' AND day='$TODAYC'"
 api POST /api/activity/ping >/dev/null
 check "after 30+ minutes away the next ping is a new visit" "$(M "SELECT visits FROM UserActivityDay WHERE userId='$ME' AND day='$TODAYC'")" "2"
 check "sign-ins are counted, and the usage report shows the person" "$(M "SELECT COUNT(*) FROM UserActivityDay WHERE logins > 0 AND day='$TODAYC'" | python -c "import sys;print(int(sys.stdin.read())>0)")/$(api GET "/api/usage?role=STAFF" | jq_ "any(p['userId']=='$ME' and p['visits']>=2 for p in d['data']['people'])")" "True/True"

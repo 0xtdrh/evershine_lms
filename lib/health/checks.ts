@@ -38,7 +38,7 @@ async function run(p: Places): Promise<HealthCheck[]> {
   }
   {
     const dups = await prisma.$queryRawUnsafe<{ firstName: string; lastName: string; d: string; n: bigint }[]>(
-      `SELECT firstName, lastName, DATE_FORMAT(dateOfBirth,'%Y-%m-%d') d, COUNT(*) n FROM Student WHERE enrollmentStatus='ACTIVE' GROUP BY firstName, lastName, DATE(dateOfBirth) HAVING COUNT(*) > 1 LIMIT 200`)
+      `SELECT firstName, lastName, MIN(DATE_FORMAT(dateOfBirth,'%Y-%m-%d')) d, COUNT(*) n FROM Student WHERE enrollmentStatus='ACTIVE' GROUP BY firstName, lastName, DATE(dateOfBirth) HAVING COUNT(*) > 1 LIMIT 200`)
     const items: HealthItem[] = []
     for (const d of dups) {
       const rows = await prisma.student.findMany({ where: { ...activeStudent, firstName: d.firstName, lastName: d.lastName }, select: stuSel, take: 5 })
