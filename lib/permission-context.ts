@@ -19,7 +19,11 @@ interface Store { ctx?: PermissionContext; userId?: string }
 const als = new AsyncLocalStorage<Store>()
 setPermissionContextProvider(() => als.getStore()?.ctx)
 // the automatic change log (lib/audit/auto.ts) records who made each change
-setActorProvider(() => als.getStore()?.userId ?? null)
+const pinnedActor = new AsyncLocalStorage<string | null>()
+setActorProvider(() => als.getStore()?.userId ?? null, {
+  get: () => pinnedActor.getStore(),
+  run: (actor, fn) => pinnedActor.run(actor, fn),
+})
 
 const TTL_MS = 30_000
 const cache = new Map<string, { at: number; ctx: PermissionContext }>()
