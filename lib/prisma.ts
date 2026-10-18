@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
-import { withAutoAudit } from '@/lib/audit/auto'
-import { currentActorId, runWithActor } from '@/lib/audit/actor'
+import { withAutoAudit } from './audit/auto'
+import { currentActorId, runWithActor } from './audit/actor'
 
 // WHY singleton: Next.js hot reload creates new module instances on each change.
 // Without this, development exhausts the MySQL connection pool.
