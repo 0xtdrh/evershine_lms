@@ -91,6 +91,7 @@ import { AgreementsGate } from '@/components/agreements/AgreementsGate'
 import { I18nProvider, LanguageSwitch, useI18n } from '@/lib/i18n/client'
 import { SidebarNav } from '@/components/layout/SidebarNav'
 import { HubTabs } from '@/components/layout/HubTabs'
+import { ActivityPing } from '@/components/layout/ActivityPing'
 
 // ─── Role-gated nav items ─────────────────────────────────────────────────────
 interface NavItem {
@@ -123,6 +124,9 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Role Assumptions', href: '/dashboard/admin/role-assumptions', icon: KeyRound,    roles: ['SUPER_ADMIN', 'ADMIN'] },
   { name: 'Credential Management', href: '/dashboard/admin/credential-management', icon: KeyRound, roles: ['SUPER_ADMIN'] },
   { name: 'Backups',         href: '/dashboard/admin/backups',          icon: DatabaseBackup,  roles: ['SUPER_ADMIN'] },
+  { name: 'Data Health',     href: '/dashboard/data-health',            icon: DatabaseBackup,  roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'], perm: [['audit_logs', 'read']] },
+  { name: 'Usage',           href: '/dashboard/usage',                  icon: DatabaseBackup,  roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'], perm: [['audit_logs', 'read']] },
+  { name: 'Change Log',      href: '/dashboard/audit',                  icon: DatabaseBackup,  roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'], perm: [['audit_logs', 'read']] },
   { name: 'Admissions',      href: '/dashboard/admissions',   icon: ClipboardCheck,  roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING'], perm: [['admissions', 'read']] },
   { name: 'Landing Leads',   href: '/dashboard/leads',        icon: Inbox,           roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'MARKETING'], perm: [['admissions', 'read']] },
   { name: 'Students',        href: '/dashboard/students',     icon: Users,           roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['students', 'read']] },
@@ -490,6 +494,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             <BirthdayCelebration />
             <AgreementsGate />
             {(role === 'PARENT' || role === 'GUARDIAN') && <GroupRulesGate />}
+            <ActivityPing />
             {role === 'STUDENT' && (
               <>
                 <CompulsoryFeedbackBlocker />

@@ -13,10 +13,13 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { prisma } from '@/lib/prisma'
 import { setPermissionContextProvider, type PermissionContext } from '@/lib/rbac'
+import { setActorProvider } from '@/lib/audit/actor'
 
-interface Store { ctx?: PermissionContext }
+interface Store { ctx?: PermissionContext; userId?: string }
 const als = new AsyncLocalStorage<Store>()
 setPermissionContextProvider(() => als.getStore()?.ctx)
+// the automatic change log (lib/audit/auto.ts) records who made each change
+setActorProvider(() => als.getStore()?.userId ?? null)
 
 const TTL_MS = 30_000
 const cache = new Map<string, { at: number; ctx: PermissionContext }>()
@@ -64,6 +67,7 @@ export async function loadPermissionContext(user: { id: string; role: string }):
 
 /** Fills the request's context once the session is known. Never throws. */
 export async function fillPermissionContext(store: Store, user: { id: string; role: string }): Promise<void> {
+  store.userId = user.id
   try {
     store.ctx = await loadPermissionContext(user)
   } catch (error) {

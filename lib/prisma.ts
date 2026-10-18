@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client'
+import { withAutoAudit } from '@/lib/audit/auto'
+import { currentActorId } from '@/lib/audit/actor'
 
 // WHY singleton: Next.js hot reload creates new module instances on each change.
 // Without this, development exhausts the MySQL connection pool.
@@ -33,9 +35,11 @@ function createPrismaClient(): PrismaClient {
     throw new Error('DATABASE_URL must start with mysql://')
   }
 
-  return new PrismaClient({
+  const base = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
+  // 2026-10-18: changes on the important tables are logged automatically (who, old value → new value)
+  return withAutoAudit(base, currentActorId)
 }
 
 // WHY Proxy: Allows this module to be safely imported at build time without

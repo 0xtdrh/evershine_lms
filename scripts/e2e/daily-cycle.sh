@@ -1914,8 +1914,10 @@ check "undo takes a match back" "$(api POST /api/treasury/reconcile/confirm "{\"
 rm -f "$STM"
 check "'your work today' knows the new money tasks (no error)" "$(api GET /api/today | jq_ "d['success']")" "True"
 echo "== 57. Lesson gates per session (homework / quiz before the next lesson), instructor opens for one student, voice homework"
-GED=$(M "SELECT curriculumEditionId FROM ClassSection WHERE id='$LG'")
-RF=$(api GET /api/groups/$LG/lessons | jq_ "d['data']['range']['from']"); RN=$((RF + 1))
+GLS=$(api GET /api/groups/$LG/lessons)
+GED=$(echo "$GLS" | jq_ "d['data']['edition']['id']")
+RF=$(echo "$GLS" | jq_ "d['data']['range']['from']"); RN=$((RF + 1))
+echo "  (gate test: edition $GED, sessions $RF→$RN, range to $(echo "$GLS" | jq_ "d['data']['range']['to']"))"
 GS1=$(M "SELECT id FROM CurriculumSession WHERE editionId='$GED' AND number=$RF")
 check "a gate is saved on a published session (homework graded, at least 90%)" "$(api PUT /api/curriculum/sessions/$GS1/gate '{"gate":{"homework":"GRADED","minHomeworkPct":90}}' | jq_ "d['data']['gate']['homework']")/$(M "SELECT JSON_UNQUOTE(JSON_EXTRACT(gate,'$.minHomeworkPct')) FROM CurriculumSession WHERE id='$GS1'")" "GRADED/90"
 check "a secretary cannot change lesson gates" "$(secapi PUT /api/curriculum/sessions/$GS1/gate '{"gate":{"content":true}}' | jq_ "d['success']")" "False"
@@ -1940,6 +1942,26 @@ GDR=$(api POST /api/curriculum/levels/$CL "{\"copyFromId\":\"$GED\"}" | jq_ "d['
 GDS=$(M "SELECT id FROM CurriculumSession WHERE editionId='$GDR' AND number=1")
 check "voice recording is a homework hand-in type" "$(api POST /api/curriculum/sessions/$GDS/blocks '{"type":"ASSIGNMENT","titleEn":"Say it","data":{"kinds":["AUDIO","FILE"],"maxPoints":5}}' | jq_ "d['success']")/$(M "SELECT JSON_CONTAINS(data,'\"AUDIO\"','$.kinds') FROM CurriculumBlock WHERE sessionId='$GDS' AND titleEn='Say it'")" "True/1"
 api DELETE /api/curriculum/editions/$GDR >/dev/null
+echo "== 58. Change log (automatic, old → new), usage (visits / time / sign-ins), data health check"
+ME=$(M "SELECT id FROM User WHERE email='$SA_EMAIL'")
+OLDFN=$(M "SELECT firstName FROM Student WHERE id='$LK'")
+api PATCH /api/students/$LK '{"firstName":"Auditname"}' >/dev/null
+check "changing a student is logged by itself: who, and the old → new name" "$(api GET "/api/audit-log?type=Student&entityId=$LK&action=UPDATE" | jq_ "[(r['userId']=='$ME', r['changes']['changed'].get('firstName')) for r in d['data']['rows']][:1]")" "[(True, ['$OLDFN', 'Auditname'])]"
+api PATCH /api/students/$LK "{\"firstName\":\"$OLDFN\"}" >/dev/null
+check "passwords and tokens never reach the change log" "$(M "SELECT COUNT(*) FROM AuditLog WHERE changes LIKE '%passwordHash%' OR changes LIKE '%resetToken%'")" "0"
+check "a secretary cannot read the change log, usage or data health" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/audit-log)/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/usage)/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/data-health)" "403/403/403"
+TODAYC=$(D 0)
+M "DELETE FROM UserActivityDay WHERE userId='$ME' AND day='$TODAYC'"
+api POST /api/activity/ping >/dev/null
+M "UPDATE UserActivityDay SET lastAt = DATE_SUB(NOW(3), INTERVAL 60 SECOND) WHERE userId='$ME' AND day='$TODAYC'"
+api POST /api/activity/ping >/dev/null
+check "usage: first ping = 1 visit; a ping a minute later adds about a minute of active time" "$(M "SELECT CONCAT(visits,'/',activeSeconds BETWEEN 55 AND 65) FROM UserActivityDay WHERE userId='$ME' AND day='$TODAYC'")" "1/1"
+M "UPDATE UserActivityDay SET lastAt = DATE_SUB(NOW(3), INTERVAL 45 MINUTE) WHERE userId='$ME' AND day='$TODAYC'"
+api POST /api/activity/ping >/dev/null
+check "after 30+ minutes away the next ping is a new visit" "$(M "SELECT visits FROM UserActivityDay WHERE userId='$ME' AND day='$TODAYC'")" "2"
+check "sign-ins are counted, and the usage report shows the person" "$(M "SELECT COUNT(*) FROM UserActivityDay WHERE logins > 0 AND day='$TODAYC'" | python -c "import sys;print(int(sys.stdin.read())>0)")/$(api GET "/api/usage?role=STAFF" | jq_ "any(p['userId']=='$ME' and p['visits']>=2 for p in d['data']['people'])")" "True/True"
+DH=$(api GET /api/data-health)
+check "data health: every check runs, and 'groups without a schedule' matches the database" "$(echo "$DH" | jq_ "len(d['data']['checks'])>=10")/$(echo "$DH" | jq_ "[c['count'] for c in d['data']['checks'] if c['key']=='groupNoSchedule'][0]")" "True/$(M "SELECT COUNT(*) FROM ClassSection WHERE status='ACTIVE' AND isActive=1 AND (scheduleSlots IS NULL OR JSON_LENGTH(scheduleSlots)=0)")"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

@@ -153,6 +153,8 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
           where: { id: user.id },
           data:  { lastLogin: new Date() },
         }).catch(() => {})
+        // 2026-10-18 usage report: count the sign-in (never blocks the login)
+        void import('@/lib/activity/usage').then((m) => m.recordLogin(user.id, String(user.role))).catch(() => {})
 
         // ── Profile resolution ────────────────────────────────────────────
         // WHY after password verify: the expensive profile JOIN is only paid

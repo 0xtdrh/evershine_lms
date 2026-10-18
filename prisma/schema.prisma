@@ -5083,3 +5083,20 @@ model GroupRulesAcceptance {
   @@index([classSectionId])
   @@index([userId])
 }
+
+/// 2026-10-18 usage: one row per person per Cairo day — visits, active seconds (from the dashboard ping), sign-ins.
+model UserActivityDay {
+  id            String   @id @default(cuid())
+  userId        String
+  day           DateTime @db.Date
+  role          String?  @db.VarChar(20)
+  visits        Int      @default(0)
+  activeSeconds Int      @default(0)
+  logins        Int      @default(0)
+  firstAt       DateTime
+  lastAt        DateTime
+
+  @@unique([userId, day])
+  @@index([day])
+}
+
