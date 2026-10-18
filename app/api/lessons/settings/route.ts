@@ -32,11 +32,11 @@ export async function PUT(request: NextRequest) {
   let body: unknown
   try { body = await request.json() } catch { return errors.badRequest('Invalid JSON') }
   const parsed = z.object({
-    settings: z.object({ unlockMode: z.enum(UNLOCK_MODES), watermark: z.boolean(), kidModeMaxAge: z.number().int().min(0).max(18) }).optional(),
+    settings: z.object({ unlockMode: z.enum(UNLOCK_MODES), watermark: z.boolean(), kidModeMaxAge: z.number().int().min(0).max(18), gateUngradedOpensAfterDays: z.number().int().min(0).max(60).nullable().optional(), instructorStudentUnlock: z.boolean().optional() }).optional(),
     level: z.object({ id: z.string().min(1), mode: z.enum(UNLOCK_MODES).nullable() }).optional(),
   }).safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
-  if (parsed.data.settings) await saveLmsSettings(parsed.data.settings as never, session.user.id)
+  if (parsed.data.settings) await saveLmsSettings({ ...(await getLmsSettings()), ...parsed.data.settings } as never, session.user.id)
   if (parsed.data.level) {
     const found = await prisma.level.findUnique({ where: { id: parsed.data.level.id }, select: { id: true } })
     if (!found) return errors.notFound('Level')

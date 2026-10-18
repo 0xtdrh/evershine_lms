@@ -22,7 +22,7 @@ import { L, useI18n } from '@/lib/i18n/client'
 import { TOOL_CATALOG, TOOL_CATEGORIES, type ExtraSite } from '@/lib/lms/tools'
 import { Plus, Trash2 } from 'lucide-react'
 
-interface Settings { unlockMode: string; watermark: boolean; kidModeMaxAge: number }
+interface Settings { unlockMode: string; watermark: boolean; kidModeMaxAge: number; gateUngradedOpensAfterDays?: number | null; instructorStudentUnlock?: boolean }
 
 /** L5: the tools list (built-in, read-only) + sites the admin adds. */
 function ToolsCard({ canEdit }: { canEdit: boolean }) {
@@ -141,6 +141,17 @@ export default function LmsSettingsPage() {
               </label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={f.watermark} disabled={!canEdit} onChange={(e) => setF({ ...f, watermark: e.target.checked })} /> {L("Student's name as a watermark on lesson content", 'اسم الطالب كعلامة مائية على المحتوى')}</label>
               <label className="flex items-center gap-2">{L('Kid mode (big, one item per screen, read-aloud) up to age', 'وضع الأطفال (كبير، حاجة في الشاشة، قراءة بالصوت) لحد سن')} <Input type="number" min={0} max={18} className="h-8 w-20" value={f.kidModeMaxAge} disabled={!canEdit} onChange={(e) => setF({ ...f, kidModeMaxAge: Number(e.target.value) || 0 })} /></label>
+              <div className="space-y-2 rounded-lg border border-slate-100 p-3">
+                <p className="font-semibold text-slate-700">{L('Lessons that wait for the previous one (set on each session)', 'الدروس اللي بتستنى اللي قبلها (بتتحدد من كل حصة)')}</p>
+                <label className="flex flex-wrap items-center gap-2">
+                  <input type="checkbox" checked={f.gateUngradedOpensAfterDays == null} disabled={!canEdit} onChange={(e) => setF({ ...f, gateUngradedOpensAfterDays: e.target.checked ? null : 2 })} />
+                  {L('If the homework must be graded and grading is late, the student waits for the grade', 'لو الواجب لازم يتصحح والتصحيح اتأخر، الطالب يستنى التصحيح')}
+                </label>
+                {f.gateUngradedOpensAfterDays != null && (
+                  <label className="ms-6 flex items-center gap-2">{L('Otherwise the next lesson opens this many days after handing in', 'وإلا الدرس اللي بعده يتفتح بعد التسليم بعدد أيام')} <Input type="number" min={0} max={60} className="h-8 w-20" value={f.gateUngradedOpensAfterDays} disabled={!canEdit} onChange={(e) => setF({ ...f, gateUngradedOpensAfterDays: Math.max(0, Number(e.target.value) || 0) })} /></label>
+                )}
+                <label className="flex items-center gap-2"><input type="checkbox" checked={f.instructorStudentUnlock !== false} disabled={!canEdit} onChange={(e) => setF({ ...f, instructorStudentUnlock: e.target.checked })} /> {L('The instructor may open a waiting lesson for one student', 'المدرب يقدر يفتح درس مستني لطالب معيّن')}</label>
+              </div>
               {canEdit && <Button onClick={() => save.mutate({ settings: f })} disabled={save.isPending}>{save.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}{L('Save', 'حفظ')}</Button>}
             </CardContent>
           </Card>

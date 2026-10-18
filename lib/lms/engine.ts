@@ -11,7 +11,7 @@
  */
 
 import { canSeeGroup } from '@/lib/places/server'
-import type { Prisma, Role } from '@prisma/client'
+import { Prisma, type Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { getTeacherByUserId, teacherCanAccessClassSection } from '@/lib/academic/teacher-scope'
@@ -21,6 +21,7 @@ import { cairoDateTimeToUtc, cairoToday } from '@/lib/dates/cairo'
 import { visibleTo } from '@/lib/curriculum/blocks'
 import { effectiveMode, sessionStates, sessionDone, isUnlockMode, type SessionState, type UnlockMode } from './unlock'
 import { getLmsSettings } from './settings'
+import { blockedAfter, gateMessage, gateMet, parseGate, type GateMissing, type SessionGate } from './gate'
 import { stripForStudent, type AssignmentData } from '@/lib/assignments/rules'
 import { parseQuiz, quizSummary } from '@/lib/quizzes/engine'
 
@@ -73,7 +74,7 @@ export interface GroupLessons {
   perCycle: number
   range: { from: number; to: number }
   heldCount: number
-  sessions: (SessionState & { id: string; titleEn: string; titleAr: string; objectivesEn: string | null; objectivesAr: string | null; durationMin: number | null; scheduledAt: string | null; override: 'OPEN' | 'LOCKED' | null })[]
+  sessions: (SessionState & { id: string; titleEn: string; titleAr: string; objectivesEn: string | null; objectivesAr: string | null; durationMin: number | null; scheduledAt: string | null; override: 'OPEN' | 'LOCKED' | null; gate: SessionGate | null; lockedReason: { en: string; ar: string } | null })[]
 }
 
 /** All curriculum sessions of a group with their open / locked state (per student when studentId is given). */
@@ -112,10 +113,25 @@ export async function groupLessons(groupId: string, opts: { studentId?: string }
 
   let completed: Set<number> | undefined
   if (opts.studentId && mode === 'PREVIOUS') completed = await completedSessionNumbers(opts.studentId, edition.id)
+  // 2026-10-18 per-session gates (what to finish before the next session opens) — per student
+  const gateRows = await prisma.curriculumSession.findMany({ where: { editionId: edition.id, gate: { not: Prisma.DbNull } }, select: { id: true, number: true, gate: true } })
+  const gates = new Map(gateRows.map((r) => [r.number, { id: r.id, gate: parseGate(r.gate) }]).filter(([, v]) => (v as { gate: unknown }).gate) as [number, { id: string; gate: SessionGate }][])
+  let gateBlocked: Map<number, number> | undefined
+  let studentOpened: Set<number> | undefined
+  const gateMissing = new Map<number, GateMissing[]>()
+  if (opts.studentId && gates.size) {
+    const unmet: number[] = []
+    for (const [n, v] of gates) {
+      const r = await studentGateResult(opts.studentId, v.id, v.gate, settings.gateUngradedOpensAfterDays)
+      if (!r.met) { unmet.push(n); gateMissing.set(n, r.missing) }
+    }
+    gateBlocked = blockedAfter(unmet, sessions.length)
+    studentOpened = new Set((await prisma.studentLessonUnlock.findMany({ where: { classSectionId: g.id, studentId: opts.studentId }, select: { sessionNumber: true } })).map((r) => r.sessionNumber))
+  }
 
   const states = sessionStates({
     mode, totalSessions: sessions.length, perCycle, cycleNumber: g.currentCycleNumber, heldCount,
-    scheduledStarts: startsByNo, overrides, completed, now: new Date(),
+    scheduledStarts: startsByNo, overrides, completed, gateBlocked, studentOpened, now: new Date(),
   })
   const offset = (Math.max(1, g.currentCycleNumber) - 1) * perCycle
   return {
@@ -127,11 +143,17 @@ export async function groupLessons(groupId: string, opts: { studentId?: string }
     })(),
     range: { from: offset + 1, to: Math.min(sessions.length, offset + perCycle) },
     heldCount,
-    sessions: sessions.map((s, i) => ({
-      ...s, ...states[i],
-      scheduledAt: s.number > offset ? startsByNo[s.number - offset] ?? null : null,
-      override: overrides[s.number] ?? null,
-    })),
+    sessions: sessions.map((s, i) => {
+      const st = states[i]
+      const blocker = st.blockedBy != null ? gates.get(st.blockedBy) : undefined
+      return {
+        ...s, ...st,
+        scheduledAt: s.number > offset ? startsByNo[s.number - offset] ?? null : null,
+        override: overrides[s.number] ?? null,
+        gate: gates.get(s.number)?.gate ?? null,
+        lockedReason: st.blockedBy != null ? gateMessage(st.blockedBy, gateMissing.get(st.blockedBy) ?? [], blocker?.gate ?? null) : null,
+      }
+    }),
   }
 }
 
@@ -145,6 +167,61 @@ async function completedSessionNumbers(studentId: string, editionId: string): Pr
     if (visible.length && sessionDone(visible, done)) out.add(s.number)
   }
   return out
+}
+
+/** 2026-10-18: did this student finish what a session's gate asks (content ticks, homework, quiz)? */
+export async function studentGateResult(studentId: string, sessionId: string, gate: SessionGate, ungradedOpensAfterDays: number | null) {
+  const blocks = await prisma.curriculumBlock.findMany({ where: { sessionId }, select: { id: true, type: true, audience: true, data: true } })
+  const visible = blocks.filter((b) => visibleTo(b.audience, 'STUDENT'))
+  const ids = visible.map((b) => b.id)
+  const hwIds = visible.filter((b) => b.type === 'ASSIGNMENT').map((b) => b.id)
+  const quizBlocks = visible.filter((b) => b.type === 'QUIZ')
+  const [ticks, subs, attempts] = await Promise.all([
+    gate.content ? prisma.lessonProgress.findMany({ where: { studentId, blockId: { in: ids } }, select: { blockId: true } }) : Promise.resolve([]),
+    gate.homework && hwIds.length ? prisma.assignmentSubmission.findMany({ where: { studentId, blockId: { in: hwIds } }, select: { blockId: true, status: true, score: true, maxScore: true, submittedAt: true } }) : Promise.resolve([]),
+    gate.quiz && quizBlocks.length ? prisma.quizAttempt.findMany({ where: { studentId, blockId: { in: quizBlocks.map((q) => q.id) } }, select: { blockId: true, status: true, score: true, maxScore: true } }) : Promise.resolve([]),
+  ])
+  const done = new Set(ticks.map((t) => t.blockId))
+  const pctOf = (s: number | null, m: number | null) => (s != null && m ? (s / m) * 100 : null)
+  return gateMet(gate, {
+    contentDone: sessionDone(ids, done),
+    homework: subs.map((s) => ({ status: s.status, pct: pctOf(s.score, s.maxScore), submittedAt: s.submittedAt })),
+    homeworkMissing: hwIds.filter((id) => !subs.some((s) => s.blockId === id)).length,
+    quizzes: quizBlocks.map((q) => {
+      const mine = attempts.filter((a) => a.blockId === q.id)
+      const graded = mine.filter((a) => a.status === 'GRADED').map((a) => pctOf(a.score, a.maxScore)).filter((x): x is number => x != null)
+      return { bestPct: graded.length ? Math.max(...graded) : null, passMark: (q.data as { passMark?: number } | null)?.passMark ?? null, waitingReview: mine.some((a) => a.status === 'SUBMITTED') }
+    }),
+  }, { ungradedOpensAfterDays, now: new Date() })
+}
+
+/** Staff: students of the group held back by a session's gate (and whether the instructor may open it for them). */
+export async function groupGateStatus(groupId: string, sessionNumber: number) {
+  const g = await loadGroup(groupId)
+  if (!g) return null
+  const edition = await resolveEdition(g)
+  if (!edition) return null
+  const sess = await prisma.curriculumSession.findFirst({ where: { editionId: edition.id, number: sessionNumber }, select: { id: true, gate: true } })
+  const gate = parseGate(sess?.gate)
+  if (!sess || !gate) return { gate: null, students: [] }
+  const settings = await getLmsSettings()
+  const enr = await prisma.studentEnrollment.findMany({ where: { classSectionId: groupId, status: 'ACTIVE' }, select: { studentId: true, student: { select: { firstName: true, lastName: true, fullNameEn: true } } } })
+  const opened = new Set((await prisma.studentLessonUnlock.findMany({ where: { classSectionId: groupId, sessionNumber: sessionNumber + 1 }, select: { studentId: true } })).map((r) => r.studentId))
+  const students = []
+  for (const e of enr) {
+    const r = await studentGateResult(e.studentId, sess.id, gate, settings.gateUngradedOpensAfterDays)
+    students.push({ studentId: e.studentId, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`.trim(), met: r.met, missing: r.missing, openedByHand: opened.has(e.studentId) })
+  }
+  return { gate, canOpen: settings.instructorStudentUnlock, students }
+}
+
+/** Instructor opens (or takes back) one session for one student — only when the setting allows it. */
+export async function setStudentLessonUnlock(groupId: string, studentId: string, sessionNumber: number, open: boolean, userId: string): Promise<Outcome> {
+  if (!(await getLmsSettings()).instructorStudentUnlock) return fail('FORBIDDEN', 'Opening a lesson for one student is switched off in LMS settings')
+  if (!(await studentInGroup(studentId, groupId))) return fail('NOT_FOUND', 'Student not in this group')
+  if (open) await prisma.studentLessonUnlock.upsert({ where: { classSectionId_studentId_sessionNumber: { classSectionId: groupId, studentId, sessionNumber } }, create: { classSectionId: groupId, studentId, sessionNumber, byUserId: userId }, update: {} })
+  else await prisma.studentLessonUnlock.deleteMany({ where: { classSectionId: groupId, studentId, sessionNumber } })
+  return { ok: true }
 }
 
 // ───────────────────────── staff: manage a group's lessons ─────────────────────────
@@ -291,7 +368,7 @@ export async function studentLessonAccess(studentId: string, groupId: string, se
   const gl = await groupLessons(groupId, { studentId })
   const state = gl?.sessions.find((s) => s.id === sessionId)
   if (!gl || !state) return { ok: false, code: 'NOT_FOUND', message: 'Lesson not found' }
-  if (!state.open) return { ok: false, code: 'LOCKED', message: 'This lesson is not open yet' }
+  if (!state.open) return { ok: false, code: 'LOCKED', message: state.lockedReason ? `${state.lockedReason.en} / ${state.lockedReason.ar}` : 'This lesson is not open yet' }
   return { ok: true, group: gl, state }
 }
 

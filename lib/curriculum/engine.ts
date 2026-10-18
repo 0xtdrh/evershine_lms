@@ -8,7 +8,8 @@
  * only for the levels they teach or are qualified for.
  */
 
-import type { Prisma, Role } from '@prisma/client'
+import { Prisma, type Role } from '@prisma/client'
+import type { SessionGate } from '@/lib/lms/gate'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { curriculumMediaUrl } from '@/lib/cloudinary'
@@ -176,7 +177,7 @@ async function copySessions(tx: Prisma.TransactionClient, fromEditionId: string,
   const sessions = await tx.curriculumSession.findMany({ where: { editionId: fromEditionId }, orderBy: { number: 'asc' } })
   for (const s of sessions) {
     const { id: _id, editionId: _e, createdAt: _c, updatedAt: _u, ...rest } = s
-    const ns = await tx.curriculumSession.create({ data: { ...rest, skillIds: (s.skillIds ?? undefined) as Prisma.InputJsonValue, editionId: toEditionId } })
+    const ns = await tx.curriculumSession.create({ data: { ...rest, skillIds: (s.skillIds ?? undefined) as Prisma.InputJsonValue, gate: (s.gate ?? undefined) as Prisma.InputJsonValue, editionId: toEditionId } })
     const blocks = await tx.curriculumBlock.findMany({ where: { sessionId: s.id }, orderBy: { order: 'asc' } })
     if (blocks.length) {
       await tx.curriculumBlock.createMany({
@@ -312,6 +313,18 @@ export async function updateSession(v: Viewer, sessionId: string, patch: Session
   return { ok: true }
 }
 
+/**
+ * 2026-10-18: what a student must finish in this session before the next opens. A setting, not content, so it can be
+ * changed on a published version too (curriculum editors and approvers). null clears it.
+ */
+export async function setSessionGate(v: Viewer, sessionId: string, gate: SessionGate | null): Promise<Outcome> {
+  if (!v.canEdit && !v.canApprove) return fail('FORBIDDEN', 'You cannot change curriculum settings')
+  const s = await prisma.curriculumSession.findUnique({ where: { id: sessionId }, select: { id: true } })
+  if (!s) return fail('NOT_FOUND', 'Session not found')
+  await prisma.curriculumSession.update({ where: { id: sessionId }, data: { gate: gate ? (gate as unknown as Prisma.InputJsonValue) : Prisma.DbNull } })
+  return { ok: true }
+}
+
 /** Adds a session at the end of a draft edition. */
 export async function addSession(v: Viewer, editionId: string): Promise<Outcome<{ id: string }>> {
   if (!v.canEdit) return fail('FORBIDDEN', 'You cannot write curriculum')
@@ -348,7 +361,7 @@ export async function duplicateSession(v: Viewer, sessionId: string): Promise<Ou
     const later = await tx.curriculumSession.findMany({ where: { editionId: src.editionId, number: { gt: src.number } }, orderBy: { number: 'desc' }, select: { id: true, number: true } })
     for (const x of later) await tx.curriculumSession.update({ where: { id: x.id }, data: { number: x.number + 1 } })
     const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = src
-    const ns = await tx.curriculumSession.create({ data: { ...rest, skillIds: (src.skillIds ?? undefined) as Prisma.InputJsonValue, number: src.number + 1, titleEn: src.titleEn ? `${src.titleEn} (copy)`.slice(0, 200) : '', titleAr: src.titleAr ? `${src.titleAr} (نسخة)`.slice(0, 200) : '' } })
+    const ns = await tx.curriculumSession.create({ data: { ...rest, skillIds: (src.skillIds ?? undefined) as Prisma.InputJsonValue, gate: (src.gate ?? undefined) as Prisma.InputJsonValue, number: src.number + 1, titleEn: src.titleEn ? `${src.titleEn} (copy)`.slice(0, 200) : '', titleAr: src.titleAr ? `${src.titleAr} (نسخة)`.slice(0, 200) : '' } })
     const blocks = await tx.curriculumBlock.findMany({ where: { sessionId: src.id }, orderBy: { order: 'asc' } })
     if (blocks.length) {
       await tx.curriculumBlock.createMany({ data: blocks.map((b) => ({ sessionId: ns.id, order: b.order, type: b.type, audience: b.audience, titleEn: b.titleEn, titleAr: b.titleAr, data: b.data as Prisma.InputJsonValue })) })

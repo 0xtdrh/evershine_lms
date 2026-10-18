@@ -1913,6 +1913,33 @@ check "comparing the same statement again: already matched, nothing new" "$(curl
 check "undo takes a match back" "$(api POST /api/treasury/reconcile/confirm "{\"accountId\":\"$TBANK\",\"undo\":\"$MID\"}" | jq_ "d['data']['undone']")/$(M "SELECT reconciledAt IS NULL FROM MoneyMovement WHERE id='$MID'")" "1/1"
 rm -f "$STM"
 check "'your work today' knows the new money tasks (no error)" "$(api GET /api/today | jq_ "d['success']")" "True"
+echo "== 57. Lesson gates per session (homework / quiz before the next lesson), instructor opens for one student, voice homework"
+GED=$(M "SELECT curriculumEditionId FROM ClassSection WHERE id='$LG'")
+RF=$(api GET /api/groups/$LG/lessons | jq_ "d['data']['range']['from']"); RN=$((RF + 1))
+GS1=$(M "SELECT id FROM CurriculumSession WHERE editionId='$GED' AND number=$RF")
+check "a gate is saved on a published session (homework graded, at least 90%)" "$(api PUT /api/curriculum/sessions/$GS1/gate '{"gate":{"homework":"GRADED","minHomeworkPct":90}}' | jq_ "d['data']['gate']['homework']")/$(M "SELECT JSON_UNQUOTE(JSON_EXTRACT(gate,'$.minHomeworkPct')) FROM CurriculumSession WHERE id='$GS1'")" "GRADED/90"
+check "a secretary cannot change lesson gates" "$(secapi PUT /api/curriculum/sessions/$GS1/gate '{"gate":{"content":true}}' | jq_ "d['success']")" "False"
+GST=$(api GET "/api/groups/$LG/lessons/gate?session=$RF")
+check "the instructor panel lists the student as not finished yet (homework below 90% / missing)" "$(echo "$GST" | jq_ "[(x['met'], bool(x['missing'])) for x in d['data']['students'] if x['studentId']=='$LK']")" "[(False, True)]"
+api PUT /api/platform/settings '{"modules":{"lms":true}}' >/dev/null
+api PATCH /api/groups/$LG/lessons "{\"sessionNumber\":$RN,\"action\":\"open\"}" >/dev/null
+GKR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); GKJ=$(mktemp); login_jar "$(echo "$GKR" | jq_ "d['data']['loginId']")" "$(echo "$GKR" | jq_ "d['data']['password']")" "$GKJ" 10.0.1.97
+NEXTST() { curl -s -b "$GKJ" $B/api/lessons/my | jq_ "[(s['open'], bool(s.get('lockedReason'))) for g in d['data']['groups'] if g['group']['id']=='$LG' for s in g['sessions'] if s['number']==$RN]"; }
+check "even opened for the whole group, the next lesson waits for THIS student, with the reason shown" "$(NEXTST)" "[(False, True)]"
+api POST /api/groups/$LG/lessons/gate "{\"studentId\":\"$LK\",\"sessionNumber\":$RN,\"open\":true}" >/dev/null
+check "the instructor opens it for this one student → open for him" "$(NEXTST)/$(M "SELECT COUNT(*) FROM StudentLessonUnlock WHERE classSectionId='$LG' AND studentId='$LK' AND sessionNumber=$RN")" "[(True, False)]/1"
+check "taking it back → waits again" "$(api POST /api/groups/$LG/lessons/gate "{\"studentId\":\"$LK\",\"sessionNumber\":$RN,\"open\":false}" | jq_ "d['success']")/$(NEXTST)" "True/[(False, True)]"
+api PATCH /api/groups/$LG/lessons "{\"sessionNumber\":$RN,\"action\":\"auto\"}" >/dev/null
+rm -f "$GKJ"
+LMSS=$(api GET /api/lessons/settings | jq_ "json.dumps(d['data']['settings'])")
+api PUT /api/lessons/settings "{\"settings\":$(python -c "import json,sys;s=json.loads(sys.argv[1]);s['instructorStudentUnlock']=False;s['gateUngradedOpensAfterDays']=2;print(json.dumps(s))" "$LMSS")}" >/dev/null
+check "LMS settings: opening for one student switched off → refused; late-grading days saved" "$(api POST /api/groups/$LG/lessons/gate "{\"studentId\":\"$LK\",\"sessionNumber\":$RN,\"open\":true}" | jq_ "d['success']")/$(api GET /api/lessons/settings | jq_ "d['data']['settings']['gateUngradedOpensAfterDays']")" "False/2"
+api PUT /api/lessons/settings "{\"settings\":$LMSS}" >/dev/null
+check "removing the gate clears it" "$(api PUT /api/curriculum/sessions/$GS1/gate '{"gate":null}' | jq_ "d['success']")/$(M "SELECT gate IS NULL FROM CurriculumSession WHERE id='$GS1'")" "True/1"
+GDR=$(api POST /api/curriculum/levels/$CL "{\"copyFromId\":\"$GED\"}" | jq_ "d['data']['id']")
+GDS=$(M "SELECT id FROM CurriculumSession WHERE editionId='$GDR' AND number=1")
+check "voice recording is a homework hand-in type" "$(api POST /api/curriculum/sessions/$GDS/blocks '{"type":"ASSIGNMENT","titleEn":"Say it","data":{"kinds":["AUDIO","FILE"],"maxPoints":5}}' | jq_ "d['success']")/$(M "SELECT JSON_CONTAINS(data,'\"AUDIO\"','$.kinds') FROM CurriculumBlock WHERE sessionId='$GDS' AND titleEn='Say it'")" "True/1"
+api DELETE /api/curriculum/editions/$GDR >/dev/null
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

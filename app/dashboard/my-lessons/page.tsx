@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Markdown } from '@/components/curriculum/BlockView'
 import { BookOpen, CheckCircle2, Loader2, Lock } from 'lucide-react'
 
-interface StudentSession { id: string; number: number; titleEn: string; titleAr: string; open: boolean; current: boolean; inThisGroup: boolean; items: number; done: number }
+interface StudentSession { id: string; number: number; titleEn: string; titleAr: string; open: boolean; current: boolean; inThisGroup: boolean; items: number; done: number; lockedReason?: { en: string; ar: string } | null }
 interface StudentGroup { group: { id: string; label: string; courseName: string; levelName: string; status: string }; edition: { number: number } | null; sessions: StudentSession[] }
 interface ParentGroup { group: { id: string; label: string; courseName: string; levelName: string }; total: number; sessions: { number: number; titleEn: string; titleAr: string; objectivesEn: string | null; objectivesAr: string | null; items: number; done: number }[] }
 interface MyData { mode: 'STUDENT' | 'PARENT'; kidMode?: boolean; groups: (StudentGroup | ParentGroup)[] }
@@ -45,7 +45,7 @@ function StudentView({ groups, kid }: { groups: StudentGroup[]; kid: boolean }) 
                     <span className="min-w-0">
                       <span className={`block font-semibold text-slate-800 ${kid ? 'text-lg' : 'text-sm'}`}>{title}</span>
                       <span className="block text-xs text-slate-500">
-                        {!s.open ? t('les.locked') : s.items ? t('les.progress', { done: s.done, total: s.items }) : t('les.open')}
+                        {!s.open ? (s.lockedReason ? pick(s.lockedReason.en, s.lockedReason.ar) : t('les.locked')) : s.items ? t('les.progress', { done: s.done, total: s.items }) : t('les.open')}
                         {s.current ? ` · ${t('les.current')}` : ''}
                       </span>
                     </span>

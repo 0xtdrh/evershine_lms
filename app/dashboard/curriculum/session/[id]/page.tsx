@@ -2,6 +2,8 @@
 
 /** LMS L1: one curriculum session — edit texts and content blocks (draft only), preview as instructor / student, review comments. */
 
+import { SessionGateCard } from '@/components/curriculum/SessionGateCard'
+import type { SessionGate } from '@/lib/lms/gate'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -25,6 +27,7 @@ interface SessionData {
   session: {
     id: string; number: number; titleEn: string; titleAr: string; objectivesEn: string | null; objectivesAr: string | null
     materialsEn: string | null; materialsAr: string | null; instructorNotes: string | null; durationMin: number | null; skillIds: string[] | null
+    gate?: SessionGate | null
   }
   blocks: Block[]; prevId: string | null; nextId: string | null; editable: boolean
   comments: { id: string; body: string; resolved: boolean; authorName: string; createdAt: string }[]
@@ -234,6 +237,11 @@ export default function CurriculumSessionPage() {
             ))}
           </CardContent>
         </Card>
+      )}
+
+      {mode !== 'STUDENT' && (data.can.edit || data.can.approve || s.gate) && (
+        <SessionGateCard key={`${s.id}-gate`} sessionId={s.id} sessionNumber={s.number} gate={s.gate ?? null} canEdit={data.can.edit || data.can.approve}
+          hasHomework={data.blocks.some((b) => b.type === 'ASSIGNMENT')} hasQuiz={data.blocks.some((b) => b.type === 'QUIZ')} onSaved={refresh} />
       )}
 
       {(data.can.edit || data.can.approve) && mode !== 'STUDENT' && <Comments data={data} onChange={refresh} />}

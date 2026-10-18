@@ -11,7 +11,7 @@
 import { z } from 'zod'
 import { toolCheckSchema, toolMax } from './tool-checks'
 
-export const SUBMISSION_KINDS = ['TEXT', 'FILE', 'PHOTO', 'VIDEO', 'LINK', 'IN_CLASS', 'CODE'] as const
+export const SUBMISSION_KINDS = ['TEXT', 'FILE', 'PHOTO', 'VIDEO', 'AUDIO', 'LINK', 'IN_CLASS', 'CODE'] as const
 export const CODE_LANGUAGES = ['python', 'javascript', 'arduino'] as const
 export type SubmissionKind = (typeof SUBMISSION_KINDS)[number]
 export const QUESTION_TYPES = ['SINGLE', 'MULTI', 'TRUE_FALSE', 'NUMBER', 'SHORT'] as const
@@ -45,7 +45,7 @@ export const rubricCriteriaSchema = z.array(criterionSchema).min(1).max(12)
 export const assignmentDataSchema = z.object({
   instructionsEn: z.string().max(20000).default(''),
   instructionsAr: z.string().max(20000).default(''),
-  kinds: z.array(z.enum(SUBMISSION_KINDS)).max(6).default(['FILE']),
+  kinds: z.array(z.enum(SUBMISSION_KINDS)).max(8).default(['FILE']),
   questions: z.array(questionSchema).max(50).default([]),
   scale: z.enum(SCALES).default('POINTS'),
   maxPoints: z.number().min(0).max(1000).default(10),

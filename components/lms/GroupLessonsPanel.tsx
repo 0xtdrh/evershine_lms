@@ -17,11 +17,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { BookOpen, ChevronDown, ChevronUp, ExternalLink, Lock, LockOpen, Trash2 } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronUp, ExternalLink, Loader2, Lock, LockOpen, Trash2 } from 'lucide-react'
 
 interface Sess {
   id: string; number: number; titleEn: string; titleAr: string; objectivesEn: string | null; objectivesAr: string | null
   open: boolean; current: boolean; inThisGroup: boolean; override: 'OPEN' | 'LOCKED' | null; scheduledAt: string | null; reason?: string
+  gate?: { content?: boolean; homework?: string | null; quiz?: boolean } | null
 }
 interface Data {
   edition: { id: string; number: number } | null; newerEdition?: { id: string; number: number } | null; mode: string; defaultMode: string; modeSource: 'GROUP' | 'LEVEL' | 'COMPANY'
@@ -51,6 +52,7 @@ export function GroupLessonsPanel({ groupId }: { groupId: string }) {
   const key = ['group-lessons', groupId]
   const { data, error } = useQuery({ queryKey: key, queryFn: () => fetchApi<Data>(`/api/groups/${groupId}/lessons`), enabled: !!groupId, retry: false })
   const refresh = () => qc.invalidateQueries({ queryKey: key })
+  const [gateFor, setGateFor] = useState<number | null>(null)
   const act = useMutation({
     mutationFn: (b: object) => fetchApi(`/api/groups/${groupId}/lessons`, { method: 'PATCH', body: JSON.stringify(b) }),
     onSuccess: refresh, onError: (e: Error) => notify.error(e.message),
@@ -120,7 +122,9 @@ export function GroupLessonsPanel({ groupId }: { groupId: string }) {
                 {s.open && <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => act.mutate({ sessionNumber: s.number, action: 'lock' })}><Lock className="h-3 w-3" /> {L('Lock', 'اقفل')}</Button>}
                 {s.override && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => act.mutate({ sessionNumber: s.number, action: 'auto' })}>{L('Automatic', 'تلقائي')}</Button>}
                 <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setNoteFor(noteFor === s.number ? null : s.number)}>{L('+ Note', '+ ملاحظة')}</Button>
+                {s.gate && <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs text-indigo-700" onClick={() => setGateFor(gateFor === s.number ? null : s.number)}><Lock className="h-3 w-3" /> {L('Who finished?', 'مين خلّص؟')}</Button>}
               </span>
+              {gateFor === s.number && <GateStudents groupId={groupId} sessionNumber={s.number} />}
               {noteFor === s.number && (
                 <div className="flex w-full flex-wrap gap-2">
                   <Input className="h-8 flex-1" placeholder={L('Note for this group only (students see it in the lesson)', 'ملاحظة للجروب ده بس (الطلبة بيشوفوها في الدرس)')} value={note} onChange={(e) => setNote(e.target.value)} />
@@ -138,5 +142,34 @@ export function GroupLessonsPanel({ groupId }: { groupId: string }) {
         )}
       </CardContent>
     </Card>
+  )
+}
+
+/** 2026-10-18: students held back by this session's gate; the instructor may open the next session for one of them. */
+function GateStudents({ groupId, sessionNumber }: { groupId: string; sessionNumber: number }) {
+  const qc = useQueryClient()
+  const key = ['lesson-gate', groupId, sessionNumber]
+  const { data, isLoading } = useQuery({ queryKey: key, queryFn: () => fetchApi<{ gate: unknown; canOpen: boolean; students: { studentId: string; name: string; met: boolean; missing: string[]; openedByHand: boolean }[] }>(`/api/groups/${groupId}/lessons/gate?session=${sessionNumber}`) })
+  const toggle = useMutation({
+    mutationFn: (b: { studentId: string; open: boolean }) => fetchApi(`/api/groups/${groupId}/lessons/gate`, { method: 'POST', body: JSON.stringify({ ...b, sessionNumber: sessionNumber + 1 }) }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: key }); qc.invalidateQueries({ queryKey: ['group-lessons', groupId] }) },
+    onError: (e: Error) => notify.error(e.message),
+  })
+  const MISS: Record<string, [string, string]> = { CONTENT: ['lesson not finished', 'الدرس مخلصش'], HOMEWORK: ['homework not handed in', 'الواجب ماتسلمش'], HOMEWORK_GRADE: ['homework waiting for grading', 'الواجب مستني تصحيح'], HOMEWORK_SCORE: ['homework score too low', 'درجة الواجب أقل من المطلوب'], QUIZ: ['quiz not passed', 'مانجحش في الامتحان'] }
+  if (isLoading || !data) return <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+  const waiting = data.students.filter((x) => !x.met)
+  return (
+    <div className="w-full space-y-1 rounded-lg border border-indigo-100 bg-indigo-50/40 p-2 text-xs">
+      <p className="font-semibold text-indigo-800">{L(`${data.students.length - waiting.length} of ${data.students.length} finished — session ${sessionNumber + 1} is waiting for:`, `${data.students.length - waiting.length} من ${data.students.length} خلّصوا — الحصة ${sessionNumber + 1} مستنية:`)}</p>
+      {!waiting.length && <p className="text-emerald-700">{L('Everyone finished.', 'الكل خلّص.')}</p>}
+      {waiting.map((x) => (
+        <div key={x.studentId} className="flex flex-wrap items-center justify-between gap-2">
+          <span>{x.name} <span className="text-slate-500">· {x.missing.map((m) => L(MISS[m]?.[0] ?? m, MISS[m]?.[1] ?? m)).join('، ')}</span></span>
+          {data.canOpen && (x.openedByHand
+            ? <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" disabled={toggle.isPending} onClick={() => toggle.mutate({ studentId: x.studentId, open: false })}>{L('Opened by hand — undo', 'مفتوح يدوي — رجّعه')}</Button>
+            : <Button size="sm" variant="outline" className="h-6 gap-1 px-2 text-xs" disabled={toggle.isPending} onClick={() => toggle.mutate({ studentId: x.studentId, open: true })}><LockOpen className="h-3 w-3" /> {L(`Open session ${sessionNumber + 1} for this student`, `افتح الحصة ${sessionNumber + 1} للطالب ده`)}</Button>)}
+        </div>
+      ))}
+    </div>
   )
 }

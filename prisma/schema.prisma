@@ -4208,6 +4208,9 @@ model CurriculumSession {
   instructorNotes String?  @db.Text
   durationMin     Int?
   skillIds        Json?
+  /// 2026-10-18: what a student must finish in THIS session before the next one opens (null = nothing extra)
+  /// { content?: boolean, homework?: 'SUBMITTED' | 'GRADED' | null, minHomeworkPct?: number | null, quiz?: boolean, minQuizPct?: number | null }
+  gate            Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -4271,6 +4274,19 @@ model GroupLessonNote {
 }
 
 /// LMS L2: a student ticked a content block as done.
+/// 2026-10-18: an instructor opened one session for ONE student (past the session's gate).
+model StudentLessonUnlock {
+  id             String   @id @default(cuid())
+  classSectionId String
+  studentId      String
+  sessionNumber  Int
+  byUserId       String
+  createdAt      DateTime @default(now())
+
+  @@unique([classSectionId, studentId, sessionNumber])
+  @@index([studentId])
+}
+
 model LessonProgress {
   id             String   @id @default(cuid())
   studentId      String

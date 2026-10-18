@@ -222,7 +222,7 @@ export async function saveSubmission(studentId: string, groupId: string, blockId
   // only what this assignment accepts; files only from the student's own private folder
   const folder = submissionsFolder(studentId)
   const files = (input.files ?? []).slice(0, 10)
-  if (files.length && !kinds.some((k) => k === 'FILE' || k === 'PHOTO' || k === 'VIDEO')) return fail('INVALID', 'This assignment does not take files')
+  if (files.length && !kinds.some((k) => k === 'FILE' || k === 'PHOTO' || k === 'VIDEO' || k === 'AUDIO')) return fail('INVALID', 'This assignment does not take files')
   if (files.some((f) => !f.publicId.startsWith(`${folder}/`))) return fail('INVALID', 'File not found')
   const links = (input.links ?? []).map((l) => l.trim()).filter(Boolean).slice(0, 5)
   if (links.length && !kinds.includes('LINK')) return fail('INVALID', 'This assignment does not take links')

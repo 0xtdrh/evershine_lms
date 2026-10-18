@@ -44,11 +44,15 @@ export interface UnlockInput {
   overrides?: Record<number, 'OPEN' | 'LOCKED'>
   /** curriculum session numbers the student finished (PREVIOUS mode) */
   completed?: Set<number>
+  /** 2026-10-18 per-student gates: session number → the earlier session whose gate is not met yet (keeps it shut) */
+  gateBlocked?: Map<number, number>
+  /** sessions the instructor opened for this one student (past a gate) */
+  studentOpened?: Set<number>
   now: Date
 }
 
-export type UnlockReason = 'EARLIER_MONTH' | 'ALL' | 'HELD' | 'TIME' | 'INSTRUCTOR' | 'PREVIOUS_DONE' | 'FIRST'
-export interface SessionState { number: number; open: boolean; reason?: UnlockReason; current: boolean; inThisGroup: boolean }
+export type UnlockReason = 'EARLIER_MONTH' | 'ALL' | 'HELD' | 'TIME' | 'INSTRUCTOR' | 'PREVIOUS_DONE' | 'FIRST' | 'GATE' | 'STUDENT_OPENED'
+export interface SessionState { number: number; open: boolean; reason?: UnlockReason; current: boolean; inThisGroup: boolean; blockedBy?: number }
 
 export function cycleRange(perCycle: number, cycleNumber: number, totalSessions: number) {
   const per = Math.max(1, perCycle)
@@ -80,6 +84,10 @@ export function sessionStates(i: UnlockInput): SessionState[] {
         else if (i.completed?.has(n - 1)) { st.open = true; st.reason = 'PREVIOUS_DONE' }
       }
     }
+    // per-student gate of an earlier session (this group's sessions only); the instructor may open it for this student
+    const blocker = i.gateBlocked?.get(n)
+    if (inThisGroup && i.studentOpened?.has(n)) { st.open = true; st.reason = 'STUDENT_OPENED' }
+    else if (inThisGroup && blocker != null && st.open) { st.open = false; st.reason = 'GATE'; st.blockedBy = blocker }
     out.push(st)
   }
   return out

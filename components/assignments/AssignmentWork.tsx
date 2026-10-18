@@ -10,13 +10,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
-import { useI18n } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 import { Markdown } from '@/components/curriculum/BlockView'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CodeWork, useCodeRunner, type TestCase, type TestResult } from './CodeRunner'
 import { TOOL_RULES, type ToolCheck } from '@/lib/assignments/tool-checks'
-import { Camera, CheckCircle2, ClipboardList, FileText, Link2, Loader2, Paperclip, Send, Trash2, XCircle } from 'lucide-react'
+import { Camera, CheckCircle2, ClipboardList, FileText, Link2, Loader2, Mic, Paperclip, Send, Square, Trash2, XCircle } from 'lucide-react'
 
 type Ans = string | string[] | number | null
 interface QView { id: string; type: string; textEn: string; textAr: string; options: { id: string; textEn: string; textAr: string }[]; points: number }
@@ -62,6 +62,7 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
   const runner = useCodeRunner(data?.assignment.code?.language ?? 'python')
   const [again, setAgain] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [recorder, setRecorder] = useState<MediaRecorder | null>(null)
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const dirty = useRef(false)
 
@@ -105,8 +106,8 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
   const a = data.assignment
   const sub = data.submission
   const kinds = a.kinds
-  const fileKinds = kinds.filter((k) => k === 'FILE' || k === 'PHOTO' || k === 'VIDEO')
-  const accept = [kinds.includes('PHOTO') && 'image/*', kinds.includes('VIDEO') && 'video/*', kinds.includes('FILE') && '.pdf,.docx,.pptx,.xlsx,.txt,.zip,.sb3,.aia,.ino,.py,.stl,.mp3,.m4a,image/*'].filter(Boolean).join(',')
+  const fileKinds = kinds.filter((k) => k === 'FILE' || k === 'PHOTO' || k === 'VIDEO' || k === 'AUDIO')
+  const accept = [kinds.includes('PHOTO') && 'image/*', kinds.includes('VIDEO') && 'video/*', kinds.includes('AUDIO') && 'audio/*', kinds.includes('FILE') && '.pdf,.docx,.pptx,.xlsx,.txt,.zip,.sb3,.aia,.ino,.py,.stl,.mp3,.m4a,image/*'].filter(Boolean).join(',')
   const detail = Array.isArray(sub?.autoDetail) ? sub!.autoDetail : (sub?.autoDetail as { items?: { id: string; correct: boolean }[] } | null)?.items ?? []
   const okOf = (qid: string) => detail.find((d) => d.id === qid)?.correct
   const fmt = (iso: string) => new Date(iso).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })
@@ -129,6 +130,28 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
       try { const up: FileRef[] = []; for (const f of list) up.push(await uploadFile(f, studentId ?? null)); dirty.current = true; setFiles((x) => [...x, ...up]) } catch (e) { notify.error((e as Error).message) } finally { setUploading(false) }
     }
     input.click()
+  }
+
+  /** voice homework: record in the browser (up to 5 minutes), then it is uploaded like any other file */
+  const recordVoice = async () => {
+    if (recorder) { recorder.stop(); return }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const rec = new MediaRecorder(stream)
+      const chunks: Blob[] = []
+      rec.ondataavailable = (e) => chunks.push(e.data)
+      rec.onstop = async () => {
+        stream.getTracks().forEach((tr) => tr.stop())
+        setRecorder(null)
+        const type = rec.mimeType || 'audio/webm'
+        const file = new File([new Blob(chunks, { type })], `voice-${Date.now()}.${type.includes('mp4') ? 'm4a' : 'webm'}`, { type })
+        setUploading(true)
+        try { const up = await uploadFile(file, studentId ?? null); dirty.current = true; setFiles((x) => [...x, up]) } catch (e) { notify.error((e as Error).message) } finally { setUploading(false) }
+      }
+      rec.start()
+      setRecorder(rec)
+      setTimeout(() => { if (rec.state === 'recording') rec.stop() }, 300_000)
+    } catch { notify.error(L('Microphone not available — allow it in the browser, or upload an audio file', 'المايك مش متاح — اسمح بيه في المتصفح، أو ارفع ملف صوت')) }
   }
 
   return (
@@ -256,6 +279,7 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
           {editable && (
             <div className="flex flex-wrap gap-2">
               {kinds.includes('PHOTO') && <Button type="button" size="sm" variant="outline" className="gap-1" disabled={uploading} onClick={() => pickFiles(true)}><Camera className="h-4 w-4" /> {t('hw.takePhoto')}</Button>}
+              {kinds.includes('AUDIO') && <Button type="button" size="sm" variant={recorder ? 'destructive' : 'outline'} className="gap-1" disabled={uploading && !recorder} onClick={recordVoice}>{recorder ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />} {recorder ? L('Stop recording', 'وقّف التسجيل') : L('Record voice', 'سجّل صوت')}</Button>}
               <Button type="button" size="sm" variant="outline" className="gap-1" disabled={uploading} onClick={() => pickFiles(false)}>{uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />} {uploading ? t('hw.uploading') : t('hw.upload')}</Button>
             </div>
           )}

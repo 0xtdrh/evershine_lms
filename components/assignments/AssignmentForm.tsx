@@ -16,10 +16,10 @@ import { L } from '@/lib/i18n/client'
 type Q = { id: string; type: string; textEn: string; textAr: string; options: { id: string; textEn: string; textAr: string }[]; correct: (string | number)[]; tolerance?: number; points: number }
 interface Rubric { id: string; nameEn: string; nameAr: string; criteria: unknown[]; kidStars: boolean; maxPoints: number }
 
-const KIND_AR: Record<string, string> = { TEXT: 'إجابة مكتوبة', FILE: 'ملف', PHOTO: 'صور', VIDEO: 'فيديو', LINK: 'لينك (Scratch، MakeCode، GitHub…)', IN_CLASS: 'اتعمل في الحصة (المدرب بيعلّم)', CODE: 'كود في المحرر (Python / JavaScript / Arduino)' }
+const KIND_AR: Record<string, string> = { TEXT: 'إجابة مكتوبة', FILE: 'ملف', PHOTO: 'صور', VIDEO: 'فيديو', AUDIO: 'تسجيل صوت', LINK: 'لينك (Scratch، MakeCode، GitHub…)', IN_CLASS: 'اتعمل في الحصة (المدرب بيعلّم)', CODE: 'كود في المحرر (Python / JavaScript / Arduino)' }
 const TOOL_AR: Record<string, string> = { SCRATCH: 'Scratch (لينك Shared أو ‎.sb3)', MAKECODE: 'MakeCode micro:bit / Arcade (لينك Shared)', APPINVENTOR: 'App Inventor (ملف ‎.aia)', SNAP: 'Snap! (لينك عام أو ‎.xml)', GITHUB: 'GitHub (Repo عام)', ARDUINO: 'كود Arduino (المحرر أو ‎.ino)' }
 const Q_AR: Record<string, string> = { SINGLE: 'اختيار واحد صح', MULTI: 'أكتر من اختيار صح', TRUE_FALSE: 'صح / خطأ', NUMBER: 'رقم', SHORT: 'إجابة قصيرة (كلمة)' }
-export const KIND_LABELS: Record<string, string> = { TEXT: 'Written answer', FILE: 'File', PHOTO: 'Photos', VIDEO: 'Video', LINK: 'Link (Scratch, MakeCode, GitHub…)', IN_CLASS: 'Done in class (instructor ticks)', CODE: 'Code in the editor (Python / JavaScript / Arduino)' }
+export const KIND_LABELS: Record<string, string> = { TEXT: 'Written answer', FILE: 'File', PHOTO: 'Photos', VIDEO: 'Video', AUDIO: 'Voice recording', LINK: 'Link (Scratch, MakeCode, GitHub…)', IN_CLASS: 'Done in class (instructor ticks)', CODE: 'Code in the editor (Python / JavaScript / Arduino)' }
 const TOOL_LABELS: Record<string, string> = { SCRATCH: 'Scratch (shared link or .sb3)', MAKECODE: 'MakeCode micro:bit / Arcade (shared link)', APPINVENTOR: 'App Inventor (.aia file)', SNAP: 'Snap! (public link or .xml)', GITHUB: 'GitHub (public repository link)', ARDUINO: 'Arduino code (editor or .ino)' }
 const Q_LABELS: Record<string, string> = { SINGLE: 'One correct choice', MULTI: 'Several correct choices', TRUE_FALSE: 'True / false', NUMBER: 'Number', SHORT: 'Short answer (word)' }
 const uid = () => Math.random().toString(36).slice(2, 10)
