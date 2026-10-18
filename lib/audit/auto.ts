@@ -53,13 +53,54 @@ export function diffRecords(before: Record<string, unknown> | null, after: Recor
 }
 
 const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
+const MODEL_BY_DELEGATE = new Map([...AUDITED_MODELS].map((m) => [lowerFirst(m), m]))
+const WRITE_OPS = new Set(['create', 'update', 'delete', 'upsert', 'createMany', 'updateMany', 'deleteMany'])
+type Write = (userId: string, action: string, entityType: string, entityId: string | null, changes: unknown) => void
+let writeLog: Write = () => {}
+/** args already logged by auditTx (so the extension does not log them twice) */
+const handledArgs = new WeakSet<object>()
+
+/** One audited write: runs it, then logs who / what / old → new. */
+async function audited(userId: string, model: string, operation: string, args: unknown, run: (a: unknown) => Promise<unknown>, findBefore: (where: unknown) => Promise<Record<string, unknown> | null>): Promise<unknown> {
+  const a = args as { where?: unknown; data?: Record<string, unknown> }
+  if (operation === 'update' || operation === 'delete' || operation === 'upsert') {
+    const before = a.where ? await findBefore(a.where).catch(() => null) : null
+    const result = (await run(args)) as Record<string, unknown> | null
+    const id = (result?.id as string | undefined) ?? (before?.id as string | undefined) ?? null
+    if (operation === 'delete') writeLog(userId, 'DELETE', model, id, { auto: true, before: sanitize(before) })
+    else if (!before) writeLog(userId, 'CREATE', model, id, { auto: true, after: sanitize(result) })
+    else {
+      const changed = diffRecords(before, result)
+      if (Object.keys(changed).length) writeLog(userId, 'UPDATE', model, id, { auto: true, changed })
+    }
+    return result
+  }
+  if (operation === 'create') {
+    const result = (await run(args)) as Record<string, unknown> | null
+    writeLog(userId, 'CREATE', model, (result?.id as string | undefined) ?? null, { auto: true, after: sanitize(result) })
+    return result
+  }
+  if (operation === 'updateMany' || operation === 'deleteMany' || operation === 'createMany') {
+    const result = (await run(args)) as { count?: number }
+    if (result?.count) {
+      const one = Array.isArray(a.data) ? null : a.data
+      const fields = one ? Object.keys(one).filter((k) => !SECRET.test(k)) : []
+      const action = operation === 'updateMany' ? 'UPDATE_MANY' : operation === 'deleteMany' ? 'DELETE_MANY' : 'CREATE_MANY'
+      writeLog(userId, action, model, null, { auto: true, count: result.count, fields, set: operation === 'updateMany' ? sanitize(one) : null })
+    }
+    return result
+  }
+  return run(args)
+}
 
 /**
  * Wraps a PrismaClient so changes on AUDITED_MODELS are logged. `whoIsActing` returns the signed-in user id (or null).
  * The base client is used for the "before" read and for the log row, so logging never logs itself.
+ * Inside interactive transactions Prisma runs queries outside the request context (no actor there): lib/prisma.ts
+ * passes the transaction client through auditTx(), which logs at call time with the actor read when the transaction began.
  */
 export function withAutoAudit(base: PrismaClient, whoIsActing: () => string | null): PrismaClient {
-  const write = (userId: string, action: string, entityType: string, entityId: string | null, changes: unknown) => {
+  writeLog = (userId, action, entityType, entityId, changes) => {
     void base.auditLog.create({ data: { userId, action, entityType, entityId, changes: changes as Prisma.InputJsonValue } }).catch((e) => console.error('[AUTO_AUDIT]', e instanceof Error ? e.message : e))
   }
   // the generic $extends typing is too big for TypeScript here; the callback is typed by hand
@@ -69,43 +110,35 @@ export function withAutoAudit(base: PrismaClient, whoIsActing: () => string | nu
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }: Op) {
-          if (!model || !AUDITED_MODELS.has(model)) return query(args)
+          if (!model || !AUDITED_MODELS.has(model) || !WRITE_OPS.has(operation)) return query(args)
+          if (args && typeof args === 'object' && handledArgs.has(args)) return query(args)
           const userId = whoIsActing()
           if (!userId) return query(args)
           const delegate = (base as unknown as Record<string, { findUnique: (a: unknown) => Promise<Record<string, unknown> | null> }>)[lowerFirst(model)]
-          const a = args as { where?: unknown; data?: Record<string, unknown> }
-          {
-            if (operation === 'update' || operation === 'delete' || operation === 'upsert') {
-              const before = a.where ? await delegate.findUnique({ where: a.where }).catch(() => null) : null
-              const result = (await query(args)) as Record<string, unknown> | null
-              const id = (result?.id as string | undefined) ?? (before?.id as string | undefined) ?? null
-              if (operation === 'delete') write(userId, 'DELETE', model, id, { auto: true, before: sanitize(before) })
-              else if (!before) write(userId, 'CREATE', model, id, { auto: true, after: sanitize(result) })
-              else {
-                const changed = diffRecords(before, result)
-                if (Object.keys(changed).length) write(userId, 'UPDATE', model, id, { auto: true, changed })
-              }
-              return result
-            }
-            if (operation === 'create') {
-              const result = (await query(args)) as Record<string, unknown> | null
-              write(userId, 'CREATE', model, (result?.id as string | undefined) ?? null, { auto: true, after: sanitize(result) })
-              return result
-            }
-            if (operation === 'updateMany' || operation === 'deleteMany' || operation === 'createMany') {
-              const result = (await query(args)) as { count?: number }
-              if (result?.count) {
-                const one = Array.isArray(a.data) ? null : a.data
-                const fields = one ? Object.keys(one).filter((k) => !SECRET.test(k)) : []
-                const action = operation === 'updateMany' ? 'UPDATE_MANY' : operation === 'deleteMany' ? 'DELETE_MANY' : 'CREATE_MANY'
-                write(userId, action, model, null, { auto: true, count: result.count, fields, set: operation === 'updateMany' ? sanitize(one) : null })
-              }
-              return result
-            }
-          }
-          return query(args)
+          return audited(userId, model, operation, args, query, (where) => delegate.findUnique({ where }))
         },
       },
     },
   }) as unknown as PrismaClient
+}
+
+/** The transaction client with audited writes for this actor (reads go straight through). */
+export function auditTx<T extends object>(tx: T, actor: string | null): T {
+  if (!actor) return tx
+  return new Proxy(tx, {
+    get(target, prop) {
+      const value = Reflect.get(target, prop)
+      const model = typeof prop === 'string' ? MODEL_BY_DELEGATE.get(prop) : undefined
+      if (!model || !value || typeof value !== 'object') return typeof value === 'function' ? value.bind(target) : value
+      const delegate = value as Record<string, (a: unknown) => Promise<unknown>>
+      return new Proxy(delegate, {
+        get(d, op) {
+          const fn = Reflect.get(d, op)
+          if (typeof op !== 'string' || typeof fn !== 'function') return fn
+          if (!WRITE_OPS.has(op)) return fn.bind(d)
+          return (args: unknown) => audited(actor, model, op, args, (a) => { if (a && typeof a === 'object') handledArgs.add(a); return fn.call(d, a) }, (where) => (d.findUnique as (a: unknown) => Promise<Record<string, unknown> | null>).call(d, { where }))
+        },
+      })
+    },
+  })
 }
