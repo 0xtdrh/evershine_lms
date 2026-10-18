@@ -39,7 +39,22 @@ function createPrismaClient(): PrismaClient {
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
   // 2026-10-18: changes on the important tables are logged automatically (who, old value → new value)
-  return withAutoAudit(base, currentActorId)
+  const audited = withAutoAudit(base, currentActorId)
+  // keep "who is acting" inside interactive transactions (Prisma runs the callback outside the request context).
+  // Done on the client itself, because modules loaded later read globalThis.prisma directly (not the lazy proxy).
+  return new Proxy(audited, {
+    get(target, prop) {
+      const value = Reflect.get(target, prop)
+      if (typeof value !== 'function') return value
+      if (prop !== '$transaction') return value.bind(target)
+      const tx = value.bind(target)
+      return (arg: unknown, opts?: unknown) => {
+        if (typeof arg !== 'function') return tx(arg, opts)
+        const actor = currentActorId()
+        return tx((t: unknown) => runWithActor(actor, () => (arg as (x: unknown) => unknown)(t)), opts)
+      }
+    },
+  })
 }
 
 // WHY Proxy: Allows this module to be safely imported at build time without
@@ -64,15 +79,6 @@ function makeLazyPrisma(): PrismaClient {
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const value = (client as any)[prop]
-      // 2026-10-18: keep "who is acting" inside interactive transactions (the change log reads it there)
-      if (prop === '$transaction' && typeof value === 'function') {
-        const tx = value.bind(client)
-        return (arg: unknown, opts?: unknown) => {
-          if (typeof arg !== 'function') return tx(arg, opts)
-          const actor = currentActorId()
-          return tx((t: unknown) => runWithActor(actor, () => (arg as (x: unknown) => unknown)(t)), opts)
-        }
-      }
       return typeof value === 'function' ? value.bind(client) : value
     },
   })
