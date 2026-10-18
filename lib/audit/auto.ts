@@ -53,12 +53,9 @@ export function diffRecords(before: Record<string, unknown> | null, after: Recor
 }
 
 const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
-const MODEL_BY_DELEGATE = new Map([...AUDITED_MODELS].map((m) => [lowerFirst(m), m]))
 const WRITE_OPS = new Set(['create', 'update', 'delete', 'upsert', 'createMany', 'updateMany', 'deleteMany'])
 type Write = (userId: string, action: string, entityType: string, entityId: string | null, changes: unknown) => void
 let writeLog: Write = () => {}
-/** args already logged by auditTx (so the extension does not log them twice) */
-const handledArgs = new WeakSet<object>()
 
 /** One audited write: runs it, then logs who / what / old → new. */
 async function audited(userId: string, model: string, operation: string, args: unknown, run: (a: unknown) => Promise<unknown>, findBefore: (where: unknown) => Promise<Record<string, unknown> | null>): Promise<unknown> {
@@ -70,7 +67,12 @@ async function audited(userId: string, model: string, operation: string, args: u
     if (operation === 'delete') writeLog(userId, 'DELETE', model, id, { auto: true, before: sanitize(before) })
     else if (!before) writeLog(userId, 'CREATE', model, id, { auto: true, after: sanitize(result) })
     else {
-      const changed = diffRecords(before, result)
+      // a write that selects only a few fields: rebuild the new record from the old one + the plain values written
+      const written: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(a.data ?? {})) {
+        if (v === null || v instanceof Date || Prisma.Decimal.isDecimal(v) || typeof v !== 'object') written[k] = v
+      }
+      const changed = diffRecords(before, { ...before, ...written, ...(result ?? {}) })
       if (Object.keys(changed).length) writeLog(userId, 'UPDATE', model, id, { auto: true, changed })
     }
     return result
@@ -96,8 +98,7 @@ async function audited(userId: string, model: string, operation: string, args: u
 /**
  * Wraps a PrismaClient so changes on AUDITED_MODELS are logged. `whoIsActing` returns the signed-in user id (or null).
  * The base client is used for the "before" read and for the log row, so logging never logs itself.
- * Inside interactive transactions Prisma runs queries outside the request context (no actor there): lib/prisma.ts
- * passes the transaction client through auditTx(), which logs at call time with the actor read when the transaction began.
+ * Inside interactive transactions lib/prisma.ts pins the actor read when the transaction began.
  */
 export function withAutoAudit(base: PrismaClient, whoIsActing: () => string | null): PrismaClient {
   writeLog = (userId, action, entityType, entityId, changes) => {
@@ -111,7 +112,6 @@ export function withAutoAudit(base: PrismaClient, whoIsActing: () => string | nu
       $allModels: {
         async $allOperations({ model, operation, args, query }: Op) {
           if (!model || !AUDITED_MODELS.has(model) || !WRITE_OPS.has(operation)) return query(args)
-          if (args && typeof args === 'object' && handledArgs.has(args)) return query(args)
           const userId = whoIsActing()
           if (!userId) return query(args)
           const delegate = (base as unknown as Record<string, { findUnique: (a: unknown) => Promise<Record<string, unknown> | null> }>)[lowerFirst(model)]
@@ -120,25 +120,4 @@ export function withAutoAudit(base: PrismaClient, whoIsActing: () => string | nu
       },
     },
   }) as unknown as PrismaClient
-}
-
-/** The transaction client with audited writes for this actor (reads go straight through). */
-export function auditTx<T extends object>(tx: T, actor: string | null): T {
-  if (!actor) return tx
-  return new Proxy(tx, {
-    get(target, prop) {
-      const value = Reflect.get(target, prop)
-      const model = typeof prop === 'string' ? MODEL_BY_DELEGATE.get(prop) : undefined
-      if (!model || !value || typeof value !== 'object') return typeof value === 'function' ? value.bind(target) : value
-      const delegate = value as Record<string, (a: unknown) => Promise<unknown>>
-      return new Proxy(delegate, {
-        get(d, op) {
-          const fn = Reflect.get(d, op)
-          if (typeof op !== 'string' || typeof fn !== 'function') return fn
-          if (!WRITE_OPS.has(op)) return fn.bind(d)
-          return (args: unknown) => audited(actor, model, op, args, (a) => { if (a && typeof a === 'object') handledArgs.add(a); return fn.call(d, a) }, (where) => (d.findUnique as (a: unknown) => Promise<Record<string, unknown> | null>).call(d, { where }))
-        },
-      })
-    },
-  })
 }

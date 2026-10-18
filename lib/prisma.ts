@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { auditTx, withAutoAudit } from '@/lib/audit/auto'
+import { withAutoAudit } from '@/lib/audit/auto'
 import { currentActorId, runWithActor } from '@/lib/audit/actor'
 
 // WHY singleton: Next.js hot reload creates new module instances on each change.
@@ -51,7 +51,7 @@ function createPrismaClient(): PrismaClient {
       return (arg: unknown, opts?: unknown) => {
         if (typeof arg !== 'function') return tx(arg, opts)
         const actor = currentActorId()
-        return tx((t: object) => runWithActor(actor, () => (arg as (x: unknown) => unknown)(auditTx(t, actor))), opts)
+        return tx((t: unknown) => runWithActor(actor, () => (arg as (x: unknown) => unknown)(t)), opts)
       }
     },
   })
