@@ -24,6 +24,7 @@ import { studentSkills } from '@/lib/reports/lms-summary'
 import { groupLessons } from '@/lib/lms/engine'
 import { groupAssignments } from '@/lib/assignments/engine'
 import { homeworkStats } from '@/lib/lms/analytics-calc'
+import { normalizeCardCode } from '@/lib/cards/rules'
 import {
   BUILTIN_STAMPS, autoAwards, canGive, eventOpen, passportPrefix, shareExpiry, tracksGraduated, type Facts,
 } from './rules'
@@ -265,7 +266,7 @@ export async function scanEventStamp(user: User, stampId: string, code: string):
   if (s.kind !== 'EVENT') return fail('INVALID', 'This is not an event stamp')
   if (!canGive(s.givers, user.role)) return fail('FORBIDDEN', 'Your role cannot give this stamp')
   if (!eventOpen(s, new Date())) return fail('CLOSED', 'This event stamp is not open today')
-  const clean = code.trim()
+  const clean = normalizeCardCode(code)
   if (!/^(tn|esa)-qr-/i.test(clean)) return fail('INVALID', 'This is not a student card')
   const st = await prisma.student.findFirst({ where: { idCardQRCode: clean, isActive: true }, select: { id: true, firstName: true, lastName: true, campusId: true } })
   if (!st) return fail('NOT_FOUND', 'Student card not found')

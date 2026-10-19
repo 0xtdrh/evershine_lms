@@ -283,6 +283,9 @@ model User {
   emailVerified          Boolean                  @default(false)
   emailVerifiedAt        DateTime?
   displayName            String?
+  /// 2026-10-19 staff ID card: the code in its QR (TN-STF-…); a new one on replacement (the old card stops working)
+  cardCode               String?                  @unique @db.VarChar(80)
+  cardIssuedAt           DateTime?
   profilePictureUrl      String?
   profilePicturePublicId String?
   profileStatus          String                   @default("ACTIVE")
@@ -2413,6 +2416,8 @@ model Track {
   minAge      Int?
   maxAge      Int?
   description String?
+  /// 2026-10-19 ID cards: the track's colour on the student card (#RRGGBB); null = TechNova blue
+  color       String?  @db.VarChar(9)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
 
@@ -5098,5 +5103,20 @@ model UserActivityDay {
 
   @@unique([userId, day])
   @@index([day])
+}
+
+/// 2026-10-19 ID cards: every card issued, replaced or printed (who and when).
+model IdCardEvent {
+  id        String   @id @default(cuid())
+  kind      String   @db.VarChar(8) // STUDENT | STAFF
+  subjectId String // Student.id or User.id
+  code      String   @db.VarChar(80)
+  action    String   @db.VarChar(10) // ISSUED | REPLACED | PRINTED
+  reason    String?  @db.VarChar(200)
+  byUserId  String
+  createdAt DateTime @default(now())
+
+  @@index([kind, subjectId])
+  @@index([createdAt])
 }
 

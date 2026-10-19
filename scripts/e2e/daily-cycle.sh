@@ -1964,6 +1964,43 @@ check "after 30+ minutes away the next ping is a new visit" "$(M "SELECT visits 
 check "sign-ins are counted, and the usage report shows the person" "$(M "SELECT COUNT(*) FROM UserActivityDay WHERE logins > 0 AND day='$TODAYC'" | python -c "import sys;print(int(sys.stdin.read())>0)")/$(api GET "/api/usage?role=STAFF" | jq_ "any(p['userId']=='$ME' and p['visits']>=2 for p in d['data']['people'])")" "True/True"
 DH=$(api GET /api/data-health)
 check "data health: every check runs, and 'groups without a schedule' matches the database" "$(echo "$DH" | jq_ "len(d['data']['checks'])>=10")/$(echo "$DH" | jq_ "[c['count'] for c in d['data']['checks'] if c['key']=='groupNoSchedule'][0]")" "True/$(M "SELECT COUNT(*) FROM ClassSection WHERE status='ACTIVE' AND isActive=1 AND (scheduleSlots IS NULL OR JSON_LENGTH(scheduleSlots)=0)")"
+echo "== 59. ID cards: print data, public check (valid / not valid), lost card → new code, settings, track colour, instructor in every place"
+CARDS=$(api GET "/api/cards?kind=STUDENT&groupId=$LG")
+KCODE=$(echo "$CARDS" | jq_ "[c['code'] for c in d['data'] if c['id']=='$LK'][0]")
+check "student cards of a group: the student is there with a TN-QR code, and the code is saved" "$(echo "$KCODE" | cut -c1-6)/$(M "SELECT idCardQRCode='$KCODE' FROM Student WHERE id='$LK'")/$(M "SELECT COUNT(*)>0 FROM IdCardEvent WHERE subjectId='$LK' AND action='ISSUED'")" "TN-QR-/1/1"
+check "a stranger (not signed in) only sees 'valid', not who it is" "$(curl -s "$B/api/card-check?code=$KCODE" | jq_ "(d['data']['state'], 'person' in d['data'])")" "('VALID', False)"
+check "staff see the person; the scanned link (…/card/<code>) works like the code" "$(api GET "/api/card-check?code=$(python -c "import urllib.parse,sys;print(urllib.parse.quote('https://x.app/card/'+sys.argv[1],safe=''))" "$KCODE")" | jq_ "(d['data']['state'], d['data']['person']['href'])")" "('VALID', '/dashboard/students/$LK')"
+check "the public check page opens without signing in" "$(curl -s -o /dev/null -w '%{http_code}' "$B/card/$KCODE")" "200"
+KPAIR=$(M "SELECT CONCAT(g.B,' ',g.A) FROM _GuardianToStudent g JOIN Student s ON s.id=g.B JOIN Guardian gu ON gu.id=g.A JOIN User u ON u.id=gu.userId WHERE s.isActive=1 AND s.enrollmentStatus='ACTIVE' AND u.isActive=1 LIMIT 1")
+KPS=${KPAIR% *}; KPG=${KPAIR#* }
+KPR=$(api POST /api/students/$KPS/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$KPG\"}")
+KPJ=$(mktemp); login_jar "$(echo "$KPR" | jq_ "d['data']['loginId']")" "$(echo "$KPR" | jq_ "d['data']['password']")" "$KPJ" 10.0.1.98
+KTJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$KTJ" 10.0.1.99
+check "a parent / instructor cannot print cards" "$(curl -s -o /dev/null -w '%{http_code}' -b "$KPJ" "$B/api/cards?kind=STUDENT&groupId=$LG")/$(curl -s -o /dev/null -w '%{http_code}' -b "$KTJ" "$B/api/cards?kind=STUDENT&groupId=$LG")" "403/403"
+check "print log" "$(api POST /api/cards/printed "{\"cards\":[{\"kind\":\"STUDENT\",\"id\":\"$LK\",\"code\":\"$KCODE\"}]}" | jq_ "d['data']['logged']")/$(M "SELECT COUNT(*) FROM IdCardEvent WHERE subjectId='$LK' AND action='PRINTED'")" "1/1"
+NCODE=$(secapi POST /api/cards/replace "{\"kind\":\"STUDENT\",\"id\":\"$LK\",\"reason\":\"lost\"}" | jq_ "d['data']['code']")
+check "lost card (secretary): new code …-R2; the old card stops working, the new one works" "$NCODE/$(curl -s "$B/api/card-check?code=$KCODE" | jq_ "d['data']['state']")/$(curl -s "$B/api/card-check?code=$NCODE" | jq_ "d['data']['state']")" "$KCODE-R2/UNKNOWN/VALID"
+check "history shows issued, printed and replaced (with the reason)" "$(api GET "/api/cards/history?kind=STUDENT&id=$LK" | jq_ "(sorted(set(h['action'] for h in d['data'])), [h['reason'] for h in d['data'] if h['action']=='REPLACED'])")" "(['ISSUED', 'PRINTED', 'REPLACED'], ['lost'])"
+M "UPDATE Student SET enrollmentStatus='WITHDRAWN' WHERE id='$LK'"
+check "a student who left → card not valid" "$(curl -s "$B/api/card-check?code=$NCODE" | jq_ "d['data']['state']")" "LEFT"
+M "UPDATE Student SET enrollmentStatus='ACTIVE' WHERE id='$LK'"
+check "card settings: a secretary cannot change them; the admin can" "$(secapi PUT /api/cards/settings '{"validityMonths":24}' | jq_ "d['success']")/$(api PUT /api/cards/settings '{"validityMonths":24}' | jq_ "d['data']['validityMonths']")" "False/24"
+api PUT /api/cards/settings '{"validityMonths":12}' >/dev/null
+KTRK=$(M "SELECT s.trackId FROM ClassSection c JOIN Level l ON l.id=c.levelId JOIN AcademicSubject s ON s.id=l.subjectId WHERE c.id='$LG'")
+api PATCH /api/tracks/$KTRK '{"color":"#e11d48"}' >/dev/null
+check "track colour is saved and printed on the card; a wrong colour is refused" "$(api GET "/api/cards?kind=STUDENT&ids=$LK" | jq_ "d['data'][0]['color']")/$(api PATCH /api/tracks/$KTRK '{"color":"red"}' | jq_ "d['success']")" "#e11d48/False"
+SCARDS=$(api GET "/api/cards?kind=STAFF&campusId=$CAMPUS")
+check "staff cards of a place: TN-STF codes" "$(echo "$SCARDS" | jq_ "len(d['data'])>0 and all(c['code'].startswith('TN-STF-') for c in d['data'])")" "True"
+SC1=$(echo "$SCARDS" | jq_ "d['data'][0]['code']")
+check "a staff card is checked too" "$(curl -s "$B/api/card-check?code=$SC1" | jq_ "(d['data']['state'], d['data']['kind'])")" "('VALID', 'STAFF')"
+PCARD() { curl -s -b "$KPJ" "$B/api/cards/portal?studentId=$KPS" | jq_ "d['data'] and d['data']['code'][:6]"; }
+check "parent sees the child's digital card" "$(PCARD)" "TN-QR-"
+api PUT /api/cards/settings '{"digitalForParents":false}' >/dev/null
+check "digital card switched off for parents → nothing shown" "$(PCARD)" "None"
+api PUT /api/cards/settings '{"digitalForParents":true}' >/dev/null
+rm -f "$KPJ" "$KTJ"
+TNEW=$(api POST /api/teachers "{\"firstName\":\"Every\",\"lastName\":\"Where\",\"cnic\":\"29901011234599\",\"dateOfBirth\":\"1995-03-05T00:00:00Z\",\"gender\":\"MALE\",\"joiningDate\":\"$(D 0)T00:00:00Z\",\"designation\":\"Teacher\",\"phoneNumber\":\"01012345699\",\"email\":\"every@e2e.local\",\"address\":\"Main street 1\",\"city\":\"Hurghada\",\"emergencyContact\":\"01012345698\",\"campusId\":\"$CAMPUS\",\"password\":\"E2eEvery1234\",\"allLocations\":true}")
+check "new instructor with 'works in every place' ticked" "$(echo "$TNEW" | jq_ "d['success']")/$(M "SELECT allLocations FROM User WHERE email='every@e2e.local'")" "True/1"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

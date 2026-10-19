@@ -72,6 +72,7 @@ export const REPORT_CARDS: ReportCard[] = [
 
   // learning
   { key: 'lms-analytics', group: 'learning', en: 'Learning analytics', ar: 'تحليلات التعليم', descEn: 'Lessons opened, homework, quizzes, weak groups, hardest questions', descAr: 'الدروس المفتوحة والواجبات والكويزات والجروبات الضعيفة وأصعب الأسئلة', href: '/dashboard/lms', roles: [...MANAGERS, 'TEACHER'], perm: ['curriculum', 'read'] },
+  { key: 'id-cards', group: 'students', en: 'ID cards', ar: 'الكارنيهات', descEn: 'Print student / staff cards on A4; each card shows when it was issued, replaced and printed', descAr: 'طباعة كارنيهات الطلاب والموظفين على A4؛ وكل كارنيه بيوضح اتعمل وبدل فاقد واتطبع إمتى', href: '/dashboard/cards', formats: ['print'], roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: ['documents', 'read'] },
   { key: 'level-results', group: 'learning', en: 'Level results', ar: 'نتائج المستوى', descEn: 'Scores, pass / fail and certificates per group', descAr: 'الدرجات والنجاح والرسوب والشهادات لكل جروب', href: '/dashboard/teacher/level-results', formats: ['excel'], roles: MANAGERS, perm: ['grading_engine', 'read'] },
   { key: 'session-reports', group: 'learning', en: 'Session reports', ar: 'تقارير الحصص', descEn: 'What was done in each session, sent to families', descAr: 'اتعمل إيه في كل حصة، واتبعت لأولياء الأمور', href: '/dashboard/session-reports', formats: ['print'], roles: OFFICE, perm: ['session_reports', 'read'] },
 

@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { normalizeCardCode } from '@/lib/cards/rules'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requirePermission, requireSession } from '@/lib/academic/api-helpers'
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const classSectionId = typeof body.classSectionId === 'string' ? body.classSectionId.trim() : ''
-    const studentQrCode = typeof body.studentQrCode === 'string' ? body.studentQrCode.trim() : ''
+    const studentQrCode = typeof body.studentQrCode === 'string' ? normalizeCardCode(body.studentQrCode) : '' // raw code or the /card/<code> link on new cards
     const attendanceDate = parseAttendanceDate(body.attendanceDate)
 
     if (!classSectionId || !studentQrCode || !attendanceDate) {

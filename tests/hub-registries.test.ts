@@ -36,6 +36,7 @@ describe('settings centre / reports centre / today (5-C)', () => {
     // API folder → a piece of the card href that manages it. A NEW settings API must be added here AND get a card.
     const API_TO_CARD: Record<string, string> = {
       'app/api/admin/finance-settings/route.ts': '/dashboard/admin/finance-settings',
+      'app/api/cards/settings/route.ts': '/dashboard/cards',
       'app/api/announcements/settings/route.ts': '/dashboard/announcements',
       'app/api/treasury/settings/route.ts': '/dashboard/treasury',
       'app/api/fee-types/settings/route.ts': '/dashboard/fee-types',

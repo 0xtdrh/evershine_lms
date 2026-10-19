@@ -141,7 +141,10 @@ export async function POST(request: NextRequest) {
 
   const data = parsed.data
   // M0: a new instructor belongs to one of the person's places
-  if (!allowsCampus(await loadPlaces(session.user), data.campusId)) return errors.forbidden('This place is not yours')
+  const myPlaces = await loadPlaces(session.user)
+  if (!allowsCampus(myPlaces, data.campusId)) return errors.forbidden('This place is not yours')
+  // "works in every place" can only be given by someone who sees every place
+  if (data.allLocations && !myPlaces.all) return errors.forbidden('Only someone who sees all places can make an instructor work in every place')
 
   // Check duplicates before starting the transaction.
   // WHY: the auth `users.email` column has a unique constraint, so a duplicate
@@ -198,6 +201,7 @@ export async function POST(request: NextRequest) {
           passwordHash,
           role: 'TEACHER',
           isActive: true,
+          allLocations: !!data.allLocations,
         },
       })
 

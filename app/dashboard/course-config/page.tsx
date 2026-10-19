@@ -26,6 +26,7 @@ interface Track {
   minAge: number | null
   maxAge: number | null
   description: string | null
+  color?: string | null
   isActive: boolean
   _count?: { courses: number }
 }
@@ -80,7 +81,7 @@ export default function CourseConfigPage() {
   })
 
   const [trackDialogOpen, setTrackDialogOpen] = useState(false)
-  const [trackForm, setTrackForm] = useState({ name: '', minAge: '', maxAge: '', description: '' })
+  const [trackForm, setTrackForm] = useState({ name: '', minAge: '', maxAge: '', description: '', color: '#1d4ed8' })
 
   const createTrackMutation = useMutation({
     mutationFn: () =>
@@ -91,13 +92,14 @@ export default function CourseConfigPage() {
           minAge: trackForm.minAge ? Number(trackForm.minAge) : null,
           maxAge: trackForm.maxAge ? Number(trackForm.maxAge) : null,
           description: trackForm.description || null,
+          color: trackForm.color || null,
         }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tracks'] })
       notify.success(L('Track created', 'التراك اتعمل'))
       setTrackDialogOpen(false)
-      setTrackForm({ name: '', minAge: '', maxAge: '', description: '' })
+      setTrackForm({ name: '', minAge: '', maxAge: '', description: '', color: '#1d4ed8' })
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to create track')),
   })
@@ -268,6 +270,7 @@ export default function CourseConfigPage() {
                     selectedTrackId === t.id ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 hover:bg-slate-50'
                   }`}
                 >
+                  <span className="me-1 inline-block h-2.5 w-2.5 rounded-full align-middle" style={{ backgroundColor: t.color || '#1d4ed8' }} />
                   {t.name}
                   {(t.minAge != null || t.maxAge != null) && (
                     <span className={selectedTrackId === t.id ? 'text-indigo-100 ml-1' : 'text-slate-400 ml-1'}>
@@ -290,6 +293,7 @@ export default function CourseConfigPage() {
               </button>
             </div>
           )}
+          {selectedTrack && can('class_sections', 'update') && <TrackColour key={selectedTrack.id} track={selectedTrack} />}
         </CardContent>
       </Card>
 
@@ -411,6 +415,10 @@ export default function CourseConfigPage() {
               <Input placeholder={L('Max age', 'أكبر سن')} type="number" value={trackForm.maxAge} onChange={(e) => setTrackForm({ ...trackForm, maxAge: e.target.value })} />
             </div>
             <Textarea placeholder={L('Description (optional)', 'الوصف (اختياري)')} value={trackForm.description} onChange={(e) => setTrackForm({ ...trackForm, description: e.target.value })} />
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input type="color" value={trackForm.color} onChange={(e) => setTrackForm({ ...trackForm, color: e.target.value })} className="h-8 w-12 cursor-pointer rounded border border-slate-200" />
+              {L('Colour on the ID card', 'لون التراك على الكارنيه')}
+            </label>
           </div>
           <DialogFooter>
             <Button
@@ -512,6 +520,24 @@ export default function CourseConfigPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+/** 2026-10-19 the track colour printed as the band on student ID cards. */
+function TrackColour({ track }: { track: Track }) {
+  const queryClient = useQueryClient()
+  const [color, setColor] = useState(track.color || '#1d4ed8')
+  const save = useMutation({
+    mutationFn: () => fetchApi(`/api/tracks/${track.id}`, { method: 'PATCH', body: JSON.stringify({ color }) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tracks'] }); notify.success(L('Colour saved', 'اتحفظ اللون')) },
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to save the colour')),
+  })
+  return (
+    <div className="mt-3 flex items-center gap-2 text-xs text-slate-600">
+      <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-7 w-10 cursor-pointer rounded border border-slate-200" />
+      {L(`ID card colour of "${track.name}"`, `لون «${track.name}» على الكارنيه`)}
+      {color !== (track.color || '#1d4ed8') && <Button size="sm" variant="outline" className="h-7" disabled={save.isPending} onClick={() => save.mutate()}>{L('Save', 'حفظ')}</Button>}
     </div>
   )
 }

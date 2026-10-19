@@ -5,6 +5,7 @@ export const createTrackSchema = z.object({
   minAge: z.number().int().min(0).max(100).optional().nullable(),
   maxAge: z.number().int().min(0).max(100).optional().nullable(),
   description: z.string().max(500).optional().nullable(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Colour must look like #1d4ed8').optional().nullable(), // ID card colour band (2026-10-19)
 }).refine(
   (data) => data.minAge == null || data.maxAge == null || data.minAge <= data.maxAge,
   { message: 'Minimum age must be less than or equal to maximum age', path: ['maxAge'] }
@@ -15,6 +16,7 @@ export const updateTrackSchema = z.object({
   minAge: z.number().int().min(0).max(100).optional().nullable(),
   maxAge: z.number().int().min(0).max(100).optional().nullable(),
   description: z.string().max(500).optional().nullable(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Colour must look like #1d4ed8').optional().nullable(), // ID card colour band (2026-10-19)
   isActive: z.boolean().optional(),
 })
 

@@ -159,6 +159,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'My Courses',      href: '/dashboard/enrollment',   icon: BookOpen,        roles: ['STUDENT'] },
   { name: 'Timetable',       href: '/dashboard/timetable',    icon: CalendarClock,   roles: ['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'STUDENT', 'BRANCH_MANAGER', 'SECRETARY'] },
   { name: 'Documents',       href: '/dashboard/documents',    icon: FileText,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
+  { name: 'ID Cards',        href: '/dashboard/cards',        icon: FileText,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['documents', 'read']] },
   { name: 'Certificate Designer', href: '/dashboard/certificate-templates', icon: Palette, roles: ['SUPER_ADMIN', 'ADMIN'] },
   { name: 'Certificate Reveal',   href: '/dashboard/certificate-reveal',    icon: Sparkles, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Campuses',        href: '/dashboard/campuses',     icon: Building,        roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },

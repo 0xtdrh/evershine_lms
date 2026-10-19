@@ -7,6 +7,7 @@
 
 import { JoinOnlineCard } from '@/components/online/JoinOnlineCard'
 import { UpcomingSessionsCard } from '@/components/portal/UpcomingSessionsCard'
+import { PortalIdCard } from '@/components/cards/PortalIdCard'
 import { AnnouncementFeed } from '@/components/announcements/AnnouncementFeed'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -55,6 +56,7 @@ export default function LearningPage() {
       {!isParent && <AnnouncementFeed compact />}
       {!isParent && <JoinOnlineCard />}
       {!isParent && <UpcomingSessionsCard />}
+      {!isParent && <PortalIdCard />}
       {!isParent && (hw || qz) && (
         <div className="grid gap-2 sm:grid-cols-3">
           <button type="button" onClick={() => go('homework')} className="rounded-xl border border-violet-100 bg-violet-50/50 p-3 text-start">

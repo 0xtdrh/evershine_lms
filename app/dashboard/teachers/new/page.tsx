@@ -28,6 +28,7 @@ const teacherSchema = z.object({
     .min(1, 'National ID is required')
     .transform(v => v.trim().replace(/[-\s]/g, ''))
     .refine(v => /^\d{13,14}$/.test(v), 'National ID must be 14 digits'),
+  allLocations: z.boolean().optional(),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   gender: z.enum(['MALE', 'FEMALE'], { required_error: 'Gender is required' }),
   qualification: z.string().trim().optional().default(''),
@@ -56,6 +57,9 @@ type TeacherForm = z.infer<typeof teacherSchema>
 export default function NewTeacherPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
+  // "works in every place" only for someone who sees every place (the API checks the same)
+  const { data: myPlaces } = useQuery({ queryKey: ['places-mine'], queryFn: () => fetchApi<{ all: boolean }>('/api/places/mine'), staleTime: 60_000 })
+  const canAllPlaces = !!myPlaces?.all
   const [isLoading, setIsLoading] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
 
@@ -408,7 +412,13 @@ export default function NewTeacherPage() {
               </div>
             )}
 
-            <p className="text-xs text-slate-500">{L('This is the main place. An instructor who works in more places (other branches or partners) gets them after saving: open the instructor → Places.', 'ده المكان الأساسي. المدرب اللي بيشتغل في أماكن تانية (فروع أو شركاء) تضيفهاله بعد الحفظ: افتح المدرب ← الأماكن.')}</p>
+            <p className="text-xs text-slate-500">{L('This is the main place. An instructor who works in some other places (other branches or partners) gets them after saving: open the instructor → Places.', 'ده المكان الأساسي. المدرب اللي بيشتغل في كام مكان تاني (فروع أو شركاء) تضيفهاله بعد الحفظ: افتح المدرب ← الأماكن.')}</p>
+            {canAllPlaces && (
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" {...register('allLocations')} />
+                {L('Works in every place (all branches and partners)', 'بيشتغل في كل الأماكن (كل الفروع والشركاء)')}
+              </label>
+            )}
             <CampusBatchHouseFields
               campusId={selectedCampusId}
               batchId={selectedBatchId}

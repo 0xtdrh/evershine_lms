@@ -58,6 +58,8 @@ export const createTeacherSchema = z.object({
 
   // Placement
   campusId: z.string().cuid('Invalid campus ID'),
+  /** 2026-10-19: works in every place (branches + partners); only someone who sees all places may set it */
+  allLocations: z.boolean().optional(),
   // WHY optional: Non-teaching staff (sweeper, security guard) are not assigned to academic batches
   batchId: z.string().cuid().optional().or(z.literal('')).transform(v => v || undefined),
   houseId: z.string().cuid().optional().or(z.literal('')).transform(v => v || undefined),
@@ -80,7 +82,7 @@ export const createTeacherSchema = z.object({
 // Used by PATCH /api/teachers/[id]
 // ─────────────────────────────────────────────────────────────────────────────
 export const updateTeacherSchema = createTeacherSchema
-  .omit({ password: true, cnic: true, classAssignments: true })
+  .omit({ password: true, cnic: true, classAssignments: true, allLocations: true })
   .partial()
   .extend({
     // Default group-pay rule (see Teacher.default* fields) — all optional,
