@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CalendarPlus, X } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { DateInput } from '@/components/ui/date-input'
 
 export interface ExtraSessionRow { id: string; date: string; time: string; reason: string | null }
 
@@ -46,7 +47,7 @@ export function ExtraSessionsPanel({ groupId, rows, canEdit }: { groupId: string
       ))}
       {open && (
         <div className="flex flex-wrap items-end gap-2 pt-1">
-          <Input type="date" className="h-8 w-40 text-xs" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateInput className="h-8 w-40 text-xs" value={date} onChange={(e) => setDate(e.target.value)} />
           <Input type="time" className="h-8 w-28 text-xs" value={time} onChange={(e) => setTime(e.target.value)} />
           <Input className="h-8 flex-1 text-xs" placeholder={L('Reason (e.g. make up the holiday)', 'السبب (مثلاً: تعويض الإجازة)')} value={reason} onChange={(e) => setReason(e.target.value)} />
           <Button size="sm" className="h-8 text-xs" disabled={!date || !time || add.isPending} onClick={() => add.mutate()}>{L('Add', 'إضافة')}</Button>

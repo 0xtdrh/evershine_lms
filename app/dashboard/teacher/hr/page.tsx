@@ -376,7 +376,7 @@ export default function TeacherHRPage() {
                     {salarySlips?.map((slip) => (
                       <TableRow key={slip.id}>
                         <TableCell className="font-medium text-gray-900">{slip.month}</TableCell>
-                        <TableCell className="text-sm text-gray-500">{new Date(slip.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-sm text-gray-500">{new Date(slip.createdAt).toLocaleDateString('en-GB')}</TableCell>
                         <TableCell><span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${slip.status === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{slip.status}</span></TableCell>
                         <TableCell className="text-right font-medium text-gray-900">{L('EGP', 'ج.م')} {Number(slip.netSalary).toLocaleString()}</TableCell>
                       </TableRow>
@@ -444,7 +444,7 @@ export default function TeacherHRPage() {
                         <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{app.description}</p>
                         {app.adminReply && (<div className="mt-3 p-3 bg-gray-50 rounded-md border text-sm text-gray-800"><strong>{L('Admin Reply:', 'رد الإدارة:')}</strong> {app.adminReply}</div>)}
                       </div>
-                      <div className="text-xs text-gray-400 md:text-right flex items-start gap-1 justify-end"><Calendar className="w-3.5 h-3.5" />{new Date(app.createdAt).toLocaleDateString()}</div>
+                      <div className="text-xs text-gray-400 md:text-right flex items-start gap-1 justify-end"><Calendar className="w-3.5 h-3.5" />{new Date(app.createdAt).toLocaleDateString('en-GB')}</div>
                     </div>
                   ))}
                 </div>

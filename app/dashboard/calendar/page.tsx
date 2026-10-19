@@ -22,6 +22,7 @@ import {
   Calendar, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, RefreshCw,
   Eye, CalendarDays, Layers, Info, MapPin, Globe, Clock
 } from 'lucide-react'
+import { campusLabel } from '@/lib/places/label'
 
 // ─── Constants & Types ─────────────────────────────────────────────────────────
 
@@ -160,7 +161,7 @@ function CalendarEventForm({
               <SelectItem value="ALL">All Campuses 🌍</SelectItem>
               {campuses.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
-                  🏫 {c.name}
+                  🏫 {campusLabel(c)}
                 </SelectItem>
               ))}
             </SelectContent>

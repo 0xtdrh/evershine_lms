@@ -13,6 +13,7 @@ import { L } from '@/lib/i18n/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BadgeDollarSign, Baby, Loader2, Trash2 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Log { id: string; sessionDate: string; status: string; headcount: number | null; note: string | null }
 
@@ -79,7 +80,7 @@ export function GroupPricePanel({ groupId, priceOverride, effectivePrice, unname
           : L('Named group: sessions come from attendance. You can still record a session the partner cancelled.', 'جروب بأسماء: الحصص بتيجي من الحضور. وتقدر تسجّل حصة الشريك لغاها.')}</p>
         {canRecord && (
           <div className="flex flex-wrap items-end gap-2 rounded-md bg-slate-50 p-2">
-            <Input type="date" className="h-8 w-40" value={log.date} onChange={(e) => setLog({ ...log, date: e.target.value })} />
+            <DateInput className="h-8 w-40" value={log.date} onChange={(e) => setLog({ ...log, date: e.target.value })} />
             <select className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs" value={log.status} onChange={(e) => setLog({ ...log, status: e.target.value })}>
               {(unnamedHeadcount !== null ? ['HELD', 'CANCELLED_PARTNER', 'CANCELLED_TECHNOVA'] : ['CANCELLED_PARTNER', 'CANCELLED_TECHNOVA']).map((s) => <option key={s} value={s}>{L(STATUS[s][0], STATUS[s][1])}</option>)}
             </select>

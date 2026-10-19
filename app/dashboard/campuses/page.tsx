@@ -423,7 +423,7 @@ export default function CampusesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-gray-600">{L('Contact Number', 'رقم التواصل')} <span className="text-red-500">*</span></Label>
-                <Input placeholder="+923001234567" className="rounded-xl" {...createForm.register('phone')} />
+                <Input placeholder="01012345678" className="rounded-xl" {...createForm.register('phone')} />
                 {createForm.formState.errors.phone && (
                   <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.phone.message}</p>
                 )}
@@ -515,7 +515,7 @@ export default function CampusesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-gray-600">{L('Contact Number', 'رقم التواصل')} <span className="text-red-500">*</span></Label>
-                    <Input placeholder="+923001234567" className="rounded-xl" {...editForm.register('phone')} />
+                    <Input placeholder="01012345678" className="rounded-xl" {...editForm.register('phone')} />
                     {editForm.formState.errors.phone && (
                       <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.phone.message}</p>
                     )}

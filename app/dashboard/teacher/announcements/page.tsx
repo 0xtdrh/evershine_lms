@@ -28,6 +28,7 @@ import {
   Megaphone, Clock, Users, Pencil, Trash2, MoreHorizontal, Save,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Announcement {
   id: string
@@ -210,8 +211,7 @@ export default function TeacherAnnouncementsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Expiration Date (Optional)</Label>
-                <Input
-                  type="date"
+                <DateInput
                   min={new Date().toISOString().split('T')[0]}
                   value={formData.expiresAt}
                   onChange={(e) => setFormData(prev => ({ ...prev, expiresAt: e.target.value }))}
@@ -302,7 +302,7 @@ export default function TeacherAnnouncementsPage() {
                 </div>
                 {ann.expiresAt && (
                   <div className="text-xs text-amber-600 bg-amber-50 inline-flex px-2 py-1 rounded-md border border-amber-100 self-start">
-                    Expires: {new Date(ann.expiresAt).toLocaleDateString()}
+                    Expires: {new Date(ann.expiresAt).toLocaleDateString('en-GB')}
                   </div>
                 )}
               </div>
@@ -414,8 +414,7 @@ function EditAnnouncementDialog({
 
           <div className="space-y-1.5">
             <Label>Expiration Date (optional)</Label>
-            <Input
-              type="date"
+            <DateInput
               value={form.expiresAt}
               onChange={(e) => setForm(p => ({ ...p, expiresAt: e.target.value }))}
             />

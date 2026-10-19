@@ -111,14 +111,14 @@ export default function TeacherStudentLeavesPage() {
                       </div>
                       <div className="text-right text-xs">
                         <div className="text-gray-400">{L('Applied on', 'اتطلب يوم')}</div>
-                        <div className="font-medium text-gray-700">{new Date(leave.createdAt).toLocaleDateString()}</div>
+                        <div className="font-medium text-gray-700">{new Date(leave.createdAt).toLocaleDateString('en-GB')}</div>
                       </div>
                     </div>
 
                     <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm space-y-2">
                       <div className="flex items-center gap-2 text-indigo-700 font-medium">
                         <CalendarDays className="w-4 h-4" />
-                        {new Date(leave.startDate).toLocaleDateString()} {L('to', 'لحد')} {new Date(leave.endDate).toLocaleDateString()}
+                        {new Date(leave.startDate).toLocaleDateString('en-GB')} {L('to', 'لحد')} {new Date(leave.endDate).toLocaleDateString('en-GB')}
                       </div>
                       <div className="text-gray-700">
                         <span className="font-medium">{L('Reason:', 'السبب:')} </span>
@@ -154,7 +154,7 @@ export default function TeacherStudentLeavesPage() {
                     </h3>
                     <div className="text-sm text-gray-600 mt-1 flex items-center gap-2">
                       <CalendarDays className="w-3.5 h-3.5" />
-                      {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()}
+                      {new Date(leave.startDate).toLocaleDateString('en-GB')} - {new Date(leave.endDate).toLocaleDateString('en-GB')}
                     </div>
                     {leave.remarks && (
                       <p className="text-xs text-gray-500 mt-1.5 italic">

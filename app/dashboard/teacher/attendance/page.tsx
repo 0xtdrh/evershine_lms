@@ -18,6 +18,7 @@ import {
   Loader2, QrCode, Download, RefreshCw, CheckCircle, ScanLine,
   ClipboardList, UserCheck, UserX, Clock, Info, Timer
 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 /* ─── Types ────────────────────────────────────────────────────── */
 type AttStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
@@ -329,8 +330,7 @@ export default function TeacherAttendancePage() {
           </div>
           <div className="space-y-2">
             <Label>Date</Label>
-            <input
-              type="date"
+            <DateInput
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={date}
               onChange={e => setDate(e.target.value)}

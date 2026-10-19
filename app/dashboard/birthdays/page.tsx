@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Cake, Loader2, MessageCircle, Printer } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { campusLabel } from '@/lib/places/label'
 
 interface Person {
   kind: 'STUDENT' | 'GUARDIAN' | 'STAFF'; id: string; name: string; role: string | null; dateOfBirth: string; daysAway: number; turns: number
@@ -87,7 +88,7 @@ export default function BirthdaysPage() {
             <SelectTrigger className="h-9 w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{L('All branches', 'كل الفروع')}</SelectItem>
-              {(campuses ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              {(campuses ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>)}
             </SelectContent>
           </Select>
         )}

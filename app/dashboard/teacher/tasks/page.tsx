@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useSession } from 'next-auth/react'
 import { formatClassWithShift, type SessionShift } from '@/lib/validation/shift'
+import { DateInput } from '@/components/ui/date-input'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -342,8 +343,7 @@ function CreateTaskDialog({
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700">Due Date (Optional)</Label>
-                <Input
-                  type="date"
+                <DateInput
                   value={form.dueDate}
                   onChange={(e) => setForm(p => ({ ...p, dueDate: e.target.value }))}
                   className="h-10 text-xs sm:text-sm border-slate-200 rounded-xl"
@@ -834,8 +834,7 @@ function EditTaskDialog({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-slate-700">Due Date (Optional)</Label>
-              <Input
-                type="date"
+              <DateInput
                 value={form.dueDate}
                 onChange={(e) => setForm(p => ({ ...p, dueDate: e.target.value }))}
                 className="h-10 text-xs sm:text-sm border-slate-200 rounded-xl"

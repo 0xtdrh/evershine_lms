@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
 import { L, useI18n } from '@/lib/i18n/client'
+import { campusLabel } from '@/lib/places/label'
 
 interface ActiveEnrollment {
   id: string
@@ -307,7 +308,7 @@ export default function StudentsListPage() {
                 <SelectTrigger className="h-8 text-xs sm:text-sm"><SelectValue placeholder={L('All campuses', 'كل الفروع')} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">{L('All campuses', 'كل الفروع')}</SelectItem>
-                  {campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {campuses.map((c) => <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

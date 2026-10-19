@@ -21,6 +21,7 @@ import { PaymentMethodSelect } from '@/components/fees/PaymentMethodSelect'
 import { useAfterPayment } from '@/lib/fees/use-after-payment'
 import { InvoiceMoneyActions } from '@/components/refunds/InvoiceMoneyActions'
 import { PayOnlineButton } from '@/components/fees/PayOnlineButton'
+import { DateInput } from '@/components/ui/date-input'
 
 interface FeeItem {
   id: string
@@ -943,7 +944,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1.5"><Label>Month</Label><Input value={editMonth} onChange={(e) => setEditMonth(e.target.value)} required /></div>
               <div className="hidden"><Label>Academic Year</Label><Input value={editAcademicYear} onChange={(e) => setEditAcademicYear(e.target.value)} required /></div>
-              <div className="space-y-1.5"><Label>Due Date</Label><Input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} required /></div>
+              <div className="space-y-1.5"><Label>Due Date</Label><DateInput value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} required /></div>
             </div>
             <div className="space-y-2">
               <Label>Fee Items</Label>

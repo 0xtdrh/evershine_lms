@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Camera, Loader2, MapPin, Printer, Sparkles, Trash2, UserRound } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 type Media = { url: string; type: 'image' | 'video' } | null
 interface Station { id: string; name: string; state: 'DONE' | 'CURRENT' | 'NEXT' | 'LATER' }
@@ -278,7 +279,7 @@ export default function ProfilePage() {
               <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
                 <Select value={exp.role} onValueChange={(v) => setExp({ ...exp, role: v })}><SelectTrigger className="h-9 w-44"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(ROLES).map(([k, v]) => <SelectItem key={k} value={k}>{ar ? v[1] : v[0]}</SelectItem>)}</SelectContent></Select>
                 <Input className="h-9 w-48" placeholder={L('Details (optional)', 'تفاصيل (اختياري)')} value={exp.titleEn} onChange={(e) => setExp({ ...exp, titleEn: e.target.value })} />
-                <Input type="date" className="h-9 w-40" value={exp.from} onChange={(e) => setExp({ ...exp, from: e.target.value })} />
+                <DateInput className="h-9 w-40" value={exp.from} onChange={(e) => setExp({ ...exp, from: e.target.value })} />
                 <Button size="sm" disabled={!exp.from} onClick={() => { act.mutate({ action: 'experience', role: exp.role, titleEn: exp.titleEn || null, from: exp.from }); setExp({ role: 'ASSISTANT', titleEn: '', from: '' }) }}>{L('Add', 'ضيف')}</Button>
               </div>
             )}

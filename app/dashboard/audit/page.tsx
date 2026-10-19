@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { FileClock, Loader2 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Row { id: string; at: string; action: string; entityType: string; entityId: string | null; changes: unknown; who: string; whoRole: string | null }
 interface Page { rows: Row[]; next: string | null; types: string[] }
@@ -95,8 +96,8 @@ export default function AuditPage() {
           <option value="">{L('Any action', 'أي عملية')}</option>
           {Object.entries(ACTION).map(([k, v]) => <option key={k} value={k}>{ar ? v[1] : v[0]}</option>)}
         </select>
-        <Input type="date" className="h-9 w-40" value={from} onChange={(e) => setFrom(e.target.value)} aria-label={L('From', 'من')} />
-        <Input type="date" className="h-9 w-40" value={to} onChange={(e) => setTo(e.target.value)} aria-label={L('To', 'لحد')} />
+        <DateInput className="h-9 w-40" value={from} onChange={(e) => setFrom(e.target.value)} aria-label={L('From', 'من')} />
+        <DateInput className="h-9 w-40" value={to} onChange={(e) => setTo(e.target.value)} aria-label={L('To', 'لحد')} />
         <Input className="h-9 w-56" placeholder={L('Record id (optional)', 'كود السجل (اختياري)')} value={entityId} onChange={(e) => setEntityId(e.target.value)} />
       </div>
       {q.isLoading && <Loader2 className="h-5 w-5 animate-spin text-slate-400" />}

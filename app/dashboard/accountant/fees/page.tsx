@@ -20,6 +20,8 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { getCanonicalStudentClassSection, type EnrollmentRecord } from '@/lib/academic/record-formatters'
 import { academicMonthLabel } from '@/lib/fees/reporting'
+import { DateInput } from '@/components/ui/date-input'
+import { campusLabel } from '@/lib/places/label'
 
 interface StudentResult {
   id: string; registrationNumber: string; firstName: string; lastName: string
@@ -259,7 +261,7 @@ function IssueInvoiceTab() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="inv-due">Due Date</Label>
-              <Input id="inv-due" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+              <DateInput id="inv-due" value={dueDate} onChange={e => setDueDate(e.target.value)} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="inv-disc">Discount (EGP)</Label>
@@ -361,7 +363,7 @@ function DefaultersTab({ campuses, classes, selectedCampusId, selectedClassId, s
                 <SelectTrigger id="def-campus" className="w-56"><SelectValue placeholder="All campuses" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">All campuses</SelectItem>
-                  {campuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>)}
+                  {campuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campusLabel(campus)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -440,7 +442,7 @@ function PaidFeesTab({ campuses, classes, selectedCampusId, selectedClassId, set
                 <SelectTrigger id="paid-campus" className="w-56"><SelectValue placeholder="All campuses" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">All campuses</SelectItem>
-                  {campuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>)}
+                  {campuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campusLabel(campus)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

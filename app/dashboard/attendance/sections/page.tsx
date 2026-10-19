@@ -19,6 +19,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
+import { DateInput } from '@/components/ui/date-input'
 
 type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
 
@@ -311,8 +312,7 @@ export default function SectionAttendancePage() {
             </div>
             <div className="space-y-2">
               <Label>Date</Label>
-              <input
-                type="date"
+              <DateInput
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -424,7 +424,7 @@ export default function SectionAttendancePage() {
                                 onClick={() => setOpenPastCycleId((v) => (v === cycle.id ? null : cycle.id))}
                                 className="text-xs font-medium text-slate-700"
                               >
-                                {cycle.label} — {new Date(cycle.completedAt).toLocaleDateString()}
+                                {cycle.label} — {new Date(cycle.completedAt).toLocaleDateString('en-GB')}
                               </button>
                               {openPastCycleId === cycle.id && (
                                 <div className="flex flex-wrap gap-1.5 mt-2">
@@ -476,8 +476,7 @@ export default function SectionAttendancePage() {
             <div className="grid sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Start Date</Label>
-                <input
-                  type="date"
+                <DateInput
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={exportStartDate}
                   onChange={(e) => setExportStartDate(e.target.value)}
@@ -485,8 +484,7 @@ export default function SectionAttendancePage() {
               </div>
               <div className="space-y-2">
                 <Label>End Date</Label>
-                <input
-                  type="date"
+                <DateInput
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={exportEndDate}
                   onChange={(e) => setExportEndDate(e.target.value)}

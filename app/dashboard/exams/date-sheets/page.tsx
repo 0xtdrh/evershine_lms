@@ -22,6 +22,7 @@ import {
   Plus, Trash2, Calendar, Eye, EyeOff, Edit2, FilePlus2, Loader2,
   CheckCircle2, AlertTriangle,
 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -529,9 +530,8 @@ export default function ExamDateSheetsPage() {
                           </div>
                           <div>
                             <Label htmlFor={`date-${index}`} className="text-xs text-slate-600">Exam date</Label>
-                            <Input
+                            <DateInput
                               id={`date-${index}`}
-                              type="date"
                               value={slot.examDate}
                               onChange={(e) => updateSlot(index, 'examDate', e.target.value)}
                               className="mt-1 h-9 text-sm"

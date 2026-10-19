@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { COLLECTOR_LABELS, COMPONENT_KINDS, KIND_LABELS, type Collector, type ComponentKind, type DealComponent, type DealExtra, type DealLine } from '@/lib/partners/deal'
 import type { PartnerDetail } from './types'
 import { Calculator, Loader2, Pencil, Plus, Scale, Trash2 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface DealRow {
   id: string; title: string; campusId: string | null; contractId: string | null; collector: Collector; components: DealComponent[]; extras: DealExtra[] | null
@@ -185,8 +186,8 @@ export function PartnerDeals({ p, canEdit }: { p: PartnerDetail; canEdit: boolea
                 <option value="MONTH">{L('Month', 'شهر')}</option><option value="TERM">{L('Term', 'ترم')}</option>
               </select>
             </div>
-            <div className="space-y-1"><Label className="text-xs">{L('From', 'من')}</Label><Input type="date" className="h-9" value={f.validFrom} onChange={(e) => setF({ ...f, validFrom: e.target.value })} /></div>
-            <div className="space-y-1"><Label className="text-xs">{L('To (empty = open)', 'لحد (فاضي = مفتوح)')}</Label><Input type="date" className="h-9" value={f.validTo ?? ''} onChange={(e) => setF({ ...f, validTo: e.target.value || null })} /></div>
+            <div className="space-y-1"><Label className="text-xs">{L('From', 'من')}</Label><DateInput className="h-9" value={f.validFrom} onChange={(e) => setF({ ...f, validFrom: e.target.value })} /></div>
+            <div className="space-y-1"><Label className="text-xs">{L('To (empty = open)', 'لحد (فاضي = مفتوح)')}</Label><DateInput className="h-9" value={f.validTo ?? ''} onChange={(e) => setF({ ...f, validTo: e.target.value || null })} /></div>
             <div className="space-y-1 sm:col-span-3"><Label className="text-xs">{L('Notes', 'ملاحظات')}</Label><Textarea rows={2} value={f.notes ?? ''} onChange={(e) => setF({ ...f, notes: e.target.value })} /></div>
             {editing !== 'NEW' && <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={f.isActive} onChange={(e) => setF({ ...f, isActive: e.target.checked })} />{L('Active', 'شغال')}</label>}
           </div>

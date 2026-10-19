@@ -28,6 +28,8 @@ import {
 import { notify } from '@/lib/notify'
 import { motion, AnimatePresence } from 'framer-motion'
 import { L, useI18n } from '@/lib/i18n/client'
+import { DateInput } from '@/components/ui/date-input'
+import { campusLabel } from '@/lib/places/label'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -162,8 +164,7 @@ function GeneratePLModal({
               <label className="text-xs font-black uppercase text-gray-500 block mb-1">
                 {L('Start Date', 'من تاريخ')}
               </label>
-              <Input
-                type="date"
+              <DateInput
                 value={periodStart}
                 onChange={(e) => setPeriodStart(e.target.value)}
                 className="h-9 text-sm"
@@ -174,8 +175,7 @@ function GeneratePLModal({
               <label className="text-xs font-black uppercase text-gray-500 block mb-1">
                 {L('End Date', 'لحد تاريخ')}
               </label>
-              <Input
-                type="date"
+              <DateInput
                 value={periodEnd}
                 onChange={(e) => setPeriodEnd(e.target.value)}
                 className="h-9 text-sm"
@@ -197,7 +197,7 @@ function GeneratePLModal({
                   <SelectItem value="all">{L('All Campuses', 'كل الفروع')}</SelectItem>
                   {campuses.map((campus) => (
                     <SelectItem key={campus.id} value={campus.id}>
-                      {campus.name}
+                      {campusLabel(campus)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -288,8 +288,8 @@ function PLCard({ statement, onRecreate }: { statement: ProfitLossStatement; onR
           <div className="min-w-0">
             <p className="font-black text-gray-900 text-sm">{statement.periodLabel}</p>
             <p className="text-[11px] text-gray-400">
-              {new Date(statement.periodStart).toLocaleDateString()} —{' '}
-              {new Date(statement.periodEnd).toLocaleDateString()}
+              {new Date(statement.periodStart).toLocaleDateString('en-GB')} —{' '}
+              {new Date(statement.periodEnd).toLocaleDateString('en-GB')}
             </p>
           </div>
         </div>
@@ -706,8 +706,7 @@ export default function AccountantReportsPage() {
               <span className="text-xs font-black uppercase text-gray-400">{L('Filters', 'الفلاتر')}</span>
               <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-2 py-1 bg-white">
                 <Calendar className="w-4 h-4 text-gray-400" />
-                <Input
-                  type="date"
+                <DateInput
                   value={ledgerStart}
                   onChange={(e) => setLedgerStart(e.target.value)}
                   className="border-0 p-0 h-7 text-xs w-28 focus-visible:ring-0"
@@ -716,8 +715,7 @@ export default function AccountantReportsPage() {
               <span className="text-gray-300">{L('to', 'لحد')}</span>
               <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-2 py-1 bg-white">
                 <Calendar className="w-4 h-4 text-gray-400" />
-                <Input
-                  type="date"
+                <DateInput
                   value={ledgerEnd}
                   onChange={(e) => setLedgerEnd(e.target.value)}
                   className="border-0 p-0 h-7 text-xs w-28 focus-visible:ring-0"
@@ -791,7 +789,7 @@ export default function AccountantReportsPage() {
                       {ledgerEntries.map((entry) => (
                         <tr key={entry.id} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-5 py-3 text-gray-500">
-                            {new Date(entry.date).toLocaleDateString()}
+                            {new Date(entry.date).toLocaleDateString('en-GB')}
                           </td>
                           <td className="px-5 py-3">
                             <Badge
@@ -854,7 +852,7 @@ export default function AccountantReportsPage() {
                     <SelectContent>
                       <SelectItem value="all">{L('All campuses', 'كل الفروع')}</SelectItem>
                       {campuses.map((campus) => (
-                        <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>
+                        <SelectItem key={campus.id} value={campus.id}>{campusLabel(campus)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

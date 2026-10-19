@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { L, useI18n } from '@/lib/i18n/client'
 import { MOVEMENT_KIND_LABEL, type MovementKind } from '@/lib/treasury/rules'
 import { AlertTriangle, Loader2, Printer, Upload } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 const useMoney = () => {
   const ar = useI18n().locale === 'ar'
@@ -95,8 +96,8 @@ export function WhereMoneyTab() {
   return (
     <div className="space-y-4 text-sm">
       <div className="flex flex-wrap items-center gap-2 print:hidden">
-        <Input type="date" className="h-9 w-40" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Input type="date" className="h-9 w-40" value={to} onChange={(e) => setTo(e.target.value)} />
+        <DateInput className="h-9 w-40" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <DateInput className="h-9 w-40" value={to} onChange={(e) => setTo(e.target.value)} />
         <Button size="sm" variant="outline" onClick={() => window.print()}><Printer className="me-1 h-4 w-4" /> {L('Print', 'طباعة')}</Button>
       </div>
       {(isLoading || !data) ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : (

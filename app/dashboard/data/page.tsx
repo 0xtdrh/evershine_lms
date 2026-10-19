@@ -16,6 +16,7 @@ import { L, useI18n } from '@/lib/i18n/client'
 import { DATASETS } from '@/lib/data-exchange/registry'
 import { DataExchangeButtons, useDataRights } from '@/components/data/DataExchangeButtons'
 import { ArrowLeftRight, Loader2 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface LogRow { id: string; kind: string; dataset: string; format: string | null; fileName: string | null; rows: number; created: number; failed: number; user: string; createdAt: string }
 
@@ -35,9 +36,9 @@ export default function DataCentrePage() {
       </div>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-slate-600">{L('Dates for exports (optional):', 'تواريخ التصدير (اختياري):')}</span>
-        <Input type="date" className="h-8 w-40" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <DateInput className="h-8 w-40" value={from} onChange={(e) => setFrom(e.target.value)} />
         <span>→</span>
-        <Input type="date" className="h-8 w-40" value={to} onChange={(e) => setTo(e.target.value)} />
+        <DateInput className="h-8 w-40" value={to} onChange={(e) => setTo(e.target.value)} />
       </div>
       {isLoading && <Loader2 className="h-5 w-5 animate-spin text-slate-400" />}
       {!isLoading && !mine.length && <p className="text-sm text-slate-500">{L('You have no import / export permission.', 'مالكش صلاحية استيراد أو تصدير.')}</p>}

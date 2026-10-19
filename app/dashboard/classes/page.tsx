@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
 import type { SessionShift } from '@/lib/validation/shift'
+import { campusLabel } from '@/lib/places/label'
 
 const createClassSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -191,7 +192,7 @@ export default function ClassesPage() {
           <SelectContent>
             <SelectItem value="ALL">All Campuses</SelectItem>
             {campuses.map((c: any) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -301,7 +302,7 @@ export default function ClassesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {campuses.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

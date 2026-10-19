@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PhoneCall, Plus, Check } from 'lucide-react'
 import { L } from '@/lib/i18n/client'
+import { DateInput } from '@/components/ui/date-input'
 
 interface ContactRow {
   id: string
@@ -153,7 +154,7 @@ export function StudentContactLogCard({ studentId }: { studentId: string }) {
             </div>
             <div className="space-y-1">
               <Label>{L('Follow-up date (optional)', 'ميعاد المتابعة (اختياري)')}</Label>
-              <Input type="date" value={form.followUpAt} onChange={(e) => setForm({ ...form, followUpAt: e.target.value })} />
+              <DateInput value={form.followUpAt} onChange={(e) => setForm({ ...form, followUpAt: e.target.value })} />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setOpen(false)}>{L('Cancel', 'إلغاء')}</Button>

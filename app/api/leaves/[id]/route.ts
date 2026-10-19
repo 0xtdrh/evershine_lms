@@ -242,7 +242,7 @@ export async function DELETE(
         data: {
           userId: leave.applicantId,
           title: 'Leave Request Removed by Administration',
-          message: `Your ${leave.leaveType.toLowerCase()} leave request from ${new Date(leave.startDate).toLocaleDateString()} to ${new Date(leave.endDate).toLocaleDateString()} was administratively removed. Please contact HR for clarification.`,
+          message: `Your ${leave.leaveType.toLowerCase()} leave request from ${new Date(leave.startDate).toLocaleDateString('en-GB')} to ${new Date(leave.endDate).toLocaleDateString('en-GB')} was administratively removed. Please contact HR for clarification.`,
           type: 'INFO',
           relatedId: leaveId,
         },

@@ -38,6 +38,7 @@ import { SESSION_SHIFT_BADGE_CLASS, SESSION_SHIFT_LABELS, formatClassWithShift, 
 import { CampusBatchHouseFields } from '@/components/academic/CampusBatchHouseFields'
 import { isPlacementScopeReady, performanceHouseRequired } from '@/lib/academic/hierarchy'
 import { STAFF_DESIGNATIONS } from '@/lib/constants/staff-designations'
+import { DateInput } from '@/components/ui/date-input'
 
 // ── Zod schema (permissive client-side validation for edit/update form)
 // WHY: This is an UPDATE form — existing DB records may have phone/contact numbers
@@ -568,7 +569,7 @@ export default function EditTeacherPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Date of Birth</Label>
-                <Input type="date" {...field('dateOfBirth')} />{fieldErr('dateOfBirth')}
+                <DateInput {...field('dateOfBirth')} />{fieldErr('dateOfBirth')}
               </div>
               <div className="space-y-1.5">
                 <Label>Gender</Label>
@@ -588,7 +589,7 @@ export default function EditTeacherPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Joining Date</Label>
-                <Input type="date" {...field('joiningDate')} />{fieldErr('joiningDate')}
+                <DateInput {...field('joiningDate')} />{fieldErr('joiningDate')}
               </div>
               <div className="space-y-1.5 flex items-end gap-3">
                 <div className="flex-1">
@@ -642,7 +643,7 @@ export default function EditTeacherPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Phone Number</Label>
-              <Input {...field('phoneNumber')} placeholder="+92..." />{fieldErr('phoneNumber')}
+              <Input {...field('phoneNumber')} placeholder="01012345678" />{fieldErr('phoneNumber')}
             </div>
             <div className="space-y-1.5">
               <Label>Email (Contact)</Label>
@@ -650,7 +651,7 @@ export default function EditTeacherPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Emergency Contact</Label>
-              <Input {...field('emergencyContact')} placeholder="+92..." />{fieldErr('emergencyContact')}
+              <Input {...field('emergencyContact')} placeholder="01012345678" />{fieldErr('emergencyContact')}
             </div>
           </CardContent>
         </Card>

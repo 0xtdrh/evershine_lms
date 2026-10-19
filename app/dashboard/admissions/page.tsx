@@ -23,6 +23,7 @@ import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
 import { batchRequiresGenderSeparation, genderSeparationHint } from '@/lib/academic/gender-policy'
 import { L, useI18n } from '@/lib/i18n/client'
+import { campusLabel } from '@/lib/places/label'
 
 interface AdmissionRequest {
   id: string
@@ -551,7 +552,7 @@ export default function AdmissionsDashboard() {
                       <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-400"/> {L('Gender:', 'النوع:')} <span className="font-medium text-slate-900">{selectedRequest.gender}</span></span>
                       <span className="flex items-center gap-1.5"><Building2 className="w-4 h-4 text-slate-400"/> {L('Delivery Mode:', 'طريقة الحضور:')} <span className="font-medium text-slate-900">{selectedRequest.deliveryMode}</span></span>
                       <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-slate-400"/> {L('Phone:', 'التليفون:')} <span className="font-medium text-slate-900">{selectedRequest.phoneNumber}</span></span>
-                      <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-slate-400"/> {L('DOB:', 'تاريخ الميلاد:')} <span className="font-medium text-slate-900">{new Date(selectedRequest.dateOfBirth).toLocaleDateString()}</span></span>
+                      <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-slate-400"/> {L('DOB:', 'تاريخ الميلاد:')} <span className="font-medium text-slate-900">{new Date(selectedRequest.dateOfBirth).toLocaleDateString('en-GB')}</span></span>
                     </div>
                   </div>
                 </div>
@@ -668,7 +669,7 @@ export default function AdmissionsDashboard() {
                         <SelectContent>
                           {campuses.map((c: any) => (
                             <SelectItem key={c.id} value={c.id} disabled={campusOptionDisabled(c)}>
-                              {c.name}
+                              {campusLabel(c)}
                                             </SelectItem>
                           ))}
                         </SelectContent>

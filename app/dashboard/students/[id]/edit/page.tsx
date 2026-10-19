@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Save, Loader2, User, Phone, MapPin, Building2, Calendar, Droplets, ShieldAlert, Key } from 'lucide-react'
 import Link from 'next/link'
 import { notify } from '@/lib/notify'
+import { DateInput } from '@/components/ui/date-input'
 
 interface StudentEditSource {
   firstName: string
@@ -351,7 +352,7 @@ export default function EditStudentPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Date of Birth</Label>
-                  <Input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required />
+                  <DateInput name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required />
                 </div>
                 <div className="space-y-2">
                   <Label>Gender</Label>

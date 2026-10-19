@@ -16,7 +16,7 @@ import { sessionShiftSchema } from './shift'
 
 const genderEnum = z.enum(['MALE', 'FEMALE'])
 
-// ── phoneRegex: Pakistan-compatible, also accepts landlines ──────────────────
+// ── phoneRegex: Egyptian mobiles (01…) or +20…, also landlines ──────────────────
 const phoneRegex = /^\+?[\d\s\-]{10,15}$/
 
 // ── Class assignment sub-schema ───────────────────────────────────────────────

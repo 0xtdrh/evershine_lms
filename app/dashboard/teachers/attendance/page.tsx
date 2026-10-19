@@ -46,6 +46,8 @@ import {
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
 import { SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
+import { DateInput } from '@/components/ui/date-input'
+import { campusLabel } from '@/lib/places/label'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
@@ -433,8 +435,7 @@ export default function BulkTeacherAttendancePage() {
             <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Attendance Date</Label>
             <div className="relative">
               <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="date"
+              <DateInput
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className="flex h-10 w-full rounded-lg border border-slate-200 bg-background pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -467,7 +468,7 @@ export default function BulkTeacherAttendancePage() {
                   <SelectItem value="ALL">All Campuses</SelectItem>
                   {campuses?.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c.code})
+                      {campusLabel(c)} ({c.code})
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -18,6 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify'
 import { Download, Edit3, Trash2, TrendingUp } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
+import { campusLabel } from '@/lib/places/label'
 
 interface ExpenseRecord {
   id: string
@@ -315,7 +317,7 @@ export default function AccountantExpensesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-date">Date</Label>
-                <Input id="edit-date" type="date" value={editForm.date} onChange={(e) => setEditForm((prev) => ({ ...prev, date: e.target.value }))} />
+                <DateInput id="edit-date" value={editForm.date} onChange={(e) => setEditForm((prev) => ({ ...prev, date: e.target.value }))} />
               </div>
             </div>
             <div className="space-y-2">
@@ -424,7 +426,7 @@ export default function AccountantExpensesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="date">Date</Label>
-                <Input id="date" type="date" value={form.date} onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))} />
+                <DateInput id="date" value={form.date} onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))} />
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -443,7 +445,7 @@ export default function AccountantExpensesPage() {
                   <Select value={form.campusId} onValueChange={(value) => setForm((prev) => ({ ...prev, campusId: value }))}>
                     <SelectTrigger id="campusId"><SelectValue placeholder="Select a campus" /></SelectTrigger>
                     <SelectContent>
-                      {campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      {campuses.map((c) => <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -517,11 +519,11 @@ export default function AccountantExpensesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="filter-start">From</Label>
-                <Input id="filter-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <DateInput id="filter-start" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="filter-end">To</Label>
-                <Input id="filter-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <DateInput id="filter-end" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">

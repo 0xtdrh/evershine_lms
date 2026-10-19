@@ -7,6 +7,7 @@ import { fetchApi } from '@/lib/api-client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 type MonitoringKind = 'daily' | 'monthly' | 'yearly'
 
@@ -132,7 +133,7 @@ export function MonitoringReportPanel({ endpoint, title = 'Monitoring Report' }:
           {type === 'daily' ? (
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-600">Report Date</label>
-              <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+              <DateInput value={date} onChange={(event) => setDate(event.target.value)} />
             </div>
           ) : (
             <>

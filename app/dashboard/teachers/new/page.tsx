@@ -18,6 +18,8 @@ import { z } from 'zod'
 import { CampusBatchHouseFields } from '@/components/academic/CampusBatchHouseFields'
 import { isPlacementScopeReady, performanceHouseRequired } from '@/lib/academic/hierarchy'
 import { STAFF_DESIGNATIONS, isTeachingDesignation, isNonTeachingDesignation } from '@/lib/constants/staff-designations'
+import { DateInput } from '@/components/ui/date-input'
+import { L } from '@/lib/i18n/client'
 
 const teacherSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters').trim(),
@@ -32,7 +34,7 @@ const teacherSchema = z.object({
   specialization: z.string().optional(),
   experienceYears: z.coerce.number().int().min(0).default(0),
   joiningDate: z.string().min(1, 'Joining date is required'),
-  phoneNumber: z.string().regex(/^\+?[\d\s\-]{10,15}$/, 'Invalid phone number format (e.g. +923001234567)').trim(),
+  phoneNumber: z.string().regex(/^\+?[\d\s\-]{10,15}$/, 'Invalid phone number format (e.g. 01012345678)').trim(),
   email: z.string().email('Invalid email address').trim(),
   address: z.string().min(5, 'Address must be at least 5 characters').trim(),
   city: z.string().min(2, 'City must be at least 2 characters').trim(),
@@ -285,7 +287,7 @@ export default function NewTeacherPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Date of Birth</Label>
-              <Input type="date" {...field('dateOfBirth')} />{err('dateOfBirth')}
+              <DateInput {...field('dateOfBirth')} />{err('dateOfBirth')}
             </div>
             <div className="space-y-1.5">
               <Label>Gender</Label>
@@ -303,7 +305,7 @@ export default function NewTeacherPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Joining Date</Label>
-              <Input type="date" {...field('joiningDate')} />{err('joiningDate')}
+              <DateInput {...field('joiningDate')} />{err('joiningDate')}
             </div>
           </CardContent>
         </Card>
@@ -322,7 +324,7 @@ export default function NewTeacherPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Phone Number</Label>
-              <Input {...field('phoneNumber')} placeholder="+92..." />{err('phoneNumber')}
+              <Input {...field('phoneNumber')} placeholder="01012345678" />{err('phoneNumber')}
             </div>
             <div className="space-y-1.5">
               <Label>Email</Label>
@@ -330,7 +332,7 @@ export default function NewTeacherPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Emergency Contact</Label>
-              <Input {...field('emergencyContact')} placeholder="+92..." />{err('emergencyContact')}
+              <Input {...field('emergencyContact')} placeholder="01012345678" />{err('emergencyContact')}
             </div>
           </CardContent>
         </Card>
@@ -406,6 +408,7 @@ export default function NewTeacherPage() {
               </div>
             )}
 
+            <p className="text-xs text-slate-500">{L('This is the main place. An instructor who works in more places (other branches or partners) gets them after saving: open the instructor → Places.', 'ده المكان الأساسي. المدرب اللي بيشتغل في أماكن تانية (فروع أو شركاء) تضيفهاله بعد الحفظ: افتح المدرب ← الأماكن.')}</p>
             <CampusBatchHouseFields
               campusId={selectedCampusId}
               batchId={selectedBatchId}

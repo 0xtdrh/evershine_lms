@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select'
 import { performanceHouseRequired } from '@/lib/academic/hierarchy'
 import type { AcademicBatch, AcademicCampus, AcademicHouse } from '@/lib/academic/types'
+import { campusLabel } from '@/lib/places/label'
 
 export interface CampusBatchHouseFieldsProps {
   campusId: string
@@ -68,7 +69,7 @@ export function CampusBatchHouseFields({
             </SelectTrigger>
             <SelectContent>
               {campuses.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
               ))}
             </SelectContent>
           </Select>

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { L, useI18n } from '@/lib/i18n/client'
+import { campusLabel } from '@/lib/places/label'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -173,7 +174,7 @@ export default function ReserveFundPage() {
             <option value="">{L('All Campuses', 'كل الفروع')}</option>
             {campuses.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name} ({c.code})
+                {campusLabel(c)} ({c.code})
               </option>
             ))}
           </select>
@@ -238,7 +239,7 @@ export default function ReserveFundPage() {
                   {entries.map((entry) => (
                     <tr key={entry.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-5 py-4 text-gray-500">
-                        {new Date(entry.transactionDate).toLocaleDateString()}
+                        {new Date(entry.transactionDate).toLocaleDateString('en-GB')}
                       </td>
                       <td className="px-5 py-4">
                         <span className="font-bold text-slate-800">{entry.periodLabel}</span>

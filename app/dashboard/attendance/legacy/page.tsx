@@ -25,6 +25,7 @@ import { useAcademicHierarchy } from '@/hooks/useAcademicHierarchy'
 import type { AcademicScopeState } from '@/lib/academic/types'
 import { formatAcademicClassLabel } from '@/lib/academic/hierarchy'
 import { LegacyEngineBanner } from '@/components/academic/LegacyEngineBanner'
+import { DateInput } from '@/components/ui/date-input'
 
 type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
 
@@ -318,8 +319,7 @@ export default function AttendancePage() {
               <CalendarDays className="w-3.5 h-3.5" />
               Date
             </Label>
-            <Input
-              type="date"
+            <DateInput
               value={date}
               max={new Date().toISOString().split('T')[0]}
               onChange={(e) => {
@@ -527,8 +527,7 @@ export default function AttendancePage() {
                 <Label className="flex items-center gap-1.5">
                   <CalendarDays className="w-3.5 h-3.5" /> Start Date
                 </Label>
-                <Input
-                  type="date"
+                <DateInput
                   value={rangeStart}
                   max={rangeEnd || new Date().toISOString().split('T')[0]}
                   onChange={(e) => setRangeStart(e.target.value)}
@@ -538,8 +537,7 @@ export default function AttendancePage() {
                 <Label className="flex items-center gap-1.5">
                   <CalendarDays className="w-3.5 h-3.5" /> End Date
                 </Label>
-                <Input
-                  type="date"
+                <DateInput
                   value={rangeEnd}
                   min={rangeStart}
                   max={new Date().toISOString().split('T')[0]}

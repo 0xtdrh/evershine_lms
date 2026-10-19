@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { notify } from '@/lib/notify'
 import { Loader2, ChevronLeft, X } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { DateInput } from '@/components/ui/date-input'
 
 function apiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
@@ -262,7 +263,7 @@ export default function TeacherCapabilitiesPage() {
             </div>
             <div className="flex gap-2">
               <Input placeholder={L('Institution (optional)', 'الجهة (اختياري)')} value={credInstitution} onChange={(e) => setCredInstitution(e.target.value)} />
-              <Input type="date" value={credDate} onChange={(e) => setCredDate(e.target.value)} />
+              <DateInput value={credDate} onChange={(e) => setCredDate(e.target.value)} />
             </div>
             <Button size="sm" className="w-full" disabled={!credTitle || addCredentialMutation.isPending} onClick={() => addCredentialMutation.mutate()}>
               {addCredentialMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}

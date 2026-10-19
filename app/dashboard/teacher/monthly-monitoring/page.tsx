@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { DateInput } from '@/components/ui/date-input'
 
 type Column = { id: string; label: string; type: 'COURSE' | 'CUSTOM' }
 type Mark = { totalMarks: number; obtainedMarks: number }
@@ -430,7 +431,7 @@ export default function MonthlyMonitoringPage() {
               <Input aria-label="Calendar year" type="number" min={2020} max={2100} value={year} onChange={(event) => setYear(Number(event.target.value))} />
             </>
           ) : (
-            <Input aria-label="Daily report date" type="date" value={dailyDate} onChange={(event) => setDailyDate(event.target.value)} />
+            <DateInput aria-label="Daily report date" value={dailyDate} onChange={(event) => setDailyDate(event.target.value)} />
           )}
         </CardContent>
       </Card>

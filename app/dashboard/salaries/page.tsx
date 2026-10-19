@@ -641,7 +641,7 @@ export default function SalariesPage() {
                             </span>
                           </div>
                           <p className="text-[10px] text-slate-400">
-                            {L('Disbursed:', 'اتصرف:')} {new Date(s.createdAt).toLocaleDateString()}
+                            {L('Disbursed:', 'اتصرف:')} {new Date(s.createdAt).toLocaleDateString('en-GB')}
                           </p>
                         </div>
 

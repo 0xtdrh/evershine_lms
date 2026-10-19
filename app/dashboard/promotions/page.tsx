@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import { DateInput } from '@/components/ui/date-input'
 
 type WizardRow = {
   studentId: string
@@ -253,8 +254,8 @@ export default function PromotionsPage() {
             <hr />
             <div><Label>New year name</Label><Input value={rolloverForm.newYearName} onChange={(e) => setRolloverForm({ ...rolloverForm, newYearName: e.target.value })} placeholder="e.g., 2027-2028" /></div>
             <div className="grid grid-cols-2 gap-2">
-              <div><Label>Start</Label><Input type="date" value={rolloverForm.startDate} onChange={(e) => setRolloverForm({ ...rolloverForm, startDate: e.target.value })} /></div>
-              <div><Label>End</Label><Input type="date" value={rolloverForm.endDate} onChange={(e) => setRolloverForm({ ...rolloverForm, endDate: e.target.value })} /></div>
+              <div><Label>Start</Label><DateInput value={rolloverForm.startDate} onChange={(e) => setRolloverForm({ ...rolloverForm, startDate: e.target.value })} /></div>
+              <div><Label>End</Label><DateInput value={rolloverForm.endDate} onChange={(e) => setRolloverForm({ ...rolloverForm, endDate: e.target.value })} /></div>
             </div>
             <Button
               className="w-full gap-2 bg-green-600 hover:bg-green-700"

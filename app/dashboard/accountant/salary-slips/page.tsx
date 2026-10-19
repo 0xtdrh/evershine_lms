@@ -14,6 +14,7 @@ import { Banknote, Plus, Search, X, Download, ChevronDown, ChevronUp, Loader2, F
 import { notify } from '@/lib/notify'
 import { motion, AnimatePresence } from 'framer-motion'
 import { L, useI18n } from '@/lib/i18n/client'
+import { DateInput } from '@/components/ui/date-input'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -200,11 +201,11 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
             </div>
             <div>
               <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Period Start', 'بداية الفترة')}</label>
-              <Input type="date" value={periodStart} onChange={e => setPeriodStart(e.target.value)} className="h-9 text-sm" />
+              <DateInput value={periodStart} onChange={e => setPeriodStart(e.target.value)} className="h-9 text-sm" />
             </div>
             <div>
               <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Period End', 'نهاية الفترة')}</label>
-              <Input type="date" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} className="h-9 text-sm" />
+              <DateInput value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} className="h-9 text-sm" />
             </div>
           </div>
 

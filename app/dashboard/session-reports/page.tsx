@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { attendanceLabel } from '@/components/session-reports/SessionReportPanel'
 import { AlertTriangle, ChevronDown, ExternalLink, FileText, Loader2, Plus, Star, Trash2 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Missing { key: 'HOMEWORK_UNGRADED' | 'QUIZ_REVIEW'; count: number }
 interface Row { id: string; groupId: string; date: string; sessionNumber: number | null; status: string; sendAt: string | null; sentAt: string | null; group: string; course: string; level: string; campus: string; teacher: string; extras: number; missing: Missing[] }
@@ -130,8 +131,8 @@ export default function SessionReportsPage() {
 
         <TabsContent value="list" className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Input type="date" className="h-9 w-40" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
-            <Input type="date" className="h-9 w-40" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
+            <DateInput className="h-9 w-40" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+            <DateInput className="h-9 w-40" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
               <SelectContent>

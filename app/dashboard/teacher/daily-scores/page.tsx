@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { notify } from '@/lib/notify'
 import { Loader2, Save, Target, AlertCircle, Sparkles, UserX, UserCheck, Star, AlertTriangle } from 'lucide-react'
 import { DAILY_GRADE_OPTIONS, type DailyPerformanceGrade } from '@/lib/academic/monitoring'
+import { DateInput } from '@/components/ui/date-input'
 
 interface SubjectOffering {
   id: string
@@ -230,8 +231,7 @@ function DailyScoresInner() {
 
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Evaluation Date</label>
-              <Input
-                type="date"
+              <DateInput
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="w-full border-gray-200"

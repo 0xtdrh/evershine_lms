@@ -27,6 +27,7 @@ import { buildDocumentFileName, exportPreviewDocument, waitForDocumentPreviewRea
 import { DOCUMENT_PALETTE, documentUsesAttendanceQr } from '@/lib/pdf/document-design'
 import { getCanonicalStudentClassSection, getCanonicalStudentRollNumber, getCanonicalStudentShift, type EnrollmentRecord } from '@/lib/academic/record-formatters'
 import { getDisplayedPosition, parseResultCardConfig, toNumericMark, formatExamSessionLabel } from '@/lib/academic/result-card-config'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Student {
   id: string
@@ -1060,7 +1061,7 @@ export default function DocumentsPage() {
                     <p className="text-[9px] font-black text-emerald-700 uppercase tracking-wider">Letter Fields</p>
                     <div>
                       <label className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">End Date (blank = still employed)</label>
-                      <Input type="date" value={expEndDate} onChange={e => setExpEndDate(e.target.value)} className="text-xs h-8 bg-white" />
+                      <DateInput value={expEndDate} onChange={e => setExpEndDate(e.target.value)} className="text-xs h-8 bg-white" />
                     </div>
                     <div>
                       <label className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">Principal Name</label>

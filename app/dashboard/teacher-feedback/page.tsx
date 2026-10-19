@@ -283,7 +283,7 @@ export default function FeedbackHubPage() {
                           {sub.student.rollNumber ? ` · ${sub.student.rollNumber}` : ''}
                         </p>
                         <span className="text-xs text-gray-400">
-                          {new Date(sub.submittedAt).toLocaleDateString()}
+                          {new Date(sub.submittedAt).toLocaleDateString('en-GB')}
                         </span>
                       </div>
                       <p className="text-xs text-gray-500">

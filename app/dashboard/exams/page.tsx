@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
+import { DateInput } from '@/components/ui/date-input'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -292,16 +293,14 @@ function CreateExamForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label>Start Date <span className="text-red-500">*</span></Label>
-          <Input
-            type="date"
+          <DateInput
             value={form.startDate}
             onChange={(e) => onChange({ startDate: e.target.value })}
           />
         </div>
         <div className="space-y-1.5">
           <Label>End Date <span className="text-red-500">*</span></Label>
-          <Input
-            type="date"
+          <DateInput
             value={form.endDate}
             min={form.startDate}
             onChange={(e) => onChange({ endDate: e.target.value })}
@@ -366,16 +365,14 @@ function EditExamForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label>Start Date <span className="text-red-500">*</span></Label>
-          <Input
-            type="date"
+          <DateInput
             value={form.startDate}
             onChange={(e) => onChange({ startDate: e.target.value })}
           />
         </div>
         <div className="space-y-1.5">
           <Label>End Date <span className="text-red-500">*</span></Label>
-          <Input
-            type="date"
+          <DateInput
             value={form.endDate}
             min={form.startDate}
             onChange={(e) => onChange({ endDate: e.target.value })}
@@ -706,7 +703,7 @@ export default function ExamsPage() {
                     {/* Date badge */}
                     <div className="w-11 h-11 rounded-xl bg-purple-100 flex flex-col items-center justify-center flex-shrink-0">
                       <span className="text-[9px] font-bold text-purple-600 leading-none uppercase">
-                        {start.toLocaleDateString('en', { month: 'short' })}
+                        {start.toLocaleDateString('en-GB', { month: 'short' })}
                       </span>
                       <span className="text-sm font-black text-purple-800 leading-none">{start.getDate()}</span>
                     </div>

@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { paymentDetailsRowsFromSnapshot } from '@/lib/fees/payment-details'
 import { L, useI18n } from '@/lib/i18n/client'
+import { DateInput } from '@/components/ui/date-input'
 
 interface FeeItem {
   description: string
@@ -241,7 +242,7 @@ export default function GenerateChallanPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>{L('Due Date', 'آخر ميعاد للدفع')}</Label>
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <DateInput value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
               </div>
               <div className="col-span-1 sm:col-span-3 space-y-1.5">
                 <Label>{L('Official Deposit Instructions', 'تعليمات الدفع')}</Label>

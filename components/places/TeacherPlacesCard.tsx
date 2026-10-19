@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { MapPin, Plus, Trash2 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
+import { campusLabel } from '@/lib/places/label'
 
 interface Pay { campusId: string; fixed: number | null; percent: number | null; perSession: number | null }
 interface Period { employer: 'TECHNOVA' | 'PARTNER'; partnerName?: string | null; kind: 'TEACHER' | 'TRAINEE'; fromDate: string; toDate?: string | null; note?: string | null }
@@ -46,17 +48,17 @@ export function TeacherPlacesCard({ teacherId }: { teacherId: string }) {
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
         <div className="space-y-1">
-          <p>{L('Primary place', 'المكان الأساسي')}: <b>{places.find((c) => c.id === d.primary)?.name ?? '—'}</b></p>
+          <p>{L('Primary place', 'المكان الأساسي')}: <b>{(() => { const c = places.find((x) => x.id === d.primary); return c ? campusLabel(c) : '—' })()}</b></p>
           <label className="flex items-center gap-2"><input type="checkbox" checked={d.allLocations} onChange={(e) => setD({ ...d, allLocations: e.target.checked })} /> {L('Works in every place', 'بيشتغل في كل الأماكن')}</label>
           {!d.allLocations && <div className="flex flex-wrap gap-3">{places.filter((c) => c.id !== d.primary).map((c) => (
-            <label key={c.id} className="flex items-center gap-1 text-xs"><input type="checkbox" checked={d.campusIds.includes(c.id)} onChange={() => setD({ ...d, campusIds: d.campusIds.includes(c.id) ? d.campusIds.filter((x) => x !== c.id) : [...d.campusIds, c.id] })} /> {c.name}{c.kind === 'PARTNER' ? ' 🤝' : ''}</label>
+            <label key={c.id} className="flex items-center gap-1 text-xs"><input type="checkbox" checked={d.campusIds.includes(c.id)} onChange={() => setD({ ...d, campusIds: d.campusIds.includes(c.id) ? d.campusIds.filter((x) => x !== c.id) : [...d.campusIds, c.id] })} /> {campusLabel(c)}{c.kind === 'PARTNER' ? ' 🤝' : ''}</label>
           ))}</div>}
         </div>
         <div className="space-y-1">
           <p className="font-medium">{L('Pay in each place (empty = his default)', 'الأجر في كل مكان (فاضي = الافتراضي بتاعه)')}</p>
           {serves.map((c) => { const p = payOf(c.id); return (
             <div key={c.id} className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="w-36 truncate">{c.name}</span>
+              <span className="w-36 truncate" title={campusLabel(c)}>{campusLabel(c)}</span>
               <label className="flex items-center gap-1">{L('Fixed', 'ثابت')} <Input type="number" className="h-8 w-24" value={p.fixed ?? ''} onChange={(e) => setPay(c.id, { fixed: num(e.target.value) })} /></label>
               <label className="flex items-center gap-1">% <Input type="number" className="h-8 w-20" value={p.percent ?? ''} onChange={(e) => setPay(c.id, { percent: num(e.target.value) })} /></label>
               <label className="flex items-center gap-1">{L('Per session', 'للحصة')} <Input type="number" className="h-8 w-24" value={p.perSession ?? ''} onChange={(e) => setPay(c.id, { perSession: num(e.target.value) })} /></label>
@@ -70,8 +72,8 @@ export function TeacherPlacesCard({ teacherId }: { teacherId: string }) {
               <select className="h-8 rounded border border-slate-200 px-1" value={e.employer} onChange={(x) => setPeriod(i, { employer: x.target.value as Period['employer'] })}><option value="TECHNOVA">TechNova</option><option value="PARTNER">{L('Partner', 'شريك')}</option></select>
               {e.employer === 'PARTNER' && <Input className="h-8 w-36" placeholder={L('Partner name', 'اسم الشريك')} value={e.partnerName ?? ''} onChange={(x) => setPeriod(i, { partnerName: x.target.value })} />}
               <select className="h-8 rounded border border-slate-200 px-1" value={e.kind} onChange={(x) => setPeriod(i, { kind: x.target.value as Period['kind'] })}><option value="TEACHER">{L('Instructor', 'مدرب')}</option><option value="TRAINEE">{L('Trainee (no pay)', 'متدرب (من غير مرتب)')}</option></select>
-              {L('from', 'من')} <Input type="date" className="h-8 w-36" value={e.fromDate} onChange={(x) => setPeriod(i, { fromDate: x.target.value })} />
-              {L('to', 'لحد')} <Input type="date" className="h-8 w-36" value={e.toDate ?? ''} onChange={(x) => setPeriod(i, { toDate: x.target.value || null })} />
+              {L('from', 'من')} <DateInput className="h-8 w-36" value={e.fromDate} onChange={(x) => setPeriod(i, { fromDate: x.target.value })} />
+              {L('to', 'لحد')} <DateInput className="h-8 w-36" value={e.toDate ?? ''} onChange={(x) => setPeriod(i, { toDate: x.target.value || null })} />
               <Button type="button" size="sm" variant="ghost" onClick={() => setD({ ...d, employment: d.employment.filter((_, j) => j !== i) })}><Trash2 className="h-3 w-3 text-rose-500" /></Button>
             </div>
           ))}

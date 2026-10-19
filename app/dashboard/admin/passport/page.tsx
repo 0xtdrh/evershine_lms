@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BookMarked, Download, Loader2, Plus, ScanLine } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Stamp {
   id: string; code: string | null; nameEn: string; nameAr: string; descriptionEn: string | null; descriptionAr: string | null; kind: string; rule: string | null; threshold: number | null
@@ -73,7 +74,7 @@ function StampEditor({ value, onDone }: { value: Partial<Stamp>; onDone: () => v
           {s.kind === 'AUTO' && rule?.threshold && <label className="flex items-center gap-1">N = <Input type="number" min={1} className="h-9 w-24" value={s.threshold ?? ''} onChange={(e) => set({ threshold: Number(e.target.value) || null })} /></label>}
         </div>
         {s.kind === 'EVENT' && (
-          <div className="flex flex-wrap items-center gap-2 text-xs">{L('Open from', 'مفتوح من')} <Input type="date" className="h-8 w-40" value={s.eventFrom?.slice(0, 10) ?? ''} onChange={(e) => set({ eventFrom: e.target.value || null })} /> {L('to', 'لحد')} <Input type="date" className="h-8 w-40" value={s.eventTo?.slice(0, 10) ?? ''} onChange={(e) => set({ eventTo: e.target.value || null })} /> <span className="text-slate-400">{L('(empty = always)', '(فاضي = دايمًا)')}</span></div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">{L('Open from', 'مفتوح من')} <DateInput className="h-8 w-40" value={s.eventFrom?.slice(0, 10) ?? ''} onChange={(e) => set({ eventFrom: e.target.value || null })} /> {L('to', 'لحد')} <DateInput className="h-8 w-40" value={s.eventTo?.slice(0, 10) ?? ''} onChange={(e) => set({ eventTo: e.target.value || null })} /> <span className="text-slate-400">{L('(empty = always)', '(فاضي = دايمًا)')}</span></div>
         )}
         {s.kind !== 'AUTO' && (
           <div className="flex flex-wrap items-center gap-3 text-xs"><span className="text-slate-500">{L('Who can give it', 'مين يقدر يدّيه')}:</span>

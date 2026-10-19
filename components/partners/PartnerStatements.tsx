@@ -17,6 +17,7 @@ import type { DealLine } from '@/lib/partners/deal'
 import type { ManualLine } from '@/lib/partners/statement'
 import type { PartnerDetail } from './types'
 import { CheckCircle2, ChevronDown, ChevronUp, FileSpreadsheet, Loader2, Plus, Trash2, Wallet } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Pay { id: string; direction: 'PARTNER_TO_TECHNOVA' | 'TECHNOVA_TO_PARTNER'; amount: number; method: string; paidAt: string; reference: string | null; note: string | null }
 interface Statement {
@@ -162,7 +163,7 @@ function StatementBody({ s, perms, onChange }: { s: Statement; perms: { create: 
           <span className="text-xs font-semibold">{s.rest > 0 ? L('The partner paid TechNova', 'الشريك دفع لـ TechNova') : L('TechNova paid the partner', 'TechNova دفعت للشريك')}:</span>
           <Input type="number" min={0} className="h-8 w-28" placeholder={String(Math.abs(s.rest))} value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
           <Input className="h-8 w-32" value={pay.method} onChange={(e) => setPay({ ...pay, method: e.target.value })} />
-          <Input type="date" className="h-8 w-36" value={pay.paidAt} onChange={(e) => setPay({ ...pay, paidAt: e.target.value })} />
+          <DateInput className="h-8 w-36" value={pay.paidAt} onChange={(e) => setPay({ ...pay, paidAt: e.target.value })} />
           <Input className="h-8 w-32" placeholder={L('Reference', 'رقم العملية')} value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} />
           <Button size="sm" disabled={addPay.isPending || !Number(pay.amount)} onClick={() => addPay.mutate()}>{L('Record payment', 'سجّل الدفعة')}</Button>
         </div>

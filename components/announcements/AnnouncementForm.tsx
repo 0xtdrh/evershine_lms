@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { L, useI18n } from '@/lib/i18n/client'
 import { AUDIENCE_LABEL, AUDIENCES, SCOPE_LABEL, STAFF_SCOPES, type Audience, type ScopeType } from '@/lib/announcements/rules'
 import { Loader2, Paperclip, Send, Users, X } from 'lucide-react'
+import { DateInput, DateTimeInput } from '@/components/ui/date-input'
 
 interface Item { id: string; name: string }
 interface Options {
@@ -203,8 +204,8 @@ export function AnnouncementForm({ onSent }: { onSent: () => void }) {
         {opt.canApprove && <label className="flex items-center gap-1.5"><input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />{L('Pin on top', 'ثبّته فوق')}</label>}
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-1.5 text-slate-600">{L('Publish at (empty = now)', 'ينزل إمتى (فاضي = دلوقتي)')}<Input type="datetime-local" className="h-8 w-52" value={publishAt} onChange={(e) => setPublishAt(e.target.value)} /></label>
-        <label className="flex items-center gap-1.5 text-slate-600">{L('Hide after', 'يختفي بعد')}<Input type="date" className="h-8 w-40" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} /></label>
+        <label className="flex items-center gap-1.5 text-slate-600">{L('Publish at (empty = now)', 'ينزل إمتى (فاضي = دلوقتي)')}<DateTimeInput className="h-8 w-52" value={publishAt} onChange={(e) => setPublishAt(e.target.value)} /></label>
+        <label className="flex items-center gap-1.5 text-slate-600">{L('Hide after', 'يختفي بعد')}<DateInput className="h-8 w-40" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} /></label>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 p-3">

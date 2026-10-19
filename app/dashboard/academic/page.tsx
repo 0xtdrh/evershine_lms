@@ -20,6 +20,8 @@ import {
   MapPin, CheckSquare, BarChart, HardDrive, GraduationCap, Layout,
   AlertCircle, Zap, Info, Trash2, Pencil, Check, X, Plus, Loader2
 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
+import { campusLabel } from '@/lib/places/label'
 
 // WHY: Shift-aware labels for section dropdowns to distinguish same-name
 // classes across Morning/Evening/Night shifts.
@@ -1006,11 +1008,11 @@ export default function AcademicEnginePage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Start Date</Label>
-                    <Input type="date" value={yearForm.startDate} onChange={(e) => setYearForm({ ...yearForm, startDate: e.target.value })} />
+                    <DateInput value={yearForm.startDate} onChange={(e) => setYearForm({ ...yearForm, startDate: e.target.value })} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">End Date</Label>
-                    <Input type="date" value={yearForm.endDate} onChange={(e) => setYearForm({ ...yearForm, endDate: e.target.value })} />
+                    <DateInput value={yearForm.endDate} onChange={(e) => setYearForm({ ...yearForm, endDate: e.target.value })} />
                   </div>
                 </div>
                 <Button onClick={() => createYear.mutate()} disabled={createYear.isPending} className="w-full bg-indigo-600 hover:bg-indigo-700">
@@ -1252,7 +1254,7 @@ export default function AcademicEnginePage() {
                       <SelectTrigger className="border-gray-200"><SelectValue placeholder="Select Campus" /></SelectTrigger>
                       <SelectContent>
                         {(campuses ?? []).map((c: { id: string; name: string }) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1842,7 +1844,7 @@ export default function AcademicEnginePage() {
                       <SelectContent>
                         <SelectItem value="all">All Campuses</SelectItem>
                         {(campuses ?? []).map((c: { id: string; name: string }) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -2195,7 +2197,7 @@ export default function AcademicEnginePage() {
                     <SelectTrigger><SelectValue placeholder="Campus" /></SelectTrigger>
                     <SelectContent>
                       {(campuses ?? []).map((c: { id: string; name: string }) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -2213,7 +2215,7 @@ export default function AcademicEnginePage() {
                   <SelectContent>
                     <SelectItem value="all">All campuses</SelectItem>
                     {(campuses ?? []).map((c: { id: string; name: string }) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -2478,8 +2480,7 @@ export default function AcademicEnginePage() {
                     value={assessmentForm.title}
                     onChange={(e) => setAssessmentForm({ ...assessmentForm, title: e.target.value })}
                   />
-                  <Input
-                    type="date"
+                  <DateInput
                     value={assessmentForm.dueDate}
                     onChange={(e) => setAssessmentForm({ ...assessmentForm, dueDate: e.target.value })}
                   />

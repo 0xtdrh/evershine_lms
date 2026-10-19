@@ -22,6 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { ArrowLeft, AlertCircle, Loader2, UserPlus, Info } from 'lucide-react'
 import Link from 'next/link'
+import { DateInput } from '@/components/ui/date-input'
+import { campusLabel } from '@/lib/places/label'
 
 type Campus = { id: string; name: string }
 type SectionData = {
@@ -399,7 +401,7 @@ export default function AdmissionPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Father&apos;s Phone</Label>
-                <Input {...register('fatherPhoneNumber')} placeholder="+201234567890" />
+                <Input {...register('fatherPhoneNumber')} placeholder="01012345678" />
               </div>
               <div className="space-y-1.5">
                 <Label>Father&apos;s Occupation</Label>
@@ -411,7 +413,7 @@ export default function AdmissionPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Mother&apos;s Phone</Label>
-                <Input {...register('motherPhoneNumber')} placeholder="+201234567890" />
+                <Input {...register('motherPhoneNumber')} placeholder="01012345678" />
               </div>
               <div className="space-y-1.5">
                 <Label>Mother&apos;s Occupation</Label>
@@ -435,7 +437,7 @@ export default function AdmissionPage() {
               </div>
               <div className="space-y-1.5">
                 <RequiredLabel>Date of Birth</RequiredLabel>
-                <Input type="date" {...register('dateOfBirth')} className={errors.dateOfBirth ? 'border-destructive focus-visible:ring-destructive' : ''} />
+                <DateInput {...register('dateOfBirth')} className={errors.dateOfBirth ? 'border-destructive focus-visible:ring-destructive' : ''} />
                 <FieldError message={errors.dateOfBirth?.message} />
               </div>
               <div className="space-y-1.5">
@@ -482,12 +484,12 @@ export default function AdmissionPage() {
             </div>
             <div className="space-y-1.5">
               <RequiredLabel>Phone Number</RequiredLabel>
-              <Input {...register('phoneNumber')} placeholder="+201234567890" className={errors.phoneNumber ? 'border-destructive focus-visible:ring-destructive' : ''} />
+              <Input {...register('phoneNumber')} placeholder="01012345678" className={errors.phoneNumber ? 'border-destructive focus-visible:ring-destructive' : ''} />
               <FieldError message={errors.phoneNumber?.message} />
             </div>
             <div className="space-y-1.5">
               <RequiredLabel>Emergency Contact</RequiredLabel>
-              <Input {...register('emergencyContact')} placeholder="+201234567890" className={errors.emergencyContact ? 'border-destructive focus-visible:ring-destructive' : ''} />
+              <Input {...register('emergencyContact')} placeholder="01012345678" className={errors.emergencyContact ? 'border-destructive focus-visible:ring-destructive' : ''} />
               <FieldError message={errors.emergencyContact?.message} />
             </div>
           </CardContent>
@@ -560,7 +562,7 @@ export default function AdmissionPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {campuses.map((c: Campus) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -675,7 +677,7 @@ export default function AdmissionPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Guardian Phone</Label>
-              <Input {...register('guardianPhone')} placeholder="+201234567890" />
+              <Input {...register('guardianPhone')} placeholder="01012345678" />
             </div>
             <div className="space-y-1.5">
               <Label>Guardian Email <span className="text-muted-foreground text-xs">(for portal login)</span></Label>

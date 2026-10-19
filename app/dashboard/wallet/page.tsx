@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PaymentMethodSelect } from '@/components/fees/PaymentMethodSelect'
 import { Wallet, Search, Check, X, Plus, Trash2 } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { DateInput } from '@/components/ui/date-input'
 
 interface TopUpRow { id: string; topUpNumber: string | null; amount: number; method: string; source: string; status: string; proofUrl: string | null; remarks: string | null; transactionId: string | null; createdAt: string; approvedAt: string | null; student: { id: string; name: string; registrationNumber: string } }
 interface WithdrawalRow { id: string; amount: number; fee: number; payoutMethod: string; reason: string | null; status: string; requestedVia: string; createdAt: string; student: { id: string; name: string; registrationNumber: string } }
@@ -306,8 +307,8 @@ function SettingsTab() {
             <div key={i} className="flex flex-wrap items-end gap-2">
               <label className="text-xs">{L('Top up at least', 'اشحن على الأقل')}<Input className="h-8 w-28" type="number" min={1} value={pr.minAmount} onChange={(e) => setS({ ...s, promos: s.promos.map((x, j) => (j === i ? { ...x, minAmount: Number(e.target.value) } : x)) })} /></label>
               <label className="text-xs">{L('Gift (EGP)', 'الهدية (ج.م)')}<Input className="h-8 w-24" type="number" min={1} value={pr.bonus} onChange={(e) => setS({ ...s, promos: s.promos.map((x, j) => (j === i ? { ...x, bonus: Number(e.target.value) } : x)) })} /></label>
-              <label className="text-xs">{L('From', 'من')}<Input className="h-8 w-36" type="date" value={pr.from ?? ''} onChange={(e) => setS({ ...s, promos: s.promos.map((x, j) => (j === i ? { ...x, from: e.target.value || null } : x)) })} /></label>
-              <label className="text-xs">{L('To', 'لحد')}<Input className="h-8 w-36" type="date" value={pr.to ?? ''} onChange={(e) => setS({ ...s, promos: s.promos.map((x, j) => (j === i ? { ...x, to: e.target.value || null } : x)) })} /></label>
+              <label className="text-xs">{L('From', 'من')}<DateInput className="h-8 w-36" value={pr.from ?? ''} onChange={(e) => setS({ ...s, promos: s.promos.map((x, j) => (j === i ? { ...x, from: e.target.value || null } : x)) })} /></label>
+              <label className="text-xs">{L('To', 'لحد')}<DateInput className="h-8 w-36" value={pr.to ?? ''} onChange={(e) => setS({ ...s, promos: s.promos.map((x, j) => (j === i ? { ...x, to: e.target.value || null } : x)) })} /></label>
               <label className="flex items-center gap-1 pb-2 text-xs"><input type="checkbox" checked={pr.active} onChange={(e) => setS({ ...s, promos: s.promos.map((x, j) => (j === i ? { ...x, active: e.target.checked } : x)) })} /> {L('active', 'شغال')}</label>
               <button type="button" className="pb-2 text-rose-500" onClick={() => setS({ ...s, promos: s.promos.filter((_x, j) => j !== i) })} aria-label={L('Remove', 'شيل')}><Trash2 className="h-4 w-4" /></button>
             </div>

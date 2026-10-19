@@ -26,6 +26,8 @@ import { GroupRulesPanel } from '@/components/rules/GroupRulesPanel'
 import { ExtraSessionsPanel, type ExtraSessionRow } from '@/components/groups/ExtraSessionsPanel'
 import { FullGroupDialog } from '@/components/groups/FullGroupDialog'
 import { L, useI18n } from '@/lib/i18n/client'
+import { DateInput } from '@/components/ui/date-input'
+import { campusLabel } from '@/lib/places/label'
 
 interface Campus { id: string; name: string }
 interface AcademicYear { id: string; name: string; isActive: boolean }
@@ -1068,7 +1070,7 @@ export default function GroupsPage() {
             {!isCampusLocked && (
               <Select value={createForm.campusId} onValueChange={(v) => setCreateForm({ ...createForm, campusId: v, batchId: '' })}>
                 <SelectTrigger><SelectValue placeholder={L('Branch', 'الفرع')} /></SelectTrigger>
-                <SelectContent>{campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                <SelectContent>{campuses.map((c) => <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>)}</SelectContent>
               </Select>
             )}
             <div className="flex gap-3">
@@ -1088,7 +1090,7 @@ export default function GroupsPage() {
               <SelectTrigger><SelectValue placeholder={L('Level', 'المستوى')} /></SelectTrigger>
               <SelectContent>{levelsForCreate.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
             </Select>
-            <Input type="date" placeholder={L('Start date', 'تاريخ البداية')} value={createForm.startDate} onChange={(e) => setCreateForm({ ...createForm, startDate: e.target.value })} />
+            <DateInput placeholder={L('Start date', 'تاريخ البداية')} value={createForm.startDate} onChange={(e) => setCreateForm({ ...createForm, startDate: e.target.value })} />
             <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
               <Checkbox
                 checked={createForm.requireFullPaymentToStart}
@@ -1146,7 +1148,7 @@ export default function GroupsPage() {
               <SelectContent>{levelsForEdit.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
             </Select>
             <div className="flex gap-3">
-              <Input type="date" value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} />
+              <DateInput value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} />
             </div>
 
             <div className="space-y-2">

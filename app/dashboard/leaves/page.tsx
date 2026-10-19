@@ -14,6 +14,7 @@ import { CalendarDays, FileText, CheckCircle, X, XCircle, Clock, User, UserCheck
 import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import { L, useI18n } from '@/lib/i18n/client'
+import { DateInput } from '@/components/ui/date-input'
 
 interface LeaveRequest {
   id: string
@@ -212,7 +213,7 @@ export default function LeavesPage() {
               <CardContent className="space-y-4">
                 <div className="bg-white border border-amber-200/50 p-4 rounded-xl text-sm space-y-1.5">
                   <p className="font-bold text-slate-800">{reviewTarget.applicantName} <span className="text-xs font-normal text-slate-500">({reviewTarget.applicantRole})</span></p>
-                  <p className="text-xs text-slate-500">{L('Type:', 'النوع:')} <strong>{reviewTarget.leaveType}</strong> &nbsp;|&nbsp; {new Date(reviewTarget.startDate).toLocaleDateString()} → {new Date(reviewTarget.endDate).toLocaleDateString()}</p>
+                  <p className="text-xs text-slate-500">{L('Type:', 'النوع:')} <strong>{reviewTarget.leaveType}</strong> &nbsp;|&nbsp; {new Date(reviewTarget.startDate).toLocaleDateString('en-GB')} → {new Date(reviewTarget.endDate).toLocaleDateString('en-GB')}</p>
                   <p className="text-slate-600 italic text-xs mt-1">&ldquo;{reviewTarget.reason}&rdquo;</p>
                 </div>
                 <div>
@@ -268,11 +269,11 @@ export default function LeavesPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">{L('Start Date', 'من تاريخ')}</label>
-                      <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
+                      <DateInput value={startDate} onChange={e => setStartDate(e.target.value)} required />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">{L('End Date', 'لحد تاريخ')}</label>
-                      <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required />
+                      <DateInput value={endDate} onChange={e => setEndDate(e.target.value)} required />
                     </div>
                   </div>
                   <div>
@@ -316,7 +317,7 @@ export default function LeavesPage() {
                             <span className="px-2 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-500">{r.applicantRole}</span>
                             <span className="px-2 py-0.5 rounded bg-indigo-50 text-[10px] font-bold text-indigo-600">{r.leaveType}</span>
                           </div>
-                          <p className="text-xs text-slate-500">{new Date(r.startDate).toLocaleDateString()} → {new Date(r.endDate).toLocaleDateString()}</p>
+                          <p className="text-xs text-slate-500">{new Date(r.startDate).toLocaleDateString('en-GB')} → {new Date(r.endDate).toLocaleDateString('en-GB')}</p>
                           <p className="text-xs text-slate-600 italic">&ldquo;{r.reason}&rdquo;</p>
                         </div>
                         <div className="flex gap-2 shrink-0">
@@ -391,8 +392,8 @@ export default function LeavesPage() {
                               <span className="px-2 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-500">{r.applicantRole}</span>
                               <span className="px-2 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-600">{r.leaveType}</span>
                             </div>
-                            <p className="text-xs text-slate-500 mt-0.5">{new Date(r.startDate).toLocaleDateString()} → {new Date(r.endDate).toLocaleDateString()}</p>
-                            <p className="text-xs text-slate-500">{L('Submitted on', 'اتبعت يوم')} {new Date(r.createdAt).toLocaleDateString()}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">{new Date(r.startDate).toLocaleDateString('en-GB')} → {new Date(r.endDate).toLocaleDateString('en-GB')}</p>
+                            <p className="text-xs text-slate-500">{L('Submitted on', 'اتبعت يوم')} {new Date(r.createdAt).toLocaleDateString('en-GB')}</p>
                           </div>
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[r.status]}`}>
                             <Icon className="w-3.5 h-3.5" />{r.status}

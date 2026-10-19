@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { I18nProvider, L, LanguageSwitch } from '@/lib/i18n/client'
 import { Printer } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Report {
   partner: { id: string; name: string; kind: string }
@@ -33,8 +34,8 @@ function View({ id }: { id: string }) {
     <div className="keep-light min-h-screen bg-gray-100 py-6 print:bg-white print:py-0">
       <style>{'@media print { @page { size: A4; margin: 12mm; } body { background: #fff; } }'}</style>
       <div className="mx-auto mb-4 flex max-w-3xl flex-wrap items-center justify-center gap-2 px-4 print:hidden">
-        <Input type="date" className="h-9 w-40" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} />
-        <Input type="date" className="h-9 w-40" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} />
+        <DateInput className="h-9 w-40" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} />
+        <DateInput className="h-9 w-40" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} />
         <Button onClick={() => window.print()}><Printer className="me-2 h-4 w-4" />{L('Print / save as PDF', 'اطبع / احفظ PDF')}</Button>
         <LanguageSwitch />
       </div>

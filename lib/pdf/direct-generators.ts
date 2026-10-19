@@ -91,7 +91,7 @@ function drawSignatureLine(pdf: jsPDF, label: string, x: number, y: number, colo
 
 function formatDateString(d: string) {
   try {
-    return new Date(d).toLocaleDateString()
+    return new Date(d).toLocaleDateString('en-GB')
   } catch (e) {
     return d
   }

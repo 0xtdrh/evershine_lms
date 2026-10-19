@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CalendarOff, Loader2, Trash2 } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { DateInput } from '@/components/ui/date-input'
+import { campusLabel } from '@/lib/places/label'
 
 interface Holiday { id: string; date: string; name: string; campus: { id: string; name: string } | null }
 interface Campus { id: string; name: string }
@@ -57,8 +59,8 @@ export default function HolidaysPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">{L('Add a holiday', 'ضيف إجازة')}</CardTitle><CardDescription>{L('One day, or a range (up to 60 days).', 'يوم واحد أو فترة (لحد 60 يوم).')}</CardDescription></CardHeader>
           <CardContent className="flex flex-wrap items-end gap-2 text-sm">
-            <div className="space-y-1"><Label className="text-xs">{L('From', 'من')}</Label><Input type="date" className="h-9 w-40" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
-            <div className="space-y-1"><Label className="text-xs">{L('To (optional)', 'لحد (اختياري)')}</Label><Input type="date" className="h-9 w-40" value={form.toDate} onChange={(e) => setForm({ ...form, toDate: e.target.value })} /></div>
+            <div className="space-y-1"><Label className="text-xs">{L('From', 'من')}</Label><DateInput className="h-9 w-40" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+            <div className="space-y-1"><Label className="text-xs">{L('To (optional)', 'لحد (اختياري)')}</Label><DateInput className="h-9 w-40" value={form.toDate} onChange={(e) => setForm({ ...form, toDate: e.target.value })} /></div>
             <div className="min-w-[180px] flex-1 space-y-1"><Label className="text-xs">{L('Name', 'الاسم')}</Label><Input className="h-9" placeholder={L('e.g. Eid al-Adha', 'مثلاً: عيد الأضحى')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
             {isSuper && (
               <div className="space-y-1">
@@ -67,7 +69,7 @@ export default function HolidaysPage() {
                   <SelectTrigger className="h-9 w-48"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">{L('The whole company', 'الشركة كلها')}</SelectItem>
-                    {campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    {campuses.map((c) => <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

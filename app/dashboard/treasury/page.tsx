@@ -23,6 +23,7 @@ import { CashflowTab, ReconcileTab, WhereMoneyTab } from '@/components/treasury/
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { ACCOUNT_KIND_LABEL, MOVEMENT_KIND_LABEL, type AccountKind, type MovementKind } from '@/lib/treasury/rules'
 import { ArrowDownLeft, ArrowUpRight, Landmark, Loader2 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Account { id: string; name: string; kind: AccountKind; campus: string | null; balance: number; in: number; out: number; isActive: boolean; countedToday: string | null }
 interface Overview { accounts: Account[]; unplaced: { count: number; in: number; out: number } }
@@ -128,7 +129,7 @@ function Movements({ id, ar }: { id: string; ar: boolean }) {
     <Card><CardContent className="space-y-2 pt-4">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-semibold text-slate-700">{L('Movements', 'الحركات')}</span>
-        <Input type="date" className="h-8 w-40" value={from} onChange={(e) => setFrom(e.target.value)} /><span>→</span><Input type="date" className="h-8 w-40" value={to} onChange={(e) => setTo(e.target.value)} />
+        <DateInput className="h-8 w-40" value={from} onChange={(e) => setFrom(e.target.value)} /><span>→</span><DateInput className="h-8 w-40" value={to} onChange={(e) => setTo(e.target.value)} />
       </div>
       {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : (
         <div className="max-h-[28rem] overflow-y-auto rounded-lg border">

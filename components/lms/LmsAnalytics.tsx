@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AlertTriangle, ArrowUpDown, BarChart3, Loader2, MessageCircle } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 type Opt = { id: string; name: string }
 interface GroupRow { id: string; label: string; campus: string; course: string; level: string; teachers: string[]; students: number; openPct: number | null; onTimePct: number | null; latePct: number | null; missingPct: number | null; homeworkDue: number; homeworkAvg: number | null; quizAvg: number | null; pending: number; gradingHours: number | null; hasCurriculum: boolean; weak: string[] }
@@ -149,8 +150,8 @@ export function LmsAnalytics() {
           </SelectContent>
         </Select>
         {preset === 'custom' && <>
-          <Input type="date" className="h-9 w-40" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
-          <Input type="date" className="h-9 w-40" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
+          <DateInput className="h-9 w-40" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+          <DateInput className="h-9 w-40" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
         </>}
         <FilterSelect value={f.campusId} onChange={(v) => set('campusId', v)} all={L('All branches', 'كل الفروع')} items={data?.options.campuses ?? []} />
         <FilterSelect value={f.trackId} onChange={(v) => set('trackId', v)} all={L('All tracks', 'كل الـ Tracks')} items={data?.options.tracks ?? []} />

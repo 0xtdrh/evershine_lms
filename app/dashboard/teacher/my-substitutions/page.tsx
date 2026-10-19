@@ -81,7 +81,7 @@ export default function MySubstitutionsPage() {
               <div className="space-y-2">
                 {data.asSubstitute.map((day) => (
                   <Card key={day.date}>
-                    <CardHeader className="py-3"><CardTitle className="text-sm">{new Date(day.date).toLocaleDateString()}</CardTitle></CardHeader>
+                    <CardHeader className="py-3"><CardTitle className="text-sm">{new Date(day.date).toLocaleDateString('en-GB')}</CardTitle></CardHeader>
                     <CardContent className="space-y-2 pt-0">
                       {day.sessions.map((s) => (
                         <div key={s.id} className="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-2 text-sm">
@@ -121,7 +121,7 @@ export default function MySubstitutionsPage() {
               <div className="space-y-2">
                 {data.asAbsent.map((day) => (
                   <Card key={day.date}>
-                    <CardHeader className="py-3"><CardTitle className="text-sm">{new Date(day.date).toLocaleDateString()}</CardTitle></CardHeader>
+                    <CardHeader className="py-3"><CardTitle className="text-sm">{new Date(day.date).toLocaleDateString('en-GB')}</CardTitle></CardHeader>
                     <CardContent className="space-y-2 pt-0">
                       {day.items.map((it) => (
                         <div key={it.id} className="border border-slate-100 rounded-lg px-3 py-2 text-sm">

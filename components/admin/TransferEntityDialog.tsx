@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select'
 import { notify } from '@/lib/notify'
 import { ArrowRightLeft, Loader2 } from 'lucide-react'
+import { campusLabel } from '@/lib/places/label'
 
 export type TransferEntityType = 'STUDENT' | 'TEACHER' | 'CLASS'
 
@@ -145,7 +146,7 @@ export function TransferEntityDialog({
               </SelectTrigger>
               <SelectContent>
                 {campuses.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

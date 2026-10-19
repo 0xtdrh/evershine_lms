@@ -30,6 +30,7 @@ import {
   Info
 } from 'lucide-react'
 import { notify } from '@/lib/notify'
+import { campusLabel } from '@/lib/places/label'
 
 export default function SettingsPage() {
   const queryClient = useQueryClient()
@@ -1277,7 +1278,7 @@ export default function SettingsPage() {
                     <SelectContent>
                       {activeCampuses.map((c: any) => (
                         <SelectItem key={c.id} value={c.id} className="text-xs">
-                          {c.name}
+                          {campusLabel(c)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1393,7 +1394,7 @@ export default function SettingsPage() {
                     <SelectContent>
                       {activeCampuses.map((c: any) => (
                         <SelectItem key={c.id} value={c.id} className="text-xs">
-                          {c.name}
+                          {campusLabel(c)}
                         </SelectItem>
                       ))}
                     </SelectContent>

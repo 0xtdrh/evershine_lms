@@ -18,6 +18,7 @@ import { CONTRACT_FILE_MAX_MB } from '@/lib/partners/rules'
 import { ContractBadge } from './bits'
 import type { PartnerContract, PartnerDetail } from './types'
 import { FileText, Loader2, Paperclip, Pencil, Plus, Trash2 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Sign { timestamp: number; signature: string; cloudName: string; apiKey: string; folder: string; allowedFormats: string; type: string }
 
@@ -121,8 +122,8 @@ export function PartnerContracts({ p, canEdit, canDelete }: { p: PartnerDetail; 
       {canEdit && editing !== null && (
         <div className="grid gap-2 rounded-lg bg-slate-50 p-3 sm:grid-cols-2">
           <div className="space-y-1 sm:col-span-2"><Label className="text-xs">{L('Title', 'العنوان')}</Label><Input className="h-9" placeholder={L('e.g. School year 2026/27', 'مثلًا العام الدراسي 2026/27')} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
-          <div className="space-y-1"><Label className="text-xs">{L('Start', 'البداية')}</Label><Input type="date" className="h-9" value={f.startDate} onChange={(e) => setF({ ...f, startDate: e.target.value })} /></div>
-          <div className="space-y-1"><Label className="text-xs">{L('End (empty = open-ended)', 'النهاية (فاضي = مفتوح)')}</Label><Input type="date" className="h-9" value={f.endDate} onChange={(e) => setF({ ...f, endDate: e.target.value })} /></div>
+          <div className="space-y-1"><Label className="text-xs">{L('Start', 'البداية')}</Label><DateInput className="h-9" value={f.startDate} onChange={(e) => setF({ ...f, startDate: e.target.value })} /></div>
+          <div className="space-y-1"><Label className="text-xs">{L('End (empty = open-ended)', 'النهاية (فاضي = مفتوح)')}</Label><DateInput className="h-9" value={f.endDate} onChange={(e) => setF({ ...f, endDate: e.target.value })} /></div>
           <div className="space-y-1"><Label className="text-xs">{L('Alert how many days before the end', 'التنبيه قبل النهاية بكام يوم')}</Label><Input type="number" min={0} max={365} className="h-9" value={f.alertDaysBefore} onChange={(e) => setF({ ...f, alertDaysBefore: Number(e.target.value) })} /></div>
           <div className="space-y-1 sm:col-span-2"><Label className="text-xs">{L('Notes', 'ملاحظات')}</Label><Textarea rows={3} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></div>
           <div className="flex gap-2 sm:col-span-2">

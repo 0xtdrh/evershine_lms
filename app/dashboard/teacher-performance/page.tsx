@@ -15,6 +15,7 @@ import { AccessDenied } from '@/components/AccessDenied'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Award, Loader2 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Perf {
   teacher: { id: string; name: string; campus: string }
@@ -93,8 +94,8 @@ export default function TeacherPerformancePage() {
         <p className="mt-1 text-sm text-slate-500">{L('Attendance, ratings, renewals, complaints, grading and session reports for the chosen period. Red = needs attention.', 'الحضور والتقييمات والتجديد والشكاوى والتصحيح وتقارير الحصص في الفترة المختارة. الأحمر = محتاج انتباه.')}</p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Input type="date" className="h-9 w-40" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
-        <Input type="date" className="h-9 w-40" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
+        <DateInput className="h-9 w-40" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+        <DateInput className="h-9 w-40" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
         {(role === 'SUPER_ADMIN' || role === 'ADMIN') && <SettingsLine />}
       </div>
       {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : own && data?.rows[0] ? <Detail p={data.rows[0]} /> : (

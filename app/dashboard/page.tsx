@@ -698,7 +698,7 @@ export default function DashboardPage() {
                     <div key={exam.id} className="flex items-start gap-3 px-4 py-3">
                       <div className="w-10 h-10 rounded-lg bg-purple-100 flex flex-col items-center justify-center flex-shrink-0">
                         <span className="text-xs font-bold text-purple-700 leading-none">
-                          {start.toLocaleDateString('en', { month: 'short' }).toUpperCase()}
+                          {start.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()}
                         </span>
                         <span className="text-sm font-black text-purple-800 leading-none">
                           {start.getDate()}

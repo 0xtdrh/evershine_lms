@@ -34,10 +34,16 @@ export async function GET(_request: NextRequest) {
       _count: {
         select: { students: true, teachers: true, batches: true },
       },
+      partner: { select: { id: true, name: true } },
     },
   })
 
-  return successResponse(campuses.map((campus) => ({ ...campus, gender: inferCampusGender(campus) })))
+  // 2026-10-19: TechNova branches first, then partners' places; a partner place's label names its partner
+  const sorted = [...campuses].sort((a, b) => (a.kind === 'PARTNER' ? 1 : 0) - (b.kind === 'PARTNER' ? 1 : 0) || a.name.localeCompare(b.name))
+  return successResponse(sorted.map((campus) => ({
+    ...campus, gender: inferCampusGender(campus),
+    label: campus.kind === 'PARTNER' && campus.partner ? `${campus.name} — ${campus.partner.name}` : campus.name,
+  })))
 }
 
 export async function POST(request: NextRequest) {

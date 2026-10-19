@@ -17,6 +17,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { L, useI18n } from '@/lib/i18n/client'
+import { campusLabel } from '@/lib/places/label'
 
 type FeePolicy = {
   id: string
@@ -237,7 +238,7 @@ export default function PoliciesPage() {
                     <SelectContent>
                       <SelectItem value="global">{L('All campuses', 'كل الفروع')}</SelectItem>
                       {(campuses ?? []).map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -358,7 +359,7 @@ export default function PoliciesPage() {
                     <SelectContent>
                       <SelectItem value="global">{L('All campuses', 'كل الفروع')}</SelectItem>
                       {(campuses ?? []).map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

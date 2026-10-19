@@ -18,6 +18,7 @@ import { BadgePercent, Check, Loader2, Pencil, Plus, Trash2, X } from 'lucide-re
 import { GiveDiscountDialog, valueText, type DiscountTypeOption } from '@/components/discounts/GiveDiscountDialog'
 import { ApplyToInvoicesDialog, type AffectedInvoice } from '@/components/discounts/ApplyToInvoicesDialog'
 import { L, useI18n } from '@/lib/i18n/client'
+import { DateInput } from '@/components/ui/date-input'
 
 interface TypeRow extends DiscountTypeOption {
   scopeType: string
@@ -364,11 +365,11 @@ function TypeDialog({ value, options, onClose }: { value: Partial<TypeRow>; opti
           {t.scopeType !== 'ALL' && pick('Which one', t.scopeId ?? undefined, (v) => set({ scopeId: v }), scopeList.map((x) => ({ value: x.id, label: x.name })))}
           <div className="space-y-1">
             <Label>{L('From (optional)', 'من (اختياري)')}</Label>
-            <Input type="date" value={t.validFrom ? String(t.validFrom).slice(0, 10) : ''} onChange={(e) => set({ validFrom: e.target.value || null })} />
+            <DateInput value={t.validFrom ? String(t.validFrom).slice(0, 10) : ''} onChange={(e) => set({ validFrom: e.target.value || null })} />
           </div>
           <div className="space-y-1">
             <Label>{L('To (optional)', 'لحد (اختياري)')}</Label>
-            <Input type="date" value={t.validTo ? String(t.validTo).slice(0, 10) : ''} onChange={(e) => set({ validTo: e.target.value || null })} />
+            <DateInput value={t.validTo ? String(t.validTo).slice(0, 10) : ''} onChange={(e) => set({ validTo: e.target.value || null })} />
           </div>
           <div className="space-y-2 sm:col-span-2">
             {check('Can be combined with other discounts', t.stackable, (v) => set({ stackable: v }), 'If not, it only applies alone (when it is the better deal). Combining must also be allowed in Rules.')}
@@ -412,8 +413,8 @@ function ReportTab() {
       <CardHeader>
         <CardTitle className="text-base">{L('Discounts on invoices issued in the period', 'الخصومات على الفواتير اللي طلعت في الفترة')}</CardTitle>
         <div className="flex flex-wrap items-end gap-2 pt-2">
-          <div className="space-y-1"><Label>{L('From', 'من')}</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-          <div className="space-y-1"><Label>{L('To', 'لحد')}</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+          <div className="space-y-1"><Label>{L('From', 'من')}</Label><DateInput value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+          <div className="space-y-1"><Label>{L('To', 'لحد')}</Label><DateInput value={to} onChange={(e) => setTo(e.target.value)} /></div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

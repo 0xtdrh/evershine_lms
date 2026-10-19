@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
 import { Loader2, TrendingUp, AlertTriangle, CalendarCheck, Users } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { campusLabel } from '@/lib/places/label'
 
 interface Campus { id: string; name: string; code: string }
 
@@ -93,7 +94,7 @@ export default function AttendanceReportPage() {
             <SelectContent>
               <SelectItem value="all">{L('All campuses', 'كل الفروع')}</SelectItem>
               {campuses.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>
               ))}
             </SelectContent>
           </Select>

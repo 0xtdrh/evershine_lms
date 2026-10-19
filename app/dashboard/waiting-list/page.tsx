@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Hourglass, Loader2, UserPlus, ListPlus, X } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { campusLabel } from '@/lib/places/label'
 
 // ── Types (match lib/waiting-list/build.ts) ─────────────────────────────────
 interface Ref { id: string; name: string }
@@ -197,7 +198,7 @@ export default function WaitingListPage() {
               <SelectTrigger className="w-[170px]"><SelectValue placeholder={L('Branch', 'الفرع')} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">{L('All branches', 'كل الفروع')}</SelectItem>
-                {campuses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                {campuses.map((c) => <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>)}
               </SelectContent>
             </Select>
           )}

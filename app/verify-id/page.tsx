@@ -232,7 +232,7 @@ export default function VerifyIDPage() {
                       <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Date of Birth</p>
                       <p className="text-base font-semibold text-slate-900 flex items-center gap-2 mt-1">
                         <Calendar className="w-4 h-4" />
-                        {new Date(scannedData.dateOfBirth).toLocaleDateString()}
+                        {new Date(scannedData.dateOfBirth).toLocaleDateString('en-GB')}
                       </p>
                     </div>
 
@@ -248,7 +248,7 @@ export default function VerifyIDPage() {
                       <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Admission Date</p>
                       <p className="text-base font-semibold text-slate-900 flex items-center gap-2 mt-1">
                         <Calendar className="w-4 h-4" />
-                        {new Date(scannedData.admissionDate).toLocaleDateString()}
+                        {new Date(scannedData.admissionDate).toLocaleDateString('en-GB')}
                       </p>
                     </div>
 

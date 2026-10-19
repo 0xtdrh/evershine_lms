@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { WALLET_TYPE } from '@/components/wallet/WalletLedger'
 import { ArrowLeft, Printer } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Statement {
   company: { companyName: string; companyPhone: string; companyAddress: string }
@@ -36,8 +37,8 @@ export default function WalletStatementPage({ params }: { params: Promise<{ stud
       <style>{'@media print { @page { size: A4; margin: 12mm; } body { background: #fff; } }'}</style>
       <div className="mx-auto mb-4 flex max-w-3xl flex-wrap items-end justify-center gap-2 px-4 print:hidden">
         <Button variant="outline" onClick={() => (history.length > 1 ? history.back() : (window.location.href = '/dashboard'))}><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
-        <label className="text-xs">From<Input type="date" className="h-9" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
-        <label className="text-xs">To<Input type="date" className="h-9" value={to} onChange={(e) => setTo(e.target.value)} /></label>
+        <label className="text-xs">From<DateInput className="h-9" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
+        <label className="text-xs">To<DateInput className="h-9" value={to} onChange={(e) => setTo(e.target.value)} /></label>
         <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Print / save as PDF</Button>
       </div>
       {isLoading || !s ? <p className="text-center text-sm text-gray-500">Loading…</p> : (

@@ -20,6 +20,7 @@ import imageCompression from 'browser-image-compression'
 import { FL, FRow, FGroup, FieldError, SectionTitle, STEP_META, ADMISSION_RULES, FATHER_OCCUPATIONS, RELATIONSHIPS, BLOOD_GROUPS, PARENT_STATUSES, MARKETING_SOURCES, DELIVERY_MODES } from './_components'
 import { SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
 import Link from 'next/link'
+import { DateInput } from '@/components/ui/date-input'
 
 type ApiFieldError = { field: string; message: string }
 
@@ -370,7 +371,7 @@ export default function AdmissionFormPage() {
                       </FGroup>
                       <FGroup>
                         <FL>Father&apos;s Phone</FL>
-                        <Input name="fatherPhoneNumber" value={formData.fatherPhoneNumber} onChange={handleChange} placeholder="+201234567890" />
+                        <Input name="fatherPhoneNumber" value={formData.fatherPhoneNumber} onChange={handleChange} placeholder="01012345678" />
                       </FGroup>
                       <FGroup>
                         <FL>Father&apos;s Occupation</FL>
@@ -387,7 +388,7 @@ export default function AdmissionFormPage() {
                       </FGroup>
                       <FGroup>
                         <FL>Mother&apos;s Phone</FL>
-                        <Input name="motherPhoneNumber" value={formData.motherPhoneNumber} onChange={handleChange} placeholder="+201234567890" />
+                        <Input name="motherPhoneNumber" value={formData.motherPhoneNumber} onChange={handleChange} placeholder="01012345678" />
                       </FGroup>
                       <FGroup>
                         <FL>Mother&apos;s Occupation</FL>
@@ -404,7 +405,7 @@ export default function AdmissionFormPage() {
                       </FGroup>
                       <FGroup>
                         <FL required>Date of Birth</FL>
-                        <Input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} />
+                        <DateInput name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} />
                         <FieldError message={errors.dateOfBirth} />
                       </FGroup>
                       <FGroup>
@@ -453,12 +454,12 @@ export default function AdmissionFormPage() {
                         </FGroup>
                         <FGroup>
                           <FL required>Primary Phone Number</FL>
-                          <Input name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} placeholder="+201234567890" />
+                          <Input name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} placeholder="01012345678" />
                           <FieldError message={errors.phoneNumber} />
                         </FGroup>
                         <FGroup>
                           <FL required>Emergency Contact (Different from Primary)</FL>
-                          <Input name="emergencyContact" value={formData.emergencyContact} onChange={handleChange} placeholder="+201234567890" />
+                          <Input name="emergencyContact" value={formData.emergencyContact} onChange={handleChange} placeholder="01012345678" />
                           <FieldError message={errors.emergencyContact} />
                         </FGroup>
                       </FRow>

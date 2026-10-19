@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { L, useI18n } from '@/lib/i18n/client'
 import { notify } from '@/lib/notify'
 import { CalendarDays, CalendarOff, ChevronLeft, ChevronRight, Loader2, Printer, X } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 type Status = 'HELD' | 'MISSING' | 'SCHEDULED' | 'NOT_STARTED' | 'CANCELLED' | 'HOLIDAY'
 interface Group {
@@ -377,11 +378,11 @@ function AddHolidayDialog({ campuses, onClose }: { campuses: { id: string; name:
         <div className="grid grid-cols-2 gap-2">
           <label className="block text-sm">
             <span className="text-slate-600">{L('From', 'من')}</span>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateInput value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <label className="block text-sm">
             <span className="text-slate-600">{L('To (optional)', 'لحد (اختياري)')}</span>
-            <Input type="date" value={toDate} min={date} onChange={(e) => setToDate(e.target.value)} />
+            <DateInput value={toDate} min={date} onChange={(e) => setToDate(e.target.value)} />
           </label>
         </div>
         <label className="block text-sm">

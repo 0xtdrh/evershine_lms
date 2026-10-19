@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CheckCheck, ClipboardList, Clock, Loader2, Settings2 } from 'lucide-react'
+import { DateTimeInput } from '@/components/ui/date-input'
 
 interface GroupRow { id: string; label: string; course: string; level: string; toGrade: number }
 interface Book {
@@ -118,7 +119,7 @@ export default function AssignmentsPage() {
               <CardHeader className="pb-2"><CardTitle className="text-base">{pick(col.titleEn, col.titleAr) || L('Homework', 'واجب')} · {L('session', 'الحصة')} {col.sessionNumber}</CardTitle></CardHeader>
               <CardContent className="flex flex-wrap items-center gap-3 text-sm">
                 <label className="flex items-center gap-2"><Clock className="h-4 w-4 text-slate-400" /> {L('Due for this group', 'آخر ميعاد للجروب ده')}
-                  <Input type="datetime-local" className="h-8 w-56" defaultValue={toLocalInput(col.dueAt)} onBlur={(e) => patch.mutate({ blockId: col.blockId, dueAt: e.target.value ? new Date(e.target.value).toISOString() : null })} />
+                  <DateTimeInput className="h-8 w-56" defaultValue={toLocalInput(col.dueAt)} onBlur={(e) => patch.mutate({ blockId: col.blockId, dueAt: e.target.value ? new Date(e.target.value).toISOString() : null })} />
                 </label>
                 <Button size="sm" variant="outline" onClick={() => patch.mutate({ blockId: col.blockId, inClass: book.students.map((s) => s.id), fullMarks: false })}>{L('Done in class — everyone', 'اتعمل في الحصة — الكل')}</Button>
                 <Button size="sm" variant="outline" onClick={() => patch.mutate({ blockId: col.blockId, inClass: book.students.map((s) => s.id), fullMarks: true })}>{L('Done in class — full marks', 'اتعمل في الحصة — الدرجة كاملة')}</Button>

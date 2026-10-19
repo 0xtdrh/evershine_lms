@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { CalendarClock, CheckCircle2, Loader2, Phone, Plus, Star, Trash2, UserRound } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Contact { id: string; name: string; role: string; jobTitle: string | null; phone: string | null; email: string | null; isPrimary: boolean; notes: string | null }
 interface Activity { id: string; kind: string; happenedAt: string; summary: string; followUpAt: string | null; followUpDoneAt: string | null }
@@ -77,8 +78,8 @@ export function PartnerRelations({ partnerId, canEdit }: { partnerId: string; ca
               <select className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs" value={a.kind} onChange={(e) => setA({ ...a, kind: e.target.value })}>
                 {Object.entries(KINDS).map(([k, v]) => <option key={k} value={k}>{L(...v)}</option>)}
               </select>
-              <Input type="date" className="h-8 w-36" value={a.happenedAt} onChange={(e) => setA({ ...a, happenedAt: e.target.value })} />
-              <span className="flex items-center gap-1 text-xs text-slate-500">{L('Follow up on', 'متابعة يوم')}<Input type="date" className="h-8 w-36" value={a.followUpAt} onChange={(e) => setA({ ...a, followUpAt: e.target.value })} /></span>
+              <DateInput className="h-8 w-36" value={a.happenedAt} onChange={(e) => setA({ ...a, happenedAt: e.target.value })} />
+              <span className="flex items-center gap-1 text-xs text-slate-500">{L('Follow up on', 'متابعة يوم')}<DateInput className="h-8 w-36" value={a.followUpAt} onChange={(e) => setA({ ...a, followUpAt: e.target.value })} /></span>
             </div>
             <Textarea rows={2} placeholder={L('What was said / agreed', 'اتكلمتوا في إيه / اتفقتوا على إيه')} value={a.summary} onChange={(e) => setA({ ...a, summary: e.target.value })} />
             <Button size="sm" disabled={addA.isPending || a.summary.trim().length < 2} onClick={() => addA.mutate()}><Plus className="me-1 h-4 w-4" />{L('Save', 'احفظ')}</Button>
