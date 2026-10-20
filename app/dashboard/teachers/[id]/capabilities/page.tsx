@@ -154,7 +154,7 @@ export default function TeacherCapabilitiesPage() {
               {qualified.length === 0 && <p className="text-sm text-slate-400">{L('Nothing added yet.', 'لسه مفيش حاجة.')}</p>}
               {qualified.map((q) => (
                 <Badge key={q.id} variant="outline" className="gap-1.5 pr-1">
-                  {q.track ? `Track: ${q.track.name}` : q.subject ? `Course: ${q.subject.name}` : `${q.level?.subject.name} — ${q.level?.name}`}
+                  {q.track ? `${L('Track', 'تراك')}: ${q.track.name}` : q.subject ? `${L('Course', 'كورس')}: ${q.subject.name}` : `${q.level?.subject.name} — ${q.level?.name}`}
                   <button onClick={() => removeQualifiedMutation.mutate(q.id)} className="hover:text-red-600">
                     <X className="w-3 h-3" />
                   </button>
@@ -217,7 +217,7 @@ export default function TeacherCapabilitiesPage() {
               }
               onClick={() => addQualifiedMutation.mutate()}
             >
-              {addQualifiedMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
+              {addQualifiedMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : L('Add', 'ضيف')}
             </Button>
           </div>
         </CardContent>
@@ -266,7 +266,7 @@ export default function TeacherCapabilitiesPage() {
               <DateInput value={credDate} onChange={(e) => setCredDate(e.target.value)} />
             </div>
             <Button size="sm" className="w-full" disabled={!credTitle || addCredentialMutation.isPending} onClick={() => addCredentialMutation.mutate()}>
-              {addCredentialMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
+              {addCredentialMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : L('Add', 'ضيف')}
             </Button>
           </div>
         </CardContent>

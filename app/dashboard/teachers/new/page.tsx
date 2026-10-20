@@ -19,7 +19,7 @@ import { CampusBatchHouseFields } from '@/components/academic/CampusBatchHouseFi
 import { isPlacementScopeReady, performanceHouseRequired } from '@/lib/academic/hierarchy'
 import { STAFF_DESIGNATIONS, isTeachingDesignation, isNonTeachingDesignation } from '@/lib/constants/staff-designations'
 import { DateInput } from '@/components/ui/date-input'
-import { L } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 
 const teacherSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters').trim(),
@@ -55,6 +55,7 @@ type TeacherFormValues = z.input<typeof teacherSchema>
 type TeacherForm = z.infer<typeof teacherSchema>
 
 export default function NewTeacherPage() {
+  useI18n() // re-render on a language switch
   const router = useRouter()
   const queryClient = useQueryClient()
   // "works in every place" only for someone who sees every place (the API checks the same)
@@ -88,7 +89,7 @@ export default function NewTeacherPage() {
     if (!file) return
 
     if (!file.type.startsWith('image/')) {
-      notify.error('Please upload a valid image file')
+      notify.error(L('Please upload a valid image file', 'ارفع صورة صحيحة'))
       return
     }
 
@@ -180,7 +181,7 @@ export default function NewTeacherPage() {
   const onSubmit = async (data: TeacherForm) => {
     // Only the branch is needed (batches and houses are switched off).
     if (!data.campusId) {
-      notify.error('Select the branch')
+      notify.error(L('Select the branch', 'اختار الفرع'))
       return
     }
     setIsLoading(true)
@@ -202,11 +203,11 @@ export default function NewTeacherPage() {
         method: 'POST',
         body: JSON.stringify(payload),
       })
-      notify.success('Staff member added successfully!')
+      notify.success(L('Staff member added successfully!', 'الموظف اتضاف!'))
       queryClient.invalidateQueries({ queryKey: ['teachers'] })
       router.push('/dashboard/teachers')
     } catch (err: any) {
-      notify.error('Failed to add staff member', { description: err.message })
+      notify.error(L('Failed to add staff member', 'الموظف ماتضافش'), { description: err.message })
     } finally {
       setIsLoading(false)
     }
@@ -217,7 +218,7 @@ export default function NewTeacherPage() {
     const errorList = Object.keys(errors)
       .map(key => `${errors[key].message || 'Invalid value'}`)
       .join(', ')
-    notify.error('Required Fields Missing', {
+    notify.error(L('Required Fields Missing', 'فيه خانات لازم تتملا'), {
       description: `Please fill all required fields correctly: ${errorList}`,
     })
   }
@@ -237,29 +238,29 @@ export default function NewTeacherPage() {
           <Button variant="outline" size="icon"><ArrowLeft className="w-4 h-4" /></Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Add Staff Member</h1>
-          <p className="text-sm text-gray-500">Enrol a new staff member into the system.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">{L('Add Staff Member', 'ضيف موظف')}</h1>
+          <p className="text-sm text-gray-500">{L('Enrol a new staff member into the system.', 'مدرب أو موظف جديد. السكرتارية ومدير الفرع من الإعدادات، والمحاسب من إدارة الحسابات.')}</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
         {/* Personal */}
         <Card>
-          <CardHeader><CardTitle>Personal Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{L('Personal Details', 'البيانات الشخصية')}</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Profile Picture Upload */}
             <div className="flex flex-col sm:flex-row items-start gap-6 md:col-span-2 pb-4 border-b border-gray-100">
               <div className="w-28 h-28 rounded-xl border-2 border-dashed border-gray-300 overflow-hidden flex items-center justify-center bg-gray-50 flex-shrink-0 relative group shadow-sm transition-all hover:border-blue-500">
                 {previewImage ? (
-                  <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={previewImage} alt={L('Preview', 'معاينة')} className="w-full h-full object-cover" />
                 ) : (
                   <div className="text-center text-gray-400 p-2">
-                    <span className="text-[10px] font-bold block uppercase tracking-wider text-gray-400">Passport Size</span>
-                    <span className="text-[8px] block mt-0.5">Photo</span>
+                    <span className="text-[10px] font-bold block uppercase tracking-wider text-gray-400">{L('Passport Size', 'مقاس الباسبور')}</span>
+                    <span className="text-[8px] block mt-0.5">{L('Photo', 'صورة')}</span>
                   </div>
                 )}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">Upload</span>
+                  <span className="text-white text-xs font-bold">{L('Upload', 'ارفع')}</span>
                 </div>
                 <input 
                   type="file" 
@@ -269,46 +270,46 @@ export default function NewTeacherPage() {
                 />
               </div>
               <div className="flex flex-col justify-center h-28">
-                <h3 className="font-bold text-sm text-gray-900">Staff Profile Picture</h3>
+                <h3 className="font-bold text-sm text-gray-900">{L('Staff Profile Picture', 'صورة الموظف')}</h3>
                 <p className="text-xs text-gray-500 mt-1 max-w-sm">
-                  Upload an optional clear, passport-sized photo. It will be automatically optimized and rendered on the staff member's profile card and portal page.
+                  {L('Upload an optional clear, passport-sized photo. It will be automatically optimized and rendered on the staff member\'s profile card and portal page.', 'صورة واضحة (اختياري). بتظهر في ملف الموظف وعلى الكارنيه.')}
                 </p>
                 {errors.profilePicture && <p className="text-xs text-destructive mt-2 font-semibold">{errors.profilePicture.message}</p>}
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label>First Name</Label>
+              <Label>{L('First Name', 'الاسم الأول')}</Label>
               <Input {...field('firstName')} />{err('firstName')}
             </div>
             <div className="space-y-1.5">
-              <Label>Last Name</Label>
+              <Label>{L('Last Name', 'اسم العيلة')}</Label>
               <Input {...field('lastName')} />{err('lastName')}
             </div>
             <div className="space-y-1.5">
-              <Label>National ID (14 digits, no dashes)</Label>
+              <Label>{L('National ID (14 digits, no dashes)', 'الرقم القومي (14 رقم من غير شرط)')}</Label>
               <Input {...field('cnic')} placeholder="29001011234567" />{err('cnic')}
             </div>
             <div className="space-y-1.5">
-              <Label>Date of Birth</Label>
+              <Label>{L('Date of Birth', 'تاريخ الميلاد')}</Label>
               <DateInput {...field('dateOfBirth')} />{err('dateOfBirth')}
             </div>
             <div className="space-y-1.5">
-              <Label>Gender</Label>
+              <Label>{L('Gender', 'النوع')}</Label>
               <input type="hidden" {...register('gender')} />
               <Select onValueChange={(v) => setValue('gender', v as 'MALE' | 'FEMALE', { shouldValidate: true })}>
                 <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="Select gender" />
+                  <SelectValue placeholder={L('Select gender', 'اختار النوع')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MALE">Male</SelectItem>
-                  <SelectItem value="FEMALE">Female</SelectItem>
+                  <SelectItem value="MALE">{L('Male', 'ذكر')}</SelectItem>
+                  <SelectItem value="FEMALE">{L('Female', 'أنثى')}</SelectItem>
                 </SelectContent>
               </Select>
               {err('gender')}
             </div>
             <div className="space-y-1.5">
-              <Label>Joining Date</Label>
+              <Label>{L('Joining Date', 'تاريخ التعيين')}</Label>
               <DateInput {...field('joiningDate')} />{err('joiningDate')}
             </div>
           </CardContent>
@@ -316,26 +317,26 @@ export default function NewTeacherPage() {
 
         {/* Contact */}
         <Card>
-          <CardHeader><CardTitle>Contact & Address</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{L('Contact & Address', 'التواصل والعنوان')}</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5 md:col-span-2">
-              <Label>Address</Label>
+              <Label>{L('Address', 'العنوان')}</Label>
               <Input {...field('address')} />{err('address')}
             </div>
             <div className="space-y-1.5">
-              <Label>City</Label>
+              <Label>{L('City', 'المدينة')}</Label>
               <Input {...field('city')} />{err('city')}
             </div>
             <div className="space-y-1.5">
-              <Label>Phone Number</Label>
+              <Label>{L('Phone Number', 'الموبايل')}</Label>
               <Input {...field('phoneNumber')} placeholder="01012345678" />{err('phoneNumber')}
             </div>
             <div className="space-y-1.5">
-              <Label>Email</Label>
+              <Label>{L('Email', 'الإيميل')}</Label>
               <Input type="email" {...field('email')} />{err('email')}
             </div>
             <div className="space-y-1.5">
-              <Label>Emergency Contact</Label>
+              <Label>{L('Emergency Contact', 'رقم الطوارئ')}</Label>
               <Input {...field('emergencyContact')} placeholder="01012345678" />{err('emergencyContact')}
             </div>
           </CardContent>
@@ -343,21 +344,21 @@ export default function NewTeacherPage() {
 
         {/* Professional */}
         <Card>
-          <CardHeader><CardTitle>Professional Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{L('Professional Details', 'بيانات الشغل')}</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Qualification</Label>
-              <Input {...field('qualification')} placeholder="M.Ed, B.Sc, Matric, etc." />{err('qualification')}
+              <Label>{L('Qualification', 'المؤهل')}</Label>
+              <Input {...field('qualification')} placeholder={L('M.Ed, B.Sc, Matric, etc.', 'مثلاً: بكالوريوس هندسة')} />{err('qualification')}
             </div>
             {/* Specialization: only relevant for teaching designations */}
             {showTeachingFields && (
               <div className="space-y-1.5">
-                <Label>Specialization</Label>
-                <Input {...field('specialization')} placeholder="Mathematics, Physics..." />
+                <Label>{L('Specialization', 'التخصص')}</Label>
+                <Input {...field('specialization')} placeholder={L('Mathematics, Physics...', 'مثلاً: روبوتكس، برمجة')} />
               </div>
             )}
             <div className="space-y-1.5">
-              <Label>Designation</Label>
+              <Label>{L('Designation', 'الوظيفة')}</Label>
               <input type="hidden" {...register('designation')} />
               <Select
                 onValueChange={(v) => {
@@ -382,17 +383,17 @@ export default function NewTeacherPage() {
             {/* Custom designation input for "Other" */}
             {selectedDesignation === 'Other' && (
               <div className="space-y-1.5">
-                <Label>Custom Designation</Label>
-                <Input {...field('customDesignation')} placeholder="e.g. Lab Assistant, Peon, Driver..." />
+                <Label>{L('Custom Designation', 'اكتب الوظيفة')}</Label>
+                <Input {...field('customDesignation')} placeholder={L('e.g. Lab Assistant, Peon, Driver...', 'مثلاً: مساعد معمل، سواق…')} />
                 {err('customDesignation')}
               </div>
             )}
             <div className="space-y-1.5">
-              <Label>Years of Experience</Label>
+              <Label>{L('Years of Experience', 'سنين الخبرة')}</Label>
               <Input type="number" min={0} {...field('experienceYears')} />{err('experienceYears')}
             </div>
             <div className="space-y-1.5">
-              <Label>Monthly Salary (EGP) — optional</Label>
+              <Label>{L('Monthly Salary (EGP) — optional', 'المرتب الشهري (ج.م) — اختياري')}</Label>
               <Input type="number" min={0} {...register('monthlySalary', { valueAsNumber: true })} />
             </div>
           </CardContent>
@@ -400,7 +401,7 @@ export default function NewTeacherPage() {
 
         {/* Placement */}
         <Card>
-          <CardHeader><CardTitle>Campus Placement {showTeachingFields ? '& Class Assignment' : ''}</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{L('Campus Placement', 'المكان')} {showTeachingFields ? '& Class Assignment' : ''}</CardTitle></CardHeader>
           <CardContent className="space-y-6">
             <input type="hidden" {...register('campusId')} />
             <input type="hidden" {...register('batchId')} />
@@ -408,7 +409,7 @@ export default function NewTeacherPage() {
 
             {isNonTeaching && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700 font-medium">
-                Support staff only need a branch.
+                {L('Support staff only need a branch.', 'الموظفين المساعدين محتاجين الفرع بس.')}
               </div>
             )}
 
@@ -453,15 +454,15 @@ export default function NewTeacherPage() {
             {showTeachingFields && placementReady && (
               <div className="border-t pt-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-sm text-gray-900">Assign Classes & Performance Sections</h3>
-                  <span className="text-xs text-gray-400">Select classes this staff member will teach</span>
+                  <h3 className="font-bold text-sm text-gray-900">{L('Assign Classes & Performance Sections', 'الفصول (قديم)')}</h3>
+                  <span className="text-xs text-gray-400">{L('Select classes this staff member will teach', 'اختار الفصول')}</span>
                 </div>
 
                 {isLoadingClasses ? (
-                  <p className="text-xs text-gray-400 animate-pulse">Fetching available classes...</p>
+                  <p className="text-xs text-gray-400 animate-pulse">{L('Fetching available classes...', 'بيحمّل…')}</p>
                 ) : classes.length === 0 ? (
                   <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
-                    No classes found for this campus{selectedBatchId ? ' and batch' : ''}. Create classes under Classes first (Morning and Evening are separate entries).
+                    {L('No classes found for this campus', 'مفيش فصول في الفرع ده')}{selectedBatchId ? ' and batch' : ''}. Create classes under Classes first (Morning and Evening are separate entries).
                   </p>
                 ) : (
                   <div className="space-y-6">
@@ -525,7 +526,7 @@ export default function NewTeacherPage() {
                                         className="rounded text-green-600 focus:ring-green-500 border-gray-300 w-3.5 h-3.5 cursor-pointer"
                                       />
                                       <label htmlFor={`incharge-${cls.id}`} className="text-[10px] font-bold text-gray-700 cursor-pointer select-none">
-                                        Class Incharge
+                                        {L('Class Incharge', 'مسؤول الفصل')}
                                       </label>
                                     </div>
                                   )}
@@ -545,23 +546,23 @@ export default function NewTeacherPage() {
 
         {/* Account */}
         <Card>
-          <CardHeader><CardTitle>Login Account</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{L('Login Account', 'حساب الدخول')}</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5 md:col-span-2">
               <p className="text-sm text-gray-500">
-                The email entered above will be used as the login email. Set a temporary password that the staff member must change on first login.
+                {L('The email entered above will be used as the login email. Set a temporary password that the staff member must change on first login.', 'الإيميل اللي فوق هو اللي هيدخل بيه. اكتب باسورد مؤقت، ولازم يغيّره أول ما يدخل.')}
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label>Temporary Password</Label>
-              <Input type="password" {...field('password')} placeholder="Min 8 characters" />{err('password')}
+              <Label>{L('Temporary Password', 'باسورد مؤقت')}</Label>
+              <Input type="password" {...field('password')} placeholder={L('Min 8 characters', '8 حروف على الأقل')} />{err('password')}
             </div>
           </CardContent>
         </Card>
 
         <div className="flex justify-end pb-10">
           <Button type="submit" disabled={isLoading} className="w-full sm:w-auto px-8">
-            {isLoading ? 'Adding Staff Member...' : 'Add Staff Member'}
+            {isLoading ? L('Adding Staff Member...', 'بيضيف…') : L('Add Staff Member', 'ضيف الموظف')}
           </Button>
         </div>
       </form>

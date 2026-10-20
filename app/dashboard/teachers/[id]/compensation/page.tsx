@@ -81,16 +81,14 @@ export default function TeacherCompensationPage() {
           <CardHeader>
             <CardTitle>{teacher.firstName} {teacher.lastName} {L('— Pay Settings', '— إعدادات الأجر')}</CardTitle>
             <CardDescription>
-              Base monthly salary, plus the default group-pay rule that applies to every group this teacher
-              is assigned to (unless a specific group has its own override, set from that group&apos;s
-              Financials in the Groups page).
+              {L("Base monthly salary, plus the default group-pay rule that applies to every group this teacher is assigned to (unless a specific group has its own override, set from that group's Financials in the Groups page).", 'المرتب الثابت، وقاعدة الأجر اللي بتتطبق على كل جروب المدرب بيدرّسه (إلا لو الجروب ليه أجر خاص من «ماليات الجروب» في صفحة الجروبات).')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="salary">{L('Fixed monthly salary', 'مرتب شهري ثابت')}</Label>
               <Input id="salary" type="number" placeholder={L('e.g. 6000', 'مثلاً 6000')} value={form.monthlySalary} onChange={(e) => setForm({ ...form, monthlySalary: e.target.value })} />
-              <p className="text-xs text-slate-400">The teacher&apos;s base salary, independent of any group.</p>
+              <p className="text-xs text-slate-400">{L("The teacher's base salary, independent of any group. Leave empty if none.", 'مرتب المدرب الأساسي بعيد عن الجروبات. سيبه فاضي لو مفيش.')}</p>
             </div>
 
             <div className="border-t border-slate-100 pt-4 space-y-4">
@@ -111,7 +109,7 @@ export default function TeacherCompensationPage() {
             </div>
 
             <Button className="w-full" disabled={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
-              {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+              {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : L('Save', 'حفظ')}
             </Button>
           </CardContent>
         </Card>

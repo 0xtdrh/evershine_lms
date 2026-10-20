@@ -21,7 +21,7 @@ interface Profile {
   campus: {
     id: string; name: string; code: string; address: string; phone: string; email: string
     mapUrl: string | null; whatsapp: string | null; workingHours: string | null; roomsCount: number | null
-    maxStudents: number | null; managerUserId: string | null; profileNotes: string | null; isActive: boolean; manager: string | null
+    maxStudents: number | null; managerUserId: string | null; profileNotes: string | null; isActive: boolean; manager: string | null; principalName?: string | null
   }
   team: {
     staff: { userId: string; name: string; role: string; email: string; department: string | null }[]
@@ -78,13 +78,13 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
   const c = data.campus
   const s = data.stats
   const tiles: [string, string, string][] = [
-    ['Active groups', String(s.activeGroups), 'text-indigo-700'],
-    ['Active students', String(s.activeStudents), 'text-indigo-700'],
-    ['Income this month', money(s.monthIncome), 'text-emerald-700'],
-    ['Overdue invoices', String(s.overdueInvoices), s.overdueInvoices ? 'text-rose-700' : 'text-slate-700'],
-    ['Waiting list', String(s.waiting), s.waiting ? 'text-amber-700' : 'text-slate-700'],
-    ['Branch fullness', s.fullness == null ? '—' : `${s.fullness}%`, 'text-slate-700'],
-    ['Prepaid (wallets)', money(s.prepaid ?? 0), 'text-indigo-700'],
+    [L('Active groups', 'جروبات شغالة'), String(s.activeGroups), 'text-indigo-700'],
+    [L('Active students', 'طلاب شغالين'), String(s.activeStudents), 'text-indigo-700'],
+    [L('Income this month', 'دخل الشهر'), money(s.monthIncome), 'text-emerald-700'],
+    [L('Overdue invoices', 'فواتير متأخرة'), String(s.overdueInvoices), s.overdueInvoices ? 'text-rose-700' : 'text-slate-700'],
+    [L('Waiting list', 'قايمة الانتظار'), String(s.waiting), s.waiting ? 'text-amber-700' : 'text-slate-700'],
+    [L('Branch fullness', 'الفرع مليان'), s.fullness == null ? '—' : `${s.fullness}%`, 'text-slate-700'],
+    [L('Prepaid (wallets)', 'رصيد المحافظ'), money(s.prepaid ?? 0), 'text-indigo-700'],
   ]
 
   return (
@@ -111,7 +111,7 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
               <p className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-slate-400" /> {c.whatsapp ?? '—'}</p>
               <p className="flex items-start gap-2"><Clock className="mt-0.5 h-4 w-4 text-slate-400" /> <span className="whitespace-pre-wrap">{c.workingHours ?? '—'}</span></p>
               <p className="flex items-center gap-2"><Users className="h-4 w-4 text-slate-400" /> {c.roomsCount ?? '—'} {L('rooms · up to', 'قاعة · لحد')} {c.maxStudents ?? '—'} {L('students', 'طالب')}</p>
-              <p>{L('Branch manager:', 'مدير الفرع:')} <strong>{c.manager ?? '—'}</strong></p>
+              <p>{L('Branch manager:', 'مدير الفرع:')} <strong>{c.manager ?? c.principalName ?? '—'}</strong></p>
               {c.profileNotes && <p className="whitespace-pre-wrap text-slate-600 md:col-span-2">{c.profileNotes}</p>}
             </div>
           ) : (

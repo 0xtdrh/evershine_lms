@@ -150,6 +150,13 @@ export const sidebarSlide: Variants = {
   exit: { x: -280, transition: { duration: 0.2, ease: ease.in } },
 };
 
+/** Same, for Arabic screens: the menu sits on the right and slides in from the right (2026-10-20). */
+export const sidebarSlideRtl: Variants = {
+  initial: { x: 280 },
+  animate: { x: 0, transition: { duration: 0.25, ease: ease.out } },
+  exit: { x: 280, transition: { duration: 0.2, ease: ease.in } },
+};
+
 // ─── Notification panel drop-down ────────────────────────────────────────────
 export const notificationPanel: Variants = {
   initial: { opacity: 0, y: -8, scale: 0.97 },

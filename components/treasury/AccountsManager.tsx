@@ -5,6 +5,7 @@
  * and where each payment method lands — for every branch or one branch (a branch row wins).
  */
 
+import { methodLabel } from '@/lib/fees/method-label'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -107,7 +108,7 @@ export function AccountsManager() {
                 <tbody>
                   {rt.methods.map((m) => (
                     <tr key={m} className="border-t">
-                      <td className="p-2 font-medium">{m}</td>
+                      <td className="p-2 font-medium">{methodLabel(m, ar ? 'ar' : 'en')}</td>
                       {[null, ...rt.campuses.map((c) => c.id)].map((cid) => (
                         <td key={cid ?? 'all'} className="p-1.5">
                           <select className={sel} value={current(m, cid)} onChange={(e) => route.mutate({ method: m, campusId: cid, accountId: e.target.value || null })}>

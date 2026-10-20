@@ -1,5 +1,6 @@
 'use client'
 
+import { dmyTime } from '@/lib/format/dates'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -30,13 +31,7 @@ function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleString('en-GB', {
-    timeZone: 'Africa/Cairo',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
+const formatDate = (value: string) => dmyTime(value)
 
 export default function BackupsPage() {
   useI18n() // re-render on a language switch
@@ -53,7 +48,7 @@ export default function BackupsPage() {
   const runMutation = useMutation({
     mutationFn: () => fetchApi<RunResult>('/api/admin/backups', { method: 'POST' }),
     onSuccess: (result) => {
-      notify.success(`Backup created: ${result.tables} tables, ${result.totalRows} rows`)
+      notify.success(L(`Backup created: ${result.tables} tables, ${result.totalRows} rows`, `النسخة اتعملت: ${result.tables} جدول، ${result.totalRows} صف`))
       queryClient.invalidateQueries({ queryKey: ['admin-backups'] })
     },
     onError: (err: Error) => notify.error(err.message || 'Backup failed'),
@@ -79,7 +74,7 @@ export default function BackupsPage() {
         </div>
         <Button onClick={() => runMutation.mutate()} disabled={runMutation.isPending}>
           {runMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-          {runMutation.isPending ? 'Backing up…' : 'Back up now'}
+          {runMutation.isPending ? L('Backing up…', 'بياخد نسخة…') : L('Back up now', 'خد نسخة دلوقتي')}
         </Button>
       </div>
 
@@ -111,7 +106,7 @@ export default function BackupsPage() {
                     <p className="truncate font-medium">{formatDate(b.createdAt)}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {b.fileName} · {formatSize(b.bytes)}
-                      {b.fileName.includes('-manual') ? ' · manual' : ''}
+                      {b.fileName.includes('-manual') ? L(' · manual', ' · يدوي') : L(' · automatic', ' · تلقائي')}
                     </p>
                   </div>
                   <Button asChild variant="outline" size="sm">

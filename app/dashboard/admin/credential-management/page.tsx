@@ -298,7 +298,7 @@ function ProvisionAccountantTab() {
   })
 
   return (
-    <Card className="max-w-3xl border-teal-100">
+    <Card id="accountant" className="max-w-3xl scroll-mt-20 border-teal-100">
       <CardHeader className="bg-teal-50/50 border-b border-teal-100 pb-6 rounded-t-xl">
         <CardTitle className="text-teal-900">{L('Provision Account Manager', 'حساب محاسب جديد')}</CardTitle>
         <CardDescription className="text-teal-700/70">

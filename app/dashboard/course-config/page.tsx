@@ -53,11 +53,14 @@ interface Level {
   _count?: { classSections: number }
 }
 
+/** Sessions a week, counting a month as 4 weeks of classes (8 sessions in 2 months = once a week). */
 function sessionsPerWeekLabel(months: number, sessions: number): string {
-  const weeks = months * 4.345
-  const perWeek = sessions / weeks
+  const perWeek = months > 0 ? sessions / (months * 4) : 0
   if (perWeek <= 0) return '—'
-  return `≈ ${perWeek.toFixed(1)}x / week`
+  const n = Math.round(perWeek * 2) / 2
+  if (n === 1) return L('once a week', 'حصة في الأسبوع')
+  if (n === 2) return L('twice a week', 'حصتين في الأسبوع')
+  return L(`≈ ${n} a week`, `≈ ${n} حصص في الأسبوع`)
 }
 
 function apiErrorMessage(err: unknown, fallback: string): string {
@@ -304,7 +307,7 @@ export default function CourseConfigPage() {
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <GraduationCap className="w-4 h-4 text-indigo-600" />
-                {L('Courses', 'الكورسات')} {selectedTrack ? `in ${selectedTrack.name}` : '(unassigned)'}
+                {selectedTrack ? L(`Courses in ${selectedTrack.name}`, `كورسات ${selectedTrack.name}`) : L('Courses without a track', 'كورسات من غير تراك')}
               </CardTitle>
             </div>
             {can('subject_offerings', 'create') && <Button size="sm" variant="outline" className="gap-1.5" onClick={openCreateCourse}>
@@ -388,8 +391,8 @@ export default function CourseConfigPage() {
                       </TableCell>
                       <TableCell className="text-center text-xs">
                         {l.pricingType === 'MONTHLY'
-                          ? `${l.monthlyPrice ?? '—'} / month`
-                          : `${l.fullLevelPrice ?? '—'} full level`}
+                          ? L(`${l.monthlyPrice ?? '—'} / month`, `${l.monthlyPrice ?? '—'} ج.م في الشهر`)
+                          : L(`${l.fullLevelPrice ?? '—'} full level`, `${l.fullLevelPrice ?? '—'} ج.م للمستوى كله`)}
                       </TableCell>
                       <TableCell className="text-center">{l._count?.classSections ?? 0}</TableCell>
                     </TableRow>
@@ -406,7 +409,7 @@ export default function CourseConfigPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{L('New track', 'تراك جديد')}</DialogTitle>
-            <DialogDescription>An age-based grouping above courses (e.g. &quot;Kids 4–7&quot;).</DialogDescription>
+            <DialogDescription>{L('An age-based grouping above courses (e.g. "Kids 4–7").', 'مجموعة كورسات لسن معيّن (مثلاً «الأطفال 4–7»).')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <Input placeholder={L('Name', 'الاسم')} value={trackForm.name} onChange={(e) => setTrackForm({ ...trackForm, name: e.target.value })} />
@@ -425,7 +428,7 @@ export default function CourseConfigPage() {
               disabled={!trackForm.name || createTrackMutation.isPending}
               onClick={() => createTrackMutation.mutate()}
             >
-              {createTrackMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create track'}
+              {createTrackMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : L('Create track', 'اعمل التراك')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -435,9 +438,9 @@ export default function CourseConfigPage() {
       <Dialog open={courseDialogOpen} onOpenChange={setCourseDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingCourse ? 'Edit course' : 'New course'}</DialogTitle>
+            <DialogTitle>{editingCourse ? L('Edit course', 'تعديل الكورس') : L('New course', 'كورس جديد')}</DialogTitle>
             <DialogDescription>
-              {editingCourse ? editingCourse.name : `In ${selectedTrack ? selectedTrack.name : 'Unassigned'}`}
+              {editingCourse ? editingCourse.name : selectedTrack ? L(`In ${selectedTrack.name}`, `جوه ${selectedTrack.name}`) : L('Without a track', 'من غير تراك')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -457,7 +460,7 @@ export default function CourseConfigPage() {
             >
               {(createCourseMutation.isPending || updateCourseMutation.isPending)
                 ? <Loader2 className="w-4 h-4 animate-spin" />
-                : editingCourse ? 'Save changes' : 'Create course'}
+                : editingCourse ? L('Save changes', 'احفظ التعديلات') : L('Create course', 'اعمل الكورس')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -515,7 +518,7 @@ export default function CourseConfigPage() {
               disabled={!levelForm.name || !levelForm.order || !levelForm.numberOfMonths || !levelForm.numberOfSessions || createLevelMutation.isPending}
               onClick={() => createLevelMutation.mutate()}
             >
-              {createLevelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create level'}
+              {createLevelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : L('Create level', 'اعمل المستوى')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -90,6 +90,8 @@ export const updateTeacherSchema = createTeacherSchema
     defaultFixedAmount: z.number().min(0).optional().nullable(),
     defaultPercentOfStudentPayment: z.number().min(0).max(100).optional().nullable(),
     defaultPerSessionAmount: z.number().min(0).optional().nullable(),
+    // 2026-10-20 (live test): an empty "monthly salary" means none — the pay page sends null
+    monthlySalary: z.number().min(0).optional().nullable(),
   })
   .extend({
     isActive: z.boolean().optional(),

@@ -31,8 +31,10 @@ import {
 } from 'lucide-react'
 import { notify } from '@/lib/notify'
 import { campusLabel } from '@/lib/places/label'
+import { L, useI18n } from '@/lib/i18n/client'
 
 export default function SettingsPage() {
+  useI18n() // re-render on a language switch
   const queryClient = useQueryClient()
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
@@ -40,6 +42,16 @@ export default function SettingsPage() {
   const canRequestIdentity = session?.user?.role === 'STUDENT'
 
   const [activeTab, setActiveTab] = useState<'profile' | 'credentials' | 'admins'>('profile')
+  // ?tab=admins&add=1 (from Instructors & staff → Add staff) opens the admins tab and the add form
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search)
+      const t = q.get('tab')
+      if (t === 'admins' || t === 'credentials') setActiveTab(t)
+      if (t === 'admins' && q.get('add') === '1') setIsCreateAdminOpen(true)
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Search & Filter States (Credentials Tab)
   const [searchQuery, setSearchQuery] = useState('')
@@ -205,7 +217,7 @@ export default function SettingsPage() {
     return (
       <div className="max-w-5xl mx-auto py-12">
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-          <p className="font-semibold">Unable to load profile settings.</p>
+          <p className="font-semibold">{L('Unable to load profile settings.', 'معرفناش نحمّل الإعدادات.')}</p>
           <p>{profileError}</p>
         </div>
       </div>
@@ -234,7 +246,7 @@ export default function SettingsPage() {
 
         const result = await response.json()
         if (result.success) {
-          notify.success('Profile updated successfully')
+          notify.success(L('Profile updated successfully', 'الحساب اتحدّث'))
           setProfileImageFile(null)
           setProfileImagePreview('')
           setDisplayName('')
@@ -244,7 +256,7 @@ export default function SettingsPage() {
       }
     } catch (err: any) {
       setIdentityNotice(err.message || 'Unable to update profile identity')
-      notify.error('Unable to update profile identity')
+      notify.error(L('Unable to update profile identity', 'معرفناش نحدّث الحساب'))
     } finally {
       setIdentitySaving(false)
     }
@@ -261,11 +273,11 @@ export default function SettingsPage() {
           body: JSON.stringify({ requestedField: 'displayName', proposedValue: displayName.trim() || undefined, reason: 'Requested profile update' }),
         })
         setIdentityNotice('Your request has been submitted for review by a Super Admin.')
-        notify.success('Profile change requested')
+        notify.success(L('Profile change requested', 'اتبعت طلب التغيير'))
       }
     } catch (err: any) {
       setIdentityNotice(err.message || 'Unable to request profile update')
-      notify.error('Unable to request profile update')
+      notify.error(L('Unable to request profile update', 'معرفناش نبعت الطلب'))
     } finally {
       setIdentityRequestSaving(false)
     }
@@ -306,7 +318,7 @@ export default function SettingsPage() {
           confirmPassword: confirmPasswordSelf,
         }),
       })
-      notify.success('Success', { description: 'Password updated. Please sign in again with the new password.' })
+      notify.success(L('Success', 'تمام'), { description: 'Password updated. Please sign in again with the new password.' })
       // The server signed out every session of this account (lib/session-guard.ts).
       await signOut({ callbackUrl: '/login?changed=1' })
       setCurrentPassword('')
@@ -314,7 +326,7 @@ export default function SettingsPage() {
       setConfirmPasswordSelf('')
     } catch (err: any) {
       setPasswordError(err.message || 'Incorrect current password or invalid password structure.')
-      notify.error('Password Update Failed')
+      notify.error(L('Password Update Failed', 'الباسورد ماتغيّرش'))
     } finally {
       setIsChangingPassword(false)
     }
@@ -341,7 +353,7 @@ export default function SettingsPage() {
           newPassword: newPassword || undefined,
         })
       })
-      notify.success('Credentials updated successfully!')
+      notify.success(L('Credentials updated successfully!', 'الدخول اتغيّر!'))
       setSelectedUser(null)
       setNewPassword('')
       refetch()
@@ -383,7 +395,7 @@ export default function SettingsPage() {
           department: adminDepartment || undefined,
         }),
       })
-      notify.success('Admin Created', { description: `${adminFirstName} ${adminLastName} has been provisioned as an administrator.` })
+      notify.success(L('Admin Created', 'الحساب اتعمل'), { description: `${adminFirstName} ${adminLastName} has been provisioned as an administrator.` })
       setIsCreateAdminOpen(false)
       // Reset form
       setAdminFirstName('')
@@ -424,7 +436,7 @@ export default function SettingsPage() {
           department: editDepartment || null,
         }),
       })
-      notify.success('Admin Updated', { description: 'Administrator profile assignments saved successfully.' })
+      notify.success(L('Admin Updated', 'الحساب اتحدّث'), { description: 'Administrator profile assignments saved successfully.' })
       setEditingAdmin(null)
       refetchAdmins()
     } catch (err: any) {
@@ -437,7 +449,7 @@ export default function SettingsPage() {
   // Toggle Admin Account access status
   const handleToggleAdminStatus = async (adminUser: any) => {
     if (session?.user?.id === adminUser.id) {
-      notify.error('Safety Gate', { description: 'You cannot deactivate your own account.' })
+      notify.error(L('Safety Gate', 'تنبيه'), { description: 'You cannot deactivate your own account.' })
       return
     }
 
@@ -452,18 +464,18 @@ export default function SettingsPage() {
           isActive: nextStatus,
         }),
       })
-      notify.success('Status Updated', { description: `Access status for ${adminUser.name} has been updated.` })
+      notify.success(L('Status Updated', 'الحالة اتغيّرت'), { description: `Access status for ${adminUser.name} has been updated.` })
       await queryClient.invalidateQueries({ queryKey: ['admin-users-search'] })
       await queryClient.invalidateQueries({ queryKey: ['admin-accounts-list'] })
     } catch (err: any) {
-      notify.error('Failed to update status', { description: err.message })
+      notify.error(L('Failed to update status', 'معرفناش نغيّر الحالة'), { description: err.message })
     }
   }
 
   // Toggle User Account access status (Students, Teachers, Accountants, Guardians, Parents, Admins)
   const handleToggleUserStatus = async (targetUser: any) => {
     if (session?.user?.id === targetUser.id) {
-      notify.error('Safety Gate', { description: 'You cannot deactivate your own account.' })
+      notify.error(L('Safety Gate', 'تنبيه'), { description: 'You cannot deactivate your own account.' })
       return
     }
 
@@ -478,11 +490,11 @@ export default function SettingsPage() {
           isActive: nextStatus,
         }),
       })
-      notify.success('Status Updated', { description: `Access status for ${targetUser.name} has been updated.` })
+      notify.success(L('Status Updated', 'الحالة اتغيّرت'), { description: `Access status for ${targetUser.name} has been updated.` })
       await queryClient.invalidateQueries({ queryKey: ['admin-users-search'] })
       await queryClient.invalidateQueries({ queryKey: ['admin-accounts-list'] })
     } catch (err: any) {
-      notify.error('Failed to update status', { description: err.message })
+      notify.error(L('Failed to update status', 'معرفناش نغيّر الحالة'), { description: err.message })
     }
   }
 
@@ -502,9 +514,9 @@ export default function SettingsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-            Settings <Sparkles className="w-5 h-5 text-indigo-500 animate-pulse" />
+            {L('Settings', 'الإعدادات')} <Sparkles className="w-5 h-5 text-indigo-500 animate-pulse" />
           </h1>
-          <p className="text-xs text-gray-500 font-medium">Manage your personal settings and administrative controls.</p>
+          <p className="text-xs text-gray-500 font-medium">{L('Manage your personal settings and administrative controls.', 'إعدادات حسابك، وإدارة حسابات الدخول والإداريين.')}</p>
         </div>
       </div>
 
@@ -520,7 +532,7 @@ export default function SettingsPage() {
                   : 'text-gray-600 border-transparent hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
-              <UserCircle className="w-4 h-4" /> Profile & Security
+              <UserCircle className="w-4 h-4" /> {L('Profile & Security', 'حسابي والأمان')}
             </button>
             {isAdmin && (
               <>
@@ -532,7 +544,7 @@ export default function SettingsPage() {
                       : 'text-gray-600 border-transparent hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  <ShieldAlert className="w-4 h-4" /> Reset User Credentials
+                  <ShieldAlert className="w-4 h-4" /> {L('Reset User Credentials', 'باسورد وإيميل المستخدمين')}
                 </button>
                 <button
                   onClick={() => setActiveTab('admins')}
@@ -542,7 +554,7 @@ export default function SettingsPage() {
                       : 'text-gray-600 border-transparent hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  <Shield className="w-4 h-4" /> Admin & Access Control
+                  <Shield className="w-4 h-4" /> {L('Admin & Access Control', 'الإداريين والسكرتارية')}
                 </button>
               </>
             )}
@@ -556,22 +568,22 @@ export default function SettingsPage() {
               {/* Profile Card */}
               <Card className="rounded-xl border shadow-sm bg-white overflow-hidden transition-all hover:shadow-md duration-300">
                 <CardHeader className="border-b bg-gray-50/50 py-4">
-                  <CardTitle className="text-sm font-bold text-gray-900">Profile Information</CardTitle>
-                  <CardDescription className="text-xs">Your basic account details.</CardDescription>
+                  <CardTitle className="text-sm font-bold text-gray-900">{L('Profile Information', 'بيانات حسابي')}</CardTitle>
+                  <CardDescription className="text-xs">{L('Your basic account details.', 'البيانات الأساسية لحسابك.')}</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
                   <form onSubmit={handleSavePersonal} className="space-y-4">
                     <div className="space-y-1">
-                      <Label className="text-xs font-bold text-gray-700">Email Address</Label>
+                      <Label className="text-xs font-bold text-gray-700">{L('Email Address', 'الإيميل')}</Label>
                       <Input value={session?.user?.email || ''} disabled className="bg-gray-50 text-gray-500 text-xs h-9 border-gray-200 cursor-not-allowed" />
                       <div className="flex items-center gap-1.5 mt-1 text-[10px] text-gray-400">
                         <Info className="w-3.5 h-3.5" />
-                        <span>Email cannot be modified by yourself. Contact system administrator.</span>
+                        <span>{L('Email cannot be modified by yourself. Contact system administrator.', 'مش هتقدر تغيّر الإيميل بنفسك. كلّم الأدمن.')}</span>
                       </div>
                     </div>
                     
                     <div className="space-y-1">
-                      <Label className="text-xs font-bold text-gray-700">User Role</Label>
+                      <Label className="text-xs font-bold text-gray-700">{L('User Role', 'الدور')}</Label>
                       <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border rounded-lg max-w-xs transition-colors hover:bg-gray-100/50">
                         <Shield className="w-4 h-4 text-indigo-600 animate-pulse" />
                         <span className="text-xs font-bold text-gray-700">{session?.user?.role}</span>
@@ -581,18 +593,18 @@ export default function SettingsPage() {
                     {(canManageIdentity || canRequestIdentity) && (
                       <div className="space-y-4">
                         <div className="space-y-1">
-                          <Label className="text-xs font-bold text-gray-700">Display Name</Label>
-                          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your preferred display name" className="text-xs h-9 bg-white" />
+                          <Label className="text-xs font-bold text-gray-700">{L('Display Name', 'الاسم اللي بيظهر')}</Label>
+                          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={L('Enter your preferred display name', 'اكتب اسمك')} className="text-xs h-9 bg-white" />
                         </div>
                         
                         <div className="space-y-2">
-                          <Label className="text-xs font-bold text-gray-700">Profile Picture</Label>
+                          <Label className="text-xs font-bold text-gray-700">{L('Profile Picture', 'الصورة')}</Label>
                           <div className="flex items-center gap-4">
                             <div className="relative">
                               {profileImagePreview ? (
                                 <img 
                                   src={profileImagePreview} 
-                                  alt="Preview" 
+                                  alt={L('Preview', 'معاينة')} 
                                   className="w-20 h-20 rounded-lg object-cover border border-gray-200 shadow-sm"
                                 />
                               ) : (
@@ -611,7 +623,7 @@ export default function SettingsPage() {
                                     if (file) {
                                       // Validate file size (max 5MB)
                                       if (file.size > 5 * 1024 * 1024) {
-                                        notify.error('Image must be less than 5MB')
+                                        notify.error(L('Image must be less than 5MB', 'الصورة لازم تكون أقل من 5MB'))
                                         return
                                       }
                                       setProfileImageFile(file)
@@ -625,7 +637,7 @@ export default function SettingsPage() {
                                   className="text-xs h-9 bg-white cursor-pointer file:bg-indigo-600 file:text-white file:border-0 file:rounded file:px-3 file:py-1 file:text-xs file:font-bold file:cursor-pointer hover:file:bg-indigo-700 transition-all"
                                 />
                               </div>
-                              <p className="text-[10px] text-gray-400 mt-1">JPG, PNG, or GIF (Max 5MB)</p>
+                              <p className="text-[10px] text-gray-400 mt-1">{L('JPG, PNG, or GIF (Max 5MB)', 'JPG أو PNG أو GIF (أقصى 5MB)')}</p>
                             </div>
                           </div>
                         </div>
@@ -644,7 +656,7 @@ export default function SettingsPage() {
                       {canRequestIdentity && (
                         <Button type="button" variant="outline" disabled={identityRequestSaving} onClick={handleIdentityRequest} className="text-xs h-9 font-bold px-5">
                           {identityRequestSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                          Request Approval
+                          {L('Request Approval', 'اطلب الموافقة')}
                         </Button>
                       )}
                     </div>
@@ -659,8 +671,8 @@ export default function SettingsPage() {
               {/* Password Card */}
               <Card className="rounded-xl border shadow-sm bg-white overflow-hidden transition-all hover:shadow-md duration-300">
                 <CardHeader className="border-b bg-gray-50/50 py-4">
-                  <CardTitle className="text-sm font-bold text-gray-900">Change Password</CardTitle>
-                  <CardDescription className="text-xs">Ensure your account is using a long, random password to stay secure.</CardDescription>
+                  <CardTitle className="text-sm font-bold text-gray-900">{L('Change Password', 'تغيير الباسورد')}</CardTitle>
+                  <CardDescription className="text-xs">{L('Ensure your account is using a long, random password to stay secure.', 'استخدم باسورد طويل وصعب علشان حسابك يفضل آمن.')}</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
                   <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
@@ -674,7 +686,7 @@ export default function SettingsPage() {
 
                     <div className="space-y-3.5">
                       <div className="space-y-1">
-                        <Label className="text-xs font-bold text-gray-700">Current Password</Label>
+                        <Label className="text-xs font-bold text-gray-700">{L('Current Password', 'الباسورد الحالي')}</Label>
                         <Input
                           type="password"
                           value={currentPassword}
@@ -686,12 +698,12 @@ export default function SettingsPage() {
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <Label className="text-xs font-bold text-gray-700">New Password</Label>
+                          <Label className="text-xs font-bold text-gray-700">{L('New Password', 'الباسورد الجديد')}</Label>
                           <Input
                             type="password"
                             value={newPasswordSelf}
                             onChange={(e) => setNewPasswordSelf(e.target.value)}
-                            placeholder="•••••••• (Min 8 chars)"
+                            placeholder={L('•••••••• (Min 8 chars)', '•••••••• (8 حروف على الأقل)')}
                             className="text-xs h-9 bg-white focus-visible:ring-indigo-500"
                           />
                           {/* Strength Indicator */}
@@ -711,7 +723,7 @@ export default function SettingsPage() {
                           )}
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs font-bold text-gray-700">Confirm New Password</Label>
+                          <Label className="text-xs font-bold text-gray-700">{L('Confirm New Password', 'أكّد الباسورد الجديد')}</Label>
                           <Input
                             type="password"
                             value={confirmPasswordSelf}
@@ -731,7 +743,7 @@ export default function SettingsPage() {
                       {isChangingPassword ? (
                         <>
                           <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                          Updating Password...
+                          {L('Updating Password...', 'بيغيّر الباسورد…')}
                         </>
                       ) : (
                         'Update Password'
@@ -746,8 +758,8 @@ export default function SettingsPage() {
           {activeTab === 'credentials' && isAdmin && (
             <Card className="rounded-xl border shadow-sm bg-white overflow-hidden transition-all hover:shadow-md duration-300">
               <CardHeader className="border-b bg-gray-50/50 py-4">
-                <CardTitle className="text-sm font-bold text-gray-900">Credential Control Center</CardTitle>
-                <CardDescription className="text-xs">Quick search and reset email/password credentials for any active staff, student, or guardian account.</CardDescription>
+                <CardTitle className="text-sm font-bold text-gray-900">{L('Credential Control Center', 'باسورد وإيميل المستخدمين')}</CardTitle>
+                <CardDescription className="text-xs">{L('Quick search and reset email/password credentials for any active staff, student, or guardian account.', 'دوّر على أي موظف أو طالب أو ولي أمر وغيّر الإيميل أو الباسورد بتاعه.')}</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
                 {/* Search & Filter Bar */}
@@ -755,7 +767,7 @@ export default function SettingsPage() {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Search by Name or Email..."
+                      placeholder={L('Search by Name or Email...', 'دوّر بالاسم أو الإيميل…')}
                       value={searchQuery}
                       onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
                       className="pl-9 text-xs h-9 bg-white"
@@ -763,20 +775,20 @@ export default function SettingsPage() {
                   </div>
                   <Select value={roleFilter} onValueChange={(val) => { setRoleFilter(val); setPage(1) }}>
                     <SelectTrigger className="w-full sm:w-44 text-xs h-9 bg-white">
-                      <SelectValue placeholder="All Roles" />
+                      <SelectValue placeholder={L('All Roles', 'كل الأدوار')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ALL" className="text-xs">All Roles</SelectItem>
-                      <SelectItem value="SUPER_ADMIN" className="text-xs">Super Admin</SelectItem>
-                      <SelectItem value="ADMIN" className="text-xs">Admin</SelectItem>
-                      <SelectItem value="BRANCH_MANAGER" className="text-xs">Branch Manager</SelectItem>
-                      <SelectItem value="SECRETARY" className="text-xs">Secretary</SelectItem>
-                      <SelectItem value="MARKETING" className="text-xs">Marketing</SelectItem>
-                      <SelectItem value="TEACHER" className="text-xs">Teacher</SelectItem>
-                      <SelectItem value="STUDENT" className="text-xs">Student</SelectItem>
-                      <SelectItem value="ACCOUNTANT" className="text-xs">Account Manager</SelectItem>
-                      <SelectItem value="PARENT" className="text-xs">Parent</SelectItem>
-                      <SelectItem value="GUARDIAN" className="text-xs">Guardian</SelectItem>
+                      <SelectItem value="ALL" className="text-xs">{L('All Roles', 'كل الأدوار')}</SelectItem>
+                      <SelectItem value="SUPER_ADMIN" className="text-xs">{L('Super Admin', 'سوبر أدمن')}</SelectItem>
+                      <SelectItem value="ADMIN" className="text-xs">{L('Admin', 'إداري')}</SelectItem>
+                      <SelectItem value="BRANCH_MANAGER" className="text-xs">{L('Branch Manager', 'مدير فرع')}</SelectItem>
+                      <SelectItem value="SECRETARY" className="text-xs">{L('Secretary', 'سكرتارية')}</SelectItem>
+                      <SelectItem value="MARKETING" className="text-xs">{L('Marketing', 'تسويق')}</SelectItem>
+                      <SelectItem value="TEACHER" className="text-xs">{L('Teacher', 'مدرب')}</SelectItem>
+                      <SelectItem value="STUDENT" className="text-xs">{L('Student', 'طالب')}</SelectItem>
+                      <SelectItem value="ACCOUNTANT" className="text-xs">{L('Account Manager', 'محاسب')}</SelectItem>
+                      <SelectItem value="PARENT" className="text-xs">{L('Parent', 'ولي أمر')}</SelectItem>
+                      <SelectItem value="GUARDIAN" className="text-xs">{L('Guardian', 'ولي أمر')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -785,12 +797,12 @@ export default function SettingsPage() {
                 {isLoadingUsers ? (
                   <div className="flex flex-col items-center justify-center py-12 gap-2">
                     <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-                    <p className="text-xs text-gray-400 font-bold">Loading user database...</p>
+                    <p className="text-xs text-gray-400 font-bold">{L('Loading user database...', 'بيحمّل المستخدمين…')}</p>
                   </div>
                 ) : users.length === 0 ? (
                   <div className="text-center py-12 border border-dashed rounded-xl bg-gray-50">
                     <UserCircle className="w-8 h-8 mx-auto text-gray-350" />
-                    <p className="text-xs text-gray-500 font-medium mt-2">No matching users found.</p>
+                    <p className="text-xs text-gray-500 font-medium mt-2">{L('No matching users found.', 'مفيش نتايج.')}</p>
                   </div>
                 ) : (
                   <div className="border rounded-xl overflow-hidden bg-white shadow-sm transition-all">
@@ -798,11 +810,11 @@ export default function SettingsPage() {
                       <table className="w-full text-left border-collapse">
                         <thead>
                           <tr className="bg-gray-50/75 border-b text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-                            <th className="px-4 py-3">Associated Profile</th>
-                            <th className="px-4 py-3">Login Email</th>
-                            <th className="px-4 py-3">System Role</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3 text-right">Actions</th>
+                            <th className="px-4 py-3">{L('Associated Profile', 'الشخص')}</th>
+                            <th className="px-4 py-3">{L('Login Email', 'إيميل الدخول')}</th>
+                            <th className="px-4 py-3">{L('System Role', 'الدور')}</th>
+                            <th className="px-4 py-3">{L('Status', 'الحالة')}</th>
+                            <th className="px-4 py-3 text-right">{L('Actions', 'إجراء')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y text-xs text-gray-700">
@@ -843,7 +855,7 @@ export default function SettingsPage() {
                                   onClick={() => openResetDialog(u)}
                                   className="h-7 text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 active:scale-95 text-indigo-700 gap-1 border border-indigo-150 rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  <Key className="w-3 h-3" /> Reset Credentials
+                                  <Key className="w-3 h-3" /> {L('Reset Credentials', 'غيّر الدخول')}
                                 </Button>
                               </td>
                             </tr>
@@ -856,7 +868,7 @@ export default function SettingsPage() {
                     {totalUsers > 10 && (
                       <div className="flex items-center justify-between border-t bg-gray-50 px-4 py-3">
                         <span className="text-[10px] text-gray-500 font-bold">
-                          Showing {users.length} of {totalUsers} Accounts
+                          {L('Showing', 'عرض')} {users.length} {L('of', 'من')} {totalUsers} {L('Accounts', 'حساب')}
                         </span>
                         <div className="flex gap-2">
                           <Button
@@ -866,7 +878,7 @@ export default function SettingsPage() {
                             onClick={() => setPage(p => Math.max(1, p - 1))}
                             className="h-7 text-[10px] active:scale-95"
                           >
-                            Previous
+                            {L('Previous', 'السابق')}
                           </Button>
                           <Button
                             variant="outline"
@@ -875,7 +887,7 @@ export default function SettingsPage() {
                             onClick={() => setPage(p => p + 1)}
                             className="h-7 text-[10px] active:scale-95"
                           >
-                            Next
+                            {L('Next', 'التالي')}
                           </Button>
                         </div>
                       </div>
@@ -895,7 +907,7 @@ export default function SettingsPage() {
                     <UserCheck className="w-5 h-5 animate-pulse" />
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase font-black tracking-wider text-gray-400">Total Administrators</p>
+                    <p className="text-[10px] uppercase font-black tracking-wider text-gray-400">{L('Total Administrators', 'كل الإداريين')}</p>
                     <h3 className="text-xl font-black text-gray-900 leading-none mt-1">{totalAdmins}</h3>
                   </div>
                 </Card>
@@ -904,7 +916,7 @@ export default function SettingsPage() {
                     <Shield className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase font-black tracking-wider text-gray-400">Super Admins</p>
+                    <p className="text-[10px] uppercase font-black tracking-wider text-gray-400">{L('Super Admins', 'سوبر أدمن')}</p>
                     <h3 className="text-xl font-black text-gray-900 leading-none mt-1">{superAdminsCount}</h3>
                   </div>
                 </Card>
@@ -913,7 +925,7 @@ export default function SettingsPage() {
                     <Building className="w-5 h-5 animate-bounce duration-1000" />
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase font-black tracking-wider text-gray-400">Campus Divisions</p>
+                    <p className="text-[10px] uppercase font-black tracking-wider text-gray-400">{L('Campus Divisions', 'الفروع')}</p>
                     <h3 className="text-xl font-black text-gray-900 leading-none mt-1">{uniqueCampusesCount}</h3>
                   </div>
                 </Card>
@@ -924,9 +936,9 @@ export default function SettingsPage() {
                 <CardHeader className="border-b bg-gray-50/50 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                     <CardTitle className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
-                      Admin Directory <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
+                      {L('Admin Directory', 'الإداريين والسكرتارية')} <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
                     </CardTitle>
-                    <CardDescription className="text-xs">Manage administrative users, assign school campuses, and delegate permissions.</CardDescription>
+                    <CardDescription className="text-xs">{L('Manage administrative users, assign school campuses, and delegate permissions.', 'حسابات الإداريين ومديري الفروع والسكرتارية والتسويق، وكل واحد في أنهي فرع.')}</CardDescription>
                   </div>
                   <Button
                     onClick={() => {
@@ -935,7 +947,7 @@ export default function SettingsPage() {
                     }}
                     className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold h-9 px-4 rounded-lg flex items-center gap-1.5 shadow-sm border border-indigo-500 transition-all"
                   >
-                    <Plus className="w-4 h-4" /> Add Administrator
+                    <Plus className="w-4 h-4" /> {L('Add Administrator', 'ضيف إداري / سكرتيرة')}
                   </Button>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
@@ -944,7 +956,7 @@ export default function SettingsPage() {
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                       <Input
-                        placeholder="Search admin profiles by name, email, department..."
+                        placeholder={L('Search admin profiles by name, email, department...', 'دوّر بالاسم أو الإيميل أو القسم…')}
                         value={adminSearch}
                         onChange={(e) => { setAdminSearch(e.target.value); setAdminPage(1) }}
                         className="pl-9 text-xs h-9 bg-white focus-visible:ring-indigo-500"
@@ -955,15 +967,15 @@ export default function SettingsPage() {
                       onValueChange={(val) => { setAdminRoleFilter(val as any); setAdminPage(1) }}
                     >
                       <SelectTrigger className="w-full sm:w-44 text-xs h-9 bg-white">
-                        <SelectValue placeholder="All Admin Roles" />
+                        <SelectValue placeholder={L('All Admin Roles', 'كل الأدوار')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ALL" className="text-xs">All Admin Roles</SelectItem>
-                        <SelectItem value="SUPER_ADMIN" className="text-xs">Super Admin</SelectItem>
-                        <SelectItem value="ADMIN" className="text-xs">Admin</SelectItem>
-                        <SelectItem value="BRANCH_MANAGER" className="text-xs">Branch Manager</SelectItem>
-                        <SelectItem value="SECRETARY" className="text-xs">Secretary</SelectItem>
-                        <SelectItem value="MARKETING" className="text-xs">Marketing</SelectItem>
+                        <SelectItem value="ALL" className="text-xs">{L('All Admin Roles', 'كل الأدوار')}</SelectItem>
+                        <SelectItem value="SUPER_ADMIN" className="text-xs">{L('Super Admin', 'سوبر أدمن')}</SelectItem>
+                        <SelectItem value="ADMIN" className="text-xs">{L('Admin', 'إداري')}</SelectItem>
+                        <SelectItem value="BRANCH_MANAGER" className="text-xs">{L('Branch Manager', 'مدير فرع')}</SelectItem>
+                        <SelectItem value="SECRETARY" className="text-xs">{L('Secretary', 'سكرتارية')}</SelectItem>
+                        <SelectItem value="MARKETING" className="text-xs">{L('Marketing', 'تسويق')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -972,12 +984,12 @@ export default function SettingsPage() {
                   {isLoadingAdmins ? (
                     <div className="flex flex-col items-center justify-center py-12 gap-2">
                       <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-                      <p className="text-xs text-gray-400 font-bold">Loading administrator directory...</p>
+                      <p className="text-xs text-gray-400 font-bold">{L('Loading administrator directory...', 'بيحمّل…')}</p>
                     </div>
                   ) : adminsList.length === 0 ? (
                     <div className="text-center py-12 border border-dashed rounded-xl bg-gray-50">
                       <Shield className="w-8 h-8 mx-auto text-gray-300 animate-pulse" />
-                      <p className="text-xs text-gray-500 font-medium mt-2">No administrators found matching current criteria.</p>
+                      <p className="text-xs text-gray-500 font-medium mt-2">{L('No administrators found matching current criteria.', 'مفيش نتايج.')}</p>
                     </div>
                   ) : (
                     <div className="border rounded-xl overflow-hidden bg-white shadow-sm transition-all duration-300">
@@ -985,13 +997,13 @@ export default function SettingsPage() {
                         <table className="w-full text-left border-collapse">
                           <thead>
                             <tr className="bg-gray-50/75 border-b text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-                              <th className="px-4 py-3">Administrator</th>
-                              <th className="px-4 py-3">Email Address</th>
-                              <th className="px-4 py-3">Campus Scope</th>
-                              <th className="px-4 py-3">Department</th>
-                              <th className="px-4 py-3">Role</th>
-                              <th className="px-4 py-3">Status</th>
-                              <th className="px-4 py-3 text-right">Actions</th>
+                              <th className="px-4 py-3">{L('Administrator', 'الاسم')}</th>
+                              <th className="px-4 py-3">{L('Email Address', 'الإيميل')}</th>
+                              <th className="px-4 py-3">{L('Campus Scope', 'الفرع')}</th>
+                              <th className="px-4 py-3">{L('Department', 'القسم')}</th>
+                              <th className="px-4 py-3">{L('Role', 'الدور')}</th>
+                              <th className="px-4 py-3">{L('Status', 'الحالة')}</th>
+                              <th className="px-4 py-3 text-right">{L('Actions', 'إجراء')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y text-xs text-gray-700">
@@ -1060,7 +1072,7 @@ export default function SettingsPage() {
                                       onClick={() => openEditAdminDialog(u)}
                                       className="h-7 text-[10px] font-bold bg-white hover:bg-gray-50 active:scale-95 text-gray-700 border border-gray-250 rounded-md shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                      Edit Scope
+                                      {L('Edit Scope', 'تعديل')}
                                     </Button>
                                   </td>
                                 </tr>
@@ -1074,7 +1086,7 @@ export default function SettingsPage() {
                       {totalAdmins > 10 && (
                         <div className="flex items-center justify-between border-t bg-gray-50 px-4 py-3">
                           <span className="text-[10px] text-gray-500 font-bold">
-                            Showing {adminsList.length} of {totalAdmins} Administrators
+                            {L('Showing', 'عرض')} {adminsList.length} {L('of', 'من')} {totalAdmins} {L('Administrators', 'إداري')}
                           </span>
                           <div className="flex gap-2">
                             <Button
@@ -1084,7 +1096,7 @@ export default function SettingsPage() {
                               onClick={() => setAdminPage(p => Math.max(1, p - 1))}
                               className="h-7 text-[10px] active:scale-95"
                             >
-                              Previous
+                              {L('Previous', 'السابق')}
                             </Button>
                             <Button
                               variant="outline"
@@ -1093,7 +1105,7 @@ export default function SettingsPage() {
                               onClick={() => setAdminPage(p => p + 1)}
                               className="h-7 text-[10px] active:scale-95"
                             >
-                              Next
+                              {L('Next', 'التالي')}
                             </Button>
                           </div>
                         </div>
@@ -1114,10 +1126,10 @@ export default function SettingsPage() {
             <DialogHeader className="pb-4 border-b">
               <div className="flex items-center gap-2 text-rose-700">
                 <ShieldAlert className="w-5 h-5 animate-bounce" />
-                <DialogTitle className="text-base font-black text-gray-900">Reset Credentials</DialogTitle>
+                <DialogTitle className="text-base font-black text-gray-900">{L('Reset Credentials', 'غيّر الدخول')}</DialogTitle>
               </div>
               <DialogDescription className="text-xs text-gray-500">
-                Updating credentials for <span className="font-bold text-gray-800">{selectedUser.name}</span> ({selectedUser.role}).
+                {L('Updating credentials for', 'تغيير الدخول لـ')} <span className="font-bold text-gray-800">{selectedUser.name}</span> ({selectedUser.role}).
               </DialogDescription>
             </DialogHeader>
 
@@ -1131,7 +1143,7 @@ export default function SettingsPage() {
               )}
 
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-gray-700">Login Email Address</Label>
+                <Label className="text-xs font-bold text-gray-700">{L('Login Email Address', 'إيميل الدخول')}</Label>
                 <Input
                   type="email"
                   value={newEmail}
@@ -1139,24 +1151,24 @@ export default function SettingsPage() {
                   required
                   className="text-xs h-9 bg-white focus-visible:ring-indigo-500 border-gray-200"
                 />
-                <p className="text-[9px] text-gray-400">Updating this will automatically sync emails in the corresponding student/staff profile.</p>
+                <p className="text-[9px] text-gray-400">{L('Updating this will automatically sync emails in the corresponding student/staff profile.', 'الإيميل الجديد بيتحدّث في ملف الشخص كمان.')}</p>
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-gray-700">New Password</Label>
+                <Label className="text-xs font-bold text-gray-700">{L('New Password', 'الباسورد الجديد')}</Label>
                 <Input
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="•••••••• (Min 8 characters)"
+                  placeholder={L('•••••••• (Min 8 characters)', '•••••••• (8 حروف على الأقل)')}
                   className="text-xs h-9 bg-white focus-visible:ring-indigo-500 border-gray-200"
                 />
-                <p className="text-[9px] text-gray-400">Leave empty to keep the current password unchanged.</p>
+                <p className="text-[9px] text-gray-400">{L('Leave empty to keep the current password unchanged.', 'سيبه فاضي لو مش عايز تغيّر الباسورد.')}</p>
               </div>
 
               <DialogFooter className="pt-4 border-t gap-2 sm:gap-0">
                 <Button type="button" variant="outline" onClick={() => setSelectedUser(null)} className="text-xs h-9 active:scale-95 transition-transform">
-                  Cancel
+                  {L('Cancel', 'إلغاء')}
                 </Button>
                 <Button
                   type="submit"
@@ -1166,12 +1178,12 @@ export default function SettingsPage() {
                   {isResetting ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Saving changes...
+                      {L('Saving changes...', 'بيحفظ…')}
                     </>
                   ) : (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      Save Credentials
+                      {L('Save Credentials', 'احفظ')}
                     </>
                   )}
                 </Button>
@@ -1188,10 +1200,10 @@ export default function SettingsPage() {
             <DialogHeader className="pb-4 border-b">
               <div className="flex items-center gap-2 text-indigo-750">
                 <Shield className="w-5 h-5 text-indigo-650 animate-pulse" />
-                <DialogTitle className="text-base font-black text-gray-900">Add New Administrator</DialogTitle>
+                <DialogTitle className="text-base font-black text-gray-900">{L('Add New Administrator', 'حساب جديد (إداري / مدير فرع / سكرتارية / تسويق)')}</DialogTitle>
               </div>
               <DialogDescription className="text-xs text-gray-500">
-                Provision a new administrator account and assign their school campus profile.
+                {L('Provision a new administrator account and assign their school campus profile.', 'اعمل حساب واختار الدور والفرع. المدرب بيتعمل من «المدربين والموظفين»، والمحاسب من «إدارة الحسابات».')}
               </DialogDescription>
             </DialogHeader>
 
@@ -1206,74 +1218,74 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-700">First Name <span className="text-rose-500">*</span></Label>
+                  <Label className="text-xs font-bold text-gray-700">{L('First Name', 'الاسم الأول')} <span className="text-rose-500">*</span></Label>
                   <Input
                     value={adminFirstName}
                     onChange={(e) => setAdminFirstName(e.target.value)}
                     required
-                    placeholder="e.g. John"
+                    placeholder={L('e.g. John', 'مثلاً: أحمد')}
                     className="text-xs h-9 bg-white focus-visible:ring-indigo-500 border-gray-200"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-700">Last Name <span className="text-rose-500">*</span></Label>
+                  <Label className="text-xs font-bold text-gray-700">{L('Last Name', 'اسم العيلة')} <span className="text-rose-500">*</span></Label>
                   <Input
                     value={adminLastName}
                     onChange={(e) => setAdminLastName(e.target.value)}
                     required
-                    placeholder="e.g. Doe"
+                    placeholder={L('e.g. Doe', 'مثلاً: محمود')}
                     className="text-xs h-9 bg-white focus-visible:ring-indigo-500 border-gray-200"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-gray-700">Login Email Address <span className="text-rose-500">*</span></Label>
+                <Label className="text-xs font-bold text-gray-700">{L('Login Email Address', 'إيميل الدخول')} <span className="text-rose-500">*</span></Label>
                 <Input
                   type="email"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   required
-                  placeholder="admin.name@technova.com"
+                  placeholder={L('admin.name@technova.com', 'name@technova.com')}
                   className="text-xs h-9 bg-white focus-visible:ring-indigo-500 border-gray-200"
                 />
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-gray-700">Password <span className="text-rose-500">*</span></Label>
+                <Label className="text-xs font-bold text-gray-700">{L('Password', 'الباسورد')} <span className="text-rose-500">*</span></Label>
                 <Input
                   type="password"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   required
-                  placeholder="•••••••• (Min 8 chars)"
+                  placeholder={L('•••••••• (Min 8 chars)', '•••••••• (8 حروف على الأقل)')}
                   className="text-xs h-9 bg-white focus-visible:ring-indigo-500 border-gray-200"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-700">System Role <span className="text-rose-500">*</span></Label>
+                  <Label className="text-xs font-bold text-gray-700">{L('System Role', 'الدور')} <span className="text-rose-500">*</span></Label>
                   <Select value={adminRole} onValueChange={(val) => setAdminRole(val as any)}>
                     <SelectTrigger className="text-xs h-9 bg-white border-gray-200 focus:ring-indigo-500">
-                      <SelectValue placeholder="Select Role" />
+                      <SelectValue placeholder={L('Select Role', 'اختار الدور')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ADMIN" className="text-xs">Admin</SelectItem>
+                      <SelectItem value="ADMIN" className="text-xs">{L('Admin', 'إداري')}</SelectItem>
                       {session?.user?.role === 'SUPER_ADMIN' && (
-                        <SelectItem value="SUPER_ADMIN" className="text-xs">Super Admin</SelectItem>
+                        <SelectItem value="SUPER_ADMIN" className="text-xs">{L('Super Admin', 'سوبر أدمن')}</SelectItem>
                       )}
-                      <SelectItem value="BRANCH_MANAGER" className="text-xs">Branch Manager</SelectItem>
-                      <SelectItem value="SECRETARY" className="text-xs">Secretary</SelectItem>
-                      <SelectItem value="MARKETING" className="text-xs">Marketing</SelectItem>
+                      <SelectItem value="BRANCH_MANAGER" className="text-xs">{L('Branch Manager', 'مدير فرع')}</SelectItem>
+                      <SelectItem value="SECRETARY" className="text-xs">{L('Secretary', 'سكرتارية')}</SelectItem>
+                      <SelectItem value="MARKETING" className="text-xs">{L('Marketing', 'تسويق')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-700">Campus Scope {adminRole !== 'MARKETING' && <span className="text-rose-500">*</span>}{adminRole === 'MARKETING' && <span className="text-gray-400 font-normal">(optional)</span>}</Label>
+                  <Label className="text-xs font-bold text-gray-700">{L('Campus Scope', 'الفرع')} {adminRole !== 'MARKETING' && <span className="text-rose-500">*</span>}{adminRole === 'MARKETING' && <span className="text-gray-400 font-normal">{L('(optional)', '(اختياري)')}</span>}</Label>
                   <Select value={adminCampusId} onValueChange={setAdminCampusId}>
                     <SelectTrigger className="text-xs h-9 bg-white border-gray-200 focus:ring-indigo-500">
-                      <SelectValue placeholder="Select Campus" />
+                      <SelectValue placeholder={L('Select Campus', 'اختار الفرع')} />
                     </SelectTrigger>
                     <SelectContent>
                       {activeCampuses.map((c: any) => (
@@ -1287,18 +1299,18 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-gray-700">Department / Title <span className="text-gray-400">(Optional)</span></Label>
+                <Label className="text-xs font-bold text-gray-700">{L('Department / Title', 'القسم / الوظيفة')} <span className="text-gray-400">{L('(Optional)', '(اختياري)')}</span></Label>
                 <Input
                   value={adminDepartment}
                   onChange={(e) => setAdminDepartment(e.target.value)}
-                  placeholder="e.g. Academic Head, HR Manager"
+                  placeholder={L('e.g. Academic Head, HR Manager', 'مثلاً: مسؤول التسجيل')}
                   className="text-xs h-9 bg-white focus-visible:ring-indigo-500 border-gray-200"
                 />
               </div>
 
               <DialogFooter className="pt-4 border-t gap-2 sm:gap-0">
                 <Button type="button" variant="outline" onClick={() => setIsCreateAdminOpen(false)} className="text-xs h-9 active:scale-95 transition-transform">
-                  Cancel
+                  {L('Cancel', 'إلغاء')}
                 </Button>
                 <Button
                   type="submit"
@@ -1308,12 +1320,12 @@ export default function SettingsPage() {
                   {isCreatingAdmin ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Provisioning...
+                      {L('Provisioning...', 'بيعمل الحساب…')}
                     </>
                   ) : (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      Create Administrator
+                      {L('Create Administrator', 'اعمل الحساب')}
                     </>
                   )}
                 </Button>
@@ -1330,10 +1342,10 @@ export default function SettingsPage() {
             <DialogHeader className="pb-4 border-b">
               <div className="flex items-center gap-2 text-indigo-750">
                 <Shield className="w-5 h-5 text-indigo-600 animate-pulse" />
-                <DialogTitle className="text-base font-black text-gray-900">Edit Administrator Assignments</DialogTitle>
+                <DialogTitle className="text-base font-black text-gray-900">{L('Edit Administrator Assignments', 'تعديل الحساب')}</DialogTitle>
               </div>
               <DialogDescription className="text-xs text-gray-500">
-                Update assignments and administrative details for <span className="font-bold text-gray-800">{editingAdmin.name}</span>.
+                {L('Update assignments and administrative details for', 'تعديل الدور والفرع لـ')} <span className="font-bold text-gray-800">{editingAdmin.name}</span>.
               </DialogDescription>
             </DialogHeader>
 
@@ -1348,7 +1360,7 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-700">First Name <span className="text-rose-500">*</span></Label>
+                  <Label className="text-xs font-bold text-gray-700">{L('First Name', 'الاسم الأول')} <span className="text-rose-500">*</span></Label>
                   <Input
                     value={editFirstName}
                     onChange={(e) => setEditFirstName(e.target.value)}
@@ -1357,7 +1369,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-700">Last Name <span className="text-rose-500">*</span></Label>
+                  <Label className="text-xs font-bold text-gray-700">{L('Last Name', 'اسم العيلة')} <span className="text-rose-500">*</span></Label>
                   <Input
                     value={editLastName}
                     onChange={(e) => setEditLastName(e.target.value)}
@@ -1369,27 +1381,27 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-700">System Role <span className="text-rose-500">*</span></Label>
+                  <Label className="text-xs font-bold text-gray-700">{L('System Role', 'الدور')} <span className="text-rose-500">*</span></Label>
                   <Select value={editRole} onValueChange={(val) => setEditRole(val as any)}>
                     <SelectTrigger className="text-xs h-9 bg-white border-gray-200 focus:ring-indigo-500">
-                      <SelectValue placeholder="Select Role" />
+                      <SelectValue placeholder={L('Select Role', 'اختار الدور')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ADMIN" className="text-xs">Admin</SelectItem>
+                      <SelectItem value="ADMIN" className="text-xs">{L('Admin', 'إداري')}</SelectItem>
                       {session?.user?.role === 'SUPER_ADMIN' && (
-                        <SelectItem value="SUPER_ADMIN" className="text-xs">Super Admin</SelectItem>
+                        <SelectItem value="SUPER_ADMIN" className="text-xs">{L('Super Admin', 'سوبر أدمن')}</SelectItem>
                       )}
-                      <SelectItem value="BRANCH_MANAGER" className="text-xs">Branch Manager</SelectItem>
-                      <SelectItem value="SECRETARY" className="text-xs">Secretary</SelectItem>
-                      <SelectItem value="MARKETING" className="text-xs">Marketing</SelectItem>
+                      <SelectItem value="BRANCH_MANAGER" className="text-xs">{L('Branch Manager', 'مدير فرع')}</SelectItem>
+                      <SelectItem value="SECRETARY" className="text-xs">{L('Secretary', 'سكرتارية')}</SelectItem>
+                      <SelectItem value="MARKETING" className="text-xs">{L('Marketing', 'تسويق')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-700">Campus Assignment <span className="text-rose-500">*</span></Label>
+                  <Label className="text-xs font-bold text-gray-700">{L('Campus Assignment', 'الفرع')} <span className="text-rose-500">*</span></Label>
                   <Select value={editCampusId} onValueChange={setEditCampusId}>
                     <SelectTrigger className="text-xs h-9 bg-white border-gray-200 focus:ring-indigo-500">
-                      <SelectValue placeholder="Select Campus" />
+                      <SelectValue placeholder={L('Select Campus', 'اختار الفرع')} />
                     </SelectTrigger>
                     <SelectContent>
                       {activeCampuses.map((c: any) => (
@@ -1403,18 +1415,18 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-gray-700">Department / Title <span className="text-gray-400">(Optional)</span></Label>
+                <Label className="text-xs font-bold text-gray-700">{L('Department / Title', 'القسم / الوظيفة')} <span className="text-gray-400">{L('(Optional)', '(اختياري)')}</span></Label>
                 <Input
                   value={editDepartment}
                   onChange={(e) => setEditDepartment(e.target.value)}
-                  placeholder="e.g. Academic Head, HR Manager"
+                  placeholder={L('e.g. Academic Head, HR Manager', 'مثلاً: مسؤول التسجيل')}
                   className="text-xs h-9 bg-white focus-visible:ring-indigo-500 border-gray-200"
                 />
               </div>
 
               <DialogFooter className="pt-4 border-t gap-2 sm:gap-0">
                 <Button type="button" variant="outline" onClick={() => setEditingAdmin(null)} className="text-xs h-9 active:scale-95 transition-transform">
-                  Cancel
+                  {L('Cancel', 'إلغاء')}
                 </Button>
                 <Button
                   type="submit"
@@ -1424,12 +1436,12 @@ export default function SettingsPage() {
                   {isSavingAdminEdit ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Saving changes...
+                      {L('Saving changes...', 'بيحفظ…')}
                     </>
                   ) : (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      Save Assignments
+                      {L('Save Assignments', 'احفظ')}
                     </>
                   )}
                 </Button>

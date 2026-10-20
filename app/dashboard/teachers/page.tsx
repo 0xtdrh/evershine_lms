@@ -1,5 +1,6 @@
 'use client'
 
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useState } from 'react'
@@ -123,16 +124,33 @@ export default function TeachersPage() {
           </h1>
           <div className="mt-2 print:hidden"><DataExchangeButtons dataset="instructors" /></div>
           <p className="text-sm text-slate-500 mt-1 font-medium ml-11">
-            {pagination ? `${pagination.total.toLocaleString()} staff members` : 'Loading...'}
+            {pagination ? L(`${pagination.total.toLocaleString()} staff members`, `${pagination.total.toLocaleString()} موظف`) : L('Loading...', 'بيحمّل…')}
           </p>
         </div>
-        {canAdd && (
+        {/* 2026-10-20 (live test): one place to add any staff — pick the job, it opens the right form */}
+        {canAdd && role !== 'SUPER_ADMIN' && (
           <Link href="/dashboard/teachers/new">
             <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg">
               <Plus className="w-4 h-4" />
-              {L('Add Staff Member', 'ضيف موظف')}
+              {L('Add instructor', 'ضيف مدرب')}
             </Button>
           </Link>
+        )}
+        {role === 'SUPER_ADMIN' && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg">
+                <Plus className="w-4 h-4" />
+                {L('Add Staff Member', 'ضيف موظف')}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>{L('What is the job?', 'الوظيفة إيه؟')}</DropdownMenuLabel>
+              <DropdownMenuItem asChild><Link href="/dashboard/teachers/new">{L('Instructor / other staff', 'مدرب (أو موظف تاني)')}</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/dashboard/settings?tab=admins&add=1">{L('Secretary / branch manager / admin / marketing', 'سكرتارية / مدير فرع / إداري / تسويق')}</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/dashboard/admin/credential-management#accountant">{L('Accountant', 'محاسب')}</Link></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </motion.div>
 
@@ -179,7 +197,7 @@ export default function TeachersPage() {
                     <EmptyState 
                       icon={UserX}
                       title={L('No staff members found', 'مفيش موظفين')}
-                      description={search ? "Try adjusting your search criteria." : "There are no staff members registered in the system yet."}
+                      description={search ? L('Try adjusting your search criteria.', 'جرّب تغيّر البحث.') : L('There are no staff members registered in the system yet.', 'لسه مفيش موظفين متسجلين.')}
                     />
                   </TableCell>
                 </TableRow>
@@ -207,19 +225,19 @@ export default function TeachersPage() {
                         const badge = getDesignationBadge(t.designation)
                         return (
                           <span className={`inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full border ${badge.className}`}>
-                            {t.designation}
+                            {designationLabel(t.designation)}
                           </span>
                         )
                       })()}
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs font-bold text-blue-600">{t.campus.code}</span>
+                      <span className="text-xs font-bold text-blue-600" title={t.campus.code}>{t.campus.name}</span>
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">{t.qualification}</TableCell>
-                    <TableCell className="text-sm">{t.experienceYears}y</TableCell>
+                    <TableCell className="text-sm">{L(`${t.experienceYears}y`, `${t.experienceYears} سنة`)}</TableCell>
                     <TableCell>
                       <span className={`inline-flex text-xs px-2 py-0.5 rounded-full font-medium ${t.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {t.isActive ? 'Active' : 'Suspended'}
+                        {t.isActive ? L('Active', 'شغال') : L('Suspended', 'موقوف')}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -401,7 +419,7 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
                 <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                   <h3 className="text-lg font-black text-gray-900">{teacher.firstName} {teacher.lastName}</h3>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${teacher.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {teacher.isActive ? 'Active' : 'Suspended'}
+                    {teacher.isActive ? L('Active', 'شغال') : L('Suspended', 'موقوف')}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 font-semibold">{teacher.designation} • {teacher.specialization || 'Generalist'}</p>
@@ -505,3 +523,7 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
     </Dialog>
   )
 }
+
+/** Job titles as stored (English) → Arabic on Arabic screens (2026-10-20). */
+const DESIGNATION_AR: Record<string, string> = { Teacher: 'مدرب', Instructor: 'مدرب', 'Senior Teacher': 'مدرب أول', 'Head of Department': 'رئيس قسم', Coordinator: 'منسق', Principal: 'مدير', 'Vice Principal': 'نائب المدير', Librarian: 'أمين مكتبة', 'Lab Assistant': 'مساعد معمل', Accountant: 'محاسب', Clerk: 'موظف إداري', Receptionist: 'استقبال', 'Security Guard': 'أمن', Sweeper: 'عامل نظافة', Driver: 'سواق', Other: 'أخرى' }
+const designationLabel = (d: string) => L(d, DESIGNATION_AR[d] ?? d)

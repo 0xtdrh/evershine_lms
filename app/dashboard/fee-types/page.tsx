@@ -64,8 +64,8 @@ export default function FeeTypesPage() {
             <Card key={t.id} className={t.isActive ? '' : 'opacity-60'}><CardContent className="space-y-2 pt-4 text-sm">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-semibold text-slate-900">{ar ? t.nameAr : t.nameEn} {t.isPlatform && <span className="ms-1 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">{L('platform', 'منصة')}</span>}</p>
-                  <p className="text-xs text-slate-500">{t.amount.toLocaleString()} {L('EGP', 'ج.م')} · {lab(FREQUENCY_LABEL[t.frequency])} · {lab(MODE_LABEL[t.defaultMode])} {L('for everyone', 'للكل')} · {L('if unpaid:', 'لو مااتدفعتش:')} {lab(ON_UNPAID_LABEL[t.onUnpaid])}</p>
+                  <p className="font-semibold text-slate-900">{ar ? t.nameAr : t.nameEn} {t.isPlatform && <span className="ms-1 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">{L('platform', 'منصة')}</span>}{!t.isActive && <span className="ms-1 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">{L('stopped — not charged', 'متوقف — مش بيتحسب')}</span>}</p>
+                   <p className="text-xs text-slate-500"><bdi className="font-semibold text-slate-700">{t.amount.toLocaleString()} {L('EGP', 'ج.م')}</bdi> · {lab(FREQUENCY_LABEL[t.frequency])} · {lab(MODE_LABEL[t.defaultMode])} {L('for everyone', 'للكل')} · {L('if unpaid:', 'لو مااتدفعتش:')} {lab(ON_UNPAID_LABEL[t.onUnpaid])}</p>
                 </div>
                 {canEdit && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditId(t.id); setForm({ nameEn: t.nameEn, nameAr: t.nameAr, amount: String(t.amount), frequency: t.frequency, isPlatform: t.isPlatform, defaultMode: t.defaultMode, onUnpaid: t.onUnpaid, isActive: t.isActive }) }}>{L('Edit', 'تعديل')}</Button>}
               </div>
@@ -76,17 +76,17 @@ export default function FeeTypesPage() {
           {canEdit && !form && <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setEditId(null); setForm(blank) }}><Plus className="h-4 w-4" />{L('Add a fee', 'إضافة رسم')}</Button>}
           {canEdit && form && (
             <Card><CardContent className="grid gap-2 pt-4 text-sm sm:grid-cols-2">
-              <Input placeholder="English name (e.g. Platform fee)" value={form.nameEn} onChange={(e) => setForm({ ...form, nameEn: e.target.value })} />
               <Input dir="rtl" placeholder="الاسم بالعربي (مثلاً: رسوم المنصة)" value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.target.value })} />
+              <Input dir="ltr" placeholder={L('English name (e.g. Platform fee)', 'الاسم بالإنجليزي (مثلاً: Platform fee)')} value={form.nameEn} onChange={(e) => setForm({ ...form, nameEn: e.target.value })} />
               <label className="space-y-1"><span className="block text-xs text-slate-500">{L('Amount (EGP)', 'المبلغ (ج.م)')}</span><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
               <label className="space-y-1"><span className="block text-xs text-slate-500">{L('How often', 'كل إمتى')}</span>
                 <select className={`${sel} w-full`} value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value as FeeFrequency })}>{FEE_FREQUENCIES.map((f) => <option key={f} value={f}>{lab(FREQUENCY_LABEL[f])}</option>)}</select></label>
-              <label className="space-y-1"><span className="block text-xs text-slate-500">{L('For everyone', 'للكل')}</span>
+              <label className="space-y-1"><span className="block text-xs text-slate-500">{L('Required or optional?', 'إجباري ولا اختياري؟')}</span>
                 <select className={`${sel} w-full`} value={form.defaultMode} onChange={(e) => setForm({ ...form, defaultMode: e.target.value as 'REQUIRED' | 'OPTIONAL' })}><option value="REQUIRED">{lab(MODE_LABEL.REQUIRED)}</option><option value="OPTIONAL">{lab(MODE_LABEL.OPTIONAL)}</option></select></label>
               <label className="space-y-1"><span className="block text-xs text-slate-500">{L('If not paid', 'لو مااتدفعتش')}</span>
                 <select className={`${sel} w-full`} value={form.onUnpaid} onChange={(e) => setForm({ ...form, onUnpaid: e.target.value as OnUnpaid })}>{ON_UNPAID.map((o) => <option key={o} value={o}>{lab(ON_UNPAID_LABEL[o])}</option>)}</select></label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={form.isPlatform} onChange={(e) => setForm({ ...form, isPlatform: e.target.checked })} />{L('This is the platform fee', 'دي رسوم المنصة')}</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />{L('Active', 'شغال')}</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />{L('Active (untick to stop it — fees are never deleted, so old invoices stay right)', 'شغال (شيل العلامة علشان توقفه — الرسوم مابتتمسحش علشان الفواتير القديمة تفضل سليمة)')}</label>
               <div className="flex gap-2 sm:col-span-2">
                 <Button size="sm" disabled={form.nameEn.trim().length < 2 || form.nameAr.trim().length < 2 || save.isPending} onClick={() => save.mutate()}>{L('Save', 'حفظ')}</Button>
                 <Button size="sm" variant="ghost" onClick={() => { setForm(null); setEditId(null) }}>{L('Cancel', 'إلغاء')}</Button>

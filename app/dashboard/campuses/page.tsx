@@ -352,7 +352,7 @@ export default function CampusesPage() {
                   <div className="flex items-center gap-2 text-gray-600">
                     <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                     <span className="font-bold text-gray-400">{L('Principal:', 'المدير:')}</span>
-                    <span className="text-gray-800 font-extrabold">{campus.principalName || 'Not Assigned'}</span>
+                    <span className="text-gray-800 font-extrabold">{campus.principalName || L('Not set', 'مش متحدد')}</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
@@ -398,14 +398,14 @@ export default function CampusesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-gray-600">{L('Campus Name', 'اسم الفرع')} <span className="text-red-500">*</span></Label>
-                <Input placeholder="e.g. Boys Campus" className="rounded-xl" {...createForm.register('name')} />
+                <Input placeholder={L('e.g. El Kawther branch', 'مثلاً: فرع الكوثر')} className="rounded-xl" {...createForm.register('name')} />
                 {createForm.formState.errors.name && (
                   <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.name.message}</p>
                 )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-gray-600">{L('Campus Code', 'كود الفرع')} <span className="text-red-500">*</span></Label>
-                <Input placeholder="e.g. BC" className="rounded-xl uppercase" {...createForm.register('code')} />
+                <Input placeholder={L('e.g. KWT', 'مثلاً: KWT')} className="rounded-xl uppercase" {...createForm.register('code')} />
                 {createForm.formState.errors.code && (
                   <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.code.message}</p>
                 )}
@@ -414,7 +414,7 @@ export default function CampusesPage() {
 
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-gray-600">{L('Address', 'العنوان')} <span className="text-red-500">*</span></Label>
-              <Input placeholder="123 Main St, Sector-G, Peshawar" className="rounded-xl" {...createForm.register('address')} />
+              <Input placeholder={L('e.g. El Nasr St, Hurghada', 'مثلاً: شارع النصر، الغردقة')} className="rounded-xl" {...createForm.register('address')} />
               {createForm.formState.errors.address && (
                 <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.address.message}</p>
               )}
@@ -439,7 +439,7 @@ export default function CampusesPage() {
 
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-gray-600">{L('Principal Name', 'اسم المدير')} <span className="text-red-500">*</span></Label>
-              <Input placeholder="Prof. John Doe" className="rounded-xl" {...createForm.register('principalName')} />
+              <Input placeholder={L('Manager or contact person', 'المدير أو المسؤول')} className="rounded-xl" {...createForm.register('principalName')} />
               {createForm.formState.errors.principalName && (
                 <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.principalName.message}</p>
               )}
@@ -490,14 +490,14 @@ export default function CampusesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-gray-600">{L('Campus Name', 'اسم الفرع')} <span className="text-red-500">*</span></Label>
-                    <Input placeholder="e.g. Boys Campus" className="rounded-xl" {...editForm.register('name')} />
+                    <Input placeholder={L('e.g. El Kawther branch', 'مثلاً: فرع الكوثر')} className="rounded-xl" {...editForm.register('name')} />
                     {editForm.formState.errors.name && (
                       <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.name.message}</p>
                     )}
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-gray-600">{L('Campus Code', 'كود الفرع')} <span className="text-red-500">*</span></Label>
-                    <Input placeholder="e.g. BC" className="rounded-xl uppercase" {...editForm.register('code')} />
+                    <Input placeholder={L('e.g. KWT', 'مثلاً: KWT')} className="rounded-xl uppercase" {...editForm.register('code')} />
                     {editForm.formState.errors.code && (
                       <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.code.message}</p>
                     )}
@@ -506,7 +506,7 @@ export default function CampusesPage() {
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-gray-600">{L('Address', 'العنوان')} <span className="text-red-500">*</span></Label>
-                  <Input placeholder="123 Main St, Sector-G, Peshawar" className="rounded-xl" {...editForm.register('address')} />
+                  <Input placeholder={L('e.g. El Nasr St, Hurghada', 'مثلاً: شارع النصر، الغردقة')} className="rounded-xl" {...editForm.register('address')} />
                   {editForm.formState.errors.address && (
                     <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.address.message}</p>
                   )}
@@ -531,7 +531,7 @@ export default function CampusesPage() {
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-gray-600">{L('Principal Name', 'اسم المدير')} <span className="text-red-500">*</span></Label>
-                  <Input placeholder="Prof. John Doe" className="rounded-xl" {...editForm.register('principalName')} />
+                  <Input placeholder={L('Manager or contact person', 'المدير أو المسؤول')} className="rounded-xl" {...editForm.register('principalName')} />
                   {editForm.formState.errors.principalName && (
                     <p className="text-[10px] text-red-500 font-bold">{editForm.formState.errors.principalName.message}</p>
                   )}

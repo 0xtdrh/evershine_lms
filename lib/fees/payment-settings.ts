@@ -98,8 +98,8 @@ export const FINANCE_DEFAULTS: FinanceSettings = {
   receiptAfterPayment: 'OPEN',
   companyName: 'TechNova',
   companyPhone: '',
-  companyAddress: 'Hurghada',
-  receiptFooter: 'Thank you!',
+  companyAddress: 'الغردقة',
+  receiptFooter: 'شكرًا لثقتكم في TechNova',
   autoSendReceiptWhatsApp: false,
 }
 

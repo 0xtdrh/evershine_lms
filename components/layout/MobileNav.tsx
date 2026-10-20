@@ -29,8 +29,8 @@ interface NavItem {
 // Mobile bottom nav — the 5 most used pages per role (5-A, 2026-10-16: no old template screens; Arabic names).
 const home: NavItem = { href: '/dashboard', label: 'Home', ar: 'الرئيسية', icon: LayoutDashboard }
 const settings: NavItem = { href: '/dashboard/settings', label: 'Settings', ar: 'الإعدادات', icon: Settings }
-const students: NavItem = { href: '/dashboard/students', label: 'Students', ar: 'الطلبة', icon: Users }
-const groups: NavItem = { href: '/dashboard/groups', label: 'Groups', ar: 'المجموعات', icon: UsersRound }
+const students: NavItem = { href: '/dashboard/students', label: 'Students', ar: 'الطلاب', icon: Users }
+const groups: NavItem = { href: '/dashboard/groups', label: 'Groups', ar: 'الجروبات', icon: UsersRound }
 const collection: NavItem = { href: '/dashboard/accountant/fees', label: 'Fee Collection', ar: 'التحصيل', icon: CreditCard }
 const portal: NavItem[] = [
   home,

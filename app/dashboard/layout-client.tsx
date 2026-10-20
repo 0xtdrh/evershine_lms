@@ -10,7 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi, fetchPaginatedApi } from '@/lib/api-client'
 import { DEFAULT_PERMISSION_MATRIX, type AcademicResource, type Action } from '@/lib/rbac'
 import { motion, AnimatePresence } from 'framer-motion'
-import { notificationPanel, pulseRing, sidebarSlide } from '@/lib/animations'
+import { notificationPanel, pulseRing, sidebarSlide, sidebarSlideRtl } from '@/lib/animations'
 import { PageTransition } from '@/components/shared/page-transition'
 import {
   LayoutDashboard,
@@ -77,7 +77,8 @@ import {
 } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
 import { PlaceSwitcher } from '@/components/places/PlaceSwitcher'
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
+import { Breadcrumbs, pageItem } from '@/components/layout/Breadcrumbs'
+import { navLabel } from '@/lib/i18n/nav'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { isAcademicEnginePrimary } from '@/lib/academic/config'
 import { CompulsoryFeedbackBlocker } from '@/components/student/CompulsoryFeedbackBlocker'
@@ -114,7 +115,8 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Admin Workspace', href: '/dashboard/admin',        icon: ShieldCheck,     roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Permissions',     href: '/dashboard/admin/permissions',      icon: ShieldCheck,     roles: ['SUPER_ADMIN'] },
   { name: 'Notifications',   href: '/dashboard/admin/notifications',    icon: BellRing,        roles: ['SUPER_ADMIN', 'ADMIN'] },
-  { name: 'Settings Centre', href: '/dashboard/settings-center',        icon: Settings2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY'] },
+  // match: settings pages that are not menu items belong here (their tabs + title), not to the old Admin Workspace
+  { name: 'Settings Centre', href: '/dashboard/settings-center',        icon: Settings2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY'], match: ['/dashboard/admin/finance-settings', '/dashboard/admin/lms', '/dashboard/admin/login-locks', '/dashboard/admin/setup', '/dashboard/admin/wipe-test-data', '/dashboard/admin/rubrics', '/dashboard/admin/reserve-fund'] },
   { name: 'Fees & Charges',   href: '/dashboard/fee-types',              icon: Wallet,          roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'], perm: [['finance_settings', 'update']] },
   { name: 'Accounts & Cash',  href: '/dashboard/treasury',               icon: Wallet,          roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY'], perm: [['treasury', 'read']] },
   { name: 'Import & Export', href: '/dashboard/data',                   icon: BarChart2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY', 'MARKETING'], perm: [['data_export', 'read'], ['data_import', 'create']] },
@@ -266,6 +268,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   })
   const platformModules = platformData?.modules
 
+  // browser tab = the page's name (it used to say "Dashboard" on every page)
+  useEffect(() => {
+    const item = pageItem(pathname, [...NAV_ITEMS, ...TEACHER_NAV_ITEMS])
+    const name = pathname === '/dashboard' ? (locale === 'ar' ? 'الرئيسية' : 'Home') : item ? navLabel(item.name, locale) : null
+    if (!name) return
+    const t = setTimeout(() => { document.title = `${name} | TechNova` }, 50)
+    return () => clearTimeout(t)
+  }, [pathname, locale])
+
   useEffect(() => {
     if (status === 'authenticated' && !role) {
       console.warn(
@@ -383,10 +394,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
       <AnimatePresence mode="wait">
         <motion.aside
-          variants={sidebarSlide}
+          variants={locale === 'ar' ? sidebarSlideRtl : sidebarSlide}
           initial={sidebarOpen ? "animate" : "initial"}
           animate={sidebarOpen ? "animate" : "initial"}
-          className="fixed inset-y-0 left-0 bg-white border-r border-slate-200 w-64 z-[60] flex flex-col md:relative md:translate-x-0 md:!transform-none shadow-soft-lg md:shadow-none"
+          className="fixed inset-y-0 start-0 bg-white border-e border-slate-200 w-64 z-[60] flex flex-col md:relative md:translate-x-0 md:!transform-none shadow-soft-lg md:shadow-none"
         >
           <div className="flex items-center justify-between h-16 px-5 border-b border-gray-100 flex-shrink-0">
             <Link href="/dashboard" className="flex items-center gap-3">
@@ -456,7 +467,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </button>
 
           <div className="flex-1 min-w-0">
-            <Breadcrumbs pathname={pathname} />
+            <Breadcrumbs pathname={pathname} items={[...NAV_ITEMS, ...TEACHER_NAV_ITEMS]} locale={locale} />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">

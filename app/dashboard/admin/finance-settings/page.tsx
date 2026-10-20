@@ -45,7 +45,7 @@ interface Settings { finance: Finance; accounts: Account[]; methods: Method[]; a
 const KINDS: { value: string; label: string }[] = [
   { value: 'INSTAPAY', label: 'InstaPay' },
   { value: 'VODAFONE_CASH', label: 'Vodafone Cash' },
-  { value: 'BANK', label: 'Bank account' },
+  { value: 'BANK', label: 'Bank account / حساب بنك' },
   { value: 'FAWRY', label: 'Fawry' },
   { value: 'OTHER', label: 'Other' },
 ]
@@ -92,7 +92,7 @@ export default function FinanceSettingsPage() {
       qc.invalidateQueries({ queryKey: ['payment-methods'] })
       qc.invalidateQueries({ queryKey: ['payment-accounts'] })
     },
-    onError: (err: Error) => notify.error(err.message || 'Could not save'),
+    onError: (err: Error) => notify.error(err.message || L('Could not save', 'معرفناش نحفظ')),
   })
 
   if (status === 'loading' || (status === 'authenticated' && !perms)) return null
@@ -148,7 +148,7 @@ export default function FinanceSettingsPage() {
                   <Input value={a.label} onChange={(e) => setAccount(i, { label: e.target.value })} placeholder={L('e.g. InstaPay', 'مثلاً InstaPay')} disabled={!canEdit} />
                 </div>
                 <div className="space-y-1">
-                  <Label>{a.kind === 'BANK' ? 'Account number' : 'Number / handle'}</Label>
+                  <Label>{a.kind === 'BANK' ? L('Account number', 'رقم الحساب') : L('Number / handle', 'الرقم أو العنوان')}</Label>
                   <Input dir="ltr" value={a.accountNumber ?? ''} onChange={(e) => setAccount(i, { accountNumber: e.target.value })} placeholder={a.kind === 'INSTAPAY' ? 'name@instapay or 01…' : '01…'} disabled={!canEdit} />
                 </div>
                 <div className="space-y-1">
@@ -255,7 +255,7 @@ export default function FinanceSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Receipt className="h-4 w-4" /> Receipts &amp; printer</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base"><Receipt className="h-4 w-4" /> {L('Receipts & printer', 'الإيصالات والطابعة')}</CardTitle>
           <CardDescription>{L('Every payment gets a receipt (TN-RCPT-…). Print it, or send it to the parent on WhatsApp.', 'كل دفعة ليها إيصال (TN-RCPT-…). اطبعه أو ابعته لولي الأمر واتساب.')}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -308,8 +308,8 @@ export default function FinanceSettingsPage() {
             <span>{L('Send the receipt to the parent on WhatsApp automatically', 'ابعت الإيصال لولي الأمر واتساب تلقائي')}
               <span className="block text-xs text-muted-foreground">
                 {form.autoWhatsAppAvailable
-                  ? 'WhatsApp Business API is connected.'
-                  : 'Needs a WhatsApp Business API account (later). Until then, staff send it with one click from the receipt.'}
+                  ? L('WhatsApp Business API is connected.', 'واتساب بيزنس متوصل.')
+                  : L('Needs a WhatsApp Business API account (later). Until then, staff send it with one click from the receipt.', 'محتاج حساب WhatsApp Business API (بعدين). لحد كده الموظف بيبعته بضغطة من الإيصال.')}
               </span>
             </span>
           </label>

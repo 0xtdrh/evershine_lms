@@ -1,81 +1,64 @@
 'use client'
 
+/**
+ * Header title of every dashboard page. 2026-10-20 (live test): it used to print the raw URL in English
+ * ("Backups › Admin › Dashboard", even database ids). Now: the menu item the page belongs to, in the screen's
+ * language (same names as the sidebar), plus "Details" when the page is deeper than that item.
+ */
+
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { navLabel } from '@/lib/i18n/nav'
 
-const SEGMENT_LABELS: Record<string, string> = {
-  dashboard: 'Dashboard',
-  admin: 'Admin',
-  admissions: 'Admissions',
-  students: 'Students',
-  teachers: 'Teachers',
-  fees: 'Fees',
-  attendance: 'Attendance',
-  exams: 'Exams',
-  results: 'Results',
-  calendar: 'Calendar',
-  timetable: 'Timetable',
-  settings: 'Settings',
-  reports: 'Reports',
-  academics: 'Academics',
-  documents: 'Documents',
-  campuses: 'Campuses',
-  batches: 'Batches',
-  leaves: 'Leaves',
-  promotions: 'Promotions',
-  'report-cards': 'Report Cards',
-  'teacher-feedback': 'Teacher Feedback',
-  'my-children': 'My Children',
-  'student': 'Student',
-  'parent': 'Parent',
-  'guardian': 'Guardian',
-}
+export interface CrumbItem { name: string; href: string; match?: string[] }
 
-const formatSegment = (segment: string) => {
-  if (!segment) return ''
-  if (SEGMENT_LABELS[segment]) return SEGMENT_LABELS[segment]
-  if (/^\[.+\]$/.test(segment)) return 'Details'
-
-  return segment
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, (chr) => chr.toUpperCase())
-}
-
-export function Breadcrumbs({ pathname }: { pathname: string }) {
-  const segments = pathname.split('/').filter(Boolean)
-
-  if (segments.length <= 1) {
-    return (
-      <p className="text-sm font-semibold text-gray-800 truncate">
-        Dashboard
-      </p>
-    )
+/** The menu item a path belongs to: the longest menu href that is the path or a parent of it. */
+export function pageItem(pathname: string, items: CrumbItem[]): CrumbItem | null {
+  let best: CrumbItem | null = null
+  let bestLen = 0
+  const under = (p: string) => pathname === p || pathname.startsWith(p + '/')
+  for (const it of items) {
+    if (it.href === '/dashboard') continue
+    // a page listed in `match` belongs to that item, and wins over a shorter parent like /dashboard/admin
+    const len = under(it.href) ? it.href.length : it.match?.some(under) ? Math.max(...it.match.filter(under).map((m) => m.length)) : 0
+    if (len > bestLen) { best = it; bestLen = len }
   }
+  return best
+}
 
-  const items = segments.map((segment, index) => {
-    const href = '/' + segments.slice(0, index + 1).join('/')
-    return {
-      label: formatSegment(segment),
-      href,
-      isLast: index === segments.length - 1,
-    }
-  })
-
+export function Breadcrumbs({ pathname, items, locale }: { pathname: string; items: CrumbItem[]; locale: string }) {
+  const ar = locale === 'ar'
+  const home = ar ? 'الرئيسية' : 'Home'
+  if (pathname === '/dashboard' || pathname === '/dashboard/') {
+    return <p className="truncate text-sm font-semibold text-gray-800">{home}</p>
+  }
+  const item = pageItem(pathname, items)
+  const Sep = ar ? ChevronLeft : ChevronRight
+  const crumbs: { label: string; href: string }[] = []
+  if (item) {
+    crumbs.push({ label: navLabel(item.name, locale), href: item.href })
+    if (pathname !== item.href) crumbs.push({ label: ar ? 'التفاصيل' : 'Details', href: pathname })
+  } else {
+    crumbs.push({ label: ar ? 'الصفحة دي' : 'This page', href: pathname })
+  }
   return (
-    <nav aria-label="Breadcrumb" className="mt-1 text-sm text-slate-500">
+    <nav aria-label={ar ? 'المسار' : 'Breadcrumb'} className="mt-1 text-sm text-slate-500">
       <ol className="flex flex-wrap items-center gap-2">
-        {items.map((item) => (
-          <li key={item.href} className="flex items-center gap-2">
-            <Link
-              href={item.href}
-              className={`transition-colors ${item.isLast ? 'text-slate-700 font-semibold' : 'hover:text-slate-900'}`}
-              aria-current={item.isLast ? 'page' : undefined}
-            >
-              {item.label}
-            </Link>
-            {!item.isLast && <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
-          </li>
-        ))}
+        <li className="flex items-center gap-2">
+          <Link href="/dashboard" className="hover:text-slate-900">{home}</Link>
+          <Sep className="h-3.5 w-3.5 text-slate-400" />
+        </li>
+        {crumbs.map((c, i) => {
+          const last = i === crumbs.length - 1
+          return (
+            <li key={c.href + i} className="flex min-w-0 items-center gap-2">
+              {last
+                ? <span className="truncate font-semibold text-slate-700" aria-current="page">{c.label}</span>
+                : <Link href={c.href} className="truncate hover:text-slate-900">{c.label}</Link>}
+              {!last && <Sep className="h-3.5 w-3.5 text-slate-400" />}
+            </li>
+          )
+        })}
       </ol>
     </nav>
   )
