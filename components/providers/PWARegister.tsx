@@ -42,10 +42,11 @@ export function PWARegister() {
                 newWorker.addEventListener('statechange', () => {
                   if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                     // A new service worker version has been installed, inform user to reload
-                    notify.info('New Version Available', {
-                      description: 'A new update of the LMS is ready. Click to refresh.',
+                    const ar = document.documentElement.lang === 'ar'
+                    notify.info(ar ? 'فيه نسخة جديدة' : 'New Version Available', {
+                      description: ar ? 'السيستم اتحدّث. دوس «تحديث» علشان تشتغل على آخر نسخة.' : 'A new update is ready. Click to refresh.',
                       action: {
-                        label: 'Refresh',
+                        label: ar ? 'تحديث' : 'Refresh',
                         onClick: () => {
                           window.location.reload();
                         }

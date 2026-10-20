@@ -1,5 +1,6 @@
 'use client'
 
+import { roleName } from '@/lib/admin/permission-labels'
 import { PlacePeople } from '@/components/places/PlacePeople'
 import { useEffect, useState } from 'react'
 import { use } from 'react'
@@ -30,11 +31,11 @@ interface Profile {
   stats: { activeGroups: number; activeStudents: number; monthIncome: number; overdueInvoices: number; waiting: number; fullness: number | null; prepaid?: number }
 }
 
-const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 0 })} EGP`
+const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 0 })} ${L('EGP', 'ج.م')}`
 
 /** Branch profile: details, team and live numbers (phase A). */
 export default function CampusProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  useI18n() // re-render on a language switch
+  const ar = useI18n().locale === 'ar' // names follow the screen language
   const { id } = use(params)
   const qc = useQueryClient()
   const { data: session } = useSession()
@@ -129,7 +130,7 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">—</SelectItem>
-                    {data.team.staff.map((m) => <SelectItem key={m.userId} value={m.userId}>{m.name} ({m.role})</SelectItem>)}
+                    {data.team.staff.map((m) => <SelectItem key={m.userId} value={m.userId}>{m.name} ({roleName(m.role, ar)})</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -149,7 +150,7 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
           <CardHeader className="pb-2"><CardTitle className="text-sm">{L('Staff (', 'الموظفين (')}{data.team.staff.length})</CardTitle></CardHeader>
           <CardContent className="space-y-1 text-sm">
             {data.team.staff.length === 0 && <p className="text-slate-500">{L('No staff accounts in this branch.', 'مفيش حسابات موظفين في الفرع ده.')}</p>}
-            {data.team.staff.map((m) => <p key={m.userId}>{m.name} <span className="text-xs text-slate-500">· {m.role}{m.department ? ` · ${m.department}` : ''}</span></p>)}
+            {data.team.staff.map((m) => <p key={m.userId}>{m.name} <span className="text-xs text-slate-500">· {roleName(m.role, ar)}{m.department && m.department !== 'N/A' ? ` · ${m.department}` : ''}</span></p>)}
           </CardContent>
         </Card>
         <Card>

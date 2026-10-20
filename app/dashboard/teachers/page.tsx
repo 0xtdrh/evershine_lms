@@ -144,7 +144,7 @@ export default function TeachersPage() {
                 {L('Add Staff Member', 'ضيف موظف')}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuContent align="start" className="w-64">
               <DropdownMenuLabel>{L('What is the job?', 'الوظيفة إيه؟')}</DropdownMenuLabel>
               <DropdownMenuItem asChild><Link href="/dashboard/teachers/new">{L('Instructor / other staff', 'مدرب (أو موظف تاني)')}</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link href="/dashboard/settings?tab=admins&add=1">{L('Secretary / branch manager / admin / marketing', 'سكرتارية / مدير فرع / إداري / تسويق')}</Link></DropdownMenuItem>

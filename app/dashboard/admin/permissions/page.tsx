@@ -300,7 +300,7 @@ export default function PermissionsPage() {
                 onClick={() => createOverrideMutation.mutate()}
                 disabled={createOverrideMutation.isPending}
               >
-                {createOverrideMutation.isPending ? 'Saving…' : 'Save override'}
+                {createOverrideMutation.isPending ? L('Saving…', 'بيحفظ…') : L('Save override', 'احفظ الاستثناء')}
               </Button>
             </div>
           </CardContent>
@@ -343,7 +343,7 @@ export default function PermissionsPage() {
                   <SelectValue placeholder={L('All categories', 'كل الأقسام')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((c) => <SelectItem key={c} value={c}>{categoryName(c, ar)}</SelectItem>)}
+                  {categories.map((c) => <SelectItem key={c} value={c}>{c === 'ALL' ? L('All categories', 'كل الأقسام') : categoryName(c, ar)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
