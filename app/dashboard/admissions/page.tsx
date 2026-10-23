@@ -857,7 +857,7 @@ export default function AdmissionsDashboard() {
                   <Button variant="outline" onClick={closeReviewDialog} disabled={approveMutation.isPending}>{L('Cancel', 'إلغاء')}</Button>
                   <Button
                     onClick={handleApprove}
-                    disabled={approveMutation.isPending || declineMutation.isPending || !campusId || !batchId || !rollNumber}
+                    disabled={approveMutation.isPending || declineMutation.isPending || !campusId || !rollNumber /* batches are off: the server picks the branch's default batch (2026-10-23 live test — the button never enabled) */}
                     className={`bg-green-600 hover:bg-green-700 text-white min-w-[150px] ${canApprove ? '' : 'hidden'}`}
                   >
                     {approveMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {L('Approving...', 'بيوافق...')}</> : <><CheckCircle className="w-4 h-4 mr-2" /> {L('Approve & Enrol', 'وافق وسجّل')}</>}
