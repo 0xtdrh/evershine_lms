@@ -24,6 +24,7 @@ import { ArrowLeft, AlertCircle, Loader2, UserPlus, Info } from 'lucide-react'
 import Link from 'next/link'
 import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
+import { L } from '@/lib/i18n/client'
 
 type Campus = { id: string; name: string }
 type SectionData = {
@@ -636,23 +637,12 @@ export default function AdmissionPage() {
               <FieldError message={errors.academicYear?.message} />
             </div>
 
-            {/* Total Fee */}
-            <div className="space-y-1.5 md:col-span-2">
-              <div className="flex flex-col gap-2">
-                <RequiredLabel>Total Monthly Fee Amount (EGP)</RequiredLabel>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                  <div className="font-semibold text-slate-900">Suggested monthly fee</div>
-                  <div className="mt-1 text-lg font-semibold text-slate-900">Admin-defined</div>
-                  <p className="mt-2 text-xs text-slate-500">Fee amounts are set by the administration. Enter the approved monthly fee below based on the student&apos;s enrolled program and campus policy.</p>
-                </div>
-              </div>
-              <Input
-                type="number"
-                min={0}
-                {...register('totalFeeAmount', { valueAsNumber: true })}
-                className={errors.totalFeeAmount ? 'border-destructive focus-visible:ring-destructive' : ''}
-              />
-              <FieldError message={errors.totalFeeAmount?.message} />
+            {/* 2026-10-23 (live test, owner): the old "Total Monthly Fee Amount" was typed by hand and never made an
+                invoice — invoices come from the group's level price + required extra fees. Kept as a hidden 0. */}
+            <input type="hidden" {...register('totalFeeAmount', { valueAsNumber: true })} />
+            <div className="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
+              {L('Invoices are made automatically: the level price when the student joins a group, plus any required extra fees (e.g. registration). Nothing to type here.',
+                'الفواتير بتتعمل لوحدها: سعر المستوى لما الطالب يدخل جروب، والرسوم الإضافية الإجبارية (زي رسوم التسجيل). مفيش حاجة تتكتب هنا.')}
             </div>
           </CardContent>
         </Card>

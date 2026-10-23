@@ -283,11 +283,7 @@ export default function AdmissionsDashboard() {
         body: JSON.stringify({
           campusId,
           classId: classId || undefined,
-          section: section.trim() || undefined,
-          rollNumber: rollNumber.trim(),
-          admissionFee,
-          courseFee,
-          totalAcademicFee,
+          // roll number = registration number (server); fees come from the level price / extra fees
           shift,
           deliveryMode,
           classSectionId: classSectionId || undefined,
@@ -336,8 +332,8 @@ export default function AdmissionsDashboard() {
   })
 
   const handleApprove = () => {
-    if (!campusId || !rollNumber) {
-      notify.error(L('Please choose the branch and a roll number before approving', 'اختار الفرع ورقم الجلوس قبل الموافقة'))
+    if (!campusId) {
+      notify.error(L('Please choose the branch before approving', 'اختار الفرع قبل الموافقة'))
       return
     }
     if (admissionFee < 0) {
@@ -710,142 +706,12 @@ export default function AdmissionsDashboard() {
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-blue-900 font-semibold">{L('4. Roll Number *', '4. رقم الجلوس *')}</Label>
-                      <Input placeholder={L('e.g. 101, 6A-01', 'مثلاً 101')} value={rollNumber} onChange={e => setRollNumber(e.target.value)} required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{L('5. Section (Legacy class)', '5. الفصل القديم')}</Label>
-                      <Input placeholder={L('e.g. A, B, Boys-1', 'مثلاً A')} value={section} onChange={e => setSection(e.target.value)} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-5">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-slate-900">{L('Academic fee assignment', 'تحديد المصاريف')}</h3>
-                        <p className="mt-1 text-sm text-slate-500">
-                          {L('Review and confirm admission, course, and total academic fees before approving the applicant.', 'راجع وأكّد مصاريف التسجيل والكورس والإجمالي قبل الموافقة.')}
-                        </p>
-                      </div>
-                      <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-                        {L('Fee totals are editable', 'الإجماليات قابلة للتعديل')}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                      <div className="space-y-2 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <Label className="text-slate-900 font-semibold">{L('Admission Processing Fee', 'مصاريف التسجيل')}</Label>
-                        <Input
-                          type="number"
-                          placeholder={L('e.g. 2000', 'مثلاً 2000')}
-                          value={admissionFee}
-                          onChange={e => setAdmissionFee(Number(e.target.value) || 0)}
-                          min={0}
-                          inputMode="numeric"
-                          step="1"
-                        />
-                        <p className="text-xs text-slate-500">
-                          {L('One-time admission fee captured at the time of approval.', 'مصاريف تسجيل مرة واحدة بتتسجل وقت الموافقة.')}
-                        </p>
-                      </div>
-
-                      <div className="space-y-2 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <Label className="text-slate-900 font-semibold">{L('Courses & Stream Fee', 'مصاريف الكورس')}</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={courseFee}
-                          onChange={(e) => setCourseFee(Number(e.target.value) || 0)}
-                          inputMode="numeric"
-                          step="1"
-                        />
-                        <p className="text-xs text-slate-500">
-                          {L('Monthly course/stream fee — set by the administration based on the student\'s enrolled program.', 'مصاريف الكورس الشهرية — الإدارة بتحددها حسب البرنامج.')}
-                        </p>
-                      </div>
-
-                      <div className="space-y-2 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <div className="flex items-center justify-between gap-3">
-                          <Label className="text-slate-900 font-semibold">{L('Total Academic Fee', 'إجمالي المصاريف')}</Label>
-                          <button
-                            type="button"
-                            className="text-xs font-medium text-slate-500 transition hover:text-slate-700"
-                            onClick={() => {
-                              setTotalAcademicFee(autoAcademicTotal)
-                              setManualTotalOverride(false)
-                            }}
-                          >
-                            {L('Reset', 'رجّع')}
-                          </button>
-                        </div>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={totalAcademicFee}
-                          onChange={(e) => {
-                            setTotalAcademicFee(Number(e.target.value) || 0)
-                            setManualTotalOverride(true)
-                          }}
-                          inputMode="numeric"
-                          step="1"
-                        />
-                        <p className="text-xs text-slate-500">
-                          {manualTotalOverride
-                            ? 'Manual override enabled. Confirm this amount matches approved academic charges.'
-                            : `Auto-calculated from admission + course fee = EGP ${autoAcademicTotal.toLocaleString()}.`}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 xl:grid-cols-2">
-                      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-                        <div className="flex items-center justify-between text-sm text-slate-600 mb-3">
-                          <span className="font-semibold text-slate-900">{L('Fee summary', 'ملخص المصاريف')}</span>
-                          {manualTotalOverride ? (
-                            <Badge variant="secondary" className="bg-amber-100 text-amber-800">{L('Manual override', 'تعديل يدوي')}</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">{L('Auto-calculated', 'محسوب تلقائي')}</Badge>
-                          )}
-                        </div>
-                        <div className="space-y-3 text-sm text-slate-700">
-                          <div className="flex justify-between">
-                            <span>{L('Admission Fee', 'مصاريف التسجيل')}</span>
-                            <span className="font-medium">{L('EGP', 'ج.م')} {admissionFee.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>{L('Course Fee', 'مصاريف الكورس')}</span>
-                            <span className="font-medium">{L('EGP', 'ج.م')} {courseFee.toLocaleString()}</span>
-                          </div>
-                          <div className="border-t border-slate-200 pt-3 flex justify-between text-base font-semibold text-slate-900">
-                            <span>{L('Total Academic Fee', 'إجمالي المصاريف')}</span>
-                            <span>{L('EGP', 'ج.م')} {totalAcademicFee.toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-900 mb-2">{L('Approval guidance', 'إرشادات الموافقة')}</h3>
-                        <p className="text-sm leading-6 text-slate-600">
-                          {L('Total academic fee must equal or exceed admission fee + course fee. Use the reset action if the total should reflect the system suggestion.', 'الإجمالي لازم يساوي أو يزيد عن مصاريف التسجيل + الكورس. استخدم «رجّع» لو عايز اقتراح السيستم.')}
-                        </p>
-                        <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-blue-500" />
-                            {L('System-calculated values are the recommended starting point.', 'قيم السيستم هي نقطة البداية المقترحة.')}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
-                            {L('Override only for approved extra academic charges.', 'عدّل بس لو في مصاريف زيادة متوافق عليها.')}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                            {L('Approved candidates receive a student profile and fee record immediately.', 'المتقدم اللي بيتوافق عليه بيتعمله ملف طالب وفاتورة على طول.')}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  {/* 2026-10-23 (live test, owner): the old template's roll number / class / hand-typed fees are gone — the
+                      registration number is the ID, and invoices come from the level price + extra fees when the
+                      student joins a group (the typed fees never made an invoice). */}
+                  <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
+                    {L('Invoices are made automatically: the level price when the student joins a group, plus any required extra fees (e.g. registration). Nothing to type here.',
+                      'الفواتير بتتعمل لوحدها: سعر المستوى لما الطالب يدخل جروب، والرسوم الإضافية الإجبارية (زي رسوم التسجيل). مفيش حاجة تتكتب هنا.')}
                   </div>
                 </div>
 
@@ -855,9 +721,10 @@ export default function AdmissionsDashboard() {
 
                 <DialogFooter className="mt-6 pt-4 border-t border-gray-100 flex justify-between sm:justify-between items-center w-full">
                   <Button variant="outline" onClick={closeReviewDialog} disabled={approveMutation.isPending}>{L('Cancel', 'إلغاء')}</Button>
+                  {!canApprove && <p className="text-xs text-amber-700">{L('Approving needs the “approve” permission for registrations — ask the manager (Settings → Permissions).', 'الموافقة محتاجة صلاحية «موافقة» على التسجيل — كلّم المدير (الإعدادات ← الصلاحيات).')}</p>}
                   <Button
                     onClick={handleApprove}
-                    disabled={approveMutation.isPending || declineMutation.isPending || !campusId || !rollNumber /* batches are off: the server picks the branch's default batch (2026-10-23 live test — the button never enabled) */}
+                    disabled={approveMutation.isPending || declineMutation.isPending || !campusId /* batches are off: the server picks the branch's default batch */}
                     className={`bg-green-600 hover:bg-green-700 text-white min-w-[150px] ${canApprove ? '' : 'hidden'}`}
                   >
                     {approveMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {L('Approving...', 'بيوافق...')}</> : <><CheckCircle className="w-4 h-4 mr-2" /> {L('Approve & Enrol', 'وافق وسجّل')}</>}

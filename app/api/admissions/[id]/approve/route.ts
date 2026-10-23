@@ -34,7 +34,8 @@ const approveSchema = z.object({
   classSectionId: optionalCuid,
   section: optionalShortText,
   houseId: optionalCuid,
-  rollNumber: z.string().trim().min(1, 'Roll number is required').max(20, 'Roll number must be 20 characters or fewer'),
+  // optional since 2026-10-23: empty = the registration number (same as the normal admission form)
+  rollNumber: z.string().trim().max(20, 'Roll number must be 20 characters or fewer').optional(),
   admissionFee: z.coerce.number().min(0).default(0),
   courseFee: z.coerce.number().min(0).default(0),
   totalAcademicFee: z.coerce.number().min(0).default(0),
@@ -53,7 +54,7 @@ export async function POST(
     }
     const role = session.user.role as Role
     if (!checkPermission(role, 'admissions', 'approve')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ success: false, error: 'الموافقة محتاجة صلاحية «موافقة» على التسجيل — كلّم المدير (الإعدادات ← الصلاحيات).' }, { status: 403 })
     }
 
     const { id } = await params;
@@ -107,7 +108,7 @@ export async function POST(
       }, { status: 400 })
     }
 
-    if (classId) {
+    if (classId && rollNumber) {
       const existingRoll = await prisma.student.findFirst({
         where: {
           campusId,
@@ -122,7 +123,7 @@ export async function POST(
       }
     }
 
-    if (classSectionId) {
+    if (classSectionId && rollNumber) {
       const activeYear = await getActiveAcademicYear()
       const existingSectionRoll = activeYear
         ? await prisma.studentEnrollment.findFirst({
@@ -152,6 +153,7 @@ export async function POST(
     // e.g. BC/2026/001, which broke the rule and could repeat per campus).
     const year = new Date().getFullYear()
     const regNumber = await nextRegistrationNumber()
+    const finalRoll = rollNumber || regNumber.replace(/\//g, '-')
     const passwordHash = await hash(regNumber.replace(/\//g, ''), ARGON2_OPTIONS)
 
     // Use Prisma Transaction
@@ -275,7 +277,7 @@ export async function POST(
           classId:          classId ?? undefined,
           section:          section ?? undefined,
           houseId:          undefined, // houses are switched off
-          rollNumber,
+          rollNumber: finalRoll,
           shift,
           deliveryMode,
           totalFeeAmount: totalAcademicFee,
@@ -350,7 +352,7 @@ export async function POST(
           studentId: result.id,
           academicYearId: activeYear.id,
           classSectionId: resolvedSectionId,
-          rollNumber,
+          rollNumber: finalRoll,
           deliveryMode,
         })
         // Same as "Add to group" (owner 2026-10-17): bill the group's current month right away (idempotent).
