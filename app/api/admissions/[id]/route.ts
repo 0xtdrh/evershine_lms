@@ -25,7 +25,7 @@ export async function DELETE(
     if (!request) {
       return NextResponse.json({ success: false, error: 'Request not found' }, { status: 404 })
     }
-    if (!allowsCampus(await loadPlaces(session.user), request.preferredCampusId)) {
+    if (request.preferredCampusId && !allowsCampus(await loadPlaces(session.user), request.preferredCampusId)) {
         return NextResponse.json({ success: false, error: 'You can delete admissions only for their assigned campus.' }, { status: 403 })
     }
 

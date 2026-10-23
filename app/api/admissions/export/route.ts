@@ -27,7 +27,9 @@ export async function GET(request: NextRequest) {
 
   const where: Record<string, unknown> = {}
   if (status && status !== 'ALL') where.status = status
-  Object.assign(where, campusWhere(await requestPlaces(session.user), 'preferredCampusId'))
+  const placeLimit = campusWhere(await requestPlaces(session.user), 'preferredCampusId')
+  // requests without a branch (online form) belong to every front desk — same rule as the list
+  if (Object.keys(placeLimit).length) where.AND = [{ OR: [placeLimit, { preferredCampusId: null }] }]
 
   const admissions = await prisma.admissionRequest.findMany({
     where,

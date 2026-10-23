@@ -36,7 +36,7 @@ export async function POST(
     if (request.status !== 'PENDING') {
       return NextResponse.json({ success: false, error: 'Request is already processed' }, { status: 400 })
     }
-    if (!allowsCampus(await loadPlaces(session.user), request.preferredCampusId)) {
+    if (request.preferredCampusId && !allowsCampus(await loadPlaces(session.user), request.preferredCampusId)) {
         return NextResponse.json({ success: false, error: 'You can decline admissions only for your assigned campus.' }, { status: 403 })
     }
 

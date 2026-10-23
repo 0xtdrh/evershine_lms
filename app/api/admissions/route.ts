@@ -27,7 +27,10 @@ export async function GET(req: Request) {
       where.status = status
     }
     // M0: requests for the person's places only
-    Object.assign(where, campusWhere(await requestPlaces(session.user), 'preferredCampusId'))
+    // 2026-10-23 (live test): online requests come in WITHOUT a branch (the public form does not ask) — they belong to
+    // every front desk until someone approves them into a branch; otherwise only all-places staff ever saw them
+    const placeLimit = campusWhere(await requestPlaces(session.user), 'preferredCampusId')
+    if (Object.keys(placeLimit).length) where.AND = [{ OR: [placeLimit, { preferredCampusId: null }] }]
 
     const [requests, total] = await Promise.all([
       prisma.admissionRequest.findMany({
