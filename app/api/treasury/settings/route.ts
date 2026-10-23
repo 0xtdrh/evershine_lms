@@ -6,7 +6,7 @@ import { errors, successResponse } from '@/lib/api-response'
 import { treasuryUser } from '@/lib/treasury/http'
 import { getTreasurySettings, saveTreasurySettings } from '@/lib/treasury/engine'
 
-const schema = z.object({ dailyCloseRequired: z.boolean().optional(), closeAfterHour: z.number().int().min(0).max(23).optional(), tolerance: z.number().min(0).max(100000).optional(), transferNeedsApproval: z.boolean().optional() })
+const schema = z.object({ dailyCloseRequired: z.boolean().optional(), closeAfterHour: z.number().int().min(0).max(23).optional(), tolerance: z.number().min(0).max(100000).optional(), transferNeedsApproval: z.boolean().optional(), branchToCompany: z.boolean().optional() })
 
 export async function GET() {
   const u = await treasuryUser('read')

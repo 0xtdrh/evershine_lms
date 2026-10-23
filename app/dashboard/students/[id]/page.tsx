@@ -175,8 +175,9 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   const attendanceRecords = attendanceData?.data ?? []
   const canGenerateStudentDocuments = isAdmin || (isStudentUser && student?.user?.id === session?.user?.id)
 
-  // Attendance summary
-  const attSummary = attendanceRecords.reduce(
+  // Attendance summary — groups record into the enrollment (engine) attendance; the old template table only as a fallback
+  // (2026-10-24 live test: the card showed 0 for a student who had attended)
+  const attSummary = (engineAttendance.length ? engineAttendance : attendanceRecords).reduce(
     (acc, r) => { acc[r.status] = (acc[r.status] ?? 0) + 1; return acc },
     {} as Record<string, number>
   )
@@ -282,11 +283,14 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               </div>
 
               <div className="mt-4 w-full space-y-2 text-left text-sm text-indigo-100">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="w-4 h-4 text-indigo-200" />
-                  {student.class ? student.class.name : 'Class not assigned'}
-                  {student.section && ` — Section ${student.section}`}
-                </div>
+                {/* old template class — groups are shown in the student's groups card; hide the empty "Class not assigned" line */}
+                {student.class && (
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-indigo-200" />
+                    {student.class.name}
+                    {student.section && ` — Section ${student.section}`}
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-indigo-200" />
                   {student.campus.name}

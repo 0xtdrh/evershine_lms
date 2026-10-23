@@ -50,7 +50,9 @@ function logTeacherCreateFailure(stage: string, error: unknown) {
 export async function GET(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
-  if (!checkPermission(session.user.role as Role, 'teachers', 'read')) return errors.forbidden()
+  // Salary slips (accountant) pick the instructor from this list too — still limited to the person's places below.
+  const role = session.user.role as Role
+  if (!checkPermission(role, 'teachers', 'read') && !checkPermission(role, 'salaries', 'create')) return errors.forbidden()
 
   const { searchParams } = new URL(request.url)
   const parsed = teacherQuerySchema.safeParse(Object.fromEntries(searchParams))

@@ -97,7 +97,7 @@ export default function TreasuryPage() {
           {selected && <Movements id={selected} ar={ar} />}
         </TabsContent>
 
-        <TabsContent value="transfers" className="mt-4"><Transfers accounts={accounts} ar={ar} canCreate={can('treasury', 'create')} canApprove={can('treasury', 'approve')} onDone={refresh} status={status} /></TabsContent>
+        <TabsContent value="transfers" className="mt-4"><Transfers accounts={accounts} ar={ar} isSuper={role === 'SUPER_ADMIN'} canCreate={can('treasury', 'create')} canApprove={can('treasury', 'approve')} onDone={refresh} status={status} /></TabsContent>
         <TabsContent value="counts" className="mt-4"><Counts accounts={accounts.filter((a) => a.kind === 'CASH')} ar={ar} canCreate={can('treasury', 'create')} canApprove={can('treasury', 'approve')} onDone={refresh} status={status} /></TabsContent>
         {seeFinance && <TabsContent value="cashflow" className="mt-4"><CashflowTab /></TabsContent>}
         {seeFinance && <TabsContent value="where" className="mt-4"><WhereMoneyTab /></TabsContent>}
@@ -159,9 +159,13 @@ function Movements({ id, ar }: { id: string; ar: boolean }) {
   )
 }
 
-function Transfers({ accounts, ar, canCreate, canApprove, onDone, status }: { accounts: Account[]; ar: boolean; canCreate: boolean; canApprove: boolean; onDone: () => void; status: (s: string) => React.ReactNode }) {
+function Transfers({ accounts, ar, isSuper, canCreate, canApprove, onDone, status }: { accounts: Account[]; ar: boolean; isSuper: boolean; canCreate: boolean; canApprove: boolean; onDone: () => void; status: (s: string) => React.ReactNode }) {
   const { data } = useQuery({ queryKey: ['treasury-transfers'], queryFn: () => fetchApi<Transfer[]>('/api/treasury/transfers') })
   const [f, setF] = useState({ fromAccountId: '', toAccountId: '', amount: '', note: '' })
+  // where money may go: own accounts + company accounts (bank…) when Settings allow branch → company deposits
+  const { data: dest } = useQuery({ queryKey: ['treasury-transfers', 'destinations'], queryFn: () => fetchApi<{ id: string; name: string; company: boolean }[]>('/api/treasury/transfers/destinations'), enabled: canCreate })
+  const targets = dest ?? accounts.map((a) => ({ id: a.id, name: a.name, company: false }))
+  const ownIds = new Set(accounts.map((a) => a.id))
   const create = useMutation({
     mutationFn: () => fetchApi<{ status: string }>('/api/treasury/transfers', { method: 'POST', body: JSON.stringify({ ...f, amount: Number(f.amount) }) }),
     onSuccess: (r) => { notify.success(r.status === 'PENDING' ? L('Sent for approval', 'اتبعت للموافقة') : L('Transfer done', 'التحويل اتعمل')); setF({ fromAccountId: '', toAccountId: '', amount: '', note: '' }); onDone() },
@@ -174,12 +178,12 @@ function Transfers({ accounts, ar, canCreate, canApprove, onDone, status }: { ac
   const sel = 'h-9 rounded-md border border-slate-200 bg-white px-2 text-sm'
   return (
     <div className="space-y-4">
-      {canCreate && accounts.length > 1 && (
+      {canCreate && accounts.length > 0 && targets.length > 1 && (
         <Card><CardContent className="flex flex-wrap items-end gap-2 pt-4 text-sm">
           <label className="space-y-1"><span className="block text-xs text-slate-500">{L('From', 'من')}</span>
             <select className={sel} value={f.fromAccountId} onChange={(e) => setF({ ...f, fromAccountId: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({money(a.balance, ar)})</option>)}</select></label>
           <label className="space-y-1"><span className="block text-xs text-slate-500">{L('To', 'إلى')}</span>
-            <select className={sel} value={f.toAccountId} onChange={(e) => setF({ ...f, toAccountId: e.target.value })}><option value="">—</option>{accounts.filter((a) => a.id !== f.fromAccountId).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+            <select className={sel} value={f.toAccountId} onChange={(e) => setF({ ...f, toAccountId: e.target.value })}><option value="">—</option>{targets.filter((a) => a.id !== f.fromAccountId).map((a) => <option key={a.id} value={a.id}>{a.name}{a.company && !ownIds.has(a.id) ? ` · ${L('company — needs approval', 'الشركة — محتاج موافقة')}` : ''}</option>)}</select></label>
           <label className="space-y-1"><span className="block text-xs text-slate-500">{L('Amount', 'المبلغ')}</span><Input type="number" className="h-9 w-32" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></label>
           <label className="flex-1 space-y-1"><span className="block text-xs text-slate-500">{L('Note', 'ملاحظة')}</span><Input className="h-9" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder={L('e.g. deposit to the bank', 'مثلاً: توريد للبنك')} /></label>
           <Button disabled={!f.fromAccountId || !f.toAccountId || !(Number(f.amount) > 0) || create.isPending} onClick={() => create.mutate()}>{L('Transfer', 'حوّل')}</Button>
@@ -194,7 +198,8 @@ function Transfers({ accounts, ar, canCreate, canApprove, onDone, status }: { ac
             </div>
             <div className="flex items-center gap-2">
               {status(t.status)}
-              {t.status === 'PENDING' && canApprove && !t.mine && <>
+              {/* Super Admin may approve their own transfer (same rule as the server) */}
+              {t.status === 'PENDING' && canApprove && (!t.mine || isSuper) && <>
                 <Button size="sm" className="h-7 bg-emerald-600 text-xs hover:bg-emerald-700" onClick={() => act.mutate({ id: t.id, action: 'approve' })}>{L('Approve', 'موافقة')}</Button>
                 <Button size="sm" variant="outline" className="h-7 text-xs text-rose-600" onClick={() => act.mutate({ id: t.id, action: 'reject' })}>{L('Reject', 'رفض')}</Button>
               </>}
@@ -284,7 +289,7 @@ function Categories() {
 
 function TreasurySettingsCard() {
   const qc = useQueryClient()
-  const { data } = useQuery({ queryKey: ['treasury-settings'], queryFn: () => fetchApi<{ dailyCloseRequired: boolean; closeAfterHour: number; tolerance: number; transferNeedsApproval: boolean }>('/api/treasury/settings') })
+  const { data } = useQuery({ queryKey: ['treasury-settings'], queryFn: () => fetchApi<{ dailyCloseRequired: boolean; closeAfterHour: number; tolerance: number; transferNeedsApproval: boolean; branchToCompany: boolean }>('/api/treasury/settings') })
   const save = useMutation({
     mutationFn: (v: Record<string, unknown>) => fetchApi('/api/treasury/settings', { method: 'PUT', body: JSON.stringify(v) }),
     onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['treasury-settings'] }) },
@@ -297,6 +302,7 @@ function TreasurySettingsCard() {
       <label className="flex items-center gap-2">{L('Remind after (hour, Cairo)', 'التذكير بعد الساعة (توقيت القاهرة)')}<Input type="number" min={0} max={23} className="h-8 w-20" defaultValue={data.closeAfterHour} onBlur={(e) => save.mutate({ closeAfterHour: Number(e.target.value) })} /></label>
       <label className="flex items-center gap-2">{L('Differences approved automatically up to', 'الفرق اللي بيتوافق عليه لوحده لحد')}<Input type="number" min={0} className="h-8 w-24" defaultValue={data.tolerance} onBlur={(e) => save.mutate({ tolerance: Number(e.target.value) })} />{L('EGP', 'ج.م')}</label>
       <label className="flex items-center gap-2"><input type="checkbox" checked={data.transferNeedsApproval} onChange={(e) => save.mutate({ transferNeedsApproval: e.target.checked })} />{L('Transfers between accounts need a second person', 'التحويل بين الحسابات محتاج موافقة شخص تاني')}</label>
+      <label className="flex items-center gap-2"><input type="checkbox" checked={data.branchToCompany} onChange={(e) => save.mutate({ branchToCompany: e.target.checked })} />{L('Branch staff may send money from their branch to company accounts (e.g. deposit cash in the bank) — always approved by someone who sees every place', 'موظف الفرع يقدر يحوّل من حساب فرعه لحسابات الشركة (زي توريد الكاش للبنك) — ودايمًا محتاج موافقة حد شايف كل الأماكن')}</label>
       <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">{L('Who counts, approves and manages accounts is set on the Permissions page ("Money accounts": create / approve / update).', 'مين يجرد ومين يوافق ومين يدير الحسابات بيتظبط من صفحة الصلاحيات («الحسابات والخزن»: create / approve / update).')}</p>
     </div>
   )

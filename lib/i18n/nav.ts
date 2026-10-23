@@ -17,7 +17,7 @@ export const NAV_AR: Record<string, string> = {
   'Certificate Designer': 'تصميم الشهادات', 'Certificate Reveal': 'كشف الشهادات', 'Promotions': 'الترقيات',
   'My Courses': 'كورساتي', 'My Children': 'أبنائي', 'Groups': 'الجروبات', 'Groups Schedule': 'جدول الجروبات',
   'My Calendar': 'جدولي', 'My Schedule': 'جدولي', 'My Substitutions': 'حصص الاحتياطي', 'Absence Requests': 'طلبات الغياب',
-  'Substitute Reconciliation': 'تسوية الاحتياطي', 'Course Structure': 'هيكل الكورسات', 'Grading Weights': 'أوزان التقييم',
+  'Substitute Reconciliation': 'حساب البدلاء', 'Course Structure': 'هيكل الكورسات', 'Grading Weights': 'أوزان التقييم',
   'Academic Engine': 'المحرك الأكاديمي', 'Campuses': 'الفروع', 'Reports Centre': 'مركز التقارير', 'Import & Export': 'الاستيراد والتصدير', 'Accounts & Cash': 'الحسابات والخزن', 'Fees & Charges': 'الرسوم الإضافية', 'Partners': 'الشركاء', 'Holidays': 'الإجازات الرسمية', 'Renewals': 'التجديدات', 'Session Reports': 'تقارير الحصص', 'Passport & Stamps': 'الجواز والأختام', 'My Passport': 'جوازي', 'My Profile': 'بروفايلي', 'Instructor Performance': 'أداء المدربين',
   'Follow-ups': 'المتابعات', 'Absence Excuses': 'أعذار الغياب', 'Ratings': 'التقييمات', 'Birthdays': 'أعياد الميلاد',
   'Announcements': 'الإعلانات', 'Documents': 'المستندات', 'ID Cards': 'الكارنيهات', 'Calendar': 'التقويم', 'Timetable': 'الجدول القديم',

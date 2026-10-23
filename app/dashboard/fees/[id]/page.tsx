@@ -831,9 +831,10 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             <div className="mt-4 pt-3 border-t text-[8px] text-gray-500 leading-tight space-y-1">
               <p className="font-bold text-gray-700 mb-2">Deposit Instructions:</p>
               {renderBankAccountsTable(invoice.bankAccounts || '')}
-              <p>1. Please verify details before deposit.</p>
-              <p>2. Fine of EGP 100/day applies on late payments after the specified due date.</p>
-              <p>3. Fee is non-refundable and non-transferable.</p>
+              {/* 2026-10-24: the template's late fine (100/day) and "non-refundable" lines were removed — TechNova has no
+                  late fines and refunds follow each group's rules. */}
+              <p>1. Please verify details before deposit and write the student&apos;s name in the transfer note. · راجع البيانات قبل التحويل واكتب اسم الطالب في الملاحظة.</p>
+              <p>2. Refunds follow the group rules and TechNova&apos;s refund policy. · الاسترداد حسب قواعد الجروب وسياسة الاسترداد.</p>
             </div>
 
             {/* Signature Area */}

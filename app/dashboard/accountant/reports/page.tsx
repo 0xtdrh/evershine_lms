@@ -72,12 +72,14 @@ function GeneratePLModal({
   onSuccess,
   campuses,
   defaultCampusId,
+  allowAll,
   initial,
 }: {
   onClose: () => void
   onSuccess: (statement?: ProfitLossStatement) => void
   campuses: { id: string; name: string }[]
   defaultCampusId?: string
+  allowAll: boolean
   initial?: {
     periodLabel?: string
     periodStart?: string
@@ -96,7 +98,8 @@ function GeneratePLModal({
   const [submitting, setSubmitting] = useState(false)
   const [campusId, setCampusId] = useState(initial?.campusId ?? defaultCampusId ?? 'all')
 
-  const showCampusSelector = !defaultCampusId && campuses.length > 0
+  // M0 (2026-10-24 live test): the choice comes from the person's places, not the old profile campus
+  const showCampusSelector = campuses.length > 1
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -194,7 +197,7 @@ function GeneratePLModal({
                   <SelectValue placeholder={L('Select campus', 'اختار الفرع')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{L('All Campuses', 'كل الفروع')}</SelectItem>
+                  {allowAll && <SelectItem value="all">{L('All Campuses', 'كل الفروع')}</SelectItem>}
                   {campuses.map((campus) => (
                     <SelectItem key={campus.id} value={campus.id}>
                       {campusLabel(campus)}
@@ -449,13 +452,15 @@ export default function AccountantReportsPage() {
   const [plCampusId, setPlCampusId] = useState('all')
   const [plPage, setPlPage] = useState(1)
 
-  const userCampusId = session?.user?.campusId ?? ''
-  const { data: campusData } = useQuery({
-    queryKey: ['accounting-campuses'],
-    queryFn: () => fetchPaginatedApi<{ id: string; name: string }>('/api/campuses?limit=100'),
-    enabled: canAccess && !userCampusId,
+  // M0: places this person sees (+ the header filter). Someone with every place gets "all" (the whole company).
+  const { data: placesData } = useQuery({
+    queryKey: ['places-mine'],
+    queryFn: () => fetchApi<{ all: boolean; places: { id: string; name: string }[]; selected: string }>('/api/places/mine'),
+    enabled: canAccess,
   })
-  const campuses = campusData?.data ?? []
+  const campuses = placesData?.places ?? []
+  const seesAll = !!placesData?.all
+  const userCampusId = !placesData ? '' : placesData.selected !== 'ALL' ? placesData.selected : seesAll ? '' : campuses.length === 1 ? campuses[0].id : ''
 
   // 1. Fetch Unified Ledger Entries
   const ledgerParams = new URLSearchParams()
@@ -841,7 +846,7 @@ export default function AccountantReportsPage() {
                   }}
                   className="w-28 h-9 text-sm"
                 />
-                {(!userCampusId || role === 'SUPER_ADMIN') && (
+                {campuses.length > 1 && (
                   <Select value={plCampusId} onValueChange={(value) => {
                     setPlCampusId(value)
                     setPlPage(1)
@@ -971,7 +976,8 @@ export default function AccountantReportsPage() {
           onClose={() => { setShowPLModal(false); setPlInitial(null) }}
           onSuccess={handlePLSuccess}
           campuses={campuses}
-          defaultCampusId={userCampusId || undefined}
+          defaultCampusId={userCampusId || (seesAll ? undefined : campuses[0]?.id)}
+          allowAll={seesAll}
           initial={plInitial ?? undefined}
         />
       )}

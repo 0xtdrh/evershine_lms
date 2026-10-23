@@ -61,8 +61,11 @@ export interface TreasurySettings {
   tolerance: number
   /** transfers need a second person's approval */
   transferNeedsApproval: boolean
+  /** a branch person may send money from their branch account to a company account (e.g. deposit cash in the bank);
+   *  such a transfer always waits for someone who sees every place (2026-10-24, owner) */
+  branchToCompany: boolean
 }
-export const DEFAULT_TREASURY_SETTINGS: TreasurySettings = { dailyCloseRequired: true, closeAfterHour: 18, tolerance: 0, transferNeedsApproval: true }
+export const DEFAULT_TREASURY_SETTINGS: TreasurySettings = { dailyCloseRequired: true, closeAfterHour: 18, tolerance: 0, transferNeedsApproval: true, branchToCompany: true }
 
 /** Built-in expense categories (the old fixed list) — the owner can rename, hide or add more. */
 export const DEFAULT_EXPENSE_CATEGORIES: { key: string; nameEn: string; nameAr: string }[] = [

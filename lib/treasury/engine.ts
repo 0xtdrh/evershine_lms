@@ -151,24 +151,53 @@ async function accountBalance(id: string) {
   return r2(num(a.openingBalance) + s.in - s.out)
 }
 
+/** Accounts a person may send money TO: their own accounts, plus active company accounts when the setting allows it. */
+export async function transferDestinations(user: Who) {
+  const [places, settings] = await Promise.all([loadPlaces(user), getTreasurySettings()])
+  const where = places.all ? { isActive: true } : { isActive: true, OR: [await visibleAccountWhere(user), ...(settings.branchToCompany ? [{ campusId: null }] : [])] }
+  const rows = await prisma.moneyAccount.findMany({ where, select: { id: true, name: true, kind: true, campusId: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] })
+  return rows.map((a) => ({ ...a, company: !a.campusId }))
+}
+
+/** Company account the sender cannot see = a branch → company transfer (needs a person who sees every place). */
+async function crossesToCompany(user: Who, toAccountId: string) {
+  const to = await prisma.moneyAccount.findUniqueOrThrow({ where: { id: toAccountId } })
+  const places = await loadPlaces(user)
+  const visible = places.all || (!!to.campusId && places.campusIds.includes(to.campusId))
+  if (visible) return { to, cross: false }
+  if (to.campusId) throw new TreasuryError('Account not found in your places')
+  if (!(await getTreasurySettings()).branchToCompany) throw new TreasuryError('Sending money to company accounts is switched off (Accounts & Cash → Settings)')
+  return { to, cross: true }
+}
+
+async function companyApprovers(exclude: string) {
+  const ids = (await usersWithPermission('treasury', 'approve')).filter((x) => x !== exclude)
+  if (!ids.length) return []
+  const users = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, role: true } })
+  const out: string[] = []
+  for (const u of users) if ((await loadPlaces(u)).all) out.push(u.id)
+  return out
+}
+
 export async function createTransfer(user: Who, input: { fromAccountId: string; toAccountId: string; amount: number; date?: string | null; note?: string | null }) {
   if (!checkPermission(user.role, 'treasury', 'create')) throw new TreasuryError('You cannot move money')
   if (input.fromAccountId === input.toAccountId) throw new TreasuryError('Choose two different accounts')
   if (!(input.amount > 0)) throw new TreasuryError('The amount must be more than 0')
   const from = await assertAccount(user, input.fromAccountId)
-  await prisma.moneyAccount.findUniqueOrThrow({ where: { id: input.toAccountId } }) // the destination may be a company account (e.g. the bank)
+  const { cross } = await crossesToCompany(user, input.toAccountId)
   await syncMovements(true)
   if (from.kind === 'CASH' && (await accountBalance(from.id)) + 0.001 < input.amount) throw new TreasuryError('There is not that much in this cash box')
   const settings = await getTreasurySettings()
+  const pending = settings.transferNeedsApproval || cross
   const t = await prisma.$transaction(async (tx) => {
     const number = await takeNumber(tx, { prefix: `TN-TRF-${new Date().getFullYear()}-`, pad: 5, table: 'MoneyTransfer', column: 'number' })
     return tx.moneyTransfer.create({
-      data: { number, fromAccountId: from.id, toAccountId: input.toAccountId, amount: input.amount, date: input.date ? new Date(`${input.date}T12:00:00.000Z`) : new Date(), note: input.note?.slice(0, 300) || null, status: settings.transferNeedsApproval ? 'PENDING' : 'APPROVED', createdById: user.id, ...(settings.transferNeedsApproval ? {} : { approvedById: user.id, approvedAt: new Date() }) },
+      data: { number, fromAccountId: from.id, toAccountId: input.toAccountId, amount: input.amount, date: input.date ? new Date(`${input.date}T12:00:00.000Z`) : new Date(), note: input.note?.slice(0, 300) || null, status: pending ? 'PENDING' : 'APPROVED', createdById: user.id, ...(pending ? {} : { approvedById: user.id, approvedAt: new Date() }) },
     })
   })
   if (t.status === 'APPROVED') await postTransfer(t.id)
   else {
-    const approvers = (await usersWithPermission('treasury', 'approve', from.campusId)).filter((x) => x !== user.id)
+    const approvers = cross ? await companyApprovers(user.id) : (await usersWithPermission('treasury', 'approve', from.campusId)).filter((x) => x !== user.id)
     await notifyUsers(approvers, 'TREASURY_APPROVAL', { title: `Transfer to approve: ${t.number}`, message: `${num(t.amount)} EGP`, titleAr: `تحويل مستني موافقتك: ${t.number}`, messageAr: `${num(t.amount)} ج.م`, relatedId: t.id })
   }
   return t
@@ -193,6 +222,8 @@ export async function decideTransfer(user: Who, id: string, action: 'approve' | 
     if (t.createdById !== user.id) throw new TreasuryError('Only the person who made it can cancel it')
   } else {
     if (!checkPermission(user.role, 'treasury', 'approve')) throw new TreasuryError('You cannot approve transfers')
+    // the approver must see both ends (a branch → company deposit is approved by someone who sees every place)
+    await assertAccount(user, t.toAccountId)
     if (t.createdById === user.id && user.role !== 'SUPER_ADMIN') throw new TreasuryError('Another person must approve your transfer')
   }
   const status = action === 'approve' ? 'APPROVED' : action === 'reject' ? 'REJECTED' : 'CANCELLED'

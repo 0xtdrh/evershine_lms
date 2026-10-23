@@ -1861,6 +1861,19 @@ check "end-of-day count by the secretary: 50 short → waits for approval" "$(ec
 check "'your work today' shows the count difference to the manager" "$(api GET /api/today | jq_ "any(t['key']=='cashCountsToApprove' for t in d['data']['tasks'])")" "True"
 api PATCH /api/treasury/counts/$CID '{"action":"approve"}' >/dev/null
 check "approved → the difference is booked (box − 50)" "$(api GET /api/treasury | jq_ "round($B1 - [a['balance'] for a in d['data']['accounts'] if a['id']=='$TBOX'][0], 2)")" "50"
+# 2026-10-24 (owner): a branch accountant deposits the branch cash in the company bank; someone who sees every place approves
+ACJ=$(mktemp); login_jar $ACCE E2eAcc12345 "$ACJ" 10.0.2.31
+check "branch accountant: the company bank is offered as a destination" "$(accapi GET /api/treasury/transfers/destinations | jq_ "any(a['id']=='$TBANK' and a['company'] for a in d['data'])")" "True"
+api PUT /api/treasury/settings '{"transferNeedsApproval":false}' >/dev/null
+BT=$(accapi POST /api/treasury/transfers "{\"fromAccountId\":\"$TBOX\",\"toAccountId\":\"$TBANK\",\"amount\":20,\"note\":\"branch deposit\"}")
+BTID=$(echo "$BT" | jq_ "d['data']['id']")
+check "branch → company transfer always waits for approval (even with approvals switched off)" "$(echo "$BT" | jq_ "d['data']['status']")" "PENDING"
+api PUT /api/treasury/settings '{"transferNeedsApproval":true}' >/dev/null
+check "Super Admin approves it → into the company bank" "$(api PATCH /api/treasury/transfers/$BTID '{"action":"approve"}' | jq_ "d['success']")/$(M "SELECT GROUP_CONCAT(CONCAT(direction,':',accountId='$TBANK') ORDER BY direction) FROM MoneyMovement WHERE transferId='$BTID'")" "True/IN:1,OUT:0"
+api PUT /api/treasury/settings '{"branchToCompany":false}' >/dev/null
+check "setting off → the branch cannot send to company accounts" "$(accapi POST /api/treasury/transfers "{\"fromAccountId\":\"$TBOX\",\"toAccountId\":\"$TBANK\",\"amount\":5}" | jq_ "d['success']")/$(accapi GET /api/treasury/transfers/destinations | jq_ "any(a['id']=='$TBANK' for a in d['data'])")" "False/False"
+api PUT /api/treasury/settings '{"branchToCompany":true}' >/dev/null
+rm -f "$ACJ"
 TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.95 >/dev/null
 check "instructors cannot see money accounts" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ" $B/api/treasury)" "403"
 rm -f "$TJ"
