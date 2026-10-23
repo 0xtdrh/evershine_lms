@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { withAutoAudit } from './audit/auto'
 import { currentActorId, runWithActor } from './audit/actor'
+import { withPoolLimits } from './db-url'
 
 // WHY singleton: Next.js hot reload creates new module instances on each change.
 // Without this, development exhausts the MySQL connection pool.
@@ -37,6 +38,8 @@ function createPrismaClient(): PrismaClient {
 
   const base = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    // small pool per instance (Aiven free has few connections) — see lib/db-url.ts
+    datasources: { db: { url: withPoolLimits(url, process.env) } },
   })
   // 2026-10-18: changes on the important tables are logged automatically (who, old value → new value)
   const audited = withAutoAudit(base, currentActorId)
