@@ -429,7 +429,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
           <StudentMarketingFlag studentId={student.id} canEdit={isAdmin || role === 'BRANCH_MANAGER'} />
 
-          {can('account_management', 'update') && <StudentPortalAccessCard
+          {(can('account_management', 'update') || can('students', 'update')) && <StudentPortalAccessCard
             studentId={student.id}
             studentName={`${student.firstName} ${student.lastName}`}
             guardians={student.guardians ?? []}

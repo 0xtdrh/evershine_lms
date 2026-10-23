@@ -2001,6 +2001,19 @@ api PUT /api/cards/settings '{"digitalForParents":true}' >/dev/null
 rm -f "$KPJ" "$KTJ"
 TNEW=$(api POST /api/teachers "{\"firstName\":\"Every\",\"lastName\":\"Where\",\"cnic\":\"29901011234599\",\"dateOfBirth\":\"1995-03-05T00:00:00Z\",\"gender\":\"MALE\",\"joiningDate\":\"$(D 0)T00:00:00Z\",\"designation\":\"Teacher\",\"phoneNumber\":\"01012345699\",\"email\":\"every@e2e.local\",\"address\":\"Main street 1\",\"city\":\"Hurghada\",\"emergencyContact\":\"01012345698\",\"campusId\":\"$CAMPUS\",\"password\":\"E2eEvery1234\",\"allLocations\":true}")
 check "new instructor with 'works in every place' ticked" "$(echo "$TNEW" | jq_ "d['success']")/$(M "SELECT allLocations FROM User WHERE email='every@e2e.local'")" "True/1"
+echo "== 60. Front desk issues parent / student portal passwords (owner decision 2026-10-23)"
+SECU=$(M "SELECT id FROM User WHERE email='sec@e2e.local'")
+api PUT /api/users/$SECU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\"],\"groupIds\":[]}" >/dev/null
+PIN=$(M "SELECT id FROM Student WHERE campusId='$CAMPUS' AND isActive=1 LIMIT 1")
+POUT=$(M "SELECT id FROM Student WHERE campusId<>'$CAMPUS' AND isActive=1 LIMIT 1")
+check "secretary (students:update) issues a student portal password in her branch" "$(secapi POST /api/students/$PIN/portal-password '{"target":"student"}' | jq_ "d['success']")" "True"
+check "…but not for a student of another place" "$(secapi POST /api/students/$POUT/portal-password '{"target":"student"}' | jq_ "d['success']")" "False"
+TPJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TPJ" 10.0.1.97
+check "an instructor cannot issue portal passwords" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TPJ" -X POST -H 'Content-Type: application/json' -d '{"target":"student"}' $B/api/students/$PIN/portal-password)" "403"
+rm -f "$TPJ"
+APPLY=$(curl -s -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.1.96' -d '{"firstName":"Laila","lastName":"Online","fullNameAr":"ليلى أحمد أونلاين","fatherName":"Ahmed Online","dateOfBirth":"2017-05-05","gender":"FEMALE","address":"Sheraton street, Hurghada","city":"Hurghada","phoneNumber":"01000000221","emergencyContact":"01000000222","guardianFirstName":"Ahmed","guardianLastName":"Online","guardianPhoneNumber":"01000000221","guardianRelationship":"Father","preferredCampusId":"","preferredShift":"","deliveryMode":"PHYSICAL","termsAccepted":true}' $B/api/admissions/apply)
+check "online request (form sends no branch) is saved without a branch" "$(echo "$APPLY" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM AdmissionRequest WHERE firstName='Laila' AND lastName='Online' AND preferredCampusId IS NULL")" "True/1"
+check "…and the branch secretary sees it in the pending list" "$(secapi GET '/api/admissions?status=PENDING&limit=50' | jq_ "any(r['firstName']=='Laila' for r in d['data'])")" "True"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

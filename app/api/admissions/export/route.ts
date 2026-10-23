@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   if (status && status !== 'ALL') where.status = status
   const placeLimit = campusWhere(await requestPlaces(session.user), 'preferredCampusId')
   // requests without a branch (online form) belong to every front desk — same rule as the list
-  if (Object.keys(placeLimit).length) where.AND = [{ OR: [placeLimit, { preferredCampusId: null }] }]
+  if (Object.keys(placeLimit).length) where.AND = [{ OR: [placeLimit, { preferredCampusId: null }, { preferredCampusId: '' }] }]
 
   const admissions = await prisma.admissionRequest.findMany({
     where,

@@ -12,6 +12,7 @@
  * reset here, never a staff account.
  */
 
+import { canSeeStudent } from '@/lib/places/server'
 import { randomInt } from 'crypto'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -47,7 +48,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
-  if (!checkPermission(role, 'account_management', 'update') || !checkPermission(role, 'students', 'read')) {
+  // 2026-10-23 (owner decision, live test): the front desk issues parent / student portal passwords at registration.
+  // account_management:update (admins) OR students:update (secretary…) — this route only ever touches student and
+  // parent accounts (checked below), and the student must be in the person's places.
+  const allowed = checkPermission(role, 'account_management', 'update') || checkPermission(role, 'students', 'update')
+  if (!allowed || !checkPermission(role, 'students', 'read')) {
     return errors.forbidden()
   }
 
@@ -61,6 +66,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!parsed.success) return errors.badRequest('target must be "guardian" (with guardianId) or "student"')
 
   const { id: studentId } = await params
+  if (!(await canSeeStudent(session.user, studentId))) return errors.forbidden('This student is not in your places')
   const student = await prisma.student.findUnique({
     where: { id: studentId },
     select: {

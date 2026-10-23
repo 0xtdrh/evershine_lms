@@ -95,7 +95,7 @@ export default function AdmissionFormPage() {
       if (!formData.phoneNumber || formData.phoneNumber.length < 10) newErrors.phoneNumber = 'Valid phone required'
       if (!formData.emergencyContact || formData.emergencyContact.length < 10) newErrors.emergencyContact = 'Valid emergency contact required'
     } else if (currentStep === 3) {
-      if (!formData.passportPhotoBase64) newErrors.passportPhotoBase64 = 'Personal photo is required'
+      // photo is optional (2026-10-23)
     } else if (currentStep === 4) {
       if (!formData.guardianFirstName) newErrors.guardianFirstName = 'Guardian first name required'
       if (!formData.guardianLastName) newErrors.guardianLastName = 'Guardian last name required'
@@ -490,7 +490,7 @@ export default function AdmissionFormPage() {
                       <div className={`p-4 border rounded-xl ${errors.passportPhotoBase64 ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}>
                         <div className="flex justify-between items-start mb-3">
                           <div>
-                            <FL required>Personal Photo</FL>
+                            <FL>Personal Photo (optional)</FL>
                             <p className="text-xs text-slate-500 mt-1">A clear recent photo of the student. Any casual photo works — no formal passport-style photo needed. Max 5MB.</p>
                           </div>
                           {formData.passportPhotoBase64 && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}

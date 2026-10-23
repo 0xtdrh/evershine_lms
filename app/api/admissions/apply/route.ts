@@ -29,7 +29,8 @@ const applySchema = z.object({
   email:            z.string().email('Invalid email').optional().or(z.literal('')),
 
   // ── Section 3: Guardian / Parent Details ─────────────────────────────────
-  passportPhotoBase64:  z.string().min(10, 'Personal photo is required'),
+  // 2026-10-23 (live test): optional — a required photo made parents drop the form; staff can add it later
+  passportPhotoBase64:  z.string().optional(),
   guardianFirstName:    z.string().min(2, 'Guardian first name is required'),
   guardianLastName:     z.string().min(1, 'Guardian last name is required'),
   guardianPhoneNumber:  z.string().min(10, 'Guardian phone is required'),
@@ -136,7 +137,7 @@ export async function POST(req: Request) {
 
     // ── Save personal photo ─────────────────────────────────────────────────
     let passportPhotoUrl: string | null = null
-    try {
+    if (validated.passportPhotoBase64 && validated.passportPhotoBase64.length > 10) try {
       const slug = `${validated.phoneNumber.replace(/\D/g, '')}-${Date.now()}`
       passportPhotoUrl = await uploadProfileImageToCloudinary(
         validated.passportPhotoBase64,
@@ -206,7 +207,7 @@ export async function POST(req: Request) {
         siblingClass:        validated.siblingClass || null,
 
         // Preference
-        preferredCampusId: validated.preferredCampusId,
+        preferredCampusId: validated.preferredCampusId || null, // the form sends '' when no branch was chosen
         preferredBatchId: validated.preferredBatchId,
         preferredShift: validated.preferredShift === '' ? null : validated.preferredShift ?? null,
         deliveryMode: validated.deliveryMode,

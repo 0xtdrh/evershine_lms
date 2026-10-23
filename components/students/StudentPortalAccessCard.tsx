@@ -39,7 +39,7 @@ interface Props {
 /**
  * "Portal access" card: one click issues a temporary password for a parent or
  * the student and shows a ready message to copy or send on WhatsApp.
- * Shown only to roles with account_management:update (Permissions page).
+ * Shown to roles with account_management:update OR students:update (front desk; parents / students only — 2026-10-23).
  */
 export function StudentPortalAccessCard({ studentId, studentName, guardians, hasStudentAccount }: Props) {
   const { data: session, status } = useSession()
@@ -63,7 +63,7 @@ export function StudentPortalAccessCard({ studentId, studentName, guardians, has
     onError: (err: Error) => notify.error(err.message || 'Could not create a temporary password'),
   })
 
-  if (!perms?.permissions?.account_management?.includes('update')) return null
+  if (!perms?.permissions?.account_management?.includes('update') && !perms?.permissions?.students?.includes('update')) return null
 
   const copy = async (text: string, what: string) => {
     try {
