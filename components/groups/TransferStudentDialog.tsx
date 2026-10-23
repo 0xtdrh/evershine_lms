@@ -134,7 +134,7 @@ export function TransferStudentDialog({
         : ''
       notify.success(`${studentName} moved to ${preview?.to.label ?? 'the new group'}.${credit}`)
       if (r.warning) notify.error(r.warning)
-      for (const k of ['group-detail', 'groups', 'student', 'students', 'student-fees', 'discounts', 'wallet', 'fees', 'student-transfers', 'refunds']) qc.invalidateQueries({ queryKey: [k] })
+      for (const k of ['group-detail', 'groups', 'student', 'students', 'student-fees', 'student-extra-fees', 'discounts', 'wallet', 'fees', 'student-transfers', 'refunds']) qc.invalidateQueries({ queryKey: [k] })
       onOpenChange(false)
       onDone?.()
     },

@@ -62,7 +62,7 @@ export default function AccountantExpensesPage() {
   const isGlobalAccountant = !userCampusId && canAccess
 
   const { data: campusData } = useQuery({
-    queryKey: ['campuses'],
+    queryKey: ['campuses', 'paged'],
     queryFn: () => fetchPaginatedApi<{id: string, name: string}>('/api/campuses?limit=100'),
     enabled: isGlobalAccountant,
   })

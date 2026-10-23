@@ -20,12 +20,14 @@ export function StudentFeesCard({ studentId }: { studentId: string }) {
   const ar = useI18n().locale === 'ar'
   const qc = useQueryClient()
   const { can } = useMyPermissions()
-  const { data } = useQuery({ queryKey: ['student-fees', studentId], queryFn: () => fetchApi<Charge[]>(`/api/students/${studentId}/fees`), retry: false })
+  // 2026-10-23 (live test): own cache key — the student page uses ['student-fees', id] for the invoice list (another shape),
+  // sharing the key crashed the page as soon as an extra fee existed
+  const { data } = useQuery({ queryKey: ['student-extra-fees', studentId], queryFn: () => fetchApi<Charge[]>(`/api/students/${studentId}/fees`), retry: false })
   const { data: types } = useQuery({ queryKey: ['fee-types'], queryFn: () => fetchApi<FeeType[]>('/api/fee-types'), enabled: can('fees', 'create') })
   const [pick, setPick] = useState('')
   const add = useMutation({
     mutationFn: () => fetchApi(`/api/students/${studentId}/fees`, { method: 'POST', body: JSON.stringify({ feeTypeId: pick }) }),
-    onSuccess: () => { notify.success(L('Fee added (its own invoice)', 'الرسم اتضاف (في فاتورة لوحده)')); setPick(''); qc.invalidateQueries({ queryKey: ['student-fees', studentId] }) },
+    onSuccess: () => { notify.success(L('Fee added (its own invoice)', 'الرسم اتضاف (في فاتورة لوحده)')); setPick(''); qc.invalidateQueries({ queryKey: ['student-extra-fees', studentId] }); qc.invalidateQueries({ queryKey: ['student-fees', studentId] }) },
     onError: (e: Error) => notify.error(e.message),
   })
   const active = (types ?? []).filter((t) => t.isActive)

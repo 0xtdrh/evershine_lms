@@ -147,19 +147,19 @@ export default function AdmissionsDashboard() {
   })
 
   const { data: campusesData } = useQuery({
-    queryKey: ['campuses'],
+    queryKey: ['campuses', 'paged'],
     queryFn: () => fetchPaginatedApi<any>('/api/campuses'),
     enabled: canManageAdmissions && !!selectedRequest
   })
 
   const { data: batchesData } = useQuery({
-    queryKey: ['batches', campusId],
+    queryKey: ['batches', 'paged', campusId],
     queryFn: () => fetchPaginatedApi<any>(`/api/batches?campusId=${campusId}`),
     enabled: canManageAdmissions && !!campusId
   })
 
   const { data: classesData, isLoading: isLoadingClasses } = useQuery({
-    queryKey: ['classes', campusId, batchId],
+    queryKey: ['classes', 'paged', campusId, batchId],
     queryFn: () =>
       fetchPaginatedApi<any>(
         `/api/classes?campusId=${campusId}&batchId=${batchId}&limit=200`
@@ -168,7 +168,7 @@ export default function AdmissionsDashboard() {
   })
 
   const { data: housesData } = useQuery({
-    queryKey: ['houses', batchId],
+    queryKey: ['houses', 'paged', batchId],
     queryFn: () => fetchPaginatedApi<any>(`/api/houses?batchId=${batchId}`),
     enabled: canManageAdmissions && !!batchId
   })

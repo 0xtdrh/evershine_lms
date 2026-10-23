@@ -50,7 +50,7 @@ export function StudentWalletCard({ studentId }: { studentId: string }) {
   const [method, setMethod] = useState('Cash')
   const [ref, setRef] = useState('')
   const [toId, setToId] = useState('')
-  const refresh = () => { for (const k of ['wallet', 'student-fees', 'student', 'fees']) qc.invalidateQueries({ queryKey: [k] }) }
+  const refresh = () => { for (const k of ['wallet', 'student-fees', 'student-extra-fees', 'student', 'fees']) qc.invalidateQueries({ queryKey: [k] }) }
   const close = () => { setMode(null); setAmount(''); setRef(''); setToId('') }
 
   const send = useMutation({

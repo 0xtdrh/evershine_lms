@@ -62,7 +62,7 @@ export default function AccountantFeesPage() {
   const [selectedClassId, setSelectedClassId] = useState<string>('')
 
   const { data: campusesData } = useQuery({
-    queryKey: ['campuses'],
+    queryKey: ['campuses', 'paged'],
     queryFn: () => fetchPaginatedApi<CampusOption>('/api/campuses?limit=100'),
     enabled: !!session,
     staleTime: 60_000,

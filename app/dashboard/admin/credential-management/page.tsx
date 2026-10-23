@@ -274,7 +274,7 @@ function ProvisionAccountantTab() {
 
   // Fetch campuses for the dropdown
   const { data: campusData } = useQuery({
-    queryKey: ['campuses'],
+    queryKey: ['campuses', 'paged'],
     queryFn: () => fetchPaginatedApi<Campus>('/api/campuses?limit=100'),
   })
   const campuses = campusData?.data ?? []

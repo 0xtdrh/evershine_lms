@@ -68,7 +68,7 @@ export default function ClassesPage() {
 
   // Queries
   const { data: campusesData } = useQuery({
-    queryKey: ['campuses'],
+    queryKey: ['campuses', 'paged'],
     queryFn: () => fetchPaginatedApi<any>('/api/campuses?limit=50'),
     enabled: canManageClasses,
   })

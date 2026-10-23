@@ -1,5 +1,6 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { L } from '@/lib/i18n/client'
 import { useState, useEffect } from 'react'
 import { GroupLessonsPanel } from '@/components/lms/GroupLessonsPanel'
@@ -38,7 +39,10 @@ const STATUS_BTNS: AttendanceStatus[] = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']
 export default function SectionAttendancePage() {
   const { data: session } = useSession()
   const queryClient = useQueryClient()
-  const isAllowed = ['SUPER_ADMIN', 'ADMIN', 'TEACHER'].includes(session?.user?.role ?? '')
+  // 2026-10-23 (live test): follow the Permissions page (attendance:create, same as the API) — the fixed role list
+  // left out secretaries and branch managers although they may record attendance
+  const { can, ready: permsReady } = useMyPermissions()
+  const isAllowed = can('attendance', 'create')
 
   const [classSectionId, setClassSectionId] = useState('')
   const searchParams = useSearchParams()
@@ -217,10 +221,11 @@ export default function SectionAttendancePage() {
     setStatusMap(next)
   }, [roster])
 
+  if (!permsReady) return null
   if (!isAllowed) {
     return (
       <div className="p-8 text-center text-gray-500">
-        You do not have permission to mark section attendance.
+        {L('You do not have permission to mark attendance.', 'مش مسموح لك تسجّل الحضور.')}
       </div>
     )
   }

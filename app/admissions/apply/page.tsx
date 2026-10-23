@@ -707,7 +707,8 @@ export default function AdmissionFormPage() {
               </Link>
             )}
 
-            {step < 6 ? (
+            {/* 2026-10-23 (live test): was `step < 6` after the form went to 5 steps → the submit button never showed */}
+            {step < totalSteps ? (
               <Button type="button" onClick={handleNext} className="w-full sm:w-auto text-white shadow-lg transition-all hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #1B4F8A, #3b82f6)' }}>
                 Next Step <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
