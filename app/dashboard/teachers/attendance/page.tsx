@@ -48,6 +48,7 @@ import * as XLSX from 'xlsx'
 import { SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
 import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
+import { cairoToday } from '@/lib/dates/cairo'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
@@ -132,7 +133,7 @@ export default function BulkTeacherAttendancePage() {
   const role = session?.user?.role as string | undefined
   const isAuthorized = role === 'SUPER_ADMIN' || role === 'ADMIN'
 
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [date, setDate] = useState<string>(cairoToday())
   const [shift, setShift] = useState<SessionShift>('MORNING')
   const [search, setSearch] = useState<string>('')
   

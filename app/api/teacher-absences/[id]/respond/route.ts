@@ -62,6 +62,10 @@ export async function POST(
         message: parsed.data.decision === 'APPROVE'
           ? `Your absence request for ${absence.date.toISOString().slice(0, 10)} was approved.`
           : `Your absence request for ${absence.date.toISOString().slice(0, 10)} was rejected.${parsed.data.rejectionReason ? ` Reason: ${parsed.data.rejectionReason}` : ''}`,
+        titleAr: parsed.data.decision === 'APPROVE' ? 'طلب الغياب اتوافق عليه' : 'طلب الغياب اترفض',
+        messageAr: parsed.data.decision === 'APPROVE'
+          ? `طلب غيابك يوم ${absence.date.toISOString().slice(0, 10)} اتوافق عليه.`
+          : `طلب غيابك يوم ${absence.date.toISOString().slice(0, 10)} اترفض.${parsed.data.rejectionReason ? ` السبب: ${parsed.data.rejectionReason}` : ''}`,
         type: parsed.data.decision === 'APPROVE' ? 'TEACHER_ABSENCE_APPROVED' : 'TEACHER_ABSENCE_REJECTED',
         relatedId: absence.id,
       },

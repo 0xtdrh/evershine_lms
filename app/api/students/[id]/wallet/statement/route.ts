@@ -12,6 +12,7 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 import { canViewReceipt } from '@/lib/fees/receipt'
 import { getFinanceSettings } from '@/lib/fees/payment-settings'
+import { cairoToday } from '@/lib/dates/cairo'
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (role === 'STUDENT' && !student.walletVisibleToStudent) return errors.forbidden()
 
   const sp = new URL(request.url).searchParams
-  const today = new Date().toISOString().slice(0, 10)
+  const today = cairoToday()
   const from = sp.get('from') && DATE.test(sp.get('from')!) ? sp.get('from')! : `${today.slice(0, 8)}01`
   const to = sp.get('to') && DATE.test(sp.get('to')!) ? sp.get('to')! : today
   const start = new Date(`${from}T00:00:00.000Z`)

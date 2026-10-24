@@ -17,6 +17,7 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 import { buildLedgerReport, LedgerEntry } from '@/lib/excel/ledger-report'
 import { getExpenseColumnSupport } from '@/lib/accounting/expense-columns'
+import { cairoToday } from '@/lib/dates/cairo'
 
 const querySchema = z.object({
   startDate: z.string().date().optional(),
@@ -148,7 +149,7 @@ export async function GET(req: NextRequest) {
       return new NextResponse(body, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'Content-Disposition': `attachment; filename="unified_ledger-${new Date().toISOString().split('T')[0]}.xlsx"`,
+          'Content-Disposition': `attachment; filename="unified_ledger-${cairoToday()}.xlsx"`,
         },
       })
     }

@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (status === 'PENDING') {
-    await notifyApprovers('Discount request', `${type.name} (${value}${type.valueType === 'PERCENT' ? '%' : ' EGP'}) waiting for approval`, assignment.id)
+    await notifyApprovers('Discount request', `${type.name} (${value}${type.valueType === 'PERCENT' ? '%' : ' EGP'}) waiting for approval`, assignment.id, { title: 'طلب خصم', message: `${type.name} (${value}${type.valueType === 'PERCENT' ? '%' : ' ج.م'}) مستني الموافقة` })
     return createdResponse({ assignment, affectedInvoices: [] }, 'Sent for approval')
   }
   const affectedInvoices = await invoicesAffectedBy(assignment)

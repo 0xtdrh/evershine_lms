@@ -16,6 +16,7 @@ import { L, useI18n } from '@/lib/i18n/client'
 import { MOVEMENT_KIND_LABEL, type MovementKind } from '@/lib/treasury/rules'
 import { AlertTriangle, Loader2, Printer, Upload } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
+import { cairoToday } from '@/lib/dates/cairo'
 
 const useMoney = () => {
   const ar = useI18n().locale === 'ar'
@@ -82,7 +83,7 @@ interface Where { from: string; to: string; in: Pound[]; out: Pound[]; totalIn: 
 
 export function WhereMoneyTab() {
   const { ar, money } = useMoney()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = cairoToday()
   const [from, setFrom] = useState(`${today.slice(0, 7)}-01`)
   const [to, setTo] = useState(today)
   const { data, isLoading } = useQuery({ queryKey: ['where-money', from, to], queryFn: () => fetchApi<Where>(`/api/finance/where?from=${from}&to=${to}`) })

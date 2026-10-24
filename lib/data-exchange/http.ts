@@ -5,6 +5,7 @@ import { checkPermission, normalizeRole } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { loadPlaces } from '@/lib/places/server'
 import { datasetByKey, exchangeRights, type DatasetDef } from './registry'
+import { cairoToday } from '@/lib/dates/cairo'
 
 export async function exchangeContext(key: string) {
   const session = await auth()
@@ -38,4 +39,4 @@ export function fileResponse(buf: Buffer, fileName: string) {
   })
 }
 
-export const stamp = () => new Date().toISOString().slice(0, 10)
+export const stamp = () => cairoToday()

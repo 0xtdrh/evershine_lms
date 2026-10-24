@@ -22,6 +22,7 @@ import { isUniqueConflictOn } from '@/lib/ids/sequence'
 import { payFromWallet, walletBalance } from '@/lib/refunds/engine'
 import { logSystemContact } from '@/lib/contacts/contact-log'
 import { createApprovedTopUp, nextWithdrawalNumber } from './numbers'
+import { cairoToday } from '@/lib/dates/cairo'
 
 type Db = Prisma.TransactionClient | typeof prisma
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -155,7 +156,8 @@ async function notifyAutoPaid(studentId: string, paid: { invoiceId: string; paym
       const inv = byId.get(p.invoiceId)
       const left = inv ? round2(Number(inv.totalAmount) - Number(inv.paidAmount)) : 0
       const message = `${p.amount} EGP was paid from ${name}'s wallet for invoice ${inv?.challanNumber ?? ''}${left > 0 ? ` (${left} EGP still due)` : ' (fully paid)'}. Receipt ${p.receiptNumber}. Wallet balance now ${balance} EGP.`
-      return s.guardians.map((g) => ({ userId: g.userId, title: 'Invoice paid from the wallet', message, type: 'WALLET_PAYMENT', relatedId: p.paymentId }))
+      const messageAr = `اتدفع ${p.amount} ج.م من محفظة ${name} لفاتورة ${inv?.challanNumber ?? ''}${left > 0 ? ` (فاضل ${left} ج.م)` : ' (اتدفعت كلها)'}. إيصال ${p.receiptNumber}. رصيد المحفظة دلوقتي ${balance} ج.م.`
+      return s.guardians.map((g) => ({ userId: g.userId, title: 'Invoice paid from the wallet', titleAr: 'فاتورة اتدفعت من المحفظة', message, messageAr, type: 'WALLET_PAYMENT', relatedId: p.paymentId }))
     })
     await prisma.notification.createMany({ data: rows })
   } catch (err) {
@@ -169,7 +171,7 @@ export type WalletOutcome<T> = ({ ok: true } & T) | { ok: false; status: number;
 async function applyPromo(studentId: string, amount: number, userId: string) {
   try {
     const s = await getWalletSettings()
-    const today = new Date().toISOString().slice(0, 10)
+    const today = cairoToday()
     const promo = (s.promos ?? [])
       .filter((p) => p.active && amount + 0.001 >= p.minAmount && (!p.from || p.from <= today) && (!p.to || p.to >= today))
       .sort((a, b) => b.bonus - a.bonus)[0]
@@ -220,7 +222,7 @@ export async function requestProofTopUp(input: { studentId: string; amount: numb
   const row = await prisma.walletTopUp.create({
     data: { studentId: input.studentId, amount, method: 'Bank Transfer', source: 'PROOF', status: 'PENDING', proofUrl: input.proofUrl, remarks: input.remarks ?? null, createdById: input.userId },
   })
-  await notifyApprovers('Wallet top-up to check', `A parent uploaded a transfer receipt for ${amount} EGP`, row.id)
+  await notifyApprovers('Wallet top-up to check', `A parent uploaded a transfer receipt for ${amount} EGP`, row.id, { title: 'شحن محفظة محتاج مراجعة', message: `ولي أمر رفع إيصال تحويل بـ ${amount} ج.م` })
   return { ok: true, topUpId: row.id }
 }
 
@@ -251,7 +253,7 @@ export async function approveTopUp(topUpId: string, userId: string): Promise<Wal
     throw err
   }
   const after = await afterTopUp(t.studentId, topUpId, Number(t.amount), userId, { promo: true, preferInvoiceId: t.invoiceId })
-  await notifyParents(t.studentId, 'Top-up approved', `Your top-up of ${Number(t.amount)} EGP (${number}) was added to the wallet.`, topUpId)
+  await notifyParents(t.studentId, 'Top-up approved', `Your top-up of ${Number(t.amount)} EGP (${number}) was added to the wallet.`, topUpId, { title: 'الشحن اتقبل', message: `شحن ${Number(t.amount)} ج.م (${number}) اتضاف للمحفظة.` })
   return { ok: true, topUpNumber: number, payments: after.payments, balance: after.balance }
 }
 
@@ -260,7 +262,7 @@ export async function rejectTopUp(topUpId: string, userId: string, reason?: stri
   if (!t) return { ok: false, status: 404, message: 'Top-up not found' }
   if (t.status !== 'PENDING') return { ok: false, status: 409, message: 'This top-up was already handled' }
   await prisma.walletTopUp.update({ where: { id: topUpId }, data: { status: 'REJECTED', rejectedReason: reason ?? null, approvedById: userId, approvedAt: new Date() } })
-  await notifyParents(t.studentId, 'Top-up not accepted', `Your top-up of ${Number(t.amount)} EGP was not accepted${reason ? `: ${reason}` : ''}.`, topUpId)
+  await notifyParents(t.studentId, 'Top-up not accepted', `Your top-up of ${Number(t.amount)} EGP was not accepted${reason ? `: ${reason}` : ''}.`, topUpId, { title: 'الشحن ماتقبلش', message: `شحن ${Number(t.amount)} ج.م ماتقبلش${reason ? `: ${reason}` : ''}.` })
   return { ok: true }
 }
 
@@ -312,7 +314,7 @@ export async function requestWithdrawal(input: { studentId: string; amount: numb
   const row = await prisma.walletWithdrawal.create({
     data: { studentId: input.studentId, amount, fee, payoutMethod: input.payoutMethod, reason: input.reason ?? null, requestedVia: input.via, requestedById: input.userId },
   })
-  await notifyApprovers('Wallet withdrawal request', `${amount} EGP to be paid back by ${input.payoutMethod} (fee ${fee})`, row.id)
+  await notifyApprovers('Wallet withdrawal request', `${amount} EGP to be paid back by ${input.payoutMethod} (fee ${fee})`, row.id, { title: 'طلب سحب من المحفظة', message: `${amount} ج.م ترجع بـ ${input.payoutMethod} (رسوم ${fee})` })
   return { ok: true, withdrawalId: row.id, fee }
 }
 
@@ -322,7 +324,7 @@ export async function decideWithdrawal(id: string, userId: string, approve: bool
   if (w.status !== 'PENDING') return { ok: false, status: 409, message: 'This request was already handled' }
   if (!approve) {
     await prisma.walletWithdrawal.update({ where: { id }, data: { status: 'REJECTED', rejectedReason: reason ?? null, approvedById: userId, approvedAt: new Date() } })
-    await notifyParents(w.studentId, 'Withdrawal not approved', reason ?? '', id)
+    await notifyParents(w.studentId, 'Withdrawal not approved', reason ?? '', id, { title: 'السحب ماتوافقش عليه', message: reason ?? '' })
     return { ok: true, withdrawalNumber: null }
   }
   let number: string | null = null
@@ -348,7 +350,7 @@ export async function decideWithdrawal(id: string, userId: string, approve: bool
     if (err instanceof Error && err.message.startsWith('NOT_ENOUGH:')) return { ok: false, status: 409, message: `The wallet no longer has that much (${err.message.split(':')[1]} EGP)` }
     throw err
   }
-  await notifyParents(w.studentId, 'Withdrawal approved', `${Number(w.amount) - Number(w.fee)} EGP will be paid back by ${w.payoutMethod} (${number}).`, id)
+  await notifyParents(w.studentId, 'Withdrawal approved', `${Number(w.amount) - Number(w.fee)} EGP will be paid back by ${w.payoutMethod} (${number}).`, id, { title: 'السحب اتوافق عليه', message: `${Number(w.amount) - Number(w.fee)} ج.م هترجع بـ ${w.payoutMethod} (${number}).` })
   return { ok: true, withdrawalNumber: number }
 }
 
@@ -365,19 +367,19 @@ export async function prepaidTotal(campusId?: string | null, studentIds?: string
 
 // ── notifications (never break the main action) ─────────────────────────────
 const STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY'] as const
-async function notifyApprovers(title: string, message: string, relatedId: string) {
+async function notifyApprovers(title: string, message: string, relatedId: string, ar?: { title: string; message: string }) {
   try {
     const roles = STAFF_ROLES.filter((r) => checkPermission(r, 'wallet', 'approve'))
     const users = await prisma.user.findMany({ where: { role: { in: [...roles] }, isActive: true }, select: { id: true } })
-    if (users.length) await prisma.notification.createMany({ data: users.map((u) => ({ userId: u.id, title, message, type: 'WALLET', relatedId })) })
+    if (users.length) await prisma.notification.createMany({ data: users.map((u) => ({ userId: u.id, title, message, titleAr: ar?.title ?? null, messageAr: ar?.message ?? null, type: 'WALLET', relatedId })) })
   } catch (err) {
     console.error('[WALLET_NOTIFY]', err)
   }
 }
-export async function notifyParents(studentId: string, title: string, message: string, relatedId: string) {
+export async function notifyParents(studentId: string, title: string, message: string, relatedId: string, ar?: { title: string; message: string }) {
   try {
     const s = await prisma.student.findUnique({ where: { id: studentId }, select: { guardians: { select: { userId: true } } } })
-    const rows = (s?.guardians ?? []).map((g) => ({ userId: g.userId, title, message, type: 'WALLET', relatedId }))
+    const rows = (s?.guardians ?? []).map((g) => ({ userId: g.userId, title, message, titleAr: ar?.title ?? null, messageAr: ar?.message ?? null, type: 'WALLET', relatedId }))
     if (rows.length) await prisma.notification.createMany({ data: rows })
   } catch (err) {
     console.error('[WALLET_NOTIFY_PARENT]', err)
@@ -425,8 +427,9 @@ export async function lowBalanceAlerts(): Promise<{ checked: number; alerted: nu
       if (!stu?.guardians.length) continue
       const label = `${g.className} ${g.sectionName}`.trim()
       const msg = `${stu.firstName}'s wallet has ${balance} EGP; next month in ${label} is about ${price} EGP. Please top up before ${ends.cycleEnd}.`
+      const msgAr = `محفظة ${stu.firstName} فيها ${balance} ج.م، والشهر الجاي في ${label} حوالي ${price} ج.م. اشحن قبل ${ends.cycleEnd}.`
       try {
-        await prisma.notification.createMany({ data: stu.guardians.map((gd) => ({ userId: gd.userId, title: 'Wallet balance is low', message: msg, type: 'LOW_BALANCE', relatedId: key })) })
+        await prisma.notification.createMany({ data: stu.guardians.map((gd) => ({ userId: gd.userId, title: 'Wallet balance is low', titleAr: 'رصيد المحفظة قليل', message: msg, messageAr: msgAr, type: 'LOW_BALANCE', relatedId: key })) })
       } catch (err) {
         console.error('[LOW_BALANCE_NOTIFY]', err)
       }

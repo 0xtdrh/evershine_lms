@@ -265,7 +265,8 @@ export async function partnerContractAlerts(now = new Date()) {
     watchers ??= await partnerWatchers()
     const left = daysLeft(c.endDate, now) ?? 0
     const title = due === 'ENDED' ? `Contract ended: ${c.partner.name}` : `Contract ends in ${left} day${left === 1 ? '' : 's'}: ${c.partner.name}`
-    await notifyUsers(watchers, 'PARTNER_CONTRACT_ENDING', { title, message: `${c.title} — ${c.endDate!.toISOString().slice(0, 10)}. Renew it or record the new contract on the partner page.`, relatedId: c.partnerId })
+    const titleAr = due === 'ENDED' ? `العقد خلص: ${c.partner.name}` : `العقد بيخلص بعد ${left} يوم: ${c.partner.name}`
+    await notifyUsers(watchers, 'PARTNER_CONTRACT_ENDING', { title, titleAr, message: `${c.title} — ${c.endDate!.toISOString().slice(0, 10)}. Renew it or record the new contract on the partner page.`, messageAr: `${c.title} — ${c.endDate!.toISOString().slice(0, 10)}. جدّده أو سجّل العقد الجديد في صفحة الشريك.`, relatedId: c.partnerId })
     await prisma.partnerContract.update({ where: { id: c.id }, data: due === 'ENDED' ? { endedNoticeAt: now, ...(c.alertSentAt ? {} : { alertSentAt: now }) } : { alertSentAt: now } })
     if (due === 'ENDED') ended++
     else before++

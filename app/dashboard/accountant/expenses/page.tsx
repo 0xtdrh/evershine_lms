@@ -20,6 +20,7 @@ import { notify } from '@/lib/notify'
 import { Download, Edit3, Trash2, TrendingUp } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface ExpenseRecord {
   id: string
@@ -73,7 +74,7 @@ export default function AccountantExpensesPage() {
     description: '',
     amount: '',
     category: 'UTILITIES',
-    date: new Date().toISOString().split('T')[0],
+    date: cairoToday(),
     paymentSource: '',
     paymentReference: '',
     notes: '',
@@ -85,7 +86,7 @@ export default function AccountantExpensesPage() {
     description: '',
     amount: '',
     category: 'UTILITIES',
-    date: new Date().toISOString().split('T')[0],
+    date: cairoToday(),
     paymentSource: '',
     paymentReference: '',
     notes: '',
@@ -233,7 +234,7 @@ export default function AccountantExpensesPage() {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `expenses-${new Date().toISOString().split('T')[0]}.xlsx`
+      link.download = `expenses-${cairoToday()}.xlsx`
       link.click()
       window.URL.revokeObjectURL(url)
       notify.success(L('Expense export downloaded', 'ملف المصاريف نزل'))
@@ -271,7 +272,7 @@ export default function AccountantExpensesPage() {
       notify.success(L('Expense recorded successfully', 'المصروف اتسجل'))
       queryClient.invalidateQueries({ queryKey: ['accountant-expenses'] })
       queryClient.invalidateQueries({ queryKey: ['accountant-expenses-dashboard'] })
-      setForm({ title: '', description: '', amount: '', category: 'UTILITIES', date: new Date().toISOString().split('T')[0], paymentSource: '', paymentReference: '', notes: '', campusId: '' })
+      setForm({ title: '', description: '', amount: '', category: 'UTILITIES', date: cairoToday(), paymentSource: '', paymentReference: '', notes: '', campusId: '' })
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Please review the form values and try again.'

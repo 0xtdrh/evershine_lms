@@ -10,6 +10,7 @@ import { I18nProvider, L, LanguageSwitch } from '@/lib/i18n/client'
 import type { DealLine } from '@/lib/partners/deal'
 import type { ManualLine } from '@/lib/partners/statement'
 import { Printer } from 'lucide-react'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface S {
   number: string; status: string; periodFrom: string; periodTo: string; placeName: string | null
@@ -62,7 +63,7 @@ function View({ id }: { id: string }) {
               {s.status !== 'DRAFT' && <tr className="border-t"><td className="font-bold">{L('Left', 'الباقي')}</td><td className="text-end font-bold">{money(s.rest)} — {who(s.rest)}</td></tr>}
             </tbody>
           </table>
-          <p className="mt-6 text-center text-xs text-gray-400">TechNova · {new Date().toISOString().slice(0, 10)}</p>
+          <p className="mt-6 text-center text-xs text-gray-400">TechNova · {cairoToday()}</p>
         </div>
       )}
     </div>

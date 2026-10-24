@@ -69,6 +69,10 @@ export async function POST(
         message: parsed.data.decision === 'ACCEPT'
           ? `Your session for ${assignment.classSection.className} ${assignment.classSection.sectionName} on ${assignment.date.toISOString().slice(0, 10)} is covered.`
           : `The substitute declined your session for ${assignment.classSection.className} ${assignment.classSection.sectionName} on ${assignment.date.toISOString().slice(0, 10)} — a new substitute is needed.`,
+        titleAr: parsed.data.decision === 'ACCEPT' ? 'البديل وافق' : 'البديل اعتذر',
+        messageAr: parsed.data.decision === 'ACCEPT'
+          ? `حصتك في ${assignment.classSection.className} ${assignment.classSection.sectionName} يوم ${assignment.date.toISOString().slice(0, 10)} اتغطت.`
+          : `البديل اعتذر عن حصتك في ${assignment.classSection.className} ${assignment.classSection.sectionName} يوم ${assignment.date.toISOString().slice(0, 10)} — محتاجين بديل تاني.`,
         type: parsed.data.decision === 'ACCEPT' ? 'SUBSTITUTE_CONFIRMED' : 'SUBSTITUTE_DECLINED',
         relatedId: assignment.id,
       },

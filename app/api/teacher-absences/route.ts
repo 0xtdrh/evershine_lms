@@ -109,6 +109,10 @@ export async function POST(request: NextRequest) {
         message: parsed.data.scope === 'FULL_DAY'
           ? `Requesting the full day off on ${parsed.data.date}. Reason: ${parsed.data.reason}`
           : `Requesting to skip one session on ${parsed.data.date}. Reason: ${parsed.data.reason}`,
+        titleAr: `${isLate ? '🚨 عاجل — ' : ''}طلب غياب من ${teacher?.firstName} ${teacher?.lastName}`,
+        messageAr: parsed.data.scope === 'FULL_DAY'
+          ? `طالب اليوم كله يوم ${parsed.data.date}. السبب: ${parsed.data.reason}`
+          : `طالب يغيب حصة واحدة يوم ${parsed.data.date}. السبب: ${parsed.data.reason}`,
         type: 'TEACHER_ABSENCE_REQUEST',
         relatedId: absence.id,
       })),

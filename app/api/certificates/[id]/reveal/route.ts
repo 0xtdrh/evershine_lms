@@ -56,7 +56,7 @@ export async function PATCH(
   })
 
   if (parsed.data.isRevealed && !wasRevealed) {
-    await notifyFamilies([updated.studentId], 'CERTIFICATE_ISSUED', (s) => ({ title: 'Certificate ready 🎓', message: `Congratulations ${s.firstName}! Your certificate "${updated.title}" is ready in the portal.`, relatedId: null }), { includeStudent: true })
+    await notifyFamilies([updated.studentId], 'CERTIFICATE_ISSUED', (s) => ({ title: 'Certificate ready 🎓', titleAr: 'الشهادة جاهزة 🎓', message: `Congratulations ${s.firstName}! Your certificate "${updated.title}" is ready in the portal.`, messageAr: `مبروك يا ${s.firstName}! شهادة «${updated.title}» جاهزة على البوابة.`, relatedId: null }), { includeStudent: true })
   }
   return successResponse(updated)
 }

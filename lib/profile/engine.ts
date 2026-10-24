@@ -215,7 +215,7 @@ export async function decide(user: User, what: 'THANKS' | 'UPLOAD', id: string, 
     if (!t || t.status !== 'PENDING') return fail('NOT_FOUND', 'Note not found')
     if (!(await canManageGroupLessons(user, t.classSectionId))) return fail('FORBIDDEN', 'Not your group')
     await prisma.thankNote.update({ where: { id }, data: { status: approve ? 'APPROVED' : 'REJECTED', decidedById: user.id, decidedAt: new Date() } })
-    if (approve) await notifyFamilies([t.toStudentId], 'PROFILE_UPDATE', (s) => ({ title: 'A thank-you note', message: `${s.firstName} got a thank-you note from a classmate.`, relatedId: t.toStudentId }), { includeStudent: true })
+    if (approve) await notifyFamilies([t.toStudentId], 'PROFILE_UPDATE', (s) => ({ title: 'A thank-you note', titleAr: 'رسالة شكر', message: `${s.firstName} got a thank-you note from a classmate.`, messageAr: `${s.firstName} جاله رسالة شكر من زميل.`, relatedId: t.toStudentId }), { includeStudent: true })
     return { ok: true }
   }
   const u = await prisma.projectUpload.findUnique({ where: { id } })
@@ -303,7 +303,7 @@ export async function levelInterest(user: User, studentId: string, levelId: stri
   const exists = await prisma.waitingListEntry.findFirst({ where: { studentId, levelId, status: 'WAITING' } })
   if (!exists) await prisma.waitingListEntry.create({ data: { studentId, subjectId: l.subjectId, levelId, campusId: st.campusId, notes: 'Parent asked from the TechNova map (profile).', createdById: user.id } })
   try {
-    await notifyUsers(await usersWithPermission('renewals', 'update', st.campusId), 'NEXT_LEVEL_WISH', { title: 'Level wanted', message: `${st.firstName} ${st.lastName}: the parent wants ${l.name} (TechNova map). See the waiting list.`, relatedId: studentId })
+    await notifyUsers(await usersWithPermission('renewals', 'update', st.campusId), 'NEXT_LEVEL_WISH', { title: 'Level wanted', titleAr: 'طلب مستوى', message: `${st.firstName} ${st.lastName}: the parent wants ${l.name} (TechNova map). See the waiting list.`, messageAr: `${st.firstName} ${st.lastName}: ولي الأمر عايز ${l.name} (من الخريطة). شوف قايمة الانتظار.`, relatedId: studentId })
   } catch { /* never break */ }
   return { ok: true }
 }
@@ -339,7 +339,7 @@ export async function anniversaryRecaps(now = new Date()) {
   for (const s of today.slice(0, 500)) {
     const tag = `${s.id}:${now.getUTCFullYear()}`
     if (await prisma.notification.findFirst({ where: { type: 'PROFILE_RECAP', relatedId: tag }, select: { id: true } })) continue
-    sent += await notifyFamilies([s.id], 'PROFILE_RECAP', (x) => ({ title: 'A year at TechNova 🎉', message: `${x.firstName} has another year at TechNova — open the profile to see the year in numbers.`, relatedId: tag }), { includeStudent: true })
+    sent += await notifyFamilies([s.id], 'PROFILE_RECAP', (x) => ({ title: 'A year at TechNova 🎉', titleAr: 'سنة كمان في TechNova 🎉', message: `${x.firstName} has another year at TechNova — open the profile to see the year in numbers.`, messageAr: `${x.firstName} كمّل سنة كمان في TechNova — افتح البروفايل وشوف السنة بالأرقام.`, relatedId: tag }), { includeStudent: true })
   }
   return { students: today.length, sent }
 }

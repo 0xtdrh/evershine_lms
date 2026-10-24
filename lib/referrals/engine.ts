@@ -94,7 +94,9 @@ export async function linkReferral(input: { studentId: string; codeOrPhone: stri
   }
   await notifyUsers([referrer.userId], 'REFERRAL_UPDATE', {
     title: 'Your friend registered 🎉',
+    titleAr: 'صاحبك اتسجل 🎉',
     message: `${student.firstName} joined TechNova with your referral code. ${settings.rewardEnabled && settings.rewardAmount > 0 ? `You get ${settings.rewardAmount} EGP in the wallet when the first invoice is paid.` : 'Thank you!'}`,
+    messageAr: `${student.firstName} اتسجل في TechNova بكود الترشيح بتاعك. ${settings.rewardEnabled && settings.rewardAmount > 0 ? `هتاخد ${settings.rewardAmount} ج.م في المحفظة أول ما يدفع أول فاتورة.` : 'شكرًا!'}`,
     relatedId: ref.id,
   })
   // Already paid before being linked (e.g. linked later from the student page)?
@@ -128,7 +130,9 @@ export async function rewardReferralIfDue(studentId: string, userId: string) {
     })
     await notifyUsers([referrer!.userId], 'REFERRAL_UPDATE', {
       title: `Referral reward: ${amount} EGP 🎁`,
+      titleAr: `مكافأة الترشيح: ${amount} ج.م 🎁`,
       message: `${newcomer?.firstName ?? 'Your friend'} paid the first invoice — ${amount} EGP were added to ${child.firstName}'s wallet. Thank you for recommending TechNova!`,
+      messageAr: `${newcomer?.firstName ?? 'صاحبك'} دفع أول فاتورة — اتضاف ${amount} ج.م لمحفظة ${child.firstName}. شكرًا إنك رشّحت TechNova!`,
       relatedId: ref.id,
     })
     const { autoPay } = await import('@/lib/wallet/engine')

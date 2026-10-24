@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { AcademyLogo } from '@/components/AcademyLogo';
+import { L } from '@/lib/i18n/client';
 
 export default function AppLoading() {
   return (
@@ -19,8 +20,8 @@ export default function AppLoading() {
             <div className="w-2 h-2 rounded-full bg-violet-600 animate-bounce [animation-delay:300ms]" />
           </div>
         </div>
-        <h2 className="mt-5 text-xl font-black text-slate-900">Loading LMS…</h2>
-        <p className="mt-2 text-sm text-slate-500">Preparing your experience and loading the latest data safely.</p>
+        <h2 className="mt-5 text-xl font-black text-slate-900">{L('Loading…', 'بيحمّل…')}</h2>
+        <p className="mt-2 text-sm text-slate-500">TechNova</p>
       </motion.div>
     </main>
   );

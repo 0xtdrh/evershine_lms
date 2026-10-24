@@ -84,7 +84,7 @@ export default function RenewalsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900"><RefreshCcw className="h-5 w-5 text-indigo-600" /> {L('Renewals', 'التجديدات')}</h1>
-          <p className="text-sm text-slate-500">{L('Parents are asked “continuing next month?”', 'أولياء الأمور بيتسألوا «مكمّلين الشهر الجاي؟»')} {data ? `${data.settings.sessionsBefore} session(s)` : ''} {L('before the last session. Their answers appear here and in “Advance cycle”.', 'قبل آخر حصة. ردودهم بتظهر هنا وفي «ترحيل الشهر».')}</p>
+          <p className="text-sm text-slate-500">{L('Parents are asked “continuing next month?”', 'أولياء الأمور بيتسألوا «مكمّلين الشهر الجاي؟»')} {data ? `${data.settings.sessionsBefore} ${L('session(s)', 'حصة')}` : ''} {L('before the last session. Their answers appear here and in “Advance cycle”.', 'قبل آخر حصة. ردودهم بتظهر هنا وفي «ترحيل الشهر».')}</p>
         </div>
         {canSettings && data && (
           <div className="flex items-end gap-2">

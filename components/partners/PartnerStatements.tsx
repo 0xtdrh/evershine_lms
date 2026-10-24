@@ -18,6 +18,7 @@ import type { ManualLine } from '@/lib/partners/statement'
 import type { PartnerDetail } from './types'
 import { CheckCircle2, ChevronDown, ChevronUp, FileSpreadsheet, Loader2, Plus, Trash2, Wallet } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface Pay { id: string; direction: 'PARTNER_TO_TECHNOVA' | 'TECHNOVA_TO_PARTNER'; amount: number; method: string; paidAt: string; reference: string | null; note: string | null }
 interface Statement {
@@ -89,7 +90,7 @@ export function PartnerStatements({ p, perms }: { p: PartnerDetail; perms: { cre
 function StatementBody({ s, perms, onChange }: { s: Statement; perms: { create: boolean; approve: boolean; update: boolean }; onChange: () => void }) {
   const [manual, setManual] = useState<ManualLine[]>(s.manualLines ?? [])
   // 2026-10-24 live test: the remaining was only a grey placeholder (looked filled, the button did nothing) — start with it
-  const [pay, setPay] = useState({ amount: String(Math.abs(s.rest) || ''), method: 'Bank Transfer', paidAt: new Date().toISOString().slice(0, 10), reference: '', note: '' })
+  const [pay, setPay] = useState({ amount: String(Math.abs(s.rest) || ''), method: 'Bank Transfer', paidAt: cairoToday(), reference: '', note: '' })
   useEffect(() => { setPay((p) => ({ ...p, amount: Math.abs(s.rest) > 0.009 ? String(Math.abs(s.rest)) : '' })) }, [s.rest])
   const draft = s.status === 'DRAFT'
   const err = (e: Error) => notify.error(e.message)

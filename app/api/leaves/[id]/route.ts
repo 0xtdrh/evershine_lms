@@ -188,6 +188,10 @@ export async function PUT(
         userId: leave.applicantId,
         title: notifTitle,
         message: notifMessage,
+        titleAr: isApproved ? '✅ طلب الإجازة اتوافق عليه' : '❌ طلب الإجازة اترفض',
+        messageAr: isApproved
+          ? `طلب إجازتك من ${startFormatted} لـ ${endFormatted} اتوافق عليه من ${userName}.${remarks ? ` ملاحظات: "${remarks}"` : ''}`
+          : `طلب إجازتك من ${startFormatted} لـ ${endFormatted} اترفض من ${userName}.${remarks ? ` السبب: "${remarks}"` : ''}`,
         type: isApproved ? 'LEAVE_APPROVED' : 'LEAVE_REJECTED',
         relatedId: leaveId,
         isRead: false,

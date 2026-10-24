@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
 import { DateInput } from '@/components/ui/date-input'
+import { cairoToday } from '@/lib/dates/cairo'
 
 type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
 
@@ -54,12 +55,12 @@ export default function SectionAttendancePage() {
     if (fromUrl) setClassSectionId(fromUrl)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [date, setDate] = useState(cairoToday())
   const [batchId, setBatchId] = useState('')
   const [shiftId, setShiftId] = useState('')
   const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>({})
   const [exportStartDate, setExportStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0])
-  const [exportEndDate, setExportEndDate] = useState(new Date().toISOString().split('T')[0])
+  const [exportEndDate, setExportEndDate] = useState(cairoToday())
 
   const { data: years } = useQuery({
     queryKey: ['academic-years-att'],
@@ -144,7 +145,7 @@ export default function SectionAttendancePage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `attendance_${new Date().toISOString().split('T')[0]}.xlsx`
+      a.download = `attendance_${cairoToday()}.xlsx`
       a.click()
       window.URL.revokeObjectURL(url)
     },

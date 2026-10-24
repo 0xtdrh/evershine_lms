@@ -12,13 +12,14 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { CalendarClock, CheckCircle2, Loader2, Phone, Plus, Star, Trash2, UserRound } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface Contact { id: string; name: string; role: string; jobTitle: string | null; phone: string | null; email: string | null; isPrimary: boolean; notes: string | null }
 interface Activity { id: string; kind: string; happenedAt: string; summary: string; followUpAt: string | null; followUpDoneAt: string | null }
 
 const ROLES: Record<string, [string, string]> = { DECISION_MAKER: ['Decision maker', 'صاحب القرار'], FINANCE: ['Finance', 'الحسابات'], ACADEMIC: ['Academic coordinator', 'المنسق الأكاديمي'], PLACE_MANAGER: ['Place manager', 'مدير المكان'], OTHER: ['Other', 'غيره'] }
 const KINDS: Record<string, [string, string]> = { CALL: ['Call', 'مكالمة'], MEETING: ['Meeting', 'اجتماع'], VISIT: ['Visit', 'زيارة'], MESSAGE: ['Message', 'رسالة'], OTHER: ['Other', 'غيره'] }
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => cairoToday()
 
 export function PartnerRelations({ partnerId, canEdit }: { partnerId: string; canEdit: boolean }) {
   const qc = useQueryClient()

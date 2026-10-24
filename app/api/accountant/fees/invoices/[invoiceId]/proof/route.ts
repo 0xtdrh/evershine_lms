@@ -106,6 +106,10 @@ export async function PATCH(
           message: r.invoiceStatus === 'PAID'
             ? `Your payment proof for invoice #${existing.challanNumber} has been verified. Your fee is now fully paid. Receipt ${r.receiptNumber}.`
             : `Your payment of EGP ${r.amount.toLocaleString()} for invoice #${existing.challanNumber} has been verified. Remaining balance: EGP ${r.remaining.toLocaleString()}. Receipt ${r.receiptNumber}.`,
+          titleAr: r.invoiceStatus === 'PAID' ? 'الدفع اتقبل — الفاتورة اتدفعت كلها' : 'الدفع اتقبل — جزء',
+          messageAr: r.invoiceStatus === 'PAID'
+            ? `إيصال الدفع لفاتورة #${existing.challanNumber} اتراجع، والفاتورة اتدفعت كلها. إيصال ${r.receiptNumber}.`
+            : `اتقبل دفع ${r.amount.toLocaleString()} ج.م لفاتورة #${existing.challanNumber}. الباقي ${r.remaining.toLocaleString()} ج.م. إيصال ${r.receiptNumber}.`,
           type: 'FEE_UPDATE',
           relatedId: invoiceId,
         },
@@ -128,6 +132,8 @@ export async function PATCH(
         userId: existing.student.userId,
         title: 'Payment Proof Rejected',
         message: `Your payment proof for invoice #${existing.challanNumber} was rejected.${remarks ? ` Reason: ${remarks}` : ' Please contact the accounts office.'}`,
+        titleAr: 'إيصال الدفع اترفض',
+        messageAr: `إيصال الدفع لفاتورة #${existing.challanNumber} اترفض.${remarks ? ` السبب: ${remarks}` : ' كلّم الحسابات.'}`,
         type: 'FEE_UPDATE',
         relatedId: invoiceId,
       },

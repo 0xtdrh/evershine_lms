@@ -76,7 +76,9 @@ export async function notifySeatFreed(classSectionId: string) {
       data: staff.map((u) => ({
         userId: u.id,
         title: 'A seat is free',
+        titleAr: 'فيه مكان فاضي',
         message: `${label}: ${seats.free ?? 'a'} seat(s) free, ${seats.waiting} student(s) waiting`,
+        messageAr: `${label}: ${seats.free ?? 'فيه'} مكان فاضي، و${seats.waiting} طالب مستنيين`,
         type: 'GROUP_SEAT_FREE',
         relatedId: classSectionId,
       })),

@@ -30,24 +30,24 @@ export type NotificationEvent =
 
 // ─── Human-readable message builders ─────────────────────────────────────────
 
-function buildMessage(event: NotificationEvent): { title: string; body: string } {
+function buildMessage(event: NotificationEvent): { title: string; body: string; titleAr: string; bodyAr: string } {
   switch (event.type) {
     case 'FEE_INVOICE_GENERATED':
-      return { title: 'New Fee Invoice', body: 'A new fee invoice has been generated for your child.' }
+      return { title: 'New Fee Invoice', body: 'A new fee invoice has been generated for your child.', titleAr: 'فاتورة جديدة', bodyAr: 'اتعملت فاتورة جديدة لابنك.' }
     case 'FEE_OVERDUE':
-      return { title: 'Fee Overdue', body: 'A fee payment is overdue for your child. Please clear the outstanding balance.' }
+      return { title: 'Fee Overdue', body: 'A fee payment is overdue for your child. Please clear the outstanding balance.', titleAr: 'فاتورة متأخرة', bodyAr: 'فيه فاتورة متأخرة لابنك. ادفع الباقي من فضلك.' }
     case 'PROOF_RECEIVED':
-      return { title: 'Payment Proof Received', body: 'A guardian has submitted a payment proof for review.' }
+      return { title: 'Payment Proof Received', body: 'A guardian has submitted a payment proof for review.', titleAr: 'إيصال دفع وصل', bodyAr: 'ولي أمر رفع إيصال دفع للمراجعة.' }
     case 'PROOF_APPROVED':
-      return { title: 'Payment Approved', body: 'Your submitted payment proof has been approved. Thank you!' }
+      return { title: 'Payment Approved', body: 'Your submitted payment proof has been approved. Thank you!', titleAr: 'الدفع اتقبل', bodyAr: 'إيصال الدفع اللي رفعته اتقبل. شكرًا!' }
     case 'PROOF_REJECTED':
-      return { title: 'Payment Proof Rejected', body: `Your payment proof was rejected. Reason: ${event.reason}` }
+      return { title: 'Payment Proof Rejected', body: `Your payment proof was rejected. Reason: ${event.reason}`, titleAr: 'إيصال الدفع اترفض', bodyAr: `إيصال الدفع اترفض. السبب: ${event.reason}` }
     case 'RESULT_PUBLISHED':
-      return { title: 'Result Published', body: "Your child's exam result is now available." }
+      return { title: 'Result Published', body: "Your child's exam result is now available.", titleAr: 'النتيجة ظهرت', bodyAr: 'نتيجة ابنك ظهرت.' }
     case 'BIRTHDAY':
-      return { title: '🎂 Birthday Today', body: "Wishing your child a very happy birthday from TechNova!" }
+      return { title: '🎂 Birthday Today', body: "Wishing your child a very happy birthday from TechNova!", titleAr: '🎂 عيد ميلاد النهارده', bodyAr: 'كل سنة وابنك طيب من كل اللي في TechNova!' }
     case 'ANNOUNCEMENT':
-      return { title: 'New Announcement', body: 'There is a new announcement from TechNova.' }
+      return { title: 'New Announcement', body: 'There is a new announcement from TechNova.', titleAr: 'إعلان جديد', bodyAr: 'فيه إعلان جديد من TechNova.' }
   }
 }
 
@@ -117,7 +117,7 @@ export function dispatchNotification(event: NotificationEvent): void {
 }
 
 async function _dispatch(event: NotificationEvent): Promise<void> {
-  const { title, body } = buildMessage(event)
+  const { title, body, titleAr, bodyAr } = buildMessage(event)
   const recipientIds = await resolveRecipientUserIds(event)
 
   if (recipientIds.length === 0) return
@@ -128,6 +128,8 @@ async function _dispatch(event: NotificationEvent): Promise<void> {
       userId,
       title,
       message: body,
+      titleAr,
+      messageAr: bodyAr,
       type: event.type,
       isRead: false,
     })),

@@ -7,14 +7,13 @@ import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Users, Hourglass, ArrowRight } from 'lucide-react'
-import { L } from '@/lib/i18n/client'
+import { L, dayName } from '@/lib/i18n/client'
 
 export interface Seats { max: number | null; count: number; free: number | null; full: boolean; waiting: number }
 export interface WaitingRow { id: string; position: number; since: string; notes: string | null; student: { id: string; name: string; registrationNumber: string } }
 interface AvailableGroup { id: string; label: string; campus: { id: string; name: string }; scheduleSlots: { dayOfWeek: number; time: string }[] | null; teacher: string | null; count: number; max: number | null; free: number | null }
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const slots = (s: AvailableGroup['scheduleSlots']) => (Array.isArray(s) && s.length ? s.map((x) => `${DAYS[x.dayOfWeek]} ${x.time}`).join(', ') : 'no schedule yet')
+const slots = (s: AvailableGroup['scheduleSlots']) => (Array.isArray(s) && s.length ? s.map((x) => `${dayName(x.dayOfWeek)} ${x.time}`).join('، ') : L('no schedule yet', 'لسه مفيش مواعيد'))
 
 /** Group capacity (most students) + this group's waiting queue, with other groups of the same level that have room. */
 export function GroupCapacityPanel({

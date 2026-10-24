@@ -268,7 +268,7 @@ function Types({ canEdit }: { canEdit: boolean }) {
                 {KIND[t.kind]} · {DURATION[t.duration]} · {t.autoApply ? 'automatic' : APPROVAL[t.approvalMode]} · {scopeName(t)}
                 {t.stackable ? ' · combines with others' : ' · not combined with others'}
                 {(t.validFrom || t.validTo) && ` · ${t.validFrom ? t.validFrom.slice(0, 10) : '…'} → ${t.validTo ? t.validTo.slice(0, 10) : '…'}`}
-                {t._count ? ` · used on ${t._count.invoiceDiscounts} invoice(s)` : ''}
+                {t._count ? ` · ${L('used on', 'اتطبق على')} ${t._count.invoiceDiscounts} ${L('invoice(s)', 'فاتورة')}` : ''}
               </div>
             </div>
             {canEdit && (

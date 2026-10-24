@@ -17,11 +17,12 @@ import { L, useI18n } from '@/lib/i18n/client'
 import { ACCOUNT_KIND_LABEL, ACCOUNT_KINDS, type AccountKind } from '@/lib/treasury/rules'
 import { Landmark, Plus } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface Account { id: string; name: string; kind: AccountKind; campusId: string | null; campus: string | null; openingBalance: number; openingDate: string; isActive: boolean; balance: number }
 interface Routes { methods: string[]; campuses: { id: string; name: string }[]; accounts: { id: string; name: string; campusId: string | null }[]; routes: { method: string; campusId: string | null; accountId: string }[] }
 
-const blank = { name: '', kind: 'CASH' as AccountKind, campusId: '', openingBalance: '0', openingDate: new Date().toISOString().slice(0, 10) }
+const blank = { name: '', kind: 'CASH' as AccountKind, campusId: '', openingBalance: '0', openingDate: cairoToday() }
 
 export function AccountsManager() {
   const ar = useI18n().locale === 'ar'

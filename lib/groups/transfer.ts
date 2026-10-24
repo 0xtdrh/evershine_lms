@@ -26,6 +26,7 @@ import { generateMissingCycleInvoices } from './generate-invoices'
 import { findGroupInstructorOffering } from './instructor'
 import { groupSeats, notifySeatFreed } from './capacity'
 import { computeTransferMoney, discountOptions, type DiscountAction, type TransferMoney } from './transfer-calc'
+import { cairoToday } from '@/lib/dates/cairo'
 
 type Db = Prisma.TransactionClient | typeof prisma
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -309,7 +310,7 @@ export async function executeTransfer(input: ExecuteTransferInput): Promise<Exec
             : Number(inv.paidAmount) > 0
               ? 'PARTIALLY_PAID'
               : inv.status === 'OVERDUE' ? 'OVERDUE' : 'ISSUED'
-        const note = `Moved to group ${p.to.label} on ${new Date().toISOString().slice(0, 10)}: ${money.sessionsCounted} session(s) counted (${money.consumed} EGP)` +
+        const note = `Moved to group ${p.to.label} on ${cairoToday()}: ${money.sessionsCounted} session(s) counted (${money.consumed} EGP)` +
           (money.credit > 0 ? `, ${money.credit} EGP credit` : '') + (money.cancelled > 0 ? `, ${money.cancelled} EGP cancelled` : '')
         // Guarded: nobody paid/refunded in between.
         const upd = await tx.feeInvoice.updateMany({
@@ -511,6 +512,10 @@ async function notifyTeachers(p: TransferPreview, actingUserId: string) {
         message: t.id === p.to.teacher?.id
           ? `${p.student.name} moved into ${p.to.label} (from ${p.from.label})`
           : `${p.student.name} moved from ${p.from.label} to ${p.to.label}`,
+        titleAr: t.id === p.to.teacher?.id ? 'طالب جديد في جروبك' : 'طالب اتنقل من جروبك',
+        messageAr: t.id === p.to.teacher?.id
+          ? `${p.student.name} اتنقل لـ ${p.to.label} (من ${p.from.label})`
+          : `${p.student.name} اتنقل من ${p.from.label} لـ ${p.to.label}`,
         type: 'GROUP_TRANSFER',
         relatedId: p.student.id,
       }))

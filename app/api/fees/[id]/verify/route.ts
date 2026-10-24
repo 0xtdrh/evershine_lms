@@ -99,6 +99,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           message: r.invoiceStatus === 'PAID'
             ? `Your payment proof for invoice #${invoice.challanNumber || invoiceId} has been verified. Your fee is now fully paid. Receipt ${r.receiptNumber}.`
             : `Your payment of EGP ${r.amount.toLocaleString()} for invoice #${invoice.challanNumber || invoiceId} has been verified. Remaining: EGP ${r.remaining.toLocaleString()}. Receipt ${r.receiptNumber}.`,
+          titleAr: r.invoiceStatus === 'PAID' ? 'الدفع اتقبل — الفاتورة اتدفعت كلها' : 'الدفع اتقبل — جزء',
+          messageAr: r.invoiceStatus === 'PAID'
+            ? `إيصال الدفع لفاتورة #${invoice.challanNumber} اتراجع، والفاتورة اتدفعت كلها. إيصال ${r.receiptNumber}.`
+            : `اتقبل دفع ${r.amount.toLocaleString()} ج.م لفاتورة #${invoice.challanNumber}. الباقي ${r.remaining.toLocaleString()} ج.م. إيصال ${r.receiptNumber}.`,
           type: 'FEE_UPDATE',
           relatedId: invoiceId,
         },
@@ -127,6 +131,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         userId: invoice.student.userId,
         title: 'Fee Payment Rejected',
         message: `Your payment proof for invoice #${invoice.challanNumber || invoiceId} was rejected. ${remarks ? `Reason: ${remarks}` : 'Please contact the accounts office.'}`,
+        titleAr: 'إيصال الدفع اترفض',
+        messageAr: `إيصال الدفع لفاتورة #${invoice.challanNumber || invoiceId} اترفض.${remarks ? ` السبب: ${remarks}` : ' كلّم الحسابات.'}`,
         type: 'FEE_UPDATE',
         relatedId: invoiceId,
       },

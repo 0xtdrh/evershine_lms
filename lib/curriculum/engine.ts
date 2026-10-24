@@ -214,7 +214,7 @@ export async function changeEditionStatus(v: Viewer, editionId: string, action: 
     try {
       const { notifyUsers, usersWithPermission } = await import('@/lib/notifications/events')
       const approvers = (await usersWithPermission('curriculum', 'approve')).filter((id) => id !== v.userId)
-      await notifyUsers(approvers, 'CURRICULUM_REVIEW', { title: 'Curriculum waiting for review', message: `Curriculum version ${e.number} was sent for review.`, relatedId: e.levelId })
+      await notifyUsers(approvers, 'CURRICULUM_REVIEW', { title: 'Curriculum waiting for review', titleAr: 'منهج مستني المراجعة', message: `Curriculum version ${e.number} was sent for review.`, messageAr: `نسخة المنهج رقم ${e.number} اتبعتت للمراجعة.`, relatedId: e.levelId })
     } catch (err) { console.error('[CURRICULUM_NOTIFY]', err) }
   }
   return { ok: true, value: { status: to } }

@@ -140,6 +140,8 @@ export async function POST(request: NextRequest) {
     campusId: (session.user as { campusId?: string | null }).campusId ?? null,
     title: '📋 New Leave Request',
     message: `${applicantName} (${userRole}) submitted a ${leaveType.toLowerCase()} leave request from ${startFmt} to ${endFmt}: "${reason.slice(0, 100)}${reason.length > 100 ? '…' : ''}"`,
+    titleAr: '📋 طلب إجازة جديد',
+    messageAr: `${applicantName} طلب إجازة من ${startFmt} لـ ${endFmt}: "${reason.slice(0, 100)}${reason.length > 100 ? '…' : ''}"`,
     type: 'LEAVE_SUBMITTED',
     relatedId: leave.id,
   }).catch((err) => console.error('[leaves.POST] admin notification failed:', err))

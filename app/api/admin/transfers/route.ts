@@ -91,8 +91,10 @@ export async function POST(request: NextRequest) {
         await tx.notification.create({
           data: {
             userId: student.userId,
-            title: 'Academic placement updated',
-            message: 'Your campus, batch, or class assignment has been updated by administration.',
+            title: 'Branch updated',
+            message: 'Your branch or group was changed by the administration.',
+            titleAr: 'الفرع اتغير',
+            messageAr: 'الإدارة غيرت الفرع أو الجروب بتاعك.',
             type: 'GENERAL',
             relatedId: student.id,
           },
@@ -143,8 +145,10 @@ export async function POST(request: NextRequest) {
         await tx.notification.create({
           data: {
             userId: teacher.userId,
-            title: 'Campus placement updated',
-            message: 'Your campus, batch, or performance house assignment has been updated by administration.',
+            title: 'Branch updated',
+            message: 'Your branch was changed by the administration.',
+            titleAr: 'الفرع اتغير',
+            messageAr: 'الإدارة غيرت الفرع بتاعك.',
             type: 'GENERAL',
             relatedId: teacher.id,
           },

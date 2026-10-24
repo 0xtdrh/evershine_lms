@@ -247,7 +247,7 @@ export async function approveRefund(refundId: string, userId: string): Promise<R
       })
       return { requestedById: r.requestedById, refundNumber, withdrewFrom: r.withdrawStudent && inv.classSectionId ? inv.classSectionId : null }
     })
-    if (out.requestedById !== userId) await notifyUser(out.requestedById, 'Refund approved', `Refund ${out.refundNumber} was approved`, refundId)
+    if (out.requestedById !== userId) await notifyUser(out.requestedById, 'Refund approved', `Refund ${out.refundNumber} was approved`, refundId, { title: 'الاسترداد اتوافق عليه', message: `الاسترداد ${out.refundNumber} اتوافق عليه` })
     if (out.withdrewFrom) await notifySeatFreed(out.withdrewFrom)
     return { ok: true, refundId, status: 'APPROVED', refundNumber: out.refundNumber }
   } catch (err) {
@@ -262,7 +262,7 @@ export async function rejectRefund(refundId: string, userId: string, reason?: st
   if (r.status !== 'PENDING') return { ok: false, status: 409, message: 'This refund was already handled' }
   await prisma.refund.update({ where: { id: refundId }, data: { status: 'REJECTED', approvedById: userId, approvedAt: new Date(), rejectedReason: reason ?? null } })
   await prisma.auditLog.create({ data: { userId, action: 'UPDATE', entityType: 'Refund', entityId: refundId, changes: { status: 'REJECTED', reason } } })
-  if (r.requestedById !== userId) await notifyUser(r.requestedById, 'Refund rejected', reason ?? '', refundId)
+  if (r.requestedById !== userId) await notifyUser(r.requestedById, 'Refund rejected', reason ?? '', refundId, { title: 'الاسترداد اترفض', message: reason ?? '' })
   return { ok: true, refundId, status: 'REJECTED', refundNumber: null }
 }
 
@@ -313,16 +313,16 @@ async function notifyRefundApprovers(refundId: string, amount: number) {
     const users = await prisma.user.findMany({ where: { role: { in: [...roles] }, isActive: true }, select: { id: true } })
     if (users.length) {
       await prisma.notification.createMany({
-        data: users.map((u) => ({ userId: u.id, title: 'Refund request', message: `A refund of ${amount} EGP is waiting for approval`, type: 'REFUND_REQUEST', relatedId: refundId })),
+        data: users.map((u) => ({ userId: u.id, title: 'Refund request', titleAr: 'طلب استرداد', message: `A refund of ${amount} EGP is waiting for approval`, messageAr: `استرداد ${amount} ج.م مستني الموافقة`, type: 'REFUND_REQUEST', relatedId: refundId })),
       })
     }
   } catch (err) {
     console.error('[REFUND_NOTIFY]', err)
   }
 }
-async function notifyUser(userId: string, title: string, message: string, relatedId: string) {
+async function notifyUser(userId: string, title: string, message: string, relatedId: string, ar?: { title: string; message: string }) {
   try {
-    await prisma.notification.create({ data: { userId, title, message, type: 'REFUND_REQUEST', relatedId } })
+    await prisma.notification.create({ data: { userId, title, message, titleAr: ar?.title ?? null, messageAr: ar?.message ?? null, type: 'REFUND_REQUEST', relatedId } })
   } catch (err) {
     console.error('[REFUND_NOTIFY]', err)
   }

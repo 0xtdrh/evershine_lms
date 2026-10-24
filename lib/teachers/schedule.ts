@@ -3,6 +3,7 @@ import { sessionsPerCycle as cycleSessionCount } from '@/lib/groups/cycle-rules'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { cleanSlots, toDay, upcomingSessions } from '@/lib/groups/schedule-calendar'
 import { exceptionsForGroup, groupExceptions } from '@/lib/groups/calendar-exceptions'
+import { cairoToday } from '@/lib/dates/cairo'
 
 export interface ScheduledSession {
   classSectionId: string
@@ -145,7 +146,7 @@ export async function getRemainingCycleSessions(
   const cancelled = await prisma.cancelledSession.findMany({ where: { classSectionId }, select: { date: true } })
   const next = upcomingSessions({
     slots,
-    from: new Date().toISOString().slice(0, 10),
+    from: cairoToday(),
     count: remaining,
     holidays,
     extras,

@@ -18,6 +18,7 @@
 
 import ExcelJS from 'exceljs'
 import { addBrandLogo, LOGO_PLACEMENT } from '@/lib/excel/brand-logo'
+import { cairoToday } from '@/lib/dates/cairo'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -294,6 +295,6 @@ export async function workbookToBuffer(workbook: ExcelJS.Workbook): Promise<Buff
 // ── Helper: Generate download filename with date ─────────────────────────────
 
 export function generateExcelFilename(prefix: string): string {
-  const date = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  const date = cairoToday() // YYYY-MM-DD
   return `technova_${prefix}_${date}.xlsx`
 }

@@ -72,6 +72,11 @@ let currentLocale: Locale = 'en'
 /** Inline two-language text: L('Save', 'حفظ'). For staff screens translated in place (no message key). */
 export const L = (en: string, ar: string) => (currentLocale === 'ar' ? ar : en)
 
+const DAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const DAYS_AR = ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت']
+/** Weekday name (0 = Sunday) in the screen language. */
+export const dayName = (i: number) => L(DAYS_EN[i] ?? '?', DAYS_AR[i] ?? '?')
+
 /** Same as L() as a component, for text inside JSX that must follow a language switch at once. */
 export function T({ en, ar }: { en: string; ar: string }) {
   const { locale } = useI18n()

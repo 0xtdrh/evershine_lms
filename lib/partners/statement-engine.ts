@@ -85,7 +85,9 @@ export async function makeStatement(userId: string, partnerId: string, campusId:
     const partner = await prisma.partner.findUnique({ where: { id: partnerId }, select: { name: true } })
     await notifyUsers((await usersWithPermission('partner_finance', 'approve')).filter((id) => id !== userId), 'PARTNER_STATEMENT', {
       title: `Statement to approve: ${partner?.name ?? ''}`,
+      titleAr: `كشف حساب مستني الموافقة: ${partner?.name ?? ''}`,
       message: `${row.number} (${from.toISOString().slice(0, 10)} → ${to.toISOString().slice(0, 10)}) is waiting for approval.`,
+      messageAr: `${row.number} (${from.toISOString().slice(0, 10)} ← ${to.toISOString().slice(0, 10)}) مستني الموافقة.`,
       relatedId: partnerId,
     })
   } catch (err) {

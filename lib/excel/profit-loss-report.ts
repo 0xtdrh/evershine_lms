@@ -4,6 +4,7 @@
 
 import ExcelJS from 'exceljs'
 import { ProfitLossStatement } from '@prisma/client'
+import { cairoToday } from '@/lib/dates/cairo'
 
 type ProfitLossStatementWithReserve = ProfitLossStatement & {
   reserveEntry?: { cumulativeTotal: number | string | bigint | { toNumber(): number } } | null
@@ -49,7 +50,7 @@ export async function buildProfitLossReport(
   summarySheet.addRow({ label: 'Total expenses across statements', value: statements.reduce((sum, stmt) => sum + Number(stmt.totalExpenses), 0) })
   summarySheet.addRow({ label: 'Total gross margin', value: statements.reduce((sum, stmt) => sum + Number(stmt.grossMargin), 0) })
   summarySheet.addRow({ label: 'Total reserve contributions', value: statements.reduce((sum, stmt) => sum + Number(stmt.reserveContribution), 0) })
-  summarySheet.addRow({ label: 'Current accounting date', value: new Date().toISOString().split('T')[0] })
+  summarySheet.addRow({ label: 'Current accounting date', value: cairoToday() })
 
   summarySheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return

@@ -25,7 +25,7 @@ import { GroupPricePanel } from '@/components/groups/GroupPricePanel'
 import { GroupRulesPanel } from '@/components/rules/GroupRulesPanel'
 import { ExtraSessionsPanel, type ExtraSessionRow } from '@/components/groups/ExtraSessionsPanel'
 import { FullGroupDialog } from '@/components/groups/FullGroupDialog'
-import { L, useI18n } from '@/lib/i18n/client'
+import { L, useI18n, dayName } from '@/lib/i18n/client'
 import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
 
@@ -99,11 +99,10 @@ interface StudentSearchResult {
   registrationNumber: string
 }
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function formatDate(d: string | null): string {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-EG', { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(d).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Africa/Cairo' })
 }
 
 function toDateInputValue(d: string | null): string {
@@ -598,7 +597,7 @@ export default function GroupsPage() {
                 {g.scheduleSlots && g.scheduleSlots.length > 0 && (
                   <p className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
-                    {g.scheduleSlots.map((s) => `${DAY_NAMES[s.dayOfWeek]} ${s.time}`).join(', ')}
+                    {g.scheduleSlots.map((s) => `${dayName(s.dayOfWeek)} ${s.time}`).join(', ')}
                   </p>
                 )}
               </div>
@@ -695,7 +694,7 @@ export default function GroupsPage() {
                   <div className="col-span-2">
                     <p className="text-xs text-slate-400">{L('Weekly schedule', 'الجدول الأسبوعي')}</p>
                     <p className="text-slate-800">
-                      {detail.scheduleSlots.map((s) => `${DAY_NAMES[s.dayOfWeek]} ${s.time}`).join(', ')}
+                      {detail.scheduleSlots.map((s) => `${dayName(s.dayOfWeek)} ${s.time}`).join(', ')}
                     </p>
                   </div>
                 )}
@@ -1159,7 +1158,7 @@ export default function GroupsPage() {
                     const next = [...scheduleSlots]; next[i] = { ...slot, dayOfWeek: Number(v) }; setScheduleSlots(next)
                   }}>
                     <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                    <SelectContent>{DAY_NAMES.map((d, idx) => <SelectItem key={idx} value={String(idx)}>{d}</SelectItem>)}</SelectContent>
+                    <SelectContent>{[0, 1, 2, 3, 4, 5, 6].map((idx) => <SelectItem key={idx} value={String(idx)}>{dayName(idx)}</SelectItem>)}</SelectContent>
                   </Select>
                   <Input
                     type="time" value={slot.time}

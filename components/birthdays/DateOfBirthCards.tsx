@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Cake } from 'lucide-react'
 import { L } from '@/lib/i18n/client'
 import { DateInput } from '@/components/ui/date-input'
+import { cairoToday } from '@/lib/dates/cairo'
 
 function DobRow({ label, value, onSave, saving }: { label: string; value: string | null; onSave: (v: string | null) => void; saving: boolean }) {
   const [v, setV] = useState(value ?? '')
@@ -17,7 +18,7 @@ function DobRow({ label, value, onSave, saving }: { label: string; value: string
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       <span className="min-w-[140px] font-medium text-slate-700">{label}</span>
-      <DateInput className="h-8 w-44" value={v} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setV(e.target.value)} />
+      <DateInput className="h-8 w-44" value={v} max={cairoToday()} onChange={(e) => setV(e.target.value)} />
       <Button size="sm" variant="outline" className="h-8" disabled={saving || v === (value ?? '')} onClick={() => onSave(v || null)}>{L('Save', 'حفظ')}</Button>
     </div>
   )

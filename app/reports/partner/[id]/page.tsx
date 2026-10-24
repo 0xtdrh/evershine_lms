@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { I18nProvider, L, LanguageSwitch } from '@/lib/i18n/client'
 import { Printer } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface Report {
   partner: { id: string; name: string; kind: string }
@@ -75,7 +76,7 @@ function View({ id }: { id: string }) {
             </tbody>
           </table>
           {r.groups.some((g) => g.unnamed) && <p className="mt-2 text-xs text-gray-500">* {L('class without names: number of children', 'فصل من غير أسماء: عدد الأطفال')}</p>}
-          <p className="mt-6 text-center text-xs text-gray-400">TechNova · {new Date().toISOString().slice(0, 10)}</p>
+          <p className="mt-6 text-center text-xs text-gray-400">TechNova · {cairoToday()}</p>
         </div>
       )}
     </div>

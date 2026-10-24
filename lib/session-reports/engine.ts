@@ -128,7 +128,9 @@ async function deliver(reportId: string, byUserId: string | null): Promise<boole
   const stars = new Set(r.students.filter((x) => x.star).map((x) => x.studentId))
   await notifyFamilies(ids, 'SESSION_REPORT', (st) => ({
     title: 'Session report',
+    titleAr: 'تقرير الحصة',
     message: `${st.firstName}: the report of the ${label} session${r.sessionNumber ? ` ${r.sessionNumber}` : ''} (${date}) is ready.${stars.has(st.id) ? ' ⭐ Star of the session!' : ''}`,
+    messageAr: `${st.firstName}: تقرير حصة ${label}${r.sessionNumber ? ` رقم ${r.sessionNumber}` : ''} (${date}) جاهز.${stars.has(st.id) ? ' ⭐ نجم الحصة!' : ''}`,
     relatedId: r.id,
   }), { includeStudent: true })
   return true

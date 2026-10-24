@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { MapPin, Plus, Trash2 } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface Pay { campusId: string; fixed: number | null; percent: number | null; perSession: number | null }
 interface Period { employer: 'TECHNOVA' | 'PARTNER'; partnerName?: string | null; kind: 'TEACHER' | 'TRAINEE'; fromDate: string; toDate?: string | null; note?: string | null }
@@ -77,7 +78,7 @@ export function TeacherPlacesCard({ teacherId }: { teacherId: string }) {
               <Button type="button" size="sm" variant="ghost" onClick={() => setD({ ...d, employment: d.employment.filter((_, j) => j !== i) })}><Trash2 className="h-3 w-3 text-rose-500" /></Button>
             </div>
           ))}
-          <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setD({ ...d, employment: [...d.employment, { employer: 'TECHNOVA', kind: 'TEACHER', fromDate: new Date().toISOString().slice(0, 10), toDate: null }] })}><Plus className="h-3 w-3" /> {L('Period', 'فترة')}</Button>
+          <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setD({ ...d, employment: [...d.employment, { employer: 'TECHNOVA', kind: 'TEACHER', fromDate: cairoToday(), toDate: null }] })}><Plus className="h-3 w-3" /> {L('Period', 'فترة')}</Button>
         </div>
         <Button disabled={save.isPending} onClick={() => save.mutate()}>{L('Save', 'حفظ')}</Button>
       </CardContent>

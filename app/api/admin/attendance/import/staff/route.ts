@@ -30,6 +30,7 @@ import { createTeacherLateAssessment } from '@/lib/penalties/assessments'
 import type { Role, AttendanceStatus } from '@prisma/client'
 import type { SessionShift } from '@/lib/validation/shift'
 import * as XLSX from 'xlsx'
+import { cairoToday } from '@/lib/dates/cairo'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -225,7 +226,7 @@ export async function POST(req: NextRequest) {
       // Time parsing (only validate format; status auto-derived by resolveAttendanceMark)
       const dateStr = parsedDate
         ? parsedDate.toISOString().slice(0, 10)
-        : new Date().toISOString().slice(0, 10)
+        : cairoToday()
 
       const checkInISO  = rawCheckIn  ? buildCheckInISO(dateStr, String(rawCheckIn))  : null
       const checkOutISO = rawCheckOut ? buildCheckInISO(dateStr, String(rawCheckOut)) : null

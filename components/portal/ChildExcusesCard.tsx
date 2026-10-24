@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Clock, Loader2, Send } from 'lucide-react'
 import { L } from '@/lib/i18n/client'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface Session { classSectionId: string; group: string; date: string; time: string; sessionNumber: number | null; totalSessions: number; past: boolean }
 interface Excuse { id: string; group: string; sessionDate: string; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'; decisionNote: string | null }
@@ -21,8 +22,8 @@ const BADGE: Record<Excuse['status'], string> = {
   REJECTED: 'bg-rose-50 text-rose-700 border-rose-200',
   CANCELLED: 'bg-slate-50 text-slate-500 border-slate-200',
 }
-const LABEL: Record<Excuse['status'], string> = { PENDING: 'Waiting for approval', APPROVED: 'Accepted', REJECTED: 'Not accepted', CANCELLED: 'Withdrawn' }
-const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' })
+const LABEL = (st: Excuse['status']) => ({ PENDING: L('Waiting for approval', 'مستني الموافقة'), APPROVED: L('Accepted', 'اتقبل'), REJECTED: L('Not accepted', 'ماتقبلش'), CANCELLED: L('Withdrawn', 'اتسحب') })[st]
+const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' })
 
 /** Phase C: the parent sends an excuse for one session (before it, or a few days after). */
 export function ChildExcusesCard({ studentId, childName }: { studentId: string; childName: string }) {
@@ -43,8 +44,8 @@ export function ChildExcusesCard({ studentId, childName }: { studentId: string; 
       const [classSectionId, sessionDate] = key.split('|')
       return fetchApi<{ status: string }>('/api/guardian-portal/excuses', { method: 'POST', body: JSON.stringify({ studentId, classSectionId, sessionDate, reason }) })
     },
-    onSuccess: (r) => { notify.success(r?.status === 'APPROVED' ? 'Excuse accepted' : 'Excuse sent — waiting for approval'); setKey(''); setReason(''); refresh() },
-    onError: (e: Error) => notify.error(e.message || 'Could not send the excuse'),
+    onSuccess: (r) => { notify.success(r?.status === 'APPROVED' ? L('Excuse accepted', 'العذر اتقبل') : L('Excuse sent — waiting for approval', 'العذر اتبعت — مستني الموافقة')); setKey(''); setReason(''); refresh() },
+    onError: (e: Error) => notify.error(e.message || L('Could not send the excuse', 'العذر مااتبعتش')),
   })
   const withdraw = useMutation({
     mutationFn: (id: string) => fetchApi(`/api/guardian-portal/excuses/${id}`, { method: 'DELETE' }),
@@ -56,7 +57,7 @@ export function ChildExcusesCard({ studentId, childName }: { studentId: string; 
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base"><Clock className="h-5 w-5 text-rose-600" /> {L('Absence excuse', 'عذر غياب')}</CardTitle>
-        <CardDescription>{childName.split(' ')[0]} can&apos;t come to a session? Choose the session and write the reason. The instructor sees it in the attendance sheet.</CardDescription>
+        <CardDescription>{L(`${childName.split(' ')[0]} can't come to a session? Choose the session and write the reason. The instructor sees it in the attendance sheet.`, `${childName.split(' ')[0]} مش هيقدر يحضر حصة؟ اختار الحصة واكتب السبب، والمدرب هيشوفه في كشف الحضور.`)}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : (
@@ -64,11 +65,11 @@ export function ChildExcusesCard({ studentId, childName }: { studentId: string; 
             <div className="space-y-1">
               <Label>{L('Session', 'الحصة')}</Label>
               <Select value={key} onValueChange={setKey}>
-                <SelectTrigger><SelectValue placeholder={data?.sessions.length ? 'Choose the session' : 'No session can be excused now'} /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={data?.sessions.length ? L('Choose the session', 'اختار الحصة') : L('No session can be excused now', 'مفيش حصة ينفع تعتذر عنها دلوقتي')} /></SelectTrigger>
                 <SelectContent>
                   {(data?.sessions ?? []).map((s) => (
                     <SelectItem key={`${s.classSectionId}|${s.date}`} value={`${s.classSectionId}|${s.date}`}>
-                      {fmt(s.date)}{s.time ? ` ${s.time}` : ''} · {s.group}{s.sessionNumber ? ` · session ${s.sessionNumber} of ${s.totalSessions}` : ''}{s.past ? ' (past)' : ''}
+                      {fmt(s.date)}{s.time ? ` ${s.time}` : ''} · {s.group}{s.sessionNumber ? ` · ${L('session', 'حصة')} ${s.sessionNumber} ${L('of', 'من')} ${s.totalSessions}` : ''}{s.past ? L(' (past)', ' (فاتت)') : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -96,8 +97,8 @@ export function ChildExcusesCard({ studentId, childName }: { studentId: string; 
                   {e.decisionNote && e.status === 'REJECTED' && <p className="text-xs text-rose-600">{e.decisionNote}</p>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${BADGE[e.status]}`}>{LABEL[e.status]}</span>
-                  {(e.status === 'PENDING' || (e.status === 'APPROVED' && e.sessionDate > new Date().toISOString().slice(0, 10))) && (
+                  <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${BADGE[e.status]}`}>{LABEL(e.status)}</span>
+                  {(e.status === 'PENDING' || (e.status === 'APPROVED' && e.sessionDate > cairoToday())) && (
                     <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={withdraw.isPending} onClick={() => withdraw.mutate(e.id)}>{L('Withdraw', 'اسحب')}</Button>
                   )}
                 </div>

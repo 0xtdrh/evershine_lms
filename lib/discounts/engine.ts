@@ -292,13 +292,13 @@ export function canApproveDiscounts(role: string) {
 }
 
 /** Notifies everyone who can approve discounts (never breaks the main action). */
-export async function notifyApprovers(title: string, message: string, relatedId: string) {
+export async function notifyApprovers(title: string, message: string, relatedId: string, ar?: { title: string; message: string }) {
   try {
     const roles = ROLES.filter((r) => canApproveDiscounts(r))
     const users = await prisma.user.findMany({ where: { role: { in: [...roles] }, isActive: true }, select: { id: true } })
     if (users.length) {
       await prisma.notification.createMany({
-        data: users.map((u) => ({ userId: u.id, title, message, type: 'DISCOUNT_REQUEST', relatedId })),
+        data: users.map((u) => ({ userId: u.id, title, message, titleAr: ar?.title ?? null, messageAr: ar?.message ?? null, type: 'DISCOUNT_REQUEST', relatedId })),
       })
     }
   } catch (err) {

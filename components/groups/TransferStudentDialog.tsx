@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ArrowRightLeft, Loader2 } from 'lucide-react'
-import { L } from '@/lib/i18n/client'
+import { L, dayName } from '@/lib/i18n/client'
 
 interface GroupRow {
   id: string
@@ -62,9 +62,8 @@ interface Outcome {
   warning: string | null
 }
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} EGP`
-const slots = (s: GroupRow['scheduleSlots']) => (Array.isArray(s) && s.length ? s.map((x) => `${DAYS[x.dayOfWeek] ?? '?'} ${x.time}`).join(', ') : '')
+const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${L('EGP', 'ج.م')}`
+const slots = (s: GroupRow['scheduleSlots']) => (Array.isArray(s) && s.length ? s.map((x) => `${dayName(x.dayOfWeek)} ${x.time}`).join(', ') : '')
 const ACTION_LABEL: Record<Action, string> = { MOVE: 'Move it to the new group', KEEP: 'Keep it', END: 'Stop it' }
 const SCOPE_LABEL = { GROUP: 'on this student in the old group', TRACK: 'on this student in a track', STUDENT: 'on this student everywhere' }
 

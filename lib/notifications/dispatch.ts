@@ -48,6 +48,9 @@ interface DispatchParams {
   userId: string
   title: string
   message: string
+  /** 2026-10-24: Arabic text, shown when the screen is Arabic */
+  titleAr?: string
+  messageAr?: string
   type: NotificationType
   relatedId?: string
   tx?: PrismaTransaction
@@ -57,6 +60,9 @@ interface BulkDispatchParams {
   userIds: string[]
   title: string
   message: string
+  /** 2026-10-24: Arabic text, shown when the screen is Arabic */
+  titleAr?: string
+  messageAr?: string
   type: NotificationType
   relatedId?: string
   tx?: PrismaTransaction
@@ -66,6 +72,9 @@ interface RoleBroadcastParams {
   roles: Array<'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'ACCOUNTANT' | 'STUDENT' | 'GUARDIAN' | 'PARENT'>
   title: string
   message: string
+  /** 2026-10-24: Arabic text, shown when the screen is Arabic */
+  titleAr?: string
+  messageAr?: string
   type: NotificationType
   relatedId?: string
   /**
@@ -83,6 +92,8 @@ export async function dispatchNotification({
   userId,
   title,
   message,
+  titleAr,
+  messageAr,
   type,
   relatedId,
   tx,
@@ -95,6 +106,8 @@ export async function dispatchNotification({
       userId,
       title,
       message,
+      titleAr: titleAr ?? null,
+      messageAr: messageAr ?? null,
       type,
       relatedId: relatedId ?? null,
       isRead: false,
@@ -115,6 +128,8 @@ export async function dispatchBulkNotification({
   userIds,
   title,
   message,
+  titleAr,
+  messageAr,
   type,
   relatedId,
   tx,
@@ -126,6 +141,8 @@ export async function dispatchBulkNotification({
     userId,
     title,
     message,
+    titleAr: titleAr ?? null,
+    messageAr: messageAr ?? null,
     type,
     relatedId: relatedId ?? null,
     isRead: false,
@@ -152,6 +169,8 @@ export async function dispatchToRoleUsers({
   roles,
   title,
   message,
+  titleAr,
+  messageAr,
   type,
   relatedId,
   campusId,
@@ -182,6 +201,8 @@ export async function dispatchToRoleUsers({
       userId,
       title,
       message,
+      titleAr: titleAr ?? null,
+      messageAr: messageAr ?? null,
       type,
       relatedId: relatedId ?? null,
       isRead: false,

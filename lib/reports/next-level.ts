@@ -54,7 +54,9 @@ export async function requestNextLevel(studentId: string, groupId: string, userI
     const staff = await usersWithPermission('renewals', 'update', x.g.campusId)
     await notifyUsers(staff, 'NEXT_LEVEL_WISH', {
       title: 'Next level wanted',
+      titleAr: 'طلب المستوى الجاي',
       message: `${st?.firstName ?? ''} ${st?.lastName ?? ''}`.trim() + `: the parent wants ${x.next?.name ?? 'the next level'} (from the level report). See ${via === 'RENEWAL' ? 'Renewals' : 'the waiting list'}.`,
+      messageAr: `${st?.firstName ?? ''} ${st?.lastName ?? ''}`.trim() + `: ولي الأمر عايز ${x.next?.name ?? 'المستوى الجاي'} (من تقرير المستوى). شوف ${via === 'RENEWAL' ? 'التجديدات' : 'قايمة الانتظار'}.`,
       relatedId: groupId,
     })
   } catch { /* never break the request */ }

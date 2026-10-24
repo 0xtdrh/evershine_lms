@@ -104,7 +104,9 @@ export async function createCycleInvoice(params: {
     const { notifyFamilies } = await import('@/lib/notifications/events')
     await notifyFamilies([params.studentId], 'INVOICE_NEW', () => ({
       title: 'New invoice',
+      titleAr: 'فاتورة جديدة',
       message: `Invoice ${inv.challanNumber}: ${params.label} — ${Number(inv.totalAmount)} EGP. If the wallet has enough balance it is paid automatically.`,
+      messageAr: `فاتورة ${inv.challanNumber}: ${params.label} — ${Number(inv.totalAmount)} ج.م. لو رصيد المحفظة يكفي بتتدفع لوحدها.`,
       relatedId: invoiceId,
     }))
   }

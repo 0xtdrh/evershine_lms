@@ -27,6 +27,7 @@ import {
   type TeacherIDCardData,
   type ExperienceLetterData,
 } from './pdf/direct-generators'
+import { cairoToday } from '@/lib/dates/cairo'
 
 async function toDataUrl(source?: string): Promise<string | undefined> {
   if (!source) return undefined
@@ -972,6 +973,6 @@ export async function generateAdministrationDirectoryCard(
   })
   const role = data.roleLabel === 'SUPER ADMINISTRATOR' ? 'SUPER-ADMIN' : 'ACCOUNT-MANAGER'
   const identifier = (data.employeeId || 'NO-ID').trim().replace(/[^a-z0-9-]+/gi, '-')
-  const date = new Date().toISOString().slice(0, 10)
+  const date = cairoToday()
   pdf.save(`${role}_${identifier}_${date}.pdf`)
 }

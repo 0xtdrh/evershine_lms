@@ -14,6 +14,7 @@ import { errors } from '@/lib/api-response'
 import { expenseExportSchema } from '@/lib/validation/expense'
 import { buildExpenseReport } from '@/lib/excel/expense-report'
 import { getExpenseColumnSupport } from '@/lib/accounting/expense-columns'
+import { cairoToday } from '@/lib/dates/cairo'
 
 export async function GET(request: NextRequest) {
   const session = await auth()
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(payload, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="expenses-${new Date().toISOString().split('T')[0]}.xlsx"`,
+      'Content-Disposition': `attachment; filename="expenses-${cairoToday()}.xlsx"`,
     },
   })
 }

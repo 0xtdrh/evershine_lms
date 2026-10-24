@@ -134,7 +134,7 @@ export function BlockView({ block, watermark, groupId }: { block: Block; waterma
         <div className="space-y-1 rounded-lg border border-sky-100 bg-sky-50/40 p-3">
           <p className="flex items-center gap-1 text-xs font-semibold uppercase text-sky-700"><ListChecks className="h-4 w-4" /> {d.kind === 'FINAL' ? t('qz.final') : t('qz.quiz')}</p>
           <Markdown text={pick(d.instructionsEn as string, d.instructionsAr as string)} />
-          <p className="text-xs text-slate-500">{qn} question(s){Number(d.timeLimitMin) ? ` · ${d.timeLimitMin} min` : ''}</p>
+          <p className="text-xs text-slate-500">{qn} {L('question(s)', 'سؤال')}{Number(d.timeLimitMin) ? ` · ${d.timeLimitMin} ${L('min', 'دقيقة')}` : ''}</p>
         </div>
       )
       break
@@ -145,7 +145,7 @@ export function BlockView({ block, watermark, groupId }: { block: Block; waterma
         <div className="space-y-2 rounded-lg border border-violet-100 bg-violet-50/40 p-3">
           <p className="flex items-center gap-1 text-xs font-semibold uppercase text-violet-700"><ClipboardList className="h-4 w-4" /> {t('hw.homework')}{d.finalProject ? ` · ${t('hw.finalProject')}` : ''}</p>
           <Markdown text={pick(d.instructionsEn as string, d.instructionsAr as string)} />
-          <p className="text-xs text-slate-500">{[(d.kinds as string[] | undefined)?.join(', '), qs ? `${qs} question(s)` : '', d.gradingMode as string].filter(Boolean).join(' · ')}</p>
+          <p className="text-xs text-slate-500">{[(d.kinds as string[] | undefined)?.join(', '), qs ? `${qs} ${L('question(s)', 'سؤال')}` : '', d.gradingMode as string].filter(Boolean).join(' · ')}</p>
         </div>
       )
       break

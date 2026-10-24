@@ -19,6 +19,7 @@ import {
   ClipboardList, UserCheck, UserX, Clock, Info, Timer
 } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
+import { cairoToday } from '@/lib/dates/cairo'
 
 /* ─── Types ────────────────────────────────────────────────────── */
 type AttStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
@@ -109,7 +110,7 @@ export default function TeacherAttendancePage() {
   const { data: session } = useSession()
   const qc = useQueryClient()
   const [classSectionId, setClassSectionId] = useState('')
-  const [date,           setDate]           = useState(new Date().toISOString().split('T')[0])
+  const [date,           setDate]           = useState(cairoToday())
   const [activeTab,      setActiveTab]      = useState<'manual' | 'qr'>('manual')
   const [statusMap,      setStatusMap]      = useState<Record<string, AttStatus>>({})
   const [qrCode,         setQrCode]         = useState<string | null>(null)

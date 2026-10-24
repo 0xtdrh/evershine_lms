@@ -16,7 +16,12 @@ export async function GET() {
         class: { select: { name: true, grade: true, shift: true } },
         batch: { select: { name: true, code: true } },
         house: { select: { name: true, color: true } },
-        guardians: true
+        guardians: true,
+        // 2026-10-24: the home card shows the real groups (the legacy class was "Unassigned" for everyone)
+        enrollments: {
+          where: { status: 'ACTIVE', classSection: { status: 'ACTIVE' } },
+          select: { classSection: { select: { className: true, sectionName: true, level: { select: { name: true } } } } },
+        },
       }
     })
 
@@ -26,7 +31,13 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: student
+      data: {
+        ...student,
+        groups: student.enrollments.map((e) => ({
+          name: `${e.classSection.className} ${e.classSection.sectionName}`.trim(),
+          level: e.classSection.level?.name ?? null,
+        })),
+      },
     })
   } catch (error) {
     console.error('[STUDENT_PROFILE_GET]', error)

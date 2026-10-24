@@ -28,6 +28,7 @@ import { normalizeCardCode } from '@/lib/cards/rules'
 import {
   BUILTIN_STAMPS, autoAwards, canGive, eventOpen, passportPrefix, shareExpiry, tracksGraduated, type Facts,
 } from './rules'
+import { cairoToday } from '@/lib/dates/cairo'
 
 type User = { id: string; role: string; campusId?: string | null }
 export interface Outcome<T = undefined> { ok: boolean; code?: string; message?: string; value?: T }
@@ -205,7 +206,9 @@ export async function evaluateStamps(studentId: string): Promise<number> {
   else if (fresh.length) {
     await notifyFamilies([studentId], 'PASSPORT_STAMP', (st) => ({
       title: 'New stamp in the passport',
+      titleAr: 'ختم جديد في الباسبور',
       message: `${st.firstName} got a new stamp: ${fresh.map((f) => (f.label ? `${f.name} (${f.label})` : f.name)).join(', ')}.`,
+      messageAr: `${st.firstName} خد ختم جديد: ${fresh.map((f) => (f.label ? `${f.name} (${f.label})` : f.name)).join('، ')}.`,
       relatedId: studentId,
     }), { includeStudent: true })
   }
@@ -249,11 +252,11 @@ export async function giveStamp(user: User, stampId: string, studentIds: string[
   for (const id of [...new Set(studentIds)].slice(0, 200)) {
     if (!(await canManageStudent(user, id))) continue
     if (!(await ensurePassport(id))) continue
-    const refKey = s.repeatable ? new Date().toISOString().slice(0, 10) : ''
+    const refKey = s.repeatable ? cairoToday() : ''
     try {
       await prisma.studentStamp.create({ data: { stampId, studentId: id, refKey, source: 'MANUAL', awardedById: user.id, note: note?.slice(0, 300) || null } })
       given++
-      await notifyFamilies([id], 'PASSPORT_STAMP', (st) => ({ title: 'New stamp in the passport', message: `${st.firstName} got a new stamp: ${s.nameEn}.`, relatedId: id }), { includeStudent: true })
+      await notifyFamilies([id], 'PASSPORT_STAMP', (st) => ({ title: 'New stamp in the passport', titleAr: 'ختم جديد في الباسبور', message: `${st.firstName} got a new stamp: ${s.nameEn}.`, messageAr: `${st.firstName} خد ختم جديد: ${s.nameAr || s.nameEn}.`, relatedId: id }), { includeStudent: true })
     } catch { /* already has it */ }
   }
   return { ok: true, value: { given } }
@@ -276,7 +279,7 @@ export async function scanEventStamp(user: User, stampId: string, code: string):
   let already = false
   try {
     await prisma.studentStamp.create({ data: { stampId, studentId: st.id, refKey, source: 'EVENT', awardedById: user.id } })
-    await notifyFamilies([st.id], 'PASSPORT_STAMP', (x) => ({ title: 'New stamp in the passport', message: `${x.firstName} got a new stamp: ${s.nameEn}.`, relatedId: st.id }), { includeStudent: true })
+    await notifyFamilies([st.id], 'PASSPORT_STAMP', (x) => ({ title: 'New stamp in the passport', titleAr: 'ختم جديد في الباسبور', message: `${x.firstName} got a new stamp: ${s.nameEn}.`, messageAr: `${x.firstName} خد ختم جديد: ${s.nameAr || s.nameEn}.`, relatedId: st.id }), { includeStudent: true })
   } catch { already = true }
   return { ok: true, value: { student: `${st.firstName} ${st.lastName}`.trim(), already } }
 }

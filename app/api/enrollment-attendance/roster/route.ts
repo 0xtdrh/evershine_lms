@@ -8,6 +8,7 @@ import { getOrSyncSectionEnrollments } from '@/lib/academic/roster-helper'
 import type { Role } from '@prisma/client'
 import { excusesOn } from '@/lib/excuses/engine'
 import { onlineJoinsOn } from '@/lib/online/engine'
+import { cairoToday } from '@/lib/dates/cairo'
 
 /** Active enrollments in a class section for attendance marking with batch/shift filters. */
 export async function GET(request: NextRequest) {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
   const classSectionId = params.get('classSectionId')
   const batchId = params.get('batchId')
   const shiftId = params.get('shiftId')
-  const dateStr = params.get('date') ?? new Date().toISOString().split('T')[0]
+  const dateStr = params.get('date') ?? cairoToday()
   
   if (!classSectionId) {
     return errors.validation({

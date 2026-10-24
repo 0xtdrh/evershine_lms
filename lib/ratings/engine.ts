@@ -56,7 +56,7 @@ export async function pendingSessionRatings(studentId: string) {
 async function lowRatingAlert(studentId: string, text: string, by: { userId: string; role: 'STUDENT' | 'PARENT'; topic: 'SESSION' | 'INSTRUCTOR' | 'OTHER'; classSectionId?: string | null }) {
   const s = await prisma.student.findUnique({ where: { id: studentId }, select: { firstName: true, lastName: true, campusId: true } })
   if (!s) return
-  await notifyUsers(await managerUserIds(s.campusId), 'LOW_RATING', { title: 'Low rating', message: `${s.firstName} ${s.lastName}: ${text}. A complaint was opened to follow it up.`, relatedId: studentId })
+  await notifyUsers(await managerUserIds(s.campusId), 'LOW_RATING', { title: 'Low rating', titleAr: 'تقييم قليل', message: `${s.firstName} ${s.lastName}: ${text}. A complaint was opened to follow it up.`, messageAr: `${s.firstName} ${s.lastName}: ${text}. اتفتحت شكوى علشان نتابعها.`, relatedId: studentId })
   const u = await prisma.user.findUnique({ where: { id: by.userId }, select: { displayName: true, email: true, guardian: { select: { firstName: true, lastName: true } } } })
   const senderName = u?.guardian ? `${u.guardian.firstName} ${u.guardian.lastName}`.trim() : u?.displayName ?? `${s.firstName} ${s.lastName}`
   const { createComplaint } = await import('@/lib/complaints/engine')

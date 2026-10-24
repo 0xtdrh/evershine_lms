@@ -18,6 +18,7 @@ import { COLLECTOR_LABELS, COMPONENT_KINDS, KIND_LABELS, type Collector, type Co
 import type { PartnerDetail } from './types'
 import { Calculator, Loader2, Pencil, Plus, Scale, Trash2 } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface DealRow {
   id: string; title: string; campusId: string | null; contractId: string | null; collector: Collector; components: DealComponent[]; extras: DealExtra[] | null
@@ -31,7 +32,7 @@ interface Preview {
 
 const d10 = (s: string | null) => (s ? s.slice(0, 10) : '')
 const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} EGP`
-const blank = (): Omit<DealRow, 'id'> => ({ title: '', campusId: null, contractId: null, collector: 'TECHNOVA', components: [{ kind: 'PERCENT', value: 30, base: 'NET' }], extras: [], countPartnerCancelled: true, period: 'MONTH', validFrom: new Date().toISOString().slice(0, 10), validTo: null, notes: '', isActive: true })
+const blank = (): Omit<DealRow, 'id'> => ({ title: '', campusId: null, contractId: null, collector: 'TECHNOVA', components: [{ kind: 'PERCENT', value: 30, base: 'NET' }], extras: [], countPartnerCancelled: true, period: 'MONTH', validFrom: cairoToday(), validTo: null, notes: '', isActive: true })
 
 function summary(d: Pick<DealRow, 'collector' | 'components'>) {
   return d.components.map((c) => (c.kind === 'PERCENT' ? `${c.value}%` : `${L(KIND_LABELS[c.kind].en, KIND_LABELS[c.kind].ar)} ${c.value}`)).join(' + ')

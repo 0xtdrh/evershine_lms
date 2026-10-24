@@ -144,8 +144,12 @@ export async function POST(req: NextRequest) {
       designation = 'Administrator'
       department = employee.admin.department ?? null
     } else {
-      employeeName = employee.email.split('@')[0]
+      // 2026-10-24: secretaries / branch managers showed their e-mail on the slip
+      const { staffNames } = await import('@/lib/contacts/contact-log')
+      employeeName = (await staffNames([employee.id])).get(employee.id) ?? employee.email.split('@')[0]
     }
+
+    const instructorsSeeSlips = await teacherSeesOwnSlips()
 
     // 2. Check for existing active salary slip for this employee/month
     const existing = await prisma.salarySlip.findFirst({
@@ -216,11 +220,13 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      // Dispatch real-time notification
-      await dispatchNotification({
+      // Dispatch real-time notification (2026-10-24: not to an instructor while slips are hidden from instructors)
+      if (!(employee.role === 'TEACHER' && !instructorsSeeSlips)) await dispatchNotification({
         userId: data.employeeId,
         title: 'Salary Slip Issued',
         message: `Your salary slip for ${data.month} has been issued. Net payable: EGP ${netSalary.toLocaleString()}.`,
+        titleAr: 'قسيمة المرتب اتعملت',
+        messageAr: `قسيمة مرتبك عن ${data.month} اتعملت. الصافي: ${netSalary.toLocaleString()} ج.م.`,
         type: 'SALARY_SLIP_ISSUED',
         relatedId: createdSlip.id,
         tx,

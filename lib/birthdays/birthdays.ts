@@ -110,6 +110,7 @@ export async function birthdayPeople(opts: { from?: Ymd; days: number; kinds?: P
 }
 
 export const birthdayText = (name: string) => `Happy birthday ${name}! 🎂🎉 Everyone at TechNova wishes you a wonderful year full of joy, learning and new inventions.`
+export const birthdayTextAr = (name: string) => `كل سنة وانت طيب يا ${name}! 🎂🎉 كل اللي في TechNova بيتمنولك سنة حلوة مليانة فرحة وتعلّم واختراعات جديدة.`
 
 /** Today's greetings; safe to run more than once a day (one greeting per person per year). */
 export async function runBirthdayJob(now: Date = new Date()) {
@@ -133,7 +134,7 @@ export async function runBirthdayJob(now: Date = new Date()) {
     greeted++
     const first = p.name.split(' ')[0]
     if (p.kind === 'STUDENT') {
-      await notifyFamilies([p.id], 'BIRTHDAY', () => ({ title: `Happy birthday ${first}! 🎂`, message: `${birthdayText(first)} Your birthday certificate is ready in the portal.`, relatedId: p.id }), { includeStudent: true })
+      await notifyFamilies([p.id], 'BIRTHDAY', () => ({ title: `Happy birthday ${first}! 🎂`, titleAr: `كل سنة وانت طيب يا ${first}! 🎂`, message: `${birthdayText(first)} Your birthday certificate is ready in the portal.`, messageAr: `${birthdayTextAr(first)} شهادة عيد الميلاد جاهزة على البوابة.`, relatedId: p.id }), { includeStudent: true })
       if (bdayType?.isActive) {
         try {
           await prisma.discountAssignment.create({
@@ -150,19 +151,19 @@ export async function runBirthdayJob(now: Date = new Date()) {
         for (const o of offerings) if (o.teacher?.userId) byTeacherUser.set(o.teacher.userId, [...new Set([...(byTeacherUser.get(o.teacher.userId) ?? []), label])])
       }
     } else {
-      await notifyUsers([p.userId], 'BIRTHDAY', { title: `Happy birthday ${first}! 🎂`, message: birthdayText(first), relatedId: null })
+      await notifyUsers([p.userId], 'BIRTHDAY', { title: `Happy birthday ${first}! 🎂`, titleAr: `كل سنة وانت طيب يا ${first}! 🎂`, message: birthdayText(first), messageAr: birthdayTextAr(first), relatedId: null })
       if (p.phone && isAutoWhatsAppConfigured() && (await isEventOn('BIRTHDAY'))) await sendWhatsAppText(p.phone, birthdayText(first))
       if (p.kind === 'STAFF') {
         const colleagues = (await branchStaffUserIds(p.campusId)).filter((id) => id !== p.userId)
-        await notifyUsers(colleagues, 'BIRTHDAY_STAFF', { title: 'Colleague birthday today 🎂', message: `Today is ${p.name}'s birthday (${p.role ?? 'staff'}).`, relatedId: null })
+        await notifyUsers(colleagues, 'BIRTHDAY_STAFF', { title: 'Colleague birthday today 🎂', titleAr: 'عيد ميلاد زميل النهارده 🎂', message: `Today is ${p.name}'s birthday (${p.role ?? 'staff'}).`, messageAr: `النهارده عيد ميلاد ${p.name}.`, relatedId: null })
       }
     }
   }
   for (const [campusId, list] of byCampus) {
-    await notifyUsers(await branchStaffUserIds(campusId), 'BIRTHDAY_STAFF', { title: 'Student birthdays today 🎂', message: list.join('\n'), relatedId: null })
+    await notifyUsers(await branchStaffUserIds(campusId), 'BIRTHDAY_STAFF', { title: 'Student birthdays today 🎂', titleAr: 'أعياد ميلاد طلاب النهارده 🎂', message: list.join('\n'), relatedId: null })
   }
   for (const [userId, list] of byTeacherUser) {
-    await notifyUsers([userId], 'BIRTHDAY_STAFF', { title: 'Birthdays in your groups today 🎂', message: list.join('\n'), relatedId: null })
+    await notifyUsers([userId], 'BIRTHDAY_STAFF', { title: 'Birthdays in your groups today 🎂', titleAr: 'أعياد ميلاد في جروباتك النهارده 🎂', message: list.join('\n'), relatedId: null })
   }
   return { date: `${today.y}-${today.m}-${today.d}`, people: people.length, greeted }
 }

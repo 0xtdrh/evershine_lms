@@ -14,6 +14,7 @@ import { feeExportDefaultersSchema } from '@/lib/validation/accountant-fee'
 import { buildDefaulterListReport } from '@/lib/excel/fee-lists'
 import { outstandingInvoiceAmount } from '@/lib/fees/reporting'
 import type { InvoiceStatus } from '@prisma/client'
+import { cairoToday } from '@/lib/dates/cairo'
 
 export async function GET(request: NextRequest) {
   const session = await auth()
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(body, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="fee-defaulters-${new Date().toISOString().split('T')[0]}.xlsx"`,
+      'Content-Disposition': `attachment; filename="fee-defaulters-${cairoToday()}.xlsx"`,
     },
   })
 }

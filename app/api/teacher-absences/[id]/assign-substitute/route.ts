@@ -84,6 +84,8 @@ export async function POST(
         userId: substitute.userId,
         title: 'Substitute session request',
         message: `You're requested to cover ${sessionText}${groupText} for ${absence.teacher.firstName} ${absence.teacher.lastName} on ${dateStr}. Please accept or decline in My Substitutions.`,
+        titleAr: 'طلب حصة بديلة',
+        messageAr: `مطلوب منك تغطي ${sessionInfo ? `حصة ${sessionInfo.sessionNumber} من ${sessionInfo.totalSessions}` : 'حصة'}${groupText} مكان ${absence.teacher.firstName} ${absence.teacher.lastName} يوم ${dateStr}. وافق أو ارفض من «حصصي البديلة».`,
         type: 'SUBSTITUTE_REQUESTED',
         relatedId: assignment.id,
       },

@@ -161,6 +161,13 @@ export default function DashboardPage() {
     enabled: role === 'STUDENT'
   })
 
+  // 2026-10-24: the attendance tile showed "--"; it now shows the real attendance % of the student's groups
+  const { data: myAttendance } = useQuery<{ overall: { pct: number | null; sessions: number } }>({
+    queryKey: ['my-attendance', studentProfile?.id],
+    queryFn: () => fetchApi(`/api/students/${studentProfile.id}/attendance-timeline`),
+    enabled: role === 'STUDENT' && !!studentProfile?.id,
+  })
+
   const { data: teacherProfileRaw, isLoading: isLoadingTeacher } = useQuery<any>({
     queryKey: ['teacher-profile', session?.user?.id],
     queryFn: () => fetchApi<any>(`/api/teachers/profile`),
@@ -332,15 +339,15 @@ export default function DashboardPage() {
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center py-2 border-b border-gray-50">
                 <span className="text-sm text-gray-500">{L('Campus', 'الفرع')}</span>
-                <span className="text-sm font-semibold">{studentProfile?.campus?.name || 'Loading...'}</span>
+                <span className="text-sm font-semibold">{studentProfile?.campus?.name || '…'}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                <span className="text-sm text-gray-500">{L('Class', 'الجروب')}</span>
-                <span className="text-sm font-semibold">{studentProfile?.class?.name || 'Unassigned'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-sm text-gray-500">{L('Academic Year', 'السنة الدراسية')}</span>
-                <span className="text-sm font-semibold">{studentProfile?.academicYear || '2026'}</span>
+                <span className="text-sm text-gray-500">{L('Group', 'الجروب')}</span>
+                <span className="text-sm font-semibold text-end">
+                  {(studentProfile?.groups ?? []).length
+                    ? studentProfile.groups.map((g: { name: string; level: string | null }) => g.level ? `${g.name} · ${g.level}` : g.name).join('، ')
+                    : L('Not in a group yet', 'لسه مش في جروب')}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -507,19 +514,19 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           <StatCard
             title={L('Attendance', 'الحضور')}
-            value="--"
-            sub={L('Monthly average', 'متوسط الشهر')}
+            value={myAttendance?.overall.pct != null ? `${Math.round(myAttendance.overall.pct)}%` : '—'}
+            sub={myAttendance?.overall.sessions ? `${myAttendance.overall.sessions} ${L('sessions', 'حصة')}` : L('No sessions yet', 'لسه مفيش حصص')}
             icon={ClipboardCheck}
             color="text-purple-600"
             href="/dashboard/attendance"
           />
           <StatCard
-            title={L('Pending Exams', 'امتحانات مستنية')}
-            value="0"
-            sub={L('Exams this week', 'امتحانات الأسبوع ده')}
+            title={L('My quizzes', 'الكويزات')}
+            value={L('Open →', 'افتح ←')}
+            sub={L('Quizzes of my lessons', 'كويزات الدروس')}
             icon={BookOpen}
             color="text-amber-600"
-            href="/dashboard/exams"
+            href="/dashboard/my-quizzes"
           />
           <StatCard
             title={L('My Results', 'نتايجي')}
@@ -560,7 +567,7 @@ export default function DashboardPage() {
       )}
 
       {/* Lower panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Today's Schedule (Teachers only) */}
         {role === 'TEACHER' ? (
           <Card className="shadow-md">
@@ -661,71 +668,7 @@ export default function DashboardPage() {
           </Card>
         ) : null}
 
-        {/* Upcoming Exams */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base font-semibold">{L('Upcoming Exams', 'الامتحانات الجاية')}</CardTitle>
-            <Link href="/dashboard/exams">
-              <Button variant="ghost" size="sm" className="text-xs text-gray-500">
-                {L('View all →', 'عرض الكل ←')}
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="p-4 space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <Skeleton className="w-10 h-10 rounded-lg" />
-                    <div className="flex-1">
-                      <Skeleton className="h-3.5 w-28 mb-1" />
-                      <Skeleton className="h-3 w-20" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (data?.upcomingExams ?? []).length === 0 ? (
-              <div className="p-8 text-center text-gray-400 text-sm">
-                <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                {L('No upcoming exams scheduled', 'مفيش امتحانات جاية')}
-              </div>
-            ) : (
-              <div className="divide-y">
-                {(data?.upcomingExams ?? []).map((exam) => {
-                  const start = new Date(exam.startDate)
-                  const daysUntil = Math.ceil((start.getTime() - renderedAt) / (1000 * 60 * 60 * 24))
-                  return (
-                    <div key={exam.id} className="flex items-start gap-3 px-4 py-3">
-                      <div className="w-10 h-10 rounded-lg bg-purple-100 flex flex-col items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-bold text-purple-700 leading-none">
-                          {start.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()}
-                        </span>
-                        <span className="text-sm font-black text-purple-800 leading-none">
-                          {start.getDate()}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-gray-900 truncate">{exam.name}</p>
-                        <p className="text-xs text-gray-500">{exam.class.name}</p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          daysUntil <= 3
-                            ? 'bg-red-100 text-red-700'
-                            : daysUntil <= 7
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-green-100 text-green-700'
-                        }`}>
-                          {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil}d`}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* 2026-10-24: the template "Upcoming Exams" card (legacy exams) was removed — quizzes live in the LMS */}
       </div>
 
       {/* Recent Activity Panel - Positioned at the End (staff only — 2026-10-24: students / parents saw technical names) */}

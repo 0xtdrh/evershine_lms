@@ -382,7 +382,10 @@ export async function POST(
         data: {
           userId: result.userId,
           title: '🎉 Welcome to TechNova!',
-          message: `Your admission has been approved. Registration No: ${result.registrationNumber}. Log in with your email (${result.email ?? request.guardianEmail ?? 'your registered email'}) and CNIC (without hyphens) as your password. Update your password after first login.`,
+          // 2026-10-24: the template text told people to sign in with their CNIC as the password (wrong: the branch gives a temporary password)
+          message: `Your admission has been approved. Registration No: ${result.registrationNumber}. Sign in with this registration number and the temporary password the branch gives you.`,
+          titleAr: '🎉 أهلاً بيك في TechNova!',
+          messageAr: `التسجيل اتقبل. رقم القيد: ${result.registrationNumber}. ادخل برقم القيد والباسورد المؤقت اللي هياخده ولي الأمر من الفرع.`,
           type: 'ADMISSION_APPROVED',
           relatedId: id,
           isRead: false,

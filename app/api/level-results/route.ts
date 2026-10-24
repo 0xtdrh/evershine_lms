@@ -235,13 +235,17 @@ export async function POST(request: NextRequest) {
     const subjectName = (await prisma.academicSubject.findUnique({ where: { id: data.subjectId }, select: { name: true } }))?.name ?? 'the course'
     await notifyFamilies([enrollment.studentId], 'RESULT_PUBLISHED', (s) => ({
       title: 'Result ready',
+      titleAr: 'النتيجة ظهرت',
       message: `${s.firstName}'s result for ${subjectName} is ready in the portal.`,
+      messageAr: `نتيجة ${s.firstName} في ${subjectName} ظهرت على البوابة.`,
       relatedId: result.id,
     }), { includeStudent: true })
     if (isLevelActuallyComplete) {
       await notifyFamilies([enrollment.studentId], 'REPORT_READY', (s) => ({
         title: 'Level report ready',
+        titleAr: 'تقرير المستوى جاهز',
         message: `${s.firstName}'s level report for ${subjectName} is ready in the portal (Reports).`,
+        messageAr: `تقرير مستوى ${s.firstName} في ${subjectName} جاهز على البوابة (التقارير).`,
         relatedId: enrollment.classSectionId,
       }))
     }

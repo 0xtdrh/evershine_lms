@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { walletType } from '@/components/wallet/WalletLedger'
 import { ArrowLeft, Printer } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface Statement {
   company: { companyName: string; companyPhone: string; companyAddress: string }
@@ -23,7 +24,7 @@ const money = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 
 
 export default function WalletStatementPage({ params }: { params: Promise<{ studentId: string }> }) {
   const { studentId } = use(params)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = cairoToday()
   const [from, setFrom] = useState(`${today.slice(0, 5)}01-01`)
   const [to, setTo] = useState(today)
   const { data: s, error, isLoading } = useQuery({

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Wallet, ReceiptText, CalendarDays, TrendingUp, Download, Banknote, CreditCard, BarChart2, FileText } from 'lucide-react'
 import { notify } from '@/lib/notify'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface ExpenseRecord {
   id: string
@@ -54,7 +55,7 @@ export default function AccountantDashboardPage() {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `accountant-expenses-${new Date().toISOString().split('T')[0]}.xlsx`
+      link.download = `accountant-expenses-${cairoToday()}.xlsx`
       link.click()
       window.URL.revokeObjectURL(url)
       notify.success('Expense report downloaded')

@@ -93,7 +93,9 @@ export async function submitExcuse(input: { studentId: string; classSectionId: s
     const [teacherGroup] = g ? [g] : []
     await notifyUsers([...staff, teacherGroup?.teacherUserId], 'EXCUSE_PENDING', {
       title: 'Absence excuse to review',
+      titleAr: 'عذر غياب محتاج مراجعة',
       message: `${student?.firstName ?? ''} ${student?.lastName ?? ''} — ${label}, session ${input.sessionDate}: ${reason.slice(0, 200)}`,
+      messageAr: `${student?.firstName ?? ''} ${student?.lastName ?? ''} — ${label}، حصة ${input.sessionDate}: ${reason.slice(0, 200)}`,
       relatedId: excuse.id,
     })
   }
@@ -113,9 +115,13 @@ export async function decideExcuse(input: { id: string; action: 'approve' | 'rej
   const d = day(e.sessionDate)
   await notifyFamilies([e.studentId], 'EXCUSE_DECIDED', (s) => ({
     title: status === 'APPROVED' ? 'Excuse accepted' : 'Excuse not accepted',
+    titleAr: status === 'APPROVED' ? 'العذر اتقبل' : 'العذر ماتقبلش',
     message: status === 'APPROVED'
       ? `${s.firstName}'s excuse for the session on ${d} was accepted.`
       : `${s.firstName}'s excuse for the session on ${d} was not accepted${input.note ? `: ${input.note}` : '.'}`,
+    messageAr: status === 'APPROVED'
+      ? `عذر ${s.firstName} عن حصة يوم ${d} اتقبل.`
+      : `عذر ${s.firstName} عن حصة يوم ${d} ماتقبلش${input.note ? `: ${input.note}` : '.'}`,
     relatedId: e.id,
   }))
   return { ok: true, id: e.id, status }

@@ -42,7 +42,7 @@ export async function morningSummary(force = false) {
       ]
       cache.set(k, lines.join(' · '))
     }
-    sent += await notifyUsers([u.id], 'MORNING_SUMMARY', { title: `Good morning — ${today}`, message: cache.get(k)!, relatedId: null })
+    sent += await notifyUsers([u.id], 'MORNING_SUMMARY', { title: `Good morning — ${today}`, titleAr: `صباح الخير — ${today}`, message: cache.get(k)!, relatedId: null })
   }
   await setSetting('jobs.daily.summaryDate', today)
   return { skipped: false, sent }

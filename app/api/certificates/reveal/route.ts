@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
   })
 
   for (const c of revealing) {
-    await notifyFamilies([c.studentId], 'CERTIFICATE_ISSUED', (s) => ({ title: 'Certificate ready 🎓', message: `Congratulations ${s.firstName}! Your certificate "${c.title}" is ready in the portal.`, relatedId: null }), { includeStudent: true })
+    await notifyFamilies([c.studentId], 'CERTIFICATE_ISSUED', (s) => ({ title: 'Certificate ready 🎓', titleAr: 'الشهادة جاهزة 🎓', message: `Congratulations ${s.firstName}! Your certificate "${c.title}" is ready in the portal.`, messageAr: `مبروك يا ${s.firstName}! شهادة «${c.title}» جاهزة على البوابة.`, relatedId: null }), { includeStudent: true })
   }
   return successResponse({ revealedCount: result.count })
 }

@@ -27,6 +27,7 @@ import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse, createdResponse, paginatedResponse } from '@/lib/api-response'
 import { buildProfitLossReport } from '@/lib/excel/profit-loss-report'
+import { cairoToday } from '@/lib/dates/cairo'
 
 const generateSchema = z.object({
   campusId: z.string().cuid().nullable().optional(),
@@ -117,7 +118,7 @@ export async function GET(req: NextRequest) {
       return new Response(buffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'Content-Disposition': `attachment; filename="profit-loss-statements-${new Date().toISOString().split('T')[0]}.xlsx"`,
+          'Content-Disposition': `attachment; filename="profit-loss-statements-${cairoToday()}.xlsx"`,
         },
       })
     }

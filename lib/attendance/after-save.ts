@@ -53,12 +53,16 @@ export async function afterAttendanceSaved(input: {
 
     await notifyFamilies(absentIds, 'ATTENDANCE_ABSENT', (s) => ({
       title: 'Absent today',
+      titleAr: 'غياب النهارده',
       message: `${s.firstName} was absent from the ${label} session on ${day}. If there was a reason, you can send an excuse from the portal.`,
+      messageAr: `${s.firstName} غاب عن حصة ${label} يوم ${day}. لو فيه عذر تقدر تبعته من البوابة.`,
       relatedId: input.classSectionId,
     }))
     await notifyFamilies(lateIds, 'ATTENDANCE_LATE', (s) => ({
       title: 'Arrived late',
+      titleAr: 'اتأخر',
       message: `${s.firstName} arrived late to the ${label} session on ${day}.`,
+      messageAr: `${s.firstName} اتأخر عن حصة ${label} يوم ${day}.`,
       relatedId: input.classSectionId,
     }))
 
@@ -76,7 +80,9 @@ export async function afterAttendanceSaved(input: {
       if (!s) continue
       await notifyUsers(await branchStaffUserIds(s.campusId), 'CONSECUTIVE_ABSENCE', {
         title: 'Absent twice in a row',
+        titleAr: 'غياب حصتين ورا بعض',
         message: `${s.firstName} ${s.lastName} (${label}) missed two sessions in a row. A follow-up was added for today.`,
+        messageAr: `${s.firstName} ${s.lastName} (${label}) غاب حصتين ورا بعض. اتضافت متابعة النهارده.`,
         relatedId: studentId,
       })
       await logSystemContact({

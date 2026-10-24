@@ -14,6 +14,7 @@ import { CalendarOff, Loader2, Trash2 } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
 import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface Holiday { id: string; date: string; name: string; campus: { id: string; name: string } | null }
 interface Campus { id: string; name: string }
@@ -32,7 +33,7 @@ export default function HolidaysPage() {
   })
   const canCreate = !!perms?.permissions?.holidays?.includes('create')
   const canDelete = !!perms?.permissions?.holidays?.includes('delete')
-  const today = new Date().toISOString().slice(0, 10)
+  const today = cairoToday()
   const { data: rows, isLoading } = useQuery({ queryKey: ['holidays'], queryFn: () => fetchApi<Holiday[]>(`/api/holidays?from=${today}`) })
   const { data: campuses = [] } = useQuery({ queryKey: ['campuses'], queryFn: () => fetchApi<Campus[]>('/api/campuses') })
   const [form, setForm] = useState({ date: '', toDate: '', name: '', campusId: isSuper ? 'ALL' : '' })

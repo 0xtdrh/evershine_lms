@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BadgeDollarSign, Baby, Loader2, Trash2 } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
+import { cairoToday } from '@/lib/dates/cairo'
 
 interface Log { id: string; sessionDate: string; status: string; headcount: number | null; note: string | null }
 
@@ -31,7 +32,7 @@ export function GroupPricePanel({ groupId, priceOverride, effectivePrice, unname
   const [price, setPrice] = useState(priceOverride === null ? '' : String(priceOverride))
   const [unnamed, setUnnamed] = useState(unnamedHeadcount !== null)
   const [kids, setKids] = useState(unnamedHeadcount === null ? '' : String(unnamedHeadcount))
-  const [log, setLog] = useState({ date: new Date().toISOString().slice(0, 10), status: 'HELD', headcount: '', note: '' })
+  const [log, setLog] = useState({ date: cairoToday(), status: 'HELD', headcount: '', note: '' })
   const refresh = () => { qc.invalidateQueries({ queryKey: ['group-detail'] }); qc.invalidateQueries({ queryKey: ['groups'] }); qc.invalidateQueries({ queryKey: ['group-sessions', groupId] }) }
   const patch = useMutation({
     mutationFn: (body: Record<string, unknown>) => fetchApi(`/api/groups/${groupId}`, { method: 'PATCH', body: JSON.stringify(body) }),

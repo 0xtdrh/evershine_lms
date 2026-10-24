@@ -33,6 +33,7 @@ export const saveComplaintSettings = (v: ComplaintSettings, userId: string) => s
 /** Legacy PENDING = NEW, legacy RESOLVED stays RESOLVED. */
 export const normStatus = (s: string): ComplaintStatus => (s === 'PENDING' ? 'NEW' : (COMPLAINT_STATUSES as readonly string[]).includes(s) ? (s as ComplaintStatus) : 'NEW')
 const KIND_LABEL: Record<ComplaintKind, string> = { COMPLAINT: 'complaint', SUGGESTION: 'suggestion', PRAISE: 'thank-you note' }
+const KIND_LABEL_AR: Record<ComplaintKind, string> = { COMPLAINT: 'شكوى', SUGGESTION: 'اقتراح', PRAISE: 'رسالة شكر' }
 
 async function nextNumber() {
   const prefix = `TN-CMP-${new Date().getFullYear()}-`
@@ -101,6 +102,7 @@ export async function createComplaint(input: {
   const handlers = await usersWithPermission('complaints', 'update', campusId)
   await notifyUsers(handlers.filter((id) => id !== input.recordedById), 'COMPLAINT_NEW', {
     title: `New ${KIND_LABEL[input.kind]} ${created.number ?? ''}`.trim(),
+    titleAr: `${KIND_LABEL_AR[input.kind]} جديدة ${created.number ?? ''}`.trim(),
     message: `${input.senderName}: ${body.slice(0, 140)}`,
     relatedId: created.id,
   })
@@ -110,8 +112,8 @@ export async function createComplaint(input: {
   return { ok: true, id: created.id, number: created.number }
 }
 
-async function tellSender(c: { id: string; complainantId: string; number: string | null }, title: string, message: string) {
-  await notifyUsers([c.complainantId], 'COMPLAINT_UPDATE', { title: `${title} — ${c.number ?? ''}`.trim(), message, relatedId: c.id })
+async function tellSender(c: { id: string; complainantId: string; number: string | null }, title: string, message: string, titleAr?: string, messageAr?: string) {
+  await notifyUsers([c.complainantId], 'COMPLAINT_UPDATE', { title: `${title} — ${c.number ?? ''}`.trim(), message, titleAr: titleAr ? `${titleAr} — ${c.number ?? ''}`.trim() : undefined, messageAr: messageAr ?? (titleAr ? message : undefined), relatedId: c.id })
 }
 
 /** Staff reply (or internal note) / sender reply. */
@@ -129,10 +131,10 @@ export async function addReply(input: { id: string; userId: string; role: string
       where: { id: c.id },
       data: { firstReplyAt: c.firstReplyAt ?? new Date(), ...(status === 'NEW' && { status: 'IN_PROGRESS' }), assignedToId: c.assignedToId ?? input.userId },
     })
-    await tellSender(c, 'Reply to your message', body.slice(0, 150))
+    await tellSender(c, 'Reply to your message', body.slice(0, 150), 'رد على رسالتك')
   } else if (!input.asStaff) {
     const to = c.assignedToId ? [c.assignedToId] : await usersWithPermission('complaints', 'update', c.campusId)
-    await notifyUsers(to, 'COMPLAINT_NEW', { title: `Reply from ${c.complainantName} — ${c.number ?? ''}`.trim(), message: body.slice(0, 150), relatedId: c.id })
+    await notifyUsers(to, 'COMPLAINT_NEW', { title: `Reply from ${c.complainantName} — ${c.number ?? ''}`.trim(), titleAr: `رد من ${c.complainantName} — ${c.number ?? ''}`.trim(), message: body.slice(0, 150), relatedId: c.id })
   }
   return { ok: true, id: c.id }
 }
@@ -153,11 +155,11 @@ export async function updateComplaint(input: { id: string; userId: string; statu
   }
   if (!Object.keys(data).length) return { ok: true, id: c.id }
   await prisma.complaint.update({ where: { id: c.id }, data })
-  if (data.status === 'IN_PROGRESS') await tellSender(c, 'We are working on it', 'Your message is being followed up by our team.')
-  if (data.status === 'RESOLVED') await tellSender(c, 'Marked as solved', 'Please open it in the portal and tell us if it is really solved.')
-  if (data.status === 'CLOSED') await tellSender(c, 'Closed', 'Your message is closed. Thank you for helping us improve.')
+  if (data.status === 'IN_PROGRESS') await tellSender(c, 'We are working on it', 'Your message is being followed up by our team.', 'بنشتغل عليها', 'فريقنا بيتابع رسالتك.')
+  if (data.status === 'RESOLVED') await tellSender(c, 'Marked as solved', 'Please open it in the portal and tell us if it is really solved.', 'اتحلّت', 'افتحها على البوابة وقولنا لو اتحلّت فعلًا.')
+  if (data.status === 'CLOSED') await tellSender(c, 'Closed', 'Your message is closed. Thank you for helping us improve.', 'اتقفلت', 'رسالتك اتقفلت. شكرًا إنك بتساعدنا نتحسن.')
   if (input.assignedToId && input.assignedToId !== input.userId) {
-    await notifyUsers([input.assignedToId], 'COMPLAINT_NEW', { title: `Assigned to you — ${c.number ?? ''}`.trim(), message: `${c.complainantName}: ${(c.body ?? c.description).slice(0, 140)}`, relatedId: c.id })
+    await notifyUsers([input.assignedToId], 'COMPLAINT_NEW', { title: `Assigned to you — ${c.number ?? ''}`.trim(), titleAr: `متحوّلة ليك — ${c.number ?? ''}`.trim(), message: `${c.complainantName}: ${(c.body ?? c.description).slice(0, 140)}`, relatedId: c.id })
   }
   return { ok: true, id: c.id }
 }
@@ -174,7 +176,9 @@ export async function confirmResolution(input: { id: string; senderUserId: strin
     await prisma.complaint.update({ where: { id: c.id }, data: { status: 'IN_PROGRESS', satisfied: false, handlingRating: rating, resolvedAt: null } })
     await notifyUsers([...(await managerUserIds(c.campusId)), ...(c.assignedToId ? [c.assignedToId] : [])], 'COMPLAINT_ESCALATED', {
       title: `Not solved yet — ${c.number ?? ''}`.trim(),
+      titleAr: `لسه مااتحلتش — ${c.number ?? ''}`.trim(),
       message: `${c.complainantName} says the problem is not solved: ${(c.body ?? c.description).slice(0, 120)}`,
+      messageAr: `${c.complainantName} بيقول المشكلة لسه مااتحلتش: ${(c.body ?? c.description).slice(0, 120)}`,
       relatedId: c.id,
     })
   }
@@ -199,6 +203,7 @@ export async function sweepComplaints(force = false) {
       if (!done.count) continue
       await notifyUsers(await managerUserIds(c.campusId), 'COMPLAINT_ESCALATED', {
         title: `No reply in ${settings.replyHours} h — ${c.number ?? ''}`.trim(),
+        titleAr: `مفيش رد من ${settings.replyHours} ساعة — ${c.number ?? ''}`.trim(),
         message: `${c.complainantName}: ${(c.body ?? c.description).slice(0, 140)}`,
         relatedId: c.id,
       })

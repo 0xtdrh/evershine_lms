@@ -26,7 +26,9 @@ export async function onCycleClosed(classSectionId: string) {
     if (cyclesInLevel(g.level) > 1) {
       await notifyFamilies(ids, 'REPORT_READY', (s) => ({
         title: 'Monthly report ready',
+        titleAr: 'تقرير الشهر جاهز',
         message: `${s.firstName}'s report for ${label}, month ${g.currentCycleNumber}, is ready in the portal (Reports).`,
+        messageAr: `تقرير ${s.firstName} في ${label}، شهر ${g.currentCycleNumber}، جاهز على البوابة (التقارير).`,
         relatedId: classSectionId,
       }))
     }
@@ -39,13 +41,17 @@ export async function onCycleClosed(classSectionId: string) {
     }
     await notifyFamilies(perfect, 'PERFECT_ATTENDANCE', (s) => ({
       title: '★ Perfect attendance',
+      titleAr: '★ حضور كامل',
       message: `Well done ${s.firstName}! Not a single session missed in ${label}${cyclesInLevel(g.level!) > 1 ? `, month ${g.currentCycleNumber}` : ''}.`,
+      messageAr: `برافو يا ${s.firstName}! ماغبتش ولا حصة في ${label}${cyclesInLevel(g.level!) > 1 ? `، شهر ${g.currentCycleNumber}` : ''}.`,
       relatedId: classSectionId,
     }), { includeStudent: true })
 
     await notifyFamilies(ids, 'FEEDBACK_REQUEST', (s) => ({
       title: 'How was this month?',
+      titleAr: 'الشهر ده كان عامل إيه؟',
       message: `Please rate ${s.firstName}'s sessions, instructor and TechNova for ${label} — it takes 10 seconds (My Children → Your opinion).`,
+      messageAr: `قيّم حصص ${s.firstName} والمدرب وTechNova في ${label} — 10 ثواني بس (أولادي ← رأيك).`,
       relatedId: classSectionId,
     }))
   } catch (err) {

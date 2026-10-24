@@ -13,6 +13,7 @@ import { createBrandedWorkbook } from '@/lib/excel/report-generator'
 import { listPartners } from '@/lib/partners/engine'
 import { openBalances } from '@/lib/partners/statement-engine'
 import { remaining } from '@/lib/partners/statement'
+import { cairoToday } from '@/lib/dates/cairo'
 
 const d10 = (d: Date | string | null) => (d ? new Date(d).toISOString().slice(0, 10) : '')
 
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(Buffer.from(buf as ArrayBuffer), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="technova-${kind}-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+      'Content-Disposition': `attachment; filename="technova-${kind}-${cairoToday()}.xlsx"`,
     },
   })
 }

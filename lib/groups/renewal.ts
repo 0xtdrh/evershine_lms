@@ -76,7 +76,9 @@ export async function ensureRenewalRequests(classSectionId: string): Promise<num
       s.guardians.map((g) => ({
         userId: g.userId,
         title: 'Continuing next month?',
+        titleAr: 'مكمّلين الشهر الجاي؟',
         message: `${s.firstName}'s month in ${label} ends soon. Please confirm if ${s.firstName} is continuing.`,
+        messageAr: `شهر ${s.firstName} في ${label} قرّب يخلص. أكّد لو ${s.firstName} هيكمّل.`,
         type: 'RENEWAL_REQUEST',
         relatedId: s.id,
       }))

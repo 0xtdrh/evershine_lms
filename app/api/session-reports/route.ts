@@ -9,6 +9,7 @@ import { errors, successResponse } from '@/lib/api-response'
 import { requireSession } from '@/lib/academic/api-helpers'
 import { checkPermission } from '@/lib/rbac'
 import { missingAttendance, staffList, staffSession } from '@/lib/session-reports/engine'
+import { cairoToday } from '@/lib/dates/cairo'
 
 const DAY = 86_400_000
 const isDay = (s: string | null): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s)
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
     return successResponse(r.value)
   }
   const toQ = q.get('to'), fromQ = q.get('from')
-  const to = isDay(toQ) ? toQ : new Date().toISOString().slice(0, 10)
+  const to = isDay(toQ) ? toQ : cairoToday()
   const from = isDay(fromQ) ? fromQ : new Date(Date.now() - 14 * DAY).toISOString().slice(0, 10)
   if (from > to) return errors.badRequest('"From" must be before "to"')
   const status = q.get('status')
