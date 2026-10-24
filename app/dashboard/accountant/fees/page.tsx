@@ -22,6 +22,7 @@ import { getCanonicalStudentClassSection, type EnrollmentRecord } from '@/lib/ac
 import { academicMonthLabel } from '@/lib/fees/reporting'
 import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface StudentResult {
   id: string; registrationNumber: string; firstName: string; lastName: string
@@ -54,6 +55,7 @@ async function downloadExcel(url: string, filename: string) {
 }
 
 export default function AccountantFeesPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const role = (session?.user?.role as string) || ''
   const userCampusId = (session?.user as any)?.campusId || ''
@@ -81,7 +83,7 @@ export default function AccountantFeesPage() {
   useEffect(() => {
     if (!classesError) return
     console.error('Failed to load classes for fees page', classesError)
-    notify.error('Unable to load classes. Please check permissions or try again.')
+    notify.error(L('Unable to load classes. Please check permissions or try again.', 'الجروبات ماحمّلتش. جرّب تاني.'))
   }, [classesError])
 
   useEffect(() => {
@@ -90,20 +92,20 @@ export default function AccountantFeesPage() {
 
   if (status === 'loading') return null
   if (!['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'].includes(role)) {
-    return <AccessDenied title="Fee Collection Access" message="Only finance staff can access this workspace." />
+    return <AccessDenied title={L('Fee Collection Access', 'التحصيل')} message="Only finance staff can access this workspace." />
   }
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-600">Finance</p>
-        <h1 className="text-2xl font-black text-slate-900">Fee Collection Hub</h1>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-600">{L('Finance', 'الفلوس')}</p>
+        <h1 className="text-2xl font-black text-slate-900">{L('Fee Collection Hub', 'التحصيل')}</h1>
         <div className="mt-2 print:hidden"><DataExchangeButtons dataset="payments" /></div>
-        <p className="text-sm text-slate-500">Issue invoices, track defaulters, and export payment reports.</p>
+        <p className="text-sm text-slate-500">{L('Issue invoices, track defaulters, and export payment reports.', 'اعمل فواتير، تابع المتأخرين، وصدّر تقارير المدفوعات.')}</p>
       </div>
       <Card className="border-teal-100 bg-white shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">Fee collection steps</CardTitle>
-          <CardDescription>Complete the flow in order so challans, proof review, and exports stay aligned.</CardDescription>
+          <CardTitle className="text-base">{L('Fee collection steps', 'خطوات التحصيل')}</CardTitle>
+          <CardDescription>{L('Complete the flow in order so challans, proof review, and exports stay aligned.', 'امشي بالترتيب: الفاتورة، مراجعة الإيصالات، وبعدين التقارير.')}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-4">
           {[
@@ -123,10 +125,10 @@ export default function AccountantFeesPage() {
 
       <Tabs defaultValue="invoice" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="invoice" className="gap-2"><CreditCard className="h-4 w-4" />Issue Invoice</TabsTrigger>
-          <TabsTrigger value="defaulters" className="gap-2"><AlertTriangle className="h-4 w-4" />Defaulters</TabsTrigger>
-          <TabsTrigger value="paid" className="gap-2"><CheckCircle2 className="h-4 w-4" />Paid Fees</TabsTrigger>
-          <TabsTrigger value="proofs" className="gap-2"><FileCheck className="h-4 w-4" />Payment Proofs</TabsTrigger>
+          <TabsTrigger value="invoice" className="gap-2"><CreditCard className="h-4 w-4" />{L('Issue Invoice', 'فاتورة جديدة')}</TabsTrigger>
+          <TabsTrigger value="defaulters" className="gap-2"><AlertTriangle className="h-4 w-4" />{L('Defaulters', 'المتأخرين')}</TabsTrigger>
+          <TabsTrigger value="paid" className="gap-2"><CheckCircle2 className="h-4 w-4" />{L('Paid Fees', 'المدفوع')}</TabsTrigger>
+          <TabsTrigger value="proofs" className="gap-2"><FileCheck className="h-4 w-4" />{L('Payment Proofs', 'إيصالات للمراجعة')}</TabsTrigger>
         </TabsList>
         <TabsContent value="invoice"><IssueInvoiceTab /></TabsContent>
         <TabsContent value="defaulters"><DefaultersTab
@@ -194,29 +196,29 @@ function IssueInvoiceTab() {
       })
     },
     onSuccess: () => {
-      notify.success('Invoice issued', { description: `Challan generated for ${student?.firstName} ${student?.lastName}` })
+      notify.success(L('Invoice issued', 'الفاتورة اتعملت'), { description: `Challan generated for ${student?.firstName} ${student?.lastName}` })
       queryClient.invalidateQueries({ queryKey: ['accountant-fees'] })
       setStudent(null); setQuery(''); setItems([{ description: 'Tuition Fee', amount: '' }])
       setDiscount('0'); setNotes(''); setDueDate('')
     },
-    onError: (e: unknown) => notify.error('Invoice failed', { description: e instanceof Error ? e.message : 'Unknown error' }),
+    onError: (e: unknown) => notify.error(L('Invoice failed', 'الفاتورة ماتعملتش'), { description: e instanceof Error ? e.message : 'Unknown error' }),
   })
 
   return (
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
       <div className="space-y-4">
         <Card>
-          <CardHeader><CardTitle className="text-base">1. Select Student</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{L('1. Select Student', '١. اختار الطالب')}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input id="student-search" className="pl-9" placeholder="Name or reg. number…"
+              <Input id="student-search" className="pl-9" placeholder={L('Name or reg. number…', 'الاسم أو رقم القيد…')}
                 value={query} onChange={e => setQuery(e.target.value)} />
             </div>
-            {isFetching && <p className="text-xs text-slate-400 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />Searching…</p>}
+            {isFetching && <p className="text-xs text-slate-400 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />{L('Searching…', 'بيدوّر…')}</p>}
             {query.length >= 2 && !isFetching && results.length === 0 && !student && (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                No active student found. Search by name, registration number, roll number, or B-Form/CNIC.
+                {L('No active student found. Search by name, registration number, roll number, or B-Form/CNIC.', 'مالقيناش طالب. دوّر بالاسم أو رقم القيد.')}
               </p>
             )}
             {results.length > 0 && !student && (
@@ -225,7 +227,7 @@ function IssueInvoiceTab() {
                   <button key={s.id} onClick={() => { setStudent(s); setQuery('') }}
                     className="w-full text-left p-3 hover:bg-teal-50 transition-colors">
                     <p className="font-semibold text-sm">{s.firstName} {s.lastName}</p>
-                    <p className="text-xs text-slate-500">{s.registrationNumber} · {getCanonicalStudentClassSection(s)} · Due: <span className="text-red-600 font-semibold">{formatCurrency(s.dueAmount)}</span></p>
+                    <p className="text-xs text-slate-500">{s.registrationNumber} · {getCanonicalStudentClassSection(s)} {L('· Due:', '· مستحق:')} <span className="text-red-600 font-semibold">{formatCurrency(s.dueAmount)}</span></p>
                   </button>
                 ))}
               </div>
@@ -236,40 +238,40 @@ function IssueInvoiceTab() {
                   <div>
                     <p className="font-bold text-slate-900">{student.firstName} {student.lastName}</p>
                     <p className="text-xs text-slate-600">{student.registrationNumber} · {getCanonicalStudentClassSection(student)}</p>
-                    <p className="text-xs text-slate-600">Father: {student.fatherName}</p>
-                    <p className="text-xs text-red-600 font-semibold">Outstanding: {formatCurrency(student.dueAmount)}</p>
+                    <p className="text-xs text-slate-600">{L('Father:', 'الأب:')} {student.fatherName}</p>
+                    <p className="text-xs text-red-600 font-semibold">{L('Outstanding:', 'الباقي:')} {formatCurrency(student.dueAmount)}</p>
                   </div>
-                  <button onClick={() => setStudent(null)} className="text-xs text-slate-400 hover:text-red-500">Change</button>
+                  <button onClick={() => setStudent(null)} className="text-xs text-slate-400 hover:text-red-500">{L('Change', 'غيّر')}</button>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-base">2. Invoice Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{L('2. Invoice Details', '٢. بيانات الفاتورة')}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
-              <Label htmlFor="inv-month">Month</Label>
+              <Label htmlFor="inv-month">{L('Month', 'الشهر')}</Label>
               <Select value={month} onValueChange={setMonth}>
                 <SelectTrigger id="inv-month"><SelectValue /></SelectTrigger>
                 <SelectContent>{MONTHS.map(m => <SelectItem key={m} value={`${m} ${YEAR}`}>{m} {YEAR}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="hidden">
-              <Label htmlFor="inv-ay">Academic Year</Label>
+              <Label htmlFor="inv-ay">{L('Academic Year', 'السنة الدراسية')}</Label>
               <Input id="inv-ay" value={ay} onChange={e => setAy(e.target.value)} placeholder="2025-2026" />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="inv-due">Due Date</Label>
+              <Label htmlFor="inv-due">{L('Due Date', 'ميعاد الدفع')}</Label>
               <DateInput id="inv-due" value={dueDate} onChange={e => setDueDate(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="inv-disc">Discount (EGP)</Label>
+              <Label htmlFor="inv-disc">{L('Discount (EGP)', 'الخصم (ج.م)')}</Label>
               <Input id="inv-disc" type="number" min="0" value={discount} onChange={e => setDiscount(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="inv-notes">Notes</Label>
-              <Textarea id="inv-notes" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional remarks…" />
+              <Label htmlFor="inv-notes">{L('Notes', 'ملاحظات')}</Label>
+              <Textarea id="inv-notes" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={L('Optional remarks…', 'ملاحظات (اختياري)…')} />
             </div>
           </CardContent>
         </Card>
@@ -277,20 +279,20 @@ function IssueInvoiceTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">3. Fee Line Items</CardTitle>
-          <CardDescription>Each charge appears separately on the student's challan.</CardDescription>
+          <CardTitle className="text-base">{L('3. Fee Line Items', '٣. بنود الفاتورة')}</CardTitle>
+          <CardDescription>{L('Each charge appears separately on the student\'s challan.', 'كل بند بيظهر لوحده في فاتورة الطالب.')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {items.map((item, i) => (
             <div key={i} className="flex gap-3 items-end">
               <div className="flex-1 space-y-1">
-                <Label htmlFor={`desc-${i}`}>Description</Label>
+                <Label htmlFor={`desc-${i}`}>{L('Description', 'البيان')}</Label>
                 <Input id={`desc-${i}`} value={item.description}
                   onChange={e => setItems(p => p.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
-                  placeholder="Tuition Fee / Computer Lab…" />
+                  placeholder={L('Tuition Fee / Computer Lab…', 'مثلاً: رسوم الكورس…')} />
               </div>
               <div className="w-36 space-y-1">
-                <Label htmlFor={`amt-${i}`}>Amount (EGP)</Label>
+                <Label htmlFor={`amt-${i}`}>{L('Amount (EGP)', 'المبلغ (ج.م)')}</Label>
                 <Input id={`amt-${i}`} type="number" min="0" step="0.01" value={item.amount}
                   onChange={e => setItems(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
                   placeholder="0" />
@@ -305,7 +307,7 @@ function IssueInvoiceTab() {
           ))}
           <Button variant="outline" size="sm" onClick={() => setItems(p => [...p, { description: '', amount: '' }])}
             className="gap-2 border-dashed border-teal-300 text-teal-700 hover:bg-teal-50">
-            <Plus className="h-4 w-4" /> Add line item
+            <Plus className="h-4 w-4" /> {L('Add line item', 'ضيف بند')}
           </Button>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
             {items.filter(it => it.description && parseFloat(it.amount) > 0).map((it, i) => (
@@ -314,18 +316,18 @@ function IssueInvoiceTab() {
               </div>
             ))}
             {parseFloat(discount) > 0 && (
-              <div className="flex justify-between text-sm text-emerald-600"><span>Discount</span><span>−{formatCurrency(parseFloat(discount))}</span></div>
+              <div className="flex justify-between text-sm text-emerald-600"><span>{L('Discount', 'الخصم')}</span><span>−{formatCurrency(parseFloat(discount))}</span></div>
             )}
             <div className="border-t border-slate-200 pt-2 flex justify-between font-black text-slate-900">
-              <span>Total Payable</span><span>{formatCurrency(total)}</span>
+              <span>{L('Total Payable', 'الإجمالي المطلوب')}</span><span>{formatCurrency(total)}</span>
             </div>
           </div>
           <Button id="issue-invoice-btn" onClick={() => mutation.mutate()}
             disabled={mutation.isPending || !student || !dueDate}
             className="w-full bg-teal-600 hover:bg-teal-700 text-white">
-            {mutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generating challan…</> : 'Issue Invoice & Generate Challan'}
+            {mutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />{L('Generating challan…', 'بيعمل الفاتورة…')}</> : L('Issue Invoice & Generate Challan', 'اعمل الفاتورة')}
           </Button>
-          {!student && <p className="text-xs text-slate-400 text-center">Select a student to enable invoice generation.</p>}
+          {!student && <p className="text-xs text-slate-400 text-center">{L('Select a student to enable invoice generation.', 'اختار طالب الأول علشان تعمل الفاتورة.')}</p>}
         </CardContent>
       </Card>
     </div>
@@ -342,45 +344,45 @@ function DefaultersTab({ campuses, classes, selectedCampusId, selectedClassId, s
       if (selectedCampusId) params.set('campusId', selectedCampusId)
       if (selectedClassId) params.set('classId', selectedClassId)
       await downloadExcel(`/api/accountant/fees/export/defaulters?${params.toString()}`, `defaulters${ay ? `-${ay}` : ''}.xlsx`)
-      notify.success('Defaulter list downloaded')
+      notify.success(L('Defaulter list downloaded', 'قايمة المتأخرين نزلت'))
     } catch {
-      notify.error('Export failed')
+      notify.error(L('Export failed', 'التصدير فشل'))
     } finally {
       setExp(false)
     }
   }, [ay, selectedCampusId, selectedClassId])
   return (
     <Card>
-      <CardHeader><CardTitle>Fee Defaulters Report</CardTitle>
-        <CardDescription>Students with UNPAID or PARTIALLY_PAID status, sorted by highest outstanding amount.</CardDescription>
+      <CardHeader><CardTitle>{L('Fee Defaulters Report', 'تقرير المتأخرين في الدفع')}</CardTitle>
+        <CardDescription>{L('Students with UNPAID or PARTIALLY_PAID status, sorted by highest outstanding amount.', 'الطلاب اللي عليهم فلوس (مادفعوش أو دفعوا جزء)، مترتبين من الأكبر للأصغر.')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-4 items-end">
           {canSelectCampus ? (
             <div className="space-y-1">
-              <Label htmlFor="def-campus">Campus</Label>
+              <Label htmlFor="def-campus">{L('Campus', 'الفرع')}</Label>
               <Select value={selectedCampusId} onValueChange={(value) => { setSelectedCampusId(value === '__all__' ? '' : value); setSelectedClassId('') }}>
-                <SelectTrigger id="def-campus" className="w-56"><SelectValue placeholder="All campuses" /></SelectTrigger>
+                <SelectTrigger id="def-campus" className="w-56"><SelectValue placeholder={L('All campuses', 'كل الفروع')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">All campuses</SelectItem>
+                  <SelectItem value="__all__">{L('All campuses', 'كل الفروع')}</SelectItem>
                   {campuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campusLabel(campus)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           ) : selectedCampusId ? (
             <div className="space-y-1">
-              <Label>Campus</Label>
+              <Label>{L('Campus', 'الفرع')}</Label>
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 {campuses.find(c => c.id === selectedCampusId)?.name ?? 'Current campus'}
               </div>
             </div>
           ) : null}
           <div className="space-y-1">
-            <Label htmlFor="def-class">Class / Section</Label>
+            <Label htmlFor="def-class">{L('Class / Section', 'الجروب')}</Label>
             <Select value={selectedClassId} onValueChange={(value) => setSelectedClassId(value === '__all__' ? '' : value)}>
-              <SelectTrigger id="def-class" className="w-72"><SelectValue placeholder="All classes" /></SelectTrigger>
+              <SelectTrigger id="def-class" className="w-72"><SelectValue placeholder={L('All classes', 'كل الجروبات')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All classes</SelectItem>
+                <SelectItem value="__all__">{L('All classes', 'كل الجروبات')}</SelectItem>
                 {classes.map((cls) => (
                   <SelectItem key={cls.id} value={cls.id}>
                     {`${cls.grade} ${cls.section}${cls.campus?.name ? ` — ${cls.campus.name}` : ''}`}
@@ -389,17 +391,17 @@ function DefaultersTab({ campuses, classes, selectedCampusId, selectedClassId, s
               </SelectContent>
             </Select>
           </div>
-          <div className="hidden"><Label htmlFor="def-ay">Academic Year</Label>
+          <div className="hidden"><Label htmlFor="def-ay">{L('Academic Year', 'السنة الدراسية')}</Label>
             <Input id="def-ay" value={ay} onChange={e => setAy(e.target.value)} className="w-40" />
           </div>
           <Button id="export-defaulters-btn" onClick={handleExport} disabled={exporting} className="gap-2 bg-red-600 hover:bg-red-700 text-white">
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Export Defaulter List (Excel)
+            {L('Export Defaulter List (Excel)', 'صدّر المتأخرين (Excel)')}
           </Button>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800 space-y-1">
-          <p className="font-semibold text-sm">Report includes: </p>
-          <p>Registration no. · Student & father name · Class · Contact number · Outstanding amount (EGP) · Last challan no.</p>
+          <p className="font-semibold text-sm">{L('Report includes:', 'التقرير فيه:')} </p>
+          <p>{L('Registration no. · Student & father name · Class · Contact number · Outstanding amount (EGP) · Last challan no.', 'رقم القيد · اسم الطالب والأب · الجروب · التليفون · الباقي (ج.م) · آخر فاتورة')}</p>
         </div>
       </CardContent>
     </Card>
@@ -421,45 +423,45 @@ function PaidFeesTab({ campuses, classes, selectedCampusId, selectedClassId, set
       if (selectedCampusId) params.set('campusId', selectedCampusId)
       if (selectedClassId) params.set('classId', selectedClassId)
       await downloadExcel(`/api/accountant/fees/export/paid?${params.toString()}`, `paid-${month.replace(' ', '-')}.xlsx`)
-      notify.success('Paid fees list downloaded')
+      notify.success(L('Paid fees list downloaded', 'قايمة المدفوع نزلت'))
     } catch {
-      notify.error('Export failed')
+      notify.error(L('Export failed', 'التصدير فشل'))
     } finally {
       setExp(false)
     }
   }, [month, ay, selectedCampusId, selectedClassId])
   return (
     <Card>
-      <CardHeader><CardTitle>Paid Fees Report</CardTitle>
-        <CardDescription>Export all PAID invoices for a given month and academic year.</CardDescription>
+      <CardHeader><CardTitle>{L('Paid Fees Report', 'تقرير المدفوع')}</CardTitle>
+        <CardDescription>{L('Export all PAID invoices for a given month and academic year.', 'صدّر كل الفواتير المدفوعة لشهر معيّن.')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-4 items-end">
           {canSelectCampus ? (
             <div className="space-y-1">
-              <Label htmlFor="paid-campus">Campus</Label>
+              <Label htmlFor="paid-campus">{L('Campus', 'الفرع')}</Label>
               <Select value={selectedCampusId} onValueChange={(value) => { setSelectedCampusId(value === '__all__' ? '' : value); setSelectedClassId('') }}>
-                <SelectTrigger id="paid-campus" className="w-56"><SelectValue placeholder="All campuses" /></SelectTrigger>
+                <SelectTrigger id="paid-campus" className="w-56"><SelectValue placeholder={L('All campuses', 'كل الفروع')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">All campuses</SelectItem>
+                  <SelectItem value="__all__">{L('All campuses', 'كل الفروع')}</SelectItem>
                   {campuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campusLabel(campus)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           ) : selectedCampusId ? (
             <div className="space-y-1">
-              <Label>Campus</Label>
+              <Label>{L('Campus', 'الفرع')}</Label>
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 {campuses.find(c => c.id === selectedCampusId)?.name ?? 'Current campus'}
               </div>
             </div>
           ) : null}
           <div className="space-y-1">
-            <Label htmlFor="paid-class">Class / Section</Label>
+            <Label htmlFor="paid-class">{L('Class / Section', 'الجروب')}</Label>
             <Select value={selectedClassId} onValueChange={(value) => setSelectedClassId(value === '__all__' ? '' : value)}>
-              <SelectTrigger id="paid-class" className="w-72"><SelectValue placeholder="All classes" /></SelectTrigger>
+              <SelectTrigger id="paid-class" className="w-72"><SelectValue placeholder={L('All classes', 'كل الجروبات')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All classes</SelectItem>
+                <SelectItem value="__all__">{L('All classes', 'كل الجروبات')}</SelectItem>
                 {classes.map((cls) => (
                   <SelectItem key={cls.id} value={cls.id}>
                     {`${cls.grade} ${cls.section}${cls.campus?.name ? ` — ${cls.campus.name}` : ''}`}
@@ -468,13 +470,13 @@ function PaidFeesTab({ campuses, classes, selectedCampusId, selectedClassId, set
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1"><Label htmlFor="paid-month">Month</Label>
+          <div className="space-y-1"><Label htmlFor="paid-month">{L('Month', 'الشهر')}</Label>
             <Select value={month} onValueChange={setMonth}>
               <SelectTrigger id="paid-month" className="w-44"><SelectValue /></SelectTrigger>
               <SelectContent>{monthOptions.map((monthLabel) => <SelectItem key={monthLabel} value={monthLabel}>{monthLabel}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="hidden"><Label htmlFor="paid-ay">Academic Year</Label>
+          <div className="hidden"><Label htmlFor="paid-ay">{L('Academic Year', 'السنة الدراسية')}</Label>
             <Input id="paid-ay" value={ay} onChange={e => {
               const nextAcademicYear = e.target.value
               setAy(nextAcademicYear)
@@ -485,12 +487,12 @@ function PaidFeesTab({ campuses, classes, selectedCampusId, selectedClassId, set
           </div>
           <Button id="export-paid-btn" onClick={handleExport} disabled={exporting} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Export Paid List (Excel)
+            {L('Export Paid List (Excel)', 'صدّر المدفوع (Excel)')}
           </Button>
         </div>
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800">
-          <p className="font-semibold text-sm">Report includes: </p>
-          <p>Registration no. · Student & father name · Class · Month · Amount paid (EGP) · Payment date · Method · Challan no.</p>
+          <p className="font-semibold text-sm">{L('Report includes:', 'التقرير فيه:')} </p>
+          <p>{L('Registration no. · Student & father name · Class · Month · Amount paid (EGP) · Payment date · Method · Challan no.', 'رقم القيد · اسم الطالب والأب · الجروب · الشهر · المدفوع (ج.م) · تاريخ الدفع · الطريقة · رقم الفاتورة')}</p>
         </div>
       </CardContent>
     </Card>
@@ -552,7 +554,7 @@ function PaymentProofsTab() {
           action: { label: 'Receipt', onClick: () => window.open(`/receipts/${paymentId}`, '_blank') },
         })
       } else {
-        notify.success(actionType === 'APPROVE' ? 'Payment approved!' : 'Payment rejected.')
+        notify.success(actionType === 'APPROVE' ? L('Payment approved!', 'الدفع اتوافق عليه!') : L('Payment rejected.', 'الإيصال اترفض.'))
       }
       setSelectedProof(null)
       setActionRemarks('')
@@ -567,7 +569,7 @@ function PaymentProofsTab() {
   const handleAction = () => {
     if (!selectedProof) return
     if (actionType === 'REJECT' && !actionRemarks.trim()) {
-      notify.error('Rejection reason is required')
+      notify.error(L('Rejection reason is required', 'لازم تكتب سبب الرفض'))
       return
     }
     const paidNum = paidAmountStr ? parseFloat(paidAmountStr) : undefined
@@ -584,25 +586,25 @@ function PaymentProofsTab() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileCheck className="h-5 w-5 text-amber-600" /> Payment Proofs Queue
+            <FileCheck className="h-5 w-5 text-amber-600" /> {L('Payment Proofs Queue', 'إيصالات للمراجعة')}
           </CardTitle>
           <CardDescription>
-            Review uploaded payment receipts. Approve with exact amount or reject with reason.
+            {L('Review uploaded payment receipts. Approve with exact amount or reject with reason.', 'راجع الإيصالات اللي الأهالي رفعوها: وافق بالمبلغ اللي وصل فعلًا، أو ارفض بسبب.')}
             {pendingList.length > 0 && (
-              <Badge variant="destructive" className="ml-2">{pendingList.length} pending</Badge>
+              <Badge variant="destructive" className="ml-2">{pendingList.length} {L('pending', 'مستني')}</Badge>
             )}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex items-center gap-2 text-sm text-gray-500 py-8 justify-center">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading pending proofs...
+              <Loader2 className="h-4 w-4 animate-spin" /> {L('Loading pending proofs...', 'بيحمّل الإيصالات…')}
             </div>
           ) : pendingList.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <CheckCircle2 className="h-12 w-12 mx-auto text-green-300 mb-3" />
-              <p className="font-semibold">All clear!</p>
-              <p className="text-sm">No payment proofs awaiting verification.</p>
+              <p className="font-semibold">{L('All clear!', 'مفيش حاجة مستنية!')}</p>
+              <p className="text-sm">{L('No payment proofs awaiting verification.', 'مفيش إيصالات مستنية مراجعة.')}</p>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -623,22 +625,22 @@ function PaymentProofsTab() {
                         </p>
                       </div>
                       <Badge variant="outline" className="text-amber-700 border-amber-300 text-[10px]">
-                        PENDING
+                        {L('PENDING', 'مستني')}
                       </Badge>
                     </div>
 
                     {/* Financial Details */}
                     <div className="grid grid-cols-3 gap-2 text-[11px]">
                       <div className="bg-white rounded-lg p-2 border border-slate-200">
-                        <p className="text-slate-400 font-semibold">Challan</p>
+                        <p className="text-slate-400 font-semibold">{L('Challan', 'الفاتورة')}</p>
                         <p className="font-mono font-bold text-slate-800 truncate">{inv.challanNumber}</p>
                       </div>
                       <div className="bg-white rounded-lg p-2 border border-slate-200">
-                        <p className="text-slate-400 font-semibold">Total</p>
+                        <p className="text-slate-400 font-semibold">{L('Total', 'الإجمالي')}</p>
                         <p className="font-bold text-slate-800">{formatCurrency(total)}</p>
                       </div>
                       <div className="bg-white rounded-lg p-2 border border-red-100">
-                        <p className="text-red-400 font-semibold">Due</p>
+                        <p className="text-red-400 font-semibold">{L('Due', 'المستحق')}</p>
                         <p className="font-bold text-red-700">{formatCurrency(remaining)}</p>
                       </div>
                     </div>
@@ -653,7 +655,7 @@ function PaymentProofsTab() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={inv.proofUrl}
-                          alt="Payment proof"
+                          alt={L('Payment proof', 'إيصال الدفع')}
                           className="w-full h-full object-contain group-hover:scale-105 transition-transform"
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
@@ -665,14 +667,14 @@ function PaymentProofsTab() {
                     {/* Student Remarks */}
                     {inv.proofRemarks && (
                       <div className="bg-white rounded-lg p-2 border border-slate-200 text-xs text-slate-600">
-                        <span className="font-semibold text-slate-800">Note:</span> {inv.proofRemarks}
+                        <span className="font-semibold text-slate-800">{L('Note:', 'ملاحظة:')}</span> {inv.proofRemarks}
                       </div>
                     )}
 
                     {/* Upload time */}
                     {inv.proofUploadedAt && (
                       <p className="text-[10px] text-slate-400">
-                        Uploaded {new Date(inv.proofUploadedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
+                        {L('Uploaded', 'اترفع')} {new Date(inv.proofUploadedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
                       </p>
                     )}
 
@@ -687,7 +689,7 @@ function PaymentProofsTab() {
                           setPaidAmountStr(String(remaining))
                         }}
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {L('Approve', 'موافقة')}
                       </Button>
                       <Button
                         size="sm"
@@ -698,7 +700,7 @@ function PaymentProofsTab() {
                           setActionType('REJECT')
                         }}
                       >
-                        <X className="w-3.5 h-3.5" /> Reject
+                        <X className="w-3.5 h-3.5" /> {L('Reject', 'رفض')}
                       </Button>
                     </div>
                   </div>
@@ -714,7 +716,7 @@ function PaymentProofsTab() {
         <DialogContent className="sm:max-w-3xl p-2">
           {lightboxUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={lightboxUrl} alt="Payment proof full view" className="w-full h-auto max-h-[80vh] object-contain rounded-lg" />
+            <img src={lightboxUrl} alt={L('Payment proof full view', 'الإيصال بالحجم الكامل')} className="w-full h-auto max-h-[80vh] object-contain rounded-lg" />
           )}
         </DialogContent>
       </Dialog>
@@ -725,17 +727,17 @@ function PaymentProofsTab() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {actionType === 'APPROVE' ? (
-                <><CheckCircle2 className="w-5 h-5 text-green-600" /> Approve Payment</>
+                <><CheckCircle2 className="w-5 h-5 text-green-600" /> {L('Approve Payment', 'وافق على الدفع')}</>
               ) : (
-                <><X className="w-5 h-5 text-red-600" /> Reject Proof</>
+                <><X className="w-5 h-5 text-red-600" /> {L('Reject Proof', 'ارفض الإيصال')}</>
               )}
             </DialogTitle>
             <DialogDescription>
               {selectedProof && (
                 <>
-                  Challan: <span className="font-mono font-bold">{selectedProof.challanNumber}</span>
+                  {L('Challan:', 'الفاتورة:')} <span className="font-mono font-bold">{selectedProof.challanNumber}</span>
                   <br />
-                  Student: <span className="font-bold">{selectedProof.student.firstName} {selectedProof.student.lastName}</span>
+                  {L('Student:', 'الطالب:')} <span className="font-bold">{selectedProof.student.firstName} {selectedProof.student.lastName}</span>
                 </>
               )}
             </DialogDescription>
@@ -744,7 +746,7 @@ function PaymentProofsTab() {
           <div className="space-y-4 py-2">
             {actionType === 'APPROVE' && selectedProof && (
               <div className="space-y-1.5">
-                <Label>Verified Paid Amount (EGP)</Label>
+                <Label>{L('Verified Paid Amount (EGP)', 'المبلغ اللي وصل فعلًا (ج.م)')}</Label>
                 <Input
                   type="number"
                   placeholder={`Max: ${Number(selectedProof.totalAmount) - Number(selectedProof.paidAmount)}`}
@@ -754,17 +756,17 @@ function PaymentProofsTab() {
                   max={Number(selectedProof.totalAmount) - Number(selectedProof.paidAmount)}
                 />
                 <p className="text-[11px] text-slate-500">
-                  Leave as full amount for complete payment. Enter lesser amount for partial payment.
+                  {L('Leave as full amount for complete payment. Enter lesser amount for partial payment.', 'سيبه بالمبلغ كله لو وصل كامل، أو اكتب أقل لو وصل جزء.')}
                 </p>
               </div>
             )}
 
             <div className="space-y-1.5">
               <Label>
-                Remarks {actionType === 'REJECT' && <span className="text-red-500">*</span>}
+                {L('Remarks', 'ملاحظات')} {actionType === 'REJECT' && <span className="text-red-500">*</span>}
               </Label>
               <Textarea
-                placeholder={actionType === 'REJECT' ? 'Reason for rejection (required)' : 'Optional notes...'}
+                placeholder={actionType === 'REJECT' ? L('Reason for rejection (required)', 'سبب الرفض (لازم)') : L('Optional notes...', 'ملاحظات (اختياري)…')}
                 value={actionRemarks}
                 onChange={(e) => setActionRemarks(e.target.value)}
                 rows={3}
@@ -774,7 +776,7 @@ function PaymentProofsTab() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setSelectedProof(null)} disabled={actionMutation.isPending}>
-              Cancel
+              {L('Cancel', 'إلغاء')}
             </Button>
             <Button
               onClick={handleAction}
@@ -785,9 +787,9 @@ function PaymentProofsTab() {
               }
             >
               {actionMutation.isPending ? (
-                <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Processing...</>
+                <><Loader2 className="w-4 h-4 animate-spin mr-1" /> {L('Processing...', 'بيتعمل…')}</>
               ) : (
-                actionType === 'APPROVE' ? 'Confirm Approval' : 'Confirm Rejection'
+                actionType === 'APPROVE' ? L('Confirm Approval', 'أكّد الموافقة') : L('Confirm Rejection', 'أكّد الرفض')
               )}
             </Button>
           </DialogFooter>

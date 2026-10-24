@@ -34,7 +34,7 @@ export async function GET(
   const substituteRows = await prisma.substituteAssignment.findMany({
     where: { substituteTeacherId: id },
     include: {
-      classSection: { select: { className: true, sectionName: true, level: { select: { name: true, subject: { select: { name: true } } } } } },
+      classSection: { select: { className: true, sectionName: true, scheduleSlots: true, level: { select: { name: true, subject: { select: { name: true } } } } } },
       originalTeacher: { select: { firstName: true, lastName: true } },
     },
     orderBy: { date: 'desc' },
@@ -62,6 +62,18 @@ export async function GET(
     }),
   ])
 
+  // the session time: a makeup / extra session on that day, else the weekly slot (2026-10-24: the card had no time)
+  const extras = substituteRows.length
+    ? await prisma.extraSession.findMany({ where: { classSectionId: { in: [...new Set(substituteRows.map((r) => r.classSectionId))] } }, select: { classSectionId: true, date: true, time: true } })
+    : []
+  const sessionTime = (r: (typeof substituteRows)[number]) => {
+    const day = r.date.toISOString().slice(0, 10)
+    const ex = extras.find((e) => e.classSectionId === r.classSectionId && e.date.toISOString().slice(0, 10) === day)
+    if (ex) return ex.time
+    const slots = Array.isArray(r.classSection.scheduleSlots) ? (r.classSection.scheduleSlots as { dayOfWeek: number; time: string }[]) : []
+    return slots.find((sl) => sl.dayOfWeek === r.date.getUTCDay())?.time ?? null
+  }
+
   const groupByDate = <T extends { date: Date }>(rows: T[]) => {
     const map = new Map<string, T[]>()
     for (const row of rows) {
@@ -82,6 +94,7 @@ export async function GET(
         courseName: r.classSection.level?.subject.name ?? null,
         levelName: r.classSection.level?.name ?? null,
         originalTeacherName: `${r.originalTeacher.firstName} ${r.originalTeacher.lastName}`,
+        time: sessionTime(r),
         sessionNumber: sessionInfoById.get(r.id)?.sessionNumber ?? null,
         totalSessions: sessionInfoById.get(r.id)?.totalSessions ?? null,
       })),

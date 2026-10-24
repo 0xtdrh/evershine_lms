@@ -116,7 +116,9 @@ export async function GET(
         select: { className: true, sectionName: true, level: { select: { name: true, subject: { select: { name: true } } } }, scheduleSlots: true },
       })
       const slots = Array.isArray(cs?.scheduleSlots) ? (cs!.scheduleSlots as { dayOfWeek: number; time: string }[]) : []
-      const slot = slots.find((sl) => sl.dayOfWeek === date.getDay())
+      // an extra / makeup session has no weekly slot (2026-10-24 live test: the covered makeup session showed 00:00)
+      const extra = await prisma.extraSession.findFirst({ where: { classSectionId: sub.classSectionId, date: { gte: new Date(`${dateStr}T00:00:00.000Z`), lte: new Date(`${dateStr}T23:59:59.999Z`) } }, select: { time: true } })
+      const slot = extra ?? slots.find((sl) => sl.dayOfWeek === date.getDay())
       const sessionInfo = await getSessionNumberForDate(sub.classSectionId, dateStr)
       const cancelled = cancelledSessions.find(
         (c) => c.date.toISOString().slice(0, 10) === dateStr && c.classSectionId === sub.classSectionId

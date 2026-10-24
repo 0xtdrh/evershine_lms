@@ -83,7 +83,7 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
     e.preventDefault()
     const payAmount = parseFloat(amount)
     if (!payAmount || payAmount <= 0) {
-      notify.error('Enter a valid payment amount')
+      notify.error(L('Enter a valid payment amount', 'اكتب مبلغ صحيح'))
       return
     }
     if (payAmount > remaining) {
@@ -102,12 +102,12 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
           remarks: remarks || undefined,
         }),
       })
-      notify.success('Payment recorded successfully')
+      notify.success(L('Payment recorded successfully', 'الدفع اتسجل'))
       queryClient.invalidateQueries({ queryKey: ['fees'] })
       onClose()
       afterPayment(res?.id, res?.receiptNumber) // open / print the receipt (Settings > Payments)
     } catch (err: any) {
-      notify.error('Failed to record payment', { description: err.message })
+      notify.error(L('Failed to record payment', 'الدفع ماتسجلش'), { description: err.message })
     } finally {
       setLoading(false)
     }
@@ -119,25 +119,25 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="w-5 h-5 text-green-600" />
-            Collect Payment
+            {L('Collect Payment', 'تحصيل')}
           </DialogTitle>
           <DialogDescription>
-            Challan: <span className="font-mono font-medium">{invoice.challanNumber}</span>
+            {L('Challan:', 'الفاتورة:')} <span className="font-mono font-medium">{invoice.challanNumber}</span>
             <br />
-            Student: <span className="font-medium">{invoice.student.firstName} {invoice.student.lastName}</span>
+            {L('Student:', 'الطالب:')} <span className="font-medium">{invoice.student.firstName} {invoice.student.lastName}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-3 py-2">
           <Card className="bg-blue-50 border-blue-200">
             <CardContent className="p-3">
-              <p className="text-xs text-blue-600 font-medium">Total Due</p>
+              <p className="text-xs text-blue-600 font-medium">{L('Total Due', 'المطلوب')}</p>
               <p className="text-lg font-bold text-blue-800">EGP {Number(invoice.totalAmount).toLocaleString()}</p>
             </CardContent>
           </Card>
           <Card className="bg-green-50 border-green-200">
             <CardContent className="p-3">
-              <p className="text-xs text-green-600 font-medium">Remaining</p>
+              <p className="text-xs text-green-600 font-medium">{L('Remaining', 'الباقي')}</p>
               <p className="text-lg font-bold text-green-800">EGP {remaining.toLocaleString()}</p>
             </CardContent>
           </Card>
@@ -145,7 +145,7 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Payment Amount (EGP)</Label>
+            <Label>{L('Payment Amount (EGP)', 'المبلغ (ج.م)')}</Label>
             <Input
               type="number"
               placeholder={`Max: ${remaining}`}
@@ -157,23 +157,23 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Payment Method</Label>
+            <Label>{L('Payment Method', 'طريقة الدفع')}</Label>
             <PaymentMethodSelect value={method} onValueChange={setMethod} />
           </div>
           {method !== 'Cash' && (
             <div className="space-y-1.5">
-              <Label>Transaction / Reference ID</Label>
+              <Label>{L('Transaction / Reference ID', 'رقم العملية')}</Label>
               <Input
-                placeholder="Bank transaction reference"
+                placeholder={L('Bank transaction reference', 'رقم العملية البنكية')}
                 value={transactionId}
                 onChange={(e) => setTransactionId(e.target.value)}
               />
             </div>
           )}
           <div className="space-y-1.5">
-            <Label>Remarks (optional)</Label>
+            <Label>{L('Remarks (optional)', 'ملاحظات (اختياري)')}</Label>
             <Input
-              placeholder="Any notes..."
+              placeholder={L('Any notes...', 'أي ملاحظات…')}
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
             />
@@ -181,10 +181,10 @@ function CollectPaymentModal({ invoice, onClose }: CollectPaymentModalProps) {
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
+              {L('Cancel', 'إلغاء')}
             </Button>
             <Button type="submit" disabled={loading} className="bg-green-600 hover:bg-green-700 text-white">
-              {loading ? 'Recording...' : 'Record payment (top up & pay)'}
+              {loading ? L('Recording...', 'بيتسجل…') : L('Record payment (top up & pay)', 'سجّل الدفع')}
             </Button>
           </DialogFooter>
         </form>

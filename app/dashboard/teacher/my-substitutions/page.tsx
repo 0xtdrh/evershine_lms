@@ -21,7 +21,7 @@ function apiErrorMessage(err: unknown, fallback: string): string {
 interface SubstituteData {
   asSubstitute: {
     date: string
-    sessions: { id: string; status: string; groupLabel: string; courseName: string | null; levelName: string | null; originalTeacherName: string; sessionNumber: number | null; totalSessions: number | null }[]
+    sessions: { id: string; status: string; groupLabel: string; courseName: string | null; levelName: string | null; originalTeacherName: string; time?: string | null; sessionNumber: number | null; totalSessions: number | null }[]
   }[]
   asAbsent: {
     date: string
@@ -81,14 +81,14 @@ export default function MySubstitutionsPage() {
               <div className="space-y-2">
                 {data.asSubstitute.map((day) => (
                   <Card key={day.date}>
-                    <CardHeader className="py-3"><CardTitle className="text-sm">{new Date(day.date).toLocaleDateString('en-GB')}</CardTitle></CardHeader>
+                    <CardHeader className="py-3"><CardTitle className="text-sm">{new Date(`${day.date}T12:00:00Z`).toLocaleDateString(L('en-GB', 'ar-EG'), { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Cairo' })}</CardTitle></CardHeader>
                     <CardContent className="space-y-2 pt-0">
                       {day.sessions.map((s) => (
                         <div key={s.id} className="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-2 text-sm">
                           <div>
                             <p className="text-slate-800">
                               {s.sessionNumber ? <span className="font-semibold text-indigo-600">{L('Session', 'حصة')} {s.sessionNumber} {L('of', 'من')} {s.totalSessions} · </span> : null}
-                              {s.groupLabel} {L('— covering for', '— بدل')} {s.originalTeacherName}
+                              {s.time && <span className="font-semibold">{s.time} · </span>}{s.groupLabel} {L('— covering for', '— بدل')} {s.originalTeacherName}
                             </p>
                             <p className="text-xs text-slate-400">{s.courseName} — {s.levelName}</p>
                           </div>
@@ -102,7 +102,7 @@ export default function MySubstitutionsPage() {
                               </Button>
                             </div>
                           ) : (
-                            <Badge variant="outline" className="text-[10px]">{s.status}</Badge>
+                            <Badge variant="outline" className="text-[10px]">{s.status === 'CONFIRMED' ? L('Accepted', 'موافق') : s.status === 'DECLINED' ? L('Declined', 'رفضت') : s.status}</Badge>
                           )}
                         </div>
                       ))}
@@ -131,7 +131,7 @@ export default function MySubstitutionsPage() {
                           </div>
                           <p className="text-xs text-slate-400">{it.reason}</p>
                           {it.substitutes.map((s, i) => (
-                            <p key={i} className="text-xs text-indigo-600 mt-1">{L('Substitute:', 'البديل:')} {s.name} ({s.status})</p>
+                            <p key={i} className="text-xs text-indigo-600 mt-1">{L('Substitute:', 'البديل:')} {s.name} ({s.status === 'CONFIRMED' ? L('accepted', 'وافق') : s.status === 'DECLINED' ? L('declined', 'رفض') : L('waiting', 'لسه ماردّش')})</p>
                           ))}
                         </div>
                       ))}

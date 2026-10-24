@@ -13,6 +13,7 @@ import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Copy, MessageCircle, Printer } from 'lucide-react'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Receipt {
   receiptNumber: string
@@ -34,6 +35,7 @@ const WIDTH: Record<string, string> = { '80mm': '72mm', '58mm': '48mm', A4: '150
 const money = (n: number) => `${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} EGP`
 
 export default function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
+  useI18n() // re-render on a language switch
   const { id } = use(params)
   const [autoPrint, setAutoPrint] = useState(false)
   useEffect(() => {
@@ -48,12 +50,12 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
     if (r && autoPrint) setTimeout(() => window.print(), 300)
   }, [r, autoPrint])
 
-  if (isLoading) return <p className="p-6 text-sm text-gray-500">Loading…</p>
+  if (isLoading) return <p className="p-6 text-sm text-gray-500">{L('Loading…', 'بيحمّل…')}</p>
   if (error || !r) {
     return (
       <div className="p-6 text-sm">
         <p className="mb-2 text-red-600">{(error as Error)?.message || 'Receipt not found'}</p>
-        <Link href="/login" className="text-blue-600 underline">Sign in</Link>
+        <Link href="/login" className="text-blue-600 underline">{L('Sign in', 'ادخل')}</Link>
       </div>
     )
   }
@@ -61,7 +63,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
   const paper = r.company.receiptPaper
   const thermal = paper !== 'A4'
   const copy = async () => {
-    try { await navigator.clipboard.writeText(r.text); notify.success('Receipt text copied') } catch { notify.error('Copy failed') }
+    try { await navigator.clipboard.writeText(r.text); notify.success(L('Receipt text copied', 'نص الإيصال اتنسخ')) } catch { notify.error(L('Copy failed', 'النسخ فشل')) }
   }
   const row = (label: string, value: string, strong = false) => (
     <div className={`flex justify-between gap-2 ${strong ? 'font-bold' : ''}`}>
@@ -76,7 +78,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
       <div className="mx-auto mb-4 flex max-w-xl flex-wrap justify-center gap-2 px-4 print:hidden">
         <Button variant="outline" onClick={() => history.length > 1 ? history.back() : (window.location.href = '/dashboard')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          <ArrowLeft className="mr-2 h-4 w-4" /> {L('Back', 'رجوع')}
         </Button>
         <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Print ({paper})</Button>
         {r.whatsappTo ? (
@@ -94,13 +96,13 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                 }).catch(() => undefined)
               }}
             >
-              <MessageCircle className="mr-2 h-4 w-4" /> Send on WhatsApp
+              <MessageCircle className="mr-2 h-4 w-4" /> {L('Send on WhatsApp', 'ابعت واتساب')}
             </a>
           </Button>
         ) : (
-          <span className="self-center text-xs text-gray-500">No parent phone for WhatsApp</span>
+          <span className="self-center text-xs text-gray-500">{L('No parent phone for WhatsApp', 'مفيش تليفون ولي أمر للواتساب')}</span>
         )}
-        <Button variant="outline" onClick={copy}><Copy className="mr-2 h-4 w-4" /> Copy text</Button>
+        <Button variant="outline" onClick={copy}><Copy className="mr-2 h-4 w-4" /> {L('Copy text', 'انسخ النص')}</Button>
       </div>
 
       <div
@@ -114,27 +116,27 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
           <div className="mt-1 font-bold">PAYMENT RECEIPT · إيصال استلام</div>
         </div>
         <hr className="my-2 border-dashed border-black" />
-        {row('Receipt', r.receiptNumber, true)}
-        {row('Date', new Date(r.paidAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }))}
-        {row('Student', r.student.name)}
-        {row('Reg. no', r.student.registrationNumber)}
-        {r.invoice.group && row('Group', r.invoice.group)}
-        {r.invoice.course && row('Course', `${r.invoice.course}${r.invoice.level ? ` — ${r.invoice.level}` : ''}`)}
-        {row('Invoice', `${r.invoice.number}`)}
-        {row('For', r.invoice.month)}
+        {row('رقم الإيصال · Receipt', r.receiptNumber, true)}
+        {row('التاريخ · Date', new Date(r.paidAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Cairo' }))}
+        {row('الطالب · Student', r.student.name)}
+        {row('رقم القيد · Reg. no', r.student.registrationNumber)}
+        {r.invoice.group && row('الجروب · Group', r.invoice.group)}
+        {r.invoice.course && row('الكورس · Course', `${r.invoice.course}${r.invoice.level ? ` — ${r.invoice.level}` : ''}`)}
+        {row('الفاتورة · Invoice', `${r.invoice.number}`)}
+        {row('عن · For', r.invoice.month)}
         <hr className="my-2 border-dashed border-black" />
         {r.invoice.discount > 0 && row('Price', money(r.invoice.subtotal))}
         {r.invoice.discount > 0 && row('Discount', `- ${money(r.invoice.discount)}`)}
-        {row('Invoice total', money(r.invoice.total))}
+        {row('إجمالي الفاتورة · Invoice total', money(r.invoice.total))}
         <div className="my-1 flex justify-between gap-2 border-y border-black py-1 font-bold" style={{ fontSize: thermal ? '14px' : '17px' }}>
-          <span>PAID</span>
+          <span>المدفوع · PAID</span>
           <span>{money(r.amount)}</span>
         </div>
-        {row('Method', r.method)}
+        {row('طريقة الدفع · Method', r.method)}
         {r.transactionId && row('Ref.', r.transactionId)}
-        {row('Paid so far', money(r.invoice.paidSoFar))}
-        {row('Remaining', money(r.invoice.remaining), true)}
-        {row('Received by', r.receivedBy)}
+        {row('المدفوع لحد دلوقتي · Paid so far', money(r.invoice.paidSoFar))}
+        {row('الباقي · Remaining', money(r.invoice.remaining), true)}
+        {row('استلم · Received by', r.receivedBy)}
         {r.status !== 'COMPLETED' && <div className="mt-1 text-center font-bold">STATUS: {r.status}</div>}
         <hr className="my-2 border-dashed border-black" />
         {r.company.receiptFooter && <div className="text-center">{r.company.receiptFooter}</div>}
