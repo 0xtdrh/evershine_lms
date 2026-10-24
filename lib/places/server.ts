@@ -6,7 +6,7 @@
 
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
-import { narrow, resolvePlaces, type Places, allowsCampus, allowsGroup } from './rules'
+import { narrow, resolvePlaces, type Places, allowsCampus, allowsGroup, TEACHER_STUDENT_STATUSES } from './rules'
 
 export * from './rules'
 
@@ -95,7 +95,7 @@ export async function canSeeGroup(user: Who, groupId: string): Promise<boolean> 
 /** May this person open this student? (the student's place, or enrolled in one of their single groups) */
 export async function canSeeStudent(user: Who, studentId: string): Promise<boolean> {
   const p = await loadPlaces(user)
-  if (p.onlyGroups) return p.onlyGroups.length > 0 && (await prisma.studentEnrollment.count({ where: { studentId, classSectionId: { in: p.onlyGroups } } })) > 0
+  if (p.onlyGroups) return p.onlyGroups.length > 0 && (await prisma.studentEnrollment.count({ where: { studentId, classSectionId: { in: p.onlyGroups }, status: { in: [...TEACHER_STUDENT_STATUSES] } } })) > 0
   if (p.all) return true
   const s = await prisma.student.findUnique({ where: { id: studentId }, select: { campusId: true } })
   if (s && allowsCampus(p, s.campusId)) return true

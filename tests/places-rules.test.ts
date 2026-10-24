@@ -87,7 +87,7 @@ describe('instructors see only their groups (owner 2026-10-24)', () => {
     expect(t.all).toBe(false)
     expect(t.onlyGroups?.sort()).toEqual(['g1', 'g2', 'single'])
     expect(groupWhere(t)).toEqual({ AND: [{ id: { in: t.onlyGroups } }] })
-    expect(studentWhere(t)).toEqual({ AND: [{ enrollments: { some: { classSectionId: { in: t.onlyGroups } } } }] })
+    expect(studentWhere(t)).toEqual({ AND: [{ enrollments: { some: { classSectionId: { in: t.onlyGroups }, status: { in: ['ACTIVE', 'PROMOTED', 'RETAINED', 'GRADUATED'] } } } }] })
     expect(allowsGroup(t, { id: 'other', campusId: 'c1' })).toBe(false)
     expect(allowsGroup(t, { id: 'g1', campusId: 'c9' })).toBe(true)
   })
@@ -99,7 +99,7 @@ describe('instructors see only their groups (owner 2026-10-24)', () => {
   })
   it('no groups yet → sees no students; the header filter keeps the limit', () => {
     const none = resolvePlaces({ role: 'TEACHER', allLocations: false, primary: 'c1', extra: [], groups: [], teacherGroups: [] })
-    expect(studentWhere(none)).toEqual({ AND: [{ enrollments: { some: { classSectionId: { in: ['__none__'] } } } }] })
+    expect(studentWhere(none)).toEqual({ AND: [{ enrollments: { some: { classSectionId: { in: ['__none__'] }, status: { in: ['ACTIVE', 'PROMOTED', 'RETAINED', 'GRADUATED'] } } } }] })
     expect(narrow(t, 'c1').onlyGroups).toEqual(t.onlyGroups)
   })
 })

@@ -63,9 +63,12 @@ export function groupWhere(p: Places): Record<string, unknown> {
   return or.length ? { AND: [{ OR: or }] } : { id: '__none__' }
 }
 
+/** Instructors keep the students who are in their groups now or finished there (results) — not those who left / moved. */
+export const TEACHER_STUDENT_STATUSES = ['ACTIVE', 'PROMOTED', 'RETAINED', 'GRADUATED'] as const
+
 /** Students: of a visible place, or enrolled in one of the person's single groups. */
 export function studentWhere(p: Places): Record<string, unknown> {
-  if (p.onlyGroups) return { AND: [{ enrollments: { some: { classSectionId: { in: p.onlyGroups.length ? p.onlyGroups : ['__none__'] } } } }] }
+  if (p.onlyGroups) return { AND: [{ enrollments: { some: { classSectionId: { in: p.onlyGroups.length ? p.onlyGroups : ['__none__'] }, status: { in: [...TEACHER_STUDENT_STATUSES] } } } }] }
   if (p.all) return {}
   const or: Record<string, unknown>[] = []
   if (p.campusIds.length) or.push({ campusId: { in: p.campusIds } })
