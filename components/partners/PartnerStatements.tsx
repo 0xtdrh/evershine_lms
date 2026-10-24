@@ -5,7 +5,7 @@
  * approve (frozen), record payments both ways; the rest of an approved statement moves into the next one.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
@@ -88,7 +88,9 @@ export function PartnerStatements({ p, perms }: { p: PartnerDetail; perms: { cre
 
 function StatementBody({ s, perms, onChange }: { s: Statement; perms: { create: boolean; approve: boolean; update: boolean }; onChange: () => void }) {
   const [manual, setManual] = useState<ManualLine[]>(s.manualLines ?? [])
-  const [pay, setPay] = useState({ amount: '', method: 'Bank Transfer', paidAt: new Date().toISOString().slice(0, 10), reference: '', note: '' })
+  // 2026-10-24 live test: the remaining was only a grey placeholder (looked filled, the button did nothing) — start with it
+  const [pay, setPay] = useState({ amount: String(Math.abs(s.rest) || ''), method: 'Bank Transfer', paidAt: new Date().toISOString().slice(0, 10), reference: '', note: '' })
+  useEffect(() => { setPay((p) => ({ ...p, amount: Math.abs(s.rest) > 0.009 ? String(Math.abs(s.rest)) : '' })) }, [s.rest])
   const draft = s.status === 'DRAFT'
   const err = (e: Error) => notify.error(e.message)
   const recalc = useMutation({ mutationFn: () => fetchApi(`/api/partner-statements/${s.id}`, { method: 'PATCH', body: JSON.stringify({ manualLines: manual }) }), onSuccess: () => { notify.success(L('Recalculated', 'اتحسب تاني')); onChange() }, onError: err })
@@ -96,7 +98,7 @@ function StatementBody({ s, perms, onChange }: { s: Statement; perms: { create: 
   const del = useMutation({ mutationFn: () => fetchApi(`/api/partner-statements/${s.id}`, { method: 'DELETE' }), onSuccess: () => { notify.success(L('Deleted', 'اتمسح')); onChange() }, onError: err })
   const addPay = useMutation({
     mutationFn: () => fetchApi(`/api/partner-statements/${s.id}/payments`, { method: 'POST', body: JSON.stringify({ direction: s.rest > 0 ? 'PARTNER_TO_TECHNOVA' : 'TECHNOVA_TO_PARTNER', amount: Number(pay.amount), method: pay.method, paidAt: pay.paidAt, reference: pay.reference || null, note: pay.note || null }) }),
-    onSuccess: () => { notify.success(L('Payment recorded', 'الدفعة اتسجلت')); setPay({ ...pay, amount: '', reference: '', note: '' }); onChange() },
+    onSuccess: () => { notify.success(L('Payment recorded', 'الدفعة اتسجلت')); setPay({ ...pay, reference: '', note: '' }); onChange() },
     onError: err,
   })
   const f = s.facts

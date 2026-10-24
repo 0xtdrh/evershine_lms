@@ -52,7 +52,7 @@ export function ParentWalletCard() {
         fd.append('studentId', c.studentId); fd.append('amount', String(n)); fd.append('file', file!); if (remarks) fd.append('remarks', remarks)
         const res = await fetch('/api/guardian-portal/wallet/topups', { method: 'POST', body: fd })
         const body = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(body?.error?.message || 'Could not send the receipt')
+        if (!res.ok) throw new Error(body?.error?.message || L('Could not send the receipt', 'الإيصال ماتبعتش'))
         return body.data
       }
       if (mode!.kind === 'transfer') return fetchApi('/api/guardian-portal/wallet/transfer', { method: 'POST', body: JSON.stringify({ fromId: c.studentId, toId, amount: n }) })
@@ -61,10 +61,10 @@ export function ParentWalletCard() {
     onSuccess: (r) => {
       const online = r as { checkoutUrl?: string }
       if (online?.checkoutUrl) { window.location.href = online.checkoutUrl; return }
-      notify.success(mode?.kind === 'topup' ? 'Receipt sent — the wallet is topped up once it is checked' : mode?.kind === 'transfer' ? 'Moved' : 'Request sent — you will be notified')
+      notify.success(mode?.kind === 'topup' ? L('Receipt sent — the wallet is topped up once it is checked', 'الإيصال اتبعت — المحفظة هتتشحن بعد ما يتراجع') : mode?.kind === 'transfer' ? L('Moved', 'اتنقل') : L('Request sent — you will be notified', 'الطلب اتبعت — هيوصلك إشعار'))
       close(); refresh()
     },
-    onError: (e: Error) => notify.error(e.message || 'Could not do it'),
+    onError: (e: Error) => notify.error(e.message || L('Could not do it', 'ماينفعش دلوقتي')),
   })
 
   if (!data?.wallets.length) return null
@@ -78,7 +78,7 @@ export function ParentWalletCard() {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm"><Wallet className="h-4 w-4 text-indigo-600" /> {L('Wallets', 'المحافظ')}</CardTitle>
-        <CardDescription>Top up the wallet; it pays the invoices automatically, oldest first.</CardDescription>
+        <CardDescription>{L('Top up the wallet; it pays the invoices automatically, oldest first.', 'اشحن المحفظة، وهي بتدفع الفواتير لوحدها من الأقدم للأحدث.')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {data.wallets.map((c) => (
@@ -106,11 +106,11 @@ export function ParentWalletCard() {
       <Dialog open={!!mode} onOpenChange={(o) => { if (!o) close() }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{mode?.kind === 'topup' ? `Top up ${mode.child.name}` : mode?.kind === 'transfer' ? 'Move to another child' : 'Ask for money back'}</DialogTitle>
+            <DialogTitle>{mode?.kind === 'topup' ? `${L('Top up', 'اشحن لـ')} ${mode.child.name}` : mode?.kind === 'transfer' ? L('Move to another child', 'انقل لابن تاني') : L('Ask for money back', 'اطلب استرجاع فلوس')}</DialogTitle>
             <DialogDescription>
-              {mode?.kind === 'topup' && (mode.child.minimumTopUp ? `Minimum ${money(mode.child.minimumTopUp)}.` : 'Any amount.')}
+              {mode?.kind === 'topup' && (mode.child.minimumTopUp ? `${L('Minimum', 'أقل مبلغ')} ${money(mode.child.minimumTopUp)}.` : L('Any amount.', 'أي مبلغ.'))}
               {mode?.kind === 'transfer' && `Balance ${money(mode.child.balance)}.`}
-              {mode?.kind === 'withdraw' && 'Needs approval. A fee may apply depending on how the money goes back.'}
+              {mode?.kind === 'withdraw' && L('Needs approval. A fee may apply depending on how the money goes back.', 'محتاج موافقة. ممكن يكون فيه رسوم حسب طريقة رجوع الفلوس.')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm">
@@ -156,7 +156,7 @@ export function ParentWalletCard() {
             )}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={close}>{L('Cancel', 'إلغاء')}</Button>
-              <Button disabled={!valid || send.isPending} onClick={() => send.mutate()}>{mode?.kind === 'topup' && way === 'ONLINE' ? 'Pay online' : 'Send'}</Button>
+              <Button disabled={!valid || send.isPending} onClick={() => send.mutate()}>{mode?.kind === 'topup' && way === 'ONLINE' ? L('Pay online', 'ادفع أونلاين') : L('Send', 'ابعت')}</Button>
             </div>
           </div>
         </DialogContent>

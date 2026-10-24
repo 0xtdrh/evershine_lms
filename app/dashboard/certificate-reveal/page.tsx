@@ -300,7 +300,7 @@ export default function CertificateRevealPage() {
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
                 <CardTitle className="text-base">{group.subjectName}</CardTitle>
-                <CardDescription>{group.items.length} {L('certificate', 'شهادة')}{group.items.length === 1 ? '' : 's'}</CardDescription>
+                <CardDescription>{group.items.length} {L(group.items.length === 1 ? 'certificate' : 'certificates', 'شهادة')}</CardDescription>
               </div>
               <Button
                 size="sm"
@@ -362,7 +362,7 @@ export default function CertificateRevealPage() {
                     {new Date(b.createdAt).toLocaleDateString('en-EG', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
-                <Badge variant="outline" className="text-[10px]">{b.totalCount} {L('certificate', 'شهادة')}{b.totalCount === 1 ? '' : 's'}</Badge>
+                <Badge variant="outline" className="text-[10px]">{b.totalCount} {L(b.totalCount === 1 ? 'certificate' : 'certificates', 'شهادة')}</Badge>
               </button>
             ))}
           </CardContent>
@@ -378,7 +378,7 @@ export default function CertificateRevealPage() {
                 <>
                   {L('Created', 'اتعمل')} {new Date(batchDetail.batch.createdAt).toLocaleDateString('en-EG', { day: 'numeric', month: 'short', year: 'numeric' })}
                   {' · '}
-                  {batchDetail.certificates.length} {L('certificate', 'شهادة')}{batchDetail.certificates.length === 1 ? '' : 's'}
+                  {batchDetail.certificates.length} {L(batchDetail.certificates.length === 1 ? 'certificate' : 'certificates', 'شهادة')}
                   {batchDetail.batch.printedByName && <> {L('· Printed by', '· طبعها')} {batchDetail.batch.printedByName}</>}
                 </>
               )}

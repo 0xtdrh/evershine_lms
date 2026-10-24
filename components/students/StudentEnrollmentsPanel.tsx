@@ -445,7 +445,7 @@ export function StudentEnrollmentsPanel({
               onClick={() => setShowHistory((v) => !v)}
             >
               {showHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              {withdrawn.length} {L('historical enrollment', 'تسكين قديم')}{withdrawn.length !== 1 ? 's' : ''} {L('on record', 'متسجل')}
+              {withdrawn.length} {L(withdrawn.length === 1 ? 'historical enrollment' : 'historical enrollments', 'تسكين قديم')} {L('on record', 'متسجل')}
             </button>
 
             {showHistory && (

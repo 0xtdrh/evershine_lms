@@ -28,7 +28,7 @@ export function FollowUpsWidget() {
     <Link href="/dashboard/follow-ups" className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 hover:bg-indigo-100">
       <PhoneCall className="h-5 w-5 text-indigo-600" />
       <span>
-        {L('You have', 'عندك')} <strong>{c.today}</strong> {L('parent follow-up', 'متابعة ولي أمر')}{c.today === 1 ? '' : 's'} {L('today', 'النهارده')}
+        {L('You have', 'عندك')} <strong>{c.today}</strong> {L(c.today === 1 ? 'parent follow-up' : 'parent follow-ups', 'متابعة ولي أمر')} {L('today', 'النهارده')}
         {c.overdue > 0 && <> {L('and', 'و')} <strong className="text-rose-700">{c.overdue} {L('overdue', 'متأخرة')}</strong></>}.
       </span>
       <span className="ml-auto text-xs font-semibold">{L('Open →', 'افتح ←')}</span>

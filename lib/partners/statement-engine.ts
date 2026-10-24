@@ -70,7 +70,9 @@ export async function makeStatement(userId: string, partnerId: string, campusId:
   const clash = same.find((s) => overlaps({ from, to }, { from: s.periodFrom, to: s.periodTo }))
   if (clash) return fail('CONFLICT', `There is already a statement for this period (${clash.number})`)
   const c = await calculate(partnerId, campusId, from, to, [])
-  if (!c) return fail('INVALID', 'There is no active deal for this period — add one in the Deal tab')
+  if (!c) return fail('INVALID', campusId
+    ? 'مفيش اتفاق شغال للمكان ده في الفترة دي — ضيفه من تاب «الاتفاق» · No active deal for this place in this period — add one in the Deal tab'
+    : 'مفيش اتفاق للشريك كله في الفترة دي — اختار المكان من القايمة · No deal for all the partner places in this period — choose the place')
   const row = await prisma.partnerStatement.create({
     data: {
       number: await nextNumber(), partnerId, campusId, dealId: c.deal.id, periodFrom: from, periodTo: to, status: 'DRAFT',

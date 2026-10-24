@@ -435,7 +435,7 @@ function StaffTable({ searchQuery, statusFilter, page, setPage }: {
                 </td>
                 <td className="px-4 py-3"><TypeBadge type={app.applicantType} /></td>
                 <td className="px-4 py-3 text-gray-700 hidden md:table-cell">{app.qualification}</td>
-                <td className="px-4 py-3 text-gray-700 hidden lg:table-cell">{app.experienceYears} {L('yr', 'سنة')}{app.experienceYears !== 1 ? 's' : ''}</td>
+                <td className="px-4 py-3 text-gray-700 hidden lg:table-cell">{app.experienceYears} {L(app.experienceYears === 1 ? 'yr' : 'yrs', 'سنة')}</td>
                 <td className="px-4 py-3"><StatusBadge status={app.status} /></td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{new Date(app.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                 <td className="px-4 py-3 text-right">

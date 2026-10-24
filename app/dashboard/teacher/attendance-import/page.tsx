@@ -319,7 +319,7 @@ export default function TeacherAttendanceImportPage() {
                 <div className="space-y-3 pt-4 border-t border-slate-200">
                   <div className="flex items-center gap-2 text-rose-600 font-semibold text-sm">
                     <AlertTriangle className="w-4 h-4" />
-                    {validationErrors.length} {L('Row', 'سطر')}{validationErrors.length !== 1 ? 's' : ''} {L('Failed Validation', 'فيه أخطاء')}
+                    {validationErrors.length} {L(validationErrors.length === 1 ? 'Row' : 'Rows', 'سطر')} {L('Failed Validation', 'فيه أخطاء')}
                     <span className="font-normal text-rose-500">{L('— No records were imported.', '— ماتستوردش أي حاجة.')}</span>
                   </div>
 

@@ -4,7 +4,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { L } from '@/lib/i18n/client'
@@ -22,6 +22,13 @@ export function PartnerPlaces({ p, canEdit }: { p: PartnerDetail; canEdit: boole
   const [editing, setEditing] = useState<string | 'NEW' | null>(null)
   const [pricesFor, setPricesFor] = useState<string | null>(null)
   const [f, setF] = useState(blank)
+  // 2026-10-24 live test: cash taken at a partner place with no cash box / route waited as "not placed" — warn here
+  const { data: money } = useQuery({
+    queryKey: ['treasury-routes-for-places'],
+    queryFn: () => fetchApi<{ accounts: { id: string; campusId: string | null }[]; routes: { campusId: string | null }[] }>('/api/treasury/routes'),
+    retry: false,
+  })
+  const hasMoneyPlace = (id: string) => !money || money.accounts.some((a) => a.campusId === id) || money.routes.some((r) => r.campusId === id)
   const refresh = () => { qc.invalidateQueries({ queryKey: ['partner', p.id] }); qc.invalidateQueries({ queryKey: ['partners'] }); qc.invalidateQueries({ queryKey: ['places-mine'] }); qc.invalidateQueries({ queryKey: ['campuses'] }) }
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) => editing === 'NEW'
@@ -51,6 +58,11 @@ export function PartnerPlaces({ p, canEdit }: { p: PartnerDetail; canEdit: boole
             <span className="text-xs text-slate-500">{pl.code}</span>
             <span className="text-xs text-slate-600">· {pl.activeGroups} {L('active groups', 'جروب شغال')} · {pl.students} {L('students', 'طالب')}</span>
             {!pl.isActive && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{L('Stopped', 'موقوف')}</span>}
+            {pl.isActive && !hasMoneyPlace(pl.id) && (
+              <Link href="/dashboard/admin/finance-settings#accounts" className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800 hover:underline">
+                {L('No cash box / account — cash taken here waits unplaced. Set one up →', 'مالوش خزنة أو حساب — الكاش اللي بيتحصّل هنا هيستنى. اعمل واحد ←')}
+              </Link>
+            )}
             {canEdit && (
               <span className="ms-auto flex gap-1">
                 <Button size="sm" variant="outline" onClick={() => setPricesFor(pricesFor === pl.id ? null : pl.id)}>{L('Special prices', 'أسعار خاصة')}</Button>

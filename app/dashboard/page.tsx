@@ -204,23 +204,23 @@ export default function DashboardPage() {
   // Quick actions vary by role
   const quickActions = [
     ...(isAdminOrAbove ? [
-      { label: 'New Admission', href: '/dashboard/students/admission', icon: UserPlus, color: 'bg-blue-600 hover:bg-blue-700' },
-      { label: 'Generate Challan', href: '/dashboard/fees/generate', icon: CreditCard, color: 'bg-green-600 hover:bg-green-700' },
+      { label: L('New Admission', 'تسجيل جديد'), href: '/dashboard/students/admission', icon: UserPlus, color: 'bg-blue-600 hover:bg-blue-700' },
+      { label: L('Generate Challan', 'اعمل فاتورة'), href: '/dashboard/fees/generate', icon: CreditCard, color: 'bg-green-600 hover:bg-green-700' },
     ] : []),
     ...(isTeacher || isAdminOrAbove ? [
-      { label: 'Mark Attendance', href: '/dashboard/attendance', icon: ClipboardCheck, color: 'bg-purple-600 hover:bg-purple-700' },
+      { label: L('Mark Attendance', 'سجّل الحضور'), href: '/dashboard/attendance', icon: ClipboardCheck, color: 'bg-purple-600 hover:bg-purple-700' },
     ] : []),
     ...(isAdminOrAbove ? [
-      { label: 'Add Teacher', href: '/dashboard/teachers/new', icon: GraduationCap, color: 'bg-orange-600 hover:bg-orange-700' },
+      { label: L('Add Teacher', 'ضيف مدرب'), href: '/dashboard/teachers/new', icon: GraduationCap, color: 'bg-orange-600 hover:bg-orange-700' },
     ] : []),
     ...(isFinanceStaff ? [
-      { label: 'Finance Hub', href: '/dashboard/accountant', icon: Wallet, color: 'bg-teal-600 hover:bg-teal-700' },
-      { label: 'Expense Ledger', href: '/dashboard/accountant/expenses', icon: ReceiptText, color: 'bg-amber-600 hover:bg-amber-700' },
-      { label: 'Financial Reports', href: '/dashboard/accountant/reports', icon: BarChart2, color: 'bg-emerald-600 hover:bg-emerald-700' },
-      { label: 'Payroll Ledger', href: '/dashboard/salaries', icon: Banknote, color: 'bg-indigo-600 hover:bg-indigo-700' },
+      { label: L('Finance Hub', 'ملخص الحسابات'), href: '/dashboard/accountant', icon: Wallet, color: 'bg-teal-600 hover:bg-teal-700' },
+      { label: L('Expense Ledger', 'المصاريف'), href: '/dashboard/accountant/expenses', icon: ReceiptText, color: 'bg-amber-600 hover:bg-amber-700' },
+      { label: L('Financial Reports', 'التقارير المالية'), href: '/dashboard/accountant/reports', icon: BarChart2, color: 'bg-emerald-600 hover:bg-emerald-700' },
+      { label: L('Payroll Ledger', 'المرتبات'), href: '/dashboard/salaries', icon: Banknote, color: 'bg-indigo-600 hover:bg-indigo-700' },
     ] : []),
     ...((isAdminOrAbove || isFinanceStaff) ? [
-      { label: leaveCount > 0 ? `Leave Requests (${leaveCount})` : 'Leave Requests', href: '/dashboard/leaves', icon: Calendar, color: 'bg-amber-600 hover:bg-amber-700' },
+      { label: leaveCount > 0 ? `${L('Leave requests', 'طلبات الإجازة')} (${leaveCount})` : L('Leave requests', 'طلبات الإجازة'), href: '/dashboard/leaves', icon: Calendar, color: 'bg-amber-600 hover:bg-amber-700' },
     ] : []),
   ]
 
@@ -269,11 +269,11 @@ export default function DashboardPage() {
             </div>
           )}
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            {role === 'STUDENT' ? 'Student Portal' : 'Welcome back'}{session?.user?.name ? `, ${session.user.name.split(' ')[0]}` : ''}
+            {role === 'STUDENT' ? L('Student Portal', 'بوابة الطالب') : L('Welcome back', 'أهلاً بيك')}{session?.user?.name ? `، ${session.user.name.split(' ')[0]}` : ''}
           </h1>
         </div>
         <p className="text-gray-500 mt-1">
-          {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          {new Date().toLocaleDateString(L('en-GB', 'ar-EG'), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Africa/Cairo' })}
         </p>
       </div>
       {role === 'STUDENT' && (
@@ -430,7 +430,7 @@ export default function DashboardPage() {
             <StatCard
               title={L('Total Students', 'عدد الطلاب')}
               value={data?.students.total.toLocaleString() ?? 0}
-              sub={`${data?.students.active ?? 0} currently active`}
+              sub={`${data?.students.active ?? 0} ${L('active now', 'شغالين دلوقتي')}`}
               icon={Users}
               color="text-blue-600"
               href="/dashboard/students"
@@ -438,7 +438,7 @@ export default function DashboardPage() {
             <StatCard
               title={L('Teaching Staff', 'المدربين')}
               value={data?.teachers.total.toLocaleString() ?? 0}
-              sub="Across all campuses"
+              sub={L('In your places', 'في أماكنك')}
               icon={GraduationCap}
               color="text-indigo-600"
               href="/dashboard/teachers"
@@ -446,7 +446,7 @@ export default function DashboardPage() {
             <StatCard
               title={L('Today\'s Attendance', 'حضور النهارده')}
               value={`${data?.attendance.attendanceRate ?? 0}%`}
-              sub={`${data?.attendance.todayPresent ?? 0} / ${data?.attendance.todayTotal ?? 0} students present`}
+              sub={`${data?.attendance.todayPresent ?? 0} / ${data?.attendance.todayTotal ?? 0} ${L('students present', 'طالب حاضر')}`}
               icon={CheckCircle}
               color={
                 (data?.attendance.attendanceRate ?? 0) >= 85
@@ -461,16 +461,16 @@ export default function DashboardPage() {
               <>
                 <StatCard
                   title={L('Fee Collected', 'المحصّل')}
-                  value={`EGP ${(data?.finance.totalCollected ?? 0).toLocaleString()}`}
-                  sub="Verified payments received"
+                  value={`${(data?.finance.totalCollected ?? 0).toLocaleString()} ${L('EGP', 'ج.م')}`}
+                  sub={L('Payments received', 'المدفوعات اللي وصلت')}
                   icon={TrendingUp}
                   color="text-green-600"
                   href="/dashboard/fees"
                 />
                 <StatCard
                   title={L('Fee Pending', 'المتبقي')}
-                  value={`EGP ${(data?.finance.totalPending ?? 0).toLocaleString()}`}
-                  sub={`${data?.students.feePending ?? 0} student accounts with open invoices`}
+                  value={`${(data?.finance.totalPending ?? 0).toLocaleString()} ${L('EGP', 'ج.م')}`}
+                  sub={`${data?.students.feePending ?? 0} ${L('students with open invoices', 'طالب عنده فواتير مفتوحة')}`}
                   icon={DollarSign}
                   color="text-yellow-600"
                   href="/dashboard/fees"
@@ -478,7 +478,7 @@ export default function DashboardPage() {
                 <StatCard
                   title={L('Overdue Fees', 'المتأخر')}
                   value={data?.students.feeOverdue ?? 0}
-                  sub="Student accounts with overdue invoices"
+                  sub={L('Students with overdue invoices', 'طلاب عندهم فواتير متأخرة')}
                   icon={AlertCircle}
                   color="text-red-600"
                   href="/dashboard/fees"
@@ -486,7 +486,7 @@ export default function DashboardPage() {
                 {role === 'SUPER_ADMIN' && (
                   <StatCard
                     title={L('Reserve Fund', 'الاحتياطي')}
-                    value={`EGP ${(data?.finance.reserveFundBalance ?? 0).toLocaleString()}`}
+                    value={`${(data?.finance.reserveFundBalance ?? 0).toLocaleString()} ${L('EGP', 'ج.م')}`}
                     sub={data?.finance.latestReserveContribution
                       ? `Latest: EGP ${data.finance.latestReserveContribution.amount.toLocaleString()} for ${data.finance.latestReserveContribution.periodLabel}`
                       : 'No reserve allocations yet'}
@@ -508,7 +508,7 @@ export default function DashboardPage() {
           <StatCard
             title={L('Attendance', 'الحضور')}
             value="--"
-            sub="Monthly average"
+            sub={L('Monthly average', 'متوسط الشهر')}
             icon={ClipboardCheck}
             color="text-purple-600"
             href="/dashboard/attendance"
@@ -516,23 +516,23 @@ export default function DashboardPage() {
           <StatCard
             title={L('Pending Exams', 'امتحانات مستنية')}
             value="0"
-            sub="Exams this week"
+            sub={L('Exams this week', 'امتحانات الأسبوع ده')}
             icon={BookOpen}
             color="text-amber-600"
             href="/dashboard/exams"
           />
           <StatCard
             title={L('My Results', 'نتايجي')}
-            value="View →"
-            sub="Latest performance"
+            value={L('View →', 'افتح ←')}
+            sub={L('Latest results', 'آخر النتايج')}
             icon={Award}
             color="text-indigo-600"
             href="/dashboard/academics"
           />
           <StatCard
             title={L('Fee Status', 'حالة الدفع')}
-            value={studentProfile?.dueAmount > 0 ? `EGP ${studentProfile.dueAmount.toLocaleString()}` : 'Paid'}
-            sub={studentProfile?.dueAmount > 0 ? 'Payment pending' : 'No outstanding dues'}
+            value={studentProfile?.dueAmount > 0 ? `${studentProfile.dueAmount.toLocaleString()} ${L('EGP', 'ج.م')}` : L('Paid', 'مدفوع')}
+            sub={studentProfile?.dueAmount > 0 ? L('Payment pending', 'فيه مبلغ مستني') : L('Nothing due', 'مفيش حاجة مستحقة')}
             icon={CreditCard}
             color={studentProfile?.dueAmount > 0 ? 'text-red-600' : 'text-green-600'}
             href="/dashboard/fees"
@@ -728,7 +728,8 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Recent Activity Panel - Positioned at the End */}
+      {/* Recent Activity Panel - Positioned at the End (staff only — 2026-10-24: students / parents saw technical names) */}
+      {role && !['STUDENT', 'PARENT', 'GUARDIAN'].includes(role) && (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
@@ -744,12 +745,12 @@ export default function DashboardPage() {
               <div key={item.id} className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700 hover:bg-slate-100 transition-colors duration-200">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <span className="font-semibold text-slate-900">{item.entityType}</span>
+                    <span className="font-semibold text-slate-900">{activityThing(item.entityType)}</span>
                     <span className="text-slate-500 mx-2">·</span>
-                    <span className="text-slate-700">{item.action}</span>
+                    <span className="text-slate-700">{activityVerb(item.action)}</span>
                   </div>
                   <span className="text-xs text-slate-400 flex-shrink-0">
-                    {item.timestamp ? new Date(item.timestamp).toLocaleString('en-GB', { 
+                    {item.timestamp ? new Date(item.timestamp).toLocaleString(L('en-GB', 'ar-EG'), { 
                       year: 'numeric', 
                       month: 'short', 
                       day: '2-digit',
@@ -763,6 +764,18 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+      )}
     </div>
   )
 }
+
+/** Readable names for the own-activity list (the change log keeps the technical ones). */
+const ACTIVITY_THINGS: Record<string, [string, string]> = {
+  Student: ['Student', 'طالب'], Guardian: ['Parent', 'ولي أمر'], User: ['Account', 'حساب'], UserPassword: ['Password', 'باسورد'], UserCredentials: ['Portal password', 'باسورد البوابة'],
+  FeeInvoice: ['Invoice', 'فاتورة'], FeePayment: ['Payment', 'دفعة'], WalletTopUp: ['Wallet top-up', 'شحن محفظة'], Refund: ['Refund', 'استرداد'], Expense: ['Expense', 'مصروف'],
+  ExpenseCategoryDef: ['Expense category', 'بند مصاريف'], MoneyTransfer: ['Transfer', 'تحويل'], CashCount: ['Cash count', 'جرد خزنة'], SalarySlip: ['Salary slip', 'قسيمة مرتب'],
+  ClassSection: ['Group', 'جروب'], StudentEnrollment: ['Group membership', 'تسجيل في جروب'], Admission: ['Application', 'طلب تسجيل'], Teacher: ['Instructor', 'مدرب'],
+  TeacherAbsence: ['Instructor absence', 'غياب مدرب'], DiscountAssignment: ['Discount', 'خصم'], Announcement: ['Announcement', 'إعلان'], Complaint: ['Complaint', 'شكوى'],
+}
+const activityThing = (t: string) => { const v = ACTIVITY_THINGS[t]; return v ? L(v[0], v[1]) : t }
+const activityVerb = (a: string) => (a.startsWith('CREATE') ? L('added', 'اتضاف') : a.startsWith('DELETE') ? L('deleted', 'اتمسح') : a.startsWith('UPDATE') ? L('changed', 'اتعدّل') : a)

@@ -7,6 +7,7 @@ import { fetchApi } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { WalletLedger, type LedgerRow } from '@/components/wallet/WalletLedger'
 import { Wallet } from 'lucide-react'
+import { L } from '@/lib/i18n/client'
 
 /** The student's own wallet (read only), when the parent allows it (phase B). */
 export function StudentPortalWalletCard() {
@@ -21,13 +22,13 @@ export function StudentPortalWalletCard() {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-sm">
-          <span className="flex items-center gap-2"><Wallet className="h-4 w-4" /> My wallet</span>
-          <span className="font-mono text-base">{(data.balance ?? 0).toLocaleString()} EGP</span>
+          <span className="flex items-center gap-2"><Wallet className="h-4 w-4" /> {L('My wallet', 'محفظتي')}</span>
+          <span className="font-mono text-base">{(data.balance ?? 0).toLocaleString()} {L('EGP', 'ج.م')}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         <WalletLedger rows={data.transactions ?? []} max={6} />
-        <Link href={`/wallet-statement/${data.studentId}`} target="_blank" className="text-xs text-indigo-600 underline">Statement</Link>
+        <Link href={`/wallet-statement/${data.studentId}`} target="_blank" className="text-xs text-indigo-600 underline">{L('Statement', 'كشف الحساب')}</Link>
       </CardContent>
     </Card>
   )

@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { WALLET_TYPE } from '@/components/wallet/WalletLedger'
+import { walletType } from '@/components/wallet/WalletLedger'
 import { ArrowLeft, Printer } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
 
@@ -61,7 +61,7 @@ export default function WalletStatementPage({ params }: { params: Promise<{ stud
               {s.lines.map((l, i) => (
                 <tr key={i} className="border-b border-gray-200">
                   <td className="py-1">{new Date(l.date).toLocaleDateString('en-GB')}</td>
-                  <td>{WALLET_TYPE[l.type] ?? l.type}</td>
+                  <td>{walletType(l.type)}</td>
                   <td className="font-mono">{l.document ?? '—'}</td>
                   <td>{l.detail ?? ''}</td>
                   <td className={`text-right font-mono ${l.amount >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{l.amount >= 0 ? '+' : ''}{money(l.amount)}</td>

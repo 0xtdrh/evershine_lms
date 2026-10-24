@@ -148,7 +148,7 @@ export default function TeacherPortalIndexPage() {
         <div className="p-4 sm:p-6 flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-slate-500 font-semibold">{L('Leave review status', 'حالة طلبات الإجازة')}</p>
-            <p className="mt-1 text-base sm:text-lg font-semibold text-slate-900">{pendingLeavesCount} {L('pending student leave request', 'طلب إجازة طالب مستني')}{pendingLeavesCount === 1 ? '' : 's'}</p>
+            <p className="mt-1 text-base sm:text-lg font-semibold text-slate-900">{pendingLeavesCount} {L(pendingLeavesCount === 1 ? 'pending student leave request' : 'pending student leave requests', 'طلب إجازة طالب مستني')}</p>
             <p className="mt-1 text-xs sm:text-sm text-slate-600">{L('Stay on top of approved, rejected, and pending leave workflows for your assigned students.', 'تابع طلبات إجازات طلابك.')}</p>
           </div>
           <Link href="/dashboard/teacher/leaves" className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl sm:rounded-2xl bg-slate-900 px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-800 shrink-0">
@@ -295,7 +295,7 @@ function MyShiftsSummary() {
             <div>
               <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-slate-500 font-semibold">{L('My Teaching Profile', 'ملفي كمدرب')}</p>
               <p className="mt-1 text-base sm:text-lg font-semibold text-slate-900">
-                {assignments.totalSections} {L('class section', 'جروب')}{assignments.totalSections !== 1 ? 's' : ''} · {assignments.totalStudents} {L('student', 'طالب')}{assignments.totalStudents !== 1 ? 's' : ''}
+                {assignments.totalSections} {L(assignments.totalSections === 1 ? 'class section' : 'class sections', 'جروب')} · {assignments.totalStudents} {L(assignments.totalStudents === 1 ? 'student' : 'students', 'طالب')}
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                 {assignments.teacher?.name && <span>{assignments.teacher.name}</span>}
