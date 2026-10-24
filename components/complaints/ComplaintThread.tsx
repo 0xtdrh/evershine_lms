@@ -28,7 +28,7 @@ interface Detail {
   canHandle: boolean
 }
 
-const when = (d: string) => new Date(d).toLocaleString(L('en-GB', 'ar-EG'), { dateStyle: 'short', timeStyle: 'short' })
+const when = (d: string) => new Date(d).toLocaleString(L('en-GB', 'ar-EG-u-nu-latn'), { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Cairo' })
 
 /** Phase D: one complaint — stage tracker, conversation, actions (staff) or "solved?" (sender). */
 export function ComplaintThread({ id, staff }: { id: string; staff: boolean }) {

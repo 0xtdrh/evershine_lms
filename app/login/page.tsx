@@ -13,13 +13,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AuthLayout } from '@/components/auth/AuthLayout'
+import { L } from '@/lib/i18n/client'
 import { Lock, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react'
 
 const loginSchema = z.object({
   // Email, a parent's phone number, or a student's registration number (resolved server-side, lib/portal-login.ts)
-  email:    z.string().trim().min(3, 'Enter your email, phone or registration number')
-    .refine((v) => v.includes('@') ? z.string().email().safeParse(v).success : /^[+\d][\d\s\-()]{6,}$/.test(v) || /^tn[\s/\-._]?\d{4}[\s/\-._]?\d{1,6}$/i.test(v) || /^[a-z]+\d{4,6}$/i.test(v), 'Enter a valid email, phone or registration number'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email:    z.string().trim().min(3, 'Enter your email, phone or registration number · اكتب الإيميل أو التليفون أو رقم القيد')
+    .refine((v) => v.includes('@') ? z.string().email().safeParse(v).success : /^[+\d][\d\s\-()]{6,}$/.test(v) || /^tn[\s/\-._]?\d{4}[\s/\-._]?\d{1,6}$/i.test(v) || /^[a-z]+\d{4,6}$/i.test(v), 'Enter a valid email, phone or registration number · اكتب بيانات دخول صحيحة'),
+  password: z.string().min(8, 'Password must be at least 8 characters · الباسورد 8 حروف على الأقل'),
 })
 type LoginForm = z.infer<typeof loginSchema>
 
@@ -53,10 +54,12 @@ function resolvePostLoginUrl(callbackUrl: string, role?: string | null) {
   }
 }
 
-const DEFAULT_PASSWORD_MESSAGE =
-  'This account still has its initial password, which is not safe. Please contact your branch to receive a temporary password.'
-const TOO_MANY_ATTEMPTS_MESSAGE =
-  'Too many failed attempts. For your security, sign-in is paused for 15 minutes. Please try again later or contact your branch.'
+const DEFAULT_PASSWORD_MESSAGE = () => L(
+  'This account still has its initial password, which is not safe. Please contact your branch to receive a temporary password.',
+  'الحساب ده لسه بالباسورد الأولاني ومش آمن. كلّم الفرع ياخدلك باسورد مؤقت.')
+const TOO_MANY_ATTEMPTS_MESSAGE = () => L(
+  'Too many failed attempts. For your security, sign-in is paused for 15 minutes. Please try again later or contact your branch.',
+  'محاولات غلط كتير. علشان أمانك الدخول واقف 15 دقيقة. جرّب بعدين أو كلّم الفرع.')
 
 export default function LoginPage() {
   const router = useRouter()
@@ -70,10 +73,10 @@ export default function LoginPage() {
       const sp = new URLSearchParams(window.location.search)
       setCallbackUrl(sp.get('callbackUrl') || '/dashboard')
       const err = sp.get('error')
-      if (sp.get('code') === 'default_password') setFormError(DEFAULT_PASSWORD_MESSAGE)
-      else if (sp.get('code') === 'too_many_attempts') setFormError(TOO_MANY_ATTEMPTS_MESSAGE)
-      else if (err) setFormError('Authentication failed. Please check your credentials.')
-      if (sp.get('changed') === '1') notify.success('Password changed', { description: 'Sign in with your new password.' })
+      if (sp.get('code') === 'default_password') setFormError(DEFAULT_PASSWORD_MESSAGE())
+      else if (sp.get('code') === 'too_many_attempts') setFormError(TOO_MANY_ATTEMPTS_MESSAGE())
+      else if (err) setFormError(L('Authentication failed. Please check your credentials.', 'الدخول ماتمّش. راجع بياناتك.'))
+      if (sp.get('changed') === '1') notify.success(L('Password changed', 'الباسورد اتغير'), { description: L('Sign in with your new password.', 'ادخل بالباسورد الجديد.') })
     } catch {}
   }, [])
 
@@ -93,15 +96,15 @@ export default function LoginPage() {
     setIsLoading(false)
     if (result?.error) {
       if ((result as { code?: string }).code === 'default_password') {
-        setFormError(DEFAULT_PASSWORD_MESSAGE)
+        setFormError(DEFAULT_PASSWORD_MESSAGE())
         return
       }
       if ((result as { code?: string }).code === 'too_many_attempts') {
-        setFormError(TOO_MANY_ATTEMPTS_MESSAGE)
+        setFormError(TOO_MANY_ATTEMPTS_MESSAGE())
         return
       }
-      setFormError('Invalid credentials. Please check your email/phone and password.')
-      notify.error('Sign in failed', { description: 'Invalid email/phone or password.' })
+      setFormError(L('Invalid credentials. Please check your email/phone and password.', 'البيانات غلط. راجع اسم الدخول والباسورد.'))
+      notify.error(L('Sign in failed', 'الدخول ماتمّش'), { description: L('Invalid email/phone or password.', 'بيانات الدخول أو الباسورد غلط.') })
       return
     }
     const session = await getSession()
@@ -109,7 +112,7 @@ export default function LoginPage() {
       router.replace('/change-password')
       return
     }
-    notify.success('Welcome back!', { description: 'Redirecting to your dashboard…' })
+    notify.success(L('Welcome back!', 'أهلاً بيك!'), { description: L('Redirecting to your dashboard…', 'بنفتحلك حسابك…') })
     router.replace(resolvePostLoginUrl(callbackUrl, session?.user?.role))
   }
 
@@ -137,7 +140,7 @@ export default function LoginPage() {
 
         {/* ── Email ── */}
         <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-sm font-semibold text-slate-700">Email, phone or registration no. · الإيميل أو التليفون أو رقم القيد</Label>
+          <Label htmlFor="email" className="text-sm font-semibold text-slate-700">{L('Email, phone or registration no.', 'الإيميل أو التليفون أو رقم القيد أو اسم الدخول')}</Label>
           <div className="relative">
             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden />
             <Input
@@ -173,12 +176,12 @@ export default function LoginPage() {
         {/* ── Password ── */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-sm font-semibold text-slate-700">Password</Label>
+            <Label htmlFor="password" className="text-sm font-semibold text-slate-700">{L('Password', 'الباسورد')}</Label>
             <Link
               href="/forgot-password"
               className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
             >
-              Forgot password?
+              {L('Forgot password?', 'نسيت الباسورد؟')}
             </Link>
           </div>
           <div className="relative">
@@ -186,7 +189,7 @@ export default function LoginPage() {
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
-              placeholder="Enter your password"
+              placeholder={L('Enter your password', 'اكتب الباسورد')}
               autoComplete="current-password"
               aria-required="true"
               aria-invalid={!!errors.password}
@@ -198,7 +201,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => setShowPassword(v => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-label={showPassword ? L('Hide password', 'اخفي الباسورد') : L('Show password', 'اظهر الباسورد')}
             >
               {showPassword ? <EyeOff className="w-4 h-4" aria-hidden /> : <Eye className="w-4 h-4" aria-hidden />}
             </button>
@@ -234,10 +237,10 @@ export default function LoginPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Signing in…
+              {L('Signing in…', 'بيدخّلك…')}
             </span>
           ) : (
-            'Sign In to Portal'
+            L('Sign In to Portal', 'ادخل')
           )}
         </Button>
       </form>

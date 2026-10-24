@@ -100,7 +100,7 @@ export function GiveDiscountDialog({
       reset()
       if (r.affectedInvoices?.length) setAsk({ id: r.assignment.id, invoices: r.affectedInvoices })
     },
-    onError: (err: Error) => notify.error(err.message || 'Could not add the discount'),
+    onError: (err: Error) => notify.error(err.message || L('Could not add the discount', 'الخصم ماتضافش')),
   })
 
   const max = type?.maxValue != null ? Number(type.maxValue) : type?.valueType === 'PERCENT' ? 100 : undefined

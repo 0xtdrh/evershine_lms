@@ -9,6 +9,7 @@
  */
 
 import { Label } from '@/components/ui/label'
+import { L } from '@/lib/i18n/client'
 import {
   AlertCircle,
   BookOpen,
@@ -65,12 +66,13 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
 
 /* ── Step Metadata ────────────────────────────────────────────── */
 
+// 2026-10-24: labels follow the screen language (getters, so the arrays stay the same shape)
 export const STEP_META = [
-  { label: 'Program',   desc: 'Share campus & delivery mode preferences if known',      icon: BookOpen },
-  { label: 'Student',   desc: 'Personal identity, contact & residential address',       icon: User },
-  { label: 'Background', desc: 'Current school, grade & any prior programming experience', icon: GraduationCap },
-  { label: 'Guardian',  desc: 'Parent or guardian contact details',         icon: Users },
-  { label: 'Review',    desc: 'Confirm your details, accept terms & submit',            icon: Send },
+  { get label() { return L('Program', 'البرنامج') },    get desc() { return L('Share campus & delivery mode preferences if known', 'الفرع وطريقة الحضور لو تعرفهم') }, icon: BookOpen },
+  { get label() { return L('Student', 'الطالب') },      get desc() { return L('Personal identity, contact & residential address', 'بيانات الطالب والتليفون والعنوان') }, icon: User },
+  { get label() { return L('Background', 'الدراسة') },  get desc() { return L('Current school, grade & any prior programming experience', 'المدرسة والصف وأي خبرة قبل كده في البرمجة') }, icon: GraduationCap },
+  { get label() { return L('Guardian', 'ولي الأمر') },  get desc() { return L('Parent or guardian contact details', 'بيانات ولي الأمر') }, icon: Users },
+  { get label() { return L('Review', 'المراجعة') },     get desc() { return L('Confirm your details, accept terms & submit', 'راجع البيانات، وافق على الشروط وابعت') }, icon: Send },
 ]
 
 /* ── Static Data Constants ────────────────────────────────────── */
@@ -89,11 +91,11 @@ export const RELATIONSHIPS = [
 ]
 
 export const PARENT_STATUSES = [
-  { value: 'BOTH_ALIVE', label: 'Both parents present' },
-  { value: 'FATHER_DECEASED', label: 'Father deceased' },
-  { value: 'MOTHER_DECEASED', label: 'Mother deceased' },
-  { value: 'BOTH_DECEASED', label: 'Both deceased' },
-  { value: 'DIVORCED', label: 'Parents divorced' },
+  { value: 'BOTH_ALIVE', get label() { return L('Both parents present', 'الأب والأم موجودين') } },
+  { value: 'FATHER_DECEASED', get label() { return L('Father deceased', 'الأب متوفي') } },
+  { value: 'MOTHER_DECEASED', get label() { return L('Mother deceased', 'الأم متوفية') } },
+  { value: 'BOTH_DECEASED', get label() { return L('Both deceased', 'الاتنين متوفيين') } },
+  { value: 'DIVORCED', get label() { return L('Parents divorced', 'الأب والأم منفصلين') } },
 ]
 
 // WHY no COURSE_FEE_ESTIMATE_MAP: Fee structures are managed by the Super Admin
@@ -107,9 +109,9 @@ export const PARENT_STATUSES = [
  * to let applicants/admins select how the student will attend classes.
  */
 export const DELIVERY_MODES = [
-  { value: 'PHYSICAL', label: '🏫 On-Campus (Physical)' },
-  { value: 'ONLINE', label: '💻 Online' },
-  { value: 'HYBRID', label: '🔄 Hybrid (On-Campus + Online)' },
+  { value: 'PHYSICAL', get label() { return L('🏫 On-Campus (Physical)', '🏫 في الفرع') } },
+  { value: 'ONLINE', get label() { return L('💻 Online', '💻 أونلاين') } },
+  { value: 'HYBRID', get label() { return L('🔄 Hybrid (On-Campus + Online)', '🔄 الاتنين (فرع + أونلاين)') } },
 ] as const
 
 export const MARKETING_SOURCES = [
@@ -119,15 +121,36 @@ export const MARKETING_SOURCES = [
 
 /* ── Admission Rules ───────────────────────────────────────────── */
 
-export const ADMISSION_RULES = [
-  'Fee once deposited is neither refundable nor adjustable in any case.',
-  'Session timings are subject to the availability of the trainers and can be amended if required.',
-  'Parents are welcome to contact the branch regularly to discuss the student\'s progress.',
-  'Please pay your monthly dues within the mentioned dates.',
-  'Any damage caused by the student to TechNova equipment will be charged accordingly.',
-  'TechNova is relieved of responsibility (legal, etc.) in case of any injury, damage, or loss which is beyond its control.',
-  'TechNova will not, in any case, be responsible for any loss suffered by a student.',
-  'Registration is mandatory for every student every year.',
-  'Decisions of the administration will be final, in any case.',
-  'I acknowledge that my enrollment will remain active for the complete session unless an official withdrawal application is submitted and approved. If I wish to leave, I must submit the application at least 14 calendar days before the end of the intended final month and clear all outstanding dues.',
+/** Arabic names for the stored English choices (occupation, relationship, how they heard of us). */
+const OPTION_AR: Record<string, string> = {
+  'Government Service': 'موظف حكومي', 'Private Service': 'قطاع خاص', 'Business / Self-Employed': 'أعمال حرة',
+  Teaching: 'تدريس', 'Doctor / Medical': 'طبيب / مجال طبي', Engineer: 'مهندس', Lawyer: 'محامي',
+  'Military / Police': 'جيش / شرطة', Retired: 'على المعاش', Other: 'غير كده',
+  Father: 'الأب', Mother: 'الأم', Brother: 'الأخ', Sister: 'الأخت', Uncle: 'العم / الخال', Aunt: 'العمة / الخالة',
+  Grandfather: 'الجد', Grandmother: 'الجدة', 'Legal Guardian': 'وصي قانوني',
+  'TechNova Website': 'موقع TechNova', 'Family/Friends': 'العيلة / الأصحاب', School: 'المدرسة', Nursery: 'الحضانة',
+  'Event/Competition': 'فعالية / مسابقة',
+}
+/** Label of a stored choice in the screen language (the stored value stays English). */
+export const optLabel = (v: string) => L(v, OPTION_AR[v] ?? v)
+
+/* ── Admission Rules ───────────────────────────────────────────── */
+
+/**
+ * 2026-10-24: the template rules ("fee is neither refundable nor adjustable in any case", "decisions are final",
+ * "not responsible for any loss") were replaced: they contradicted TechNova's refund rules. Money, refunds and
+ * absences follow the published policies (/policies) and the group rules the parent accepts in the portal.
+ * TO BE REVIEWED BY THE OWNER / A LAWYER.
+ */
+export const admissionRules = () => [
+  L('Fees are paid per the group payment rules (shown before the first session). Refunds follow the published refund policy.',
+    'الرسوم بتتدفع حسب نظام الدفع بتاع الجروب (بيظهر قبل أول حصة). والاسترداد حسب سياسة الاسترداد المنشورة.'),
+  L('Please pay each invoice by the due date written on it.', 'ادفع كل فاتورة قبل الميعاد المكتوب عليها.'),
+  L('Session times may change (instructor availability or holidays); you are told in advance and a makeup session is arranged when needed.',
+    'مواعيد الحصص ممكن تتغير (ظروف المدرب أو الإجازات)، وهنبلغك قبلها ونعمل حصة تعويضية لو محتاج.'),
+  L('The group rules (times, fees, absence and excuses) are shown in the parent account and must be accepted before the first session.',
+    'قواعد الجروب (المواعيد، الرسوم، الغياب والأعذار) بتظهر في حساب ولي الأمر ولازم توافق عليها قبل أول حصة.'),
+  L('Parents are welcome to contact the branch at any time to follow the progress of the student.', 'أهلاً بيك تكلّم الفرع في أي وقت تتابع مستوى الطالب.'),
+  L('Damage caused on purpose to TechNova equipment is charged at its cost.', 'أي تلف متعمد في أجهزة TechNova بيتحاسب بتمنه.'),
+  L('To stop, please tell the branch before the group of the next month starts.', 'لو هتوقف، بلّغ الفرع قبل ما جروب الشهر الجاي يبدأ.'),
 ]

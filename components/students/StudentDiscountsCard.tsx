@@ -67,7 +67,7 @@ export function StudentDiscountsCard({
       notify.success(L('Discount stopped from the next invoice', 'الخصم اتوقف من الفاتورة الجاية'))
       qc.invalidateQueries({ queryKey: ['discounts'] })
     },
-    onError: (err: Error) => notify.error(err.message || 'Could not stop it'),
+    onError: (err: Error) => notify.error(err.message || L('Could not stop it', 'ماتوقفش')),
   })
 
   if (!canRead) return null

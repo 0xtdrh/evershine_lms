@@ -126,10 +126,12 @@ export async function GET(request: NextRequest) {
             { registrationNumber: { contains: search } },
           ]
         : [
-            { firstName: { contains: search } },
-            { lastName: { contains: search } },
-            { fatherName: { contains: search } },
+            ...studentNameMatch(search),
             { registrationNumber: { contains: search } },
+            // 2026-10-24: "Youssef Ahmed" / "يوسف أحمد" — every word must match one of the names
+            ...(search.trim().includes(' ')
+              ? [{ AND: search.trim().split(/\s+/).map((w) => ({ OR: studentNameMatch(w) })) }]
+              : []),
           ],
     }),
   }
@@ -477,4 +479,15 @@ export async function POST(request: NextRequest) {
     },
     `Student ${data.firstName} ${data.lastName} admitted successfully`
   )
+}
+
+/** Name fields searched for a student (2026-10-24: the Arabic and English full names were missing). */
+function studentNameMatch(term: string) {
+  return [
+    { firstName: { contains: term } },
+    { lastName: { contains: term } },
+    { fullNameAr: { contains: term } },
+    { fullNameEn: { contains: term } },
+    { fatherName: { contains: term } },
+  ]
 }

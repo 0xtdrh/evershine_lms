@@ -58,13 +58,19 @@ export async function logSystemContact(input: Omit<LogContactInput, 'auto'>) {
 export async function staffNames(userIds: string[]): Promise<Map<string, string>> {
   const ids = [...new Set(userIds.filter(Boolean))]
   if (!ids.length) return new Map()
-  const [users, admins, teachers] = await Promise.all([
-    prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, email: true } }),
-    prisma.admin.findMany({ where: { userId: { in: ids } }, select: { userId: true, firstName: true, lastName: true } }),
-    prisma.teacher.findMany({ where: { userId: { in: ids } }, select: { userId: true, firstName: true, lastName: true } }),
+  // 2026-10-24: secretaries / accountants / branch managers showed as their e-mail
+  const who = { where: { userId: { in: ids } }, select: { userId: true, firstName: true, lastName: true } }
+  const [users, ...profiles] = await Promise.all([
+    prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, email: true, displayName: true } }),
+    prisma.admin.findMany(who),
+    prisma.teacher.findMany(who),
+    prisma.secretary.findMany(who),
+    prisma.accountant.findMany(who),
+    prisma.branchManager.findMany(who),
+    prisma.marketingStaff.findMany(who),
   ])
-  const m = new Map(users.map((u) => [u.id, u.email]))
-  for (const p of [...admins, ...teachers]) m.set(p.userId, `${p.firstName} ${p.lastName}`.trim())
+  const m = new Map(users.map((u) => [u.id, u.displayName || u.email]))
+  for (const p of profiles.flat()) m.set(p.userId, `${p.firstName} ${p.lastName}`.trim())
   return m
 }
 

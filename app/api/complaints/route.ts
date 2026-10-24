@@ -15,6 +15,7 @@ import { auth } from '@/lib/auth'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { COMPLAINT_KINDS, COMPLAINT_TOPICS, createComplaint, normStatus, sweepComplaints } from '@/lib/complaints/engine'
 import { complaintWhere, isPortal, senderStudents, staffScope } from '@/lib/complaints/access'
+import { staffNames } from '@/lib/contacts/contact-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,12 +46,12 @@ export async function GET(request: NextRequest) {
   const [students, groups, staff, replies] = await Promise.all([
     prisma.student.findMany({ where: { id: { in: rows.map((r) => r.studentId).filter((x): x is string => !!x) } }, select: { id: true, firstName: true, lastName: true } }),
     prisma.classSection.findMany({ where: { id: { in: rows.map((r) => r.classSectionId).filter((x): x is string => !!x) } }, select: { id: true, className: true, sectionName: true } }),
-    prisma.user.findMany({ where: { id: { in: rows.map((r) => r.assignedToId).filter((x): x is string => !!x) } }, select: { id: true, displayName: true, email: true } }),
+    staffNames(rows.map((r) => r.assignedToId).filter((x): x is string => !!x)),
     prisma.complaintReply.groupBy({ by: ['complaintId'], where: { complaintId: { in: ids }, ...(isPortal(user.role) && { internal: false }) }, _count: { _all: true } }),
   ])
   const sName = new Map(students.map((s) => [s.id, `${s.firstName} ${s.lastName}`]))
   const gName = new Map(groups.map((g) => [g.id, `${g.className} ${g.sectionName}`.trim()]))
-  const uName = new Map(staff.map((u) => [u.id, u.displayName ?? u.email]))
+  const uName = staff
   const rc = new Map(replies.map((r) => [r.complaintId, r._count._all]))
   const now = Date.now()
   return successResponse({

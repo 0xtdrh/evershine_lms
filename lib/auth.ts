@@ -170,6 +170,9 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
             branchManager:  { select: { firstName: true, lastName: true, campusId: true } },
             secretary:      { select: { firstName: true, lastName: true, campusId: true } },
             marketingStaff: { select: { firstName: true, lastName: true, campusId: true } },
+            // 2026-10-24: parents showed as "guardian_<phone>" (no profile name was looked up)
+            guardian:       { select: { firstName: true, lastName: true } },
+            parent:         { select: { firstName: true, lastName: true } },
           },
         })
 
@@ -180,9 +183,11 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
           profile?.accountant ??
           profile?.branchManager ??
           profile?.secretary ??
-          profile?.marketingStaff
+          profile?.marketingStaff ??
+          profile?.guardian ??
+          profile?.parent
         const name = p
-          ? `${p.firstName} ${p.lastName}`
+          ? `${p.firstName} ${p.lastName ?? ''}`.trim()
           : email.split('@')[0]
 
         const campusId =

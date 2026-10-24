@@ -34,28 +34,29 @@ interface AuthLayoutProps {
   pageType: 'login' | 'forgot-password' | 'reset-password' | 'change-password'
 }
 
-const PAGE = {
+/** 2026-10-24: titles in the screen language (were English only). */
+const PAGE = () => ({
   login: {
-    title:    'Sign In to Your Portal',
-    sub:      'Access your dashboard, manage academics, and stay connected.',
+    title:    L('Sign In to Your Portal', 'ادخل على حسابك'),
+    sub:      L('Access your dashboard, manage academics, and stay connected.', 'تابع الحصص والفلوس والنتايج من مكان واحد.'),
     back:     null,
   },
   'forgot-password': {
-    title:    'Recover Your Account',
-    sub:      'We\'ll send a secure reset link to your registered email.',
-    back:     { href: '/login', label: 'Back to Sign In' },
+    title:    L('Recover Your Account', 'استرجع حسابك'),
+    sub:      L('We will send a secure reset link to your registered email.', 'هنبعتلك لينك على إيميلك تعمل بيه باسورد جديد.'),
+    back:     { href: '/login', label: L('Back to Sign In', 'رجوع للدخول') },
   },
   'reset-password': {
-    title:    'Create New Password',
-    sub:      'Choose a strong password to secure your account.',
-    back:     { href: '/login', label: 'Back to Sign In' },
+    title:    L('Create New Password', 'اعمل باسورد جديد'),
+    sub:      L('Choose a strong password to secure your account.', 'اختار باسورد قوي يحمي حسابك.'),
+    back:     { href: '/login', label: L('Back to Sign In', 'رجوع للدخول') },
   },
   'change-password': {
-    title:    'Choose Your Own Password',
-    sub:      'You signed in with a temporary password. Set a new one to continue.',
+    title:    L('Choose Your Own Password', 'اختار الباسورد بتاعك'),
+    sub:      L('You signed in with a temporary password. Set a new one to continue.', 'انت دخلت بباسورد مؤقت. اعمل باسورد جديد علشان تكمّل.'),
     back:     null,
   },
-}
+})
 
 const SLOGAN_WORDS = ['STEM', '·', 'Robotics', '·', 'Programming']
 
@@ -70,7 +71,7 @@ const fadeUp = (delay = 0) => ({
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
 export function AuthLayout({ children, pageType }: AuthLayoutProps) {
-  const cfg = PAGE[pageType]
+  const cfg = PAGE()[pageType]
   const [ready, setReady] = useState(false)
 
   useEffect(() => { setReady(true) }, [])

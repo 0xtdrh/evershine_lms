@@ -47,7 +47,7 @@ function RowList({ rows, onOpen, staff }: { rows: Row[]; onOpen: (id: string) =>
       {rows.map((r) => (
         <button key={r.id} type="button" onClick={() => onOpen(r.id)} className={`w-full rounded-lg border p-3 text-left text-sm transition hover:bg-slate-50 ${r.overdue ? 'border-rose-300' : 'border-slate-200'}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs text-slate-500">{r.number} · {KIND_LABEL[r.kind] ?? r.kind}{r.topic ? ` · ${TOPIC_LABEL[r.topic] ?? r.topic}` : ''} · {new Date(r.createdAt).toLocaleDateString(L('en-GB', 'ar-EG'))}</span>
+            <span className="text-xs text-slate-500">{r.number} · {KIND_LABEL[r.kind] ?? r.kind}{r.topic ? ` · ${TOPIC_LABEL[r.topic] ?? r.topic}` : ''} · {new Date(r.createdAt).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'))}</span>
             <span className="flex items-center gap-1.5">
               {staff && r.overdue && <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white">{L('LATE', 'متأخرة')}</span>}
               {staff && r.escalated && <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">{L('escalated', 'متصعّدة')}</span>}

@@ -44,12 +44,12 @@ export function ApplyToInvoicesDialog({
     onSuccess: (r) => {
       const ok = r.results.filter((x) => x.ok).length
       const failed = r.results.filter((x) => !x.ok)
-      if (ok) notify.success(`Discount applied to ${ok} invoice(s)`)
-      if (failed.length) notify.error(failed[0].reason || 'Some invoices could not be changed')
+      if (ok) notify.success(L(`Discount applied to ${ok} invoice(s)`, `الخصم اتطبق على ${ok} فاتورة`))
+      if (failed.length) notify.error(failed[0].reason || L('Some invoices could not be changed', 'فيه فواتير ماتغيرتش'))
       qc.invalidateQueries()
       onDone()
     },
-    onError: (err: Error) => notify.error(err.message || 'Could not apply'),
+    onError: (err: Error) => notify.error(err.message || L('Could not apply', 'ماتطبقش')),
   })
 
   return (

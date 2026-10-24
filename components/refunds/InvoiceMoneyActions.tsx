@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Undo2, Wallet } from 'lucide-react'
 import { RefundDialog } from './RefundDialog'
 import { useAfterPayment } from '@/lib/fees/use-after-payment'
+import { L } from '@/lib/i18n/client'
 
 /** "Pay from wallet" and "Refund" buttons for one invoice (shown only to staff allowed to). */
 export function InvoiceMoneyActions({
@@ -49,11 +50,11 @@ export function InvoiceMoneyActions({
   const pay = useMutation({
     mutationFn: () => fetchApi<{ id: string; receiptNumber: string; amount: number }>(`/api/fees/${invoiceId}/pay-from-wallet`, { method: 'POST', body: '{}' }),
     onSuccess: (r) => {
-      notify.success(`Paid ${r.amount} EGP from the wallet`)
+      notify.success(L(`Paid ${r.amount} EGP from the wallet`, `اتدفع ${r.amount} ج.م من المحفظة`))
       qc.invalidateQueries()
       afterPayment(r.id, r.receiptNumber)
     },
-    onError: (err: Error) => notify.error(err.message || 'Could not pay from the wallet'),
+    onError: (err: Error) => notify.error(err.message || L('Could not pay from the wallet', 'الدفع من المحفظة ماتمّش')),
   })
 
   const netPaid = paidAmount - refundedAmount
@@ -61,12 +62,12 @@ export function InvoiceMoneyActions({
     <>
       {canPay && unpaid && (wallet?.balance ?? 0) > 0 && (
         <Button onClick={() => pay.mutate()} disabled={pay.isPending} variant="outline" className="h-9 gap-2 border-emerald-300 text-xs font-bold text-emerald-700">
-          <Wallet className="h-3.5 w-3.5" /> Pay from wallet ({wallet!.balance.toLocaleString()} EGP)
+          <Wallet className="h-3.5 w-3.5" /> {L('Pay from wallet', 'ادفع من المحفظة')} ({wallet!.balance.toLocaleString()} {L('EGP', 'ج.م')})
         </Button>
       )}
       {canRefund && netPaid > 0 && (
         <Button onClick={() => setRefundOpen(true)} variant="outline" className="h-9 gap-2 border-rose-300 text-xs font-bold text-rose-700">
-          <Undo2 className="h-3.5 w-3.5" /> Refund
+          <Undo2 className="h-3.5 w-3.5" /> {L('Refund', 'استرداد')}
         </Button>
       )}
       {refundOpen && <RefundDialog invoiceId={invoiceId} open={refundOpen} onOpenChange={setRefundOpen} />}

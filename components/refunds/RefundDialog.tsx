@@ -63,13 +63,13 @@ export function RefundDialog({ invoiceId, open, onOpenChange }: { invoiceId: str
       qc.invalidateQueries()
       onOpenChange(false)
       if (r.status === 'APPROVED') {
-        notify.success(`Refund ${r.refundNumber} done`)
+        notify.success(L(`Refund ${r.refundNumber} done`, `الاسترداد ${r.refundNumber} اتعمل`))
         router.push(`/refunds/${r.refundId}`)
       } else {
         notify.success(L('Refund sent for approval', 'الاسترداد اتبعت للموافقة'))
       }
     },
-    onError: (err: Error) => notify.error(err.message || 'Could not create the refund'),
+    onError: (err: Error) => notify.error(err.message || L('Could not create the refund', 'الاسترداد ماتعملش')),
   })
 
   const n = Number(amount)
@@ -94,7 +94,7 @@ export function RefundDialog({ invoiceId, open, onOpenChange }: { invoiceId: str
               <div className="flex justify-between"><span>{L('Paid on this invoice', 'المدفوع على الفاتورة دي')}</span><span className="font-mono">{money(s.netPaid)}</span></div>
               <div className="flex justify-between">
                 <span>
-                  {s.sessionsCounted} {L('session(s)', 'حصة')} {s.basis === 'HELD' ? 'held' : 'attended'}
+                  {s.sessionsCounted} {L('session(s)', 'حصة')} {s.basis === 'HELD' ? L('held', 'اتعملت') : L('attended', 'حضرها')}
                   {s.sessionsInCycle ? ` × ${money(s.perSession)}` : ''}
                 </span>
                 <span className="font-mono">- {money(s.deduction)}</span>

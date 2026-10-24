@@ -102,6 +102,8 @@ export async function GET(request: NextRequest) {
     ? [
         { firstName:          { contains: search } },
         { lastName:           { contains: search } },
+        { fullNameAr:         { contains: search } },
+        { fullNameEn:         { contains: search } },
         { registrationNumber: { contains: search } },
         { rollNumber:         { contains: search } },
         { fatherName:         { contains: search } },

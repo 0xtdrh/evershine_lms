@@ -1,7 +1,7 @@
 'use client'
 
 import { useMyPermissions } from '@/hooks/use-my-permissions'
-import { useI18n } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -142,12 +142,12 @@ export default function AccountantExpensesPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accountant-expenses'] })
-      notify.success('Expense updated successfully')
+      notify.success(L('Expense updated successfully', 'المصروف اتعدّل'))
       setEditingExpense(null)
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Unable to update expense.'
-      notify.error('Update failed', { description: message })
+      notify.error(L('Update failed', 'التعديل ماتمّش'), { description: message })
     },
   })
 
@@ -158,11 +158,11 @@ export default function AccountantExpensesPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accountant-expenses'] })
-      notify.success('Expense deleted successfully')
+      notify.success(L('Expense deleted successfully', 'المصروف اتمسح'))
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Unable to delete expense.'
-      notify.error('Deletion failed', { description: message })
+      notify.error(L('Deletion failed', 'المسح ماتمّش'), { description: message })
     },
   })
 
@@ -208,7 +208,7 @@ export default function AccountantExpensesPage() {
   }
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this expense record?')) {
+    if (confirm(L('Are you sure you want to delete this expense record?', 'متأكد إنك عايز تمسح المصروف ده؟'))) {
       deleteExpenseAsync(id)
     }
   }
@@ -236,10 +236,10 @@ export default function AccountantExpensesPage() {
       link.download = `expenses-${new Date().toISOString().split('T')[0]}.xlsx`
       link.click()
       window.URL.revokeObjectURL(url)
-      notify.success('Expense export downloaded')
+      notify.success(L('Expense export downloaded', 'ملف المصاريف نزل'))
     } catch (error) {
       const message = error instanceof Error ? error.message : 'The export could not be created.'
-      notify.error('Unable to export expenses', { description: message })
+      notify.error(L('Unable to export expenses', 'التصدير ماتمّش'), { description: message })
     }
   }
 
@@ -268,14 +268,14 @@ export default function AccountantExpensesPage() {
       })
     },
     onSuccess: () => {
-      notify.success('Expense recorded successfully')
+      notify.success(L('Expense recorded successfully', 'المصروف اتسجل'))
       queryClient.invalidateQueries({ queryKey: ['accountant-expenses'] })
       queryClient.invalidateQueries({ queryKey: ['accountant-expenses-dashboard'] })
       setForm({ title: '', description: '', amount: '', category: 'UTILITIES', date: new Date().toISOString().split('T')[0], paymentSource: '', paymentReference: '', notes: '', campusId: '' })
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Please review the form values and try again.'
-      notify.error('Unable to record expense', { description: message })
+      notify.error(L('Unable to record expense', 'المصروف ماتسجلش'), { description: message })
     },
   })
 
@@ -284,7 +284,7 @@ export default function AccountantExpensesPage() {
   if (!canAccess) {
     return (
       <AccessDenied
-        title="Finance Workspace Access"
+        title={L('Finance Workspace Access', 'المصاريف')}
         message="Only finance staff and admins can create and review expense records in this accounting workspace."
       />
     )
@@ -292,16 +292,16 @@ export default function AccountantExpensesPage() {
 
   return (
     <>
-      <Modal open={showEditModal} onClose={closeEditModal} title="Edit expense record" size="lg">
+      <Modal open={showEditModal} onClose={closeEditModal} title={L('Edit expense record', 'عدّل المصروف')} size="lg">
         {editingExpense && (
           <form className="space-y-4" onSubmit={handleEditSubmit}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="edit-title">Title</Label>
+                <Label htmlFor="edit-title">{L('Title', 'البيان')}</Label>
                 <Input id="edit-title" value={editForm.title} onChange={(e) => setEditForm((prev) => ({ ...prev, title: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-category">Category</Label>
+                <Label htmlFor="edit-category">{L('Category', 'البند')}</Label>
                 <Select value={catId(editForm.category)} onValueChange={(value) => setEditForm((prev) => ({ ...prev, category: value }))}>
                   <SelectTrigger id="edit-category"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -312,51 +312,51 @@ export default function AccountantExpensesPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="edit-amount">Amount (EGP)</Label>
+                <Label htmlFor="edit-amount">{L('Amount (EGP)', 'المبلغ (ج.م)')}</Label>
                 <Input id="edit-amount" type="number" min="0.01" step="0.01" value={editForm.amount} onChange={(e) => setEditForm((prev) => ({ ...prev, amount: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-date">Date</Label>
+                <Label htmlFor="edit-date">{L('Date', 'التاريخ')}</Label>
                 <DateInput id="edit-date" value={editForm.date} onChange={(e) => setEditForm((prev) => ({ ...prev, date: e.target.value }))} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-description">Description</Label>
+              <Label htmlFor="edit-description">{L('Description', 'الوصف')}</Label>
               <Textarea id="edit-description" value={editForm.description} onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))} />
             </div>
             {showPaymentFields ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-paymentSource">Payment method</Label>
+                  <Label htmlFor="edit-paymentSource">{L('Payment method', 'طريقة الدفع')}</Label>
                   <Select value={editForm.paymentSource} onValueChange={(value) => setEditForm((prev) => ({ ...prev, paymentSource: value }))}>
-                    <SelectTrigger id="edit-paymentSource"><SelectValue placeholder="Select payment method" /></SelectTrigger>
+                    <SelectTrigger id="edit-paymentSource"><SelectValue placeholder={L('Select payment method', 'اختار طريقة الدفع')} /></SelectTrigger>
                     <SelectContent>
                       {PAYMENT_METHODS.map((method) => <SelectItem key={method} value={method}>{method}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-paymentReference">Payment reference</Label>
+                  <Label htmlFor="edit-paymentReference">{L('Payment reference', 'رقم العملية')}</Label>
                   <Input id="edit-paymentReference" value={editForm.paymentReference} onChange={(e) => setEditForm((prev) => ({ ...prev, paymentReference: e.target.value }))} />
                 </div>
               </div>
             ) : (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 {isLoadingExpenseColumns
-                  ? 'Checking whether payment metadata is supported in the current database schema...'
+                  ? L('Checking the payment fields…', 'بيتأكد من خانات الدفع…')
                   : expenseColumnSupportError
-                  ? 'Unable to verify payment metadata support. The update will not include payment fields.'
-                  : 'Payment metadata is not available in the current database schema. The update will not include payment fields.'}
+                  ? L('Payment fields could not be checked; they will not be saved.', 'ماقدرناش نتأكد من خانات الدفع، فمش هتتحفظ.')
+                  : L('Payment fields are not available; they will not be saved.', 'خانات الدفع مش متاحة، فمش هتتحفظ.')}
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="edit-notes">Notes</Label>
+              <Label htmlFor="edit-notes">{L('Notes', 'ملاحظات')}</Label>
               <Textarea id="edit-notes" value={editForm.notes} onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={closeEditModal} type="button">Cancel</Button>
+              <Button variant="outline" onClick={closeEditModal} type="button">{L('Cancel', 'إلغاء')}</Button>
               <Button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white" disabled={isUpdatingExpense}>
-                {isUpdatingExpense ? 'Saving…' : 'Save changes'}
+                {isUpdatingExpense ? L('Saving…', 'بيحفظ…') : L('Save changes', 'احفظ')}
               </Button>
             </div>
           </form>
@@ -365,10 +365,10 @@ export default function AccountantExpensesPage() {
       <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-600">Expenses</p>
-          <h1 className="text-2xl font-black text-slate-900">Record and review campus expenses</h1>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-600">{L('Expenses', 'المصاريف')}</p>
+          <h1 className="text-2xl font-black text-slate-900">{L('Record and review campus expenses', 'سجّل وراجع مصاريف الفرع')}</h1>
           <div className="mt-2 print:hidden"><DataExchangeButtons dataset="expenses" /></div>
-          <p className="text-sm text-slate-500">This path uses the manual proof-style workflow: account managers record expenses directly, and they appear immediately in finance reports with approval set to true by default.</p>
+          <p className="text-sm text-slate-500">{L('This path uses the manual proof-style workflow: account managers record expenses directly, and they appear immediately in finance reports with approval set to true by default.', 'المصروف اللي بتسجله بيظهر على طول في التقارير المالية (متوافق عليه تلقائي).')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -377,7 +377,7 @@ export default function AccountantExpensesPage() {
             className="border-teal-200 text-teal-700 hover:bg-teal-50"
           >
             <a href="/dashboard/accountant/reports" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" /> Financial Reports
+              <TrendingUp className="h-4 w-4" /> {L('Financial Reports', 'التقارير المالية')}
             </a>
           </Button>
         </div>
@@ -385,8 +385,8 @@ export default function AccountantExpensesPage() {
 
       <Card className="border-teal-100 bg-white shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">Expense ledger steps</CardTitle>
-          <CardDescription>Record expenses once, then reuse the same ledger for filtering, P&L, and Excel exports.</CardDescription>
+          <CardTitle className="text-base">{L('Expense ledger steps', 'خطوات المصاريف')}</CardTitle>
+          <CardDescription>{L('Record expenses once, then reuse the same ledger for filtering, P&L, and Excel exports.', 'سجّل المصروف مرة واحدة، وهيظهر في الفلترة والأرباح والخسائر والـ Excel.')}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-4">
           {[
@@ -407,31 +407,31 @@ export default function AccountantExpensesPage() {
       <div className={`grid gap-6 ${canCreate ? 'lg:grid-cols-[420px_1fr]' : ''}`}>
         {canCreate && <Card>
           <CardHeader>
-            <CardTitle>New expense</CardTitle>
-            <CardDescription>Record a campus cost directly to the finance ledger.</CardDescription>
+            <CardTitle>{L('New expense', 'مصروف جديد')}</CardTitle>
+            <CardDescription>{L('Record a campus cost directly to the finance ledger.', 'سجّل مصروف للفرع.')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
-              <Input id="title" value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="Utilities bill / stationery purchase" />
+              <Label htmlFor="title">{L('Title', 'البيان')}</Label>
+              <Input id="title" value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} placeholder={L('Utilities bill / stationery purchase', 'مثلاً: فاتورة كهربا / أدوات مكتبية')} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea id="description" value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} placeholder="Optional context for the finance report" />
+              <Label htmlFor="description">{L('Description', 'الوصف')}</Label>
+              <Textarea id="description" value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} placeholder={L('Optional context for the finance report', 'تفاصيل اختيارية للتقرير')} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="amount">Amount (EGP)</Label>
+                <Label htmlFor="amount">{L('Amount (EGP)', 'المبلغ (ج.م)')}</Label>
                 <Input id="amount" type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))} placeholder="5000" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
+                <Label htmlFor="date">{L('Date', 'التاريخ')}</Label>
                 <DateInput id="date" value={form.date} onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))} />
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category">{L('Category', 'البند')}</Label>
                 <Select value={catId(form.category)} onValueChange={(value) => setForm((prev) => ({ ...prev, category: value }))}>
                   <SelectTrigger id="category"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -441,9 +441,9 @@ export default function AccountantExpensesPage() {
               </div>
               {isGlobalAccountant && (
                 <div className="space-y-2">
-                  <Label htmlFor="campusId">Campus <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="campusId">{L('Campus', 'الفرع')} <span className="text-red-500">*</span></Label>
                   <Select value={form.campusId} onValueChange={(value) => setForm((prev) => ({ ...prev, campusId: value }))}>
-                    <SelectTrigger id="campusId"><SelectValue placeholder="Select a campus" /></SelectTrigger>
+                    <SelectTrigger id="campusId"><SelectValue placeholder={L('Select a campus', 'اختار الفرع')} /></SelectTrigger>
                     <SelectContent>
                       {campuses.map((c) => <SelectItem key={c.id} value={c.id}>{campusLabel(c)}</SelectItem>)}
                     </SelectContent>
@@ -454,36 +454,36 @@ export default function AccountantExpensesPage() {
             {showPaymentFields ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="paymentSource">Payment method</Label>
+                  <Label htmlFor="paymentSource">{L('Payment method', 'طريقة الدفع')}</Label>
                   <Select value={form.paymentSource} onValueChange={(value) => setForm((prev) => ({ ...prev, paymentSource: value }))}>
-                    <SelectTrigger id="paymentSource"><SelectValue placeholder="Select payment method" /></SelectTrigger>
+                    <SelectTrigger id="paymentSource"><SelectValue placeholder={L('Select payment method', 'اختار طريقة الدفع')} /></SelectTrigger>
                     <SelectContent>
                       {PAYMENT_METHODS.map((method) => <SelectItem key={method} value={method}>{method}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="paymentReference">Payment reference</Label>
+                  <Label htmlFor="paymentReference">{L('Payment reference', 'رقم العملية')}</Label>
                   <Input
                     id="paymentReference"
                     value={form.paymentReference}
                     onChange={(e) => setForm((prev) => ({ ...prev, paymentReference: e.target.value }))}
-                    placeholder="Cheque number / transaction ID"
+                    placeholder={L('Cheque number / transaction ID', 'رقم الشيك / العملية')}
                   />
                 </div>
               </div>
             ) : (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 {isLoadingExpenseColumns
-                  ? 'Checking whether payment metadata is supported in the current database schema...'
+                  ? L('Checking the payment fields…', 'بيتأكد من خانات الدفع…')
                   : expenseColumnSupportError
-                  ? 'Unable to verify payment metadata support. Expenses will be recorded with core fields only.'
-                  : 'Payment metadata is not available in the current database schema. Expenses will be recorded without payment method or reference.'}
+                  ? L('Payment fields could not be checked; the expense is saved without them.', 'ماقدرناش نتأكد من خانات الدفع، والمصروف هيتسجل من غيرها.')
+                  : L('Payment fields are not available; the expense is saved without method or reference.', 'خانات الدفع مش متاحة، والمصروف هيتسجل من غير الطريقة ورقم العملية.')}
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} placeholder="Optional remarks for the finance team" />
+              <Label htmlFor="notes">{L('Notes', 'ملاحظات')}</Label>
+              <Textarea id="notes" value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} placeholder={L('Optional remarks for the finance team', 'ملاحظات اختيارية للحسابات')} />
             </div>
             <Button
               onClick={() => mutation.mutate()}
@@ -495,49 +495,49 @@ export default function AccountantExpensesPage() {
               }
               className="w-full bg-teal-600 hover:bg-teal-700 text-white"
             >
-              {mutation.isPending ? 'Saving…' : isLoadingExpenseColumns ? 'Checking schema…' : 'Record expense'}
+              {mutation.isPending ? L('Saving…', 'بيحفظ…') : isLoadingExpenseColumns ? L('Checking…', 'بيتأكد…') : L('Record expense', 'سجّل المصروف')}
             </Button>
           </CardContent>
         </Card>}
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent campus expenses</CardTitle>
-            <CardDescription>Total recorded this month: {formatCurrency(total)}</CardDescription>
+            <CardTitle>{L('Recent campus expenses', 'آخر مصاريف الفرع')}</CardTitle>
+            <CardDescription>{L('Total recorded this month:', 'إجمالي الشهر ده:')} {formatCurrency(total)}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 border-b border-slate-200 pb-4">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="filter-category">Category</Label>
+                <Label htmlFor="filter-category">{L('Category', 'البند')}</Label>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger id="filter-category"><SelectValue placeholder="All categories" /></SelectTrigger>
+                  <SelectTrigger id="filter-category"><SelectValue placeholder={L('All categories', 'كل البنود')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL">All categories</SelectItem>
+                    <SelectItem value="ALL">{L('All categories', 'كل البنود')}</SelectItem>
                     {activeCategories.map((c) => <SelectItem key={c.id} value={c.id}>{ar ? c.nameAr : c.nameEn}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="filter-start">From</Label>
+                <Label htmlFor="filter-start">{L('From', 'من')}</Label>
                 <DateInput id="filter-start" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="filter-end">To</Label>
+                <Label htmlFor="filter-end">{L('To', 'إلى')}</Label>
                 <DateInput id="filter-end" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-slate-500">Filter the ledger instantly; export the current view to Excel for finance reporting.</p>
               {canExport && <Button variant="outline" onClick={exportExpenses} className="gap-2 border-teal-200 text-teal-700 hover:bg-teal-50">
-                <Download className="h-4 w-4" /> Export Excel
+                <Download className="h-4 w-4" /> {L('Export Excel', 'صدّر Excel')}
               </Button>}
             </div>
           </CardContent>
           <CardContent className="space-y-3">
             {isLoading ? (
-              <p className="text-sm text-slate-500">Loading expense ledger…</p>
+              <p className="text-sm text-slate-500">{L('Loading expense ledger…', 'بيحمّل المصاريف…')}</p>
             ) : expenses.length === 0 ? (
-              <p className="text-sm text-slate-500">No expense records yet in this campus ledger.</p>
+              <p className="text-sm text-slate-500">{L('No expense records yet in this campus ledger.', 'لسه مفيش مصاريف متسجلة.')}</p>
             ) : (
               expenses.map((item) => (
                 <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -546,16 +546,16 @@ export default function AccountantExpensesPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-semibold text-slate-900">{item.title}</h3>
                         <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] text-slate-600">{catName(item)}</span>
-                        {item.isApproved && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] text-emerald-700">Approved</span>}
+                        {item.isApproved && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] text-emerald-700">{L('Approved', 'متوافق عليه')}</span>}
                       </div>
                       <p className="text-sm text-slate-500">{item.description || item.notes || 'No further notes.'}</p>
                       {(item.paymentSource || item.paymentReference) && (
                         <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
-                          {item.paymentSource && <span className="rounded-full bg-slate-100 px-2 py-1">Method: {item.paymentSource}</span>}
-                          {item.paymentReference && <span className="rounded-full bg-slate-100 px-2 py-1">Ref: {item.paymentReference}</span>}
+                          {item.paymentSource && <span className="rounded-full bg-slate-100 px-2 py-1">{L('Method:', 'الطريقة:')} {item.paymentSource}</span>}
+                          {item.paymentReference && <span className="rounded-full bg-slate-100 px-2 py-1">{L('Ref:', 'رقم العملية:')} {item.paymentReference}</span>}
                         </div>
                       )}
-                      <p className="text-xs text-slate-400">Recorded on {formatDate(item.date)} by {getRecorderName(item)}</p>
+                      <p className="text-xs text-slate-400">{L('Recorded on', 'اتسجل يوم')} {formatDate(item.date)} {L('by', 'بواسطة')} {getRecorderName(item)}</p>
                     </div>
                     <div className="flex flex-col items-start gap-3 text-right md:items-end">
                       <span className="text-sm font-semibold text-slate-900">{formatCurrency(item.amount)}</span>
@@ -566,7 +566,7 @@ export default function AccountantExpensesPage() {
                           className="gap-2 border-slate-300 text-slate-700"
                           onClick={() => openEditModal(item)}
                         >
-                          <Edit3 className="h-4 w-4" /> Edit
+                          <Edit3 className="h-4 w-4" /> {L('Edit', 'عدّل')}
                         </Button>}
                         {canDelete && <Button
                           variant="outline"
@@ -575,7 +575,7 @@ export default function AccountantExpensesPage() {
                           onClick={() => handleDelete(item.id)}
                           disabled={isDeletingExpense}
                         >
-                          <Trash2 className="h-4 w-4" /> Delete
+                          <Trash2 className="h-4 w-4" /> {L('Delete', 'امسح')}
                         </Button>}
                       </div>
                     </div>

@@ -13,6 +13,7 @@ import { errors, successResponse } from '@/lib/api-response'
 import { COMPLAINT_STATUSES, addReply, normStatus, updateComplaint } from '@/lib/complaints/engine'
 import { isPortal, staffScope, staffSees } from '@/lib/complaints/access'
 import { usersWithPermission } from '@/lib/notifications/events'
+import { staffNames } from '@/lib/contacts/contact-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,12 +37,11 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   if (l.err) return l.err
   const c = l.c!
   const replies = await prisma.complaintReply.findMany({ where: { complaintId: c.id, ...(!l.staff && { internal: false }) }, orderBy: { createdAt: 'asc' } })
-  const authors = await prisma.user.findMany({ where: { id: { in: [...new Set(replies.map((r) => r.authorId))] } }, select: { id: true, displayName: true, email: true } })
-  const aName = new Map(authors.map((u) => [u.id, u.displayName ?? u.email]))
+  const aName = await staffNames(replies.map((r) => r.authorId))
   const [student, group, handlers] = await Promise.all([
     c.studentId ? prisma.student.findUnique({ where: { id: c.studentId }, select: { id: true, firstName: true, lastName: true, registrationNumber: true } }) : null,
     c.classSectionId ? prisma.classSection.findUnique({ where: { id: c.classSectionId }, select: { className: true, sectionName: true } }) : null,
-    l.staff ? usersWithPermission('complaints', 'update', c.campusId).then((ids) => prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, displayName: true, email: true } })) : Promise.resolve([]),
+    l.staff ? usersWithPermission('complaints', 'update', c.campusId).then(async (ids) => { const n = await staffNames(ids); return ids.map((id) => ({ id, name: n.get(id) ?? id })) }) : Promise.resolve([] as { id: string; name: string }[]),
   ])
   return successResponse({
     id: c.id, number: c.number, kind: c.kind, topic: c.topic, status: normStatus(c.status), source: c.source,
@@ -52,7 +52,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     satisfied: c.satisfied, handlingRating: c.handlingRating, createdAt: c.createdAt,
     legacyRemarks: c.remarks,
     replies: replies.map((r) => ({ id: r.id, body: r.body, internal: r.internal, fromStaff: r.authorRole === 'STAFF', author: r.authorRole === 'STAFF' ? (l.staff ? aName.get(r.authorId) ?? 'Staff' : 'TechNova team') : c.complainantName, createdAt: r.createdAt })),
-    handlers: handlers.map((u) => ({ id: u.id, name: u.displayName ?? u.email })),
+    handlers,
     canHandle: l.staff ? l.scope!.canHandle : false,
   })
 }
