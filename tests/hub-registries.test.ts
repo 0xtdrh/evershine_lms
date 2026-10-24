@@ -50,6 +50,7 @@ describe('settings centre / reports centre / today (5-C)', () => {
       'app/api/renewals/settings/route.ts': '/dashboard/renewals',
       'app/api/session-reports/settings/route.ts': '/dashboard/session-reports',
       'app/api/teachers/performance/settings/route.ts': '/dashboard/teacher-performance',
+      'app/api/teachers/access/settings/route.ts': '/dashboard/teachers',
       'app/api/wallet/settings/route.ts': '/dashboard/wallet',
     }
     const apis = walk('app/api').filter((p) => /\/settings\/route\.ts$|-settings\/route\.ts$/.test(p))

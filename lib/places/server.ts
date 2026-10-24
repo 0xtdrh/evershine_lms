@@ -6,6 +6,7 @@
 
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
+import { getTeacherAccessSettings } from '@/lib/teachers/access-settings'
 import { narrow, resolvePlaces, type Places, allowsCampus, allowsGroup, TEACHER_STUDENT_STATUSES } from './rules'
 
 export * from './rules'
@@ -39,9 +40,12 @@ export async function loadPlaces(user: Who): Promise<Places> {
   let allCampuses: string[] | undefined
   if (user.role === 'TEACHER') {
     const tid = u?.teacher?.id ?? '__none__'
+    const days = (await getTeacherAccessSettings()).finishedGroupDays
     const [teaches, covers, campuses] = await Promise.all([
-      prisma.subjectOffering.findMany({ where: { teacherId: tid }, select: { classSectionId: true } }),
-      prisma.substituteAssignment.findMany({ where: { substituteTeacherId: tid, status: { in: ['CONFIRMED', 'PENDING_SUBSTITUTE_APPROVAL'] } }, select: { classSectionId: true } }),
+      // a finished group stays visible for N days (final marks, late homework, last report); then its students
+      // disappear — if they go on with this instructor they are in his new group anyway (owner 2026-10-24)
+      prisma.subjectOffering.findMany({ where: { teacherId: tid, classSection: { is: openOrRecent(days) } }, select: { classSectionId: true } }),
+      prisma.substituteAssignment.findMany({ where: { substituteTeacherId: tid, status: { in: ['CONFIRMED', 'PENDING_SUBSTITUTE_APPROVAL'] }, classSection: { is: openOrRecent(days) } }, select: { classSectionId: true } }),
       u?.allLocations ? prisma.campus.findMany({ where: { isActive: true }, select: { id: true } }) : Promise.resolve([]),
     ])
     teacherGroups = [...teaches, ...covers].map((r) => r.classSectionId).filter((x): x is string => !!x)
@@ -52,6 +56,12 @@ export async function loadPlaces(user: Who): Promise<Places> {
   if (cache.size > 5000) cache.delete(cache.keys().next().value as string)
   return places
 }
+
+/** A finished group stays visible to its instructor for N days (setting teachers.access.finishedGroupDays). */
+const openOrRecent = (days: number) => ({ OR: [{ status: { not: 'COMPLETED' as const } }, { completedAt: null }, { completedAt: { gte: new Date(Date.now() - days * 86_400_000) } }] })
+
+/** Drop every cached place (a setting that changes who sees what was saved). */
+export function forgetAllPlaces() { cache.clear() }
 
 export function forgetPlaces(userId: string) {
   for (const k of [...cache.keys()]) if (k.startsWith(`${userId}:`)) cache.delete(k)

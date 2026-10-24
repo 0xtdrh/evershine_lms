@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
+import { canSeeStudent } from '@/lib/places/server'
 import { addStudentEnrollmentSchema } from '@/lib/validation/student'
 import { getActiveAcademicYear, assertAcademicYearEditable } from '@/lib/academic/engine'
 import { createYearEnrollmentForStudent } from '@/lib/academic/enrollment'
@@ -18,6 +19,7 @@ export async function GET(
   if (!checkPermission(session.user.role as Role, 'students', 'read')) return errors.forbidden()
 
   const { id } = await params
+  if (!(await canSeeStudent(session.user, id))) return errors.forbidden() // M0: only students of the person's places (2026-10-24)
   const student = await prisma.student.findUnique({ where: { id }, select: { id: true } })
   if (!student) return errors.notFound('Student')
 
@@ -39,6 +41,7 @@ export async function POST(
   if (!checkPermission(session.user.role as Role, 'students', 'create')) return errors.forbidden()
 
   const { id: studentId } = await params
+  if (!(await canSeeStudent(session.user, studentId))) return errors.forbidden() // M0: only students of the person's places (2026-10-24)
   const student = await prisma.student.findUnique({
     where: { id: studentId },
     select: { id: true, campusId: true },

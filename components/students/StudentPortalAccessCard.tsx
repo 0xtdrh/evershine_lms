@@ -50,6 +50,12 @@ export function StudentPortalAccessCard({ studentId, studentName, guardians, has
     staleTime: 60_000,
     enabled: status === 'authenticated' && !!role,
   })
+  // 2026-10-24 (owner): the card always shows how each one signs in (login names only, never passwords)
+  const { data: logins } = useQuery({
+    queryKey: ['portal-logins', studentId],
+    queryFn: () => fetchApi<{ student: { easy: string | null; registrationNumber: string } | null; guardians: { id: string; phone: string }[] }>(`/api/students/${studentId}/portal-password`),
+    enabled: status === 'authenticated',
+  })
   const [confirm, setConfirm] = useState<Target | null>(null)
   const [issued, setIssued] = useState<Issued | null>(null)
 
@@ -95,7 +101,17 @@ export function StudentPortalAccessCard({ studentId, studentName, guardians, has
         {targets.length === 0 && <p className="text-sm text-muted-foreground">{L('No parent or student account yet.', 'لسه مفيش حساب لولي أمر أو طالب.')}</p>}
         {targets.map((t) => (
           <div key={t.target === 'guardian' ? t.guardianId : 'student'} className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2">
-            <span className="min-w-0 break-words text-sm">{t.label}</span>
+            <span className="min-w-0 break-words text-sm">
+              {t.label}
+              <span className="block text-xs text-slate-500">
+                {L('Signs in with', 'بيدخل بـ')}{' '}
+                <bdi className="font-mono text-slate-700">
+                  {t.target === 'guardian'
+                    ? logins?.guardians.find((g) => g.id === t.guardianId)?.phone ?? '…'
+                    : logins?.student ? (logins.student.easy ? `${logins.student.easy} ${L('or', 'أو')} ${logins.student.registrationNumber}` : logins.student.registrationNumber) : '…'}
+                </bdi>
+              </span>
+            </span>
             <Button size="sm" variant="outline" disabled={issue.isPending} onClick={() => setConfirm(t)}>
               {issue.isPending && issue.variables === t ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
               {L('Temporary password', 'باسورد مؤقت')}

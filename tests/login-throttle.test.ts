@@ -30,3 +30,27 @@ describe('lockEndsAt', () => {
     expect(lockEndsAt(minsAgo(0, 5, 10, 15, 20), 5, NOW)).toBeNull()
   })
 })
+
+describe('students sign in with their registration number (2026-10-24)', () => {
+  it('reads every common way of typing it', async () => {
+    const { registrationFromLogin } = await import('@/lib/portal-login')
+    expect(registrationFromLogin('TN/2026/0001')).toBe('TN/2026/0001')
+    expect(registrationFromLogin('tn-2026-0001')).toBe('TN/2026/0001')
+    expect(registrationFromLogin(' TN.2026.12 ')).toBe('TN/2026/0012')
+    expect(registrationFromLogin('TN20260001')).toBe('TN/2026/0001')
+    expect(registrationFromLogin('01000000201')).toBeNull()
+    expect(registrationFromLogin('a@b.com')).toBeNull()
+  })
+})
+
+describe('easy student login name (2026-10-24)', () => {
+  it('English first name + the registration number, letters only', async () => {
+    const { studentLoginName, loginNameParts } = await import('@/lib/portal-login')
+    expect(studentLoginName('Youssef', 'TN/2026/0001')).toBe('youssef0001')
+    expect(studentLoginName('Abd El-Rahman', 'TN/2026/0042')).toBe('abdelrahman0042')
+    expect(studentLoginName('يوسف', 'TN/2026/0001')).toBeNull()
+    expect(loginNameParts('Youssef0001')).toEqual({ name: 'youssef', num: '0001' })
+    expect(loginNameParts('youssef')).toBeNull()
+    expect(loginNameParts('01000000201')).toBeNull()
+  })
+})

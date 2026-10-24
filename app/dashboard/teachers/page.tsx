@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { L, useI18n } from '@/lib/i18n/client'
+import { TeacherAccessSettings } from '@/components/teachers/TeacherAccessSettings'
 
 interface Teacher {
   id: string
@@ -114,6 +115,7 @@ export default function TeachersPage() {
       variants={staggerContainer}
       className="space-y-6 max-w-7xl mx-auto"
     >
+      {(role === 'SUPER_ADMIN' || role === 'ADMIN') && <TeacherAccessSettings />}
       <motion.div variants={fadeUp(0.1)} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl shadow-soft-lg border border-slate-200/60">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">

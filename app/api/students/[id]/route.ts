@@ -8,6 +8,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errorResponse, errors, successResponse } from '@/lib/api-response'
+import { canSeeStudent } from '@/lib/places/server'
 import { updateStudentSchema } from '@/lib/validation/student'
 import { syncGuardianPhonesAfterStudentEdit } from '@/lib/students/guardian-phone'
 import { enrollmentInclude } from '@/lib/students/enrollment-sync'
@@ -23,6 +24,7 @@ export async function GET(
   if (!checkPermission(session.user.role as Role, 'students', 'read')) return errors.forbidden()
 
   const { id } = await params
+  if (session.user.role !== 'STUDENT' && !(await canSeeStudent(session.user, id))) return errors.forbidden() // M0: only students of the person's places (2026-10-24)
 
   // Row-level scope: Students can only see their own profile
   const isStudent = session.user.role === 'STUDENT'
@@ -80,6 +82,7 @@ export async function PATCH(
   if (!checkPermission(session.user.role as Role, 'students', 'update')) return errors.forbidden()
 
   const { id } = await params
+  if (!(await canSeeStudent(session.user, id))) return errors.forbidden() // M0: only students of the person's places (2026-10-24)
 
   let body: unknown
   try { body = await request.json() } catch {
@@ -202,6 +205,7 @@ export async function DELETE(
   if (!checkPermission(session.user.role as Role, 'students', 'delete')) return errors.forbidden()
 
   const { id } = await params
+  if (!(await canSeeStudent(session.user, id))) return errors.forbidden() // M0: only students of the person's places (2026-10-24)
 
   const student = await prisma.student.findUnique({ where: { id }, select: { id: true, userId: true } })
   if (!student) return errors.notFound('Student')

@@ -34,8 +34,45 @@ export function looksLikePhone(identifier: string) {
 }
 
 /** Resolves a login identifier (email, or a guardian's phone number) to a user email. */
+/**
+ * A student's registration number typed as a login (2026-10-24, owner: the generated email is hard to remember):
+ * TN/2026/0001, TN-2026-0001, tn.2026.0001, TN20260001 → "TN/2026/0001". Null when it is not one.
+ */
+export function registrationFromLogin(identifier: string): string | null {
+  const m = identifier.trim().match(/^tn[\s/\-._]?(\d{4})[\s/\-._]?(\d{1,6})$/i)
+  return m ? `TN/${m[1]}/${m[2].padStart(4, '0')}` : null
+}
+
+/**
+ * Easy student login name (2026-10-24, owner): English first name (letters only, lower case) + the 4-digit number of
+ * the registration number — Youssef, TN/2026/0001 → "youssef0001". Null when the first name has no English letters.
+ */
+export function studentLoginName(firstName: string, registrationNumber: string): string | null {
+  const name = firstName.toLowerCase().replace(/[^a-z]/g, '')
+  const num = registrationNumber.split('/').pop() ?? ''
+  return name && /^\d+$/.test(num) ? `${name}${num}` : null
+}
+
+/** "youssef0001" → { name: 'youssef', num: '0001' } (letters then 4–6 digits). */
+export function loginNameParts(identifier: string): { name: string; num: string } | null {
+  const m = identifier.trim().toLowerCase().match(/^([a-z]+)(\d{4,6})$/)
+  return m ? { name: m[1], num: m[2] } : null
+}
+
 export async function resolveLoginEmail(identifier: string): Promise<string | null> {
   const value = identifier.trim()
+  const reg = registrationFromLogin(value)
+  if (reg) {
+    const student = await prisma.student.findFirst({ where: { registrationNumber: reg }, select: { user: { select: { email: true } } } })
+    return student?.user?.email ?? null
+  }
+  const easy = loginNameParts(value)
+  if (easy) {
+    // same number in different years → only when exactly ONE student matches the name; otherwise the full number is needed
+    const rows = await prisma.student.findMany({ where: { registrationNumber: { endsWith: `/${easy.num}` } }, select: { firstName: true, registrationNumber: true, user: { select: { email: true } } } })
+    const hits = rows.filter((r) => studentLoginName(r.firstName, r.registrationNumber) === value.toLowerCase())
+    return hits.length === 1 ? hits[0].user?.email ?? null : null
+  }
   if (!looksLikePhone(value)) return value.toLowerCase()
   const guardian = await prisma.guardian.findFirst({
     where: { phoneNumber: { in: phoneVariants(value) } },

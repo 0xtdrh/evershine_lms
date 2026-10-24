@@ -24,6 +24,7 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 import { accountKey, clearLoginFailures } from '@/lib/login-throttle'
 import { generateTempPassword, portalMessage, whatsappNumber } from '@/lib/students/portal-password'
+import { resolveLoginEmail, studentLoginName } from '@/lib/portal-login'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -42,6 +43,28 @@ function siteUrl(request: NextRequest): string {
   const env = process.env.AUTH_URL || process.env.NEXTAUTH_URL
   if (env) return env.replace(/\/+$/, '')
   return new URL(request.url).origin
+}
+
+/** GET — how the student and the parents sign in (login names only, never passwords) for the student page card. */
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session?.user) return errors.unauthorized()
+  const role = session.user.role as Role
+  const allowed = checkPermission(role, 'account_management', 'update') || checkPermission(role, 'students', 'update')
+  if (!allowed || !checkPermission(role, 'students', 'read')) return errors.forbidden()
+  const { id: studentId } = await params
+  if (!(await canSeeStudent(session.user, studentId))) return errors.forbidden()
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { firstName: true, registrationNumber: true, user: { select: { email: true } }, guardians: { select: { id: true, phoneNumber: true } } },
+  })
+  if (!student) return errors.notFound('Student')
+  const easy = studentLoginName(student.firstName, student.registrationNumber)
+  const easyWorks = !!(student.user && easy && (await resolveLoginEmail(easy)) === student.user.email)
+  return successResponse({
+    student: student.user ? { easy: easyWorks ? easy : null, registrationNumber: student.registrationNumber } : null,
+    guardians: student.guardians.map((g) => ({ id: g.id, phone: g.phoneNumber })),
+  })
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -74,6 +97,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       firstName: true,
       lastName: true,
       phoneNumber: true,
+      registrationNumber: true,
       user: { select: { id: true, email: true, role: true, isActive: true } },
       guardians: {
         select: {
@@ -104,7 +128,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     accountName = `${guardian.firstName} ${guardian.lastName}`.trim()
   } else {
     account = student.user
-    loginId = student.user?.email ?? ''
+    // students sign in with an easy name (youssef0001) when it is unique, else their registration number (2026-10-24)
+    const easy = studentLoginName(student.firstName, student.registrationNumber)
+    loginId = !student.user ? '' : easy && (await resolveLoginEmail(easy)) === student.user.email ? easy : student.registrationNumber
     // Young students rarely have their own phone: fall back to the first parent.
     sendTo = whatsappNumber(student.phoneNumber) ?? whatsappNumber(student.guardians[0]?.phoneNumber)
     accountName = studentName

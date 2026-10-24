@@ -16,9 +16,9 @@ import { AuthLayout } from '@/components/auth/AuthLayout'
 import { Lock, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react'
 
 const loginSchema = z.object({
-  // Email, or a parent's phone number (resolved server-side, lib/portal-login.ts)
-  email:    z.string().trim().min(3, 'Enter your email or phone number')
-    .refine((v) => v.includes('@') ? z.string().email().safeParse(v).success : /^[+\d][\d\s\-()]{6,}$/.test(v), 'Enter a valid email or phone number'),
+  // Email, a parent's phone number, or a student's registration number (resolved server-side, lib/portal-login.ts)
+  email:    z.string().trim().min(3, 'Enter your email, phone or registration number')
+    .refine((v) => v.includes('@') ? z.string().email().safeParse(v).success : /^[+\d][\d\s\-()]{6,}$/.test(v) || /^tn[\s/\-._]?\d{4}[\s/\-._]?\d{1,6}$/i.test(v) || /^[a-z]+\d{4,6}$/i.test(v), 'Enter a valid email, phone or registration number'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 type LoginForm = z.infer<typeof loginSchema>
@@ -137,14 +137,14 @@ export default function LoginPage() {
 
         {/* ── Email ── */}
         <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-sm font-semibold text-slate-700">Email or phone number</Label>
+          <Label htmlFor="email" className="text-sm font-semibold text-slate-700">Email, phone or registration no. · الإيميل أو التليفون أو رقم القيد</Label>
           <div className="relative">
             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden />
             <Input
               id="email"
               type="text"
               inputMode="email"
-              placeholder="you@example.com or 01xxxxxxxxx"
+              placeholder="you@example.com · 01xxxxxxxxx · youssef0001"
               autoComplete="username"
               aria-required="true"
               aria-invalid={!!errors.email}

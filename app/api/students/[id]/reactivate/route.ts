@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
+import { canSeeStudent } from '@/lib/places/server'
 import type { Role } from '@prisma/client'
 
 export async function POST(
@@ -14,6 +15,7 @@ export async function POST(
   if (!checkPermission(session.user.role as Role, 'students', 'update')) return errors.forbidden()
 
   const { id } = await params
+  if (!(await canSeeStudent(session.user, id))) return errors.forbidden() // M0: only students of the person's places (2026-10-24)
 
   const student = await prisma.student.findUnique({
     where: { id },

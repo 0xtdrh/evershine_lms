@@ -81,7 +81,6 @@ import { Breadcrumbs, pageItem } from '@/components/layout/Breadcrumbs'
 import { navLabel } from '@/lib/i18n/nav'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { isAcademicEnginePrimary } from '@/lib/academic/config'
-import { CompulsoryFeedbackBlocker } from '@/components/student/CompulsoryFeedbackBlocker'
 import { GuardianFeedbackModal } from '@/components/feedback/GuardianFeedbackModal'
 import { FeeOverdueModal } from '@/components/student/FeeOverdueModal'
 import { getNotificationModuleForNavLabel, type NotificationCounts } from '@/lib/notifications/module-map'
@@ -507,12 +506,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             <AgreementsGate />
             {(role === 'PARENT' || role === 'GUARDIAN') && <GroupRulesGate />}
             <ActivityPing />
-            {role === 'STUDENT' && (
-              <>
-                <CompulsoryFeedbackBlocker />
-                <FeeOverdueModal />
-              </>
-            )}
+            {/* 2026-10-24 (owner): the template's monthly questionnaire (CompulsoryFeedbackBlocker, English, wrong month) is
+                gone for students; the student's rating of each session + the instructor comes with lib/ratings (plan). */}
+            {role === 'STUDENT' && <FeeOverdueModal />}
             {(role === 'PARENT' || role === 'GUARDIAN') && (
               <>
                 <GuardianFeedbackModal />

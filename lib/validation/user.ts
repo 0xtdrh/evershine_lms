@@ -12,7 +12,8 @@ export const loginSchema = z.object({
     .string({ required_error: 'Email or phone number is required' })
     .trim()
     .min(3, 'Enter your email or phone number')
-    .refine((v) => v.includes('@') ? z.string().email().safeParse(v).success : /^[+\d][\d\s\-()]{6,}$/.test(v), 'Enter a valid email or phone number'),
+    // email, phone (parents) or a student's registration number (TN/2026/0001)
+    .refine((v) => v.includes('@') ? z.string().email().safeParse(v).success : /^[+\d][\d\s\-()]{6,}$/.test(v) || /^tn[\s/\-._]?\d{4}[\s/\-._]?\d{1,6}$/i.test(v) || /^[a-z]+\d{4,6}$/i.test(v), 'Enter a valid email, phone number or registration number'),
   password: z
     .string({ required_error: 'Password is required' })
     .min(6, 'Password must be at least 6 characters'),

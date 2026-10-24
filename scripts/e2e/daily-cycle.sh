@@ -1297,6 +1297,11 @@ api PUT /api/platform/settings '{"modules":{"lms":true}}' >/dev/null
 LKR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); LKJ=$(mktemp); login_jar "$(echo "$LKR" | jq_ "d['data']['loginId']")" "$(echo "$LKR" | jq_ "d['data']['password']")" "$LKJ" 10.0.1.71
 LPW=$(api POST /api/students/$LK/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$LGU\"}" | jq_ "d['data']['password']"); LPJ=$(mktemp); login_jar 01066660119 "$LPW" "$LPJ" 10.0.1.72
 TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.73
+# 2026-10-24: students sign in with an easy name (english first name + number) or the full registration number
+LKREG=$(M "SELECT registrationNumber FROM Student WHERE id='$LK'"); LKJ2=$(mktemp); login_jar "$LKREG" "$(echo "$LKR" | jq_ "d['data']['password']")" "$LKJ2" 10.0.1.74
+check "student login: the card gives the easy name; both it and the full registration number sign in" "$(echo "$LKR" | jq_ "d['data']['loginId'][:3]!='TN/' and '@' not in d['data']['loginId']")/$(curl -s -b "$LKJ" $B/api/auth/session | jq_ "d['user']['role']")/$(curl -s -b "$LKJ2" $B/api/auth/session | jq_ "d['user']['role']")" "True/STUDENT/STUDENT"
+rm -f "$LKJ2"
+check "the student page card shows how each one signs in (login names, no password)" "$(api GET /api/students/$LK/portal-password | jq_ "(d['data']['student']['registrationNumber']=='$LKREG', '01066660119' in [g['phone'] for g in d['data']['guardians']], 'password' in str(d))")" "(True, True, False)"
 kq() { curl -s -b "$LKJ" "$B/api/quizzes/item?g=$LG&b=$1"; }
 kstart() { curl -s -b "$LKJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$LG\",\"blockId\":\"$1\"}" $B/api/quizzes/item; }
 kput() { curl -s -b "$LKJ" -X PUT -H 'Content-Type: application/json' -d "$2" $B/api/quizzes/attempts/$1; }
@@ -1536,6 +1541,7 @@ api POST /api/fees/$INVB/payments "{\"amount\":$INVBDUE,\"paymentMethod\":\"Cash
 api POST /api/wallet/topups "{\"studentId\":\"$SB\",\"amount\":50,\"method\":\"Cash\"}" >/dev/null
 check "the other place's invoice exists and was paid" "$(M "SELECT paidAmount>0 FROM FeeInvoice WHERE id='$INVB'")" "1"
 check "accountant of the main place: the other place's invoice is not in the list and cannot be opened" "$(accapi GET "/api/fees?limit=100&studentId=$SB" | jq_ "any(i['id']=='$INVB' for i in d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/fees/$INVB)" "False/403"
+check "…cannot open the other place's student file, guardians, enrollments or timeline (live test 2026-10-24)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/students/$SB)/$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/students/$SB/guardians)/$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/students/$SB/enrollments)/$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/students/$SB/timeline)" "403/403/403/403"
 check "…cannot take a payment on it nor make an invoice for that student" "$(accapi POST /api/accountant/fees/invoices/$INVB/payments '{"amount":10,"paymentMethod":"Cash"}' | jq_ "d['success']")/$(accapi POST /api/accountant/fees/invoices "{\"studentId\":\"$SB\",\"month\":\"October 2026\",\"academicYear\":\"2026-2027\",\"dueDate\":\"$(D 10)T00:00:00.000Z\",\"items\":[{\"description\":\"xx\",\"amount\":10}]}" | jq_ "d['success']")" "False/False"
 check "…does not see that student's wallet (balance, statement, top-ups) nor can top it up" "$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/students/$SB/wallet)/$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/students/$SB/wallet/statement)/$(accapi GET "/api/wallet/topups?status=TODAY" | jq_ "any(t['student']['id']=='$SB' if isinstance(t.get('student'),dict) else t.get('studentId')=='$SB' for t in d['data']['topUps'])")/$(accapi POST /api/wallet/topups "{\"studentId\":\"$SB\",\"amount\":20,\"method\":\"Cash\"}" | jq_ "d['success']")" "403/403/False/False"
 RFB=$(api POST /api/refunds "{\"invoiceId\":\"$INVB\",\"amount\":10,\"method\":\"WALLET\"}" | jq_ "d['data']['refundId']")
@@ -1883,6 +1889,25 @@ tchapi() { curl -s -b "$TJ2" -X "$1" -H 'Content-Type: application/json' ${3:+-d
 TSIDS=$(tchapi GET "/api/students?limit=200" | python -c "import sys,json;d=json.load(sys.stdin);r=d.get('data');r=r.get('students',r) if isinstance(r,dict) else r;print(','.join(\"'\"+x['id']+\"'\" for x in (r or [])) or \"''\")")
 check "an instructor sees no invoices and only students of the groups he teaches / covers" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ2" "$B/api/fees?limit=5")/$(M "SELECT COUNT(*) FROM Student s WHERE s.id IN ($TSIDS) AND NOT EXISTS (SELECT 1 FROM StudentEnrollment e WHERE e.studentId=s.id AND (e.classSectionId IN (SELECT o.classSectionId FROM SubjectOffering o JOIN Teacher t ON t.id=o.teacherId WHERE t.userId='$TCHU') OR e.classSectionId IN (SELECT a.classSectionId FROM SubstituteAssignment a JOIN Teacher t ON t.id=a.substituteTeacherId WHERE t.userId='$TCHU' AND a.status IN ('CONFIRMED','PENDING_SUBSTITUTE_APPROVAL'))))")" "403/0"
 check "the instructor sees his slip; switched off in Salary slips → settings, he does not" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ2" $B/api/teacher-portal/salary)/$(api PUT /api/accountant/salary-slips/settings '{"teacherSeesOwnSlips":false}' | jq_ "d['data']['teacherSeesOwnSlips']")/$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ2" $B/api/teacher-portal/salary)" "200/False/403"
+# finished group: visible 30 days (final marks), then its students disappear (owner 2026-10-24)
+GG=$(M "SELECT o.classSectionId FROM SubjectOffering o JOIN Teacher t ON t.id=o.teacherId JOIN StudentEnrollment e ON e.classSectionId=o.classSectionId AND e.status='ACTIVE' WHERE t.userId='$TCHU' AND NOT EXISTS (SELECT 1 FROM StudentEnrollment e2 JOIN SubjectOffering o3 ON o3.classSectionId=e2.classSectionId AND o3.teacherId=t.id WHERE e2.studentId=e.studentId AND e2.classSectionId<>o.classSectionId) LIMIT 1")
+if [ -n "$GG" ]; then
+  GS=$(M "SELECT studentId FROM StudentEnrollment WHERE classSectionId='$GG' AND status='ACTIVE' LIMIT 1")
+  GSTATUS=$(M "SELECT CONCAT(status,'|',IFNULL(completedAt,'')) FROM ClassSection WHERE id='$GG'")
+  M "UPDATE ClassSection SET status='COMPLETED', completedAt=DATE_SUB(NOW(), INTERVAL 10 DAY) WHERE id='$GG'"
+  sleep 31
+  A10=$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ2" $B/api/students/$GS)
+  M "UPDATE ClassSection SET completedAt=DATE_SUB(NOW(), INTERVAL 40 DAY) WHERE id='$GG'"
+  sleep 31
+  A40=$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ2" $B/api/students/$GS)
+  api PUT /api/teachers/access/settings '{"finishedGroupDays":50}' >/dev/null
+  A50=$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ2" $B/api/students/$GS)
+  api PUT /api/teachers/access/settings '{"finishedGroupDays":30}' >/dev/null
+  M "UPDATE ClassSection SET status='${GSTATUS%%|*}', completedAt=$( [ -n "${GSTATUS#*|}" ] && echo "'${GSTATUS#*|}'" || echo NULL ) WHERE id='$GG'"
+  check "finished group: its student is still seen 10 days later (final marks), not after 30 days; setting 50 days shows him again" "$A10/$A40/$A50" "200/403/200"
+else
+  check "grace test found an instructor group with a student only there" "none" "found"
+fi
 api PUT /api/accountant/salary-slips/settings '{"teacherSeesOwnSlips":true}' >/dev/null
 rm -f "$TJ2"
 rm -f "$ACJ"

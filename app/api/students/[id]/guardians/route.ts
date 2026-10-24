@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
+import { canSeeStudent } from '@/lib/places/server'
 import { linkGuardianSchema } from '@/lib/validation/student'
 import { linkGuardianToStudent } from '@/lib/students/guardian-link'
 import type { Role } from '@prisma/client'
@@ -16,6 +17,7 @@ export async function GET(
   if (!checkPermission(session.user.role as Role, 'students', 'read')) return errors.forbidden()
 
   const { id } = await params
+  if (!(await canSeeStudent(session.user, id))) return errors.forbidden() // M0: only students of the person's places (2026-10-24)
   const guardians = await prisma.guardian.findMany({
     where: { students: { some: { id } } },
     select: {
@@ -40,6 +42,7 @@ export async function POST(
   if (!checkPermission(session.user.role as Role, 'students', 'update')) return errors.forbidden()
 
   const { id: studentId } = await params
+  if (!(await canSeeStudent(session.user, studentId))) return errors.forbidden() // M0: only students of the person's places (2026-10-24)
   const student = await prisma.student.findUnique({ where: { id: studentId }, select: { id: true } })
   if (!student) return errors.notFound('Student')
 
