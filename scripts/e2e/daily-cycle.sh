@@ -738,6 +738,9 @@ check "holiday notice in Arabic too, with the next session (the day after)" "$(M
 check "holiday notice reaches the student too" "$(M "SELECT COUNT(*) FROM Notification n JOIN Student s ON s.userId=n.userId WHERE s.id='$PHS' AND n.type='HOLIDAY'")" "1"
 check "portal 'next sessions': the holiday shows as postponed" "$(api GET /api/students/$PHS/upcoming-sessions | jq_ "[x['status'] for x in d['data']['sessions'] if x['date']=='$(D 1)']")" "['HOLIDAY']"
 check "extra session added on the holiday evening" "$(api POST /api/groups/$PH/extra-sessions "{\"date\":\"$(D 1)\",\"time\":\"20:00\",\"reason\":\"make up\"}" | jq_ "d['success']")" "True"
+# 2026-10-24 live test: the instructor's day (absences, substitutes, "my week") follows holidays and makeup sessions too
+api POST /api/groups/$PH/instructor "{\"teacherId\":\"$CALT\"}" >/dev/null
+check "instructor's week: the holiday's usual session is gone, the makeup session is there" "$(api GET "/api/teachers/$CALT/my-week?days=4" | jq_ "[(s['time'], s.get('isExtra', False)) for day in d['data'] if day['date']=='$(D 1)' for s in day['sessions'] if s['classSectionId']=='$PH']")" "[('20:00', True)]"
 CAL=$(api GET "/api/groups/schedule?from=$(D -1)&to=$(D 5)")
 check "extra session counts: the month ends a day earlier" "$(echo "$CAL" | jq_ "[s['date'] for s in d['data']['sessions'] if s['groupId']=='$PH' and s['isLastOfCycle']]==['$(D 2)']")" "True"
 check "makeup session: families + student told (both languages)" "$(M "SELECT COUNT(*)>=1, SUM(titleAr='حصة تعويضية') FROM Notification WHERE type='MAKEUP_SESSION' AND relatedId='$PH'" | tr '	' '/')" "1/$(M "SELECT COUNT(*) FROM Notification WHERE type='MAKEUP_SESSION' AND relatedId='$PH'")"
@@ -1562,10 +1565,15 @@ api PUT /api/users/$SECU/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPU
 CALTC=$(M "SELECT campusId FROM Teacher WHERE id='$CALT'")
 M "UPDATE Teacher SET campusId='$PB' WHERE id='$CALT'"
 check "secretary of the main place: an instructor of the other place is not listed and cannot be opened" "$(secapi GET "/api/teachers?limit=100" | jq_ "any(t['id']=='$CALT' for t in d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/teachers/$CALT)" "False/403"
+check "…nor can she record his absence or read his week (live test 2026-10-24)" "$(secapi POST /api/teacher-absences "{\"teacherId\":\"$CALT\",\"date\":\"$(D 25)\",\"scope\":\"FULL_DAY\",\"reason\":\"e2e other place\"}" | jq_ "d['success']")/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" "$B/api/teachers/$CALT/my-week?days=3")" "False/403"
 api PUT /api/teachers/$CALT/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\"],\"pay\":[],\"employment\":[]}" >/dev/null
 check "the instructor also serves the main place → listed and opens" "$(secapi GET "/api/teachers?limit=100" | jq_ "any(t['id']=='$CALT' for t in d['data'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/teachers/$CALT)" "True/200"
 api PUT /api/teachers/$CALT/places '{"allLocations":false,"campusIds":[],"pay":[],"employment":[]}' >/dev/null
 M "UPDATE Teacher SET campusId='$CALTC' WHERE id='$CALT'"
+TCHID=$CALT
+SABS=$(secapi POST /api/teacher-absences "{\"teacherId\":\"$TCHID\",\"date\":\"$(D 25)\",\"scope\":\"FULL_DAY\",\"reason\":\"called in sick (e2e)\"}")
+check "the secretary records an absence for an instructor of her place (from the screen)" "$(echo "$SABS" | jq_ "d['success'] or (d.get('error') or {}).get('message')")" "True"
+M "DELETE FROM TeacherAbsence WHERE id='$(echo "$SABS" | jq_ "d['data']['id']")'"
 api POST /api/users/create-admin "{\"firstName\":\"Main\",\"lastName\":\"Admin\",\"email\":\"m0admin@e2e.local\",\"password\":\"E2eAdm12345\",\"role\":\"ADMIN\",\"campusId\":\"$CAMPUS\"}" >/dev/null
 api POST /api/users/create-admin "{\"firstName\":\"Other\",\"lastName\":\"Sec\",\"email\":\"m0secb@e2e.local\",\"password\":\"E2eSecB12345\",\"role\":\"SECRETARY\",\"campusId\":\"$PB\"}" >/dev/null
 SECB=$(M "SELECT id FROM User WHERE email='m0secb@e2e.local'")

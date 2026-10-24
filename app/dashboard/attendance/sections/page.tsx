@@ -35,6 +35,9 @@ interface RosterRow {
 }
 
 const STATUS_BTNS: AttendanceStatus[] = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']
+const STATUS_LABEL: Record<AttendanceStatus, () => string> = {
+  PRESENT: () => L('Present', 'حاضر'), ABSENT: () => L('Absent', 'غايب'), LATE: () => L('Late', 'متأخر'), EXCUSED: () => L('Excused', 'بعذر'),
+}
 
 export default function SectionAttendancePage() {
   const { data: session } = useSession()
@@ -111,7 +114,7 @@ export default function SectionAttendancePage() {
         }),
       }),
     onSuccess: () => {
-      notify.success('Attendance saved (academic engine)')
+      notify.success(L('Attendance saved', 'الحضور اتحفظ'))
       refetch()
       // Keep the additive session-progress/history views in sync with the
       // save above — read-only refresh only, doesn't touch the save itself.
@@ -136,7 +139,7 @@ export default function SectionAttendancePage() {
           ...(shiftId && { shiftId }),
           }),
       })
-      if (!response.ok) throw new Error('Export failed')
+      if (!response.ok) throw new Error(L('Export failed', 'التصدير فشل'))
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -145,7 +148,7 @@ export default function SectionAttendancePage() {
       a.click()
       window.URL.revokeObjectURL(url)
     },
-    onSuccess: () => notify.success('Attendance exported successfully'),
+    onSuccess: () => notify.success(L('Attendance exported', 'الحضور اتصدّر')),
     onError: (e: Error) => notify.error(e.message),
   })
 
@@ -202,7 +205,7 @@ export default function SectionAttendancePage() {
         body: JSON.stringify({ date, teacherId: teacherId || null }),
       }),
     onSuccess: () => {
-      notify.success('Session instructor recorded')
+      notify.success(L('Session instructor recorded', 'اتسجّل مين شرح الحصة'))
       queryClient.invalidateQueries({ queryKey: ['session-teacher', classSectionId, date] })
     },
     onError: (e: Error) => notify.error(e.message),
@@ -238,38 +241,32 @@ export default function SectionAttendancePage() {
             <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
               <ClipboardCheck className="w-6 h-6" />
             </div>
-            Section Attendance
+            {L('Attendance', 'الحضور')}
           </h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium ml-11">
-            Mark attendance by class section using yearly enrollments.{' '}
-            <Link href="/dashboard/attendance/legacy" className="text-indigo-600 hover:underline font-bold">
-              Legacy class attendance &rarr;
-            </Link>
+          <p className="text-sm text-slate-500 mt-1 font-medium ms-11">
+            {L('Pick the group and the date, mark each student, then save.', 'اختار الجروب والتاريخ، علّم كل طالب، وبعدين احفظ.')}
           </p>
         </div>
       </motion.div>
 
       {!activeYear && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          No active academic year. Run{' '}
-          <Link href="/dashboard/academic" className="font-medium underline">
-            Academic Engine → Quick bootstrap
-          </Link>{' '}
-          or create a year before marking attendance.
+          {L('No active academic year — create one before marking attendance:', 'مفيش سنة دراسية شغالة — اعمل واحدة قبل ما تسجّل الحضور:')}{' '}
+          <Link href="/dashboard/academic" className="font-medium underline">{L('Academic Engine', 'المحرك الأكاديمي')}</Link>
         </div>
       )}
 
       {activeYear?.isLocked && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          Academic year <strong>{activeYear.name}</strong> is locked — attendance cannot be changed.
+          {L('Academic year', 'السنة الدراسية')} <strong>{activeYear.name}</strong> {L('is locked — attendance cannot be changed.', 'مقفولة — الحضور مايتغيّرش.')}
         </div>
       )}
 
       {session?.user?.role === 'TEACHER' && (
         <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <p className="font-semibold">Holiday and approved leave guidance</p>
+          <p className="font-semibold">{L('Absence excuses', 'أعذار الغياب')}</p>
           <p className="mt-1">
-            Teachers do not approve student holidays or leave requests. Admin and Super Admin approve them. If a selected date is an official holiday or the student has approved leave, mark the student as <strong>EXCUSED</strong>. Pending requests should remain normal attendance until administration approves them.
+            {L('An approved excuse shows under the student and he is marked Excused automatically. An excuse still waiting is shown too — mark the student as usual until it is approved.', 'العذر المقبول بيظهر تحت اسم الطالب وبيتعلّم «بعذر» لوحده. والعذر اللي لسه مستني بيظهر برضه — علّم الطالب عادي لحد ما يتقبل.')}
           </p>
         </div>
       )}
@@ -277,12 +274,12 @@ export default function SectionAttendancePage() {
       <motion.div variants={fadeUp(0.2)}>
         <Card className="border border-slate-200/60 shadow-soft-md">
         <CardHeader>
-          <CardTitle className="text-base">Select section & date</CardTitle>
+          <CardTitle className="text-base">{L('Group and date', 'الجروب والتاريخ')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Class section *</Label>
+              <Label>{L('Group', 'الجروب')} *</Label>
               <Select
                 value={classSectionId}
                 onValueChange={(v) => {
@@ -291,11 +288,11 @@ export default function SectionAttendancePage() {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose section" />
+                  <SelectValue placeholder={L('Choose a group', 'اختار جروب')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectLabel>Active</SelectLabel>
+                    <SelectLabel>{L('Running', 'شغالة')}</SelectLabel>
                     {(sections ?? []).filter((s: { status?: string }) => s.status !== 'COMPLETED').map((s: { id: string; className: string; sectionName: string; campus?: { name: string } }) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.className}-{s.sectionName} ({s.campus?.name})
@@ -304,7 +301,7 @@ export default function SectionAttendancePage() {
                   </SelectGroup>
                   {(sections ?? []).some((s: { status?: string }) => s.status === 'COMPLETED') && (
                     <SelectGroup>
-                      <SelectLabel>Completed</SelectLabel>
+                      <SelectLabel>{L('Finished', 'خلصت')}</SelectLabel>
                       {(sections ?? []).filter((s: { status?: string }) => s.status === 'COMPLETED').map((s: { id: string; className: string; sectionName: string; campus?: { name: string } }) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.className}-{s.sectionName} ({s.campus?.name})
@@ -316,7 +313,7 @@ export default function SectionAttendancePage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Date</Label>
+              <Label>{L('Date', 'التاريخ')}</Label>
               <DateInput
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={date}
@@ -325,32 +322,10 @@ export default function SectionAttendancePage() {
             </div>
           </div>
 
-          {/* Filter options */}
-          {classSectionId && (
-            <div className="grid sm:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border">
-
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-600">Filter by Shift</Label>
-                <Select value={shiftId || 'all'} onValueChange={(v) => setShiftId(v === 'all' ? '' : v)}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="All shifts" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All shifts</SelectItem>
-                    {(shifts ?? []).map((s: { id: string; name: string }) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-            </div>
-          )}
-
           {activeYear && (
             <p className="text-xs text-gray-500">
-              Active year: <strong>{activeYear.name}</strong>
-              {activeYear.isLocked ? ' (locked)' : ''}
+              {L('Academic year', 'السنة الدراسية')}: <strong>{activeYear.name}</strong>
+              {activeYear.isLocked ? L(' (locked)', ' (مقفولة)') : ''}
             </p>
           )}
         </CardContent>
@@ -363,19 +338,19 @@ export default function SectionAttendancePage() {
           <Card className={`border shadow-soft-sm ${sessionProgress.isLastSessionOfCycle ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200/60'}`}>
             <CardContent className="pt-5 space-y-3">
               <p className="text-sm font-semibold text-slate-800">
-                {sessionProgress.courseName} — {sessionProgress.levelName} · Session {sessionProgress.nextSessionNumber} of {sessionProgress.sessionsPerCycle} · Cycle: Month {sessionProgress.cycleNumber}
+                {sessionProgress.courseName} — {sessionProgress.levelName} · {L('Session', 'حصة')} {sessionProgress.nextSessionNumber} {L('of', 'من')} {sessionProgress.sessionsPerCycle} · {L('Month', 'شهر')} {sessionProgress.cycleNumber}
               </p>
               {sessionProgress.isLastSessionOfCycle && (
                 <p className="text-xs text-amber-700 font-medium">
-                  This looks like the last session for this cycle — it may close automatically once marked.
+                  {L('This looks like the last session of the month — the month may close once it is marked.', 'دي غالبًا آخر حصة في الشهر — الشهر ممكن يتقفل أول ما تتسجل.')}
                 </p>
               )}
               <div className="space-y-1.5 pt-1">
-                <Label className="text-xs text-gray-600">Who actually taught this session? (optional — only if different from usual)</Label>
+                <Label className="text-xs text-gray-600">{L('Who actually taught this session? (only if not the usual instructor)', 'مين شرح الحصة دي فعلًا؟ (لو مش المدرب المعتاد بس)')}</Label>
                 <div className="flex gap-2">
                   <Select value={taughtByTeacherId} onValueChange={setTaughtByTeacherId}>
                     <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="Same as usual (no change)" />
+                      <SelectValue placeholder={L('The usual instructor', 'المدرب المعتاد')} />
                     </SelectTrigger>
                     <SelectContent>
                       {teacherOptionsForSession.map((t) => (
@@ -388,14 +363,14 @@ export default function SectionAttendancePage() {
                     disabled={!taughtByTeacherId || saveSessionTeacherMutation.isPending}
                     onClick={() => saveSessionTeacherMutation.mutate(taughtByTeacherId)}
                   >
-                    {saveSessionTeacherMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Record'}
+                    {saveSessionTeacherMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : L('Record', 'سجّل')}
                   </Button>
                 </div>
               </div>
 
               {sessionHistory && (
                 <div className="pt-2 border-t border-slate-100 space-y-2">
-                  <Label className="text-xs text-gray-600">Session history</Label>
+                  <Label className="text-xs text-gray-600">{L('Sessions so far', 'الحصص اللي اتعملت')}</Label>
                   <div className="flex flex-wrap gap-1.5">
                     {sessionHistory.current.sessions.map((s) => (
                       <button
@@ -418,7 +393,7 @@ export default function SectionAttendancePage() {
                         onClick={() => setShowPastCycles((v) => !v)}
                         className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                       >
-                        {showPastCycles ? 'Hide past cycles' : `View past cycles (${sessionHistory.pastCycles.length})`}
+                        {showPastCycles ? L('Hide past months', 'اخفي الشهور اللي فاتت') : `${L('Past months', 'الشهور اللي فاتت')} (${sessionHistory.pastCycles.length})`}
                       </button>
                       {showPastCycles && (
                         <div className="mt-2 space-y-2">
@@ -434,7 +409,7 @@ export default function SectionAttendancePage() {
                               {openPastCycleId === cycle.id && (
                                 <div className="flex flex-wrap gap-1.5 mt-2">
                                   {cycle.sessions.length === 0 ? (
-                                    <p className="text-xs text-slate-400">No sessions recorded.</p>
+                                    <p className="text-xs text-slate-400">{L('No sessions recorded.', 'مفيش حصص متسجلة.')}</p>
                                   ) : (
                                     cycle.sessions.map((s) => (
                                       <button
@@ -474,13 +449,13 @@ export default function SectionAttendancePage() {
         <motion.div variants={fadeUp(0.3)}>
           <Card className="border-blue-200 bg-blue-50/50 shadow-soft-sm">
           <CardHeader>
-            <CardTitle className="text-base">Export Attendance</CardTitle>
-            <CardDescription>Download attendance records as Excel</CardDescription>
+            <CardTitle className="text-base">{L('Export attendance', 'تصدير الحضور')}</CardTitle>
+            <CardDescription>{L('Download the attendance as Excel', 'نزّل الحضور Excel')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid sm:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Start Date</Label>
+                <Label>{L('From', 'من')}</Label>
                 <DateInput
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={exportStartDate}
@@ -488,7 +463,7 @@ export default function SectionAttendancePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>End Date</Label>
+                <Label>{L('To', 'لحد')}</Label>
                 <DateInput
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={exportEndDate}
@@ -503,7 +478,7 @@ export default function SectionAttendancePage() {
                   disabled={exportMutation.isPending || !exportStartDate || !exportEndDate}
                 >
                   {exportMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  Export Excel
+                  {L('Export Excel', 'صدّر Excel')}
                 </Button>
               </div>
             </div>
@@ -517,10 +492,11 @@ export default function SectionAttendancePage() {
           <Card className="border border-slate-200/60 shadow-soft-md">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-base">Roster</CardTitle>
+              <CardTitle className="text-base">{L('Students', 'الطلاب')}</CardTitle>
               <CardDescription>
-                {roster?.enrollments?.length ?? 0} students
-                {roster?.stats?.present != null && ` • Present: ${roster.stats.present}`}
+                {roster?.enrollments?.length ?? 0} {L('students', 'طالب')}
+                {/* follows what is marked on the screen (live test: the count did not change while marking) */}
+                {!!roster?.enrollments?.length && ` • ${L('Present', 'حاضر')}: ${Object.values(statusMap).filter((x) => x === 'PRESENT' || x === 'LATE').length}`}
               </CardDescription>
             </div>
             <Button
@@ -534,15 +510,15 @@ export default function SectionAttendancePage() {
               }
             >
               {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save attendance
+              {L('Save attendance', 'احفظ الحضور')}
             </Button>
           </CardHeader>
           <CardContent className="space-y-2">
             {isLoading ? (
-              <p className="text-sm text-gray-500">Loading…</p>
+              <p className="text-sm text-gray-500">{L('Loading…', 'بيحمّل…')}</p>
             ) : !(roster?.enrollments?.length) ? (
               <p className="text-sm text-amber-700">
-                No active enrollments in this section for the current academic year. Enroll students via Admissions or Academic Engine.
+                {L('No students in this group yet. Add them from the group page.', 'مفيش طلاب في الجروب ده لسه. ضيفهم من صفحة الجروب.')}
               </p>
             ) : (
               (roster?.enrollments ?? []).map((row) => {
@@ -558,15 +534,14 @@ export default function SectionAttendancePage() {
                         {row.student.firstName} {row.student.lastName}
                         {row.isWithdrawn && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 font-medium">
-                            Excluded since
+                            {L('Excluded', 'اتشال من الجروب')}
                           </span>
                         )}
                       </p>
-                      <p className="text-xs text-gray-500">Roll {row.rollNumber}</p>
                       {row.onlineJoinedAt && <p className="mt-1 text-xs text-emerald-700">🟢 {L('Joined online', 'دخل أونلاين')} {new Date(row.onlineJoinedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>}
                       {row.excuse && (
                         <p className={`mt-1 text-xs ${row.excuse.status === 'APPROVED' ? 'text-indigo-700' : 'text-amber-700'}`}>
-                          {row.excuse.status === 'APPROVED' ? 'Excused' : 'Excuse waiting for approval'}: {row.excuse.reason}
+                          {row.excuse.status === 'APPROVED' ? L('Excused', 'بعذر') : L('Excuse waiting for approval', 'عذر مستني الموافقة')}: {row.excuse.reason}
                         </p>
                       )}
                     </div>
@@ -581,7 +556,7 @@ export default function SectionAttendancePage() {
                             setStatusMap((m) => ({ ...m, [row.studentEnrollmentId]: st }))
                           }
                         >
-                          {st[0]}
+                          {STATUS_LABEL[st]()}
                         </Button>
                       ))}
                     </div>

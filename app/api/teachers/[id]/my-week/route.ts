@@ -10,6 +10,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
+import { canSeeTeacher } from '@/lib/places/server'
 import { getTeacherByUserId } from '@/lib/academic/teacher-scope'
 import { getTeacherSessionsOnDate, getSessionNumberForDate } from '@/lib/teachers/schedule'
 import type { Role } from '@prisma/client'
@@ -29,6 +30,7 @@ export async function GET(
   } else {
     const denied = requirePermission(role, 'teachers', 'read')
     if (denied) return denied
+    if (!(await canSeeTeacher(session.user, id))) return errors.forbidden()
   }
 
   const days = Math.min(Number(request.nextUrl.searchParams.get('days') ?? 7), 30)

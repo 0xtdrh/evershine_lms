@@ -1,8 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { sessionsPerCycle as cycleSessionCount } from '@/lib/groups/cycle-rules'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
-import { cleanSlots, upcomingSessions } from '@/lib/groups/schedule-calendar'
-import { exceptionsForGroup } from '@/lib/groups/calendar-exceptions'
+import { cleanSlots, toDay, upcomingSessions } from '@/lib/groups/schedule-calendar'
+import { exceptionsForGroup, groupExceptions } from '@/lib/groups/calendar-exceptions'
 
 export interface ScheduledSession {
   classSectionId: string
@@ -12,6 +12,8 @@ export interface ScheduledSession {
   courseName: string | null
   levelName: string | null
   hasNotStarted: boolean
+  /** a one-off extra / makeup session (ExtraSession), not from the weekly schedule */
+  isExtra?: boolean
 }
 
 /**
@@ -29,7 +31,7 @@ export async function getTeacherSessionsOnDate(teacherId: string, date: Date): P
     select: {
       classSection: {
         select: {
-          id: true, className: true, sectionName: true, scheduleSlots: true, isActive: true, status: true,
+          id: true, className: true, sectionName: true, scheduleSlots: true, isActive: true, status: true, campusId: true,
           startDate: true, currentCycleStartDate: true,
           level: { select: { name: true, subject: { select: { name: true } } } },
         },
@@ -37,17 +39,28 @@ export async function getTeacherSessionsOnDate(teacherId: string, date: Date): P
     },
   })
 
+  // holidays postpone the day's sessions and extra / makeup sessions add one (same rule as the calendar) — 2026-10-24
+  // live test: absences / substitutes / "my week" still showed a holiday session and missed the makeup sessions
+  const day = toDay(date)
+  const groups = offerings.map((o) => o.classSection).filter((cs) => cs.isActive && cs.status !== 'COMPLETED')
+  const exceptions = await groupExceptions(groups.map((g) => ({ id: g.id, campusId: g.campusId })), new Date(`${day}T00:00:00.000Z`), new Date(`${day}T23:59:59.999Z`))
+
   const sessions: ScheduledSession[] = []
   for (const o of offerings) {
     const cs = o.classSection
     if (!cs.isActive || cs.status === 'COMPLETED') continue
+    const ex = exceptions.get(cs.id)
     // A group with no start date yet hasn't actually begun — still shown
     // (so it's not a dead end for marking that first session), but flagged
     // so the UI can make clear it hasn't started and hide "Excuse" for it.
     const hasNotStarted = !cs.startDate && !cs.currentCycleStartDate
     const slots = Array.isArray(cs.scheduleSlots) ? (cs.scheduleSlots as { dayOfWeek: number; time: string }[]) : []
+    const holiday = !!ex?.holidays.includes(day)
+    for (const extra of ex?.extras.filter((e) => e.date === day) ?? []) {
+      sessions.push({ classSectionId: cs.id, className: cs.className, sectionName: cs.sectionName, time: extra.time, courseName: cs.level?.subject.name ?? null, levelName: cs.level?.name ?? null, hasNotStarted, isExtra: true })
+    }
     for (const slot of slots) {
-      if (slot.dayOfWeek === dayOfWeek) {
+      if (!holiday && slot.dayOfWeek === dayOfWeek) {
         sessions.push({
           classSectionId: cs.id,
           className: cs.className,

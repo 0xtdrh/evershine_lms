@@ -16,6 +16,7 @@ import { prisma } from '@/lib/prisma'
 import { errors, createdResponse, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getTeacherByUserId } from '@/lib/academic/teacher-scope'
+import { canSeeTeacher } from '@/lib/places/server'
 import { getTeacherSessionsOnDate, combineDateAndTime } from '@/lib/teachers/schedule'
 import type { Role } from '@prisma/client'
 
@@ -57,6 +58,8 @@ export async function POST(request: NextRequest) {
     const body2 = body as { teacherId?: string }
     if (!body2.teacherId) return errors.validation({ errors: [{ path: ['teacherId'], message: 'teacherId is required' }] } as never)
     teacherId = body2.teacherId
+    // M0: only for instructors of the person's places (2026-10-24: the secretary records absences from the screen now)
+    if (!(await canSeeTeacher(session.user, teacherId))) return errors.forbidden()
   }
 
   const date = new Date(parsed.data.date)

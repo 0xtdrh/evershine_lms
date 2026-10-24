@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { notify } from '@/lib/notify'
 import { Loader2, Clock, AlertTriangle } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { useMyPermissions } from '@/hooks/use-my-permissions'
+import { StaffAbsenceForm } from '@/components/teachers/StaffAbsenceForm'
 
 function apiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
@@ -53,6 +55,7 @@ function isUrgent(row: AbsenceRow): boolean {
 
 export default function AbsenceRequestsPage() {
   useI18n() // re-render on a language switch
+  const { can } = useMyPermissions()
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING')
   const [rejectDialogId, setRejectDialogId] = useState<string | null>(null)
@@ -122,15 +125,18 @@ export default function AbsenceRequestsPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">{L('Absence Requests', 'طلبات غياب المدربين')}</h1>
-        <CardDescription>{L('Teacher absence requests awaiting a decision, and their outcomes.', 'طلبات غياب المدربين المستنية قرار، ونتيجتها.')}</CardDescription>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">{L('Absence Requests', 'طلبات غياب المدربين')}</h1>
+          <CardDescription>{L('Teacher absence requests awaiting a decision, and their outcomes.', 'طلبات غياب المدربين المستنية قرار، ونتيجتها.')}</CardDescription>
+        </div>
+        {can('teacher_absences', 'create') && <StaffAbsenceForm />}
       </div>
 
       <div className="flex gap-2">
         {(['PENDING', 'APPROVED', 'REJECTED'] as const).map((t) => (
           <Button key={t} size="sm" variant={tab === t ? 'default' : 'outline'} onClick={() => setTab(t)}>
-            {t.charAt(0) + t.slice(1).toLowerCase()}
+            {t === 'PENDING' ? L('Pending', 'مستنية') : t === 'APPROVED' ? L('Approved', 'اتوافق عليها') : L('Rejected', 'اترفضت')}
           </Button>
         ))}
       </div>
@@ -138,7 +144,7 @@ export default function AbsenceRequestsPage() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-slate-400 text-center py-16">{L('No', 'مفيش')} {tab.toLowerCase()} {L('requests.', 'طلبات.')}</p>
+        <p className="text-sm text-slate-400 text-center py-16">{tab === 'PENDING' ? L('No pending requests.', 'مفيش طلبات مستنية.') : tab === 'APPROVED' ? L('No approved requests.', 'مفيش طلبات اتوافق عليها.') : L('No rejected requests.', 'مفيش طلبات اترفضت.')}</p>
       ) : (
         <div className="space-y-3">
           {rows.map((row) => (
@@ -241,7 +247,7 @@ export default function AbsenceRequestsPage() {
                   <p className="text-sm font-medium text-slate-800">{sg.groupLabel} · {sg.time}</p>
                   <p className="text-xs text-slate-400 mb-2">{sg.courseName} — {sg.levelName}</p>
                   {sg.existingAssignment ? (
-                    <Badge variant="outline">{L('Substitute', 'البديل')} {sg.existingAssignment.status === 'CONFIRMED' ? 'confirmed' : 'pending'}</Badge>
+                    <Badge variant="outline">{L('Substitute', 'البديل')} {sg.existingAssignment.status === 'CONFIRMED' ? L('confirmed', 'وافق') : L('waiting', 'لسه ماوافقش')}</Badge>
                   ) : sg.candidates.length === 0 ? (
                     <div className="space-y-2">
                       <p className="text-xs text-rose-500">{L('No qualified & available teacher found — pick manually from Staff Directory, or:', 'مفيش مدرب مؤهل وفاضي — اختار بنفسك من دليل الموظفين، أو:')}</p>
