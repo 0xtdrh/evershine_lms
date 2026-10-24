@@ -1873,6 +1873,9 @@ check "Super Admin approves it → into the company bank" "$(api PATCH /api/trea
 api PUT /api/treasury/settings '{"branchToCompany":false}' >/dev/null
 check "setting off → the branch cannot send to company accounts" "$(accapi POST /api/treasury/transfers "{\"fromAccountId\":\"$TBOX\",\"toAccountId\":\"$TBANK\",\"amount\":5}" | jq_ "d['success']")/$(accapi GET /api/treasury/transfers/destinations | jq_ "any(a['id']=='$TBANK' for a in d['data'])")" "False/False"
 api PUT /api/treasury/settings '{"branchToCompany":true}' >/dev/null
+# 2026-10-24 live test: an instructor paid per session has no basic salary; the month may be written in Arabic
+TCHU=$(M "SELECT userId FROM Teacher t JOIN User u ON u.id=t.userId WHERE u.email='tch@e2e.local'")
+check "salary slip: basic 0 + group pay line in Arabic month is issued; an empty slip is refused" "$(accapi POST /api/accountant/salary-slips "{\"employeeId\":\"$TCHU\",\"month\":\"أكتوبر 2026\",\"salaryPeriodStart\":\"2026-10-01T00:00:00.000Z\",\"salaryPeriodEnd\":\"2026-10-31T23:59:59.000Z\",\"basicSalary\":0,\"customFields\":[{\"label\":\"Group pay\",\"value\":300,\"isDeduction\":false}]}" | jq_ "(d['success'], float(d['data']['netSalary']))")/$(accapi POST /api/accountant/salary-slips "{\"employeeId\":\"$TCHU\",\"month\":\"نوفمبر 2026\",\"salaryPeriodStart\":\"2026-11-01T00:00:00.000Z\",\"salaryPeriodEnd\":\"2026-11-30T23:59:59.000Z\",\"basicSalary\":0}" | jq_ "d['success']")" "(True, 300.0)/False"
 rm -f "$ACJ"
 TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.95 >/dev/null
 check "instructors cannot see money accounts" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ" $B/api/treasury)" "403"

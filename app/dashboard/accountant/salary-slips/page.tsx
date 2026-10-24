@@ -125,7 +125,9 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedEmployee) { notify.error(L('Select an employee first', 'اختار موظف الأول')); return }
-    if (!basicSalary || Number(basicSalary) <= 0) { notify.error(L('Basic salary is required', 'المرتب الأساسي مطلوب')); return }
+    // basic salary may be 0 (instructors paid per session); the slip just must not be empty
+    if (Number(basicSalary || 0) < 0) { notify.error(L('Basic salary cannot be negative', 'المرتب الأساسي مايبقاش بالسالب')); return }
+    if (additions <= 0) { notify.error(L('The slip is empty: add a basic salary or the group pay', 'القسيمة فاضية: اكتب مرتب أساسي أو هات أجر الجروبات')); return }
     setSubmitting(true)
     try {
       await fetchApi('/api/accountant/salary-slips', {
@@ -213,7 +215,7 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Basic Salary (EGP)*', 'المرتب الأساسي (ج.م)*')}</label>
-              <Input type="number" value={basicSalary} onChange={e => setBasicSalary(e.target.value)} min={1} placeholder="0" className="h-9 text-sm" required />
+              <Input type="number" value={basicSalary} onChange={e => setBasicSalary(e.target.value)} min={0} placeholder="0" className="h-9 text-sm" />
             </div>
             <div>
               <label className="text-xs font-black uppercase text-gray-500 block mb-1">{L('Overtime (EGP)', 'إضافي (ج.م)')}</label>

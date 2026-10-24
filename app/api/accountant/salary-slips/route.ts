@@ -25,10 +25,12 @@ const customFieldSchema = z.object({
 
 const createSalarySlipSchema = z.object({
   employeeId: z.string().min(1, 'Employee User ID is required'),
-  month: z.string().regex(/^[A-Za-z]+\s+\d{4}$/, 'Month must be in format "Month YYYY" (e.g. "June 2026")'),
+  // a label + the "one slip per month" key; Arabic is fine (the screen suggests «يونيو 2026») — the year must be there
+  month: z.string().trim().min(4).max(50).regex(/\d{4}/, 'Write the month with its year, e.g. "October 2026" / «أكتوبر 2026»'),
   salaryPeriodStart: z.string().datetime(),
   salaryPeriodEnd: z.string().datetime(),
-  basicSalary: z.coerce.number().positive('Basic salary must be positive'),
+  // 0 allowed: instructors paid per session / % have no fixed salary — their pay comes from the group lines (2026-10-24)
+  basicSalary: z.coerce.number().min(0, 'Basic salary cannot be negative'),
   overtimeAmount: z.coerce.number().min(0).default(0),
   lunchDues: z.coerce.number().min(0).default(0),
   bankName: z.string().trim().nullable().optional(),
@@ -175,6 +177,9 @@ export async function POST(req: NextRequest) {
 
     if (netSalary < 0) {
       return errors.badRequest('Net salary cannot be negative. Adjust basic salary, overtime, or deductions.')
+    }
+    if (totalAdditions <= 0) {
+      return errors.badRequest('The slip is empty: add a basic salary or the group pay')
     }
 
     // 4. Save to DB and dispatch notification inside transaction

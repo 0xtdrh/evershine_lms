@@ -55,7 +55,7 @@ export interface MapTrack { id: string; name: string; minAge: number | null; max
 /**
  * Islands (tracks) with stations (levels): DONE / CURRENT / NEXT (the suggestion) / LATER, and the next step:
  * the level after the current or last finished one; then the next course of the track (track order); then a track that
- * fits the student's age and is not finished yet.
+ * fits the student's age and is not finished yet. The map shows only the tracks the student is in or finished.
  */
 export function buildMap(tracks: MapTrack[], passed: Set<string>, current: Set<string>, age: number | null) {
   const sortedCourses = (t: MapTrack) => [...t.courses].sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || a.name.localeCompare(b.name))
@@ -85,9 +85,12 @@ export function buildMap(tracks: MapTrack[], passed: Set<string>, current: Set<s
       if (c) { const l = levels(c)[0]; next = { levelId: l.id, label: `${c.name} · ${l.name}`, reason: 'NEW_TRACK' }; break }
     }
   }
+  // 2026-10-24 (owner): only the student's own tracks — the ones with a finished or current level (the suggested next
+  // step is still returned in `next`, but its track is not drawn)
+  const touched = (t: MapTrack) => t.courses.some((c) => c.levels.some((l) => passed.has(l.id) || current.has(l.id)))
   return {
     next,
-    islands: tracks.map((t) => ({
+    islands: tracks.filter(touched).map((t) => ({
       id: t.id, name: t.name, ageFits: fits(t),
       courses: sortedCourses(t).map((c) => ({
         id: c.id, name: c.name,

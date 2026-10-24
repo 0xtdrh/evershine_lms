@@ -42,7 +42,8 @@ interface Profile {
   activeGroups: { id: string; label: string }[]
 }
 
-const METRICS: Record<string, [string, string]> = { SESSIONS: ['Attend N sessions', 'أحضر N حصة'], STAMPS: ['Get N stamps', 'آخد N ختم'], HOMEWORK: ['Hand in N homework', 'أسلّم N واجب'], QUIZ90: ['90%+ in N quizzes', '90% أو أكتر في N كويز'] }
+// goal types: the number is typed in the box next to it (2026-10-24: no more "N" in the labels)
+const METRICS: Record<string, [string, string]> = { SESSIONS: ['Attend a number of sessions', 'أحضر عدد من الحصص'], STAMPS: ['Collect a number of stamps', 'أجمع عدد من الأختام'], HOMEWORK: ['Hand in a number of homework', 'أسلّم عدد من الواجبات'], QUIZ90: ['90%+ in a number of quizzes', '90% أو أكتر في عدد من الكويزات'] }
 const ROLES: Record<string, [string, string]> = { ASSISTANT: ['Assistant instructor', 'مساعد مدرب'], AMBASSADOR: ['Ambassador', 'سفير'], ALUMNI: ['Alumni', 'خريج'], OTHER: ['Experience', 'خبرة'] }
 const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -121,6 +122,7 @@ export default function ProfilePage() {
           {p.map.next && <CardDescription>{L('Next stop', 'المحطة الجاية')}: <b>{p.map.next.label}</b>{p.map.next.reason === 'NEW_TRACK' ? L(' (fits the age)', ' (مناسبة للسن)') : ''}</CardDescription>}
         </CardHeader>
         <CardContent className="space-y-3">
+          {!p.map.islands.length && <p className="text-sm text-slate-500">{L('The map fills in once the student joins a group.', 'الخريطة بتتملا أول ما الطالب يدخل جروب.')}</p>}
           {p.map.islands.filter((i) => i.courses.some((c) => c.levels.length)).map((isl) => (
             <div key={isl.id} className={`rounded-2xl border p-3 ${isl.ageFits ? 'border-sky-200 bg-sky-50/50' : 'border-slate-100 bg-slate-50/50 opacity-70'}`}>
               <p className="mb-2 text-sm font-bold text-slate-700">🏝️ {isl.name}</p>
@@ -161,7 +163,7 @@ export default function ProfilePage() {
                 <SelectTrigger className="h-9 w-56"><SelectValue /></SelectTrigger>
                 <SelectContent>{Object.entries(METRICS).map(([k, v]) => <SelectItem key={k} value={k}>{ar ? v[1] : v[0]}</SelectItem>)}<SelectItem value="FREE">{L('My own goal (I move the bar)', 'هدف خاص (أنا أحرّك الشريط)')}</SelectItem></SelectContent>
               </Select>
-              {goal.kind === 'SYSTEM' && <label className="flex items-center gap-1 text-xs">N <Input type="number" min={1} className="h-9 w-20" value={goal.target} onChange={(e) => setGoal({ ...goal, target: Number(e.target.value) || 1 })} /></label>}
+              {goal.kind === 'SYSTEM' && <label className="flex items-center gap-1 text-xs">{L('Number', 'العدد')} <Input type="number" min={1} className="h-9 w-20" value={goal.target} onChange={(e) => setGoal({ ...goal, target: Number(e.target.value) || 1 })} /></label>}
               <Button size="sm" disabled={!goal.title.trim() || act.isPending} onClick={() => act.mutate({ action: 'goal', title: goal.title, kind: goal.kind, metric: goal.kind === 'SYSTEM' ? goal.metric : null, target: goal.kind === 'SYSTEM' ? goal.target : null })}>{L('Add goal', 'ضيف هدف')}</Button>
             </div>
           )}

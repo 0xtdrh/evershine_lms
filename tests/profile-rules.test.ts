@@ -41,6 +41,10 @@ describe('buildMap', () => {
   it('course finished → next course of the track (track order)', () => {
     expect(buildMap(tracks, new Set(['r1', 'r2']), new Set(), 9).next).toMatchObject({ levelId: 's1', reason: 'NEXT_COURSE' })
   })
+  it('the map shows only the student tracks (in / finished), not the suggested one', () => {
+    expect(buildMap(tracks, new Set(['r1']), new Set(['r2']), 9).islands.map((i) => i.id)).toEqual(['J'])
+    expect(buildMap(tracks, new Set(), new Set(), 13).islands).toEqual([])
+  })
   it('nothing yet → a track that fits the age', () => {
     expect(buildMap(tracks, new Set(), new Set(), 13).next).toMatchObject({ levelId: 'p1', reason: 'NEW_TRACK' })
     expect(buildMap(tracks, new Set(), new Set(), 8).next?.levelId).toBe('r1')
