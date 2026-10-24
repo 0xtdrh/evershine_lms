@@ -10,15 +10,23 @@
  * The header filter (cookie `tn_place`) can narrow it to one place; it can never widen it.
  */
 
-export interface Places { all: boolean; campusIds: string[]; groupIds: string[]; primary: string | null }
+/** `onlyGroups` (instructors, 2026-10-24 owner): the person sees ONLY these groups and their students, whatever the places —
+ *  campusIds then only matter for place lists (holidays, branch names). */
+export interface Places { all: boolean; campusIds: string[]; groupIds: string[]; primary: string | null; onlyGroups?: string[] }
 
 export const PORTAL_ROLES = ['STUDENT', 'PARENT', 'GUARDIAN']
 export const NO_PLACES: Places = { all: false, campusIds: [], groupIds: [], primary: null }
 export const ALL_PLACES: Places = { all: true, campusIds: [], groupIds: [], primary: null }
 
-export function resolvePlaces(i: { role: string; allLocations: boolean; primary: string | null; extra: string[]; groups: string[] }): Places {
+export function resolvePlaces(i: { role: string; allLocations: boolean; primary: string | null; extra: string[]; groups: string[]; teacherGroups?: string[]; allCampuses?: string[] }): Places {
   if (i.role === 'SUPER_ADMIN') return { ...ALL_PLACES, primary: i.primary }
   if (PORTAL_ROLES.includes(i.role)) return NO_PLACES
+  // Instructors see only the groups they teach / cover (+ single groups given to them) and those groups' students.
+  // "Works in every place" only means he can be put in groups anywhere — it never opens every student.
+  if (i.role === 'TEACHER' && i.teacherGroups) {
+    const campusIds = i.allLocations ? [...(i.allCampuses ?? [])] : [...new Set([i.primary, ...i.extra].filter((x): x is string => !!x))]
+    return { all: false, campusIds, groupIds: [], primary: i.primary, onlyGroups: [...new Set([...i.teacherGroups, ...i.groups])] }
+  }
   if (i.allLocations) return { ...ALL_PLACES, primary: i.primary }
   const campusIds = [...new Set([i.primary, ...i.extra].filter((x): x is string => !!x))]
   if (!campusIds.length && !i.groups.length) return { ...ALL_PLACES, primary: null }
@@ -28,12 +36,13 @@ export function resolvePlaces(i: { role: string; allLocations: boolean; primary:
 /** The header filter: one place (must be allowed) or everything allowed. Never widens. */
 export function narrow(p: Places, selected: string | null | undefined): Places {
   if (!selected || selected === 'ALL') return p
-  if (p.all || p.campusIds.includes(selected)) return { all: false, campusIds: [selected], groupIds: [], primary: p.primary }
+  if (p.all || p.campusIds.includes(selected)) return { all: false, campusIds: [selected], groupIds: [], primary: p.primary, ...(p.onlyGroups && { onlyGroups: p.onlyGroups }) }
   return p
 }
 
 export const allowsCampus = (p: Places, campusId: string | null | undefined) => p.all || (!!campusId && p.campusIds.includes(campusId))
-export const allowsGroup = (p: Places, g: { id: string; campusId: string }) => p.all || p.campusIds.includes(g.campusId) || p.groupIds.includes(g.id)
+export const allowsGroup = (p: Places, g: { id: string; campusId: string }) =>
+  p.onlyGroups ? p.onlyGroups.includes(g.id) : p.all || p.campusIds.includes(g.campusId) || p.groupIds.includes(g.id)
 
 /** Prisma `where` for rows with a campus column (students, groups, invoices…). {} = no limit. */
 export function campusWhere(p: Places, field = 'campusId'): Record<string, unknown> {
@@ -46,6 +55,7 @@ export function campusWhere(p: Places, field = 'campusId'): Record<string, unkno
  * that has its own OR (a search) never replaces one with the other.
  */
 export function groupWhere(p: Places): Record<string, unknown> {
+  if (p.onlyGroups) return { AND: [{ id: { in: p.onlyGroups.length ? p.onlyGroups : ['__none__'] } }] }
   if (p.all) return {}
   const or: Record<string, unknown>[] = []
   if (p.campusIds.length) or.push({ campusId: { in: p.campusIds } })
@@ -55,6 +65,7 @@ export function groupWhere(p: Places): Record<string, unknown> {
 
 /** Students: of a visible place, or enrolled in one of the person's single groups. */
 export function studentWhere(p: Places): Record<string, unknown> {
+  if (p.onlyGroups) return { AND: [{ enrollments: { some: { classSectionId: { in: p.onlyGroups.length ? p.onlyGroups : ['__none__'] } } } }] }
   if (p.all) return {}
   const or: Record<string, unknown>[] = []
   if (p.campusIds.length) or.push({ campusId: { in: p.campusIds } })

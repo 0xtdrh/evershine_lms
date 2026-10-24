@@ -30,7 +30,7 @@ export const NAV_AR: Record<string, string> = {
   'My Students': 'طلابي', 'Student Attendance': 'حضور الطلاب', 'Import Attendance': 'استيراد الحضور', 'My Announcements': 'إعلاناتي',
   'Tasks & Marks': 'المهام والدرجات', 'Daily Scores': 'الدرجات اليومية', 'Level Results': 'نتائج المستوى', 'LMS Results': 'نتائج المستوى', 'Grade Entry': 'إدخال الدرجات',
   'Student Targets': 'أهداف الطلبة', 'Exam Results': 'نتائج الامتحانات', 'Monthly Monitoring': 'المتابعة الشهرية',
-  'Student Leaves': 'إجازات الطلبة', 'HR & Salary': 'الموارد البشرية والراتب',
+  'Student Leaves': 'إجازات الطلبة', 'HR & Salary': 'شؤوني',
 }
 
 export const navLabel = (name: string, locale: string) => (locale === 'ar' ? NAV_AR[name] ?? name : name)

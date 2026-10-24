@@ -80,3 +80,26 @@ describe('staff (M0 batch 3)', () => {
     expect(or).toContainEqual({ parent: { students: { some: studentWhere(sara) } } })
   })
 })
+
+describe('instructors see only their groups (owner 2026-10-24)', () => {
+  const t = resolvePlaces({ role: 'TEACHER', allLocations: false, primary: 'c1', extra: [], groups: ['single'], teacherGroups: ['g1', 'g2'] })
+  it('only the groups he teaches / covers (+ single groups), whatever the branch', () => {
+    expect(t.all).toBe(false)
+    expect(t.onlyGroups?.sort()).toEqual(['g1', 'g2', 'single'])
+    expect(groupWhere(t)).toEqual({ AND: [{ id: { in: t.onlyGroups } }] })
+    expect(studentWhere(t)).toEqual({ AND: [{ enrollments: { some: { classSectionId: { in: t.onlyGroups } } } }] })
+    expect(allowsGroup(t, { id: 'other', campusId: 'c1' })).toBe(false)
+    expect(allowsGroup(t, { id: 'g1', campusId: 'c9' })).toBe(true)
+  })
+  it('"works in every place" no longer opens everything — only place lists cover every branch', () => {
+    const all = resolvePlaces({ role: 'TEACHER', allLocations: true, primary: 'c1', extra: [], groups: [], teacherGroups: ['g1'], allCampuses: ['c1', 'c2'] })
+    expect(all.all).toBe(false)
+    expect(all.campusIds).toEqual(['c1', 'c2'])
+    expect(allowsGroup(all, { id: 'g9', campusId: 'c2' })).toBe(false)
+  })
+  it('no groups yet → sees no students; the header filter keeps the limit', () => {
+    const none = resolvePlaces({ role: 'TEACHER', allLocations: false, primary: 'c1', extra: [], groups: [], teacherGroups: [] })
+    expect(studentWhere(none)).toEqual({ AND: [{ enrollments: { some: { classSectionId: { in: ['__none__'] } } } }] })
+    expect(narrow(t, 'c1').onlyGroups).toEqual(t.onlyGroups)
+  })
+})

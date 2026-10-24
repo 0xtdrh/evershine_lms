@@ -302,7 +302,7 @@ const PERMISSIONS: PermissionMap = {
     campuses: ['read'],
     classes: ['read'],
     houses: ['read'],
-    fees: ['read'],
+    fees: [], // 2026-10-24 owner: instructors never see invoices or money
     // WHY: Teachers can create and read attendance for their assigned classes
     attendance: ['create', 'read'],
     documents: ['read'],

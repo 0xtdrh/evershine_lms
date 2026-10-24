@@ -1877,6 +1877,14 @@ api PUT /api/treasury/settings '{"branchToCompany":true}' >/dev/null
 TCHU=$(M "SELECT userId FROM Teacher t JOIN User u ON u.id=t.userId WHERE u.email='tch@e2e.local'")
 check "the instructor list gives the user id the salary-slip screen sends (live test: slips sent the teacher id)" "$(accapi GET "/api/teachers?limit=100" | jq_ "any(t.get('userId')=='$TCHU' for t in d['data'])")" "True"
 check "salary slip: basic 0 + group pay line in Arabic month is issued; an empty slip is refused" "$(accapi POST /api/accountant/salary-slips "{\"employeeId\":\"$TCHU\",\"month\":\"أكتوبر 2026\",\"salaryPeriodStart\":\"2026-10-01T00:00:00.000Z\",\"salaryPeriodEnd\":\"2026-10-31T23:59:59.000Z\",\"basicSalary\":0,\"customFields\":[{\"label\":\"Group pay\",\"value\":300,\"isDeduction\":false}]}" | jq_ "(d['success'], float(d['data']['netSalary']))")/$(accapi POST /api/accountant/salary-slips "{\"employeeId\":\"$TCHU\",\"month\":\"نوفمبر 2026\",\"salaryPeriodStart\":\"2026-11-01T00:00:00.000Z\",\"salaryPeriodEnd\":\"2026-11-30T23:59:59.000Z\",\"basicSalary\":0}" | jq_ "d['success']")" "(True, 300.0)/False"
+# 2026-10-24 (owner): instructors never see invoices, only their own groups' students; the slip is a setting
+TJ2=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ2" 10.0.2.51
+tchapi() { curl -s -b "$TJ2" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+TSIDS=$(tchapi GET "/api/students?limit=200" | python -c "import sys,json;d=json.load(sys.stdin);r=d.get('data');r=r.get('students',r) if isinstance(r,dict) else r;print(','.join(\"'\"+x['id']+\"'\" for x in (r or [])) or \"''\")")
+check "an instructor sees no invoices and only students of the groups he teaches / covers" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ2" "$B/api/fees?limit=5")/$(M "SELECT COUNT(*) FROM Student s WHERE s.id IN ($TSIDS) AND NOT EXISTS (SELECT 1 FROM StudentEnrollment e WHERE e.studentId=s.id AND (e.classSectionId IN (SELECT o.classSectionId FROM SubjectOffering o JOIN Teacher t ON t.id=o.teacherId WHERE t.userId='$TCHU') OR e.classSectionId IN (SELECT a.classSectionId FROM SubstituteAssignment a JOIN Teacher t ON t.id=a.substituteTeacherId WHERE t.userId='$TCHU' AND a.status IN ('CONFIRMED','PENDING_SUBSTITUTE_APPROVAL'))))")" "403/0"
+check "the instructor sees his slip; switched off in Salary slips → settings, he does not" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ2" $B/api/teacher-portal/salary)/$(api PUT /api/accountant/salary-slips/settings '{"teacherSeesOwnSlips":false}' | jq_ "d['data']['teacherSeesOwnSlips']")/$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ2" $B/api/teacher-portal/salary)" "200/False/403"
+api PUT /api/accountant/salary-slips/settings '{"teacherSeesOwnSlips":true}' >/dev/null
+rm -f "$TJ2"
 rm -f "$ACJ"
 TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.95 >/dev/null
 check "instructors cannot see money accounts" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ" $B/api/treasury)" "403"

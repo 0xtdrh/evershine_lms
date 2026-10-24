@@ -14,6 +14,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
+import { teacherSeesOwnSlips } from '@/lib/salaries/settings'
 import { errors, successResponse, paginatedResponse, createdResponse } from '@/lib/api-response'
 import { dispatchNotification } from '@/lib/notifications/dispatch'
 
@@ -51,6 +52,7 @@ export async function GET(req: NextRequest) {
     if (!isFinance && !isTeacher) {
       return errors.forbidden('Access denied.')
     }
+    if (isTeacher && !(await teacherSeesOwnSlips())) return errors.forbidden('Salary slips are not shown to instructors (Salary slips → settings)')
 
     const { searchParams } = new URL(req.url)
     const month = searchParams.get('month')

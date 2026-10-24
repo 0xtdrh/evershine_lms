@@ -26,7 +26,7 @@ export async function loadPlaces(user: Who): Promise<Places> {
       where: { id: user.id },
       select: {
         allLocations: true,
-        admin: { select: { campusId: true } }, teacher: { select: { campusId: true } }, accountant: { select: { campusId: true } },
+        admin: { select: { campusId: true } }, teacher: { select: { id: true, campusId: true } }, accountant: { select: { campusId: true } },
         branchManager: { select: { campusId: true } }, secretary: { select: { campusId: true } }, marketingStaff: { select: { campusId: true } },
       },
     }),
@@ -34,7 +34,20 @@ export async function loadPlaces(user: Who): Promise<Places> {
     prisma.userGroupAccess.findMany({ where: { userId: user.id }, select: { classSectionId: true } }),
   ])
   const primary = u?.admin?.campusId ?? u?.teacher?.campusId ?? u?.accountant?.campusId ?? u?.branchManager?.campusId ?? u?.secretary?.campusId ?? u?.marketingStaff?.campusId ?? null
-  const places = resolvePlaces({ role: user.role, allLocations: !!u?.allLocations, primary, extra: extra.map((e) => e.campusId), groups: groups.map((g) => g.classSectionId) })
+  // instructors: the groups they teach or cover (owner 2026-10-24 — they see only these groups' students)
+  let teacherGroups: string[] | undefined
+  let allCampuses: string[] | undefined
+  if (user.role === 'TEACHER') {
+    const tid = u?.teacher?.id ?? '__none__'
+    const [teaches, covers, campuses] = await Promise.all([
+      prisma.subjectOffering.findMany({ where: { teacherId: tid }, select: { classSectionId: true } }),
+      prisma.substituteAssignment.findMany({ where: { substituteTeacherId: tid, status: { in: ['CONFIRMED', 'PENDING_SUBSTITUTE_APPROVAL'] } }, select: { classSectionId: true } }),
+      u?.allLocations ? prisma.campus.findMany({ where: { isActive: true }, select: { id: true } }) : Promise.resolve([]),
+    ])
+    teacherGroups = [...teaches, ...covers].map((r) => r.classSectionId).filter((x): x is string => !!x)
+    allCampuses = campuses.map((c) => c.id)
+  }
+  const places = resolvePlaces({ role: user.role, allLocations: !!u?.allLocations, primary, extra: extra.map((e) => e.campusId), groups: groups.map((g) => g.classSectionId), teacherGroups, allCampuses })
   cache.set(key, { at: Date.now(), places })
   if (cache.size > 5000) cache.delete(cache.keys().next().value as string)
   return places
@@ -82,6 +95,7 @@ export async function canSeeGroup(user: Who, groupId: string): Promise<boolean> 
 /** May this person open this student? (the student's place, or enrolled in one of their single groups) */
 export async function canSeeStudent(user: Who, studentId: string): Promise<boolean> {
   const p = await loadPlaces(user)
+  if (p.onlyGroups) return p.onlyGroups.length > 0 && (await prisma.studentEnrollment.count({ where: { studentId, classSectionId: { in: p.onlyGroups } } })) > 0
   if (p.all) return true
   const s = await prisma.student.findUnique({ where: { id: studentId }, select: { campusId: true } })
   if (s && allowsCampus(p, s.campusId)) return true

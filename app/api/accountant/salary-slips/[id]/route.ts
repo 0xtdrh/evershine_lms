@@ -15,6 +15,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
+import { teacherSeesOwnSlips } from '@/lib/salaries/settings'
 import { errors, successResponse } from '@/lib/api-response'
 
 const customFieldSchema = z.object({
@@ -63,6 +64,9 @@ export async function GET(
 
     if (!isOwner && !isStaff) {
       return errors.forbidden('You do not have permission to view this salary slip')
+    }
+    if (isOwner && !isStaff && session.user.role === 'TEACHER' && !(await teacherSeesOwnSlips())) {
+      return errors.forbidden('Salary slips are not shown to instructors (Salary slips → settings)')
     }
     if (!isOwner && !(await canSeeUser(session.user, slip.employeeId))) return errors.forbidden()
 

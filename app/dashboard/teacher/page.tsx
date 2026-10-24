@@ -78,8 +78,8 @@ const TEACHER_QUICK_LINKS = [
   {
     href: '/dashboard/teacher/hr',
     icon: Wallet,
-    label: 'HR & Salary',
-    description: 'View salary slips and submit applications',
+    label: 'My HR',
+    description: 'Attendance record and applications',
     color: 'bg-teal-50 text-teal-700 border-teal-100 hover:bg-teal-100',
     iconBg: 'bg-teal-100',
   },

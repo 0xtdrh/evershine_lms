@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { errors, paginatedResponse } from '@/lib/api-response'
 import { z } from 'zod'
+import { teacherSeesOwnSlips } from '@/lib/salaries/settings'
 
 const querySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (session.user.role !== 'TEACHER') return errors.forbidden('Only teachers can access this')
+  if (!(await teacherSeesOwnSlips())) return errors.forbidden('Salary slips are not shown to instructors (Salary slips → settings)')
 
   const { searchParams } = new URL(request.url)
   const parsed = querySchema.safeParse(Object.fromEntries(searchParams))

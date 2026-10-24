@@ -454,6 +454,7 @@ export default function SalarySlipsPage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 space-y-5">
+        {['SUPER_ADMIN', 'ADMIN'].includes(role) && <SalarySettingsCard />}
         {/* Summary stat */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <Card className="shadow-sm">
@@ -524,6 +525,26 @@ export default function SalarySlipsPage() {
       </div>
 
       {showModal && <IssueSlipModal onClose={() => setShowModal(false)} onSuccess={onIssued} />}
+    </div>
+  )
+}
+
+/** 2026-10-24 (owner): whether instructors see their own salary slips (portal "HR & Salary"). */
+function SalarySettingsCard() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['salary-settings'], queryFn: () => fetchApi<{ teacherSeesOwnSlips: boolean }>('/api/accountant/salary-slips/settings') })
+  const save = useMutation({
+    mutationFn: (v: boolean) => fetchApi('/api/accountant/salary-slips/settings', { method: 'PUT', body: JSON.stringify({ teacherSeesOwnSlips: v }) }),
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['salary-settings'] }) },
+    onError: (e: Error) => notify.error(e.message),
+  })
+  if (!data) return null
+  return (
+    <div id="settings" className="rounded-2xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
+      <label className="flex items-center gap-2 font-medium text-slate-700">
+        <input type="checkbox" checked={data.teacherSeesOwnSlips} disabled={save.isPending} onChange={(e) => save.mutate(e.target.checked)} />
+        {L('Instructors see their own salary slips (portal → HR & Salary)', 'المدرب يشوف قسيمة مرتبه (بوابة المدرب ← المرتب)')}
+      </label>
     </div>
   )
 }
