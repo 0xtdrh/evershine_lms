@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
+        userId: true, // salary slips are made for the user account (2026-10-24: slips sent the teacher id and were refused)
         employeeId: true,
         firstName: true,
         lastName: true,

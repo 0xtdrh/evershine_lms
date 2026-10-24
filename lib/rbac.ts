@@ -516,7 +516,7 @@ const PERMISSIONS: PermissionMap = {
     attendance: [],
     documents: [],
     users: [],
-    audit_logs: ['read'],
+    audit_logs: [], // 2026-10-24 owner: the accountant does not see the change log (Permissions page can open it)
     dashboard: ['read'],
     results: [],
     exams: [],

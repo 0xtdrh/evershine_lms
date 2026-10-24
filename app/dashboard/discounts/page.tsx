@@ -64,7 +64,8 @@ const STATUS_CLASS: Record<string, string> = {
 
 const emptyType = (): Partial<TypeRow> => ({
   name: '', kind: 'MANUAL', valueType: 'PERCENT', value: 10, editableValue: false, maxValue: null,
-  duration: 'EVERY_CYCLE', autoApply: false, approvalMode: 'STAFF', scopeType: 'ALL', scopeId: null,
+  duration: 'EVERY_CYCLE', autoApply: false, approvalMode: 'STAFF_WITH_APPROVAL', // 2026-10-24: a new type needs a manager's OK unless chosen otherwise
+  scopeType: 'ALL', scopeId: null,
   validFrom: null, validTo: null, stackable: true, isActive: true,
 })
 

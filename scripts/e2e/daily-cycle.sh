@@ -1875,6 +1875,7 @@ check "setting off → the branch cannot send to company accounts" "$(accapi POS
 api PUT /api/treasury/settings '{"branchToCompany":true}' >/dev/null
 # 2026-10-24 live test: an instructor paid per session has no basic salary; the month may be written in Arabic
 TCHU=$(M "SELECT userId FROM Teacher t JOIN User u ON u.id=t.userId WHERE u.email='tch@e2e.local'")
+check "the instructor list gives the user id the salary-slip screen sends (live test: slips sent the teacher id)" "$(accapi GET "/api/teachers?limit=100" | jq_ "any(t.get('userId')=='$TCHU' for t in d['data'])")" "True"
 check "salary slip: basic 0 + group pay line in Arabic month is issued; an empty slip is refused" "$(accapi POST /api/accountant/salary-slips "{\"employeeId\":\"$TCHU\",\"month\":\"أكتوبر 2026\",\"salaryPeriodStart\":\"2026-10-01T00:00:00.000Z\",\"salaryPeriodEnd\":\"2026-10-31T23:59:59.000Z\",\"basicSalary\":0,\"customFields\":[{\"label\":\"Group pay\",\"value\":300,\"isDeduction\":false}]}" | jq_ "(d['success'], float(d['data']['netSalary']))")/$(accapi POST /api/accountant/salary-slips "{\"employeeId\":\"$TCHU\",\"month\":\"نوفمبر 2026\",\"salaryPeriodStart\":\"2026-11-01T00:00:00.000Z\",\"salaryPeriodEnd\":\"2026-11-30T23:59:59.000Z\",\"basicSalary\":0}" | jq_ "d['success']")" "(True, 300.0)/False"
 rm -f "$ACJ"
 TJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ" 10.0.1.95 >/dev/null
@@ -1968,6 +1969,9 @@ api PATCH /api/students/$LK "{\"firstName\":\"$OLDFN\"}" >/dev/null
 check "each change is logged once (no doubles)" "$(M "SELECT COUNT(*) FROM (SELECT COUNT(*) c FROM AuditLog WHERE JSON_EXTRACT(changes,'$.auto')=true GROUP BY entityType, entityId, action, CAST(changes AS CHAR(1000)), timestamp HAVING c > 1) x")" "0"
 check "passwords and tokens never reach the change log" "$(M "SELECT COUNT(*) FROM AuditLog WHERE changes LIKE '%passwordHash%' OR changes LIKE '%resetToken%'")" "0"
 check "a secretary cannot read the change log, usage or data health" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/audit-log)/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/usage)/$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/api/data-health)" "403/403/403"
+ACJ=$(mktemp); login_jar $ACCE E2eAcc12345 "$ACJ" 10.0.2.41
+check "the accountant cannot read the change log by default (owner 2026-10-24)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$ACJ" $B/api/audit-log)" "403"
+rm -f "$ACJ"
 TODAYC=$(D 0)
 M "DELETE FROM UserActivityDay WHERE userId='$ME' AND day='$TODAYC'"
 api POST /api/activity/ping >/dev/null
