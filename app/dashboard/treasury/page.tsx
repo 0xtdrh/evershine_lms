@@ -141,7 +141,7 @@ function Movements({ id, ar }: { id: string; ar: boolean }) {
             <tbody>
               {(data ?? []).map((m) => (
                 <tr key={m.id} className="border-t">
-                  <td className="p-2">{new Date(m.date).toLocaleDateString(ar ? 'ar-EG' : 'en-GB')}</td>
+                  <td className="p-2">{new Date(m.date).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB')}</td>
                   <td className="p-2">{ar ? MOVEMENT_KIND_LABEL[m.kind]?.[1] : MOVEMENT_KIND_LABEL[m.kind]?.[0]}</td>
                   <td className="p-2">{m.method ?? '—'}</td>
                   <td className="p-2 text-slate-500">{m.note ?? ''}</td>
@@ -194,7 +194,7 @@ function Transfers({ accounts, ar, isSuper, canCreate, canApprove, onDone, statu
           <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
             <div>
               <p className="font-semibold">{t.from} → {t.to} · {money(t.amount, ar)}</p>
-              <p className="text-xs text-slate-500">{t.number} · {new Date(t.date).toLocaleDateString(ar ? 'ar-EG' : 'en-GB')}{t.note ? ` · ${t.note}` : ''}</p>
+              <p className="text-xs text-slate-500">{t.number} · {new Date(t.date).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB')}{t.note ? ` · ${t.note}` : ''}</p>
             </div>
             <div className="flex items-center gap-2">
               {status(t.status)}
@@ -242,7 +242,7 @@ function Counts({ accounts, ar, canCreate, canApprove, onDone, status }: { accou
         {(data ?? []).map((c) => (
           <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
             <div>
-              <p className="font-semibold">{c.account} · {new Date(c.date).toLocaleDateString(ar ? 'ar-EG' : 'en-GB')}</p>
+              <p className="font-semibold">{c.account} · {new Date(c.date).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB')}</p>
               <p className="text-xs text-slate-500">{L('expected', 'المفروض')} {money(c.expected, ar)} · {L('counted', 'الفعلي')} {money(c.counted, ar)} · <b className={c.difference ? 'text-rose-700' : 'text-emerald-700'}>{L('difference', 'الفرق')} {money(c.difference, ar)}</b>{c.note ? ` · ${c.note}` : ''}</p>
             </div>
             <div className="flex items-center gap-2">

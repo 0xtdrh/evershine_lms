@@ -50,7 +50,7 @@ const D = (s: string) => new Date(`${s}T00:00:00.000Z`)
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 const addDays = (s: string, n: number) => iso(new Date(D(s).getTime() + n * 86_400_000))
 const startOfWeek = (s: string) => addDays(s, -D(s).getUTCDay())
-const fmt = (s: string, o: Intl.DateTimeFormatOptions) => D(s).toLocaleDateString(L('en-GB', 'ar-EG'), { timeZone: 'UTC', ...o })
+const fmt = (s: string, o: Intl.DateTimeFormatOptions) => D(s).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { timeZone: 'UTC', ...o })
 const DAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const DAYS_AR = ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت']
 const dayName = (i: number) => L(DAYS_EN[i], DAYS_AR[i])
@@ -222,7 +222,7 @@ export default function GroupsSchedulePage() {
                 <p className="text-xs text-slate-600">{filterText || L('All', 'الكل')} · {view === 'week' ? L('Week', 'أسبوع') : L('Month', 'شهر')}: {periodText}</p>
               </div>
             </div>
-            <p className="text-[10px] text-slate-500">{L('Printed', 'اتطبع')} {new Date().toLocaleString(L('en-GB', 'ar-EG'))}</p>
+            <p className="text-[10px] text-slate-500">{L('Printed', 'اتطبع')} {new Date().toLocaleString(L('en-GB', 'ar-EG-u-nu-latn'))}</p>
           </div>
 
           {view === 'week' ? (

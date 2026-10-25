@@ -6,7 +6,7 @@ import { fetchApi } from '@/lib/api-client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ClipboardCheck, Award, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
-import { L } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Row { n: number; of: number; date: string; status: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED'; excuseReason: string | null }
 interface Stats { sessions: number; present: number; late: number; absent: number; excused: number; pct: number | null }
@@ -14,14 +14,15 @@ interface Group { classSectionId: string; group: string; course: string | null; 
 interface Data { groups: Group[]; overall: Stats }
 
 const STATUS: Record<Row['status'], { label: string; cls: string }> = {
-  PRESENT: { label: 'Present', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  LATE: { label: 'Late', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-  ABSENT: { label: 'Absent', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
-  EXCUSED: { label: 'Absent (excused)', cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  PRESENT: { get label() { return L('Present', 'حاضر') }, cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  LATE: { get label() { return L('Late', 'متأخر') }, cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  ABSENT: { get label() { return L('Absent', 'غايب') }, cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+  EXCUSED: { get label() { return L('Absent (excused)', 'غايب بعذر') }, cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
 }
 
 /** Phase C: attendance session by session (no instructor name), per month/group. */
 export function AttendanceTimeline({ studentId }: { studentId: string }) {
+  useI18n() // re-render on a language switch
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const { data, isLoading } = useQuery({
     queryKey: ['attendance-timeline', studentId],
@@ -35,7 +36,7 @@ export function AttendanceTimeline({ studentId }: { studentId: string }) {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base"><ClipboardCheck className="h-5 w-5 text-emerald-600" /> {L('Attendance', 'الحضور')}</CardTitle>
         <CardDescription>
-          {data?.overall.pct != null ? `Overall attendance ${data.overall.pct}% (${data.overall.present + data.overall.late} of ${data.overall.sessions} sessions)` : 'No sessions recorded yet.'}
+          {data?.overall.pct != null ? L(`Overall attendance ${data.overall.pct}% (${data.overall.present + data.overall.late} of ${data.overall.sessions} sessions${data.overall.excused ? `; ${data.overall.excused} absent with an excuse` : ''})`, `نسبة الحضور ${data.overall.pct}% (${data.overall.present + data.overall.late} من ${data.overall.sessions} حصة${data.overall.excused ? `؛ منهم ${data.overall.excused} غياب بعذر` : ''})`) : L('No sessions recorded yet.', 'لسه مفيش حصص متسجلة.')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -43,11 +44,11 @@ export function AttendanceTimeline({ studentId }: { studentId: string }) {
           const isOpen = open[g.classSectionId] ?? i < 2
           return (
             <div key={g.classSectionId} className="rounded-lg border border-slate-200">
-              <button type="button" className="flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left" onClick={() => setOpen({ ...open, [g.classSectionId]: !isOpen })}>
+              <button type="button" className="flex w-full flex-wrap items-center justify-between gap-2 p-3 text-start" onClick={() => setOpen({ ...open, [g.classSectionId]: !isOpen })}>
                 <div>
                   <p className="font-semibold text-slate-800">{g.course ?? g.group}{g.level ? ` · ${g.level}` : ''}</p>
                   <p className="text-xs text-slate-500">
-                    {g.group}{g.cyclesInLevel > 1 ? ` · month ${g.cycleNumber} of ${g.cyclesInLevel}` : ''} · {g.finished ? 'finished' : 'in progress'}
+                    {g.group}{g.cyclesInLevel > 1 ? ` · ${L('month', 'شهر')} ${g.cycleNumber} ${L('of', 'من')} ${g.cyclesInLevel}` : ''} · {g.finished ? L('finished', 'خلص') : L('in progress', 'شغال')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -59,12 +60,12 @@ export function AttendanceTimeline({ studentId }: { studentId: string }) {
               {isOpen && (
                 <div className="border-t border-slate-100">
                   <table className="w-full text-sm">
-                    <thead><tr className="text-left text-xs text-slate-500"><th className="px-3 py-1.5">{L('Session', 'الحصة')}</th><th>{L('Date', 'التاريخ')}</th><th>{L('Status', 'الحالة')}</th></tr></thead>
+                    <thead><tr className="text-start text-xs text-slate-500"><th className="px-3 py-1.5">{L('Session', 'الحصة')}</th><th>{L('Date', 'التاريخ')}</th><th>{L('Status', 'الحالة')}</th></tr></thead>
                     <tbody>
                       {g.sessions.map((s) => (
                         <tr key={s.date} className="border-t border-slate-100 align-top">
                           <td className="whitespace-nowrap px-3 py-1.5 font-medium">{s.n} {L('of', 'من')} {s.of}</td>
-                          <td className="whitespace-nowrap py-1.5">{new Date(`${s.date}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' })}</td>
+                          <td className="whitespace-nowrap py-1.5">{new Date(`${s.date}T00:00:00Z`).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' })}</td>
                           <td className="py-1.5 pr-3">
                             <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS[s.status]?.cls ?? ''}`}>{STATUS[s.status]?.label ?? s.status}</span>
                             {s.excuseReason && <p className="mt-0.5 text-xs text-slate-500">{L('Reason:', 'السبب:')} {s.excuseReason}</p>}

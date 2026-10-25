@@ -14,7 +14,7 @@ export function stampSvg(s: StampLook, ar: boolean, opts: { mono?: boolean } = {
   const c = opts.mono ? '#000000' : s.color
   const name = esc((ar ? s.nameAr : s.nameEn) || s.nameEn).slice(0, 40)
   const label = s.label ? esc(String(s.label)).slice(0, 34) : ''
-  const date = s.date ? new Date(s.date).toLocaleDateString(ar ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+  const date = s.date ? new Date(s.date).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
   const outline = s.shape === 'SQUARE'
     ? `<rect x="14" y="14" width="172" height="172" rx="22" fill="none" stroke="${c}" stroke-width="7"/><rect x="26" y="26" width="148" height="148" rx="14" fill="none" stroke="${c}" stroke-width="2" stroke-dasharray="5 4"/>`
     : s.shape === 'HEX'

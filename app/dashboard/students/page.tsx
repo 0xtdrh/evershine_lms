@@ -95,6 +95,10 @@ function formatSections(student: Student): string {
   return student.class?.name ?? ''
 }
 
+/** 2026-10-25: status words in the screen language (were shown as ACTIVE / PAID). */
+const enrollmentWord = (v: string) => ({ ACTIVE: L('Active', 'شغال'), WITHDRAWN: L('Withdrawn', 'انسحب'), SUSPENDED: L('Suspended', 'موقوف'), GRADUATED: L('Graduated', 'اتخرج'), INACTIVE: L('Inactive', 'مش شغال'), PENDING: L('Pending', 'مستني') } as Record<string, string>)[v] ?? v.replace('_', ' ')
+const feeWord = (v: string) => ({ PAID: L('Paid', 'دافع'), UNPAID: L('Unpaid', 'مادفعش'), PARTIAL: L('Partly paid', 'دافع جزء'), PARTIALLY_PAID: L('Partly paid', 'دافع جزء'), OVERDUE: L('Overdue', 'متأخر'), PENDING: L('Due', 'عليه فلوس'), NO_DUES: L('Nothing due', 'مفيش مستحقات') } as Record<string, string>)[v] ?? v.replace('_', ' ')
+
 export default function StudentsListPage() {
   useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
@@ -227,7 +231,7 @@ export default function StudentsListPage() {
           </h1>
           <div className="mt-2 print:hidden"><DataExchangeButtons dataset="students" /></div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium sm:ml-11">
-            {pagination ? `${pagination.total.toLocaleString()} registered students` : 'Loading…'}
+            {pagination ? L(`${pagination.total.toLocaleString()} registered students`, `${pagination.total.toLocaleString()} طالب مسجّل`) : L('Loading…', 'بيحمّل…')}
             <span className="mx-2 text-slate-300">•</span>
             <Link href="/dashboard/admissions" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">
               {L('View admissions queue', 'طلبات التسجيل')}
@@ -235,12 +239,7 @@ export default function StudentsListPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          {canExport && (
-            <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-initial h-9 text-xs" disabled={exporting} onClick={handleExport}>
-              <Download className="w-3.5 h-3.5" />
-              {exporting ? 'Exporting…' : 'Export Excel'}
-            </Button>
-          )}
+          {/* 2026-10-25: the old "Export Excel" button was removed — the shared Excel / PDF buttons above export the students */}
           {canAdmit && (
             <>
               <Link href="/dashboard/admissions" className="flex-1 sm:flex-initial">
@@ -407,10 +406,10 @@ export default function StudentsListPage() {
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ENROLLMENT_STATUS_STYLES[student.enrollmentStatus] ?? ''}`}>
-                      {student.enrollmentStatus.replace('_', ' ')}
+                      {enrollmentWord(student.enrollmentStatus)}
                     </span>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${FEE_STATUS_STYLES[student.feeStatus] ?? ''}`}>
-                      {student.feeStatus.replace('_', ' ')}
+                      {feeWord(student.feeStatus)}
                     </span>
                   </div>
                 </div>
@@ -480,7 +479,7 @@ export default function StudentsListPage() {
                     <EmptyState 
                       icon={UserX}
                       title={L('No students found', 'مفيش طلاب')}
-                      description={search || feeStatusFilter || enrollmentFilter ? "Try adjusting your filters to find what you're looking for." : "There are currently no students in the directory."}
+                      description={search || feeStatusFilter || enrollmentFilter ? L("Try adjusting your filters to find what you're looking for.", 'جرّب تغيّر الفلاتر.') : L('There are currently no students in the directory.', 'لسه مفيش طلاب.')}
                     />
                   </TableCell>
                 </TableRow>
@@ -511,12 +510,12 @@ export default function StudentsListPage() {
                     </TableCell>
                     <TableCell>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ENROLLMENT_STATUS_STYLES[student.enrollmentStatus] ?? ''}`}>
-                        {student.enrollmentStatus.replace('_', ' ')}
+                        {enrollmentWord(student.enrollmentStatus)}
                       </span>
                     </TableCell>
                     <TableCell>
                       <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${FEE_STATUS_STYLES[student.feeStatus] ?? ''}`}>
-                        {student.feeStatus.replace('_', ' ')}
+                        {feeWord(student.feeStatus)}
                       </span>
                     </TableCell>
                     <TableCell className="text-xs text-gray-500">

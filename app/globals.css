@@ -199,6 +199,8 @@ html {
     letter-spacing: -0.01em;
     color: hsl(var(--foreground));
   }
+  /* 2026-10-25: a heading inside a coloured banner (text-white) keeps the banner's colour, not the page foreground */
+  .text-white :is(h1, h2, h3, h4, h5, h6) { color: inherit; }
   h1 { font-size: clamp(1.875rem, 5vw, 3.052rem); font-weight: 800; }
   h2 { font-size: clamp(1.5rem, 4vw, 2.441rem); font-weight: 700; }
   h3 { font-size: clamp(1.25rem, 3vw, 1.953rem); font-weight: 700; }

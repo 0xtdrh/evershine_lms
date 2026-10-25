@@ -165,7 +165,7 @@ export function ReconcileTab() {
           <button key={a.id} type="button" onClick={() => setAccountId(a.id)} className={`rounded-xl border p-3 text-start ${accountId === a.id ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-200 bg-white'}`}>
             <p className="font-semibold text-slate-800">{a.name}</p>
             <p className={a.open ? 'text-amber-700' : 'text-emerald-700'}>{a.open ? `${a.open} ${L('movements not matched with the bank', 'حركة مش متطابقة مع البنك')}` : L('All matched', 'كله متطابق')}</p>
-            <p className="text-[11px] text-slate-500">↓ {money(a.openIn)} · ↑ {money(a.openOut)} · {L('last match', 'آخر مطابقة')}: {a.lastReconciledAt ? new Date(a.lastReconciledAt).toLocaleDateString(ar ? 'ar-EG' : 'en-GB') : '—'}</p>
+            <p className="text-[11px] text-slate-500">↓ {money(a.openIn)} · ↑ {money(a.openOut)} · {L('last match', 'آخر مطابقة')}: {a.lastReconciledAt ? new Date(a.lastReconciledAt).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB') : '—'}</p>
           </button>
         ))}
       </div>

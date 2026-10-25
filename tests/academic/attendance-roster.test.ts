@@ -26,6 +26,8 @@ vi.mock('@/lib/prisma', () => ({
     student: { findMany: vi.fn() },
     enrollmentAttendanceRecord: { findMany: enrollmentAttendanceRecordFindMany },
     academicYear: { findUnique: vi.fn() },
+    // 2026-10-25: a substitute may open the group on the day he covers it (none here)
+    substituteAssignment: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
   },
 }))
 

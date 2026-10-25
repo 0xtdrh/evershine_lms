@@ -15,6 +15,10 @@ const WALLET_TYPE_EN: Record<string, string> = {
 }
 /** Movement type in the screen language (2026-10-24: was English only). */
 export const walletType = (t: string) => L(WALLET_TYPE_EN[t] ?? t, WALLET_TYPE_AR[t] ?? WALLET_TYPE_EN[t] ?? t)
+/** Stored English notes ("Top-up TN-TOPUP-…", "Invoice payment TN-RCPT-…") in the screen language (2026-10-25). */
+const noteText = (n: string) => L(n, n
+  .replace(/^Top-up bonus/, 'مكافأة شحن').replace(/^Top-up /, 'شحن ').replace(/^Invoice payment/, 'دفع فاتورة')
+  .replace(/^Referral reward:/, 'مكافأة ترشيح:').replace(/ joined /, ' اتسجل '))
 /** @deprecated use walletType (kept for older imports) */
 export const WALLET_TYPE = WALLET_TYPE_EN
 
@@ -27,7 +31,7 @@ export function WalletLedger({ rows, max = 10 }: { rows: LedgerRow[]; max?: numb
         <div key={t.id} className="flex items-center justify-between gap-2 text-xs">
           <span className="min-w-0 truncate text-slate-600">
             {new Date(t.createdAt).toLocaleDateString('en-GB')} · {walletType(t.type)}
-            {t.note && <span className="text-slate-400"> · {t.note}</span>}
+            {t.note && <span className="text-slate-400"> · {noteText(t.note)}</span>}
             {t.type === 'TOPUP' && t.topUpId && <Link href={`/topups/${t.topUpId}`} className="ms-1 text-indigo-600 underline">{L('receipt', 'الإيصال')}</Link>}
             {t.type === 'PAYMENT' && t.paymentId && <Link href={`/receipts/${t.paymentId}`} className="ms-1 text-indigo-600 underline">{L('receipt', 'الإيصال')}</Link>}
           </span>

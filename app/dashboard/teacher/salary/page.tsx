@@ -170,12 +170,12 @@ export default function TeacherSalaryPage() {
         <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-white/5" />
         <div className="max-w-3xl mx-auto relative z-10">
           <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">{L('My Account', 'حسابي')}</p>
-          <h1 className="text-2xl sm:text-3xl font-black">{L('My Salary Slips', 'قسايم مرتبي')}</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-white">{L('My Salary Slips', 'قسايم مرتبي')}</h1>
           <p className="text-blue-200 text-sm mt-1">{L('View your monthly payroll records issued by the academy', 'قسايم مرتبك الشهرية')}</p>
         </div>
       </motion.div>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 space-y-4">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-20 space-y-4">
         {isLoading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="w-7 h-7 animate-spin text-indigo-400" />

@@ -110,7 +110,7 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
   const accept = [kinds.includes('PHOTO') && 'image/*', kinds.includes('VIDEO') && 'video/*', kinds.includes('AUDIO') && 'audio/*', kinds.includes('FILE') && '.pdf,.docx,.pptx,.xlsx,.txt,.zip,.sb3,.aia,.ino,.py,.stl,.mp3,.m4a,image/*'].filter(Boolean).join(',')
   const detail = Array.isArray(sub?.autoDetail) ? sub!.autoDetail : (sub?.autoDetail as { items?: { id: string; correct: boolean }[] } | null)?.items ?? []
   const okOf = (qid: string) => detail.find((d) => d.id === qid)?.correct
-  const fmt = (iso: string) => new Date(iso).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+  const fmt = (iso: string) => new Date(iso).toLocaleString(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })
   const keyText = (q: QView) => {
     const k = data.answerKey?.[q.id]
     if (!k) return null
@@ -161,7 +161,7 @@ export function AssignmentWork({ groupId, blockId, studentId, compact = false }:
         <span className="flex flex-wrap items-center gap-1 text-xs">
           <span className={`rounded-full border px-2 py-0.5 ${STATUS_STYLE[status]}`}>{t(`hw.status.${status}` as 'hw.status.TODO')}</span>
           {sub?.late && <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">{t('hw.late')}</span>}
-          {data.dueAt && <span className="text-slate-500">{t('hw.due', { date: new Date(data.dueAt).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) })}</span>}
+          {data.dueAt && <span className="text-slate-500">{t('hw.due', { date: new Date(data.dueAt).toLocaleString(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) })}</span>}
         </span>
       </div>
 

@@ -39,7 +39,7 @@ export default function UsagePage() {
   if (role && !ready) return null
   if (!can('audit_logs', 'read')) return <AccessDenied title={L('Usage', 'الاستخدام')} message={L("You don't have access to the usage report.", 'مالكش صلاحية على تقرير الاستخدام.')} />
   const mins = (s: number) => Math.round(s / 60)
-  const fmt = (v: string | null) => (v ? new Date(v).toLocaleString(ar ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—')
+  const fmt = (v: string | null) => (v ? new Date(v).toLocaleString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—')
   const chip = (k: string, label: string, cur: string, set: (v: never) => void) => (
     <button key={k} type="button" onClick={() => set(k as never)} className={`rounded-full border px-3 py-1 text-sm ${cur === k ? 'border-indigo-500 bg-indigo-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}>{label}</button>
   )

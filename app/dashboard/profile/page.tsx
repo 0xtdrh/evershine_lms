@@ -45,7 +45,7 @@ interface Profile {
 // goal types: the number is typed in the box next to it (2026-10-24: no more "N" in the labels)
 const METRICS: Record<string, [string, string]> = { SESSIONS: ['Attend a number of sessions', 'أحضر عدد من الحصص'], STAMPS: ['Collect a number of stamps', 'أجمع عدد من الأختام'], HOMEWORK: ['Hand in a number of homework', 'أسلّم عدد من الواجبات'], QUIZ90: ['90%+ in a number of quizzes', '90% أو أكتر في عدد من الكويزات'] }
 const ROLES: Record<string, [string, string]> = { ASSISTANT: ['Assistant instructor', 'مساعد مدرب'], AMBASSADOR: ['Ambassador', 'سفير'], ALUMNI: ['Alumni', 'خريج'], OTHER: ['Experience', 'خبرة'] }
-const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
 function MediaView({ m }: { m: Media }) {
   if (!m) return null

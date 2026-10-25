@@ -14,7 +14,7 @@ interface Shared {
   projects: { titleEn: string; titleAr: string }[] | null
   skills?: { course: string; scores: { nameEn: string; nameAr: string; percent: number | null }[] }[] | null
 }
-const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
 function SharedView({ token }: { token: string }) {
   const { locale, dir } = useI18n()

@@ -410,7 +410,7 @@ export default function FeesManagementPage() {
                         {balance > 0 ? `${L('EGP', 'ج.م')} ${balance.toLocaleString()}` : '—'}
                       </TableCell>
                       <TableCell className={`text-xs ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                        {new Date(fee.dueDate).toLocaleDateString(L('en-GB', 'ar-EG'), { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(fee.dueDate).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { day: 'numeric', month: 'short', year: 'numeric' })}
                         {isOverdue && ' ⚠'}
                       </TableCell>
                       <TableCell>

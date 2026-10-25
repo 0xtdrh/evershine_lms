@@ -20,7 +20,7 @@ interface Data {
   certificates: { title: string; certificateNumber: string; issuedDate: string }[]
   stampCount: number
 }
-const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG' : 'en-GB', { month: 'short', year: 'numeric' })
+const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { month: 'short', year: 'numeric' })
 const ROLE: Record<string, [string, string]> = { ASSISTANT: ['Assistant instructor', 'مساعد مدرب'], AMBASSADOR: ['Ambassador', 'سفير'], ALUMNI: ['Alumni', 'خريج'], OTHER: ['Experience', 'خبرة'] }
 
 function Portfolio({ studentId }: { studentId: string }) {

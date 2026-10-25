@@ -19,7 +19,7 @@ interface ChildWallet { studentId: string; name: string; balance: number; visibl
 interface Data { wallets: ChildWallet[]; online: { enabled: boolean; feePercent: number; feeFixed: number }; accounts: { label: string; accountNumber?: string | null; accountName?: string | null; kind?: string }[]; payoutMethods: string[] }
 type Mode = { kind: 'topup' | 'transfer' | 'withdraw'; child: ChildWallet } | null
 
-const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} EGP`
+const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${L('EGP', 'ج.م')}`
 
 /** Parent portal wallets (phase B): each child's balance, top up (receipt or online), move between children, withdraw, show/hide for the child. */
 export function ParentWalletCard() {
@@ -109,7 +109,7 @@ export function ParentWalletCard() {
             <DialogTitle>{mode?.kind === 'topup' ? `${L('Top up', 'اشحن لـ')} ${mode.child.name}` : mode?.kind === 'transfer' ? L('Move to another child', 'انقل لابن تاني') : L('Ask for money back', 'اطلب استرجاع فلوس')}</DialogTitle>
             <DialogDescription>
               {mode?.kind === 'topup' && (mode.child.minimumTopUp ? `${L('Minimum', 'أقل مبلغ')} ${money(mode.child.minimumTopUp)}.` : L('Any amount.', 'أي مبلغ.'))}
-              {mode?.kind === 'transfer' && `Balance ${money(mode.child.balance)}.`}
+              {mode?.kind === 'transfer' && `${L('Balance', 'الرصيد')} ${money(mode.child.balance)}.`}
               {mode?.kind === 'withdraw' && L('Needs approval. A fee may apply depending on how the money goes back.', 'محتاج موافقة. ممكن يكون فيه رسوم حسب طريقة رجوع الفلوس.')}
             </DialogDescription>
           </DialogHeader>
@@ -121,7 +121,7 @@ export function ParentWalletCard() {
                   {data.online.enabled && <button type="button" onClick={() => setWay('ONLINE')} className={`flex-1 rounded-lg border px-3 py-2 text-xs ${way === 'ONLINE' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200'}`}>{L('Card / wallet (online)', 'كارت / محفظة (أونلاين)')}</button>}
                   <button type="button" onClick={() => setWay('PROOF')} className={`flex-1 rounded-lg border px-3 py-2 text-xs ${way === 'PROOF' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200'}`}>{L('Transfer + upload the receipt', 'تحويل + ارفع الإيصال')}</button>
                 </div>
-                {way === 'ONLINE' && Number(amount) > 0 && <p className="rounded bg-slate-50 px-2 py-1 text-xs">{L('You pay', 'هتدفع')} {money(Number(amount) + fee)} ({money(Number(amount))} {L('+ online fee', '+ مصاريف الأونلاين')} {money(fee)}); the wallet gets {money(Number(amount))}.</p>}
+                {way === 'ONLINE' && Number(amount) > 0 && <p className="rounded bg-slate-50 px-2 py-1 text-xs">{L('You pay', 'هتدفع')} {money(Number(amount) + fee)} ({money(Number(amount))} {L('+ online fee', '+ مصاريف الأونلاين')} {money(fee)})؛ {L('the wallet gets', 'المحفظة هتاخد')} {money(Number(amount))}.</p>}
                 {way === 'PROOF' && (
                   <>
                     {data.accounts.length > 0 && (

@@ -25,7 +25,7 @@ export function StudentReportsList({ studentId }: { studentId: string }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base"><FileText className="h-5 w-5 text-indigo-600" /> Reports</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-base"><FileText className="h-5 w-5 text-indigo-600" /> {L('Reports', 'التقارير')}</CardTitle>
         <CardDescription>{L('A report after each session, at the end of each month and of each level. Open one to print or save it as PDF.', 'تقرير بعد كل حصة، وفي آخر كل شهر وكل مستوى. افتح أي واحد تطبعه أو تحفظه PDF.')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

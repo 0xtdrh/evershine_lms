@@ -13,7 +13,7 @@ import { notifyFamilies } from './events'
 
 const day = (d: string) => new Date(`${d}T00:00:00Z`)
 const fmt = (d: string) => day(d).toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'long', day: '2-digit', month: 'short' })
-const fmtAr = (d: string) => day(d).toLocaleDateString('ar-EG', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' })
+const fmtAr = (d: string) => day(d).toLocaleDateString('ar-EG-u-nu-latn', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' })
 const addDay = (d: string) => new Date(day(d).getTime() + 86_400_000).toISOString().slice(0, 10)
 /** "16:00" → "4:00 PM" / "4:00 م" */
 const time12 = (t: string, ar = false) => {

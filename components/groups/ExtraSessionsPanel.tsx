@@ -41,7 +41,7 @@ export function ExtraSessionsPanel({ groupId, rows, canEdit }: { groupId: string
       {rows.length === 0 && <p className="text-xs text-slate-400">{L('None. Use this to make up a holiday so the month does not run late.', 'مفيش. استخدمها علشان تعوّض إجازة والشهر مايتأخرش.')}</p>}
       {rows.map((r) => (
         <div key={r.id} className="flex items-center justify-between rounded border border-slate-100 px-2 py-1 text-xs">
-          <span>{new Date(`${r.date}T00:00:00Z`).toLocaleDateString(L('en-GB', 'ar-EG'), { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' })} · {r.time}{r.reason ? ` · ${r.reason}` : ''}</span>
+          <span>{new Date(`${r.date}T00:00:00Z`).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' })} · {r.time}{r.reason ? ` · ${r.reason}` : ''}</span>
           {canEdit && <button type="button" onClick={() => remove.mutate(r.id)} className="text-rose-500 hover:text-rose-700" aria-label="Remove"><X className="h-3.5 w-3.5" /></button>}
         </div>
       ))}

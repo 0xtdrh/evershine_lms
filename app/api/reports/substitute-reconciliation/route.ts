@@ -46,11 +46,23 @@ export async function GET(_request: NextRequest) {
   const result = []
   for (const r of rows) {
     const dateStr = r.date.toISOString().slice(0, 10)
-    const [substituteRate, originalRate, sessionInfo] = await Promise.all([
+    const [substituteRate, originalRate, sessionInfo, countedForAbsent] = await Promise.all([
       resolveGroupSessionRate(r.classSection.id, r.substituteTeacher.id),
       resolveGroupSessionRate(r.classSection.id, r.originalTeacher.id),
       getSessionNumberForDate(r.classSection.id, dateStr),
+      // 2026-10-25 (live test): is the missed session still counted for the absent instructor's per-session pay?
+      // When the substitute marked the attendance it is counted for the substitute only — a deduction would be a 2nd cut.
+      prisma.enrollmentAttendanceRecord.findFirst({
+        where: {
+          attendanceDate: r.date, studentEnrollment: { classSectionId: r.classSection.id },
+          OR: [{ taughtByTeacherId: r.originalTeacher.id }, { AND: [{ taughtByTeacherId: null }, { markedByTeacherId: r.originalTeacher.id }] }],
+        },
+        select: { id: true },
+      }).then((x) => !!x),
     ])
+    const marked = await prisma.enrollmentAttendanceRecord.count({ where: { attendanceDate: r.date, studentEnrollment: { classSectionId: r.classSection.id } } })
+    // per-session pay already leaves the session out (attendance saved, not counted for him) → no deduction suggested
+    const alreadyExcluded = marked > 0 && !countedForAbsent
     const substituteAdj = r.payAdjustments.find((a) => a.teacherId === r.substituteTeacher.id)
     const originalAdj = r.payAdjustments.find((a) => a.teacherId === r.originalTeacher.id)
 
@@ -67,7 +79,8 @@ export async function GET(_request: NextRequest) {
       substituteAdjustment: substituteAdj ? { id: substituteAdj.id, amount: Number(substituteAdj.amount) } : null,
       originalAdjustment: originalAdj ? { id: originalAdj.id, amount: Number(originalAdj.amount) } : null,
       suggestedBonusAmount: substituteRate,
-      suggestedDeductionAmount: originalRate,
+      suggestedDeductionAmount: alreadyExcluded ? null : originalRate,
+      deductionAlreadyExcluded: alreadyExcluded,
     })
   }
 

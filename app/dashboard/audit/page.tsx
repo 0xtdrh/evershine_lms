@@ -79,7 +79,7 @@ export default function AuditPage() {
   if (!can('audit_logs', 'read')) return <AccessDenied title={L('Change log', 'سجل التعديلات')} message={L("You don't have access to the change log.", 'مالكش صلاحية على سجل التعديلات.')} />
   const rows = q.data?.pages.flatMap((p) => p.rows) ?? []
   const types = q.data?.pages[0]?.types ?? []
-  const fmt = (iso: string) => new Date(iso).toLocaleString(ar ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+  const fmt = (iso: string) => new Date(iso).toLocaleString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })
 
   return (
     <div className="space-y-5">

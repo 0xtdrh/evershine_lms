@@ -63,7 +63,7 @@ export function AnnouncementList({ tab, canApprove }: { tab: 'sent' | 'pending';
                 <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${st[2]}`}>{ar ? st[1] : st[0]}</span>
               </span>
             </div>
-            <p className="mt-0.5 text-xs text-slate-500">{who} · {where} · {r.sender} · {new Date(r.publishedAt).toLocaleString(ar ? 'ar-EG' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' })}</p>
+            <p className="mt-0.5 text-xs text-slate-500">{who} · {where} · {r.sender} · {new Date(r.publishedAt).toLocaleString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' })}</p>
             {r.status === 'PUBLISHED' && r.delivered && (
               <p className="mt-1 text-xs text-slate-600">
                 {L('Reached', 'وصل لـ')} <b>{r.total}</b> · {L('read', 'قرأ')} <b>{r.read}</b>{r.requireAck && <> · {L('confirmed', 'أكّد')} <b>{r.acked}</b></>}
@@ -113,7 +113,7 @@ function AnnouncementDetail({ id }: { id: string }) {
   const a = data.announcement
   const open = (r: Detail['recipients'][number]) => (a.requireAck ? !r.ackAt : !r.readAt)
   const list = only ? data.recipients.filter(open) : data.recipients
-  const day = (d: string | null) => (d ? new Date(d).toLocaleString(ar ? 'ar-EG' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—')
+  const day = (d: string | null) => (d ? new Date(d).toLocaleString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—')
   return (
     <div className="space-y-3 text-sm">
       <div className="rounded-lg bg-slate-50 p-3">

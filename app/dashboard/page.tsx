@@ -280,7 +280,7 @@ export default function DashboardPage() {
           </h1>
         </div>
         <p className="text-gray-500 mt-1">
-          {new Date().toLocaleDateString(L('en-GB', 'ar-EG'), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Africa/Cairo' })}
+          {new Date().toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Africa/Cairo' })}
         </p>
       </div>
       {role === 'STUDENT' && (
@@ -693,7 +693,7 @@ export default function DashboardPage() {
                     <span className="text-slate-700">{activityVerb(item.action)}</span>
                   </div>
                   <span className="text-xs text-slate-400 flex-shrink-0">
-                    {item.timestamp ? new Date(item.timestamp).toLocaleString(L('en-GB', 'ar-EG'), { 
+                    {item.timestamp ? new Date(item.timestamp).toLocaleString(L('en-GB', 'ar-EG-u-nu-latn'), { 
                       year: 'numeric', 
                       month: 'short', 
                       day: '2-digit',

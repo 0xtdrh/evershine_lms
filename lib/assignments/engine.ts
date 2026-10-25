@@ -390,7 +390,7 @@ export async function gradeSubmission(user: { id: string; role: string; campusId
   if (input.action === 'return') {
     if (!feedback) return fail('INVALID', 'Write what needs to change')
     await prisma.assignmentSubmission.update({ where: { id: s.id }, data: { status: 'RETURNED', feedback, gradedAt: new Date(), gradedById: user.id, score: null, ...extras } })
-    await notifyGraded(s.studentId, b?.titleEn || 'Homework', 'returned', 'اترجع للتعديل')
+    await notifyGraded(s.studentId, b?.titleEn || 'Homework', 'returned', 'اترجع للتعديل', b?.titleAr || b?.titleEn || 'الواجب')
     return { ok: true, value: { score: null, status: 'RETURNED' } }
   }
 
@@ -430,7 +430,7 @@ export async function gradeSubmission(user: { id: string; role: string; campusId
   if (await resultVisibleNow(s.classSectionId, s.blockId, s.studentId)) {
     await prisma.assignmentNotice.deleteMany({ where: { classSectionId: s.classSectionId, blockId: s.blockId, kind: 'RESULT', studentId: s.studentId } })
     await prisma.assignmentNotice.create({ data: { classSectionId: s.classSectionId, blockId: s.blockId, kind: 'RESULT', studentId: s.studentId } }).catch(() => undefined)
-    await notifyGraded(s.studentId, b?.titleEn || 'Homework', `graded: ${score} / ${totalMax(data)}`, `اتصحح: ${score} / ${totalMax(data)}`)
+    await notifyGraded(s.studentId, b?.titleEn || 'Homework', `graded: ${score} / ${totalMax(data)}`, `اتصحح: ${score} / ${totalMax(data)}`, b?.titleAr || b?.titleEn || 'الواجب')
   }
   return { ok: true, value: { score, status: 'GRADED' } }
 }
@@ -441,10 +441,10 @@ async function resultVisibleNow(groupId: string, blockId: string, studentId: str
   return visibility(policy, a, { status: 'GRADED' }).grades
 }
 
-async function notifyGraded(studentId: string, title: string, what: string, whatAr: string) {
+async function notifyGraded(studentId: string, title: string, what: string, whatAr: string, titleAr: string) {
   try {
     const { notifyFamilies } = await import('@/lib/notifications/events')
-    await notifyFamilies([studentId], 'ASSIGNMENT_GRADED', (st) => ({ title: 'Homework', titleAr: 'الواجب', message: `${st.firstName}: "${title}" ${what}.`, messageAr: `${st.firstName}: «${title}» ${whatAr}.`, relatedId: null }), { includeStudent: true })
+    await notifyFamilies([studentId], 'ASSIGNMENT_GRADED', (st) => ({ title: 'Homework', titleAr: 'الواجب', message: `${st.firstName}: "${title}" ${what}.`, messageAr: `${st.firstName}: «${titleAr}» ${whatAr}.`, relatedId: null }), { includeStudent: true })
   } catch (err) { console.error('[ASSIGNMENT_NOTIFY]', err) }
 }
 
@@ -511,18 +511,19 @@ export async function assignmentReminders(now = new Date()) {
     const students = (await prisma.studentEnrollment.findMany({ where: { classSectionId: g.id, status: 'ACTIVE' }, select: { studentId: true } })).map((e) => e.studentId)
     for (const a of list) {
       const title = a.titleEn || a.sessionTitleEn || 'Homework'
+      const titleAr = a.titleAr || a.sessionTitleAr || title
       const notice = async (kind: string, studentId = '') => {
         try { await prisma.assignmentNotice.create({ data: { classSectionId: g.id, blockId: a.blockId, kind, studentId } }); return true } catch { return false }
       }
       if (students.length && (await notice('NEW'))) {
         const due = a.dueAt ? ` Due ${a.dueAt.toISOString().slice(0, 10)}.` : ''
         const dueAr = a.dueAt ? ` آخر ميعاد ${a.dueAt.toISOString().slice(0, 10)}.` : ''
-        out.newSent += await notifyFamilies(students, 'ASSIGNMENT_NEW', (st) => ({ title: 'New homework', titleAr: 'واجب جديد', message: `${st.firstName}: "${title}".${due}`, messageAr: `${st.firstName}: «${title}».${dueAr}`, relatedId: null }), { includeStudent: true })
+        out.newSent += await notifyFamilies(students, 'ASSIGNMENT_NEW', (st) => ({ title: 'New homework', titleAr: 'واجب جديد', message: `${st.firstName}: "${title}".${due}`, messageAr: `${st.firstName}: «${titleAr}».${dueAr}`, relatedId: null }), { includeStudent: true })
       }
       if (a.dueAt && a.dueAt.getTime() > now.getTime() && a.dueAt.getTime() - now.getTime() <= DAY) {
         const handed = new Set((await prisma.assignmentSubmission.findMany({ where: { classSectionId: g.id, blockId: a.blockId, status: { not: 'DRAFT' } }, select: { studentId: true } })).map((s) => s.studentId))
         for (const sid of students.filter((x) => !handed.has(x))) {
-          if (await notice('DUE_SOON', sid)) out.dueSent += await notifyFamilies([sid], 'ASSIGNMENT_DUE', (st) => ({ title: 'Homework due soon', titleAr: 'ميعاد الواجب قرّب', message: `${st.firstName}: "${title}" is due ${a.dueAt!.toISOString().slice(0, 10)}.`, messageAr: `${st.firstName}: آخر ميعاد لـ «${title}» يوم ${a.dueAt!.toISOString().slice(0, 10)}.`, relatedId: null }), { includeStudent: true })
+          if (await notice('DUE_SOON', sid)) out.dueSent += await notifyFamilies([sid], 'ASSIGNMENT_DUE', (st) => ({ title: 'Homework due soon', titleAr: 'ميعاد الواجب قرّب', message: `${st.firstName}: "${title}" is due ${a.dueAt!.toISOString().slice(0, 10)}.`, messageAr: `${st.firstName}: آخر ميعاد لـ «${titleAr}» يوم ${a.dueAt!.toISOString().slice(0, 10)}.`, relatedId: null }), { includeStudent: true })
         }
       }
     }
@@ -533,7 +534,7 @@ export async function assignmentReminders(now = new Date()) {
       const graded = await prisma.assignmentSubmission.findMany({ where: { classSectionId: g.id, blockId: a.blockId, status: 'GRADED' }, select: { studentId: true, score: true, maxScore: true } })
       for (const sub of graded) {
         const fresh = await prisma.assignmentNotice.create({ data: { classSectionId: g.id, blockId: a.blockId, kind: 'RESULT', studentId: sub.studentId } }).then(() => true).catch(() => false)
-        if (fresh) out.resultsSent += await notifyFamilies([sub.studentId], 'ASSIGNMENT_GRADED', (st) => ({ title: 'Homework', titleAr: 'الواجب', message: `${st.firstName}: "${a.titleEn || 'Homework'}" graded: ${sub.score} / ${sub.maxScore}.`, messageAr: `${st.firstName}: «${a.titleEn || 'الواجب'}» اتصحح: ${sub.score} / ${sub.maxScore}.`, relatedId: null }), { includeStudent: true })
+        if (fresh) out.resultsSent += await notifyFamilies([sub.studentId], 'ASSIGNMENT_GRADED', (st) => ({ title: 'Homework', titleAr: 'الواجب', message: `${st.firstName}: "${a.titleEn || 'Homework'}" graded: ${sub.score} / ${sub.maxScore}.`, messageAr: `${st.firstName}: «${a.titleAr || a.titleEn || 'الواجب'}» اتصحح: ${sub.score} / ${sub.maxScore}.`, relatedId: null }), { includeStudent: true })
       }
     }
     // instructor: hand-ins waiting more than 48 h

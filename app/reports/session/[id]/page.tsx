@@ -29,8 +29,8 @@ interface Report {
   groupNote: string | null
 }
 
-const fmtDay = (d: string, ar: boolean) => new Date(`${d}T00:00:00Z`).toLocaleDateString(ar ? 'ar-EG' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
-const fmtTime = (d: string, ar: boolean) => new Date(d).toLocaleString(ar ? 'ar-EG' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+const fmtDay = (d: string, ar: boolean) => new Date(`${d}T00:00:00Z`).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+const fmtTime = (d: string, ar: boolean) => new Date(d).toLocaleString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

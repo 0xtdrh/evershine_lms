@@ -30,7 +30,7 @@ export function ParentReferralCard({ compact = false }: { compact?: boolean }) {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base"><Gift className="h-5 w-5 text-indigo-600" /> {L('Invite a friend', 'ادعي صاحبك')}{data.ambassador && <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800"><Award className="h-3.5 w-3.5" /> {L('TechNova Ambassador', 'سفير TechNova')}</span>}</CardTitle>
         <CardDescription>
-          {L('Share your code.', 'شارك الكود بتاعك.')} {data.rewardEnabled ? `When your friend's child pays the first invoice, you get ${data.rewardAmount} EGP in your child's wallet.` : 'Thank you for recommending us!'}
+          {L('Share your code.', 'شارك الكود بتاعك.')} {data.rewardEnabled ? L(`When your friend's child pays the first invoice, you get ${data.rewardAmount} EGP in your child's wallet.`, `لما ابن صاحبك يدفع أول فاتورة، هتاخد ${data.rewardAmount} ج.م في محفظة ابنك.`) : L('Thank you for recommending us!', 'شكرًا إنك بترشّحنا!')}
           {data.welcomeEnabled ? ' Your friend gets a welcome discount too.' : ''}
         </CardDescription>
       </CardHeader>
@@ -48,7 +48,7 @@ export function ParentReferralCard({ compact = false }: { compact?: boolean }) {
             {data.friends.map((f) => (
               <div key={f.id} className="flex justify-between rounded border border-slate-100 px-2 py-1">
                 <span>{f.name}</span>
-                <span className="text-xs text-slate-500">{f.status === 'REWARDED' ? (f.reward ? `🎁 ${f.reward} EGP` : 'joined ✓') : 'waiting for the first payment'}</span>
+                <span className="text-xs text-slate-500">{f.status === 'REWARDED' ? (f.reward ? `🎁 ${f.reward} ${L('EGP', 'ج.م')}` : L('joined ✓', 'اتسجل ✓')) : L('waiting for the first payment', 'مستني أول دفعة')}</span>
               </div>
             ))}
             {!data.ambassador && <p className="text-xs text-slate-400">{Math.max(0, data.ambassadorAt - data.rewardedCount)} {L('more to become a TechNova Ambassador.', 'كمان وتبقى سفير TechNova.')}</p>}

@@ -55,7 +55,7 @@ export function AnnouncementFeed({ compact }: { compact?: boolean }) {
               <p className="flex items-center gap-2 font-semibold text-slate-900">
                 {a.pinned ? <Pin className="h-4 w-4 text-indigo-600" /> : <Megaphone className="h-4 w-4 text-indigo-600" />}{title}
               </p>
-              <span className="text-xs text-slate-400">{new Date(a.publishedAt).toLocaleDateString(ar ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+              <span className="text-xs text-slate-400">{new Date(a.publishedAt).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             </div>
             <p className="mt-1.5 whitespace-pre-wrap text-sm text-slate-700">{text}</p>
             {a.attachmentUrl && (

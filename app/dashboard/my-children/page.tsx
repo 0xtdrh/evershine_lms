@@ -33,6 +33,7 @@ import ResultReportCard, { type ReportCardResult, type ReportCardStudent } from 
 import { TaskMarksPanel, type TaskResultItem } from '@/components/academic/TaskMarksPanel'
 import { MonthlyMonitoringGrid } from '@/components/academic/MonthlyMonitoringGrid'
 import { getDisplayedPosition, type ResultCardConfig } from '@/lib/academic/result-card-config'
+import { HomeworkList } from '@/components/assignments/HomeworkList'
 import { L, useI18n } from '@/lib/i18n/client'
 
 const DAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -209,6 +210,12 @@ export default function MyChildrenPage() {
     queryFn: () => fetchApi<ChildAcademic>(`/api/guardian-portal/children/${childId}/academic`),
     enabled: !!childId && allowed,
   })
+  // 2026-10-25: the header tiles use the real attendance (the template summary stayed "—") — same cache as the attendance tab
+  const { data: childAtt } = useQuery({
+    queryKey: ['attendance-timeline', childId],
+    queryFn: () => fetchApi<{ overall: { pct: number | null; sessions: number } }>(`/api/students/${childId}/attendance-timeline`),
+    enabled: !!childId && allowed,
+  })
 
 
   if (status === 'loading') return null
@@ -337,7 +344,7 @@ export default function MyChildrenPage() {
                             {academic.student.firstName} {academic.student.lastName}
                           </h2>
                           <p className="text-emerald-300 text-sm mt-0.5">
-                            {academic.activeYear?.name ?? L('No active year', 'مفيش سنة دراسية')} · {academic.student.campus.name}
+                            {academic.student.registrationNumber} · {academic.student.campus.name}
                           </p>
                           <div className="mt-3 flex flex-wrap gap-2">
                             {academic.enrollment && (
@@ -346,34 +353,23 @@ export default function MyChildrenPage() {
                                 {academic.enrollment.classSection.className}-{academic.enrollment.classSection.sectionName}
                               </span>
                             )}
-                            {cShift && (
-                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1 text-xs font-semibold text-white border border-white/10">
-                                <Clock className="h-3.5 w-3.5 text-amber-300" />
-                                {cShift} Shift
-                              </span>
-                            )}
+                            {/* 2026-10-25: the session shift is switched off — not shown */}
                             {academic.enrollment?.deliveryMode && (
                               <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1 text-xs font-semibold text-white border border-white/10">
-                                {academic.enrollment.deliveryMode}
+                                {({ PHYSICAL: L('In the branch', 'في الفرع'), ONLINE: L('Online', 'أونلاين'), HYBRID: L('Branch + online', 'فرع + أونلاين') } as Record<string, string>)[academic.enrollment.deliveryMode] ?? academic.enrollment.deliveryMode}
                               </span>
                             )}
                           </div>
                         </div>
 
-                        {academic.enrollment?.rollNumber && (
-                          <div className="shrink-0 text-center">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">{L('Roll No.', 'رقم الطالب')}</p>
-                            <p className="text-2xl font-black text-white">{academic.enrollment.rollNumber}</p>
-                          </div>
-                        )}
+                        {/* 2026-10-25: the template roll number was removed (the registration number is shown under the name) */}
                       </div>
 
                       {/* Stats bar */}
-                      <div className="grid grid-cols-2 divide-x divide-white/10 border-t border-white/10 sm:grid-cols-4">
+                      <div className="grid grid-cols-3 divide-x divide-white/10 border-t border-white/10">
                         {[
-                          { label: L('Attendance', 'الحضور'), value: academic.attendance.summary.attendancePct != null ? `${academic.attendance.summary.attendancePct}%` : '—' },
-                          { label: L('Courses', 'الكورسات'), value: academic.enrollment?.subjectEnrollments?.length ?? '—' },
-                          { label: L('Avg. Result', 'متوسط النتيجة'), value: academic.overallPercentage != null ? `${academic.overallPercentage}%` : '—' },
+                          { label: L('Attendance', 'الحضور'), value: childAtt?.overall.pct != null ? `${childAtt.overall.pct}%` : '—' },
+                          { label: L('Sessions', 'الحصص'), value: childAtt?.overall.sessions ?? 0 },
                           { label: L('Invoices', 'الفواتير'), value: academic.feeInvoices?.length ?? 0 },
                         ].map(({ label, value }) => (
                           <div key={label} className="px-4 py-3 text-center">
@@ -611,56 +607,17 @@ export default function MyChildrenPage() {
                   <div className="flex items-center gap-2">
                     <ClipboardCheck className="w-5 h-5 text-violet-600" />
                     <div>
-                      <h3 className="text-base font-bold text-slate-900">{L('Assignments & task marks', 'درجات الواجبات والمهام')}</h3>
+                      <h3 className="text-base font-bold text-slate-900">{L('Homework', 'الواجبات')}</h3>
                       <p className="text-xs text-slate-500">
-                        {L('All graded tasks by course.', 'كل المهام اللي اتصححت لكل كورس.')}
+                        {L('Homework of the lessons: status, grade and the instructor’s comment.', 'واجبات الدروس: حالتها والدرجة وتعليق المدرب.')}
                       </p>
                     </div>
                   </div>
-                  <TaskMarksPanel taskResults={(academic.taskResults as TaskResultItem[])} />
+                  {/* 2026-10-25: the real LMS homework (the template task marks were always empty) */}
+                  <HomeworkList studentId={childId} enabled={!!childId} />
                 </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <ClipboardCheck className="w-5 h-5 text-indigo-600" />
-                      {L('Monitoring reports', 'تقارير المتابعة')}
-                    </CardTitle>
-                    <CardDescription>{L('Daily feedback shows after the instructor saves it; monthly reports after they are declared.', 'الملاحظات اليومية بتظهر بعد ما المدرب يحفظها، والتقارير الشهرية بعد إعلانها.')}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-5">
-                    <div>
-                      <h3 className="mb-2 text-sm font-semibold text-slate-800">{L('Recent daily monitoring', 'آخر متابعة يومية')}</h3>
-                      {academic.monitoringReports.daily.length === 0 ? <p className="text-sm text-gray-500">{L('No daily monitoring entries yet.', 'لسه مفيش متابعة يومية.')}</p> : (
-                        <div className="space-y-2">
-                          {academic.monitoringReports.daily.map((entry, index) => (
-                            <div key={`${entry.date}-${entry.courseName}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded border p-3 text-sm">
-                              <div><p className="font-medium">{entry.courseName}</p><p className="text-xs text-slate-500">{new Date(entry.date).toLocaleDateString(L('en-GB', 'ar-EG'))} · {L('Grade', 'التقدير')}: {entry.grade ?? '—'} · {entry.highlight === 'STAR_OF_THE_DAY' ? L('Star of the Day', 'نجم اليوم') : entry.highlight === 'POOR' ? L('Poor', 'ضعيف') : L('No highlight', 'عادي')}</p></div>
-                              <p className="max-w-md text-slate-600">{entry.remarks || '—'}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="mb-3 text-sm font-semibold text-slate-800 flex items-center gap-2">
-                        <span className="flex h-2 w-2 rounded-full bg-emerald-600" />
-                        {L('Declared monthly sheets', 'تقارير الشهر المعلنة')}
-                      </h3>
-                      {academic.monitoringReports.monthly.length === 0 ? (
-                        <p className="text-sm text-slate-500 bg-slate-50 border border-dashed rounded-lg p-6 text-center">
-                          {L('No monthly report has been declared yet.', 'لسه مفيش تقرير شهري معلن.')}
-                        </p>
-                      ) : (
-                        <div className="space-y-4">
-                          {academic.monitoringReports.monthly.map((report) => (
-                            <MonthlyMonitoringGrid key={report.id} report={report} />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* 2026-10-25: template daily / monthly monitoring card removed (never used; real reports are in the Reports tab) */}
               </TabsContent>
 
               <TabsContent value="monitoring" className="mt-4">

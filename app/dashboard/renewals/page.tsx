@@ -34,7 +34,11 @@ interface StudentRow {
 interface GroupRow { id: string; label: string; campus: string; course: string | null; level: string | null; counts: { yes: number; no: number; pending: number }; students: StudentRow[] }
 interface Data { settings: { sessionsBefore: number }; churn: { since: string; total: number; reasons: Record<string, number> }; groups: GroupRow[] }
 
-const REASONS: Record<string, string> = { PRICE: 'Price', TIME: 'Time / schedule', LEVEL: 'Level / content', TRAVEL: 'Travel / moving', OTHER: 'Other' }
+// 2026-10-25: reasons in the screen language (getters keep the Record shape)
+const REASONS: Record<string, string> = {
+  get PRICE() { return L('Price', 'السعر') }, get TIME() { return L('Time / schedule', 'المواعيد') }, get LEVEL() { return L('Level / content', 'المستوى / المحتوى') },
+  get TRAVEL() { return L('Travel / moving', 'سفر / نقل') }, get OTHER() { return L('Other', 'سبب تاني') },
+}
 const STATUS_STYLE: Record<Status, string> = {
   YES: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   NO: 'border-slate-200 bg-slate-100 text-slate-600',

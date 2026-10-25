@@ -85,7 +85,7 @@ export function ComplaintThread({ id, staff }: { id: string; staff: boolean }) {
         {c.legacyRemarks && <div className="rounded-lg bg-indigo-50 p-3"><p className="text-xs text-indigo-600">{L('TechNova team', 'فريق TechNova')}</p><p>{c.legacyRemarks}</p></div>}
         {c.replies.map((r) => (
           <div key={r.id} className={`rounded-lg p-3 ${r.internal ? 'border border-dashed border-amber-300 bg-amber-50' : r.fromStaff ? 'ml-6 bg-indigo-50' : 'mr-6 bg-slate-50'}`}>
-            <p className="flex items-center gap-1 text-xs text-slate-500">{r.internal && <Lock className="h-3 w-3" />}{r.internal ? L('Internal note · ', 'ملاحظة داخلية · ') : ''}{r.author} · {when(r.createdAt)}</p>
+            <p className="flex items-center gap-1 text-xs text-slate-500">{r.internal && <Lock className="h-3 w-3" />}{r.internal ? L('Internal note · ', 'ملاحظة داخلية · ') : ''}<bdi>{r.author}</bdi> · <bdi dir="ltr">{when(r.createdAt)}</bdi></p>
             <p className="whitespace-pre-wrap text-slate-800">{r.body}</p>
           </div>
         ))}

@@ -320,7 +320,7 @@ export default function StudentAcademicsPage() {
             <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">Student Portal — Academics</p>
             {profileLoading
               ? <Skeleton className="h-7 w-48 bg-white/20 mb-1" />
-              : <h1 className="text-2xl sm:text-3xl font-black leading-tight truncate">
+              : <h1 className="text-2xl sm:text-3xl font-black leading-tight truncate text-white">
                   {profile ? `${profile.firstName} ${profile.lastName}` : 'My Academics'}
                 </h1>}
             <div className="flex flex-wrap gap-2 mt-2">
@@ -342,7 +342,7 @@ export default function StudentAcademicsPage() {
           </div>
         </motion.div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 space-y-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-20 space-y-6">
         {/* ─── Performance Score Cards ─────────────────────────────── */}
         {isLoading ? (
           <LoadingSkeleton />

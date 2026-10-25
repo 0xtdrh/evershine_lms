@@ -36,6 +36,8 @@ interface ReconciliationRow {
   originalAdjustment: RecordedAdjustment | null
   suggestedBonusAmount: number | null
   suggestedDeductionAmount: number | null
+  /** the session is already left out of the absent instructor's per-session pay (substitute recorded it) */
+  deductionAlreadyExcluded?: boolean
 }
 
 export default function SubstituteReconciliationPage() {
@@ -101,7 +103,7 @@ export default function SubstituteReconciliationPage() {
   })
 
   const confirmRemove = (row: ReconciliationRow, adj: RecordedAdjustment, label: string) => {
-    if (window.confirm(`Remove this ${label} (${Math.abs(adj.amount)})?`)) {
+    if (window.confirm(L(`Remove this ${label} (${Math.abs(adj.amount)})?`, `تشيل ${label === 'bonus' ? 'المكافأة' : 'الخصم'} (${Math.abs(adj.amount)})؟`))) {
       removeMutation.mutate({ classSectionId: row.classSectionId, adjustmentId: adj.id })
     }
   }
@@ -172,6 +174,13 @@ export default function SubstituteReconciliationPage() {
                           {L('Remove', 'شيل')}
                         </Button>
                       </div>
+                    ) : row.deductionAlreadyExcluded ? (
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-600">{L('No deduction needed: the session was recorded by the substitute, so it is not counted in this instructor’s per-session pay.', 'مفيش خصم: الحصة اتسجلت باسم البديل، فهي مش محسوبة في أجر المدرب ده بالحصة أصلًا.')}</p>
+                        <Button size="sm" variant="ghost" className="h-6 text-[11px] text-red-600" onClick={() => openDialog(row, 'deduction')}>
+                          {L('Extra deduction (penalty)…', 'خصم زيادة (عقوبة)…')}
+                        </Button>
+                      </div>
                     ) : (
                       <Button size="sm" variant="outline" className="h-7 text-xs text-red-600 border-red-200" onClick={() => openDialog(row, 'deduction')}>
                         {L('+ Deduction', '+ خصم')}{row.suggestedDeductionAmount ? ` (${row.suggestedDeductionAmount})` : ''}
@@ -188,7 +197,7 @@ export default function SubstituteReconciliationPage() {
       <Dialog open={!!dialog} onOpenChange={(open) => !open && setDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{dialog?.kind === 'bonus' ? 'Add bonus' : 'Add deduction'}</DialogTitle>
+            <DialogTitle>{dialog?.kind === 'bonus' ? L('Add bonus', 'ضيف مكافأة') : L('Add deduction', 'ضيف خصم')}</DialogTitle>
             <DialogDescription>
               {dialog?.kind === 'bonus' ? dialog.row.substituteTeacher.name : dialog?.row.originalTeacher.name} — {dialog?.row.groupLabel} {L('on', 'يوم')} {dialog?.row.date.slice(0, 10)}
             </DialogDescription>
@@ -196,12 +205,12 @@ export default function SubstituteReconciliationPage() {
           <Input type="number" placeholder={L('Amount', 'المبلغ')} value={amount} onChange={(e) => setAmount(e.target.value)} />
           <p className="text-xs text-slate-400">
             {amount
-              ? 'Filled in from this group\u2019s per-session rate \u2014 adjust if needed.'
-              : 'No per-session rate is set for this group or this teacher \u2014 enter the amount manually.'}
+              ? L('Filled in from this group\u2019s per-session rate \u2014 adjust if needed.', '\u0627\u0644\u0645\u0628\u0644\u063a \u0645\u0646 \u0633\u0639\u0631 \u0627\u0644\u062d\u0635\u0629 \u0641\u064a \u0627\u0644\u062c\u0631\u0648\u0628 \u062f\u0647 \u2014 \u0639\u062f\u0651\u0644\u0647 \u0644\u0648 \u0645\u062d\u062a\u0627\u062c.')
+              : L('No per-session rate is set for this group or this teacher \u2014 enter the amount manually.', '\u0645\u0641\u064a\u0634 \u0633\u0639\u0631 \u062d\u0635\u0629 \u0645\u062a\u062d\u062f\u062f \u0644\u0644\u062c\u0631\u0648\u0628 \u0623\u0648 \u0627\u0644\u0645\u062f\u0631\u0628 \u2014 \u0627\u0643\u062a\u0628 \u0627\u0644\u0645\u0628\u0644\u063a \u0628\u0625\u064a\u062f\u0643.')}
           </p>
           <DialogFooter>
             <Button disabled={!amount || Number(amount) === 0 || submitMutation.isPending} onClick={() => submitMutation.mutate()}>
-              {submitMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+              {submitMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : L('Save', 'احفظ')}
             </Button>
           </DialogFooter>
         </DialogContent>

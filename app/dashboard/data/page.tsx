@@ -66,7 +66,7 @@ export default function DataCentrePage() {
               <tbody>
                 {log.map((r) => (
                   <tr key={r.id} className="border-t">
-                    <td className="p-2">{new Date(r.createdAt).toLocaleString(ar ? 'ar-EG' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                    <td className="p-2">{new Date(r.createdAt).toLocaleString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' })}</td>
                     <td className="p-2">{r.user}</td>
                     <td className="p-2">{r.kind === 'IMPORT' ? L('Import', 'استيراد') : `${L('Export', 'تصدير')} ${(r.format ?? '').toUpperCase()}`}{r.fileName ? ` · ${r.fileName}` : ''}</td>
                     <td className="p-2">{name(r.dataset)}</td>

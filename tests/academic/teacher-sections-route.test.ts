@@ -27,6 +27,8 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/lib/academic/teacher-scope', () => ({
   getTeacherClassSectionIds: getTeacherClassSectionIdsMock,
+  // 2026-10-25: groups covered as a substitute (none here)
+  teacherCoveredSections: vi.fn().mockResolvedValue([]),
 }))
 
 vi.mock('@/lib/academic/engine', () => ({

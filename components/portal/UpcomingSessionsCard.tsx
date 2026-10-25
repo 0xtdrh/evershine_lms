@@ -33,7 +33,7 @@ export function UpcomingSessionsCard({ studentId }: { studentId?: string }) {
   const rows = data?.sessions ?? []
   if (!rows.length) return null
   const dayText = (d: string) => (d === data?.today ? L('Today', 'النهارده')
-    : new Date(`${d}T00:00:00Z`).toLocaleDateString(ar ? 'ar-EG' : 'en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'short' }))
+    : new Date(`${d}T00:00:00Z`).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'short' }))
   return (
     <Card>
       <CardHeader className="pb-2">

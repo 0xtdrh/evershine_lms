@@ -28,7 +28,7 @@ interface Data {
 
 export const ATTENDANCE_AR: Record<string, string> = { PRESENT: 'حاضر', LATE: 'متأخر', ABSENT: 'غايب', EXCUSED: 'غياب بعذر' }
 export const attendanceLabel = (s: string | null) => (s ? L(s.charAt(0) + s.slice(1).toLowerCase(), ATTENDANCE_AR[s] ?? s) : '—')
-const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+const when = (iso: string) => new Date(iso).toLocaleString(L('en-GB', 'ar-EG-u-nu-latn'), { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Cairo' })
 
 export function SessionReportPanel({ groupId, date }: { groupId: string; date: string }) {
   const { data: session } = useSession()

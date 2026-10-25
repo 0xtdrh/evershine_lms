@@ -51,7 +51,7 @@ export default function DataPrintPage({ params }: { params: Promise<{ key: strin
             <img src="/brand/bglogo.png" alt="TechNova" className="h-10 w-auto" />
             <div className="text-end">
               <h1 className="text-lg font-bold" style={{ color: '#1B4F8A' }}>{ar ? d.ar : d.en} ({data.count})</h1>
-              <p className="text-xs text-gray-600">{filters ? `${filters} · ` : ''}{new Date().toLocaleString(ar ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+              <p className="text-xs text-gray-600">{filters ? `${filters} · ` : ''}{new Date().toLocaleString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</p>
             </div>
           </div>
           <div className="overflow-x-auto print:overflow-visible">

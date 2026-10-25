@@ -642,9 +642,18 @@ function NotificationBell() {
       REFERRAL_UPDATE:   { label: 'Referral', className: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
     }
     const config = map[type] ?? { label: 'General', className: 'bg-slate-50 text-slate-700 border-slate-100' }
+    // 2026-10-25: category names in Arabic too
+    const AR_LABEL: Record<string, string> = {
+      Academics: 'الدراسة', Exams: 'امتحانات', 'Daily Scores': 'درجات يومية', Targets: 'أهداف', Attendance: 'الحضور', Timetable: 'المواعيد',
+      Leaves: 'الإجازات', Admissions: 'التسجيل', 'Academic Query': 'سؤال', Finance: 'الفلوس', 'Payment Proof': 'إيصال دفع', Complaints: 'الشكاوى',
+      Announcement: 'إعلان', Wallet: 'المحفظة', Excuse: 'عذر', Schedule: 'المواعيد', Certificate: 'شهادة', Report: 'تقرير', 'Next level': 'المستوى الجاي',
+      Passport: 'الباسبور', Profile: 'البروفايل', 'Year recap': 'ملخص السنة', 'Session report': 'تقرير الحصة', 'Well done': 'برافو', 'Your opinion': 'رأيك',
+      Birthday: 'عيد ميلاد', Birthdays: 'أعياد ميلاد', 'Follow-up': 'متابعة', Summary: 'ملخص', Renewal: 'التجديد', 'Your message': 'رسالتك', Escalated: 'متصعّدة',
+      Homework: 'الواجب', 'To grade': 'للتصحيح', Curriculum: 'المنهج', Referral: 'الترشيح', General: 'عام',
+    }
     return (
       <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${config.className}`}>
-        {config.label}
+        {(ar && AR_LABEL[config.label]) || config.label}
       </span>
     )
   }
@@ -719,14 +728,14 @@ function NotificationBell() {
       const past = new Date(dateStr)
       const diffMs = now.getTime() - past.getTime()
       const diffMins = Math.floor(diffMs / 60000)
-      if (diffMins < 1) return 'Just now'
-      if (diffMins < 60) return `${diffMins}m ago`
+      if (diffMins < 1) return ar ? 'دلوقتي' : 'Just now'
+      if (diffMins < 60) return ar ? `من ${diffMins} دقيقة` : `${diffMins}m ago`
       const diffHours = Math.floor(diffMins / 60)
-      if (diffHours < 24) return `${diffHours}h ago`
+      if (diffHours < 24) return ar ? `من ${diffHours} ساعة` : `${diffHours}h ago`
       const diffDays = Math.floor(diffHours / 24)
-      if (diffDays === 1) return 'Yesterday'
-      if (diffDays < 7) return `${diffDays}d ago`
-      return past.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      if (diffDays === 1) return ar ? 'امبارح' : 'Yesterday'
+      if (diffDays < 7) return ar ? `من ${diffDays} أيام` : `${diffDays}d ago`
+      return past.toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { month: 'short', day: 'numeric' })
     } catch {
       return ''
     }
@@ -821,12 +830,12 @@ function NotificationBell() {
                     {activeTab === 'inbox' ? <Inbox className="w-5 h-5" /> : <Archive className="w-5 h-5" />}
                   </div>
                   <p className="text-sm font-semibold text-slate-700">
-                    {activeTab === 'inbox' ? 'Your inbox is clear' : 'No archived alerts'}
+                    {activeTab === 'inbox' ? (ar ? 'مفيش إشعارات جديدة' : 'Your inbox is clear') : (ar ? 'مفيش إشعارات قديمة' : 'No archived alerts')}
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
                     {activeTab === 'inbox'
-                      ? 'You are all caught up. New messages will appear here.'
-                      : 'Read notifications will be archived here.'}
+                      ? (ar ? 'كله اتقرا. الإشعارات الجديدة هتظهر هنا.' : 'You are all caught up. New messages will appear here.')
+                      : (ar ? 'الإشعارات اللي اتقرت بتتنقل هنا.' : 'Read notifications will be archived here.')}
                   </p>
                 </div>
               ) : (
@@ -868,7 +877,7 @@ function NotificationBell() {
                         </p>
                         {n.type === 'WALLET_PAYMENT' && n.relatedId && (
                           <a href={`/receipts/${n.relatedId}`} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-700 hover:underline font-semibold mt-1.5 mr-3 inline-block">
-                            Open receipt
+                            {ar ? 'افتح الإيصال' : 'Open receipt'}
                           </a>
                         )}
                         {!n.isRead && (
@@ -876,7 +885,7 @@ function NotificationBell() {
                             onClick={() => markOneMutation.mutate(n.id)}
                             className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold mt-2.5 inline-flex items-center gap-1 transition-colors hover:underline"
                           >
-                            Mark as read
+                            {ar ? 'علّمه مقروء' : 'Mark as read'}
                           </button>
                         )}
                       </div>

@@ -117,7 +117,7 @@ export default function ReserveFundPage() {
             <p className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-1">
               {L('Governance & Capital Reserve', 'الاحتياطي')}
             </p>
-            <h1 className="text-2xl sm:text-3xl font-black leading-tight flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-black leading-tight flex items-center gap-2 text-white">
               <ShieldCheck className="w-8 h-8 text-indigo-400" /> {L('Reserve Fund Ledger', 'دفتر الاحتياطي')}
             </h1>
             <p className="text-indigo-300 text-sm mt-1">
@@ -127,7 +127,7 @@ export default function ReserveFundPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 space-y-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-20 space-y-6">
         {/* Balance Metric card */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Card className="shadow-sm border-indigo-100 bg-white">

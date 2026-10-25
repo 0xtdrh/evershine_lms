@@ -106,9 +106,9 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
       }
       setCustomFields((f) => [
         ...f,
-        ...summary.groups.map((g) => ({ label: `Group: ${g.groupLabel}`, value: g.total, isDeduction: g.total < 0 })),
+        ...summary.groups.map((g) => ({ label: `${L('Group', 'جروب')}: ${g.groupLabel}`, value: g.total, isDeduction: g.total < 0 })),
       ])
-      notify.success(`Added pay from ${summary.groups.length} group${summary.groups.length === 1 ? '' : 's'} — review before saving`)
+      notify.success(L(`Added pay from ${summary.groups.length} group(s) — review before saving`, `اتضاف أجر ${summary.groups.length} جروب — راجعه قبل الحفظ`))
     } catch (err: any) {
       notify.error(err?.message ?? 'Failed to fetch group pay')
     } finally {
@@ -309,6 +309,10 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 
 // ─── Slip Row ─────────────────────────────────────────────────────────────────
 
+/** 2026-10-25: role / approval words in the screen language (were English). */
+const roleWord = (r: string) => ({ Teacher: L('Instructor', 'مدرب'), TEACHER: L('Instructor', 'مدرب'), Accountant: L('Accountant', 'محاسب'), ACCOUNTANT: L('Accountant', 'محاسب'), Administrator: L('Administrator', 'إداري'), ADMIN: L('Administrator', 'إداري'), SECRETARY: L('Secretary', 'سكرتارية'), BRANCH_MANAGER: L('Branch manager', 'مدير فرع') } as Record<string, string>)[r] ?? r
+const approvalWord = (a: string) => ({ PENDING: L('Waiting for approval', 'مستنية الموافقة'), APPROVED: L('Approved', 'اتوافق عليها'), REJECTED: L('Rejected', 'اترفضت'), LEGACY: L('Old', 'قديمة') } as Record<string, string>)[a] ?? a
+
 function SlipRow({ slip }: { slip: SalarySlip }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -326,12 +330,12 @@ function SlipRow({ slip }: { slip: SalarySlip }) {
           </div>
           <div className="min-w-0">
             <p className="font-black text-gray-900 text-sm truncate">{slip.employeeName}</p>
-            <p className="text-[11px] text-gray-400">{slip.designation ?? slip.employeeRole} · {slip.month}</p>
+            <p className="text-[11px] text-gray-400">{roleWord(slip.designation ?? slip.employeeRole)} · {slip.month}</p>
           </div>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          <Badge className={`text-xs font-bold border ${statusColor}`}>{slip.status}</Badge>
-          <Badge className="text-xs font-bold border border-amber-200 bg-amber-50 text-amber-700">{slip.approvalStatus ?? 'PENDING'}</Badge>
+          <Badge className={`text-xs font-bold border ${statusColor}`}>{slip.status === 'ISSUED' ? L('Issued', 'اتطلعت') : slip.status === 'CANCELLED' ? L('Cancelled', 'اتلغت') : slip.status}</Badge>
+          <Badge className="text-xs font-bold border border-amber-200 bg-amber-50 text-amber-700">{approvalWord(slip.approvalStatus ?? 'PENDING')}</Badge>
           <span className="text-sm font-black text-indigo-900">{L('EGP', 'ج.م')} {Number(slip.netSalary).toLocaleString()}</span>
           {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </div>
@@ -443,7 +447,7 @@ export default function SalarySlipsPage() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
           <div>
             <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">{L('Accountant · Payroll', 'المحاسبة · المرتبات')}</p>
-            <h1 className="text-2xl sm:text-3xl font-black leading-tight">{L('Salary Slips', 'قسايم المرتبات')}</h1>
+            <h1 className="text-2xl sm:text-3xl font-black leading-tight text-white">{L('Salary Slips', 'قسايم المرتبات')}</h1>
             <p className="text-blue-200 text-sm mt-1">{L('Issue, track and export staff payroll records', 'اطلع وتابع وصدّر قسايم المرتبات')}</p>
           </div>
           <Button onClick={() => setShowModal(true)}
@@ -453,7 +457,7 @@ export default function SalarySlipsPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 space-y-5">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-20 space-y-5">
         {['SUPER_ADMIN', 'ADMIN'].includes(role) && <SalarySettingsCard />}
         {/* Summary stat */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -472,7 +476,7 @@ export default function SalarySlipsPage() {
           <Card className="shadow-sm hidden sm:block">
             <CardContent className="pt-4">
               <p className="text-xs font-bold text-gray-400 uppercase mb-1">{L('Current Filter', 'الفلتر الحالي')}</p>
-              <p className="text-sm font-black text-gray-700">{filterMonth || 'All months'} · {filterStatus || 'All statuses'}</p>
+              <p className="text-sm font-black text-gray-700">{filterMonth || L('All months', 'كل الشهور')} · {filterStatus === 'ISSUED' ? L('Issued', 'اتطلعت') : filterStatus === 'CANCELLED' ? L('Cancelled', 'اتلغت') : filterStatus || L('All statuses', 'كل الحالات')}</p>
             </CardContent>
           </Card>
         </div>

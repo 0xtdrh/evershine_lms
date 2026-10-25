@@ -344,7 +344,7 @@ export default function TeacherAttendancePage() {
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                {tab === 'manual' ? <><ClipboardList className="w-4 h-4" /> Manual</> : <><QrCode className="w-4 h-4" /> {L('QR Code', 'كود QR')}</>}
+                {tab === 'manual' ? <><ClipboardList className="w-4 h-4" /> {L('By hand', 'بالإيد')}</> : <><QrCode className="w-4 h-4" /> {L('QR Code', 'كود QR')}</>}
               </button>
             ))}
           </div>
@@ -354,7 +354,7 @@ export default function TeacherAttendancePage() {
             disabled={cardScanMutation.isPending}
             className="gap-2"
           >
-            <ScanLine className="w-4 h-4" /> Scan Student Card
+            <ScanLine className="w-4 h-4" /> {L('Scan student card', 'scan كارنيه الطالب')}
           </Button>
 
           {/* ── MANUAL TAB ── */}
@@ -364,9 +364,9 @@ export default function TeacherAttendancePage() {
               {enrollments.length > 0 && (
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: 'Present', count: presentCount, cls: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
-                    { label: 'Absent',  count: absentCount,  cls: 'bg-red-50 border-red-200 text-red-800' },
-                    { label: 'Late',    count: lateCount,    cls: 'bg-amber-50 border-amber-200 text-amber-800' },
+                    { label: L('Present', 'حاضر'), count: presentCount, cls: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
+                    { label: L('Absent', 'غايب'),  count: absentCount,  cls: 'bg-red-50 border-red-200 text-red-800' },
+                    { label: L('Late', 'متأخر'),    count: lateCount,    cls: 'bg-amber-50 border-amber-200 text-amber-800' },
                   ].map(({ label, count, cls }) => (
                     <div key={label} className={`rounded-lg border p-3 text-center ${cls}`}>
                       <p className="text-2xl font-bold">{count}</p>
@@ -403,16 +403,16 @@ export default function TeacherAttendancePage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-base">
-                    Student Roster
+                    {L('Students', 'الطلبة')}
                     {enrollments.length > 0 && (
-                      <span className="ml-2 text-sm font-normal text-gray-500">
-                        ({enrollments.length} students)
+                      <span className="ms-2 text-sm font-normal text-gray-500">
+                        ({enrollments.length})
                       </span>
                     )}
                   </CardTitle>
                   <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isLoading} className="gap-1">
                     {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                    Refresh
+                    {L('Refresh', 'تحديث')}
                   </Button>
                 </CardHeader>
                 <CardContent>
@@ -433,11 +433,11 @@ export default function TeacherAttendancePage() {
                               <p className="font-medium text-sm">
                                 {row.student.firstName} {row.student.lastName}
                               </p>
-                              <p className="text-xs text-gray-500">Roll #{row.rollNumber}</p>
+                              <p className="text-xs text-gray-500">{L('No.', 'رقم')} {row.rollNumber}</p>
                               {row.onlineJoinedAt && <p className="mt-1 text-xs text-emerald-700">🟢 {L('Joined online', 'دخل أونلاين')} {new Date(row.onlineJoinedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>}
                               {row.excuse && (
                                 <p className={`mt-1 text-xs ${row.excuse.status === 'APPROVED' ? 'text-indigo-700' : 'text-amber-700'}`}>
-                                  {row.excuse.status === 'APPROVED' ? 'Excused' : L('Excuse waiting for approval', 'عذر مستني الموافقة')}: {row.excuse.reason}
+                                  {row.excuse.status === 'APPROVED' ? L('Excused', 'بعذر') : L('Excuse waiting for approval', 'عذر مستني الموافقة')}: {row.excuse.reason}
                                 </p>
                               )}
                             </div>
@@ -476,7 +476,7 @@ export default function TeacherAttendancePage() {
                     className="gap-2 bg-blue-600 hover:bg-blue-700"
                   >
                     {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    Save Attendance
+                    {L('Save attendance', 'احفظ الحضور')}
                   </Button>
                   <Button
                     variant="outline"
@@ -485,7 +485,7 @@ export default function TeacherAttendancePage() {
                     className="gap-2"
                   >
                     {exportMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    Export Excel
+                    {L('Export Excel', 'صدّر Excel')}
                   </Button>
                 </div>
               )}
@@ -580,7 +580,7 @@ export default function TeacherAttendancePage() {
                           <div key={row.studentEnrollmentId} className="flex items-center justify-between p-2.5 rounded-lg border hover:bg-gray-50">
                             <div>
                               <p className="text-sm font-medium">{row.student.firstName} {row.student.lastName}</p>
-                              <p className="text-xs text-gray-500">Roll #{row.rollNumber}</p>
+                              <p className="text-xs text-gray-500">{L('No.', 'رقم')} {row.rollNumber}</p>
                             </div>
                             {cfg ? (
                               <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border flex items-center gap-1 ${STATUS_CONFIG[st as AttStatus].active}`}>

@@ -2103,6 +2103,7 @@ check "the substitute opens the roster on the covered day, not on another day" "
 SUBE=$(M "SELECT id FROM StudentEnrollment WHERE classSectionId='$SUBG' AND status='ACTIVE' LIMIT 1")
 check "the substitute saves the attendance of the covered session (counted for him)" "$(curl -s -b "$SJ" -X POST -H 'Content-Type: application/json' -d "{\"classSectionId\":\"$SUBG\",\"attendanceDate\":\"$(D 0)\",\"records\":[{\"studentEnrollmentId\":\"$SUBE\",\"status\":\"PRESENT\"}]}" $B/api/enrollment-attendance | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM EnrollmentAttendanceRecord WHERE studentEnrollmentId='$SUBE' AND markedByTeacherId='$SUBT' AND DATE(attendanceDate)='$(D 0)'")" "True/1"
 rm -f "$SJ"
+check "reconciliation: the session recorded by the substitute is not counted for the absent instructor → no 2nd deduction suggested" "$(api GET /api/reports/substitute-reconciliation | jq_ "[(r['deductionAlreadyExcluded'], r['suggestedDeductionAmount']) for r in d['data'] if r['id']=='sa-e2e-62']")" "[(True, None)]"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
