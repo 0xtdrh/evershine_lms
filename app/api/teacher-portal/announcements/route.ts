@@ -204,6 +204,8 @@ export async function POST(request: NextRequest) {
         userId,
         title: 'New Announcement',
         message: `${title} — ${displayName} (${displaySection})`,
+        titleAr: 'إعلان جديد',
+        messageAr: `${title} — ${displayName} (${displaySection})`,
         type: 'GENERAL',
         relatedId: announcement.id,
       })),

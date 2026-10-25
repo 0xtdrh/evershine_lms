@@ -4,6 +4,7 @@
 
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { GroupRulesEditor } from '@/components/rules/GroupRulesEditor'
+import { AdmissionRulesEditor } from '@/components/rules/AdmissionRulesEditor'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -145,6 +146,7 @@ export default function AgreementsPage() {
         </div>
       )}
       <GroupRulesEditor canEdit={canEdit} />
+      <AdmissionRulesEditor canEdit={canEdit} />
       <p className="text-xs text-slate-500">{L('Public policies (ticked "Public page") are at', 'السياسات العامة (اللي عليها «صفحة عامة») موجودة على')} <a className="text-indigo-700 hover:underline" href="/policies" target="_blank" rel="noopener">/policies</a> {L('— no login needed (Paymob asks for the refund policy and the terms on the website).', '— من غير تسجيل دخول (Paymob بيطلب سياسة الاسترداد والشروط على الموقع).')}</p>
       <Dialog open={!!edit} onOpenChange={(o) => { if (!o) setEdit(null) }}>
         <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">

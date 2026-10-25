@@ -42,6 +42,8 @@ export async function runBackup(manual: boolean): Promise<BackupRunResult> {
             userId: a.id,
             title: 'Database backup FAILED',
             message: `${manual ? 'Manual' : 'Daily'} backup failed: ${message.slice(0, 300)}`,
+            titleAr: 'النسخة الاحتياطية فشلت',
+            messageAr: `النسخة الاحتياطية ${manual ? 'اليدوية' : 'اليومية'} فشلت: ${message.slice(0, 300)}`,
             type: 'BACKUP_FAILED',
           })),
         })

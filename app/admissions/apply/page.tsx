@@ -17,9 +17,11 @@ import { notify } from '@/lib/notify'
 // single notification façade. Mixing two toast libraries causes ID type mismatches
 // and duplicate toast rendering. See lib/notify.ts for the unified API.
 import imageCompression from 'browser-image-compression'
-import { FL, FRow, FGroup, FieldError, SectionTitle, STEP_META, admissionRules, optLabel, FATHER_OCCUPATIONS, RELATIONSHIPS, BLOOD_GROUPS, PARENT_STATUSES, MARKETING_SOURCES, DELIVERY_MODES } from './_components'
+import { FL, FRow, FGroup, FieldError, SectionTitle, STEP_META, optLabel, FATHER_OCCUPATIONS, RELATIONSHIPS, BLOOD_GROUPS, PARENT_STATUSES, MARKETING_SOURCES, DELIVERY_MODES } from './_components'
 import Link from 'next/link'
 import { I18nProvider, L, LanguageSwitch, useI18n } from '@/lib/i18n/client'
+import { useQuery } from '@tanstack/react-query'
+import { DEFAULT_ADMISSION_RULES, type AdmissionRules } from '@/lib/admissions/rules'
 import { DateInput } from '@/components/ui/date-input'
 
 type ApiFieldError = { field: string; message: string }
@@ -42,6 +44,11 @@ type AdmissionFormData = typeof INITIAL_ADMISSION_FORM_DATA
 
 function AdmissionForm() {
   useI18n() // re-render on a language switch
+  const { data: rulesData } = useQuery({
+    queryKey: ['admission-rules'],
+    queryFn: async () => ((await (await fetch('/api/admission-rules')).json())?.data as AdmissionRules) ?? DEFAULT_ADMISSION_RULES,
+  })
+  const rules = (rulesData?.items?.length ? rulesData : DEFAULT_ADMISSION_RULES).items
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -648,7 +655,7 @@ function AdmissionForm() {
                         <h4 className="text-sm font-bold text-white">{L('Rules and Regulations', 'الشروط')}</h4>
                       </div>
                       <div className="p-5 max-h-52 overflow-y-auto space-y-2.5 text-[13px] text-slate-600 leading-relaxed">
-                        {admissionRules().map((rule, i) => (
+                        {rules.map((r, i) => L(r.en || r.ar, r.ar || r.en)).map((rule, i) => (
                           <p key={i} className="flex gap-2">
                             <span className="text-blue-600 font-bold shrink-0">{i + 1}.</span>
                             {rule}

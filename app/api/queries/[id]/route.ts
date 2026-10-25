@@ -78,6 +78,8 @@ export async function PUT(
         userId: studentQuery.studentId,
         title: '💬 Academic Query Answered',
         message: `${answererName} answered your query on "${studentQuery.subject}": "${responsePreview}"`,
+        titleAr: '💬 سؤالك اترد عليه',
+        messageAr: `${answererName} رد على سؤالك عن «${studentQuery.subject}»: "${responsePreview}"`,
         type: 'QUERY_ANSWERED' as NotificationType,
         relatedId: queryId,
         isRead: false,

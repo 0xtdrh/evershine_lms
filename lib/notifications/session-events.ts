@@ -115,3 +115,48 @@ export async function notifyMakeupSession(classSectionId: string, date: string, 
     console.error('[NOTIFY_MAKEUP_SESSION]', err)
   }
 }
+
+/**
+ * 2026-10-24 (live test): a family that joins a group AFTER a holiday was announced never heard of it.
+ * Called when a student is put in a group (admission / add to group / transfer): tells that one family about the
+ * coming holidays that fall on the group's session days (next 60 days), once per holiday day.
+ */
+export async function notifyJoinerHolidays(studentId: string, classSectionId: string) {
+  try {
+    const today = cairoToday()
+    const g = await prisma.classSection.findUnique({
+      where: { id: classSectionId },
+      select: { id: true, campusId: true, className: true, sectionName: true, scheduleSlots: true, levelId: true, status: true },
+    })
+    if (!g || !g.levelId || g.status !== 'ACTIVE') return
+    const slots = cleanSlots(g.scheduleSlots)
+    if (!slots.length) return
+    const until = new Date(day(today).getTime() + 60 * 86_400_000)
+    const rows = await prisma.holiday.findMany({
+      where: { date: { gte: day(today), lte: until }, OR: [{ campusId: null }, { campusId: g.campusId }] },
+      select: { date: true, name: true },
+      orderBy: { date: 'asc' },
+    })
+    const hits = rows.map((h) => ({ d: h.date.toISOString().slice(0, 10), name: h.name })).filter((h) => slots.some((s) => s.dayOfWeek === day(h.d).getUTCDay()))
+    if (!hits.length) return
+    const st = await prisma.student.findUnique({ where: { id: studentId }, select: { userId: true } })
+    const told = st ? await prisma.notification.findMany({ where: { userId: st.userId, type: 'HOLIDAY', relatedId: g.id }, select: { message: true } }) : []
+    const fresh = hits.filter((h) => !told.some((t) => t.message.includes(fmt(h.d))))
+    if (!fresh.length) return
+    const ex = (await groupExceptions([g], day(today))).get(g.id)
+    const next = upcomingSessions({ slots, from: addDay(fresh[fresh.length - 1].d), count: 1, holidays: ex?.holidays, extras: ex?.extras, maxDays: 120 })[0]
+    const label = `${g.className} ${g.sectionName}`.trim()
+    const names = [...new Set(fresh.map((h) => h.name))].join(' / ')
+    const nextEn = next ? ` The next session is ${fmt(next.date)} at ${time12(next.time)}.` : ''
+    const nextAr = next ? ` الحصة الجاية ${fmtAr(next.date)} الساعة ${time12(next.time, true)}.` : ''
+    await notifyFamilies([studentId], 'HOLIDAY', (s) => ({
+      title: `Day off: ${names}`,
+      message: `No ${label} session on ${fresh.map((h) => fmt(h.d)).join(', ')}. ${s.firstName}'s session is postponed, not lost.${nextEn}`,
+      titleAr: `إجازة: ${names}`,
+      messageAr: `مفيش حصة ${label} يوم ${fresh.map((h) => fmtAr(h.d)).join('، ')}. حصة ${s.firstName} اتأجلت ومش ضايعة.${nextAr}`,
+      relatedId: g.id,
+    }), { includeStudent: true })
+  } catch (err) {
+    console.error('[NOTIFY_JOINER_HOLIDAYS]', err)
+  }
+}

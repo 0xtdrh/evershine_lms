@@ -155,6 +155,8 @@ export async function POST(request: NextRequest) {
           userId: req.teacher.userId,
           title: '✅ Timetable Change Approved',
           message: `Your timetable change request for ${displaySubject} (${displayClass}) has been approved. New schedule: ${DAYS[displayDay] ?? 'Updated day'} ${displayStart}–${displayEnd}${adminReply ? `. Admin note: ${adminReply}` : ''}`,
+          titleAr: '✅ تغيير الميعاد اتوافق عليه',
+          messageAr: `طلب تغيير ميعاد ${displaySubject} (${displayClass}) اتوافق عليه. الميعاد الجديد ${displayStart}–${displayEnd}${adminReply ? `. ملاحظة: ${adminReply}` : ''}`,
           type: 'TIMETABLE_UPDATE',
           relatedId: requestId
         }
@@ -186,6 +188,8 @@ export async function POST(request: NextRequest) {
             userId: uid,
             title: '📅 Class Schedule Updated',
             message: `Your ${displaySubject} class schedule in ${displayClass} has been updated. New time: ${DAYS[displayDay] ?? ''} ${displayStart}–${displayEnd}`,
+            titleAr: '📅 ميعاد الحصة اتغير',
+            messageAr: `ميعاد ${displaySubject} في ${displayClass} اتغير: ${displayStart}–${displayEnd}`,
             type: 'TIMETABLE_UPDATE',
             relatedId: requestId
           }))
@@ -229,6 +233,8 @@ export async function POST(request: NextRequest) {
           userId: req.teacher.userId,
           title: '❌ Timetable Change Rejected',
           message: `Your timetable change request for ${displaySubject} (${displayClass}) was not approved.${adminReply ? ` Reason: ${adminReply}` : ' Please contact the admin for details.'}`,
+          titleAr: '❌ تغيير الميعاد اترفض',
+          messageAr: `طلب تغيير ميعاد ${displaySubject} (${displayClass}) ماتوافقش عليه.${adminReply ? ` السبب: ${adminReply}` : ''}`,
           type: 'TIMETABLE_UPDATE',
           relatedId: requestId
         }

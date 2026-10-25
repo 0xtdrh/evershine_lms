@@ -201,6 +201,8 @@ export async function POST(request: NextRequest) {
               userId: studentUserId,
               title: 'Exam Results Published',
               message: `Your results for exam "${exam.name}" are published. Score: ${r.obtainedMarks}/${r.totalMarks} (${pct.toFixed(1)}%, Grade: ${grade}).`,
+              titleAr: 'نتيجة الامتحان ظهرت',
+              messageAr: `نتيجتك في «${exam.name}» ظهرت: ${r.obtainedMarks}/${r.totalMarks} (${pct.toFixed(1)}%، التقدير: ${grade}).`,
               type: 'RESULT_PUBLISHED',
               relatedId: examId,
             }

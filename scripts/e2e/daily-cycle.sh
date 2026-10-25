@@ -2075,6 +2075,21 @@ rm -f "$TPJ"
 APPLY=$(curl -s -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.1.96' -d '{"firstName":"Laila","lastName":"Online","fullNameAr":"ليلى أحمد أونلاين","fatherName":"Ahmed Online","dateOfBirth":"2017-05-05","gender":"FEMALE","address":"Sheraton street, Hurghada","city":"Hurghada","phoneNumber":"01000000221","emergencyContact":"01000000222","guardianFirstName":"Ahmed","guardianLastName":"Online","guardianPhoneNumber":"01000000221","guardianRelationship":"Father","preferredCampusId":"","preferredShift":"","deliveryMode":"PHYSICAL","termsAccepted":true}' $B/api/admissions/apply)
 check "online request (form sends no branch) is saved without a branch" "$(echo "$APPLY" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM AdmissionRequest WHERE firstName='Laila' AND lastName='Online' AND preferredCampusId IS NULL")" "True/1"
 check "…and the branch secretary sees it in the pending list" "$(secapi GET '/api/admissions?status=PENDING&limit=50' | jq_ "any(r['firstName']=='Laila' for r in d['data'])")" "True"
+echo "== 61. Online application rules (editable) + holidays told to families who join later (2026-10-24)"
+check "application rules are public (no login) and start with the 7 default rules" "$(curl -s $B/api/admission-rules | jq_ "len(d['data']['items'])")" "7"
+check "a secretary cannot change them" "$(secapi PUT /api/admission-rules '{"items":[{"en":"x","ar":"y"}]}' | jq_ "d['success']")" "False"
+api PUT /api/admission-rules '{"items":[{"en":"Rule one","ar":"الشرط الأول"},{"en":"","ar":""}]}' >/dev/null
+check "the admin edits them (empty lines dropped) and the public form reads the new rules" "$(curl -s $B/api/admission-rules | jq_ "(len(d['data']['items']), d['data']['items'][0]['en'])")" "(1, 'Rule one')"
+check "saving no rule at all is refused" "$(api PUT /api/admission-rules '{"items":[]}' | jq_ "d['success']")" "False"
+M "DELETE FROM AppSetting WHERE \`key\`='admission.rules'"
+JG=$(M "SELECT id FROM ClassSection WHERE status='ACTIVE' AND isActive=1 AND levelId IS NOT NULL AND maxStudents IS NULL AND campusId='$CAMPUS' AND JSON_LENGTH(scheduleSlots)>0 LIMIT 1")
+JDOW=$(M "SELECT JSON_EXTRACT(scheduleSlots,'\$[0].dayOfWeek') FROM ClassSection WHERE id='$JG'")
+JDAY=""; for i in 8 9 10 11 12 13 14; do if [ "$(cairo +%w $i)" = "$JDOW" ]; then JDAY=$(D $i); break; fi; done
+api POST /api/holidays "{\"date\":\"$JDAY\",\"name\":\"E2E joiner day\",\"campusId\":\"$CAMPUS\"}" >/dev/null
+JS=$(mkstu Joiner 01000000331 Jparent 01000000332)
+api POST /api/groups/$JG/students "{\"studentId\":\"$JS\"}" >/dev/null
+check "a student who joins after a holiday was announced: the family is told (in Arabic too)" "$(M "SELECT COUNT(*)>0 FROM Notification n JOIN Guardian g ON g.userId=n.userId JOIN _GuardianToStudent gs ON gs.A=g.id WHERE gs.B='$JS' AND n.type='HOLIDAY' AND n.relatedId='$JG' AND n.messageAr LIKE '%اتأجلت%'")" "1"
+M "DELETE FROM Holiday WHERE name='E2E joiner day'"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

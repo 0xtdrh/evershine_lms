@@ -75,7 +75,7 @@ export const SETTING_CARDS: SettingCard[] = [
   // students & sessions
   { key: 'excuses', group: 'students', en: 'Absence excuses', ar: 'أعذار الغياب', descEn: 'Automatic or approval, days allowed after the session', descAr: 'تلقائي ولا بموافقة، وكام يوم بعد الحصة', href: '/dashboard/absence-excuses?tab=settings', perm: ['absence_excuses', 'read'] },
   { key: 'renewals', group: 'students', en: 'Renewals', ar: 'التجديد', descEn: 'When parents are asked "continuing next month?"', descAr: 'إمتى ولي الأمر يتسأل «مكمّل الشهر الجاي؟»', href: '/dashboard/renewals', perm: ['renewals', 'read'] },
-  { key: 'agreements', group: 'students', en: 'Agreements & group rules', ar: 'الموافقات وقواعد الجروبات', descEn: 'Policies parents accept, public policy pages, written group rules', descAr: 'السياسات اللي ولي الأمر بيوافق عليها، صفحات السياسات، قواعد الجروبات', href: '/dashboard/admin/agreements', perm: ['agreements', 'read'] },
+  { key: 'agreements', group: 'students', en: 'Agreements & group rules', ar: 'الموافقات وقواعد الجروبات', descEn: 'Policies parents accept, public policy pages, written group rules, online application rules', descAr: 'السياسات اللي ولي الأمر بيوافق عليها، صفحات السياسات، قواعد الجروبات، شروط استمارة التقديم', href: '/dashboard/admin/agreements', perm: ['agreements', 'read'] },
 
   // communication
   { key: 'notifications', group: 'communication', en: 'Notifications', ar: 'الإشعارات', descEn: 'Turn each notification on or off', descAr: 'تشغيل وقفل كل إشعار', href: '/dashboard/admin/notifications', roles: ADMINS },

@@ -179,6 +179,8 @@ export async function POST(request: NextRequest) {
         userId: admin.id,
         title: 'Timetable Change Request',
         message: `${changeRequest.teacher.firstName} ${changeRequest.teacher.lastName} requested to change their timetable slot for ${snapshot.subject} (${snapshot.className}): "${reason}"`,
+        titleAr: 'طلب تغيير ميعاد',
+        messageAr: `${changeRequest.teacher.firstName} ${changeRequest.teacher.lastName} طالب يغيّر ميعاد ${snapshot.subject} (${snapshot.className}): "${reason}"`,
         type: 'TIMETABLE_REQUEST',
         relatedId: changeRequest.id
       }))

@@ -316,6 +316,8 @@ export async function POST(req: NextRequest) {
               message: `${record.date} ${SESSION_SHIFT_LABELS[record.shift as SessionShift]} — ${resolved.hrStatus}${
                 resolved.lateMinutes > 0 ? ` (${resolved.lateMinutes} min late)` : ''
               }${resolved.penaltyAmount > 0 ? ` · Penalty: EGP ${resolved.penaltyAmount.toFixed(0)}` : ''}.`,
+              titleAr: 'الحضور اتسجل',
+              messageAr: `حضورك يوم ${record.date} اتسجل: ${resolved.hrStatus}`,
               type: 'ATTENDANCE_ALERT',
             },
           })

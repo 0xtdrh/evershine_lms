@@ -164,6 +164,8 @@ export async function POST(
           userId: admin.id,
           title: 'Guardian Leave Request',
           message: `${session.user.name ?? 'A guardian'} has applied for leave on behalf of ${student.firstName} ${student.lastName} (${start.toLocaleDateString('en-GB')} – ${end.toLocaleDateString('en-GB')}).`,
+          titleAr: 'طلب إجازة من ولي أمر',
+          messageAr: `${session.user.name ?? 'ولي أمر'} طلب إجازة لـ ${student.firstName} ${student.lastName} (${start.toLocaleDateString('en-GB')} – ${end.toLocaleDateString('en-GB')}).`,
           type: 'GENERAL',
           relatedId: newLeave.id,
         })),

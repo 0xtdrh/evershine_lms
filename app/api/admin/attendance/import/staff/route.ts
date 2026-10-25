@@ -376,6 +376,8 @@ export async function POST(req: NextRequest) {
               message: `Your attendance for ${rec.dateStr} (${rec.shift}) has been recorded: ` +
                 `${rec.hrStatus}${rec.lateMinutes > 0 ? ` — ${rec.lateMinutes} min late` : ''}` +
                 `${rec.penaltyAmount > 0 ? `. Penalty of EGP ${rec.penaltyAmount.toFixed(0)} pending HR review.` : '.'}`,
+              titleAr: 'الحضور اتسجل',
+              messageAr: `حضورك يوم ${rec.dateStr} اتسجل.`,
               type: 'ATTENDANCE_ALERT',
             },
           })

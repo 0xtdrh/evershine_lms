@@ -80,6 +80,8 @@ export async function GET(request: NextRequest) {
           userId: invoice.student.userId,
           title: 'Fee penalty applied',
           message: `A late fee penalty of EGP ${penalty} was added to challan ${invoice.challanNumber}.`,
+          titleAr: 'غرامة تأخير',
+          messageAr: `اتضافت غرامة تأخير ${penalty} ج.م على فاتورة ${invoice.challanNumber}.`,
           type: 'GENERAL',
           relatedId: invoice.id,
         },

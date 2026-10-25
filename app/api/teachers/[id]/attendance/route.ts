@@ -224,6 +224,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         userId: teacher.userId,
         title: 'Attendance updated',
         message: `${dateKey(attendanceDate)} ${SESSION_SHIFT_LABELS[shift]} marked ${resolved.hrStatus}${resolved.lateMinutes > 0 ? ` (${resolved.lateMinutes} min late)` : ''}${resolved.penaltyAmount > 0 ? ` with EGP ${resolved.penaltyAmount.toFixed(0)} penalty` : ''}.`,
+        titleAr: 'الحضور اتعدّل',
+        messageAr: `حضورك يوم ${dateKey(attendanceDate)} اتعدّل: ${resolved.hrStatus}${resolved.lateMinutes > 0 ? ` (متأخر ${resolved.lateMinutes} دقيقة)` : ''}`,
         type: 'ATTENDANCE_ALERT',
       },
     })

@@ -120,6 +120,8 @@ export const MARKETING_SOURCES = [
 ]
 
 /* ── Admission Rules ───────────────────────────────────────────── */
+// 2026-10-24: editable on the Agreements page (AppSetting admission.rules, lib/admissions/rules.ts); the page loads
+// them from GET /api/admission-rules and falls back to the defaults.
 
 /** Arabic names for the stored English choices (occupation, relationship, how they heard of us). */
 const OPTION_AR: Record<string, string> = {
@@ -133,24 +135,3 @@ const OPTION_AR: Record<string, string> = {
 }
 /** Label of a stored choice in the screen language (the stored value stays English). */
 export const optLabel = (v: string) => L(v, OPTION_AR[v] ?? v)
-
-/* ── Admission Rules ───────────────────────────────────────────── */
-
-/**
- * 2026-10-24: the template rules ("fee is neither refundable nor adjustable in any case", "decisions are final",
- * "not responsible for any loss") were replaced: they contradicted TechNova's refund rules. Money, refunds and
- * absences follow the published policies (/policies) and the group rules the parent accepts in the portal.
- * TO BE REVIEWED BY THE OWNER / A LAWYER.
- */
-export const admissionRules = () => [
-  L('Fees are paid per the group payment rules (shown before the first session). Refunds follow the published refund policy.',
-    'الرسوم بتتدفع حسب نظام الدفع بتاع الجروب (بيظهر قبل أول حصة). والاسترداد حسب سياسة الاسترداد المنشورة.'),
-  L('Please pay each invoice by the due date written on it.', 'ادفع كل فاتورة قبل الميعاد المكتوب عليها.'),
-  L('Session times may change (instructor availability or holidays); you are told in advance and a makeup session is arranged when needed.',
-    'مواعيد الحصص ممكن تتغير (ظروف المدرب أو الإجازات)، وهنبلغك قبلها ونعمل حصة تعويضية لو محتاج.'),
-  L('The group rules (times, fees, absence and excuses) are shown in the parent account and must be accepted before the first session.',
-    'قواعد الجروب (المواعيد، الرسوم، الغياب والأعذار) بتظهر في حساب ولي الأمر ولازم توافق عليها قبل أول حصة.'),
-  L('Parents are welcome to contact the branch at any time to follow the progress of the student.', 'أهلاً بيك تكلّم الفرع في أي وقت تتابع مستوى الطالب.'),
-  L('Damage caused on purpose to TechNova equipment is charged at its cost.', 'أي تلف متعمد في أجهزة TechNova بيتحاسب بتمنه.'),
-  L('To stop, please tell the branch before the group of the next month starts.', 'لو هتوقف، بلّغ الفرع قبل ما جروب الشهر الجاي يبدأ.'),
-]

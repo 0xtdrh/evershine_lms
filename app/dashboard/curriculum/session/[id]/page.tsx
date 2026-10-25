@@ -69,7 +69,7 @@ function Fields({ data, skills, onSaved }: { data: SessionData; skills: Skill[];
             <div className="flex flex-wrap items-center gap-1 text-xs">
               <span className="text-slate-500">{L('Skills', 'المهارات')}:</span>
               {skills.map((k) => (
-                <button key={k.id} type="button" onClick={() => toggleSkill(k.id)} className={`rounded-full border px-2 py-0.5 ${f.skillIds.includes(k.id) ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500'}`}>{k.nameEn}</button>
+                <button key={k.id} type="button" onClick={() => toggleSkill(k.id)} className={`rounded-full border px-2 py-0.5 ${f.skillIds.includes(k.id) ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500'}`}>{L(k.nameEn, k.nameAr || k.nameEn)}</button>
               ))}
             </div>
           )}

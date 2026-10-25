@@ -140,6 +140,8 @@ export async function POST(request: NextRequest) {
         userId: teacherId,
         title: '❓ New Academic Query',
         message: `${studentName} submitted a query on "${subject}": "${preview}"`,
+        titleAr: '❓ سؤال جديد',
+        messageAr: `${studentName} سأل عن «${subject}»: "${preview}"`,
         type: 'QUERY_RECEIVED' as NotificationType,
         relatedId: createdQuery.id,
         isRead: false,

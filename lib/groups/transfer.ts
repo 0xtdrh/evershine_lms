@@ -483,6 +483,9 @@ export async function executeTransfer(input: ExecuteTransferInput): Promise<Exec
 
   await notifyTeachers(p, input.userId)
   await notifySeatFreed(input.fromClassSectionId)
+  // the family hears about holidays already announced in the new group
+  const { notifyJoinerHolidays } = await import('@/lib/notifications/session-events')
+  await notifyJoinerHolidays(input.studentId, input.toClassSectionId)
 
   return {
     ok: true,

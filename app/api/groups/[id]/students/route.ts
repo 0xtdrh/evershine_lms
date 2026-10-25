@@ -123,5 +123,9 @@ export async function POST(
     console.error('[GROUP_ADD_STUDENT_INVOICE]', err)
   }
 
+  // 2026-10-24: tell the family about holidays announced before the student joined
+  const { notifyJoinerHolidays } = await import('@/lib/notifications/session-events')
+  await notifyJoinerHolidays(parsed.data.studentId, id)
+
   return createdResponse({ ...enrollment, billing }, existing ? 'Student re-added — previous history restored' : 'Student added')
 }
