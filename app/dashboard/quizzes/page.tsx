@@ -171,7 +171,7 @@ export default function QuizzesPage() {
         <Card key={q.blockId}>
           <CardHeader className="pb-2">
             <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
-              <span>S{q.sessionNumber} · {pick(q.titleEn, q.titleAr) || (q.kind === 'FINAL' ? L('End-of-level exam', 'امتحان آخر المستوى') : L('Quiz', 'كويز'))} <span className={`ms-1 rounded-full border px-2 text-xs ${q.kind === 'FINAL' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-sky-200 bg-sky-50 text-sky-700'}`}>{q.kind === 'FINAL' ? L('final → MCQ', 'نهائي ← MCQ') : L('session → task', 'حصة ← task')}</span></span>
+              <span>S{q.sessionNumber} · {pick(q.titleEn, q.titleAr) || (q.kind === 'FINAL' ? L('End-of-level exam', 'امتحان آخر المستوى') : L('Quiz', 'كويز'))} <span className={`ms-1 rounded-full border px-2 text-xs ${q.kind === 'FINAL' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-sky-200 bg-sky-50 text-sky-700'}`}>{q.kind === 'FINAL' ? L('final → MCQ', 'نهائي ← درجة الاختيار من متعدد') : L('session → task', 'حصة ← درجة التاسكات')}</span></span>
               <span className="flex flex-wrap gap-2">
                 {q.needsOpen && (q.open
                   ? <Button size="sm" variant="outline" className="gap-1" onClick={() => win.mutate({ blockId: q.blockId, open: false })}><Lock className="h-4 w-4" /> {L('Close', 'اقفل')}</Button>

@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   Users, ClipboardList, Megaphone, UserCheck, Wallet,
-  ClipboardCheck, BarChart2, LineChart, Target,
+  ClipboardCheck, BarChart2, LineChart, Target, CalendarDays,
 } from 'lucide-react'
 import Link from 'next/link'
 import { RoleInsights } from '@/components/dashboard/RoleInsights'
@@ -18,78 +18,79 @@ import { BirthdayBanner } from '@/components/birthdays/BirthdayBanner'
 import { TeacherRatingsCard } from '@/components/dashboard/TeacherRatingsCard'
 import { L, useI18n } from '@/lib/i18n/client'
 
+/** 2026-10-25: the template links (tasks & marks, exam results, daily PST scores, monthly monitoring) were replaced by the screens in use. */
 const TEACHER_QUICK_LINKS = [
   {
     href: '/dashboard/teacher/students',
     icon: Users,
-    label: 'My Students',
-    description: 'View students in your assigned classes',
+    get label() { return L('My students', 'طلابي') },
+    get description() { return L('Students of your groups', 'طلاب جروباتك') },
     color: 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100',
     iconBg: 'bg-indigo-100',
   },
   {
-    href: '/dashboard/attendance',
-    icon: ClipboardCheck,
-    label: 'Student Attendance',
-    description: 'Take roll call for assigned classes',
+    href: '/dashboard/teacher/attendance',
+    icon: ClipboardList,
+    get label() { return L('Attendance', 'الحضور') },
+    get description() { return L('Take attendance (also the sessions you cover)', 'سجّل الحضور (وكمان الحصص اللي بتغطيها)') },
     color: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100',
     iconBg: 'bg-emerald-100',
   },
   {
-    href: '/dashboard/teacher/tasks',
-    icon: ClipboardList,
-    label: 'Tasks & Marks',
-    description: 'Create assignments and enter student marks',
+    href: '/dashboard/schedule',
+    icon: CalendarDays,
+    get label() { return L('My calendar', 'جدولي') },
+    get description() { return L('Your sessions, holidays and makeup sessions', 'حصصك والإجازات والتعويضات') },
+    color: 'bg-sky-50 text-sky-700 border-sky-100 hover:bg-sky-100',
+    iconBg: 'bg-sky-100',
+  },
+  {
+    href: '/dashboard/assignments',
+    icon: ClipboardCheck,
+    get label() { return L('Homework to grade', 'تصحيح الواجبات') },
+    get description() { return L('Grade what students handed in', 'صحّح اللي الطلبة سلّموه') },
     color: 'bg-violet-50 text-violet-700 border-violet-100 hover:bg-violet-100',
     iconBg: 'bg-violet-100',
   },
   {
-    href: '/dashboard/teacher/announcements',
-    icon: Megaphone,
-    label: 'Announcements',
-    description: 'Share messages and links with your classes',
+    href: '/dashboard/quizzes',
+    icon: Target,
+    get label() { return L('Quizzes', 'الكويزات') },
+    get description() { return L('Results of the session quizzes', 'نتايج كويزات الحصص') },
     color: 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100',
     iconBg: 'bg-amber-100',
   },
   {
-    href: '/dashboard/teacher/leaves',
-    icon: UserCheck,
-    label: 'Student Leaves',
-    description: 'Review pending leave requests',
-    color: 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100',
-    iconBg: 'bg-rose-100',
-  },
-  {
-    href: '/dashboard/teacher/results',
+    href: '/dashboard/teacher/level-results',
     icon: BarChart2,
-    label: 'Exam Results',
-    description: 'View and declare student exam results',
-    color: 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100',
-    iconBg: 'bg-blue-100',
-  },
-  {
-    href: '/dashboard/teacher/daily-scores',
-    icon: Target,
-    label: 'Daily Scores',
-    description: 'Enter daily PST performance scores for students',
-    color: 'bg-cyan-50 text-cyan-700 border-cyan-100 hover:bg-cyan-100',
-    iconBg: 'bg-cyan-100',
-  },
-  {
-    href: '/dashboard/teacher/hr',
-    icon: Wallet,
-    label: 'My HR',
-    description: 'Attendance record and applications',
+    get label() { return L('Level results', 'نتايج المستوى') },
+    get description() { return L('Final marks of the level', 'الدرجات النهائية للمستوى') },
     color: 'bg-teal-50 text-teal-700 border-teal-100 hover:bg-teal-100',
     iconBg: 'bg-teal-100',
   },
   {
-    href: '/dashboard/teacher/monthly-monitoring',
-    icon: LineChart,
-    label: 'Monthly Monitoring',
-    description: 'View monthly monitoring and student groups',
+    href: '/dashboard/absence-excuses',
+    icon: UserCheck,
+    get label() { return L('Absence excuses', 'أعذار الغياب') },
+    get description() { return L('Excuses sent by parents for your groups', 'الأعذار اللي أولياء الأمور بعتوها لجروباتك') },
+    color: 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100',
+    iconBg: 'bg-rose-100',
+  },
+  {
+    href: '/dashboard/announcements',
+    icon: Megaphone,
+    get label() { return L('Announcements', 'الإعلانات') },
+    get description() { return L('Messages to your groups and from the branch', 'رسايل لجروباتك ومن الفرع') },
     color: 'bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-100',
     iconBg: 'bg-orange-100',
+  },
+  {
+    href: '/dashboard/teacher/hr',
+    icon: Wallet,
+    get label() { return L('My affairs', 'شؤوني') },
+    get description() { return L('Your attendance, leaves and salary (if shown)', 'حضورك وإجازاتك ومرتبك (لو ظاهر)') },
+    color: 'bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100',
+    iconBg: 'bg-slate-100',
   },
 ]
 
@@ -98,13 +99,14 @@ export default function TeacherPortalIndexPage() {
   const { data: session } = useSession()
   const router = useRouter()
 
-  const { data: teacherLeaves = [] } = useQuery<{ status: 'PENDING' | 'APPROVED' | 'REJECTED' }[]>({
-    queryKey: ['teacher-leaves-summary'],
-    queryFn: () => fetchApi<{ status: 'PENDING' | 'APPROVED' | 'REJECTED' }[]>('/api/teacher-portal/leaves'),
+  // 2026-10-25: students no longer use the template "leave requests" — parents send absence excuses
+  const { data: pendingExcuses } = useQuery<{ excuses: unknown[] }>({
+    queryKey: ['teacher-excuses-pending'],
+    queryFn: () => fetchApi<{ excuses: unknown[] }>('/api/absence-excuses?status=PENDING'),
     enabled: session?.user?.role === 'TEACHER',
   })
 
-  const pendingLeavesCount = teacherLeaves.filter((leave) => leave.status === 'PENDING').length
+  const pendingLeavesCount = pendingExcuses?.excuses?.length ?? 0
 
   // Non-teachers hitting /dashboard/teacher/* should be redirected
   useEffect(() => {
@@ -147,12 +149,12 @@ export default function TeacherPortalIndexPage() {
       <Card className="rounded-2xl sm:rounded-[24px] border border-slate-200 bg-white/90 shadow-sm">
         <div className="p-4 sm:p-6 flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-slate-500 font-semibold">{L('Leave review status', 'حالة طلبات الإجازة')}</p>
-            <p className="mt-1 text-base sm:text-lg font-semibold text-slate-900">{pendingLeavesCount} {L(pendingLeavesCount === 1 ? 'pending student leave request' : 'pending student leave requests', 'طلب إجازة طالب مستني')}</p>
-            <p className="mt-1 text-xs sm:text-sm text-slate-600">{L('Stay on top of approved, rejected, and pending leave workflows for your assigned students.', 'تابع طلبات إجازات طلابك.')}</p>
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-slate-500 font-semibold">{L('Absence excuses', 'أعذار الغياب')}</p>
+            <p className="mt-1 text-base sm:text-lg font-semibold text-slate-900">{pendingLeavesCount} {L(pendingLeavesCount === 1 ? 'excuse waiting for a decision' : 'excuses waiting for a decision', 'عذر مستني قرار')}</p>
+            <p className="mt-1 text-xs sm:text-sm text-slate-600">{L('Excuses parents sent for sessions of your groups (an approved one is marked Excused in the attendance sheet).', 'الأعذار اللي أولياء الأمور بعتوها لحصص جروباتك (العذر المقبول بيظهر «بعذر» في كشف الحضور).')}</p>
           </div>
-          <Link href="/dashboard/teacher/leaves" className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl sm:rounded-2xl bg-slate-900 px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-800 shrink-0">
-            {L('Open Student Leaves', 'افتح إجازات الطلاب')}
+          <Link href="/dashboard/absence-excuses" className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl sm:rounded-2xl bg-slate-900 px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-800 shrink-0">
+            {L('Open absence excuses', 'افتح أعذار الغياب')}
           </Link>
         </div>
       </Card>

@@ -81,7 +81,7 @@ export default function MySubstitutionsPage() {
               <div className="space-y-2">
                 {data.asSubstitute.map((day) => (
                   <Card key={day.date}>
-                    <CardHeader className="py-3"><CardTitle className="text-sm">{new Date(`${day.date}T12:00:00Z`).toLocaleDateString(L('en-GB', 'ar-EG'), { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Cairo' })}</CardTitle></CardHeader>
+                    <CardHeader className="py-3"><CardTitle className="text-sm">{new Date(`${day.date}T12:00:00Z`).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Cairo' })}</CardTitle></CardHeader>
                     <CardContent className="space-y-2 pt-0">
                       {day.sessions.map((s) => (
                         <div key={s.id} className="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-2 text-sm">

@@ -1,6 +1,6 @@
 'use client'
 
-import { L } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 import { useState, useEffect } from 'react'
 import { GroupLessonsPanel } from '@/components/lms/GroupLessonsPanel'
 import { SessionReportPanel } from '@/components/session-reports/SessionReportPanel'
@@ -39,33 +39,36 @@ interface TeacherClassRecord {
   section: string
   classSectionId?: string | null
   legacyClassId?: string | null
+  coveringDates?: string[] | null
 }
 
 interface TeacherSectionRecord {
   id: string
   className: string
   sectionName: string
+  /** days this teacher covers the group as a substitute (null = own group) */
+  coveringDates?: string[] | null
 }
 
 /* ─── Status config ─────────────────────────────────────────────── */
 const STATUS_CONFIG: Record<AttStatus, { label: string; icon: React.ReactNode; active: string; idle: string }> = {
   PRESENT: {
-    label: 'Present', icon: <UserCheck className="w-3.5 h-3.5" />,
+    get label() { return L('Present', 'حاضر') }, icon: <UserCheck className="w-3.5 h-3.5" />,
     active: 'bg-emerald-600 text-white border-emerald-600',
     idle:   'border-emerald-300 text-emerald-700 hover:bg-emerald-50',
   },
   ABSENT: {
-    label: 'Absent', icon: <UserX className="w-3.5 h-3.5" />,
+    get label() { return L('Absent', 'غايب') }, icon: <UserX className="w-3.5 h-3.5" />,
     active: 'bg-red-600 text-white border-red-600',
     idle:   'border-red-300 text-red-700 hover:bg-red-50',
   },
   LATE: {
-    label: 'Late', icon: <Clock className="w-3.5 h-3.5" />,
+    get label() { return L('Late', 'متأخر') }, icon: <Clock className="w-3.5 h-3.5" />,
     active: 'bg-amber-500 text-white border-amber-500',
     idle:   'border-amber-300 text-amber-700 hover:bg-amber-50',
   },
   EXCUSED: {
-    label: 'Excused', icon: <CheckCircle className="w-3.5 h-3.5" />,
+    get label() { return L('Excused', 'بعذر') }, icon: <CheckCircle className="w-3.5 h-3.5" />,
     active: 'bg-blue-600 text-white border-blue-600',
     idle:   'border-blue-300 text-blue-700 hover:bg-blue-50',
   },
@@ -107,6 +110,7 @@ function QrCountdown({ expiresAt }: { expiresAt: Date }) {
 
 /* ─── Main Page ─────────────────────────────────────────────────── */
 export default function TeacherAttendancePage() {
+  useI18n() // re-render on a language switch
   const { data: session } = useSession()
   const qc = useQueryClient()
   const [classSectionId, setClassSectionId] = useState('')
@@ -135,6 +139,7 @@ export default function TeacherAttendancePage() {
         section: section.sectionName,
         classSectionId: section.id,
         legacyClassId: null,
+        coveringDates: section.coveringDates ?? null,
       }))
     },
     enabled:  !!session?.user,
@@ -176,7 +181,7 @@ export default function TeacherAttendancePage() {
         })),
       }),
     }),
-    onSuccess: () => { notify.success('Attendance saved successfully'); refetch(); qc.invalidateQueries({ queryKey: ['group-lessons', classSectionId] }); qc.invalidateQueries({ queryKey: ['session-report', classSectionId] }) },
+    onSuccess: () => { notify.success(L('Attendance saved successfully', 'الحضور اتحفظ')); refetch(); qc.invalidateQueries({ queryKey: ['group-lessons', classSectionId] }); qc.invalidateQueries({ queryKey: ['session-report', classSectionId] }) },
     onError:   (e: Error) => notify.error(e.message),
   })
 
@@ -189,7 +194,7 @@ export default function TeacherAttendancePage() {
     onSuccess: (data: any) => {
       setQrCode(data.qrCode)
       setQrExpiresAt(new Date(data.expiresAt))
-      notify.success('QR code generated — valid for 30 minutes')
+      notify.success(L('QR code generated — valid for 30 minutes', 'الكود اتعمل — شغال 30 دقيقة'))
     },
     onError: (e: Error) => notify.error(e.message),
   })
@@ -218,7 +223,7 @@ export default function TeacherAttendancePage() {
   const exportMutation = useMutation({
     mutationFn: async () => {
       if (!classSectionId || !date) {
-        throw new Error('Please select class section and date')
+        throw new Error(L('Please choose the group and the date', 'اختار الجروب والتاريخ'))
       }
       const res = await fetch('/api/enrollment-attendance/teacher-export', {
         method: 'POST',
@@ -227,7 +232,7 @@ export default function TeacherAttendancePage() {
       })
       if (!res.ok) {
         // Try to parse error message from response
-        let msg = 'Export failed'
+        let msg = L('Export failed', 'التصدير ماتمّش')
         try {
           const err = await res.json()
           msg = err?.message || msg
@@ -250,12 +255,12 @@ export default function TeacherAttendancePage() {
         document.body.removeChild(a)
       }, 100)
     },
-    onSuccess: () => notify.success('Attendance exported'),
-    onError:   (e: Error) => notify.error(e.message || 'Export failed'),
+    onSuccess: () => notify.success(L('Attendance exported', 'ملف الحضور نزل')),
+    onError:   (e: Error) => notify.error(e.message || L('Export failed', 'التصدير ماتمّش')),
   })
 
   if (!['TEACHER', 'SUPER_ADMIN', 'ADMIN'].includes(session?.user?.role ?? '')) {
-    return <div className="p-8 text-center text-gray-500">You do not have permission to mark attendance.</div>
+    return <div className="p-8 text-center text-gray-500">{L('You do not have permission to mark attendance.', 'مش مسموح لك تسجّل الحضور.')}</div>
   }
 
   const enrollments  = roster?.enrollments ?? []
@@ -270,59 +275,40 @@ export default function TeacherAttendancePage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <ClipboardList className="w-6 h-6 text-blue-600" />
-          Attendance Marking
+          {L('Attendance', 'تسجيل الحضور')}
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Mark student attendance manually or let students scan a QR code to self-register.
+          {L('Mark attendance by hand, or let students scan a QR code.', 'سجّل الحضور بإيدك، أو خلّي الطلبة يعملوا scan لكود QR.')}
         </p>
       </div>
 
-      {/* Guide Banner */}
+      {/* Guide Banner (2026-10-25: short, bilingual) */}
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-        <p className="font-semibold mb-2 flex items-center gap-1.5"><Info className="w-4 h-4" /> How to mark attendance</p>
-        <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1">
-          <div>
-            <p className="font-medium text-blue-900">📋 Manual Mode</p>
-            <ol className="list-decimal pl-4 mt-1 space-y-0.5 text-xs">
-              <li>Select your Class Section and Date.</li>
-              <li>For each student, tap Present / Absent / Late / Excused.</li>
-              <li>Click <strong>Save Attendance</strong> when done.</li>
-            </ol>
-          </div>
-          <div>
-            <p className="font-medium text-blue-900">📷 QR Code Mode</p>
-            <ol className="list-decimal pl-4 mt-1 space-y-0.5 text-xs">
-              <li>Switch to the QR tab and select your section.</li>
-              <li>Click <strong>Generate QR Code</strong> — display it on your projector or whiteboard.</li>
-              <li>Students scan with their phones. The system marks them <em>Present</em> automatically.</li>
-              <li>Mark remaining students manually. QR codes expire in 30 minutes.</li>
-            </ol>
-          </div>
-        </div>
-        <div className="mt-3 rounded-lg border border-blue-200 bg-white/70 p-3 text-xs text-blue-900">
-          <p className="font-semibold">Holiday and approved leave rule</p>
-          <p className="mt-1">
-            Teachers do not approve student holidays or leave requests. Admin and Super Admin approve them. When a student has an approved leave or the date is an official holiday, use <strong>Excused</strong> instead of Absent. Pending requests should not be treated as approved leave.
-          </p>
-        </div>
+        <p className="font-semibold mb-2 flex items-center gap-1.5"><Info className="w-4 h-4" /> {L('How to mark attendance', 'إزاي تسجّل الحضور')}</p>
+        <ol className="list-decimal ps-4 space-y-0.5 text-xs">
+          <li>{L('Choose the group and the date.', 'اختار الجروب والتاريخ.')}</li>
+          <li>{L('For each student tap Present / Absent / Late / Excused (an approved excuse is filled in for you).', 'لكل طالب دوس حاضر / غايب / متأخر / بعذر (العذر المقبول بيتعلّم لوحده).')}</li>
+          <li>{L('Press Save. Or show the QR code: students who scan it are marked present.', 'دوس «احفظ». أو اعرض كود QR: اللي يعمله scan بيتسجل حاضر.')}</li>
+        </ol>
+        <p className="mt-2 text-xs">{L('Covering for another instructor? The group appears here on the day you cover it.', 'بتغطي مكان مدرب تاني؟ الجروب بيظهر هنا يوم الحصة اللي بتغطيها.')}</p>
       </div>
 
       {/* Section + Date selector */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Select Class &amp; Date</CardTitle>
+          <CardTitle className="text-base">{L('Select Class &amp; Date', 'الجروب والتاريخ')}</CardTitle>
         </CardHeader>
         <CardContent className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Class Section <span className="text-red-500">*</span></Label>
+            <Label>{L('Class Section', 'الجروب')} <span className="text-red-500">*</span></Label>
             <Select value={classSectionId} onValueChange={v => { setClassSectionId(v); setQrCode(null) }}>
-              <SelectTrigger><SelectValue placeholder="Choose section" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={L('Choose section', 'اختار الجروب')} /></SelectTrigger>
               <SelectContent>
                 {teacherClasses.map((item) => {
                   const value = item.classSectionId ?? item.legacyClassId ?? item.id
                   return (
                     <SelectItem key={value} value={value}>
-                      {item.name} - {item.section || 'Section'}
+                      {item.name} - {item.section || ''}{item.coveringDates?.length ? ` · ${L('substitute', 'بديل')} ${item.coveringDates.join('، ')}` : ''}
                     </SelectItem>
                   )
                 })}
@@ -330,7 +316,7 @@ export default function TeacherAttendancePage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Date</Label>
+            <Label>{L('Date', 'التاريخ')}</Label>
             <DateInput
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={date}
@@ -358,7 +344,7 @@ export default function TeacherAttendancePage() {
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                {tab === 'manual' ? <><ClipboardList className="w-4 h-4" /> Manual</> : <><QrCode className="w-4 h-4" /> QR Code</>}
+                {tab === 'manual' ? <><ClipboardList className="w-4 h-4" /> Manual</> : <><QrCode className="w-4 h-4" /> {L('QR Code', 'كود QR')}</>}
               </button>
             ))}
           </div>
@@ -393,7 +379,7 @@ export default function TeacherAttendancePage() {
               {/* Quick-mark all buttons */}
               {enrollments.length > 0 && (
                 <div className="flex flex-wrap gap-2 items-center">
-                  <span className="text-xs text-gray-500 font-medium">Mark all as:</span>
+                  <span className="text-xs text-gray-500 font-medium">{L('Mark all as:', 'علّم الكل:')}</span>
                   {(['PRESENT', 'ABSENT'] as AttStatus[]).map(st => {
                     const cfg = STATUS_CONFIG[st]
                     return (
@@ -431,9 +417,9 @@ export default function TeacherAttendancePage() {
                 </CardHeader>
                 <CardContent>
                   {isLoading ? (
-                    <p className="text-sm text-gray-400">Loading roster…</p>
+                    <p className="text-sm text-gray-400">{L('Loading roster…', 'بيحمّل الطلبة…')}</p>
                   ) : enrollments.length === 0 ? (
-                    <p className="text-sm text-amber-700">No active enrollments in this section.</p>
+                    <p className="text-sm text-amber-700">{L('No active enrollments in this section.', 'مفيش طلبة في الجروب ده.')}</p>
                   ) : (
                     <div className="space-y-2">
                       {enrollments.map(row => {
@@ -451,7 +437,7 @@ export default function TeacherAttendancePage() {
                               {row.onlineJoinedAt && <p className="mt-1 text-xs text-emerald-700">🟢 {L('Joined online', 'دخل أونلاين')} {new Date(row.onlineJoinedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>}
                               {row.excuse && (
                                 <p className={`mt-1 text-xs ${row.excuse.status === 'APPROVED' ? 'text-indigo-700' : 'text-amber-700'}`}>
-                                  {row.excuse.status === 'APPROVED' ? 'Excused' : 'Excuse waiting for approval'}: {row.excuse.reason}
+                                  {row.excuse.status === 'APPROVED' ? 'Excused' : L('Excuse waiting for approval', 'عذر مستني الموافقة')}: {row.excuse.reason}
                                 </p>
                               )}
                             </div>
@@ -525,7 +511,7 @@ export default function TeacherAttendancePage() {
                       <div className="w-48 h-48 bg-white border-2 border-dashed border-indigo-300 rounded-xl mx-auto flex items-center justify-center">
                         <QrCode className="w-16 h-16 text-indigo-200" />
                       </div>
-                      <p className="text-sm text-indigo-700">No QR code generated yet.</p>
+                      <p className="text-sm text-indigo-700">{L('No QR code generated yet.', 'لسه ماعملتش كود QR.')}</p>
                       <Button
                         onClick={() => qrMutation.mutate()}
                         disabled={qrMutation.isPending}
@@ -543,18 +529,18 @@ export default function TeacherAttendancePage() {
                       <div className="flex justify-center">
                         <img
                           src={qrCode}
-                          alt="Attendance QR Code"
+                          alt={L('Attendance QR Code', 'كود QR للحضور')}
                           className="border-4 border-indigo-600 p-3 bg-white rounded-xl shadow-lg w-56 h-56 object-contain"
                         />
                       </div>
                       {qrExpiresAt && <QrCountdown expiresAt={qrExpiresAt} />}
                       <div className="rounded-lg bg-white border border-indigo-200 p-3 text-sm text-indigo-800 space-y-1">
-                        <p className="font-semibold">📋 Instructions for students:</p>
+                        <p className="font-semibold">{L('📋 Instructions for students:', '📋 للطلبة:')}</p>
                         <ol className="list-decimal pl-4 text-xs space-y-0.5">
-                          <li>Open the TechNova student app or portal.</li>
-                          <li>Tap <strong>Scan QR</strong> on the attendance screen.</li>
-                          <li>Point your camera at this QR code.</li>
-                          <li>Your attendance will be marked automatically.</li>
+                          <li>{L('Open the TechNova student app or portal.', 'افتح بوابة الطالب.')}</li>
+                          <li>Tap <strong>{L('Scan QR', L('Scan QR', 'Scan QR'))}</strong> {L('on the attendance screen.', 'في شاشة الحضور.')}</li>
+                          <li>{L('Point your camera at this QR code.', 'وجّه الكاميرا للكود.')}</li>
+                          <li>{L('Your attendance will be marked automatically.', 'حضورك هيتسجل لوحده.')}</li>
                         </ol>
                       </div>
                       <div className="flex gap-2">
@@ -582,8 +568,8 @@ export default function TeacherAttendancePage() {
               {enrollments.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Scanned / Marked Status</CardTitle>
-                    <CardDescription>Students who scanned the QR are marked Present automatically. Mark the rest manually.</CardDescription>
+                    <CardTitle className="text-base">{L('Scanned / Marked Status', 'مين اتسجل')}</CardTitle>
+                    <CardDescription>{L('Students who scanned the QR are marked Present automatically. Mark the rest manually.', 'اللي عمل scan اتسجل حاضر لوحده. علّم الباقي بإيدك.')}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -601,7 +587,7 @@ export default function TeacherAttendancePage() {
                                 {cfg.icon} {cfg.label}
                               </span>
                             ) : (
-                              <span className="text-xs text-gray-400 italic">Not marked</span>
+                              <span className="text-xs text-gray-400 italic">{L('Not marked', 'لسه')}</span>
                             )}
                           </div>
                         )

@@ -57,3 +57,25 @@ export async function teacherCanAccessClassSection(
   const allowed = await getTeacherClassSectionIds(teacherId, academicYearId)
   return allowed.includes(classSectionId)
 }
+
+/**
+ * 2026-10-25 (live test): a substitute could not open the group he covers. True when the teacher has an
+ * ACCEPTED substitute assignment for this group on this day (YYYY-MM-DD or a Date) — access for that day only.
+ */
+export async function teacherCoversSectionOn(teacherId: string, classSectionId: string, date: string | Date | null | undefined): Promise<boolean> {
+  if (!date) return false
+  const day = typeof date === 'string' ? date.slice(0, 10) : date.toISOString().slice(0, 10)
+  const hit = await prisma.substituteAssignment.findFirst({
+    where: { substituteTeacherId: teacherId, classSectionId, status: 'CONFIRMED', date: new Date(`${day}T00:00:00Z`) },
+    select: { id: true },
+  })
+  return !!hit
+}
+
+/** Groups a teacher covers as a substitute between two days (accepted assignments), for the attendance list. */
+export async function teacherCoveredSections(teacherId: string, fromDay: string, toDay: string) {
+  return prisma.substituteAssignment.findMany({
+    where: { substituteTeacherId: teacherId, status: 'CONFIRMED', date: { gte: new Date(`${fromDay}T00:00:00Z`), lte: new Date(`${toDay}T00:00:00Z`) } },
+    select: { classSectionId: true, date: true },
+  })
+}

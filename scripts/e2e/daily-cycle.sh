@@ -2090,6 +2090,19 @@ JS=$(mkstu Joiner 01000000331 Jparent 01000000332)
 api POST /api/groups/$JG/students "{\"studentId\":\"$JS\"}" >/dev/null
 check "a student who joins after a holiday was announced: the family is told (in Arabic too)" "$(M "SELECT COUNT(*)>0 FROM Notification n JOIN Guardian g ON g.userId=n.userId JOIN _GuardianToStudent gs ON gs.A=g.id WHERE gs.B='$JS' AND n.type='HOLIDAY' AND n.relatedId='$JG' AND n.messageAr LIKE '%اتأجلت%'")" "1"
 M "DELETE FROM Holiday WHERE name='E2E joiner day'"
+echo "== 62. A substitute opens and marks the session he covers (live test 2026-10-25)"
+SUBT=$(M "SELECT t.id FROM Teacher t JOIN User u ON u.id=t.userId WHERE u.email='tch@e2e.local'")
+SUBG=$(M "SELECT c.id FROM ClassSection c WHERE c.status='ACTIVE' AND c.isActive=1 AND c.levelId IS NOT NULL AND c.id NOT IN (SELECT classSectionId FROM SubjectOffering WHERE teacherId='$SUBT') AND c.id NOT IN (SELECT classSectionId FROM TeacherSectionAssignment WHERE teacherId='$SUBT') AND EXISTS (SELECT 1 FROM StudentEnrollment e WHERE e.classSectionId=c.id AND e.status='ACTIVE') ORDER BY c.createdAt LIMIT 1")
+SUBO=$(M "SELECT id FROM Teacher WHERE id<>'$SUBT' ORDER BY createdAt LIMIT 1")
+check "e2e data for the substitute check (a group he does not teach)" "$([ -n "$SUBG" ] && [ -n "$SUBO" ] && echo yes)" "yes"
+M "INSERT INTO TeacherAbsence (id, teacherId, date, scope, classSectionId, reason, status, requestedAt) VALUES ('ta-e2e-62','$SUBO','$(D 0)','SINGLE_SESSION','$SUBG','e2e','APPROVED',NOW(3))"
+M "INSERT INTO SubstituteAssignment (id, teacherAbsenceId, classSectionId, date, originalTeacherId, substituteTeacherId, status, assignedBy, assignedAt) VALUES ('sa-e2e-62','ta-e2e-62','$SUBG','$(D 0)','$SUBO','$SUBT','CONFIRMED','$SA_ID',NOW(3))"
+SJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$SJ" 10.0.1.62
+check "the covered group is in the substitute's attendance list (marked with the day)" "$(curl -s -b "$SJ" $B/api/teacher-portal/sections | jq_ "[s['coveringDates'] for s in d['data'] if s['id']=='$SUBG']")" "[['$(D 0)']]"
+check "the substitute opens the roster on the covered day, not on another day" "$(code_with "$SJ" "/api/enrollment-attendance/roster?classSectionId=$SUBG&date=$(D 0)")/$(code_with "$SJ" "/api/enrollment-attendance/roster?classSectionId=$SUBG&date=$(D 1)")" "200/403"
+SUBE=$(M "SELECT id FROM StudentEnrollment WHERE classSectionId='$SUBG' AND status='ACTIVE' LIMIT 1")
+check "the substitute saves the attendance of the covered session (counted for him)" "$(curl -s -b "$SJ" -X POST -H 'Content-Type: application/json' -d "{\"classSectionId\":\"$SUBG\",\"attendanceDate\":\"$(D 0)\",\"records\":[{\"studentEnrollmentId\":\"$SUBE\",\"status\":\"PRESENT\"}]}" $B/api/enrollment-attendance | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM EnrollmentAttendanceRecord WHERE studentEnrollmentId='$SUBE' AND markedByTeacherId='$SUBT' AND DATE(attendanceDate)='$(D 0)'")" "True/1"
+rm -f "$SJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

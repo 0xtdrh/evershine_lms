@@ -174,7 +174,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Groups', href: '/dashboard/groups', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['class_sections', 'read']] },
   { name: 'Wallet & Top-ups', href: '/dashboard/wallet', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['wallet', 'read']] },
   { name: 'Instructor Performance', href: '/dashboard/teacher-performance', icon: Award, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
-  { name: 'Passport & Stamps', href: '/dashboard/admin/passport', icon: BookMarked, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'TEACHER'], perm: [['passport', 'read']] },
+  { name: 'Passport & Stamps', href: '/dashboard/admin/passport', icon: BookMarked, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['passport', 'read']] }, // 2026-10-25: not instructors (they give stamps from the student page)
   { name: 'Session Reports', href: '/dashboard/session-reports', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['session_reports', 'read']] },
   { name: 'Renewals', href: '/dashboard/renewals', icon: RefreshCcw, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['renewals', 'read']] },
   { name: 'Follow-ups', href: '/dashboard/follow-ups', icon: PhoneCall, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['contact_logs', 'read']] },

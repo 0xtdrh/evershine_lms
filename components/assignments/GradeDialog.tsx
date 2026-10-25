@@ -3,7 +3,7 @@
 /** LMS L3: grade one hand-in — the work, automatic question results (with a change + reason), points / stars / rubric, feedback. */
 
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { Markdown } from '@/components/curriculum/BlockView'
@@ -33,6 +33,7 @@ const answerText = (q: Q, a: unknown) => {
 const correctText = (q: Q) => (q.type === 'SINGLE' || q.type === 'MULTI' ? q.correct.map((id) => q.options.find((o) => o.id === id)?.textEn ?? id).join(', ') : q.correct.join(' | ') + (q.tolerance ? ` (±${q.tolerance})` : ''))
 
 export function GradeDialog({ submissionId, onDone }: { submissionId: string; onDone: (next: boolean) => void }) {
+  const qc = useQueryClient()
   const { data, isLoading } = useQuery({ queryKey: ['submission', submissionId], queryFn: () => fetchApi<Data>(`/api/assignments/submissions/${submissionId}`) })
   const [points, setPoints] = useState<string>('')
   const [stars, setStars] = useState<number | null>(null)
@@ -66,7 +67,7 @@ export function GradeDialog({ submissionId, onDone }: { submissionId: string; on
         gallery, ...(audio !== undefined ? { feedbackAudio: audio } : {}),
       }),
     }),
-    onSuccess: (_r, p) => { notify.success(p.action === 'return' ? L('Sent back for changes', 'اترجع للتعديل') : L('Graded', 'اتصحّح')); onDone(!!p.next) },
+    onSuccess: (_r, p) => { notify.success(p.action === 'return' ? L('Sent back for changes', 'اترجع للتعديل') : L('Graded', 'اتصحّح')); qc.removeQueries({ queryKey: ['submission', submissionId] }); onDone(!!p.next) },
     onError: (e: Error) => notify.error(e.message),
   })
 

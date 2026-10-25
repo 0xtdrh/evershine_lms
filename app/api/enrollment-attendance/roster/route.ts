@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
-import { getTeacherByUserId, teacherCanAccessClassSection } from '@/lib/academic/teacher-scope'
+import { getTeacherByUserId, teacherCanAccessClassSection, teacherCoversSectionOn } from '@/lib/academic/teacher-scope'
 import { getOrSyncSectionEnrollments } from '@/lib/academic/roster-helper'
 import type { Role } from '@prisma/client'
 import { excusesOn } from '@/lib/excuses/engine'
@@ -37,7 +37,8 @@ export async function GET(request: NextRequest) {
     const teacher = await getTeacherByUserId(session.user.id)
     if (!teacher) return errors.forbidden()
 
-    const allowed = await teacherCanAccessClassSection(teacher.id, classSectionId, activeYear?.id)
+    // a substitute may open the group on the day he covers it
+    const allowed = (await teacherCanAccessClassSection(teacher.id, classSectionId, activeYear?.id)) || (await teacherCoversSectionOn(teacher.id, classSectionId, dateStr))
     if (!allowed) {
       return errors.forbidden('You are not assigned to this section')
     }

@@ -6,7 +6,7 @@ import { requireSession, requirePermission, campusScope } from '@/lib/academic/a
 import { markEnrollmentAttendanceSchema } from '@/lib/validation/academic'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { resolveMarkedByTeacherId } from '@/lib/academic/attendance'
-import { getTeacherByUserId, getTeacherClassSectionIds, teacherCanAccessClassSection } from '@/lib/academic/teacher-scope'
+import { getTeacherByUserId, getTeacherClassSectionIds, teacherCanAccessClassSection, teacherCoversSectionOn } from '@/lib/academic/teacher-scope'
 import type { Role } from '@prisma/client'
 import { createStudentAbsenceAssessment } from '@/lib/penalties/assessments'
 import { syncGroupProgress } from '@/lib/groups/sync-progress'
@@ -39,7 +39,8 @@ async function assertCanMarkGroup(
   if (session.user.role === 'TEACHER') {
     const teacher = await getTeacherByUserId(session.user.id)
     if (!teacher) return errors.forbidden()
-    const allowed = await teacherCanAccessClassSection(teacher.id, classSectionId, activeYearId)
+    // a substitute may mark the session he covers (that day only); the session is then counted for him
+    const allowed = (await teacherCanAccessClassSection(teacher.id, classSectionId, activeYearId)) || (await teacherCoversSectionOn(teacher.id, classSectionId, attendanceDate))
     if (!allowed) return errors.forbidden('You are not assigned to this section')
   }
   return null
