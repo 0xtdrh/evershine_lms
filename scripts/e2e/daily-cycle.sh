@@ -2104,6 +2104,28 @@ SUBE=$(M "SELECT id FROM StudentEnrollment WHERE classSectionId='$SUBG' AND stat
 check "the substitute saves the attendance of the covered session (counted for him)" "$(curl -s -b "$SJ" -X POST -H 'Content-Type: application/json' -d "{\"classSectionId\":\"$SUBG\",\"attendanceDate\":\"$(D 0)\",\"records\":[{\"studentEnrollmentId\":\"$SUBE\",\"status\":\"PRESENT\"}]}" $B/api/enrollment-attendance | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM EnrollmentAttendanceRecord WHERE studentEnrollmentId='$SUBE' AND markedByTeacherId='$SUBT' AND DATE(attendanceDate)='$(D 0)'")" "True/1"
 rm -f "$SJ"
 check "reconciliation: the session recorded by the substitute is not counted for the absent instructor → no 2nd deduction suggested" "$(api GET /api/reports/substitute-reconciliation | jq_ "[(r['deductionAlreadyExcluded'], r['suggestedDeductionAmount']) for r in d['data'] if r['id']=='sa-e2e-62']")" "[(True, None)]"
+echo "== 63. Instructor pay statement (2026-10-26)"
+PSM=$(cairo +%Y-%m)
+PSU=$(M "SELECT userId FROM Teacher WHERE id='$SUBT'")
+PSX=$(M "SELECT COUNT(*) FROM (SELECT e.classSectionId g, r.attendanceDate d FROM EnrollmentAttendanceRecord r JOIN StudentEnrollment e ON e.id=r.studentEnrollmentId WHERE DATE_FORMAT(r.attendanceDate,'%Y-%m')='$PSM' AND e.classSectionId IN (SELECT classSectionId FROM SubjectOffering WHERE teacherId='$SUBT') AND (r.taughtByTeacherId='$SUBT' OR (r.taughtByTeacherId IS NULL AND r.markedByTeacherId='$SUBT')) UNION SELECT l.classSectionId, l.sessionDate FROM GroupSessionLog l WHERE l.status='HELD' AND l.taughtByTeacherId='$SUBT' AND DATE_FORMAT(l.sessionDate,'%Y-%m')='$PSM' AND l.classSectionId IN (SELECT classSectionId FROM SubjectOffering WHERE teacherId='$SUBT')) x")
+M "DELETE FROM TeacherEmployment WHERE teacherId='$SUBT'"
+PST=$(api GET "/api/teachers/$SUBT/pay-statement?month=$PSM")
+check "statement counts the sessions he taught this month in his own groups (same as the attendance records)" "$(echo "$PST" | jq_ "(d['success'], d['data']['totals']['sessions'] == $PSX)")" "(True, True)"
+M "INSERT INTO TeacherPayAdjustment (id, teacherId, classSectionId, amount, reason, createdBy, createdAt, substituteAssignmentId) VALUES ('tpa-e2e-63','$SUBT','$SUBG',100,'Covered a session (e2e)','$SA_ID',NOW(3),'sa-e2e-62')"
+check "the group he covered as a substitute shows only the substitute bonus (no session / % / fixed pay)" "$(api GET "/api/teachers/$SUBT/pay-statement?month=$PSM" | jq_ "[(g['coveredOnly'], g['total'], g['sessionAmount']+g['percentAmount']+g['fixedAmount']) for g in d['data']['groups'] if g['id']=='$SUBG']")" "[(True, 100, 0)]"
+check "one group only: the covered group alone, net 100" "$(api GET "/api/teachers/$SUBT/pay-statement?month=$PSM&groupId=$SUBG" | jq_ "(len(d['data']['groups']), d['data']['totals']['net'])")" "(1, 100)"
+check "Excel export of the statement" "$(curl -s -b "$JAR" -o /dev/null -w '%{http_code} %{content_type}' "$B/api/teachers/$SUBT/pay-statement?month=$PSM&format=xlsx")" "200 application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+check "a wrong month is refused" "$(code_with "$JAR" "/api/teachers/$SUBT/pay-statement?month=October")" "400"
+PJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$PJ" 10.0.1.63
+api PUT /api/accountant/salary-slips/settings '{"teacherSeesOwnSlips":true}' >/dev/null
+OTHER_T=$(M "SELECT id FROM Teacher WHERE id<>'$SUBT' LIMIT 1")
+check "the instructor opens his own statement, not another instructor's" "$(code_with "$PJ" "/api/teachers/$PSU/pay-statement?month=$PSM")/$(code_with "$PJ" "/api/teachers/$OTHER_T/pay-statement?month=$PSM")" "200/403"
+api PUT /api/accountant/salary-slips/settings '{"teacherSeesOwnSlips":false}' >/dev/null
+check "…and not at all while slips are hidden from instructors" "$(code_with "$PJ" "/api/teachers/$PSU/pay-statement?month=$PSM")" "403"
+api PUT /api/accountant/salary-slips/settings '{"teacherSeesOwnSlips":true}' >/dev/null
+rm -f "$PJ"
+check "a secretary (no salaries) cannot open a pay statement" "$(code_with "$SECJ" "/api/teachers/$SUBT/pay-statement?month=$PSM")" "403"
+M "DELETE FROM TeacherPayAdjustment WHERE id='tpa-e2e-63'"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

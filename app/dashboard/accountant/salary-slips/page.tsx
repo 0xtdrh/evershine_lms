@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchPaginatedApi, fetchApi } from '@/lib/api-client'
@@ -15,6 +15,8 @@ import { notify } from '@/lib/notify'
 import { motion, AnimatePresence } from 'framer-motion'
 import { L, useI18n } from '@/lib/i18n/client'
 import { DateInput } from '@/components/ui/date-input'
+import { slipLinesFromStatement, monthBounds } from '@/lib/teachers/pay-statement-calc'
+import type { PayStatement } from '@/lib/teachers/pay-statement'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,7 +56,11 @@ interface CustomField {
 
 // ─── Issue Slip Form ──────────────────────────────────────────────────────────
 
-function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+/** 2026-10-26: a slip filled from the instructor pay statement (?statementTeacher=&statementMonth=YYYY-MM&statementCampus=&statementGroup=) */
+interface StatementPreset { teacher: string; month: string; campusId?: string | null; groupId?: string | null }
+const monthText = (ym: string) => new Date(`${ym}-01T00:00:00Z`).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+
+function IssueSlipModal({ onClose, onSuccess, preset }: { onClose: () => void; onSuccess: () => void; preset?: StatementPreset | null }) {
   const [search, setSearch] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null)
   const [basicSalary, setBasicSalary] = useState('')
@@ -92,29 +98,47 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
     setCustomFields(f => f.map((cf, idx) => idx === i ? { ...cf, [key]: val } : cf))
 
   const [isPullingGroupPay, setIsPullingGroupPay] = useState(false)
+  // 2026-10-26: the group pay comes from the instructor pay statement of the slip's month (calendar month)
+  const statementMonth = periodStart.slice(0, 7)
+  const applyStatement = (st: PayStatement) => {
+    const lines = slipLinesFromStatement(st.groups, st.general)
+    if (!lines.length) { notify.error(L('Nothing to pay this instructor in this month', 'مفيش أجر للمدرب ده في الشهر ده')); return false }
+    setCustomFields((f) => [...f.filter((x) => x.label.trim() || Number(x.value)), ...lines])
+    notify.success(L(`Added ${lines.length} line(s) from the pay statement — review before saving`, `اتضاف ${lines.length} بند من كشف الأجر — راجعهم قبل الحفظ`))
+    return true
+  }
   const pullInGroupPay = async () => {
     const teacherId = selectedEmployee?.id
     if (!teacherId) return
     setIsPullingGroupPay(true)
     try {
-      const summary = await fetchApi<{ groups: { groupLabel: string; total: number }[]; total: number }>(
-        `/api/teachers/${teacherId}/group-pay-summary`
-      )
-      if (summary.groups.length === 0) {
-        notify.error(L('No group teaching pay found for this teacher this cycle', 'مفيش أجر جروبات للمدرب ده الشهر ده'))
-        return
-      }
-      setCustomFields((f) => [
-        ...f,
-        ...summary.groups.map((g) => ({ label: `${L('Group', 'جروب')}: ${g.groupLabel}`, value: g.total, isDeduction: g.total < 0 })),
-      ])
-      notify.success(L(`Added pay from ${summary.groups.length} group(s) — review before saving`, `اتضاف أجر ${summary.groups.length} جروب — راجعه قبل الحفظ`))
+      applyStatement(await fetchApi<PayStatement>(`/api/teachers/${teacherId}/pay-statement?month=${statementMonth}`))
     } catch (err: any) {
       notify.error(err?.message ?? 'Failed to fetch group pay')
     } finally {
       setIsPullingGroupPay(false)
     }
   }
+  // opened from the statement page: pick the instructor, the month and fill the lines once
+  const [presetDone, setPresetDone] = useState(false)
+  useEffect(() => {
+    if (!preset || presetDone) return
+    setPresetDone(true)
+    const b = monthBounds(preset.month)
+    if (b) {
+      setMonth(monthText(preset.month))
+      setPeriodStart(b.from.toISOString().slice(0, 10))
+      setPeriodEnd(new Date(b.to.getTime() - 86_400_000).toISOString().slice(0, 10))
+    }
+    if (!basicSalary) setBasicSalary('0')
+    const q = `month=${preset.month}${preset.campusId ? `&campusId=${preset.campusId}` : ''}${preset.groupId ? `&groupId=${preset.groupId}` : ''}`
+    fetchApi<PayStatement>(`/api/teachers/${preset.teacher}/pay-statement?${q}`)
+      .then((st) => {
+        setSelectedEmployee({ id: st.teacher.id, userId: st.teacher.userId, firstName: st.teacher.name, lastName: '', employeeId: st.teacher.employeeId, designation: L('Instructor', 'مدرب') })
+        applyStatement(st)
+      })
+      .catch((e: Error) => notify.error(e.message))
+  }, [preset, presetDone]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const additions = Number(basicSalary || 0) + Number(overtime || 0) +
     customFields.filter(cf => !cf.isDeduction).reduce((s, cf) => s + Number(cf.value), 0)
@@ -236,6 +260,12 @@ function IssueSlipModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
                   <Button type="button" variant="outline" size="sm" onClick={pullInGroupPay} disabled={isPullingGroupPay} className="h-7 text-xs gap-1">
                     {isPullingGroupPay ? <Loader2 className="w-3 h-3 animate-spin" /> : null} {L('Pull in group pay', 'هات أجر الجروبات')}
                   </Button>
+                )}
+                {selectedEmployee && (
+                  <a href={`/reports/teacher-pay/${selectedEmployee.userId ?? selectedEmployee.id}?month=${statementMonth}`} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs font-medium hover:bg-gray-50">
+                    <FileText className="w-3 h-3" /> {L('Pay statement', 'كشف الأجر')}
+                  </a>
                 )}
                 <Button type="button" variant="outline" size="sm" onClick={addCustomField} className="h-7 text-xs gap-1">
                   <Plus className="w-3 h-3" /> {L('Add', 'ضيف')}
@@ -411,6 +441,15 @@ export default function SalarySlipsPage() {
   const canAccess = ['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'].includes(role)
 
   const [showModal, setShowModal] = useState(false)
+  const [preset, setPreset] = useState<StatementPreset | null>(null)
+  // opened from the pay statement page ("Issue a slip from this statement")
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search)
+      const t = sp.get('statementTeacher'), m = sp.get('statementMonth')
+      if (t && m && /^\d{4}-\d{2}$/.test(m)) { setPreset({ teacher: t, month: m, campusId: sp.get('statementCampus'), groupId: sp.get('statementGroup') }); setShowModal(true) }
+    } catch { /* ignore */ }
+  }, [])
   const [filterMonth, setFilterMonth] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [page, setPage] = useState(1)
@@ -528,7 +567,7 @@ export default function SalarySlipsPage() {
         )}
       </div>
 
-      {showModal && <IssueSlipModal onClose={() => setShowModal(false)} onSuccess={onIssued} />}
+      {showModal && <IssueSlipModal preset={preset} onClose={() => { setShowModal(false); setPreset(null) }} onSuccess={onIssued} />}
     </div>
   )
 }

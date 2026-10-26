@@ -366,7 +366,10 @@ export default function TeacherHRPage() {
       {/* ═══════ SALARY TAB ═══════ */}
       {activeTab === 'salary' && showSalary && (
         <Card className="border-gray-200 shadow-sm">
-          <CardHeader className="pb-4"><CardTitle className="text-lg">{L('Salary History', 'سجل المرتبات')}</CardTitle><CardDescription>{L('View your monthly processed salary slips.', 'قسايم مرتبك الشهرية.')}</CardDescription></CardHeader>
+          <CardHeader className="pb-4"><CardTitle className="text-lg">{L('Salary History', 'سجل المرتبات')}</CardTitle><CardDescription>{L('View your monthly processed salary slips.', 'قسايم مرتبك الشهرية.')}</CardDescription>
+            {/* 2026-10-26: his pay statement (session by session) — only shown while slips are visible to instructors */}
+            {session?.user?.id && <a href={`/reports/teacher-pay/${session.user.id}`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex w-fit items-center rounded-md border px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50">{L('My pay statement (session by session)', 'كشف أجري (حصة بحصة)')}</a>}
+          </CardHeader>
           <CardContent>
             {isLoadingSalary ? (<div className="text-center py-8 text-gray-500">{L('Loading salary data...', 'بيحمّل المرتبات...')}</div>
             ) : salaryHidden ? (

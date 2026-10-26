@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { slipLinesFromStatement } from '@/lib/teachers/pay-statement-calc'
+import type { PayStatement } from '@/lib/teachers/pay-statement'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { fetchPaginatedApi, fetchApi } from '@/lib/api-client'
@@ -138,45 +140,25 @@ export default function SalariesPage() {
     }
   }
 
+  // 2026-10-26: from the instructor pay statement of the payroll month (calendar month)
   const pullInGroupPay = async () => {
     if (!employeeId) return
+    const d = new Date(`1 ${month} UTC`)
+    const ym = isNaN(d.getTime()) ? new Date().toISOString().slice(0, 7) : `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
     setIsPullingGroupPay(true)
     try {
-      const summary = await fetchApi<{
-        groups: {
-          groupLabel: string; earned: number
-          adjustments: { amount: number; reason: string }[]
-        }[]
-        substituteAdjustments: { groupLabel: string; amount: number; reason: string }[]
-        totals: { earnings: number; bonuses: number; deductions: number; net: number }
-      }>(`/api/teachers/${employeeId}/group-pay-summary?month=${encodeURIComponent(month)}`)
-
-      if (summary.groups.length === 0 && summary.substituteAdjustments.length === 0) {
-        notify.error(L('No group teaching pay or substitute adjustments found for this teacher', 'مفيش أجر جروبات أو تسويات بديل للمدرب ده'))
+      const st = await fetchApi<PayStatement>(`/api/teachers/${employeeId}/pay-statement?month=${ym}`)
+      if (!st.groups.length && !st.general.length) {
+        notify.error(L('Nothing to pay this instructor in this month', 'مفيش أجر للمدرب ده في الشهر ده'))
         return
       }
-
-      // Earnings + bonuses go to Allowances, deductions to Deductions — and
-      // every line (with its reason) is written into the notes so the slip
-      // explains itself.
+      // earnings + bonuses → allowances, deductions → deductions; every line (with its reason) goes into the notes
       const round2 = (n: number) => Math.round(n * 100) / 100
-      setAllowances((prev) => String(round2(Number(prev || 0) + summary.totals.earnings + summary.totals.bonuses)))
-      setDeductions((prev) => String(round2(Number(prev || 0) + summary.totals.deductions)))
-
-      const lines: string[] = []
-      for (const g of summary.groups) {
-        lines.push(`Group pay - ${g.groupLabel}: ${g.earned}`)
-        for (const a of g.adjustments) {
-          lines.push(`${a.amount >= 0 ? 'Bonus' : 'Deduction'} ${Math.abs(a.amount)} - ${a.reason}`)
-        }
-      }
-      for (const a of summary.substituteAdjustments) {
-        lines.push(`${a.amount >= 0 ? 'Bonus' : 'Deduction'} ${Math.abs(a.amount)} - ${a.reason}`)
-      }
+      setAllowances((prev) => String(round2(Number(prev || 0) + st.totals.earnings + st.totals.bonuses)))
+      setDeductions((prev) => String(round2(Number(prev || 0) + st.totals.deductions)))
+      const lines = slipLinesFromStatement(st.groups, st.general).map((l) => `${l.isDeduction ? '-' : '+'} ${l.value} · ${l.label}`)
       setNotes((prev) => (prev ? `${prev}\n` : '') + lines.join('\n'))
-      notify.success(
-        `Added earnings ${summary.totals.earnings}, bonuses ${summary.totals.bonuses}, deductions ${summary.totals.deductions} - review before saving`
-      )
+      notify.success(L(`Added from the pay statement: earned ${st.totals.earnings}, bonuses ${st.totals.bonuses}, deductions ${st.totals.deductions} — review before saving`, `اتضاف من كشف الأجر: أجر ${st.totals.earnings}، إضافات ${st.totals.bonuses}، خصومات ${st.totals.deductions} — راجع قبل الحفظ`))
     } catch (err: any) {
       notify.error(L('Failed to fetch group pay', 'تحميل أجر الجروبات فشل'), { description: err?.message })
     } finally {
@@ -523,7 +505,7 @@ export default function SalariesPage() {
                             disabled={isPullingGroupPay}
                             className="text-[11px] text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50"
                           >
-                            {isPullingGroupPay ? 'Loading...' : 'Pull in group pay'}
+                            {isPullingGroupPay ? L('Loading…', 'بيحمّل…') : L('Pull in group pay', 'هات أجر الجروبات')}
                           </button>
                         )}
                       </div>
