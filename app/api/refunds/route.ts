@@ -14,6 +14,7 @@ import { checkPermission } from '@/lib/rbac'
 import { createdResponse, errorResponse, errors, successResponse } from '@/lib/api-response'
 import { canApproveRefunds, requestRefund } from '@/lib/refunds/engine'
 import { isActivePaymentMethod } from '@/lib/fees/payment-settings'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
   )
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
@@ -94,3 +95,6 @@ export async function POST(request: NextRequest) {
   if ('message' in r) return errorResponse('REFUND_REFUSED', r.message, r.status)
   return createdResponse(r, r.status === 'APPROVED' ? 'Refund approved' : 'Sent for approval')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

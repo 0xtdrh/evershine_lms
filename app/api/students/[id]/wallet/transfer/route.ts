@@ -8,8 +8,9 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { transferBetweenSiblings } from '@/lib/wallet/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POST_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
   const role = session.user.role as Role
@@ -28,3 +29,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if ('message' in r) return errors.badRequest(r.message)
   return successResponse(r, 'Moved to the sibling’s wallet')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

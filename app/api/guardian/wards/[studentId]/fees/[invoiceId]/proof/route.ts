@@ -14,11 +14,12 @@ import { errors, successResponse } from '@/lib/api-response'
 import { assertGuardianOwnsStudent } from '@/lib/guardian/assert-ownership'
 import { isAllowedPaymentProof, sanitizeCloudinaryError, uploadPaymentProofToCloudinary } from '@/lib/cloudinary'
 import { dispatchNotification } from '@/lib/notifications/in-app'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 // Maximum file size: 4MB (Vercel payload limit is 4.5MB)
 const MAX_FILE_SIZE = 4 * 1024 * 1024
 
-export async function POST(
+async function POST_(
   request: NextRequest,
   { params }: { params: Promise<{ studentId: string; invoiceId: string }> }
 ) {
@@ -148,3 +149,6 @@ export async function POST(
 
   return successResponse(updatedInvoice, 'Payment proof submitted successfully. It will be reviewed by the accounts team.')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

@@ -8,10 +8,11 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { decideWithdrawal } from '@/lib/wallet/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const bodySchema = z.object({ action: z.enum(['approve', 'reject']), reason: z.string().trim().max(500).optional().nullable() })
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCH_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
   const role = session.user.role as Role
@@ -30,3 +31,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ('message' in r) return r.status === 404 ? errors.notFound('Request') : errors.conflict(r.message)
   return successResponse(r, parsed.data.action === 'approve' ? 'Withdrawal approved' : 'Withdrawal rejected')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)

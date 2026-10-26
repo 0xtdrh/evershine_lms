@@ -6,10 +6,11 @@ import { checkPermission } from '@/lib/rbac'
 import { assessmentActionSchema } from '@/lib/validation/penalty'
 import type { Role } from '@prisma/client'
 import { Prisma } from '@prisma/client'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const financeRoles: Role[] = ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT']
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCH_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
@@ -73,3 +74,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return errors.conflict(error instanceof Error ? error.message : 'Penalty could not be posted')
   }
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)

@@ -13,10 +13,11 @@ import { checkPermission } from '@/lib/rbac'
 import { createdResponse, errors } from '@/lib/api-response'
 import { paymentErrorResponse } from '@/lib/fees/record-payment'
 import { payFromWallet } from '@/lib/refunds/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const bodySchema = z.object({ amount: z.number().positive().optional() })
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POST_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
@@ -39,3 +40,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     `Paid ${r.amount} EGP from the wallet`
   )
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

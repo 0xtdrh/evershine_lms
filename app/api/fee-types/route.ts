@@ -8,6 +8,7 @@ import { errors } from '@/lib/api-response'
 import { createdResponse, successResponse } from '@/lib/api-response'
 import { listFeeTypes, saveFeeType, type FeeTypeInput } from '@/lib/fees-extra/engine'
 import { FEE_FREQUENCIES, ON_UNPAID } from '@/lib/fees-extra/rules'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,7 @@ export async function GET() {
   return successResponse(await listFeeTypes())
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = normalizeRole(session.user.role)
@@ -33,3 +34,6 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return errors.validation(parsed.error)
   return createdResponse(await saveFeeType(parsed.data as FeeTypeInput))
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

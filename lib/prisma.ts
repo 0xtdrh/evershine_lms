@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { withAutoAudit } from './audit/auto'
+import { withMonthGuard } from './month-close/guard'
 import { currentActorId, runWithActor } from './audit/actor'
 import { withPoolLimits } from './db-url'
 
@@ -42,7 +43,8 @@ function createPrismaClient(): PrismaClient {
     datasources: { db: { url: withPoolLimits(url, process.env) } },
   })
   // 2026-10-18: changes on the important tables are logged automatically (who, old value → new value)
-  const audited = withAutoAudit(base, currentActorId)
+  // a03 (2026-10-26): nothing dated in a closed month can be added / changed / deleted (lib/month-close/guard.ts)
+  const audited = withAutoAudit(withMonthGuard(base), currentActorId)
   // keep "who is acting" inside interactive transactions (Prisma runs the callback outside the request context).
   // Done on the client itself, because modules loaded later read globalThis.prisma directly (not the lazy proxy).
   return new Proxy(audited, {

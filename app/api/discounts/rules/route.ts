@@ -12,6 +12,7 @@ import { errors, successResponse } from '@/lib/api-response'
 import { discountRulesSchema } from '@/lib/validation/discounts'
 import { getDiscountRules, saveDiscountRules } from '@/lib/discounts/engine'
 import { prisma } from '@/lib/prisma'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +24,7 @@ export async function GET() {
   return successResponse(await getDiscountRules())
 }
 
-export async function PUT(request: NextRequest) {
+async function PUT_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!checkPermission(session.user.role as Role, 'finance_settings', 'update')) return errors.forbidden()
@@ -54,3 +55,6 @@ export async function PUT(request: NextRequest) {
   await saveDiscountRules(v, session.user.id)
   return successResponse(v, 'Saved')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PUT = withMonthLock(PUT_)

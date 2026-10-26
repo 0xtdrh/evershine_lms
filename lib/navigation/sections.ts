@@ -18,10 +18,10 @@ export const HUBS: { key: HubKey; en: string; ar: string; items: string[] }[] = 
   { key: 'learning', en: 'Learning', ar: 'التعليم', items: ['LMS', 'Level Results', 'LMS Results', 'Passport & Stamps', 'Session Reports', 'Course Structure', 'Grading Weights'] },
   { key: 'certificates', en: 'Certificates & documents', ar: 'الشهادات والمستندات', items: ['ID Cards', 'Certificate Designer', 'Certificate Reveal', 'Documents'] },
   { key: 'staff', en: 'Instructors & staff', ar: 'المدربين والموظفين', items: ['Staff Directory', 'Absence Requests', 'Leaves', 'Staff Salaries', 'HR & Salary', 'Instructor Performance', 'Substitute Reconciliation'] },
-  { key: 'money', en: 'Money', ar: 'الفلوس', items: ['Accounting Hub', 'Fees', 'Fee Collection', 'Accounts & Cash', 'Fees & Charges', 'Wallet & Top-ups', 'Discounts', 'Refunds', 'Expense Ledger', 'Financial Reports', 'Groups Financials'] },
+  { key: 'money', en: 'Money', ar: 'الفلوس', items: ['Accounting Hub', 'Fees', 'Fee Collection', 'Accounts & Cash', 'Fees & Charges', 'Wallet & Top-ups', 'Discounts', 'Refunds', 'Expense Ledger', 'Month Close', 'Financial Reports', 'Groups Financials'] },
   { key: 'communication', en: 'Communication', ar: 'التواصل', items: ['Announcements', 'My Announcements', 'Complaints', 'Referrals', 'Ratings'] },
   { key: 'places', en: 'Branches & partners', ar: 'الفروع والشركاء', items: ['Campuses', 'Partners'] },
-  { key: 'reports', en: 'Reports', ar: 'التقارير', items: ['Reports Centre', 'Usage', 'Import & Export', 'Attendance Report', 'Groups Financials', 'Financial Reports', 'Instructor Performance', 'Substitute Reconciliation', 'Ratings'] },
+  { key: 'reports', en: 'Reports', ar: 'التقارير', items: ['Reports Centre', 'Usage', 'Import & Export', 'Attendance Report', 'Groups Financials', 'Financial Reports', 'Month Close', 'Instructor Performance', 'Substitute Reconciliation', 'Ratings'] },
   { key: 'settings', en: 'Settings', ar: 'الإعدادات', items: ['Settings Centre', 'Import & Export', 'Platform', 'Agreements', 'Notifications', 'Permissions', 'Credential Management', 'Backups', 'Change Log', 'Data Health', 'Settings'] },
 ]
 

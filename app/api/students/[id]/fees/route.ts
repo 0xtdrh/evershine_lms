@@ -12,6 +12,7 @@ import { prisma } from '@/lib/prisma'
 import { createdResponse, successResponse } from '@/lib/api-response'
 import { canSeeStudent } from '@/lib/places/server'
 import { addFee, FeeError } from '@/lib/fees-extra/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 const schema = z.object({ feeTypeId: z.string().min(1), amount: z.number().min(0).max(1000000).optional().nullable() })
@@ -29,7 +30,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   return successResponse(charges.map((c) => ({ ...c, amount: Number(c.amount), fee: types.find((t) => t.id === c.feeTypeId) ?? null, invoice: invoices.find((i) => i.id === c.invoiceId) ?? null })))
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POST_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = normalizeRole(session.user.role)
@@ -43,3 +44,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     throw e
   }
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

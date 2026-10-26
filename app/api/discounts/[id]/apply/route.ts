@@ -13,12 +13,13 @@ import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 import { canApproveDiscounts, invoicesAffectedBy, reapplyDiscountsToInvoice } from '@/lib/discounts/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 
 const bodySchema = z.object({ invoiceIds: z.array(z.string().min(1)).min(1).max(200) })
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POST_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
@@ -51,3 +52,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
   return successResponse({ results })
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

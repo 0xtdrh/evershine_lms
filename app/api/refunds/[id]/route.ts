@@ -13,6 +13,7 @@ import { checkPermission } from '@/lib/rbac'
 import { errorResponse, errors, successResponse } from '@/lib/api-response'
 import { approveRefund, canApproveRefunds, rejectRefund } from '@/lib/refunds/engine'
 import { getFinanceSettings } from '@/lib/fees/payment-settings'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,7 +50,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
 const bodySchema = z.object({ action: z.enum(['approve', 'reject']), reason: z.string().trim().max(500).optional().nullable() })
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCH_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!canApproveRefunds(session.user.role)) return errors.forbidden('Only someone with refund approval can do this')
@@ -71,3 +72,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ('message' in r) return errorResponse('REFUND_REFUSED', r.message, r.status)
   return successResponse(r)
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)

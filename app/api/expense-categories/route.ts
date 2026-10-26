@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { createdResponse, errors, successResponse } from '@/lib/api-response'
 import { expenseCategories, saveExpenseCategory } from '@/lib/treasury/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   return successResponse(await expenseCategories(request.nextUrl.searchParams.get('all') === '1'))
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!checkPermission(session.user.role, 'expenses', 'update')) return errors.forbidden()
@@ -26,3 +27,6 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return errors.validation(parsed.error)
   return createdResponse(await saveExpenseCategory(parsed.data as { nameEn: string; nameAr: string; isActive?: boolean; sortOrder?: number }))
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

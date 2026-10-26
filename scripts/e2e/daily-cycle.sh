@@ -2126,6 +2126,60 @@ api PUT /api/accountant/salary-slips/settings '{"teacherSeesOwnSlips":true}' >/d
 rm -f "$PJ"
 check "a secretary (no salaries) cannot open a pay statement" "$(code_with "$SECJ" "/api/teachers/$SUBT/pay-statement?month=$PSM")" "403"
 M "DELETE FROM TeacherPayAdjustment WHERE id='tpa-e2e-63'"
+echo "== 64. Month close + monthly financial report (a03, 2026-10-26)"
+LM=$(date -u -d "$(cairo +%Y-%m-01) -1 month" +%Y-%m); LMD="${LM}-15"
+OTHERC=$(M "SELECT id FROM Campus WHERE id<>'$CAMPUS' AND isActive=1 ORDER BY createdAt LIMIT 1")
+MCE=$(api POST /api/accountant/expenses "{\"title\":\"E2E closed-month rent\",\"amount\":400,\"category\":\"UTILITIES\",\"date\":\"$LMD\",\"campusId\":\"$CAMPUS\"}" | jq_ "d['data']['id']")
+MCO=$(api POST /api/accountant/expenses "{\"title\":\"E2E other-branch rent\",\"amount\":150,\"category\":\"UTILITIES\",\"date\":\"$LMD\",\"campusId\":\"$OTHERC\"}" | jq_ "d['data']['id']")
+check "e2e data: expenses dated last month in two branches" "$([ -n "$MCE" ] && [ "$MCE" != "None" ] && [ -n "$MCO" ] && [ "$MCO" != "None" ] && echo yes)" "yes"
+MCI=$(M "SELECT id FROM FeeInvoice WHERE status IN ('ISSUED','OVERDUE') AND paidAmount=0 AND totalAmount>5 AND classSectionId IN (SELECT id FROM ClassSection WHERE campusId='$CAMPUS') ORDER BY createdAt DESC LIMIT 1")
+M "UPDATE FeeInvoice SET createdAt='$LMD 10:00:00' WHERE id='$MCI'"
+MCAMT=$(M "SELECT totalAmount-paidAmount FROM FeeInvoice WHERE id='$MCI'")
+api PUT /api/users/$(M "SELECT id FROM User WHERE email='$ACCE'")/places "{\"allLocations\":false,\"campusIds\":[\"$CAMPUS\"],\"groupIds\":[]}" >/dev/null
+MCJ=$(mktemp); login_jar $ACCE E2eAcc12345 "$MCJ" 10.0.2.64
+mcacc() { curl -s -b "$MCJ" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+check "the checklist before closing answers (things still waiting in that month)" "$(api GET "/api/month-close/pending?ym=$LM" | jq_ "d['success'] and isinstance(d['data']['total'], int)")" "True"
+check "a secretary cannot close a month" "$(secapi POST /api/month-close "{\"ym\":\"$LM\"}" | jq_ "d['error']['code']")" "FORBIDDEN"
+check "a branch accountant cannot close the whole company" "$(mcacc POST /api/month-close "{\"ym\":\"$LM\"}" | jq_ "d['error']['code']")" "FORBIDDEN"
+check "this month (not over) cannot be closed" "$(api POST /api/month-close "{\"ym\":\"$(cairo +%Y-%m)\"}" | jq_ "d['success']")" "False"
+check "the admin closes last month for the whole company (report saved with it)" "$(api POST /api/month-close "{\"ym\":\"$LM\"}" | jq_ "d['success']")/$(M "SELECT CONCAT(status,'/',snapshot IS NOT NULL) FROM MonthLock WHERE ym='$LM' AND scopeKey='ALL'")" "True/LOCKED/1"
+check "closing it twice is refused" "$(api POST /api/month-close "{\"ym\":\"$LM\"}" | jq_ "d['error']['code']")" "CONFLICT"
+check "editing an expense of the closed month -> 409 MONTH_LOCKED with the reason in Arabic" "$(api PATCH /api/accountant/expenses/$MCE '{"amount":450}' | PYTHONUTF8=1 jq_ "(d['error']['code'], '\u0645\u0642\u0641\u0648\u0644' in d['error']['message'])")/$(M "SELECT amount FROM Expense WHERE id='$MCE'")" "('MONTH_LOCKED', True)/400.00"
+check "…deleting it is refused too" "$(api DELETE /api/accountant/expenses/$MCE | jq_ "d['error']['code']")/$(M "SELECT isDeleted FROM Expense WHERE id='$MCE'")" "MONTH_LOCKED/0"
+check "…a note can still be added to it" "$(api PATCH /api/accountant/expenses/$MCE '{"notes":"receipt found"}' | jq_ "d['success']")" "True"
+check "a new expense dated in the closed month is refused; dated today it is fine" "$(api POST /api/accountant/expenses "{\"title\":\"E2E back-dated\",\"amount\":10,\"category\":\"UTILITIES\",\"date\":\"$LMD\",\"campusId\":\"$CAMPUS\"}" | jq_ "d['error']['code']")/$(api POST /api/accountant/expenses "{\"title\":\"E2E today expense\",\"amount\":10,\"category\":\"UTILITIES\",\"date\":\"$(D 0)\",\"campusId\":\"$CAMPUS\"}" | jq_ "d['success']")" "MONTH_LOCKED/True"
+check "a payment back-dated into the closed month is refused" "$(api POST /api/accountant/fees/invoices/$MCI/payments "{\"amount\":$MCAMT,\"paymentMethod\":\"InstaPay\",\"paymentDate\":\"${LMD}T10:00:00.000Z\"}" | jq_ "d['error']['code']")" "MONTH_LOCKED"
+check "cancelling an invoice made in the closed month is refused" "$(api PATCH /api/fees/$MCI '{"status":"CANCELLED"}' | jq_ "d['error']['code']")" "MONTH_LOCKED"
+check "a late payment today on last month's invoice is recorded (in this month)" "$(api POST /api/fees/$MCI/payments "{\"amount\":$MCAMT,\"paymentMethod\":\"InstaPay\"}" | jq_ "d['success']")/$(M "SELECT DATE_FORMAT(CONVERT_TZ(MAX(paymentDate),'+00:00','+03:00'),'%Y-%m')>='$(cairo +%Y-%m)' FROM FeePayment WHERE invoiceId='$MCI'")" "True/1"
+MCR=$(api GET "/api/month-close/report?ym=$LM")
+check "the monthly report of a closed month is the saved copy" "$(echo "$MCR" | jq_ "(d['data']['frozen'], d['data']['report']['ym'])")" "(True, '$LM')"
+check "…its expenses include the closed-month rent, and profit = net income - expenses - salaries" "$(echo "$MCR" | jq_ "(d['data']['report']['totals']['expenses'] >= 550, abs(d['data']['report']['totals']['profit'] - (d['data']['report']['totals']['netIncome'] - d['data']['report']['totals']['expenses'] - d['data']['report']['totals']['salaries'])) < 0.01)")" "(True, True)"
+check "live numbers on request; Excel download" "$(api GET "/api/month-close/report?ym=$LM&live=1" | jq_ "d['data']['frozen']")/$(curl -s -b "$JAR" -o /dev/null -w '%{http_code} %{content_type}' "$B/api/month-close/report?ym=$LM&format=xlsx")" "False/200 application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+check "the branch accountant sees his branch report, not the company one; a secretary sees none" "$(code_with "$MCJ" "/api/month-close/report?ym=$LM&campusId=$CAMPUS")/$(code_with "$MCJ" "/api/month-close/report?ym=$LM")/$(code_with "$SECJ" "/api/month-close/report?ym=$LM&campusId=$CAMPUS")" "200/403/403"
+check "the months list shows the branch as closed by the company close" "$(mcacc GET /api/month-close | jq_ "[(r['status'], r['byCompany']) for r in d['data']['rows'] if r['ym']=='$LM' and r['campusId']=='$CAMPUS']")" "[('LOCKED', True)]"
+check "the accountant cannot reopen; reopening without a reason is refused" "$(mcacc POST /api/month-close/reopen "{\"ym\":\"$LM\",\"reason\":\"mistake found\"}" | jq_ "d['error']['code']")/$(api POST /api/month-close/reopen "{\"ym\":\"$LM\",\"reason\":\"x\"}" | jq_ "d['success']")" "FORBIDDEN/False"
+check "the Super Admin reopens with a reason (kept in the history)" "$(api POST /api/month-close/reopen "{\"ym\":\"$LM\",\"reason\":\"E2E correction of rent\"}" | jq_ "d['success']")/$(api GET "/api/month-close/history?ym=$LM" | jq_ "[e['action'] for e in d['data']][:2]")" "True/['REOPEN', 'LOCK']"
+check "after reopening the expense can be changed again" "$(api PATCH /api/accountant/expenses/$MCE '{"amount":420}' | jq_ "d['success']")" "True"
+check "the branch accountant closes last month for his branch only" "$(mcacc POST /api/month-close "{\"ym\":\"$LM\",\"campusId\":\"$CAMPUS\"}" | jq_ "d['success']")" "True"
+check "…his branch's expense is closed, the other branch's is not" "$(api PATCH /api/accountant/expenses/$MCE '{"amount":430}' | jq_ "d['error']['code']")/$(api PATCH /api/accountant/expenses/$MCO '{"amount":160}' | jq_ "d['success']")" "MONTH_LOCKED/True"
+api POST /api/month-close/reopen "{\"ym\":\"$LM\",\"campusId\":\"$CAMPUS\",\"reason\":\"E2E reopen branch\"}" >/dev/null
+check "settings: a secretary cannot change them; the admin turns the automatic close on" "$(secapi PUT /api/month-close/settings '{"autoLock":true}' | jq_ "d['success']")/$(api PUT /api/month-close/settings '{"autoLock":true,"autoLockDay":1,"remindDay":1}' | jq_ "d['data']['autoLock']")" "False/True"
+M "DELETE FROM MonthLock WHERE ym='$LM'"
+MCP=$(api GET "/api/month-close/pending?ym=$LM" | jq_ "d['data']['total']")
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+MCA=$(M "SELECT CONCAT(status,'/',auto) FROM MonthLock WHERE ym='$LM' AND scopeKey='ALL'")
+check "the daily job closes last month automatically only when nothing is waiting" "$([ "$MCP" = "0" ] && echo "$MCA" || echo "waiting:$MCA")" "$([ "$MCP" = "0" ] && echo "LOCKED/1" || echo "waiting:")"
+M "DELETE FROM MonthLock WHERE ym='$LM'"
+M "INSERT INTO MonthLock (id, ym, scopeKey, status, lockedAt, createdAt, updatedAt) VALUES ('ml-e2e-64','$LM','ALL','OPEN',NOW(3),NOW(3),NOW(3))"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "a month a Super Admin reopened is never closed again by the job" "$(M "SELECT COUNT(*) FROM MonthLock WHERE ym='$LM' AND status='LOCKED'")" "0"
+PLS=$(api POST /api/accountant/profit-loss "{\"periodLabel\":\"E2E PL $LM\",\"periodStart\":\"${LM}-01T00:00:00.000Z\",\"periodEnd\":\"${LMD}T23:59:59.000Z\",\"profitPercentage\":10}")
+PLID=$(echo "$PLS" | jq_ "d['data']['id']"); PLA=$(echo "$PLS" | jq_ "d['data']['totalIncome']")
+PLR=$(api POST /api/accountant/profit-loss/$PLID/regenerate | jq_ "d['data']['totalIncome']")
+check "P&L: a statement and its regenerate give the same income (refunds taken off in both)" "$([ -n "$PLA" ] && [ "$PLA" != "None" ] && [ "$PLA" = "$PLR" ] && echo same || echo "$PLA vs $PLR")" "same"
+api PUT /api/month-close/settings '{"autoLock":false,"autoLockDay":5,"remindDay":3}' >/dev/null
+M "DELETE FROM MonthLock WHERE ym='$LM'; DELETE FROM MonthLockEvent WHERE ym='$LM'"
+rm -f "$MCJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

@@ -8,6 +8,7 @@ import { errors } from '@/lib/api-response'
 import { successResponse } from '@/lib/api-response'
 import { saveFeeType, type FeeTypeInput } from '@/lib/fees-extra/engine'
 import { FEE_FREQUENCIES, ON_UNPAID } from '@/lib/fees-extra/rules'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const schema = z.object({
   nameEn: z.string().trim().min(2).max(80), nameAr: z.string().trim().min(2).max(80), amount: z.number().min(0).max(1000000),
@@ -15,7 +16,7 @@ const schema = z.object({
   onUnpaid: z.enum(ON_UNPAID).optional(), isActive: z.boolean().optional(), sortOrder: z.number().int().optional(),
 })
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCH_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = normalizeRole(session.user.role)
@@ -24,3 +25,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!parsed.success) return errors.validation(parsed.error)
   return successResponse(await saveFeeType(parsed.data as FeeTypeInput, (await params).id))
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)

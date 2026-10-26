@@ -17,6 +17,7 @@ import { checkPermission } from '@/lib/rbac'
 import { teacherSeesOwnSlips } from '@/lib/salaries/settings'
 import { errors, successResponse, paginatedResponse, createdResponse } from '@/lib/api-response'
 import { dispatchNotification } from '@/lib/notifications/dispatch'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const customFieldSchema = z.object({
   label: z.string().min(1, 'Label required'),
@@ -94,7 +95,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) return errors.unauthorized()
@@ -241,3 +242,6 @@ export async function POST(req: NextRequest) {
     return errors.internal()
   }
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

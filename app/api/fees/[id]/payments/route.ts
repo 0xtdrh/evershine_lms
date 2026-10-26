@@ -11,6 +11,7 @@ import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { errors, createdResponse } from '@/lib/api-response'
 import { paymentErrorResponse, recordPayment } from '@/lib/fees/record-payment'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const paymentSchema = z.object({
   amount: z.number().positive('Amount must be positive'),
@@ -19,7 +20,7 @@ const paymentSchema = z.object({
   remarks: z.string().optional(),
 })
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POST_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!checkPermission(session.user.role as Role, 'fees', 'update')) return errors.forbidden()
@@ -52,3 +53,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     `Payment of EGP ${r.amount} recorded successfully`
   )
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

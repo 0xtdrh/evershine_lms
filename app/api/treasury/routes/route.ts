@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { errors, successResponse } from '@/lib/api-response'
 import { treasuryError, treasuryUser } from '@/lib/treasury/http'
 import { listRoutes, setRoute } from '@/lib/treasury/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,7 @@ export async function GET() {
   return successResponse(await listRoutes(u.user))
 }
 
-export async function PUT(request: NextRequest) {
+async function PUT_(request: NextRequest) {
   const u = await treasuryUser('update')
   if ('error' in u) return u.error
   const parsed = schema.safeParse(await request.json().catch(() => null))
@@ -27,3 +28,6 @@ export async function PUT(request: NextRequest) {
   const d = parsed.data as { method: string; campusId: string | null; accountId: string | null }
   try { await setRoute(u.user, d.method, d.campusId, d.accountId); return successResponse(await listRoutes(u.user)) } catch (e) { return treasuryError(e) }
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PUT = withMonthLock(PUT_)

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { errors, createdResponse } from '@/lib/api-response'
+import { plTotals } from '@/lib/finance/pnl-totals'
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -32,61 +33,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     const campusId = existing.campusId ?? null
     const profitPercentage = Number(existing.profitPercentage)
 
-    // Aggregate current live data for the same period/campus
-    const feeWhere: any = {
-      status: { equals: 'COMPLETED' },
-      paymentDate: { gte: periodStartDate, lte: periodEndDate },
-      ...(campusId ? { student: { is: { campusId } } } : {}),
-    }
-
-    const expenseWhere: any = {
-      isDeleted: false,
-      isApproved: true,
-      date: { gte: periodStartDate, lte: periodEndDate },
-      ...(campusId ? { campusId } : {}),
-    }
-
-    let salaryWhere: any = {
-      isDeleted: false,
-      status: 'PAID',
-      updatedAt: { gte: periodStartDate, lte: periodEndDate },
-    }
-
-    if (campusId) {
-      const campusEmployees = await prisma.user.findMany({
-        where: {
-          OR: [
-            { teacher: { campusId } },
-            { admin: { campusId } },
-            { accountant: { campusId } },
-          ],
-        },
-        select: { id: true },
-      })
-
-      salaryWhere = { ...salaryWhere, employeeId: { in: campusEmployees.map((u) => u.id) } }
-    }
-
-    const [feeAgg, expenseAgg, salaryAgg] = await Promise.all([
-      prisma.feePayment.aggregate({ where: feeWhere, _sum: { amount: true } }),
-      prisma.expense.aggregate({ where: expenseWhere, _sum: { amount: true } }),
-      prisma.salarySlip.aggregate({ where: salaryWhere, _sum: { netSalary: true } }),
-    ])
-
-    const feeItems = await prisma.feePayment.findMany({
-      where: feeWhere,
-      select: { id: true, amount: true, paymentDate: true, paymentMethod: true },
-      take: 1000,
-    })
-
-    const expenseItems = await prisma.expense.findMany({
-      where: expenseWhere,
-      select: { id: true, title: true, category: true, amount: true, date: true },
-      take: 1000,
-    })
-
-    const totalIncome = Number(feeAgg._sum.amount ?? 0)
-    const totalExpenses = Number(expenseAgg._sum.amount ?? 0) + Number(salaryAgg._sum.netSalary ?? 0)
+    // Same numbers as a new statement (refunds taken off, salaries of the period) — lib/finance/pnl-totals.ts
+    const { totalIncome, totalExpenses, feeItems, expenseItems } = await plTotals(periodStartDate, periodEndDate, campusId)
 
     const grossMargin = totalIncome - totalExpenses
     const pctFraction = profitPercentage / 100

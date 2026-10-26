@@ -10,6 +10,7 @@ import { checkPermission, normalizeRole } from '@/lib/rbac'
 import { errors } from '@/lib/api-response'
 import { successResponse } from '@/lib/api-response'
 import { budgetVsActual, setBudget } from '@/lib/budget/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 const schema = z.object({ year: z.number().int().min(2020).max(2100), month: z.number().int().min(1).max(12), campusId: z.string().max(40).nullable(), categoryId: z.string().min(1).max(40), amount: z.number().min(0).max(100000000) })
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
   try { return successResponse(await budgetVsActual(session.user, year, month, sp.get('campusId') || null)) } catch (e) { return errors.forbidden((e as Error).message) }
 }
 
-export async function PUT(request: NextRequest) {
+async function PUT_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = normalizeRole(session.user.role)
@@ -34,3 +35,6 @@ export async function PUT(request: NextRequest) {
   if (!parsed.success) return errors.validation(parsed.error)
   try { await setBudget(session.user, parsed.data as { year: number; month: number; campusId: string | null; categoryId: string; amount: number }); return successResponse({ ok: true }) } catch (e) { return errors.forbidden((e as Error).message) }
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PUT = withMonthLock(PUT_)

@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
+import { takeRecentRefusal } from './month-close/refusal'
 
 // ─── Response Types ──────────────────────────────────────────────────────────
 
@@ -135,8 +136,14 @@ export const errors = {
       { retryAfter: new Date(reset).toISOString() },
     ]),
 
-  internal: () =>
-    errorResponse('INTERNAL_ERROR', 'An unexpected error occurred. Please try again.', 500),
+  // a03: a write refused because its month is closed reaches most routes as "unexpected"; answer with the real reason
+  internal: () => {
+    const locked = takeRecentRefusal()
+    if (locked) return errorResponse('MONTH_LOCKED', locked.message, 409)
+    return errorResponse('INTERNAL_ERROR', 'An unexpected error occurred. Please try again.', 500)
+  },
+
+  monthLocked: (message: string) => errorResponse('MONTH_LOCKED', message, 409),
 
   schemaOutOfDate: (message = 'The application database schema is out of date. Please run the production schema sync and try again.') =>
     errorResponse('SCHEMA_OUT_OF_DATE', message, 503),

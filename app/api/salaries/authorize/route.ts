@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { z } from 'zod'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 // The approver is always the logged-in user; an approverId sent by the client is ignored.
 const schema = z.object({
@@ -10,7 +11,7 @@ const schema = z.object({
   reason: z.string().trim().max(500).optional().nullable(),
 })
 
-export async function POST(request: Request) {
+async function POST_(request: Request) {
   try {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
@@ -66,3 +67,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: 'Failed to authorize salary' }, { status: 500 })
   }
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

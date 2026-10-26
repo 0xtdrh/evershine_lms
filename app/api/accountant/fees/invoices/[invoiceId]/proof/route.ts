@@ -13,8 +13,9 @@ import { PROOF_METHOD } from '@/lib/fees/payment-settings'
 import { errors, successResponse } from '@/lib/api-response'
 import { proofActionSchema } from '@/lib/validation/accountant-fee'
 import { dispatchNotification } from '@/lib/notifications/in-app'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
-export async function PATCH(
+async function PATCH_(
   request: NextRequest,
   { params }: { params: Promise<{ invoiceId: string }> }
 ) {
@@ -145,3 +146,6 @@ export async function PATCH(
   dispatchNotification({ type: 'PROOF_REJECTED', invoiceId, studentId: existing.studentId, reason: remarks ?? 'Invalid or unreadable proof' })
   return successResponse(null, 'Payment proof rejected successfully')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)

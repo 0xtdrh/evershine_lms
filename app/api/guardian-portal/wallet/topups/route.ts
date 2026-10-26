@@ -14,11 +14,12 @@ import { sanitizeCloudinaryError, uploadPaymentProofToCloudinary } from '@/lib/c
 import { createPaymobCheckout, isPaymobConfigured } from '@/lib/payments/paymob'
 import { MINUTE, rateLimit } from '@/lib/rate-limit-db'
 import { getWalletSettings, minimumTopUp, paymobFee, requestProofTopUp } from '@/lib/wallet/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 const MAX = 4 * 1024 * 1024
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!['PARENT', 'GUARDIAN'].includes(session.user.role)) return errors.forbidden()
@@ -84,3 +85,6 @@ export async function POST(request: NextRequest) {
   if ('message' in r) return errors.badRequest(r.message)
   return createdResponse(r, 'Receipt sent. The wallet is topped up once it is checked.')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

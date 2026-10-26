@@ -14,6 +14,7 @@ import { errors, createdResponse, paginatedResponse } from '@/lib/api-response'
 import { createExpenseSchema, expenseQuerySchema } from '@/lib/validation/expense'
 import { expenseCategoryWhere, resolveExpenseCategory } from '@/lib/treasury/expense-category'
 import { getExpenseColumnSupport, isExpensePaymentColumnMissingError } from '@/lib/accounting/expense-columns'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 async function resolveExpenseRecorder(userId: string) {
   const accountant = await prisma.accountant.findUnique({
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
   return paginatedResponse(expenses, { page, limit, total })
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
 
@@ -215,3 +216,6 @@ export async function POST(request: NextRequest) {
 
   return createdResponse(expense, 'Expense recorded successfully')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

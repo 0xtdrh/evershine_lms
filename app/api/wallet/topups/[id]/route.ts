@@ -15,6 +15,7 @@ import { canViewReceipt } from '@/lib/fees/receipt'
 import { getFinanceSettings } from '@/lib/fees/payment-settings'
 import { approveTopUp, rejectTopUp } from '@/lib/wallet/engine'
 import { whatsappNumber } from '@/lib/students/portal-password'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireSession()
@@ -51,7 +52,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
 const bodySchema = z.object({ action: z.enum(['approve', 'reject']), reason: z.string().trim().max(500).optional().nullable() })
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCH_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
   const role = session.user.role as Role
@@ -70,3 +71,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ('message' in r) return r.status === 404 ? errors.notFound('Top-up') : errors.conflict(r.message)
   return successResponse(r, parsed.data.action === 'approve' ? 'Top-up approved' : 'Top-up rejected')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)

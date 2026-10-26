@@ -10,6 +10,7 @@ import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { listStatements, makeStatement } from '@/lib/partners/statement-engine'
 import { makeStatementSchema } from '@/lib/partners/validation'
 import { outcome } from '@/lib/partners/http'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 type P = { params: Promise<{ id: string }> }
 
@@ -21,7 +22,7 @@ export async function GET(_r: NextRequest, { params }: P) {
   return successResponse(await listStatements((await params).id))
 }
 
-export async function POST(request: NextRequest, { params }: P) {
+async function POST_(request: NextRequest, { params }: P) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
   const denied = requirePermission(session.user.role as Role, 'partner_finance', 'create')
@@ -33,3 +34,6 @@ export async function POST(request: NextRequest, { params }: P) {
   if (!r.ok) return outcome(r)
   return createdResponse((r as { value: { id: string } }).value, 'Statement made (draft)')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

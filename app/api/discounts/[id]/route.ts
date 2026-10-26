@@ -14,10 +14,11 @@ import { errors, successResponse } from '@/lib/api-response'
 import { logAudit } from '@/lib/audit-logger'
 import { discountActionSchema } from '@/lib/validation/discounts'
 import { canApproveDiscounts, invoicesAffectedBy } from '@/lib/discounts/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCH_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
@@ -87,3 +88,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const affectedInvoices = action === 'approve' ? await invoicesAffectedBy(updated) : []
   return successResponse({ assignment: updated, affectedInvoices })
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)

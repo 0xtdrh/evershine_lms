@@ -9,9 +9,11 @@ import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
+import { closedMonthMessage } from '@/lib/month-close/guard'
 import { updateInvoiceStatusSchema } from '@/lib/validation/accountant-fee'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
-export async function PATCH(
+async function PATCH_(
   request: NextRequest,
   { params }: { params: Promise<{ invoiceId: string }> }
 ) {
@@ -25,7 +27,7 @@ export async function PATCH(
 
   const existing = await prisma.feeInvoice.findUnique({
     where: { id: invoiceId },
-    select: { status: true, totalAmount: true, studentId: true, student: { select: { campusId: true, dueAmount: true } } },
+    select: { status: true, totalAmount: true, studentId: true, classSectionId: true, createdAt: true, student: { select: { campusId: true, dueAmount: true } } },
   })
 
   if (!existing) return errors.notFound('Invoice not found')
@@ -46,6 +48,12 @@ export async function PATCH(
   if (!parsed.success) return errors.validation(parsed.error)
 
   const data = parsed.data
+
+  // a03: an invoice made in a closed month keeps its status
+  if (data.status !== existing.status) {
+    const closed = await closedMonthMessage('FeeInvoice', existing)
+    if (closed) return errors.monthLocked(closed)
+  }
 
   // State machine enforcement
   if (existing.status === 'PAID') {
@@ -92,3 +100,6 @@ export async function PATCH(
 
   return successResponse(updated, `Invoice marked as ${data.status}`)
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)

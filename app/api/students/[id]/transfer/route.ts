@@ -15,6 +15,7 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { executeTransfer, listTransfers, previewTransfer, type ExecuteTransferInput } from '@/lib/groups/transfer'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 async function outsideCampus(user: { id: string; role: string }, groupIds: string[]) {
   for (const g of new Set(groupIds)) if (!(await canSeeGroup(user, g))) return true
@@ -49,7 +50,7 @@ const bodySchema = z.object({
   overrideCapacity: z.boolean().optional(),
 })
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POST_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
   const role = session.user.role as Role
@@ -84,3 +85,6 @@ function errorFor(status: number, message: string) {
   if (status === 409) return errors.conflict(message)
   return errors.badRequest(message)
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

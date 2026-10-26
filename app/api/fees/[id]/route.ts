@@ -10,9 +10,11 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
+import { closedMonthMessage } from '@/lib/month-close/guard'
 import { updateChallanSchema } from '@/lib/validation/fee'
 import { paymentAccountsSnapshot } from '@/lib/fees/payment-settings'
 import type { Role } from '@prisma/client'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -115,7 +117,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   })
 }
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+async function PATCH_(request: NextRequest, { params }: RouteParams) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!checkPermission(session.user.role as Role, 'fees', 'update')) return errors.forbidden()
@@ -155,6 +157,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
   if (invoice.status === 'CANCELLED' && hasFinancialEdits && input.status !== 'ISSUED') {
     return errors.conflict('Reissue the cancelled invoice before editing it')
+  }
+  // a03: an invoice made in a closed month keeps its amounts and status (notes may still be added)
+  if (hasFinancialEdits || input.status !== undefined) {
+    const closed = await closedMonthMessage('FeeInvoice', invoice)
+    if (closed) return errors.monthLocked(closed)
   }
 
   const nextItems = input.items ?? invoice.items.map((item) => ({
@@ -223,7 +230,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   return successResponse(updated, { message: nextStatus === 'CANCELLED' ? 'Invoice cancelled successfully' : 'Invoice updated successfully' })
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+async function DELETE_(request: NextRequest, { params }: RouteParams) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!checkPermission(session.user.role as Role, 'fees', 'delete')) return errors.forbidden()
@@ -232,13 +239,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
   const invoice = await prisma.feeInvoice.findUnique({
     where: { id },
-    select: { id: true, status: true, studentId: true, totalAmount: true, student: { select: { dueAmount: true } } },
+    select: { id: true, status: true, studentId: true, classSectionId: true, createdAt: true, totalAmount: true, student: { select: { dueAmount: true } } },
   })
 
   if (!invoice) return errors.notFound('Fee Invoice')
   if (invoice.status === 'PAID' || invoice.status === 'PARTIALLY_PAID') {
     return errors.conflict('Cannot delete an invoice that has active payments')
   }
+  const closed = await closedMonthMessage('FeeInvoice', invoice)
+  if (closed) return errors.monthLocked(closed)
 
   await prisma.$transaction(async (tx) => {
     // Delete line items first
@@ -271,3 +280,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
   return successResponse(null, { message: 'Invoice deleted successfully' })
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)
+export const DELETE = withMonthLock(DELETE_)

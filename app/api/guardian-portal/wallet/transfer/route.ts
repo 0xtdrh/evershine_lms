@@ -6,8 +6,9 @@ import { auth } from '@/lib/auth'
 import { errors, successResponse } from '@/lib/api-response'
 import { getChildrenForGuardianUser } from '@/lib/academic/guardian'
 import { transferBetweenSiblings } from '@/lib/wallet/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!['PARENT', 'GUARDIAN'].includes(session.user.role)) return errors.forbidden()
@@ -21,3 +22,6 @@ export async function POST(request: NextRequest) {
   if ('message' in r) return errors.badRequest(r.message)
   return successResponse(r, 'Moved')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { errors, createdResponse, successResponse, paginatedResponse } from '@/lib/api-response'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const createSalarySchema = z.object({
   employeeId: z.string(),
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
   return paginatedResponse(slips, { page, limit, total })
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
 
@@ -193,3 +194,6 @@ export async function POST(request: NextRequest) {
 
   return createdResponse(salarySlip, 'Salary slip generated successfully')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

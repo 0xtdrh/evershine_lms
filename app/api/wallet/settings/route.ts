@@ -10,6 +10,7 @@ import type { Role } from '@prisma/client'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getWalletSettings, saveWalletSettings } from '@/lib/wallet/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export async function GET() {
   const { session, error } = await requireSession()
@@ -29,7 +30,7 @@ const schema = z.object({
   promos: z.array(z.object({ id: z.string().optional(), minAmount: z.number().positive(), bonus: z.number().positive(), from: DATE, to: DATE, active: z.boolean() })).max(20),
 })
 
-export async function PUT(request: NextRequest) {
+async function PUT_(request: NextRequest) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
   const denied = requirePermission(session.user.role as Role, 'finance_settings', 'update')
@@ -49,3 +50,6 @@ export async function PUT(request: NextRequest) {
   await saveWalletSettings(v, session.user.id)
   return successResponse(v, 'Saved')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PUT = withMonthLock(PUT_)

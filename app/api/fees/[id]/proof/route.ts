@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { errorResponse, errors, successResponse } from '@/lib/api-response'
 import { isOwnCloudinaryUrl, sanitizeCloudinaryError, uploadPaymentProofToCloudinary } from '@/lib/cloudinary'
 import { z } from 'zod'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const uploadProofSchema = z.object({
   // Only files in OUR Cloudinary account (uploaded with /api/upload); any other
@@ -18,7 +19,7 @@ const uploadProofSchema = z.object({
 
 const MAX_PROOF_SIZE = 4 * 1024 * 1024
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POST_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!['STUDENT', 'PARENT', 'GUARDIAN'].includes(session.user.role)) return errors.forbidden()
@@ -161,3 +162,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   return successResponse(updatedInvoice, { message: 'Payment proof submitted for approval' })
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

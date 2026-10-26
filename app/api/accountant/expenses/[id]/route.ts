@@ -15,6 +15,7 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { updateExpenseSchema } from '@/lib/validation/expense'
 import { getExpenseColumnSupport, isExpensePaymentColumnMissingError } from '@/lib/accounting/expense-columns'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export async function GET(
   request: NextRequest,
@@ -64,7 +65,7 @@ export async function GET(
   return successResponse(expense)
 }
 
-export async function PATCH(
+async function PATCH_(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -139,7 +140,7 @@ export async function PATCH(
   return successResponse(updated, 'Expense updated successfully')
 }
 
-export async function DELETE(
+async function DELETE_(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -181,3 +182,7 @@ export async function DELETE(
 
   return successResponse(null, 'Expense deleted successfully')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)
+export const DELETE = withMonthLock(DELETE_)

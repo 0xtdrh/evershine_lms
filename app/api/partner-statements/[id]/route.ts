@@ -10,6 +10,7 @@ import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { deleteDraft, getStatement, recalculate } from '@/lib/partners/statement-engine'
 import { statementEditSchema } from '@/lib/partners/validation'
 import { outcome } from '@/lib/partners/http'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 type P = { params: Promise<{ id: string }> }
 
@@ -22,7 +23,7 @@ export async function GET(_r: NextRequest, { params }: P) {
   return s ? successResponse(s) : errors.notFound('Statement')
 }
 
-export async function PATCH(request: NextRequest, { params }: P) {
+async function PATCH_(request: NextRequest, { params }: P) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
   const denied = requirePermission(session.user.role as Role, 'partner_finance', 'create')
@@ -32,10 +33,14 @@ export async function PATCH(request: NextRequest, { params }: P) {
   return outcome(await recalculate(session.user.id, (await params).id, parsed.data.manualLines as never, parsed.data.notes), 'Recalculated')
 }
 
-export async function DELETE(_r: NextRequest, { params }: P) {
+async function DELETE_(_r: NextRequest, { params }: P) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
   const denied = requirePermission(session.user.role as Role, 'partner_finance', 'create')
   if (denied) return denied
   return outcome(await deleteDraft(session.user.id, (await params).id), 'Deleted')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)
+export const DELETE = withMonthLock(DELETE_)

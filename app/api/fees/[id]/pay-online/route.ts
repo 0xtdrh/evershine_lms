@@ -13,10 +13,11 @@ import { canViewReceipt } from '@/lib/fees/receipt'
 import { createPaymobCheckout, isPaymobConfigured } from '@/lib/payments/paymob'
 import { getWalletSettings, paymobFee } from '@/lib/wallet/engine'
 import { MINUTE, rateLimit } from '@/lib/rate-limit-db'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POST_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!isPaymobConfigured()) return errorResponse('ONLINE_PAYMENT_OFF', 'Online payment is not available yet', 503)
@@ -67,3 +68,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return errorResponse('ONLINE_PAYMENT_FAILED', 'Could not start the online payment. Please try again later.', 502)
   }
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

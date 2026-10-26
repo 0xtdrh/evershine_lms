@@ -16,7 +16,7 @@
  *   remainingAmount         = grossMargin - superAdminAllocation
  */
 
-import { expenseCategoryNamer } from '@/lib/treasury/expense-category'
+import { plTotals } from '@/lib/finance/pnl-totals'
 import { onePlace } from '@/lib/places/rules'
 import { requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
@@ -181,89 +181,8 @@ export async function POST(req: NextRequest) {
       return errors.conflict(`A P&L statement for "${periodLabel}" already exists for this campus`)
     }
 
-    // ── Aggregate live data ───────────────────────────────────────────────────
-
-    const feeWhere: Prisma.FeePaymentWhereInput = {
-      status: { equals: 'COMPLETED' },
-      paymentDate: { gte: periodStartDate, lte: periodEndDate },
-      ...(campusId ? { student: { is: { campusId } } } : {}),
-    }
-
-    const expenseWhere: Prisma.ExpenseWhereInput = {
-      isDeleted: false,
-      isApproved: true,
-      date: { gte: periodStartDate, lte: periodEndDate },
-      ...(campusId ? { campusId } : {}),
-    }
-
-    let salaryWhere: Prisma.SalarySlipWhereInput = {
-      isDeleted: false,
-      status: 'PAID' as const,
-      updatedAt: { gte: periodStartDate, lte: periodEndDate },
-    }
-
-    if (campusId) {
-      const campusEmployees = await prisma.user.findMany({
-        where: {
-          OR: [
-            { teacher: { campusId } },
-            { admin: { campusId } },
-            { accountant: { campusId } },
-          ],
-        },
-        select: { id: true },
-      })
-
-      salaryWhere = {
-        ...salaryWhere,
-        employeeId: { in: campusEmployees.map((user) => user.id) },
-      }
-    }
-
-    const [feeAgg, expenseAgg, salaryAgg] = await Promise.all([
-      prisma.feePayment.aggregate({
-        where: feeWhere,
-        _sum: { amount: true },
-      }),
-      prisma.expense.aggregate({
-        where: expenseWhere,
-        _sum: { amount: true },
-      }),
-      prisma.salarySlip.aggregate({
-        where: salaryWhere,
-        _sum: { netSalary: true },
-      }),
-    ])
-
-    // Fee income items snapshot
-    const feeItems = await prisma.feePayment.findMany({
-      where: feeWhere,
-      select: { id: true, amount: true, paymentDate: true, paymentMethod: true },
-      take: 1000,
-    })
-
-    const namer = await expenseCategoryNamer()
-    const expenseItems = (await prisma.expense.findMany({
-      where: expenseWhere,
-      select: { id: true, title: true, category: true, categoryId: true, amount: true, date: true },
-      take: 1000,
-    })).map(({ categoryId, ...e }) => { const n = namer({ categoryId, category: e.category }); return { ...e, category: n.en, categoryAr: n.ar } })
-
-    // Refunds approved in the period are taken off the income (cash back and
-    // wallet credit alike; wallet money comes back as income when it is spent).
-    const refundAgg = await prisma.refund.aggregate({
-      where: {
-        status: 'APPROVED',
-        approvedAt: { gte: periodStartDate, lte: periodEndDate },
-        ...(campusId
-          ? { studentId: { in: (await prisma.student.findMany({ where: { campusId }, select: { id: true } })).map((st) => st.id) } }
-          : {}),
-      },
-      _sum: { amount: true },
-    })
-    const totalIncome = Number(feeAgg._sum.amount ?? 0) - Number(refundAgg._sum.amount ?? 0)
-    const totalExpenses =
-      Number(expenseAgg._sum.amount ?? 0) + Number(salaryAgg._sum.netSalary ?? 0)
+    // ── Aggregate live data (lib/finance/pnl-totals.ts, shared with regenerate + the monthly report) ──
+    const { totalIncome, totalExpenses, feeItems, expenseItems } = await plTotals(periodStartDate, periodEndDate, campusId ?? null)
 
     // ── Apply business rules ──────────────────────────────────────────────────
     const grossMargin = totalIncome - totalExpenses

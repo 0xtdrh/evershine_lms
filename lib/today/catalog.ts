@@ -15,7 +15,7 @@ export const TASK_KEYS = [
   'groupsToAdvance', 'renewalsUnanswered', 'waitingList', 'overdueInvoices', 'birthdays',
   // partners / learning
   'partnerStatements', 'partnerContracts', 'curriculumReview', 'announcementsToApprove', 'announcementsToConfirm',
-  'cashCountsToApprove', 'transfersToApprove', 'cashBoxesNotCounted', 'moneyNotPlaced', 'budgetOver', 'cashForecastLow', 'bankNotReconciled',
+  'cashCountsToApprove', 'transfersToApprove', 'cashBoxesNotCounted', 'moneyNotPlaced', 'budgetOver', 'cashForecastLow', 'bankNotReconciled', 'monthNotClosed',
   // instructors
   'mySessionsToday', 'myMissingAttendance', 'homeworkToGrade', 'substituteRequests',
 ] as const
@@ -73,6 +73,7 @@ export const TASKS: TaskDef[] = [
   { key: 'budgetOver', en: 'Expense categories over their budget this month', ar: 'بنود مصاريف عدّت ميزانيتها الشهر ده', href: '/dashboard/treasury?tab=budget', urgent: true, perm: ['expenses', 'read'], roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'] },
   { key: 'cashForecastLow', en: 'Next 30 days: expected money may not cover the usual spending', ar: 'الـ 30 يوم الجايين: الفلوس المتوقعة ممكن ماتغطيش المصاريف العادية', href: '/dashboard/treasury?tab=cashflow', urgent: true, perm: ['treasury', 'approve'], roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'] },
   { key: 'bankNotReconciled', en: 'Bank / e-wallet movements older than a week not matched with the statement', ar: 'حركات بنك / محافظ عدّى عليها أسبوع ومش متطابقة مع الكشف', href: '/dashboard/treasury?tab=reconcile', perm: ['treasury', 'approve'], roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'] },
+  { key: 'monthNotClosed', en: 'Last month is not closed yet (check it, then close it)', ar: 'الشهر اللي فات لسه متقفلش (راجعه واقفله)', href: '/dashboard/month-close', perm: ['month_close', 'create'], roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'] },
   { key: 'birthdays', en: 'Student birthdays today', ar: 'أعياد ميلاد طلاب النهارده', href: '/dashboard/birthdays', perm: ['birthdays', 'read'], roles: OFFICE },
 ]
 

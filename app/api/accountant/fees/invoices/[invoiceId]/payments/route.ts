@@ -12,8 +12,9 @@ import { prisma } from '@/lib/prisma'
 import { errors, createdResponse } from '@/lib/api-response'
 import { recordPaymentSchema } from '@/lib/validation/accountant-fee'
 import { paymentErrorResponse, recordPayment } from '@/lib/fees/record-payment'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ invoiceId: string }> }) {
+async function POST_(request: NextRequest, { params }: { params: Promise<{ invoiceId: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!checkPermission(session.user.role, 'fee_collection', 'create')) {
@@ -53,3 +54,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if ('code' in r) return paymentErrorResponse(r)
   return createdResponse(r.payment, 'Payment recorded successfully')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

@@ -7,6 +7,7 @@ import { checkPermission, normalizeRole } from '@/lib/rbac'
 import { errors } from '@/lib/api-response'
 import { successResponse } from '@/lib/api-response'
 import { getFeesSettings, saveFeesSettings } from '@/lib/fees-extra/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const schema = z.object({ payFirst: z.enum(['FEES', 'TUITION']) })
 
@@ -17,7 +18,7 @@ export async function GET() {
   return successResponse(await getFeesSettings())
 }
 
-export async function PUT(request: NextRequest) {
+async function PUT_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = normalizeRole(session.user.role)
@@ -26,3 +27,6 @@ export async function PUT(request: NextRequest) {
   if (!parsed.success) return errors.validation(parsed.error)
   return successResponse(await saveFeesSettings(parsed.data as { payFirst: 'FEES' | 'TUITION' }, session.user.id))
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PUT = withMonthLock(PUT_)

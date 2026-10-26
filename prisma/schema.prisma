@@ -2086,7 +2086,7 @@ model Notification {
   message   String
   // Arabic copy (2026-10-17): the bell shows it when the screen is in Arabic (the language lives in the browser, not the account)
   titleAr   String?
-  messageAr String?   @db.Text
+  messageAr String?  @db.Text
   type      String // RESULT_PUBLISHED | ATTENDANCE_ALERT | TIMETABLE_CHANGE | GENERAL
   isRead    Boolean  @default(false)
   relatedId String? // optional FK reference (examId, timetableId, etc.)
@@ -5120,3 +5120,38 @@ model IdCardEvent {
   @@index([createdAt])
 }
 
+/// a03 (2026-10-26): a closed financial month. scopeKey = "ALL" (whole company) or a campus id (one branch).
+/// While status is LOCKED nobody adds / edits / deletes money rows dated in that month (lib/month-close/guard.ts).
+/// snapshot = the monthly financial report frozen when it was locked.
+model MonthLock {
+  id           String    @id @default(cuid())
+  ym           String    @db.VarChar(7)
+  scopeKey     String    @db.VarChar(40)
+  campusId     String?
+  status       String    @default("LOCKED") @db.VarChar(10) // LOCKED | OPEN
+  auto         Boolean   @default(false)
+  lockedAt     DateTime  @default(now())
+  lockedById   String?
+  reopenedAt   DateTime?
+  reopenedById String?
+  reopenReason String?   @db.Text
+  snapshot     Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([ym, scopeKey])
+  @@index([status])
+}
+
+/// a03: every lock / reopen (who, when, why).
+model MonthLockEvent {
+  id        String   @id @default(cuid())
+  ym        String   @db.VarChar(7)
+  scopeKey  String   @db.VarChar(40)
+  action    String   @db.VarChar(10) // LOCK | AUTO_LOCK | REOPEN
+  reason    String?  @db.Text
+  byId      String?
+  createdAt DateTime @default(now())
+
+  @@index([ym, scopeKey])
+}

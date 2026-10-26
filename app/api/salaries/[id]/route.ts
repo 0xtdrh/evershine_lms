@@ -5,13 +5,14 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const updateSalarySchema = z.object({
   status: z.enum(['PAID', 'PENDING']),
   notes: z.string().optional(),
 })
 
-export async function PUT(
+async function PUT_(
   request: NextRequest,
   props: { params: Promise<{ id: string }> }
 ) {
@@ -54,7 +55,7 @@ export async function PUT(
   return successResponse(updatedSlip, { message: 'Salary slip updated successfully' })
 }
 
-export async function DELETE(
+async function DELETE_(
   request: NextRequest,
   props: { params: Promise<{ id: string }> }
 ) {
@@ -81,3 +82,7 @@ export async function DELETE(
 
   return successResponse({ id: slipId }, { message: 'Salary slip archived successfully' })
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PUT = withMonthLock(PUT_)
+export const DELETE = withMonthLock(DELETE_)

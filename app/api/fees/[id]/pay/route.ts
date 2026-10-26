@@ -10,12 +10,13 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, createdResponse } from '@/lib/api-response'
 import { recordPaymentSchema } from '@/lib/validation/fee'
 import { paymentErrorResponse, recordPayment } from '@/lib/fees/record-payment'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-export async function POST(request: NextRequest, { params }: RouteParams) {
+async function POST_(request: NextRequest, { params }: RouteParams) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!checkPermission(session.user.role as Role, 'fees', 'create')) return errors.forbidden()
@@ -41,3 +42,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if ('code' in r) return paymentErrorResponse(r)
   return createdResponse(r.payment, `Payment of ${r.amount} recorded successfully`)
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

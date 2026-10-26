@@ -17,6 +17,7 @@ import { auth } from '@/lib/auth'
 import { checkPermission } from '@/lib/rbac'
 import { teacherSeesOwnSlips } from '@/lib/salaries/settings'
 import { errors, successResponse } from '@/lib/api-response'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const customFieldSchema = z.object({
   label: z.string().min(1),
@@ -77,7 +78,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
+async function PATCH_(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -205,7 +206,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function DELETE_(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -237,3 +238,7 @@ export async function DELETE(
     return errors.internal()
   }
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const PATCH = withMonthLock(PATCH_)
+export const DELETE = withMonthLock(DELETE_)

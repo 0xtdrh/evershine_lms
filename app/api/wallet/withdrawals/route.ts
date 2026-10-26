@@ -12,6 +12,7 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { requestWithdrawal } from '@/lib/wallet/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export async function GET(request: NextRequest) {
   const { session, error } = await requireSession()
@@ -45,7 +46,7 @@ const bodySchema = z.object({
   reason: z.string().trim().max(500).optional().nullable(),
 })
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
   const role = session.user.role as Role
@@ -63,3 +64,6 @@ export async function POST(request: NextRequest) {
   if ('message' in r) return r.status === 403 ? errors.forbidden(r.message) : errors.badRequest(r.message)
   return createdResponse(r, 'Withdrawal requested — waiting for approval')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

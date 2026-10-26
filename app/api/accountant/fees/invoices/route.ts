@@ -13,8 +13,9 @@ import { accountantCreateInvoiceSchema } from '@/lib/validation/accountant-fee'
 import { createWithInvoiceNumber } from '@/lib/fees/challan-number'
 import { dispatchNotification } from '@/lib/notifications/in-app'
 import { paymentAccountsSnapshot } from '@/lib/fees/payment-settings'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   
@@ -107,3 +108,6 @@ export async function POST(request: NextRequest) {
 
   return createdResponse(invoice, 'Invoice generated successfully')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

@@ -7,6 +7,7 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 import { z } from 'zod'
 import type { Role, InvoiceStatus } from '@prisma/client'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const verifyProofSchema = z.object({
   action: z.enum(['APPROVE', 'REJECT']),
@@ -15,7 +16,7 @@ const verifyProofSchema = z.object({
   paidAmount: z.number().positive('Paid amount must be greater than zero').optional(),
 })
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POST_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!checkPermission(session.user.role as Role, 'fees', 'update')) return errors.forbidden()
@@ -141,3 +142,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   })
   return successResponse(updatedInvoice, { message: 'Payment proof rejected successfully' })
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

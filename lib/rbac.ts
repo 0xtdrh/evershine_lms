@@ -104,6 +104,8 @@ export type AcademicResource =
   | 'data_import'
   // FIN-1: money accounts — read balances / movements, create transfers + cash counts, approve them, update = manage accounts + routes
   | 'treasury'
+  // a03: month close — read = see closed months + the monthly report, create = close a month, approve = reopen (Super Admin)
+  | 'month_close'
 
 type Resource = AcademicResource
 
@@ -225,6 +227,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: ['read'],
     data_import: ['create'],
     treasury: ['read', 'create', 'update', 'approve', 'export'],
+    month_close: ['read', 'create', 'approve', 'export'],
   },
   ADMIN: {
     students: ['create', 'read', 'update', 'delete'],
@@ -294,6 +297,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: ['read'],
     data_import: ['create'],
     treasury: ['read', 'create', 'update', 'approve', 'export'],
+    month_close: ['read', 'create', 'export'],
   },
   TEACHER: {
     students: ['read'],
@@ -364,6 +368,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: [],
     data_import: [],
     treasury: [],
+    month_close: [],
   },
   STUDENT: {
     students: [],
@@ -433,6 +438,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: [],
     data_import: [],
     treasury: [],
+    month_close: [],
   },
   PARENT: {
     students: [],
@@ -502,6 +508,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: [],
     data_import: [],
     treasury: [],
+    month_close: [],
   },
   ACCOUNTANT: {
     students: ['read'],
@@ -573,6 +580,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: ['read'],
     data_import: [],
     treasury: ['read', 'create', 'approve', 'export'],
+    month_close: ['read', 'create', 'export'],
   },
   GUARDIAN: {
     students: [],
@@ -642,6 +650,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: [],
     data_import: [],
     treasury: [],
+    month_close: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
   // Front-desk operations for a single campus: student registration/edits,
@@ -715,6 +724,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: ['read'],
     data_import: [],
     treasury: ['read', 'create'],
+    month_close: [],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
   // ADMIN-equivalent resource permissions, but data is scoped to the
@@ -789,6 +799,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: ['read'],
     data_import: ['create'],
     treasury: ['read', 'create', 'approve', 'export'],
+    month_close: ['read', 'export'],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
   // Leads/Admissions only. No visibility into enrolled students, finance,
@@ -861,6 +872,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: ['read'],
     data_import: [],
     treasury: [],
+    month_close: [],
   },
 }
 

@@ -40,6 +40,7 @@ describe('settings centre / reports centre / today (5-C)', () => {
       'app/api/cards/settings/route.ts': '/dashboard/cards',
       'app/api/announcements/settings/route.ts': '/dashboard/announcements',
       'app/api/treasury/settings/route.ts': '/dashboard/treasury',
+      'app/api/month-close/settings/route.ts': '/dashboard/month-close',
       'app/api/fee-types/settings/route.ts': '/dashboard/fee-types',
       'app/api/lessons/settings/route.ts': '/dashboard/admin/lms',
       'app/api/notifications/settings/route.ts': '/dashboard/admin/notifications',

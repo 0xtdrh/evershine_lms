@@ -14,13 +14,14 @@ import { prisma } from '@/lib/prisma'
 import { PAYMOB_METHOD, verifyPaymobHmac, type PaymobTransaction } from '@/lib/payments/paymob'
 import { recordPayment } from '@/lib/fees/record-payment'
 import { onlineTopUpPaid } from '@/lib/wallet/engine'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const ok = (message: string) => NextResponse.json({ received: true, message })
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   let body: { type?: string; obj?: PaymobTransaction } | null = null
   try {
     body = await request.json()
@@ -94,3 +95,6 @@ export async function POST(request: NextRequest) {
   await prisma.onlinePayment.update({ where: { id: online.id }, data: { status: 'PAID', providerTxnId: txnId, paymentId: r.payment.id } })
   return ok('paid')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)

@@ -19,6 +19,7 @@ import { checkPermission } from '@/lib/rbac'
 import { createdResponse, errors, successResponse } from '@/lib/api-response'
 import { logAudit } from '@/lib/audit-logger'
 import { discountAssignmentSchema } from '@/lib/validation/discounts'
+import { withMonthLock } from '@/lib/month-close/with-lock'
 import {
   canApproveDiscounts,
   groupContext,
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
   )
 }
 
-export async function POST(request: NextRequest) {
+async function POST_(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   const role = session.user.role as Role
@@ -170,3 +171,6 @@ export async function POST(request: NextRequest) {
   const affectedInvoices = await invoicesAffectedBy(assignment)
   return createdResponse({ assignment, affectedInvoices }, 'Discount added')
 }
+
+// a03: a write into a closed month answers 409 with the reason
+export const POST = withMonthLock(POST_)
