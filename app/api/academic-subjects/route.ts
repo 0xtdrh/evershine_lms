@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
+import { courseOffered, offeredMap } from '@/lib/delivery/catalog'
 import type { Role } from '@prisma/client'
 import { z } from 'zod'
 
@@ -12,7 +13,7 @@ const createSubjectSchema = z.object({
   trackId: z.string().min(1).optional().nullable(),
 })
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const { session, error } = await requireSession()
   if (error || !session) return error!
   const denied = requirePermission(session.user.role as Role, 'subject_offerings', 'read')
@@ -23,6 +24,12 @@ export async function GET() {
     orderBy: { name: 'asc' },
     include: { track: { select: { id: true, name: true } }, _count: { select: { levels: true } } },
   })
+  // a02: ?campusId= → only courses offered in that place
+  const campusId = request.nextUrl.searchParams.get('campusId')
+  if (campusId) {
+    const m = await offeredMap()
+    return successResponse(subjects.filter((c) => courseOffered(m, c, campusId)))
+  }
   return successResponse(subjects)
 }
 

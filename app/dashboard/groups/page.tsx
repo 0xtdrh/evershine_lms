@@ -28,6 +28,7 @@ import { FullGroupDialog } from '@/components/groups/FullGroupDialog'
 import { L, useI18n, dayName } from '@/lib/i18n/client'
 import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
+import { NO_TRACK, useOffered } from '@/hooks/use-offered-catalog'
 
 interface Campus { id: string; name: string }
 interface AcademicYear { id: string; name: string; isActive: boolean }
@@ -189,7 +190,6 @@ export default function GroupsPage() {
 
   // ── Reference data used by the create/edit forms ─────────────────────
   const { data: campuses = [] } = useQuery<Campus[]>({ queryKey: ['campuses'], queryFn: () => fetchApi('/api/campuses') })
-  const { data: tracks = [] } = useQuery<Track[]>({ queryKey: ['tracks'], queryFn: () => fetchApi('/api/tracks') })
   const { data: courses = [] } = useQuery<Course[]>({ queryKey: ['academic-subjects-for-config'], queryFn: () => fetchApi('/api/academic-subjects') })
   const { data: academicYears = [] } = useQuery<AcademicYear[]>({ queryKey: ['academic-years'], queryFn: () => fetchApi('/api/academic-years') })
   const activeYear = academicYears.find((y) => y.isActive)
@@ -237,13 +237,15 @@ export default function GroupsPage() {
     requireFullPaymentToStart: false, partialPaymentCounts: false, installmentsAllowed: false, maxStudents: '',
   })
 
+  // a02: only what is offered in the chosen place; NO_TRACK = standalone courses (no track)
+  const offered = useOffered(createForm.campusId)
   const coursesForCreate = useMemo(
-    () => courses.filter((c) => c.track?.id === createForm.trackId),
-    [courses, createForm.trackId]
+    () => offered.courses.filter((c) => (createForm.trackId === NO_TRACK ? !c.track : c.track?.id === createForm.trackId)),
+    [offered.courses, createForm.trackId]
   )
   const { data: levelsForCreate = [] } = useQuery<Level[]>({
-    queryKey: ['levels', createForm.courseId],
-    queryFn: () => fetchApi(`/api/levels?subjectId=${createForm.courseId}`),
+    queryKey: ['levels', createForm.courseId, createForm.campusId],
+    queryFn: () => fetchApi(`/api/levels?subjectId=${createForm.courseId}${createForm.campusId ? `&campusId=${createForm.campusId}` : ''}`),
     enabled: !!createForm.courseId,
   })
 
@@ -296,7 +298,7 @@ export default function GroupsPage() {
     setEditForm({
       className: detail.className,
       sectionName: detail.sectionName,
-      trackId: course?.track?.id ?? '',
+      trackId: course ? course.track?.id ?? NO_TRACK : '',
       courseId: detail.course?.id ?? '',
       levelId: detail.level?.id ?? '',
       startDate: toDateInputValue(detail.startDate),
@@ -309,10 +311,11 @@ export default function GroupsPage() {
     setEditOpen(true)
   }
 
-  const coursesForEdit = useMemo(() => courses.filter((c) => c.track?.id === editForm.trackId), [courses, editForm.trackId])
+  const offeredEdit = useOffered(editOpen ? detail?.campusId ?? '' : '')
+  const coursesForEdit = useMemo(() => offeredEdit.courses.filter((c) => (editForm.trackId === NO_TRACK ? !c.track : c.track?.id === editForm.trackId)), [offeredEdit.courses, editForm.trackId])
   const { data: levelsForEdit = [] } = useQuery<Level[]>({
-    queryKey: ['levels', editForm.courseId],
-    queryFn: () => fetchApi(`/api/levels?subjectId=${editForm.courseId}`),
+    queryKey: ['levels', editForm.courseId, detail?.campusId],
+    queryFn: () => fetchApi(`/api/levels?subjectId=${editForm.courseId}${detail?.campusId ? `&campusId=${detail.campusId}` : ''}`),
     enabled: !!editForm.courseId && editOpen,
   })
 
@@ -1079,7 +1082,10 @@ export default function GroupsPage() {
             <Input type="number" min={1} placeholder={L('Most students (empty = no limit)', 'أقصى عدد (فاضي = من غير حد)')} value={createForm.maxStudents} onChange={(e) => setCreateForm({ ...createForm, maxStudents: e.target.value })} />
             <Select value={createForm.trackId} onValueChange={(v) => setCreateForm({ ...createForm, trackId: v, courseId: '', levelId: '' })}>
               <SelectTrigger><SelectValue placeholder={L('Track', 'التراك')} /></SelectTrigger>
-              <SelectContent>{tracks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                {offered.tracks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                {offered.courses.some((c) => !c.track) && <SelectItem value={NO_TRACK}>{L('Standalone course (no track)', 'كورس منفصل (من غير تراك)')}</SelectItem>}
+              </SelectContent>
             </Select>
             <Select value={createForm.courseId} onValueChange={(v) => setCreateForm({ ...createForm, courseId: v, levelId: '' })} disabled={!createForm.trackId}>
               <SelectTrigger><SelectValue placeholder={L('Course', 'الكورس')} /></SelectTrigger>
@@ -1136,7 +1142,10 @@ export default function GroupsPage() {
             </div>
             <Select value={editForm.trackId} onValueChange={(v) => setEditForm({ ...editForm, trackId: v, courseId: '', levelId: '' })}>
               <SelectTrigger><SelectValue placeholder={L('Track', 'التراك')} /></SelectTrigger>
-              <SelectContent>{tracks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                {offeredEdit.tracks.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                {offeredEdit.courses.some((c) => !c.track) && <SelectItem value={NO_TRACK}>{L('Standalone course (no track)', 'كورس منفصل (من غير تراك)')}</SelectItem>}
+              </SelectContent>
             </Select>
             <Select value={editForm.courseId} onValueChange={(v) => setEditForm({ ...editForm, courseId: v, levelId: '' })} disabled={!editForm.trackId}>
               <SelectTrigger><SelectValue placeholder={L('Course', 'الكورس')} /></SelectTrigger>

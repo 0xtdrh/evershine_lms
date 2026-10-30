@@ -14,7 +14,8 @@ import { resolveBatchId } from '@/lib/batches/default-batch'
 import { resolveShiftId } from '@/lib/shifts/default-shift'
 import { prisma } from '@/lib/prisma'
 import { estimateGroupEnds } from '@/lib/groups/end-estimates'
-import { errors, successResponse, createdResponse } from '@/lib/api-response'
+import { errors, errorResponse, successResponse, createdResponse } from '@/lib/api-response'
+import { isLevelOfferedIn } from '@/lib/delivery/catalog'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import type { Role } from '@prisma/client'
@@ -130,6 +131,10 @@ export async function POST(request: NextRequest) {
   // M0: a group can be made only in one of the person's places
   if (!allowsCampus(await loadPlaces(session.user), parsed.data.campusId)) return errors.forbidden('You can only create groups in your own places')
   const effectiveCampusId = parsed.data.campusId
+  // a02: a level limited to some places cannot have a group elsewhere
+  if (parsed.data.levelId && !(await isLevelOfferedIn(parsed.data.levelId, effectiveCampusId))) {
+    return errorResponse('NOT_OFFERED', 'This level is not offered in this place (Course Structure → where offered) · المستوى ده مش متاح في المكان ده (هيكل الكورسات ← متاح فين)', 409)
+  }
 
   // End dates are estimated live from sessions + schedule (lib/groups/end-estimates.ts);
   // expectedEndDate is no longer written.

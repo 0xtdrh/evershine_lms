@@ -2379,20 +2379,22 @@ model TeacherSectionAssignment {
 }
 
 model AcademicSubject {
-  id          String   @id @default(cuid())
-  name        String
-  code        String   @unique
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  name         String
+  code         String   @unique
+  description  String?
+  isActive     Boolean  @default(true)
+  /// a02 M1 (2026-10-30): ways a session may be attended here — ["BRANCH","ONLINE","RECORDED"]; null = take it from above (none = all)
+  allowedModes Json?
+  createdAt    DateTime @default(now())
   // Optional: which age-based Track this course belongs to. Nullable so
   // existing courses keep working unassigned until an admin categorizes them.
-  trackId     String?
+  trackId      String?
   // Where this course sits in its Track's progression (e.g. Beginner=1,
   // Intermediate=2). Only meaningful when trackId is set — used so a group
   // that finishes its course's last level can automatically move on to the
   // next course in the same track.
-  trackOrder  Int?
+  trackOrder   Int?
 
   track             Track?                    @relation(fields: [trackId], references: [id])
   offerings         SubjectOffering[]
@@ -2411,15 +2413,17 @@ model AcademicSubject {
 /// Age-based grouping above Course (e.g. "Kids 4-7", "Teens 13-17"). A Course
 /// belongs to at most one Track.
 model Track {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  minAge      Int?
-  maxAge      Int?
-  description String?
+  id           String   @id @default(cuid())
+  name         String   @unique
+  minAge       Int?
+  maxAge       Int?
+  description  String?
   /// 2026-10-19 ID cards: the track's colour on the student card (#RRGGBB); null = TechNova blue
-  color       String?  @db.VarChar(9)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  color        String?  @db.VarChar(9)
+  isActive     Boolean  @default(true)
+  /// a02 M1 (2026-10-30): ways a session may be attended here — ["BRANCH","ONLINE","RECORDED"]; null = take it from above (none = all)
+  allowedModes Json?
+  createdAt    DateTime @default(now())
 
   courses           AcademicSubject[]
   qualifiedTeachers TeacherQualifiedSubject[]
@@ -2448,6 +2452,8 @@ model Level {
   monthlyPrice     Float?
   fullLevelPrice   Float?
   isActive         Boolean          @default(true)
+  /// a02 M1 (2026-10-30): ways a session may be attended here — ["BRANCH","ONLINE","RECORDED"]; null = take it from above (none = all)
+  allowedModes     Json?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -4216,6 +4222,8 @@ model CurriculumSession {
   /// 2026-10-18: what a student must finish in THIS session before the next one opens (null = nothing extra)
   /// { content?: boolean, homework?: 'SUBMITTED' | 'GRADED' | null, minHomeworkPct?: number | null, quiz?: boolean, minQuizPct?: number | null }
   gate            Json?
+  /// a02 M1 (2026-10-30): ways a session may be attended here — ["BRANCH","ONLINE","RECORDED"]; null = take it from above (none = all)
+  allowedModes    Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -5154,4 +5162,16 @@ model MonthLockEvent {
   createdAt DateTime @default(now())
 
   @@index([ym, scopeKey])
+}
+
+/// a02 M1 (2026-10-30): where a track / course / level is offered. No rows for an item = offered everywhere.
+model OfferedIn {
+  id         String   @id @default(cuid())
+  entityType String   @db.VarChar(8) // TRACK | COURSE | LEVEL
+  entityId   String
+  campusId   String
+  createdAt  DateTime @default(now())
+
+  @@unique([entityType, entityId, campusId])
+  @@index([campusId])
 }

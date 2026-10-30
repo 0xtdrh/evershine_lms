@@ -16,7 +16,8 @@ import { resolveShiftId } from '@/lib/shifts/default-shift'
 import { groupSeats, notifySeatFreed } from '@/lib/groups/capacity'
 import { prisma } from '@/lib/prisma'
 import { estimateGroupEnds } from '@/lib/groups/end-estimates'
-import { errors, successResponse } from '@/lib/api-response'
+import { errors, errorResponse, successResponse } from '@/lib/api-response'
+import { isLevelOfferedIn } from '@/lib/delivery/catalog'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import type { Role } from '@prisma/client'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
@@ -195,6 +196,10 @@ export async function PATCH(
   if (parsed.data.levelId) {
     const level = await prisma.level.findUnique({ where: { id: parsed.data.levelId }, select: { id: true } })
     if (!level) return errors.notFound('Level')
+    // a02: a level limited to some places cannot be given to a group elsewhere
+    if (parsed.data.levelId !== existing.levelId && !(await isLevelOfferedIn(parsed.data.levelId, existing.campusId))) {
+      return errorResponse('NOT_OFFERED', 'This level is not offered in this place (Course Structure → where offered) · المستوى ده مش متاح في المكان ده (هيكل الكورسات ← متاح فين)', 409)
+    }
   }
 
   // Session shift follows the group's time when the schedule changes (shift is switched off in the UI).

@@ -10,8 +10,9 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, createdResponse, successResponse } from '@/lib/api-response'
 import { createTrackSchema } from '@/lib/validation/academic-structure'
 import type { Role } from '@prisma/client'
+import { offeredMap, trackOffered } from '@/lib/delivery/catalog'
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   const session = await auth()
   if (!session?.user) return errors.unauthorized()
   if (!checkPermission(session.user.role as Role, 'class_sections', 'read')) return errors.forbidden()
@@ -21,6 +22,12 @@ export async function GET(_request: NextRequest) {
     include: { _count: { select: { courses: true } } },
   })
 
+  // a02: ?campusId= → only tracks offered in that place
+  const campusId = request.nextUrl.searchParams.get('campusId')
+  if (campusId) {
+    const m = await offeredMap()
+    return successResponse(tracks.filter((t) => trackOffered(m, t.id, campusId)))
+  }
   return successResponse(tracks)
 }
 

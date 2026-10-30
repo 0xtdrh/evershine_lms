@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errors, createdResponse, successResponse } from '@/lib/api-response'
 import { createLevelSchema } from '@/lib/validation/academic-structure'
+import { levelOffered, offeredMap } from '@/lib/delivery/catalog'
 import type { Role } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
@@ -23,11 +24,17 @@ export async function GET(request: NextRequest) {
     where: { ...(subjectId && { subjectId }) },
     orderBy: [{ subjectId: 'asc' }, { order: 'asc' }],
     include: {
-      subject: { select: { id: true, name: true, code: true } },
+      subject: { select: { id: true, name: true, code: true, trackId: true } },
       _count: { select: { classSections: true } },
     },
   })
 
+  // a02: ?campusId= → only levels offered in that place (their course and track too)
+  const campusId = searchParams.get('campusId')
+  if (campusId) {
+    const m = await offeredMap()
+    return successResponse(levels.filter((l) => levelOffered(m, { id: l.id, subjectId: l.subjectId, trackId: l.subject.trackId }, campusId)))
+  }
   return successResponse(levels)
 }
 

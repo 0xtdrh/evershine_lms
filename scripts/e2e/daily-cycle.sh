@@ -2180,6 +2180,36 @@ check "P&L: a statement and its regenerate give the same income (refunds taken o
 api PUT /api/month-close/settings '{"autoLock":false,"autoLockDay":5,"remindDay":3}' >/dev/null
 M "DELETE FROM MonthLock WHERE ym='$LM'; DELETE FROM MonthLockEvent WHERE ym='$LM'"
 rm -f "$MCJ"
+echo "== 65. Teaching modes M1 batch 1: allowed ways, where offered, standalone course, online place (a02, 2026-10-30)"
+DLV=$(M "SELECT l.id FROM Level l JOIN AcademicSubject s ON s.id=l.subjectId WHERE s.trackId IS NOT NULL AND s.isActive=1 ORDER BY l.createdAt LIMIT 1")
+DCR=$(M "SELECT subjectId FROM Level WHERE id='$DLV'")
+DTR=$(M "SELECT trackId FROM AcademicSubject WHERE id='$DCR'")
+DOTHER=$(M "SELECT id FROM Campus WHERE id<>'$CAMPUS' AND isActive=1 ORDER BY createdAt LIMIT 1")
+check "e2e data: a level with its course and track, and a second place" "$([ -n "$DLV" ] && [ -n "$DTR" ] && [ -n "$DOTHER" ] && echo yes)" "yes"
+check "nothing set = every way allowed" "$(api GET "/api/delivery/catalog?kind=LEVEL&id=$DLV" | jq_ "(d['data']['effective']['modes'], d['data']['effective']['from'])")" "(['BRANCH', 'ONLINE', 'RECORDED'], 'DEFAULT')"
+check "the course allows branch + online only" "$(api PUT /api/delivery/catalog "{\"kind\":\"COURSE\",\"id\":\"$DCR\",\"allowedModes\":[\"ONLINE\",\"BRANCH\"],\"offeredIn\":[]}" | jq_ "d['data']['effective']['modes']")" "['BRANCH', 'ONLINE']"
+check "…its level inherits it (from the course)" "$(api GET "/api/delivery/catalog?kind=LEVEL&id=$DLV" | jq_ "(d['data']['allowedModes'], d['data']['inherited']['from'], d['data']['effective']['modes'])")" "(None, 'COURSE', ['BRANCH', 'ONLINE'])"
+check "…the level can narrow it again (the closest wins)" "$(api PUT /api/delivery/catalog "{\"kind\":\"LEVEL\",\"id\":\"$DLV\",\"allowedModes\":[\"RECORDED\"],\"offeredIn\":[]}" | jq_ "(d['data']['effective']['modes'], d['data']['effective']['from'])")" "(['RECORDED'], 'LEVEL')"
+DTJ=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$DTJ" 10.0.2.65
+check "an instructor cannot change the catalog settings" "$(curl -s -b "$DTJ" -X PUT -H 'Content-Type: application/json' -d "{\"kind\":\"COURSE\",\"id\":\"$DCR\",\"allowedModes\":null,\"offeredIn\":[]}" $B/api/delivery/catalog | jq_ "d['success']")" "False"
+rm -f "$DTJ"
+api PUT /api/delivery/catalog "{\"kind\":\"LEVEL\",\"id\":\"$DLV\",\"allowedModes\":null,\"offeredIn\":[\"$DOTHER\"]}" >/dev/null
+check "a level offered in one place only: listed there, not in the other place" "$(api GET "/api/levels?subjectId=$DCR&campusId=$DOTHER" | jq_ "any(l['id']=='$DLV' for l in d['data'])")/$(api GET "/api/levels?subjectId=$DCR&campusId=$CAMPUS" | jq_ "any(l['id']=='$DLV' for l in d['data'])")/$(api GET "/api/levels?subjectId=$DCR" | jq_ "any(l['id']=='$DLV' for l in d['data'])")" "True/False/True"
+check "…a group of that level cannot be made in the other place (409 NOT_OFFERED)" "$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"batchId\":\"$BATCH\",\"shiftId\":\"$SHIFT\",\"className\":\"E2E Not Offered\",\"sectionName\":\"N\",\"levelId\":\"$DLV\"}" | jq_ "d['error']['code']")" "NOT_OFFERED"
+api PUT /api/delivery/catalog "{\"kind\":\"TRACK\",\"id\":\"$DTR\",\"allowedModes\":null,\"offeredIn\":[\"$DOTHER\"]}" >/dev/null
+check "a track for one partner / place only: its courses disappear from the other place's lists" "$(api GET "/api/tracks?campusId=$CAMPUS" | jq_ "any(t['id']=='$DTR' for t in d['data'])")/$(api GET "/api/academic-subjects?campusId=$CAMPUS" | jq_ "any(c['id']=='$DCR' for c in d['data'])")/$(api GET "/api/academic-subjects?campusId=$DOTHER" | jq_ "any(c['id']=='$DCR' for c in d['data'])")" "False/False/True"
+api PUT /api/delivery/catalog "{\"kind\":\"TRACK\",\"id\":\"$DTR\",\"allowedModes\":null,\"offeredIn\":[]}" >/dev/null
+api PUT /api/delivery/catalog "{\"kind\":\"LEVEL\",\"id\":\"$DLV\",\"allowedModes\":null,\"offeredIn\":[]}" >/dev/null
+api PUT /api/delivery/catalog "{\"kind\":\"COURSE\",\"id\":\"$DCR\",\"allowedModes\":null,\"offeredIn\":[]}" >/dev/null
+check "cleared again: offered everywhere, every way" "$(api GET "/api/levels?subjectId=$DCR&campusId=$CAMPUS" | jq_ "any(l['id']=='$DLV' for l in d['data'])")/$(M "SELECT COUNT(*) FROM OfferedIn")/$(api GET "/api/delivery/catalog?kind=LEVEL&id=$DLV" | jq_ "d['data']['effective']['from']")" "True/0/DEFAULT"
+SAC=$(api POST /api/academic-subjects '{"name":"E2E Summer Workshop","code":"E2EWS"}' | jq_ "d['data']['id']")
+api POST /api/levels "{\"subjectId\":\"$SAC\",\"name\":\"Workshop\",\"order\":1,\"numberOfMonths\":1,\"numberOfSessions\":4,\"pricingType\":\"FULL_LEVEL\",\"fullLevelPrice\":500}" >/dev/null
+SAL=$(M "SELECT id FROM Level WHERE subjectId='$SAC'")
+check "a standalone course (no track) with its level can have a group" "$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"batchId\":\"$BATCH\",\"shiftId\":\"$SHIFT\",\"className\":\"E2E Workshop\",\"sectionName\":\"W\",\"levelId\":\"$SAL\"}" | jq_ "d['success']")/$(M "SELECT trackId IS NULL FROM AcademicSubject WHERE id='$SAC'")" "True/1"
+check "a secretary cannot make the online place" "$(secapi POST /api/campuses/online | jq_ "d['success']")" "False"
+ONP=$(api POST /api/campuses/online | jq_ "d['data']['id']")
+check "the Super Admin makes the ONE online place (asking again returns the same one)" "$(M "SELECT kind FROM Campus WHERE id='$ONP'")/$(api POST /api/campuses/online | jq_ "d['data']['id']=='$ONP'")/$(M "SELECT COUNT(*) FROM Campus WHERE kind='ONLINE'")" "ONLINE/True/1"
+check "…and it is listed with the places" "$(api GET /api/campuses | jq_ "any(c['id']=='$ONP' for c in d['data'])")" "True"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

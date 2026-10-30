@@ -2,7 +2,7 @@
 
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi, ApiError } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -19,6 +19,8 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@
 import { notify } from '@/lib/notify'
 import { Loader2, Plus, Layers, GraduationCap, Pencil, Trash2, ChevronLeft } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { DeliveryPanel } from '@/components/delivery/DeliveryPanel'
+import { Settings2 } from 'lucide-react'
 
 interface Track {
   id: string
@@ -154,11 +156,14 @@ export default function CourseConfigPage() {
           trackId: selectedTrackId === 'unassigned' ? null : selectedTrackId,
         }),
       }),
-    onSuccess: () => {
+    onSuccess: (created: unknown) => {
       queryClient.invalidateQueries({ queryKey: ['academic-subjects-for-config'] })
       queryClient.invalidateQueries({ queryKey: ['tracks'] })
-      notify.success(L('Course created', 'الكورس اتعمل'))
+      notify.success(L('Course created — now add its level(s)', 'الكورس اتعمل — ضيف مستوياته'))
       setCourseDialogOpen(false)
+      // open the new course so its first level can be added straight away (a standalone course needs one level)
+      const id = (created as { id?: string } | null)?.id
+      if (id) setSelectedCourseId(id)
     },
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to create course')),
   })
@@ -202,6 +207,7 @@ export default function CourseConfigPage() {
     enabled: !!selectedCourseId,
   })
 
+  const [openLevelId, setOpenLevelId] = useState<string | null>(null)
   const [levelDialogOpen, setLevelDialogOpen] = useState(false)
   const [levelForm, setLevelForm] = useState({
     name: '',
@@ -292,11 +298,12 @@ export default function CourseConfigPage() {
                   selectedTrackId === 'unassigned' ? 'bg-slate-700 text-white border-slate-700' : 'border-dashed border-slate-300 text-slate-500 hover:bg-slate-50'
                 }`}
               >
-                {L('Unassigned courses', 'كورسات من غير تراك')}
+                {L('Standalone courses (no track)', 'كورسات منفصلة (من غير تراك)')}
               </button>
             </div>
           )}
           {selectedTrack && can('class_sections', 'update') && <TrackColour key={selectedTrack.id} track={selectedTrack} />}
+          {selectedTrack && <div className="mt-3"><DeliveryPanel key={selectedTrack.id} kind="TRACK" id={selectedTrack.id} canEdit={can('class_sections', 'update')} /></div>}
         </CardContent>
       </Card>
 
@@ -361,6 +368,7 @@ export default function CourseConfigPage() {
             </Button>}
           </CardHeader>
           <CardContent>
+            <div className="mb-4"><DeliveryPanel key={selectedCourse.id} kind="COURSE" id={selectedCourse.id} canEdit={can('subject_offerings', 'update')} /></div>
             {isLevelsLoading ? (
               <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
             ) : levels.length === 0 ? (
@@ -375,11 +383,13 @@ export default function CourseConfigPage() {
                     <TableHead className="text-center">{L('Frequency', 'التكرار')}</TableHead>
                     <TableHead className="text-center">{L('Pricing', 'السعر')}</TableHead>
                     <TableHead className="text-center">{L('Groups', 'الجروبات')}</TableHead>
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {levels.map((l) => (
-                    <TableRow key={l.id}>
+                    <Fragment key={l.id}>
+                    <TableRow>
                       <TableCell>
                         <p className="font-medium text-slate-800">{l.name}</p>
                         <p className="text-xs text-slate-400">#{l.order}</p>
@@ -395,7 +405,16 @@ export default function CourseConfigPage() {
                           : L(`${l.fullLevelPrice ?? '—'} full level`, `${l.fullLevelPrice ?? '—'} ج.م للمستوى كله`)}
                       </TableCell>
                       <TableCell className="text-center">{l._count?.classSections ?? 0}</TableCell>
+                      <TableCell className="text-end">
+                        <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={() => setOpenLevelId(openLevelId === l.id ? null : l.id)}>
+                          <Settings2 className="h-3.5 w-3.5" />{L('Ways & places', 'طرق الحضور ومتاح فين')}
+                        </Button>
+                      </TableCell>
                     </TableRow>
+                    {openLevelId === l.id && (
+                      <TableRow><TableCell colSpan={7}><DeliveryPanel kind="LEVEL" id={l.id} canEdit={can('class_sections', 'update')} /></TableCell></TableRow>
+                    )}
+                    </Fragment>
                   ))}
                 </TableBody>
               </Table>

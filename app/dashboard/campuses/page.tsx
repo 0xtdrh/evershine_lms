@@ -170,6 +170,16 @@ export default function CampusesPage() {
     }
   })
 
+  // a02: the one "Online" place (own prices, managers, reports, month close)
+  const onlineMutation = useMutation({
+    mutationFn: () => fetchApi('/api/campuses/online', { method: 'POST' }),
+    onSuccess: () => {
+      notify.success(L('Online place ready', 'مكان الأونلاين اتعمل'))
+      queryClient.invalidateQueries({ queryKey: ['campuses'] })
+    },
+    onError: (err: Error) => notify.error(err.message),
+  })
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       return fetchApi(`/api/campuses/${selectedCampus?.id}`, {
@@ -246,12 +256,19 @@ export default function CampusesPage() {
           </p>
         </div>
         {isSuperAdmin && (
-          <Button
-            className="gap-2 rounded-xl h-[42px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all shadow-sm hover:scale-[1.02]"
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            <Plus className="w-4 h-4" /> {L('Add Campus', 'ضيف فرع')}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {!campuses.some((c) => (c as Campus & { kind?: string }).kind === 'ONLINE') && (
+              <Button variant="outline" className="h-[42px] gap-2 rounded-xl" disabled={onlineMutation.isPending} onClick={() => onlineMutation.mutate()}>
+                <Plus className="w-4 h-4" /> {L('Create the online place', 'اعمل مكان الأونلاين')}
+              </Button>
+            )}
+            <Button
+              className="gap-2 rounded-xl h-[42px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all shadow-sm hover:scale-[1.02]"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              <Plus className="w-4 h-4" /> {L('Add Campus', 'ضيف فرع')}
+            </Button>
+          </div>
         )}
       </div>
 
