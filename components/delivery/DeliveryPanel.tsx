@@ -77,7 +77,9 @@ export function DeliveryPanel({ kind, id, canEdit }: { kind: CatalogKind; id: st
           ))}
         </div>
         <p className="mt-1.5 text-xs text-slate-500">
-          {offered.length
+          {offered.length === 1 && offered[0] === 'NONE'
+            ? L('Closed in every place now (unticked from the places\' pages). Tick places, or save with none ticked to offer it everywhere.', 'مقفول في كل الأماكن دلوقتي (اتشال من صفحات الأماكن). علّم أماكن، أو احفظ من غير علامة علشان يبقى متاح في كل مكان.')
+            : offered.length
             ? L('Only these places can make groups of it or see it in their lists.', 'الأماكن دي بس تقدر تعمل جروبات منه أو تشوفه في القوايم.')
             : L('No place ticked — offered everywhere.', 'مفيش مكان متعلّم — متاح في كل الأماكن.')}
         </p>

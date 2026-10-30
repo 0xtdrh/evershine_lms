@@ -81,6 +81,60 @@ export async function getCatalogDelivery(kind: CatalogKind, id: string): Promise
   }
 }
 
+/** Marks an item offered nowhere (rows exist, none matches a place). */
+export const NOWHERE = 'NONE'
+
+/**
+ * From a place's page (branch / partner): offer this item here or not, keeping the other places as they are.
+ * Everywhere + off → every other active place; limited + last place removed → NOWHERE.
+ */
+export async function setOfferedHere(kind: CatalogKind, id: string, campusId: string, on: boolean) {
+  const rows = (await prisma.offeredIn.findMany({ where: { entityType: kind, entityId: id }, select: { campusId: true } })).map((r) => r.campusId)
+  let next: string[] | null = null
+  if (on) {
+    if (rows.length && !rows.includes(campusId)) next = [...rows.filter((c) => c !== NOWHERE), campusId]
+  } else if (!rows.length) {
+    const others = (await prisma.campus.findMany({ where: { isActive: true, id: { not: campusId } }, select: { id: true } })).map((c) => c.id)
+    next = others.length ? others : [NOWHERE]
+  } else if (rows.includes(campusId)) {
+    const left = rows.filter((c) => c !== campusId)
+    next = left.length ? left : [NOWHERE]
+  }
+  if (!next) return
+  const list = next
+  await prisma.$transaction(async (tx) => {
+    await tx.offeredIn.deleteMany({ where: { entityType: kind, entityId: id } })
+    await tx.offeredIn.createMany({ data: list.map((c) => ({ entityType: kind, entityId: id, campusId: c })) })
+  })
+}
+
+export interface PlaceCatalogItem { kind: CatalogKind; id: string; name: string; scope: 'EVERYWHERE' | 'HERE' | 'NOT_HERE'; offered: boolean; children: PlaceCatalogItem[] }
+
+/** The whole catalog as seen from one place: tracks → courses → levels, plus standalone courses. */
+export async function placeCatalog(campusId: string): Promise<PlaceCatalogItem[]> {
+  const [m, tracks, courses, levels] = await Promise.all([
+    offeredMap(),
+    prisma.track.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.academicSubject.findMany({ where: { isActive: true }, select: { id: true, name: true, trackId: true }, orderBy: { name: 'asc' } }),
+    prisma.level.findMany({ where: { isActive: true }, select: { id: true, name: true, subjectId: true }, orderBy: { order: 'asc' } }),
+  ])
+  const scope = (kind: CatalogKind, id: string): PlaceCatalogItem['scope'] => {
+    const list = m.get(key(kind, id))
+    return !list ? 'EVERYWHERE' : list.includes(campusId) ? 'HERE' : 'NOT_HERE'
+  }
+  const levelItems = (c: { id: string; trackId: string | null }) => levels.filter((l) => l.subjectId === c.id).map((l) => ({
+    kind: 'LEVEL' as const, id: l.id, name: l.name, scope: scope('LEVEL', l.id),
+    offered: levelOffered(m, { id: l.id, subjectId: c.id, trackId: c.trackId }, campusId), children: [],
+  }))
+  const courseItem = (c: { id: string; name: string; trackId: string | null }): PlaceCatalogItem => ({
+    kind: 'COURSE', id: c.id, name: c.name, scope: scope('COURSE', c.id), offered: courseOffered(m, c, campusId), children: levelItems(c),
+  })
+  return [
+    ...tracks.map((t) => ({ kind: 'TRACK' as const, id: t.id, name: t.name, scope: scope('TRACK', t.id), offered: trackOffered(m, t.id, campusId), children: courses.filter((c) => c.trackId === t.id).map(courseItem) })),
+    ...courses.filter((c) => !c.trackId).map(courseItem),
+  ]
+}
+
 export async function saveCatalogDelivery(kind: CatalogKind, id: string, input: { allowedModes: string[] | null; offeredIn: string[] }) {
   const cleaned = cleanModes(input.allowedModes)
   // nothing ticked = take it from above (stored as SQL NULL)

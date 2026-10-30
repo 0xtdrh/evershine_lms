@@ -20,6 +20,7 @@ import { notify } from '@/lib/notify'
 import { Loader2, Plus, Layers, GraduationCap, Pencil, Trash2, ChevronLeft } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
 import { DeliveryPanel } from '@/components/delivery/DeliveryPanel'
+import { codeFromName, uniqueCode } from '@/lib/ids/auto-code'
 import { Settings2 } from 'lucide-react'
 
 interface Track {
@@ -130,24 +131,26 @@ export default function CourseConfigPage() {
   // ── Course create/edit/delete ────────────────────────────────────────
   const [courseDialogOpen, setCourseDialogOpen] = useState(false)
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
-  const [courseForm, setCourseForm] = useState({ name: '', code: '', description: '' })
+  const [courseForm, setCourseForm] = useState({ name: '', code: '', description: '', sessions: '', months: '', price: '', pricingType: 'FULL_LEVEL' as 'MONTHLY' | 'FULL_LEVEL' })
   const [deleteCourseTarget, setDeleteCourseTarget] = useState<Course | null>(null)
+  const [codeTouched, setCodeTouched] = useState(false)
 
   const openCreateCourse = () => {
     setEditingCourse(null)
-    setCourseForm({ name: '', code: '', description: '' })
+    setCourseForm({ name: '', code: '', description: '', sessions: '', months: '', price: '', pricingType: 'FULL_LEVEL' })
+    setCodeTouched(false)
     setCourseDialogOpen(true)
   }
 
   const openEditCourse = (c: Course) => {
     setEditingCourse(c)
-    setCourseForm({ name: c.name, code: c.code, description: c.description ?? '' })
+    setCourseForm({ name: c.name, code: c.code, description: c.description ?? '', sessions: '', months: '', price: '', pricingType: 'FULL_LEVEL' })
     setCourseDialogOpen(true)
   }
 
   const createCourseMutation = useMutation({
-    mutationFn: () =>
-      fetchApi('/api/academic-subjects', {
+    mutationFn: async () => {
+      const course = await fetchApi<{ id: string }>('/api/academic-subjects', {
         method: 'POST',
         body: JSON.stringify({
           name: courseForm.name,
@@ -155,11 +158,27 @@ export default function CourseConfigPage() {
           description: courseForm.description || undefined,
           trackId: selectedTrackId === 'unassigned' ? null : selectedTrackId,
         }),
-      }),
+      })
+      // a02: a standalone course (no track) can get its one level in the same step (e.g. 20 sessions)
+      if (selectedTrackId === 'unassigned' && Number(courseForm.sessions) > 0) {
+        await fetchApi('/api/levels', {
+          method: 'POST',
+          body: JSON.stringify({
+            subjectId: course.id, name: courseForm.name, order: 1,
+            numberOfMonths: Math.max(1, Number(courseForm.months) || 1), numberOfSessions: Number(courseForm.sessions),
+            pricingType: courseForm.pricingType,
+            monthlyPrice: courseForm.pricingType === 'MONTHLY' && courseForm.price ? Number(courseForm.price) : null,
+            fullLevelPrice: courseForm.pricingType === 'FULL_LEVEL' && courseForm.price ? Number(courseForm.price) : null,
+          }),
+        })
+      }
+      return course
+    },
     onSuccess: (created: unknown) => {
       queryClient.invalidateQueries({ queryKey: ['academic-subjects-for-config'] })
       queryClient.invalidateQueries({ queryKey: ['tracks'] })
-      notify.success(L('Course created — now add its level(s)', 'الكورس اتعمل — ضيف مستوياته'))
+      queryClient.invalidateQueries({ queryKey: ['levels'] })
+      notify.success(L('Course created', 'الكورس اتعمل'))
       setCourseDialogOpen(false)
       // open the new course so its first level can be added straight away (a standalone course needs one level)
       const id = (created as { id?: string } | null)?.id
@@ -463,14 +482,34 @@ export default function CourseConfigPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input placeholder={L('Course name', 'اسم الكورس')} value={courseForm.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })} />
+            <Input placeholder={L('Course name', 'اسم الكورس')} value={courseForm.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value, ...(!editingCourse && !codeTouched && { code: e.target.value.trim() ? uniqueCode(codeFromName(e.target.value), courses.map((c) => c.code)) : '' }) })} />
             <Input
               placeholder={L('Code (e.g. ROBO)', 'الكود (مثلاً ROBO)')}
               value={courseForm.code}
               disabled={!!editingCourse}
-              onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value.toUpperCase() })}
+              onChange={(e) => { setCodeTouched(true); setCourseForm({ ...courseForm, code: e.target.value.toUpperCase() }) }}
             />
+            {!editingCourse && <p className="-mt-1 text-[11px] text-slate-500">{L('The code is filled in from the name — you can change it.', 'الكود بيتملى لوحده من الاسم — وتقدر تغيّره.')}</p>}
             <Textarea placeholder={L('Description (optional)', 'الوصف (اختياري)')} value={courseForm.description} onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })} />
+            {!editingCourse && selectedTrackId === 'unassigned' && (
+              <div className="space-y-2 rounded-lg border border-dashed border-slate-300 p-3">
+                <p className="text-xs text-slate-500">{L('Standalone course: fill these to make its level now (or add levels later).', 'كورس منفصل: املا دول علشان مستواه يتعمل على طول (أو ضيف مستويات بعدين).')}</p>
+                <div className="flex gap-3">
+                  <Input type="number" min={1} placeholder={L('Sessions (e.g. 20)', 'عدد الحصص (مثلاً 20)')} value={courseForm.sessions} onChange={(e) => setCourseForm({ ...courseForm, sessions: e.target.value })} />
+                  <Input type="number" min={1} placeholder={L('Months', 'شهور')} value={courseForm.months} onChange={(e) => setCourseForm({ ...courseForm, months: e.target.value })} />
+                </div>
+                <div className="flex gap-3">
+                  <Select value={courseForm.pricingType} onValueChange={(v) => setCourseForm({ ...courseForm, pricingType: v as 'MONTHLY' | 'FULL_LEVEL' })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FULL_LEVEL">{L('One price for the course', 'سعر واحد للكورس')}</SelectItem>
+                      <SelectItem value="MONTHLY">{L('Monthly price', 'سعر شهري')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input type="number" min={0} placeholder={L('Price (EGP)', 'السعر (ج.م)')} value={courseForm.price} onChange={(e) => setCourseForm({ ...courseForm, price: e.target.value })} />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

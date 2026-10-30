@@ -2210,6 +2210,21 @@ check "a secretary cannot make the online place" "$(secapi POST /api/campuses/on
 ONP=$(api POST /api/campuses/online | jq_ "d['data']['id']")
 check "the Super Admin makes the ONE online place (asking again returns the same one)" "$(M "SELECT kind FROM Campus WHERE id='$ONP'")/$(api POST /api/campuses/online | jq_ "d['data']['id']=='$ONP'")/$(M "SELECT COUNT(*) FROM Campus WHERE kind='ONLINE'")" "ONLINE/True/1"
 check "…and it is listed with the places" "$(api GET /api/campuses | jq_ "any(c['id']=='$ONP' for c in d['data'])")" "True"
+echo "== 66. Programmes on each branch / partner page (same 'where offered' data, 2026-10-30)"
+check "the place's programmes list shows the track, offered everywhere" "$(api GET /api/places/$CAMPUS/catalog | jq_ "[(t['scope'], t['offered']) for t in d['data'] if t['id']=='$DTR']")" "[('EVERYWHERE', True)]"
+check "unticking it on one branch keeps it for every other place" "$(api PUT /api/places/$CAMPUS/catalog "{\"kind\":\"TRACK\",\"id\":\"$DTR\",\"on\":false}" | jq_ "[t['scope'] for t in d['data'] if t['id']=='$DTR']")/$(api GET "/api/tracks?campusId=$CAMPUS" | jq_ "any(t['id']=='$DTR' for t in d['data'])")/$(api GET "/api/tracks?campusId=$DOTHER" | jq_ "any(t['id']=='$DTR' for t in d['data'])")" "['NOT_HERE']/False/True"
+check "…and Course Structure shows the same places" "$(api GET "/api/delivery/catalog?kind=TRACK&id=$DTR" | jq_ "('$CAMPUS' not in d['data']['offeredIn'], '$DOTHER' in d['data']['offeredIn'])")" "(True, True)"
+check "ticking it again offers it there again" "$(api PUT /api/places/$CAMPUS/catalog "{\"kind\":\"TRACK\",\"id\":\"$DTR\",\"on\":true}" | jq_ "[(t['scope'], t['offered']) for t in d['data'] if t['id']=='$DTR']")" "[('HERE', True)]"
+api PUT /api/delivery/catalog "{\"kind\":\"LEVEL\",\"id\":\"$DLV\",\"allowedModes\":null,\"offeredIn\":[\"$DOTHER\"]}" >/dev/null
+check "unticking the only place left closes it everywhere (never 'everywhere' by mistake)" "$(api PUT /api/places/$DOTHER/catalog "{\"kind\":\"LEVEL\",\"id\":\"$DLV\",\"on\":false}" >/dev/null; M "SELECT GROUP_CONCAT(campusId) FROM OfferedIn WHERE entityId='$DLV'")/$(api GET "/api/levels?subjectId=$DCR&campusId=$DOTHER" | jq_ "any(l['id']=='$DLV' for l in d['data'])")" "NONE/False"
+check "a branch secretary cannot change another place's programmes" "$(secapi PUT /api/places/$DOTHER/catalog "{\"kind\":\"TRACK\",\"id\":\"$DTR\",\"on\":false}" | jq_ "d['success']")" "False"
+M "DELETE FROM OfferedIn"
+echo "== 67. Codes filled in automatically, still changeable (owner 2026-10-30)"
+AC1=$(api POST /api/academic-subjects '{"name":"E2E Python For Kids"}' | jq_ "d['data']['code']")
+AC2=$(api POST /api/academic-subjects '{"name":"E2E Python For Kids Two"}' | jq_ "d['data']['code']")
+check "a course with no code gets one from its name; the next one never repeats it" "$AC1/$AC2" "EPFK/EPFK2"
+check "a code typed by hand is kept" "$(api POST /api/academic-subjects '{"name":"E2E Hand Code","code":"zz9"}' | jq_ "d['data']['code']")" "ZZ9"
+check "a code already used is refused with a clear message (not an error page)" "$(api POST /api/academic-subjects "{\"name\":\"E2E Clash\",\"code\":\"$AC1\"}" | jq_ "(d['error']['code'], 'used' in d['error']['message'])")" "('CONFLICT', True)"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

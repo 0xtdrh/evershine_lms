@@ -8,6 +8,7 @@ import { AdmissionRulesEditor } from '@/components/rules/AdmissionRulesEditor'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keyFromTitle } from '@/lib/ids/auto-code'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { AccessDenied } from '@/components/AccessDenied'
@@ -28,8 +29,10 @@ interface Status { agreement: { titleEn: string; version: number }; accepted: nu
 const AUD: Record<string, string> = { PARENT: 'Parents', STUDENT: 'Students', STAFF: 'Staff' }
 const blank = { key: '', audience: 'PARENT' as const, titleEn: '', titleAr: '', bodyEn: '', bodyAr: '', mandatory: true, isActive: false, isPublic: false, graceDays: 0, sortOrder: 10 }
 
-function Editor({ a, onClose }: { a: Agreement | null; onClose: () => void }) {
+function Editor({ a, onClose, takenKeys }: { a: Agreement | null; onClose: () => void; takenKeys: string[] }) {
   const qc = useQueryClient()
+  // the key is filled in from the English title until someone types their own (owner 2026-10-30)
+  const [keyTouched, setKeyTouched] = useState(false)
   const [f, setF] = useState(a ? { key: a.key, audience: a.audience, titleEn: a.titleEn, titleAr: a.titleAr, bodyEn: a.bodyEn, bodyAr: a.bodyAr, mandatory: a.mandatory, isActive: a.isActive, isPublic: a.isPublic, graceDays: a.graceDays, sortOrder: a.sortOrder } : blank)
   const save = useMutation({
     mutationFn: () => a
@@ -42,7 +45,7 @@ function Editor({ a, onClose }: { a: Agreement | null; onClose: () => void }) {
   return (
     <div className="space-y-3 text-sm">
       <div className="grid gap-2 sm:grid-cols-3">
-        <label className="space-y-1"><span className="text-xs text-slate-500">{L('Key', 'المفتاح')}</span><Input value={f.key} disabled={!!a} onChange={(e) => setF({ ...f, key: e.target.value })} placeholder={L('e.g. parent-rules', 'مثلاً parent-rules')} /></label>
+        <label className="space-y-1"><span className="text-xs text-slate-500">{L('Key', 'المفتاح')}</span><Input value={f.key} disabled={!!a} onChange={(e) => { setKeyTouched(true); setF({ ...f, key: e.target.value }) }} placeholder={L('Filled in from the English title', 'بيتملى لوحده من العنوان الإنجليزي')} /></label>
         <label className="space-y-1"><span className="text-xs text-slate-500">{L('For', 'لمين')}</span>
           <Select value={f.audience} onValueChange={(v) => setF({ ...f, audience: v as typeof f.audience })} disabled={!!a}>
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -52,7 +55,7 @@ function Editor({ a, onClose }: { a: Agreement | null; onClose: () => void }) {
         <label className="space-y-1"><span className="text-xs text-slate-500">{L('Grace days after a new version', 'أيام سماح بعد النسخة الجديدة')}</span><Input type="number" min={0} max={60} value={f.graceDays} onChange={(e) => setF({ ...f, graceDays: Number(e.target.value) || 0 })} /></label>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="space-y-1"><span className="text-xs text-slate-500">{L('Title (English)', 'العنوان (إنجليزي)')}</span><Input value={f.titleEn} onChange={(e) => setF({ ...f, titleEn: e.target.value })} /></label>
+        <label className="space-y-1"><span className="text-xs text-slate-500">{L('Title (English)', 'العنوان (إنجليزي)')}</span><Input value={f.titleEn} onChange={(e) => setF({ ...f, titleEn: e.target.value, ...(!a && !keyTouched && { key: e.target.value.trim() ? keyFromTitle(e.target.value, takenKeys) : '' }) })} /></label>
         <label className="space-y-1" dir="rtl"><span className="text-xs text-slate-500">العنوان (عربي)</span><Input value={f.titleAr} onChange={(e) => setF({ ...f, titleAr: e.target.value })} /></label>
         <label className="space-y-1"><span className="text-xs text-slate-500">{L('Text (English)', 'النص (إنجليزي)')}</span><textarea className="min-h-[220px] w-full rounded-md border border-slate-200 bg-white p-2" value={f.bodyEn} onChange={(e) => setF({ ...f, bodyEn: e.target.value })} /></label>
         <label className="space-y-1" dir="rtl"><span className="text-xs text-slate-500">النص (عربي)</span><textarea className="min-h-[220px] w-full rounded-md border border-slate-200 bg-white p-2" value={f.bodyAr} onChange={(e) => setF({ ...f, bodyAr: e.target.value })} /></label>
@@ -151,7 +154,7 @@ export default function AgreementsPage() {
       <Dialog open={!!edit} onOpenChange={(o) => { if (!o) setEdit(null) }}>
         <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
           <DialogHeader><DialogTitle>{edit === 'new' ? 'New agreement' : 'Edit agreement'}</DialogTitle></DialogHeader>
-          {edit && <Editor a={edit === 'new' ? null : edit} onClose={() => setEdit(null)} />}
+          {edit && <Editor a={edit === 'new' ? null : edit} onClose={() => setEdit(null)} takenKeys={(data ?? []).map((x) => x.key)} />}
         </DialogContent>
       </Dialog>
       <Dialog open={!!status} onOpenChange={(o) => { if (!o) setStatus(null) }}>

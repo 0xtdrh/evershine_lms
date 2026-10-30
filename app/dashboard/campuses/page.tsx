@@ -2,6 +2,7 @@
 
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { L, useI18n } from '@/lib/i18n/client'
+import { codeFromName, uniqueCode } from '@/lib/ids/auto-code'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchPaginatedApi, fetchApi } from '@/lib/api-client'
@@ -124,6 +125,7 @@ export default function CampusesPage() {
   })
 
   // ─── FORMS INITIALIZATION ───────────────────────────────────────────────────
+  const [codeTouched, setCodeTouched] = useState(false)
   const createForm = useForm<CreateCampusForm>({
     resolver: zodResolver(createCampusSchema),
     defaultValues: { name: '', code: '', address: '', phone: '', email: '', principalName: '' }
@@ -147,6 +149,7 @@ export default function CampusesPage() {
       queryClient.invalidateQueries({ queryKey: ['campuses'] })
       setIsCreateModalOpen(false)
       createForm.reset()
+      setCodeTouched(false)
     },
     onError: (err: any) => {
       notify.error(err.message || 'Failed to create campus')
@@ -415,14 +418,18 @@ export default function CampusesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-gray-600">{L('Campus Name', 'اسم الفرع')} <span className="text-red-500">*</span></Label>
-                <Input placeholder={L('e.g. El Kawther branch', 'مثلاً: فرع الكوثر')} className="rounded-xl" {...createForm.register('name')} />
+                <Input placeholder={L('e.g. El Kawther branch', 'مثلاً: فرع الكوثر')} className="rounded-xl" {...createForm.register('name', {
+                  // the code is filled in from the name until someone types their own (owner 2026-10-30)
+                  onChange: (e) => { if (!codeTouched) createForm.setValue('code', e.target.value.trim() ? uniqueCode(codeFromName(e.target.value), campuses.map((c) => c.code), 5) : '') },
+                })} />
                 {createForm.formState.errors.name && (
                   <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.name.message}</p>
                 )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-gray-600">{L('Campus Code', 'كود الفرع')} <span className="text-red-500">*</span></Label>
-                <Input placeholder={L('e.g. KWT', 'مثلاً: KWT')} className="rounded-xl uppercase" {...createForm.register('code')} />
+                <Input placeholder={L('e.g. KWT', 'مثلاً: KWT')} className="rounded-xl uppercase" {...createForm.register('code', { onChange: () => setCodeTouched(true) })} />
+                <p className="text-[10px] text-gray-500">{L('Filled in from the name — you can change it.', 'بيتملى لوحده من الاسم — وتقدر تغيّره.')}</p>
                 {createForm.formState.errors.code && (
                   <p className="text-[10px] text-red-500 font-bold">{createForm.formState.errors.code.message}</p>
                 )}

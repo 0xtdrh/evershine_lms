@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { codeFromName, keyFromTitle, uniqueCode } from '@/lib/ids/auto-code'
 import { cleanModes, effectiveModes, isOffered, modesText } from '@/lib/delivery/modes'
 
 describe('teaching modes — allowed ways', () => {
@@ -34,5 +35,29 @@ describe('teaching modes — where an item is offered', () => {
   })
   it('no place given (company-wide list) shows everything', () => {
     expect(isOffered({ track: ['P1'] }, null)).toBe(true)
+  })
+})
+
+describe('course code filled in from the name', () => {
+  it('initials for several words, first letters for one word, Arabic written in Latin', () => {
+    expect(codeFromName('Python for Kids')).toBe('PFK')
+    expect(codeFromName('Robotics')).toBe('ROBO')
+    expect(codeFromName('روبوتكس')).toBe('RWBW')
+    expect(codeFromName('  ')).toBe('CRS')
+  })
+  it('never repeats a code', () => {
+    expect(uniqueCode('ROBO', ['robo', 'ROBO2'])).toBe('ROBO3')
+    expect(uniqueCode('PFK', [])).toBe('PFK')
+  })
+})
+
+describe('branch code and agreement key filled in too', () => {
+  it('a branch code keeps to 5 characters, number included', () => {
+    expect(uniqueCode(codeFromName('El Kawther Branch'), [], 5)).toBe('EKB')
+    expect(uniqueCode('HURGH', ['HURGH', 'HURG2'], 5)).toBe('HURG3')
+  })
+  it('an agreement key is small letters and dashes, never repeated', () => {
+    expect(keyFromTitle('Refund Policy')).toBe('refund-policy')
+    expect(keyFromTitle('Refund Policy', ['refund-policy'])).toBe('refund-policy-2')
   })
 })
