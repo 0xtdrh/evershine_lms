@@ -60,7 +60,13 @@ export function PlacePrograms({ campusId }: { campusId: string }) {
   return (
     <div className="space-y-2">
       <p className="text-xs text-slate-500">{L('Ticked = this place can make groups of it and sees it in its lists. The same setting as Course Structure → "where offered".', 'المتعلّم = المكان ده يقدر يعمل منه جروبات ويشوفه في القوايم. نفس إعداد «متاح فين» في هيكل الكورسات.')}</p>
-      <div className="divide-y rounded-lg border px-3">{data.map((it) => row(it, true, 0))}</div>
+      <div className="divide-y rounded-lg border px-3">{data.filter((it) => it.kind === 'TRACK').map((it) => row(it, true, 0))}</div>
+      {data.some((it) => it.kind === 'COURSE') && (
+        <>
+          <p className="pt-2 text-sm font-semibold text-slate-700">{L('Standalone courses (no track)', 'كورسات منفصلة (من غير تراك)')}</p>
+          <div className="divide-y rounded-lg border px-3">{data.filter((it) => it.kind === 'COURSE').map((it) => row(it, true, 0))}</div>
+        </>
+      )}
     </div>
   )
 }

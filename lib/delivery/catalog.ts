@@ -131,7 +131,8 @@ export async function placeCatalog(campusId: string): Promise<PlaceCatalogItem[]
   })
   return [
     ...tracks.map((t) => ({ kind: 'TRACK' as const, id: t.id, name: t.name, scope: scope('TRACK', t.id), offered: trackOffered(m, t.id, campusId), children: courses.filter((c) => c.trackId === t.id).map(courseItem) })),
-    ...courses.filter((c) => !c.trackId).map(courseItem),
+    // standalone courses, and courses whose track was stopped (they would show nowhere otherwise)
+    ...courses.filter((c) => !c.trackId || !tracks.some((t) => t.id === c.trackId)).map(courseItem),
   ]
 }
 

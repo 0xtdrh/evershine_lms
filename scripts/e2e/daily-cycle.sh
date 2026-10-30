@@ -2218,6 +2218,7 @@ check "ticking it again offers it there again" "$(api PUT /api/places/$CAMPUS/ca
 api PUT /api/delivery/catalog "{\"kind\":\"LEVEL\",\"id\":\"$DLV\",\"allowedModes\":null,\"offeredIn\":[\"$DOTHER\"]}" >/dev/null
 check "unticking the only place left closes it everywhere (never 'everywhere' by mistake)" "$(api PUT /api/places/$DOTHER/catalog "{\"kind\":\"LEVEL\",\"id\":\"$DLV\",\"on\":false}" >/dev/null; M "SELECT GROUP_CONCAT(campusId) FROM OfferedIn WHERE entityId='$DLV'")/$(api GET "/api/levels?subjectId=$DCR&campusId=$DOTHER" | jq_ "any(l['id']=='$DLV' for l in d['data'])")" "NONE/False"
 check "a branch secretary cannot change another place's programmes" "$(secapi PUT /api/places/$DOTHER/catalog "{\"kind\":\"TRACK\",\"id\":\"$DTR\",\"on\":false}" | jq_ "d['success']")" "False"
+check "standalone courses are listed on the place page too (top level, with their level)" "$(api GET /api/places/$CAMPUS/catalog | jq_ "[(c['kind'], len(c['children'])) for c in d['data'] if c['id']=='$SAC']")" "[('COURSE', 1)]"
 M "DELETE FROM OfferedIn"
 echo "== 67. Codes filled in automatically, still changeable (owner 2026-10-30)"
 AC1=$(api POST /api/academic-subjects '{"name":"E2E Python For Kids"}' | jq_ "d['data']['code']")
