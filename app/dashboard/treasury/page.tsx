@@ -228,6 +228,11 @@ function Counts({ accounts, ar, canCreate, canApprove, onDone, status }: { accou
   const box = accounts.find((a) => a.id === f.accountId)
   return (
     <div className="space-y-4">
+      {/* a04: the printable daily cash-close sheet (totals + one page per account) */}
+      <div className="flex flex-wrap gap-2">
+        <Button asChild size="sm" variant="outline"><a href="/reports/cash-day" target="_blank" rel="noreferrer">🧾 {L("Today's cash-close sheet", 'كشف إقفال اليوم')}</a></Button>
+        {f.accountId && <Button asChild size="sm" variant="outline"><a href={`/reports/cash-day?account=${f.accountId}`} target="_blank" rel="noreferrer">{L('Sheet of this box', 'كشف الخزنة دي')}</a></Button>}
+      </div>
       {canCreate && accounts.length > 0 && (
         <Card><CardContent className="flex flex-wrap items-end gap-2 pt-4 text-sm">
           <label className="space-y-1"><span className="block text-xs text-slate-500">{L('Cash box', 'الخزنة')}</span>

@@ -2351,6 +2351,23 @@ check "a link for one session only is saved" "$(api PATCH /api/groups/$CVG/onlin
 check "…another day keeps the group link (none)" "$(api GET "/api/groups/$CVG/online?date=$LSUN" | jq_ "d['data']['sessionUrl']")" "None"
 check "…a bad link is refused" "$(api PATCH /api/groups/$CVG/online "{\"date\":\"$NSUN\",\"sessionUrl\":\"javascript:alert(1)\"}" | jq_ "d['success']")" "False"
 check "a secretary cannot set a session link" "$(secapi PATCH /api/groups/$CVG/online "{\"date\":\"$NSUN\",\"sessionUrl\":\"https://zoom.us/j/1\"}" | jq_ "d['success']")" "False"
+echo "== 74. Daily cash-close sheet (a04, 2026-10-31)"
+DAYS=$(api GET "/api/treasury/daily?date=$(D 0)")
+check "the totals page lists every account, cash boxes first" "$(echo "$DAYS" | jq_ "(d['data']['sheets'][0]['account']['kind'], any(s['account']['id']=='$TBOX' for s in d['data']['sheets']), any(s['account']['id']=='$TBANK' for s in d['data']['sheets']))")" "('CASH', True, True)"
+SH=$(api GET "/api/treasury/daily/$TBOX?date=$(D 0)")
+check "the box's sheet: opening + in − out = what should be there" "$(echo "$SH" | jq_ "abs(d['data']['opening'] + d['data']['totalIn'] - d['data']['totalOut'] - d['data']['expected']) < 0.01")" "True"
+check "…money in is grouped by kind (invoice payments listed one by one)" "$(echo "$SH" | jq_ "[(g['kind'], g['count']==len(g['lines'])) for g in d['data']['inGroups'] if g['kind']=='PAYMENT']")" "[('PAYMENT', True)]"
+CIDT=$(echo "$SH" | jq_ "d['data']['count']['id'] if d['data']['count'] else ''")
+BNOW=$(api GET /api/treasury | jq_ "[a['balance'] for a in d['data']['accounts'] if a['id']=='$TBOX'][0]")
+check "…with today's count: the books now = what should be there + the count difference booked" "$(echo "$SH" | jq_ "round(d['data']['expected'] + float('$(M "SELECT COALESCE(SUM(CASE WHEN direction='IN' THEN amount ELSE -amount END),0) FROM MoneyMovement WHERE cashCountId='$CIDT'")') - $BNOW, 2) == 0")" "True"
+check "…the difference shown is the one that was approved (counted − the books at the time of the count)" "$(echo "$SH" | jq_ "round(d['data']['difference'] - float('$(M "SELECT difference FROM CashCount WHERE id='$CIDT'")'), 2) == 0")" "True"
+check "…who counted is recorded by name and time" "$(echo "$SH" | jq_ "(d['data']['state'] in ('APPROVED','PENDING'), bool(d['data']['count']['countedBy']), bool(d['data']['count']['countedAt']))")" "(True, True, True)"
+check "a day with no count still has a sheet: 'not counted yet'" "$(api GET "/api/treasury/daily/$TBOX?date=$(D 1)" | jq_ "(d['data']['state'], d['data']['difference'])")" "('NOT_COUNTED', None)"
+M "INSERT INTO CashCount (id,accountId,date,expected,counted,difference,status,countedById,createdAt) VALUES ('e2e-ycount','$TBOX','$(D 0)',0,777,0,'APPROVED',(SELECT id FROM User WHERE role='SUPER_ADMIN' LIMIT 1),NOW())"
+check "the next day opens with the approved count of the day before" "$(api GET "/api/treasury/daily/$TBOX?date=$(D 1)" | jq_ "(d['data']['opening'], d['data']['openingSource'])")" "(777, 'YESTERDAY_COUNT')"
+M "DELETE FROM CashCount WHERE id='e2e-ycount'"
+check "a branch secretary sees only the branch accounts (not the company bank)" "$(secapi GET "/api/treasury/daily?date=$(D 0)" | jq_ "any(s['account']['id']=='$TBANK' for s in d['data']['sheets'])")" "False"
+check "a bad day is refused; signed-out gets 401" "$(api GET "/api/treasury/daily?date=31-10-2026" | jq_ "d['success']")/$(curl -s -o /dev/null -w '%{http_code}' "$B/api/treasury/daily")" "False/401"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
