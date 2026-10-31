@@ -652,7 +652,8 @@ check "last session of the cycle is flagged" "$(echo "$CAL" | jq_ "[s['date'] fo
 check "cancel reason shown" "$(echo "$CAL" | jq_ "[s['cancelReason'] for s in d['data']['sessions'] if s['groupId']=='$SG1' and s['status']=='CANCELLED'][0]")" "Holiday"
 check "group not started yet: faded upcoming sessions numbered from 1" "$(echo "$CAL" | jq_ "[s['sessionNumber'] for s in d['data']['sessions'] if s['groupId']=='$SG2' and s['status']=='NOT_STARTED'][:2]")" "[1, 2]"
 check "no clash while the instructor has one group at 16:00" "$(echo "$CAL" | jq_ "any(s['conflict'] for s in d['data']['sessions'] if s['groupId'] in ('$SG1','$SG2'))")" "False"
-api POST /api/groups/$SG2/instructor "{\"teacherId\":\"$CALT\"}" >/dev/null
+check "the same instructor at the same time in two groups is refused (owner rule, batch 4)" "$(api POST /api/groups/$SG2/instructor "{\"teacherId\":\"$CALT\"}" | jq_ "d['error']['code']")" "TEACHER_PROBLEM"
+api POST /api/groups/$SG2/instructor "{\"teacherId\":\"$CALT\",\"force\":true}" >/dev/null
 CAL=$(api GET "/api/groups/schedule?from=$(D 0)&to=$(D 0)")
 check "same instructor, two groups at the same time -> clash on both" "$(echo "$CAL" | jq_ "sorted(s['groupId'] for s in d['data']['sessions'] if s['conflict'] and s['groupId'] in ('$SG1','$SG2'))==sorted(['$SG1','$SG2'])")" "True"
 check "group details for the calendar (course, level, instructor, students)" "$(echo "$CAL" | jq_ "[(g['course'] is not None, g['level'] is not None, g['teacher'] is not None, g['studentCount']) for g in d['data']['groups'] if g['id']=='$SG1'][0]")" "(True, True, True, 1)"
@@ -739,7 +740,7 @@ check "holiday notice reaches the student too" "$(M "SELECT COUNT(*) FROM Notifi
 check "portal 'next sessions': the holiday shows as postponed" "$(api GET /api/students/$PHS/upcoming-sessions | jq_ "[x['status'] for x in d['data']['sessions'] if x['date']=='$(D 1)']")" "['HOLIDAY']"
 check "extra session added on the holiday evening" "$(api POST /api/groups/$PH/extra-sessions "{\"date\":\"$(D 1)\",\"time\":\"20:00\",\"reason\":\"make up\"}" | jq_ "d['success']")" "True"
 # 2026-10-24 live test: the instructor's day (absences, substitutes, "my week") follows holidays and makeup sessions too
-api POST /api/groups/$PH/instructor "{\"teacherId\":\"$CALT\"}" >/dev/null
+api POST /api/groups/$PH/instructor "{\"teacherId\":\"$CALT\",\"force\":true}" >/dev/null
 check "instructor's week: the holiday's usual session is gone, the makeup session is there" "$(api GET "/api/teachers/$CALT/my-week?days=4" | jq_ "[(s['time'], s.get('isExtra', False)) for day in d['data'] if day['date']=='$(D 1)' for s in day['sessions'] if s['classSectionId']=='$PH']")" "[('20:00', True)]"
 CAL=$(api GET "/api/groups/schedule?from=$(D -1)&to=$(D 5)")
 check "extra session counts: the month ends a day earlier" "$(echo "$CAL" | jq_ "[s['date'] for s in d['data']['sessions'] if s['groupId']=='$PH' and s['isLastOfCycle']]==['$(D 2)']")" "True"
@@ -1101,7 +1102,7 @@ check "upload signature only for authors" "$(curl -s -o /dev/null -w '%{http_cod
 
 echo "== 31. LMS L2: lessons open for students (attendance / instructor / modes), protection log, parent summary"
 LG=$(mkgroup "E2E Lessons" "$CL")
-api POST /api/groups/$LG/instructor "{\"teacherId\":\"$CALT\"}" >/dev/null
+api POST /api/groups/$LG/instructor "{\"teacherId\":\"$CALT\",\"force\":true}" >/dev/null
 LK=$(mkstu LessonKid 01066660111 Huda 01066660119); LO=$(mkstu LessonOther 01066660112 Huda2 01066660118)
 api POST /api/groups/$LG/students "{\"studentId\":\"$LK\"}" >/dev/null
 LKR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); LKJ=$(mktemp)
@@ -1521,7 +1522,7 @@ curl -s -b "$SECJ" -c "$SECJ" -X POST -H 'Content-Type: application/json' -d '{"
 check "instructor picker for the other place's group: only instructors of that place" "$(api GET "/api/teachers/for-selection?mode=all&classSectionId=$GB" | jq_ "any(t['id']=='$CALT' for t in d['data']['teachers'])")" "False"
 api PUT /api/teachers/$CALT/places "{\"allLocations\":false,\"campusIds\":[\"$PB\"],\"pay\":[{\"campusId\":\"$PB\",\"fixed\":null,\"percent\":null,\"perSession\":200}],\"employment\":[]}" >/dev/null
 check "instructor given the other place → he can be chosen there" "$(api GET "/api/teachers/for-selection?mode=all&classSectionId=$GB" | jq_ "any(t['id']=='$CALT' for t in d['data']['teachers'])")" "True"
-api POST /api/groups/$GB/instructor "{\"teacherId\":\"$CALT\"}" >/dev/null
+api POST /api/groups/$GB/instructor "{\"teacherId\":\"$CALT\",\"force\":true}" >/dev/null
 SBE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$SB' AND classSectionId='$GB'")
 curl -s -b "$TJ" -X POST -H 'Content-Type: application/json' -d "{\"classSectionId\":\"$GB\",\"attendanceDate\":\"$(D 0)\",\"records\":[$(rec $SBE PRESENT)]}" $B/api/enrollment-attendance >/dev/null
 check "pay in that place uses the place rate (200 per session)" "$(api GET /api/teachers/$CALT/group-pay-summary | jq_ "[(float(g['perSessionAmount']), g['sessionsCounted']) for g in d['data']['groups'] if g['classSectionId']=='$GB'][0]")" "(200.0, 1)"
@@ -2297,6 +2298,26 @@ api PUT /api/places/$DOTHER/rooms '{"roomMode":"DAILY","dayCounts":[0,0,1,0,0,0,
 check "a place with 1 room on Tuesday: a second Tuesday session at the same time is refused" "$(api PATCH /api/groups/$RG2 '{"scheduleSlots":[{"dayOfWeek":2,"time":"18:30","mode":"BRANCH"}]}' | jq_ "d['error']['code']")" "ROOM_PROBLEM"
 check "a branch secretary cannot change another place's rooms" "$(secapi PUT /api/places/$DOTHER/rooms '{"roomMode":"NONE"}' | jq_ "d['success']")" "False"
 api PUT /api/places/$DOTHER/rooms '{"roomMode":"NONE"}' >/dev/null
+echo "== 71. Instructor working hours (a02 batch 4, 2026-10-31)"
+EW=$(M "SELECT t.id FROM Teacher t JOIN User u ON u.id=t.userId WHERE u.email='every@e2e.local'")
+check "e2e data: an instructor with no groups yet" "$([ -n "$EW" ] && echo yes)/$(M "SELECT COUNT(*) FROM SubjectOffering o JOIN ClassSection c ON c.id=o.classSectionId WHERE o.teacherId='$EW' AND c.status='ACTIVE'")" "yes/0"
+check "no hours entered = always available (he can take the group)" "$(api POST /api/groups/$RG2/instructor "{\"teacherId\":\"$EW\"}" | jq_ "d['success']")" "True"
+api POST /api/groups/$RG2/instructor '{"teacherId":null}' >/dev/null
+check "working hours are saved (Sunday shift in the partner place)" "$(api PUT /api/teachers/$EW/work-hours "{\"rows\":[{\"dayOfWeek\":0,\"fromTime\":\"14:00\",\"toTime\":\"20:00\",\"kind\":\"SHIFT\",\"campusId\":\"$DOTHER\"}]}" | jq_ "len(d['data']['rows'])")" "1"
+check "a group with a Tuesday session outside his hours is refused (409)" "$(api POST /api/groups/$CVG/instructor "{\"teacherId\":\"$EW\"}" | jq_ "(d['error']['code'], 'outside' in d['error']['message'])")" "('TEACHER_PROBLEM', True)"
+api PUT /api/teachers/$EW/work-hours "{\"rows\":[{\"dayOfWeek\":0,\"fromTime\":\"14:00\",\"toTime\":\"20:00\",\"kind\":\"SHIFT\",\"campusId\":\"$DOTHER\"},{\"dayOfWeek\":2,\"fromTime\":\"17:00\",\"toTime\":\"21:00\",\"kind\":\"AVAILABLE\",\"campusId\":null}]}" >/dev/null
+check "with Tuesday hours added he gets the group" "$(api POST /api/groups/$CVG/instructor "{\"teacherId\":\"$EW\"}" | jq_ "d['success']")" "True"
+check "…and a second group right after it (no overlap) too" "$(api POST /api/groups/$RG2/instructor "{\"teacherId\":\"$EW\"}" | jq_ "d['success']")" "True"
+check "moving that group onto his other session is refused (clash)" "$(api PATCH /api/groups/$RG2 '{"scheduleSlots":[{"dayOfWeek":2,"time":"18:30","mode":"BRANCH"}]}' | jq_ "(d['error']['code'], 'clash' in d['error']['message'])")" "('TEACHER_PROBLEM', True)"
+TBG=$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"className\":\"E2E Two Branch\",\"sectionName\":\"T\",\"levelId\":\"$CVL\"}" | jq_ "d['data']['id']")
+api PATCH /api/groups/$TBG '{"scheduleSlots":[{"dayOfWeek":2,"time":"10:00","mode":"BRANCH"}]}' >/dev/null
+api PUT /api/teachers/$EW/work-hours "{\"rows\":[{\"dayOfWeek\":0,\"fromTime\":\"14:00\",\"toTime\":\"20:00\",\"kind\":\"SHIFT\",\"campusId\":\"$DOTHER\"},{\"dayOfWeek\":2,\"fromTime\":\"09:00\",\"toTime\":\"21:00\",\"kind\":\"AVAILABLE\",\"campusId\":null}]}" >/dev/null
+check "a branch session in another branch the same day is refused" "$(api POST /api/groups/$TBG/instructor "{\"teacherId\":\"$EW\"}" | jq_ "(d['error']['code'], 'another branch' in d['error']['message'])")" "('TEACHER_PROBLEM', True)"
+check "a Super Admin may force it (logged)" "$(api POST /api/groups/$TBG/instructor "{\"teacherId\":\"$EW\",\"force\":true}" | jq_ "d['success']")/$(M "SELECT COUNT(*)>0 FROM AuditLog WHERE action='FORCE_TEACHER' AND entityId='$TBG'")" "True/1"
+check "his page lists his hours and his weekly sessions" "$(api GET /api/teachers/$EW/work-hours | jq_ "(len(d['data']['rows']), len(d['data']['sessions']) >= 3)")" "(2, True)"
+check "a secretary cannot change working hours" "$(secapi PUT /api/teachers/$EW/work-hours '{"rows":[]}' | jq_ "d['success']")" "False"
+api POST /api/groups/$TBG/instructor '{"teacherId":null}' >/dev/null
+M "DELETE FROM TeacherWorkHours WHERE teacherId='$EW'"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

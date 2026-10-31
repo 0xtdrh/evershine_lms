@@ -13,12 +13,13 @@ import { canSeeGroup } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { errors, successResponse } from '@/lib/api-response'
+import { errorResponse, errors, successResponse } from '@/lib/api-response'
+import { checkTeacherForGroup } from '@/lib/teachers/availability'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import type { Role } from '@prisma/client'
 
-const bodySchema = z.object({ teacherId: z.string().min(1).nullable() })
+const bodySchema = z.object({ teacherId: z.string().min(1).nullable(), /** a02 batch 4: Super Admin goes ahead against working hours */ force: z.boolean().optional() })
 
 export async function POST(
   request: NextRequest,
@@ -53,6 +54,12 @@ export async function POST(
   if (parsed.data.teacherId) {
     const teacher = await prisma.teacher.findUnique({ where: { id: parsed.data.teacherId }, select: { id: true } })
     if (!teacher) return errors.notFound('Teacher')
+    // a02 batch 4: his working hours, his other sessions, not two branches the same day (Super Admin may force; logged)
+    const problem = await checkTeacherForGroup(parsed.data.teacherId, group)
+    if (problem) {
+      if (!(parsed.data.force && role === 'SUPER_ADMIN')) return errorResponse('TEACHER_PROBLEM', problem, 409)
+      await prisma.auditLog.create({ data: { userId: session.user.id, action: 'FORCE_TEACHER', entityType: 'ClassSection', entityId: id, changes: { teacherId: parsed.data.teacherId, problem } } }).catch(() => undefined)
+    }
   }
 
   const activeYear = await getActiveAcademicYear()

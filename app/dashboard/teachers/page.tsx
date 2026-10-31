@@ -386,6 +386,11 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
                   {L('Pay Rule', 'قاعدة الأجر')}
                 </Button>
               </Link>
+              <Link href={`/dashboard/teachers/${teacher.id}/work-hours`}>
+                <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
+                  {L('Working hours', 'ساعات العمل')}
+                </Button>
+              </Link>
               <Link href={`/dashboard/teachers/${teacher.id}/capabilities`}>
                 <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
                   {L('Capabilities', 'المؤهلات')}

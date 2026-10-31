@@ -21,6 +21,7 @@ import { isLevelOfferedIn, levelModes } from '@/lib/delivery/catalog'
 import { MODES, MODE_LABEL, modesText } from '@/lib/delivery/modes'
 import { firstNotAllowed } from '@/lib/delivery/templates'
 import { checkGroupSlots } from '@/lib/rooms/engine'
+import { checkTeacherForGroup } from '@/lib/teachers/availability'
 import { cleanSlots } from '@/lib/groups/schedule-calendar'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { Prisma, type Role } from '@prisma/client'
@@ -241,6 +242,18 @@ export async function PATCH(
     if (problem) {
       if (!(parsed.data.forceRooms && role === 'SUPER_ADMIN')) return errorResponse('ROOM_PROBLEM', problem, 409)
       await prisma.auditLog.create({ data: { userId: session.user.id, action: 'FORCE_ROOMS', entityType: 'ClassSection', entityId: id, changes: { problem } } }).catch(() => undefined)
+    }
+  }
+
+  // a02 batch 4: the group's instructor must still be free at the new times (Super Admin may force)
+  if (parsed.data.scheduleSlots !== undefined && parsed.data.scheduleSlots) {
+    const offer = await prisma.subjectOffering.findFirst({ where: { classSectionId: id, teacherId: { not: null } }, select: { teacherId: true }, orderBy: { createdAt: 'desc' } })
+    if (offer?.teacherId) {
+      const problem = await checkTeacherForGroup(offer.teacherId, existing, parsed.data.scheduleSlots)
+      if (problem) {
+        if (!(parsed.data.forceRooms && role === 'SUPER_ADMIN')) return errorResponse('TEACHER_PROBLEM', problem, 409)
+        await prisma.auditLog.create({ data: { userId: session.user.id, action: 'FORCE_TEACHER', entityType: 'ClassSection', entityId: id, changes: { problem } } }).catch(() => undefined)
+      }
     }
   }
 

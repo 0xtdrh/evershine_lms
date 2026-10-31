@@ -224,14 +224,23 @@ export default function GroupsPage() {
   }, [teacherOptionsRaw, detail?.teacher])
 
   const assignInstructorMutation = useMutation({
-    mutationFn: (teacherId: string | null) =>
-      fetchApi(`/api/groups/${selectedGroupId}/instructor`, { method: 'POST', body: JSON.stringify({ teacherId }) }),
+    mutationFn: (v: string | null | { teacherId: string; force: true }) =>
+      fetchApi(`/api/groups/${selectedGroupId}/instructor`, { method: 'POST', body: JSON.stringify(v && typeof v === 'object' ? v : { teacherId: v }) }),
     onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: ['group-detail', selectedGroupId] })
       queryClient.invalidateQueries({ queryKey: ['groups'] })
       notify.success(L('Instructor updated', 'المدرب اتحدّث'))
     },
-    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to assign instructor')),
+    onError: (err: unknown, v) => {
+      // a02 batch 4: outside his hours / a clash / two branches — only a Super Admin may go ahead (logged)
+      if (err instanceof ApiError && err.code === 'TEACHER_PROBLEM' && session?.user?.role === 'SUPER_ADMIN' && typeof v === 'string' && confirm(`${err.message}
+
+${L('Assign anyway? (Super Admin, it is logged)', 'تعيّنه برضه؟ (Super Admin، وبيتسجّل)')}`)) {
+        assignInstructorMutation.mutate({ teacherId: v, force: true })
+        return
+      }
+      notify.error(apiErrorMessage(err, 'Failed to assign instructor'))
+    },
   })
 
   // ── Create group ──────────────────────────────────────────────────────
@@ -366,7 +375,7 @@ export default function GroupsPage() {
     },
     onError: (err: unknown) => {
       // a02 batch 3: a room problem — only a Super Admin may go ahead anyway (it is logged)
-      if (err instanceof ApiError && err.code === 'ROOM_PROBLEM' && session?.user?.role === 'SUPER_ADMIN' && confirm(`${err.message}
+      if (err instanceof ApiError && (err.code === 'ROOM_PROBLEM' || err.code === 'TEACHER_PROBLEM') && session?.user?.role === 'SUPER_ADMIN' && confirm(`${err.message}
 
 ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admin، وبيتسجّل)')}`)) {
         updateGroupMutation.mutate(true)

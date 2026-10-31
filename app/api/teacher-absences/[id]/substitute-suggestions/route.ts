@@ -12,6 +12,7 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getTeacherSessionsOnDate } from '@/lib/teachers/schedule'
+import { teacherFreeFor } from '@/lib/teachers/availability'
 import type { Role } from '@prisma/client'
 
 export async function GET(
@@ -67,6 +68,8 @@ export async function GET(
       const theirSessions = await getTeacherSessionsOnDate(tid, absence.date)
       const hasConflict = theirSessions.some((s) => s.time === affected.time)
       if (hasConflict) continue
+      // a02 batch 4: only instructors whose working hours cover it and who have nothing overlapping then
+      if (group && !(await teacherFreeFor(tid, { dayOfWeek: absence.date.getUTCDay(), time: affected.time, campusId: group.campusId }))) continue
       const teacher = await prisma.teacher.findUnique({ where: { id: tid }, select: { id: true, firstName: true, lastName: true, isActive: true } })
       if (!teacher?.isActive) continue
       candidates.push({ id: teacher.id, name: `${teacher.firstName} ${teacher.lastName}` })

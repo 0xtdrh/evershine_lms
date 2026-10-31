@@ -5257,3 +5257,20 @@ model RoomDayCount {
 
   @@unique([campusId, dayOfWeek])
 }
+
+/// a02 M1 batch 4 (2026-10-31): an instructor's working hours per weekday. kind SHIFT = his fixed shift (all his groups
+/// inside it); AVAILABLE = hours he can work ("after 17:00"). campusId = that place only; null = any place; onlineOnly =
+/// online sessions only. No rows at all = always available (owner 2026-10-30).
+model TeacherWorkHours {
+  id         String   @id @default(cuid())
+  teacherId  String
+  dayOfWeek  Int
+  fromTime   String   @db.VarChar(5)
+  toTime     String   @db.VarChar(5)
+  kind       String   @default("SHIFT") @db.VarChar(9)
+  campusId   String?
+  onlineOnly Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([teacherId])
+}
