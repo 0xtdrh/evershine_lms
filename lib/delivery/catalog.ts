@@ -51,6 +51,9 @@ export interface CatalogDelivery {
   name: string
   allowedModes: Mode[] | null
   offeredIn: string[]
+  /** a02 batch 2: default template of ways (courses / levels); inheritedTemplateId = the course's, for a level */
+  templateId: string | null
+  inheritedTemplateId: string | null
   /** what applies when this item sets nothing (from its course / track) */
   inherited: { modes: Mode[]; from: string }
   effective: { modes: Mode[]; from: string }
@@ -58,24 +61,27 @@ export interface CatalogDelivery {
 
 export async function getCatalogDelivery(kind: CatalogKind, id: string): Promise<CatalogDelivery | null> {
   let own: unknown, name = '', parent: { course?: unknown; track?: unknown } = {}
+  let templateId: string | null = null, inheritedTemplateId: string | null = null
   if (kind === 'TRACK') {
     const t = await prisma.track.findUnique({ where: { id }, select: { name: true, allowedModes: true } })
     if (!t) return null
     own = t.allowedModes; name = t.name
   } else if (kind === 'COURSE') {
-    const c = await prisma.academicSubject.findUnique({ where: { id }, select: { name: true, allowedModes: true, track: { select: { allowedModes: true } } } })
+    const c = await prisma.academicSubject.findUnique({ where: { id }, select: { name: true, allowedModes: true, deliveryTemplateId: true, track: { select: { allowedModes: true } } } })
     if (!c) return null
-    own = c.allowedModes; name = c.name; parent = { track: c.track?.allowedModes }
+    own = c.allowedModes; name = c.name; parent = { track: c.track?.allowedModes }; templateId = c.deliveryTemplateId
   } else {
-    const l = await prisma.level.findUnique({ where: { id }, select: { name: true, allowedModes: true, subject: { select: { name: true, allowedModes: true, track: { select: { allowedModes: true } } } } } })
+    const l = await prisma.level.findUnique({ where: { id }, select: { name: true, allowedModes: true, deliveryTemplateId: true, subject: { select: { name: true, allowedModes: true, deliveryTemplateId: true, track: { select: { allowedModes: true } } } } } })
     if (!l) return null
     own = l.allowedModes; name = `${l.subject.name} — ${l.name}`; parent = { course: l.subject.allowedModes, track: l.subject.track?.allowedModes }
+    templateId = l.deliveryTemplateId; inheritedTemplateId = l.subject.deliveryTemplateId
   }
   const offered = await prisma.offeredIn.findMany({ where: { entityType: kind, entityId: id }, select: { campusId: true } })
   return {
     kind, id, name,
     allowedModes: cleanModes(own),
     offeredIn: offered.map((o) => o.campusId),
+    templateId, inheritedTemplateId,
     inherited: effectiveModes(parent),
     effective: effectiveModes({ ...parent, [kind === 'TRACK' ? 'track' : kind === 'COURSE' ? 'course' : 'level']: own }),
   }
@@ -143,7 +149,7 @@ export async function placeCatalog(campusId: string): Promise<PlaceCatalogItem[]
   ]
 }
 
-export async function saveCatalogDelivery(kind: CatalogKind, id: string, input: { allowedModes: string[] | null; offeredIn: string[] }) {
+export async function saveCatalogDelivery(kind: CatalogKind, id: string, input: { allowedModes: string[] | null; offeredIn: string[]; templateId?: string | null }) {
   const cleaned = cleanModes(input.allowedModes)
   // nothing ticked = take it from above (stored as SQL NULL)
   const allowedModes = cleaned ? (cleaned as Prisma.InputJsonValue) : Prisma.DbNull
@@ -151,8 +157,8 @@ export async function saveCatalogDelivery(kind: CatalogKind, id: string, input: 
   const known = campusIds.length ? (await prisma.campus.findMany({ where: { id: { in: campusIds } }, select: { id: true } })).map((c) => c.id) : []
   await prisma.$transaction(async (tx) => {
     if (kind === 'TRACK') await tx.track.update({ where: { id }, data: { allowedModes } })
-    else if (kind === 'COURSE') await tx.academicSubject.update({ where: { id }, data: { allowedModes } })
-    else await tx.level.update({ where: { id }, data: { allowedModes } })
+    else if (kind === 'COURSE') await tx.academicSubject.update({ where: { id }, data: { allowedModes, ...(input.templateId !== undefined && { deliveryTemplateId: input.templateId }) } })
+    else await tx.level.update({ where: { id }, data: { allowedModes, ...(input.templateId !== undefined && { deliveryTemplateId: input.templateId }) } })
     await tx.offeredIn.deleteMany({ where: { entityType: kind, entityId: id } })
     if (known.length) await tx.offeredIn.createMany({ data: known.map((campusId) => ({ entityType: kind, entityId: id, campusId })) })
   })

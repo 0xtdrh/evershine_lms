@@ -82,7 +82,7 @@ export async function notifyHoliday(campusId: string | null, days: string[], nam
       if (!hit.length) continue
       const ids = (await prisma.studentEnrollment.findMany({ where: { classSectionId: g.id, status: 'ACTIVE' }, select: { studentId: true } })).map((e) => e.studentId)
       const ex = exceptions.get(g.id)
-      const next = upcomingSessions({ slots, from: addDay(hit[hit.length - 1]), count: 1, holidays: ex?.holidays, extras: ex?.extras, maxDays: 120 })[0]
+      const next = upcomingSessions({ slots, from: addDay(hit[hit.length - 1]), count: 1, holidays: ex?.holidays, extras: ex?.extras, branchHolidays: ex?.branchHolidays, modeOverrides: ex?.modeOverrides, maxDays: 120 })[0]
       const label = `${g.className} ${g.sectionName}`.trim()
       const nextEn = next ? ` The next session is ${fmt(next.date)} at ${time12(next.time)}.` : ''
       const nextAr = next ? ` الحصة الجاية ${fmtAr(next.date)} الساعة ${time12(next.time, true)}.` : ''
@@ -144,7 +144,7 @@ export async function notifyJoinerHolidays(studentId: string, classSectionId: st
     const fresh = hits.filter((h) => !told.some((t) => t.message.includes(fmt(h.d))))
     if (!fresh.length) return
     const ex = (await groupExceptions([g], day(today))).get(g.id)
-    const next = upcomingSessions({ slots, from: addDay(fresh[fresh.length - 1].d), count: 1, holidays: ex?.holidays, extras: ex?.extras, maxDays: 120 })[0]
+    const next = upcomingSessions({ slots, from: addDay(fresh[fresh.length - 1].d), count: 1, holidays: ex?.holidays, extras: ex?.extras, branchHolidays: ex?.branchHolidays, modeOverrides: ex?.modeOverrides, maxDays: 120 })[0]
     const label = `${g.className} ${g.sectionName}`.trim()
     const names = [...new Set(fresh.map((h) => h.name))].join(' / ')
     const nextEn = next ? ` The next session is ${fmt(next.date)} at ${time12(next.time)}.` : ''

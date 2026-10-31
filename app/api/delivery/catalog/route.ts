@@ -32,6 +32,8 @@ const schema = z.object({
   id: z.string().min(1),
   allowedModes: z.array(z.enum(MODES)).nullable(),
   offeredIn: z.array(z.string().min(1)).max(200),
+  /** courses / levels: default template of ways (null = from above) */
+  templateId: z.string().min(1).nullable().optional(),
 })
 
 export async function PUT(request: NextRequest) {
@@ -39,8 +41,8 @@ export async function PUT(request: NextRequest) {
   if (error || !session) return error!
   const parsed = schema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return errors.validation(parsed.error)
-  const { kind, id, allowedModes, offeredIn } = parsed.data
+  const { kind, id, allowedModes, offeredIn, templateId } = parsed.data
   if (!checkPermission(session.user.role, resourceOf(kind), 'update')) return errors.forbidden()
   if (!(await getCatalogDelivery(kind, id))) return errors.notFound(kind.toLowerCase())
-  return successResponse(await saveCatalogDelivery(kind, id, { allowedModes, offeredIn }), 'Saved · اتحفظ')
+  return successResponse(await saveCatalogDelivery(kind, id, { allowedModes, offeredIn, ...(kind !== 'TRACK' && templateId !== undefined && { templateId }) }), 'Saved · اتحفظ')
 }

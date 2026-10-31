@@ -29,6 +29,7 @@ export const NOTIFICATION_EVENTS = [
   { key: 'HOLIDAY', label: 'Day off', description: 'Parent and student: a holiday postpones a session (with the next session date)', audience: 'PARENT' },
   { key: 'ANNOUNCEMENT', label: 'Announcement', description: 'Parents, students, instructors or staff: a targeted announcement (some ask "I read it")', audience: 'PARENT' },
   { key: 'MAKEUP_SESSION', label: 'Makeup session', description: 'Parent and student: an extra / makeup session was added to the group', audience: 'PARENT' },
+  { key: 'SESSION_MODE', label: 'Session taught another way', description: 'Parent and student: one session moves online / to the branch / becomes recorded', audience: 'PARENT' },
   { key: 'RESULT_PUBLISHED', label: 'Result ready', description: 'Parent and student: the level result is ready', audience: 'PARENT' },
   { key: 'CERTIFICATE_ISSUED', label: 'Certificate ready', description: 'Parent and student: a certificate was revealed', audience: 'PARENT' },
   { key: 'REPORT_READY', label: 'Report ready', description: 'Parent: the monthly / level report is ready', audience: 'PARENT' },

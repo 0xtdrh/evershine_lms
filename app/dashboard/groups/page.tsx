@@ -24,12 +24,16 @@ import { GroupCapacityPanel, type Seats, type WaitingRow } from '@/components/gr
 import { GroupPricePanel } from '@/components/groups/GroupPricePanel'
 import { GroupRulesPanel } from '@/components/rules/GroupRulesPanel'
 import { GroupCurriculumPicker } from '@/components/groups/GroupCurriculumPicker'
+import { GroupSessionModePanel } from '@/components/groups/GroupSessionModePanel'
 import { ExtraSessionsPanel, type ExtraSessionRow } from '@/components/groups/ExtraSessionsPanel'
 import { FullGroupDialog } from '@/components/groups/FullGroupDialog'
 import { L, useI18n, dayName } from '@/lib/i18n/client'
 import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
 import { NO_TRACK, useOffered } from '@/hooks/use-offered-catalog'
+import { MODE_ICON, useTemplates } from '@/components/delivery/TemplatesManager'
+import { applyTemplate } from '@/lib/delivery/templates'
+import { MODE_LABEL, type Mode } from '@/lib/delivery/modes'
 
 interface Campus { id: string; name: string }
 interface AcademicYear { id: string; name: string; isActive: boolean }
@@ -50,7 +54,7 @@ interface GroupSummary {
   studentCount: number
   startDate: string | null
   expectedEndDate: string | null
-  scheduleSlots: { dayOfWeek: number; time: string }[] | null
+  scheduleSlots: { dayOfWeek: number; time: string; mode?: Mode }[] | null
   status: 'ACTIVE' | 'COMPLETED'
   displayStatus: 'ACTIVE' | 'COMPLETED' | 'UPCOMING'
 }
@@ -128,7 +132,7 @@ function apiErrorMessage(err: unknown, fallback: string): string {
 }
 
 export default function GroupsPage() {
-  useI18n() // re-render on a language switch
+  const { locale } = useI18n() // re-render on a language switch
   const queryClient = useQueryClient()
   const router = useRouter()
   const { data: session } = useSession()
@@ -291,7 +295,16 @@ export default function GroupsPage() {
     className: '', sectionName: '', trackId: '', courseId: '', levelId: '',
     startDate: '', expectedEndDate: '', requireFullPaymentToStart: false, partialPaymentCounts: false, installmentsAllowed: false,
   })
-  const [scheduleSlots, setScheduleSlots] = useState<{ dayOfWeek: number; time: string }[]>([])
+  const [scheduleSlots, setScheduleSlots] = useState<{ dayOfWeek: number; time: string; mode?: Mode }[]>([])
+  const [slotTemplateId, setSlotTemplateId] = useState<string | null>(null)
+  // a02: the ways the chosen level allows, and its default template
+  const { data: levelDelivery } = useQuery({
+    queryKey: ['delivery', 'LEVEL', editForm.levelId],
+    queryFn: () => fetchApi<{ effective: { modes: Mode[] }; templateId: string | null; inheritedTemplateId: string | null }>(`/api/delivery/catalog?kind=LEVEL&id=${editForm.levelId}`),
+    enabled: !!editForm.levelId,
+  })
+  const { data: deliveryTemplates = [] } = useTemplates()
+  const allowedModes: Mode[] = levelDelivery?.effective.modes ?? ['BRANCH', 'ONLINE', 'RECORDED']
 
   const openEdit = () => {
     if (!detail) return
@@ -309,6 +322,7 @@ export default function GroupsPage() {
       installmentsAllowed: detail.installmentsAllowed,
     })
     setScheduleSlots(detail.scheduleSlots ?? [])
+    setSlotTemplateId(null)
     setEditOpen(true)
   }
 
@@ -330,6 +344,7 @@ export default function GroupsPage() {
           levelId: editForm.levelId || null,
           startDate: editForm.startDate ? new Date(editForm.startDate).toISOString() : null,
           scheduleSlots: scheduleSlots.length > 0 ? scheduleSlots : null,
+          ...(slotTemplateId !== null && { deliveryTemplateId: slotTemplateId || null }),
           requireFullPaymentToStart: editForm.requireFullPaymentToStart,
           partialPaymentCounts: editForm.partialPaymentCounts,
           installmentsAllowed: editForm.installmentsAllowed,
@@ -601,7 +616,7 @@ export default function GroupsPage() {
                 {g.scheduleSlots && g.scheduleSlots.length > 0 && (
                   <p className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
-                    {g.scheduleSlots.map((s) => `${dayName(s.dayOfWeek)} ${s.time}`).join(', ')}
+                    {g.scheduleSlots.map((s) => `${dayName(s.dayOfWeek)} ${s.time}${s.mode && s.mode !== 'BRANCH' ? ` ${MODE_ICON[s.mode]}` : ''}`).join(', ')}
                   </p>
                 )}
               </div>
@@ -698,7 +713,7 @@ export default function GroupsPage() {
                   <div className="col-span-2">
                     <p className="text-xs text-slate-400">{L('Weekly schedule', 'الجدول الأسبوعي')}</p>
                     <p className="text-slate-800">
-                      {detail.scheduleSlots.map((s) => `${dayName(s.dayOfWeek)} ${s.time}`).join(', ')}
+                      {detail.scheduleSlots.map((s) => `${dayName(s.dayOfWeek)} ${s.time}${s.mode && s.mode !== 'BRANCH' ? ` ${MODE_ICON[s.mode]}` : ''}`).join(', ')}
                     </p>
                   </div>
                 )}
@@ -755,6 +770,9 @@ export default function GroupsPage() {
                 <GroupCapacityPanel groupId={detail.id} levelId={detail.level?.id ?? null} seats={detail.seats} waiting={detail.waiting ?? []} canEdit={canEditGroups} />
               )}
               <GroupRulesPanel groupId={detail.id} canEditRules={!!myPerms?.permissions?.agreements?.includes('update')} />
+              {canEditGroups && detail.status === 'ACTIVE' && (
+                <GroupSessionModePanel groupId={detail.id} students={detail.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => ({ id: e.student.id, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}` }))} />
+              )}
               {detail.level && <GroupCurriculumPicker key={`cur-${detail.id}`} groupId={detail.id} canEdit={canEditGroups} />}
               {detail.level && (
                 <GroupPricePanel
@@ -1163,6 +1181,22 @@ export default function GroupsPage() {
 
             <div className="space-y-2">
               <p className="text-xs font-medium text-slate-500">{L('Weekly schedule', 'الجدول الأسبوعي')}</p>
+              {/* a02: a template fills the way of each weekly session (in week order); each slot can still be changed */}
+              {deliveryTemplates.filter((t) => t.isActive).length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-slate-500">{L('Template:', 'القالب:')}</span>
+                  <select aria-label={L('Template of ways', 'قالب الحضور')} className="h-8 rounded-md border px-2 text-xs" value={slotTemplateId ?? ''}
+                    onChange={(e) => {
+                      const t = deliveryTemplates.find((x) => x.id === e.target.value)
+                      setSlotTemplateId(e.target.value)
+                      if (t && scheduleSlots.length) setScheduleSlots(applyTemplate(scheduleSlots, t.pattern))
+                    }}>
+                    <option value="">{L('— choose —', '— اختار —')}</option>
+                    {deliveryTemplates.filter((t) => t.isActive).map((t) => <option key={t.id} value={t.id}>{t.nameAr && locale === 'ar' ? t.nameAr : t.name} {t.pattern.map((m) => MODE_ICON[m]).join('')}{t.id === (levelDelivery?.templateId ?? levelDelivery?.inheritedTemplateId) ? ` · ${L('default', 'الأساسي')}` : ''}</option>)}
+                  </select>
+                  <span className="text-slate-500">{L('Allowed for this level:', 'المسموح للمستوى ده:')} {allowedModes.map((m) => MODE_ICON[m]).join(' ')}</span>
+                </div>
+              )}
               {scheduleSlots.map((slot, i) => (
                 <div key={i} className="flex gap-2 items-center">
                   <Select value={String(slot.dayOfWeek)} onValueChange={(v) => {
@@ -1175,12 +1209,16 @@ export default function GroupsPage() {
                     type="time" value={slot.time}
                     onChange={(e) => { const next = [...scheduleSlots]; next[i] = { ...slot, time: e.target.value }; setScheduleSlots(next) }}
                   />
+                  <select aria-label={L('Way of this session', 'طريقة الحصة دي')} className={`h-9 rounded-md border px-2 text-xs ${allowedModes.includes(slot.mode ?? 'BRANCH') ? '' : 'border-rose-400 text-rose-700'}`} value={slot.mode ?? 'BRANCH'}
+                    onChange={(e) => { const next = [...scheduleSlots]; next[i] = { ...slot, mode: e.target.value as Mode }; setScheduleSlots(next) }}>
+                    {(['BRANCH', 'ONLINE', 'RECORDED'] as Mode[]).map((m) => <option key={m} value={m} disabled={!allowedModes.includes(m)}>{MODE_ICON[m]} {MODE_LABEL[m][locale === 'ar' ? 'ar' : 'en']}</option>)}
+                  </select>
                   <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setScheduleSlots(scheduleSlots.filter((_, idx) => idx !== i))}>
                     <X className="w-3.5 h-3.5 text-red-500" />
                   </Button>
                 </div>
               ))}
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setScheduleSlots([...scheduleSlots, { dayOfWeek: 0, time: '16:00' }])}>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setScheduleSlots([...scheduleSlots, { dayOfWeek: 0, time: '16:00', mode: allowedModes.includes('BRANCH') ? 'BRANCH' : allowedModes[0] }])}>
                 <Plus className="w-3.5 h-3.5" /> {L('Add time slot', 'ضيف ميعاد')}
               </Button>
             </div>

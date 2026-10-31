@@ -21,6 +21,8 @@ export interface UpcomingSession {
   sessionNumber: number | null
   totalSessions: number
   isExtra: boolean
+  /** a02: BRANCH / ONLINE / RECORDED (a one-off change for this student wins) */
+  mode: 'BRANCH' | 'ONLINE' | 'RECORDED'
   cancelReason: string | null
 }
 
@@ -52,11 +54,14 @@ export async function studentUpcomingSessions(studentId: string, opts: { days?: 
      GROUP BY e.classSectionId, d`
   const heldBy = new Map<string, string[]>()
   for (const r of heldRows) heldBy.set(r.g, [...(heldBy.get(r.g) ?? []), r.d])
-  const [logs, cancelledRows, exceptions] = await Promise.all([
+  const [logs, cancelledRows, exceptions, mine] = await Promise.all([
     prisma.groupSessionLog.findMany({ where: { classSectionId: { in: ids } }, select: { classSectionId: true, sessionDate: true, status: true } }),
     prisma.cancelledSession.findMany({ where: { classSectionId: { in: ids } }, select: { classSectionId: true, date: true, reason: true } }),
     groupExceptions(groups.map((g) => ({ id: g.id, campusId: g.campusId }))),
+    // a02: this student attends some sessions another way (e.g. online while travelling)
+    prisma.studentSessionMode.findMany({ where: { studentId, classSectionId: { in: ids } }, select: { classSectionId: true, date: true, mode: true } }),
   ])
+  const myMode = new Map(mine.map((m) => [`${m.classSectionId}|${toDay(m.date)}`, m.mode as UpcomingSession['mode']]))
   for (const l of logs.filter((x) => x.status === 'HELD')) heldBy.set(l.classSectionId, [...new Set([...(heldBy.get(l.classSectionId) ?? []), toDay(l.sessionDate)])])
   const cancelledBy = new Map<string, { date: string; reason: string | null }[]>()
   for (const c of cancelledRows) cancelledBy.set(c.classSectionId, [...(cancelledBy.get(c.classSectionId) ?? []), { date: toDay(c.date), reason: c.reason }])
@@ -77,6 +82,8 @@ export async function studentUpcomingSessions(studentId: string, opts: { days?: 
       heldDates: cycleStart ? held.filter((d) => d >= cycleStart) : [],
       cancelledDates: cancelled.map((c) => c.date),
       holidayDates: exceptions.get(g.id)?.holidays ?? [],
+      branchHolidayDates: exceptions.get(g.id)?.branchHolidays ?? [],
+      modeOverrides: exceptions.get(g.id)?.modeOverrides ?? {},
       extras: exceptions.get(g.id)?.extras ?? [],
     }, today, to, today)
     for (const o of occ) {
@@ -84,7 +91,7 @@ export async function studentUpcomingSessions(studentId: string, opts: { days?: 
       out.push({
         groupId: g.id, group: `${g.className} ${g.sectionName}`.trim(), course: g.level?.subject?.name ?? null,
         date: o.date, time: o.time, status: o.status, sessionNumber: o.sessionNumber, totalSessions: o.totalSessions,
-        isExtra: !!o.isExtra, cancelReason: o.status === 'CANCELLED' ? cancelled.find((c) => c.date === o.date)?.reason ?? null : null,
+        isExtra: !!o.isExtra, mode: myMode.get(`${g.id}|${o.date}`) ?? o.mode, cancelReason: o.status === 'CANCELLED' ? cancelled.find((c) => c.date === o.date)?.reason ?? null : null,
       })
     }
   }

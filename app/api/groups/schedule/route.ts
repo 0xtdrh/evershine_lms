@@ -140,6 +140,8 @@ export async function GET(request: NextRequest) {
         heldDates: cycleStart ? held.filter((d) => d >= cycleStart) : [],
         cancelledDates: cancelled.map((c) => c.date),
         holidayDates: exceptions.get(g.id)?.holidays ?? [],
+        branchHolidayDates: exceptions.get(g.id)?.branchHolidays ?? [],
+        modeOverrides: exceptions.get(g.id)?.modeOverrides ?? {},
         extras: exceptions.get(g.id)?.extras ?? [],
       },
       from, to, today

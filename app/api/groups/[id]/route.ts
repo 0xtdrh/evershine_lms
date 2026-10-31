@@ -17,9 +17,12 @@ import { groupSeats, notifySeatFreed } from '@/lib/groups/capacity'
 import { prisma } from '@/lib/prisma'
 import { estimateGroupEnds } from '@/lib/groups/end-estimates'
 import { errors, errorResponse, successResponse } from '@/lib/api-response'
-import { isLevelOfferedIn } from '@/lib/delivery/catalog'
+import { isLevelOfferedIn, levelModes } from '@/lib/delivery/catalog'
+import { MODES, MODE_LABEL, modesText } from '@/lib/delivery/modes'
+import { firstNotAllowed } from '@/lib/delivery/templates'
+import { cleanSlots } from '@/lib/groups/schedule-calendar'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
-import type { Role } from '@prisma/client'
+import { Prisma, type Role } from '@prisma/client'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { pickGroupInstructorOffering } from '@/lib/groups/instructor'
 
@@ -151,7 +154,10 @@ const updateGroupSchema = z.object({
   levelId: z.string().min(1).optional().nullable(),
   startDate: z.string().datetime().optional().nullable(),
   expectedEndDate: z.string().datetime().optional().nullable(),
-  scheduleSlots: z.array(z.object({ dayOfWeek: z.number().int().min(0).max(6), time: z.string().min(1) })).optional().nullable(),
+  /** a02: each weekly slot has a way (BRANCH default / ONLINE / RECORDED) */
+  scheduleSlots: z.array(z.object({ dayOfWeek: z.number().int().min(0).max(6), time: z.string().min(1), mode: z.enum(MODES).optional() })).optional().nullable(),
+  /** a02: the template the slots were filled from (information) */
+  deliveryTemplateId: z.string().min(1).nullable().optional(),
   status: z.enum(['ACTIVE', 'COMPLETED']).optional(),
   requireFullPaymentToStart: z.boolean().optional(),
   partialPaymentCounts: z.boolean().optional(),
@@ -212,6 +218,17 @@ export async function PATCH(
     if (v && v !== 'MAIN' && !(await prisma.curriculumVariant.findFirst({ where: { id: v, levelId: levelId ?? '' }, select: { id: true } }))) return errors.badRequest('This curriculum is not of the group level · المنهج ده مش تبع مستوى الجروب')
   }
 
+  // a02: every weekly session must use a way the level allows (Course Structure → ways)
+  if (parsed.data.scheduleSlots !== undefined || (parsed.data.levelId && parsed.data.levelId !== existing.levelId)) {
+    const lvl = parsed.data.levelId !== undefined ? parsed.data.levelId : existing.levelId
+    const slots = cleanSlots(parsed.data.scheduleSlots !== undefined ? parsed.data.scheduleSlots : existing.scheduleSlots)
+    if (lvl && slots.length) {
+      const allowed = (await levelModes(lvl)).modes
+      const bad = firstNotAllowed(slots, allowed)
+      if (bad) return errorResponse('MODE_NOT_ALLOWED', `${MODE_LABEL[bad.mode ?? 'BRANCH'].en} sessions are not allowed for this level (allowed: ${modesText(allowed, 'en')}) · طريقة «${MODE_LABEL[bad.mode ?? 'BRANCH'].ar}» مش مسموحة للمستوى ده (المسموح: ${modesText(allowed, 'ar')})`, 409)
+    }
+  }
+
   // Session shift follows the group's time when the schedule changes (shift is switched off in the UI).
   let autoShiftId: string | undefined
   if (parsed.data.scheduleSlots && parsed.data.shiftId === undefined) {
@@ -241,7 +258,8 @@ export async function PATCH(
       ...(parsed.data.curriculumVariantId !== undefined && parsed.data.curriculumVariantId !== existing.curriculumVariantId && { curriculumVariantId: parsed.data.curriculumVariantId, curriculumEditionId: null }),
       ...(parsed.data.startDate !== undefined && { startDate: parsed.data.startDate ? new Date(parsed.data.startDate) : null }),
       ...(parsed.data.expectedEndDate !== undefined && { expectedEndDate: parsed.data.expectedEndDate ? new Date(parsed.data.expectedEndDate) : null }),
-      ...(parsed.data.scheduleSlots !== undefined && { scheduleSlots: parsed.data.scheduleSlots }),
+      ...(parsed.data.scheduleSlots !== undefined && { scheduleSlots: parsed.data.scheduleSlots ? (cleanSlots(parsed.data.scheduleSlots) as unknown as Prisma.InputJsonValue) : Prisma.DbNull }),
+      ...(parsed.data.deliveryTemplateId !== undefined && { deliveryTemplateId: parsed.data.deliveryTemplateId }),
       ...(parsed.data.status && {
         status: parsed.data.status,
         completedAt: parsed.data.status === 'COMPLETED' ? new Date() : null,

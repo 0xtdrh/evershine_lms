@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { codeFromName, keyFromTitle, uniqueCode } from '@/lib/ids/auto-code'
 import { cleanModes, effectiveModes, isOffered, modesText } from '@/lib/delivery/modes'
 import { groupMode, pickVariant } from '@/lib/delivery/variants'
+import { applyTemplate, cleanPattern, firstNotAllowed, patternText, templateFor } from '@/lib/delivery/templates'
 
 describe('teaching modes — allowed ways', () => {
   it('cleans stored values', () => {
@@ -84,5 +85,20 @@ describe('which curriculum a group reads', () => {
   it('the online place teaches online', () => {
     expect(groupMode('ONLINE')).toBe('ONLINE')
     expect(groupMode('PARTNER')).toBe('BRANCH')
+  })
+})
+
+describe('templates of ways', () => {
+  it('fills the weekly slots in week order and repeats', () => {
+    const slots = [{ dayOfWeek: 2, time: '18:00' }, { dayOfWeek: 0, time: '16:00' }, { dayOfWeek: 4, time: '17:00' }]
+    expect(applyTemplate(slots, ['ONLINE', 'BRANCH']).map((s) => `${s.dayOfWeek} ${s.mode}`)).toEqual(['0 ONLINE', '2 BRANCH', '4 ONLINE'])
+  })
+  it('cleans patterns, finds a way that is not allowed, picks the level template first', () => {
+    expect(cleanPattern(['RECORDED', 'X', 'BRANCH'])).toEqual(['RECORDED', 'BRANCH'])
+    expect(cleanPattern([])).toBeNull()
+    expect(firstNotAllowed([{ dayOfWeek: 0, time: '1', mode: 'ONLINE' }, { dayOfWeek: 1, time: '1' }], ['ONLINE'])).toEqual({ dayOfWeek: 1, time: '1' })
+    expect(templateFor({ deliveryTemplateId: null }, { deliveryTemplateId: 'c' })).toBe('c')
+    expect(templateFor({ deliveryTemplateId: 'l' }, { deliveryTemplateId: 'c' })).toBe('l')
+    expect(patternText(['RECORDED', 'RECORDED', 'RECORDED', 'BRANCH'], 'ar')).toBe('1 فرع + 3 مسجلة')
   })
 })

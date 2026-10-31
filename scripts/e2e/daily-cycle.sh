@@ -2254,6 +2254,28 @@ NLV=$(M "SELECT COUNT(*) FROM Level WHERE subjectId='$CVC' AND isActive=1")
 check "copy a whole course: same levels, code filled in, curricula copied (published)" "$(M "SELECT COUNT(*) FROM Level WHERE subjectId='$CPC'")/$(M "SELECT code<>'' FROM AcademicSubject WHERE id='$CPC'")/$(M "SELECT COUNT(*)>0 FROM CurriculumEdition e JOIN Level l ON l.id=e.levelId WHERE l.subjectId='$CPC' AND e.status='PUBLISHED'")" "$NLV/1/1"
 check "copying needs a signed-in person" "$(curl -s -o /dev/null -w '%{http_code}' -b "$(mktemp)" -X POST $B/api/delivery/copy)" "401"
 M "DELETE FROM OfferedIn"
+echo "== 69. Templates of ways + a way for every session (a02 batch 2, 2026-10-31)"
+TPL=$(api POST /api/delivery/templates '{"name":"E2E Hybrid 1+1","nameAr":"هايبرد 1+1","pattern":["ONLINE","BRANCH"]}' | jq_ "d['data']['id']")
+check "a template of ways is added" "$(api GET /api/delivery/templates | jq_ "[t['pattern'] for t in d['data'] if t['id']=='$TPL']")" "[['ONLINE', 'BRANCH']]"
+check "the level gets it as default template" "$(api PUT /api/delivery/catalog "{\"kind\":\"LEVEL\",\"id\":\"$CVL\",\"allowedModes\":null,\"offeredIn\":[],\"templateId\":\"$TPL\"}" | jq_ "d['data']['templateId']=='$TPL'")" "True"
+SUN=""; TUE=""; for i in 1 2 3 4 5 6 7; do [ "$(cairo +%w $i)" = "0" ] && SUN=$(D $i); [ "$(cairo +%w $i)" = "2" ] && TUE=$(D $i); done
+check "e2e data: next Sunday and Tuesday" "$([ -n "$SUN" ] && [ -n "$TUE" ] && echo yes)" "yes"
+check "group schedule with a way per slot (Sun online, Tue branch)" "$(api PATCH /api/groups/$CVG "{\"scheduleSlots\":[{\"dayOfWeek\":0,\"time\":\"16:00\",\"mode\":\"ONLINE\"},{\"dayOfWeek\":2,\"time\":\"18:00\",\"mode\":\"BRANCH\"}],\"deliveryTemplateId\":\"$TPL\"}" | jq_ "d['success']")/$(M "SELECT JSON_EXTRACT(scheduleSlots,'\$[0].mode') FROM ClassSection WHERE id='$CVG'")" 'True/"ONLINE"'
+api PUT /api/delivery/catalog "{\"kind\":\"LEVEL\",\"id\":\"$CVL\",\"allowedModes\":[\"BRANCH\"],\"offeredIn\":[],\"templateId\":\"$TPL\"}" >/dev/null
+check "a way the level does not allow is refused (409)" "$(api PATCH /api/groups/$CVG '{"scheduleSlots":[{"dayOfWeek":0,"time":"16:00","mode":"ONLINE"}]}' | jq_ "d['error']['code']")" "MODE_NOT_ALLOWED"
+api PUT /api/delivery/catalog "{\"kind\":\"LEVEL\",\"id\":\"$CVL\",\"allowedModes\":null,\"offeredIn\":[],\"templateId\":null}" >/dev/null
+SCH=$(api GET "/api/groups/schedule?from=$(D 1)&to=$(D 8)")
+check "the calendar shows each session's way" "$(echo "$SCH" | jq_ "sorted(set((o['date'], o['mode']) for o in d['data']['sessions'] if o['groupId']=='$CVG' and o['date'] in ('$SUN', '$TUE')))")" "[('$SUN', 'ONLINE'), ('$TUE', 'BRANCH')]"
+MST=$(mkstu Modeboy 01000000691 Modeparent 01000000692)
+api POST /api/groups/$CVG/students "{\"studentId\":\"$MST\"}" >/dev/null
+check "one session of the group moved online: calendar + families told (Arabic too)" "$(api POST /api/groups/$CVG/session-mode "{\"date\":\"$TUE\",\"mode\":\"ONLINE\",\"note\":\"E2E\"}" | jq_ "d['success']")/$(api GET "/api/groups/schedule?from=$TUE&to=$TUE" | jq_ "[o['mode'] for o in d['data']['sessions'] if o['groupId']=='$CVG']")/$(M "SELECT COUNT(*)>0 FROM Notification WHERE type='SESSION_MODE' AND relatedId='$CVG' AND messageAr LIKE '%أونلاين%'")" "True/['ONLINE']/1"
+api POST /api/groups/$CVG/session-mode "{\"date\":\"$TUE\",\"mode\":null}" >/dev/null
+check "one student attends Tuesday online: the attendance screen shows it" "$(api POST /api/groups/$CVG/session-mode "{\"date\":\"$TUE\",\"mode\":\"ONLINE\",\"studentId\":\"$MST\"}" | jq_ "d['success']")/$(api GET "/api/enrollment-attendance/roster?classSectionId=$CVG&date=$TUE" | jq_ "(d['data']['sessionMode'], [e['attendsAs'] for e in d['data']['enrollments'] if e['student']['id']=='$MST'])")" "True/('BRANCH', ['ONLINE'])"
+check "…and the student's next sessions show that one as online" "$(api GET /api/students/$MST/upcoming-sessions | jq_ "[s['mode'] for s in d['data']['sessions'] if s['date']=='$TUE']")" "['ONLINE']"
+api POST /api/holidays "{\"date\":\"$SUN\",\"name\":\"E2E branch day off\",\"campusId\":\"$DOTHER\"}" >/dev/null
+check "a branch holiday does not stop an online session" "$(api GET "/api/groups/schedule?from=$SUN&to=$SUN" | jq_ "[o['status'] for o in d['data']['sessions'] if o['groupId']=='$CVG']")" "['NOT_STARTED']"
+M "DELETE FROM Holiday WHERE name='E2E branch day off'"
+check "a secretary of another branch cannot change the group's sessions" "$(secapi POST /api/groups/$CVG/session-mode "{\"date\":\"$TUE\",\"mode\":\"ONLINE\"}" | jq_ "d['success']")" "False"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

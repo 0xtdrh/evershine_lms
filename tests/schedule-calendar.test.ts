@@ -71,7 +71,7 @@ describe('holidays and extra sessions (phase A)', () => {
   })
   it('upcomingSessions skips holidays, cancelled/held dates and adds extras', () => {
     expect(upcomingSessions({ slots: g.slots, from: '2026-10-08', count: 3, holidays: ['2026-10-11'], extras: [{ date: '2026-10-09', time: '10:00' }], skipDates: ['2026-10-13'] }))
-      .toEqual([{ date: '2026-10-09', time: '10:00' }, { date: '2026-10-18', time: '16:00' }, { date: '2026-10-20', time: '18:00' }])
+      .toEqual([{ date: '2026-10-09', time: '10:00', mode: 'BRANCH' }, { date: '2026-10-18', time: '16:00', mode: 'BRANCH' }, { date: '2026-10-20', time: '18:00', mode: 'BRANCH' }])
   })
   it('holidays are never a clash', () => {
     const rows = [
@@ -79,5 +79,26 @@ describe('holidays and extra sessions (phase A)', () => {
       { teacherId: 't1', date: '2026-10-11', time: '16:00', status: 'SCHEDULED' as const },
     ]
     expect([...findConflicts(rows)]).toEqual([])
+  })
+})
+
+describe('a way for every session (a02 batch 2)', () => {
+  const g: GroupForCalendar = {
+    id: 'g', slots: [{ dayOfWeek: 0, time: '16:00', mode: 'ONLINE' }, { dayOfWeek: 2, time: '18:00' }], completed: false,
+    cycleStart: '2026-10-01', sessionsPerCycle: 8, heldDates: [], cancelledDates: [],
+  }
+  it('each session has its slot way; a one-off change wins for that date', () => {
+    const occ = buildOccurrences({ ...g, modeOverrides: { '2026-10-20': 'ONLINE' } }, '2026-10-18', '2026-10-27', '2026-10-18')
+    expect(occ.map((o) => `${o.date} ${o.mode}`)).toEqual(['2026-10-18 ONLINE', '2026-10-20 ONLINE', '2026-10-25 ONLINE', '2026-10-27 BRANCH'])
+  })
+  it('a branch holiday stops branch sessions only; a company holiday stops all', () => {
+    const branchOnly = buildOccurrences({ ...g, holidayDates: ['2026-10-18', '2026-10-20'], branchHolidayDates: ['2026-10-18', '2026-10-20'] }, '2026-10-18', '2026-10-20', '2026-10-18')
+    expect(branchOnly.map((o) => `${o.date} ${o.status}`)).toEqual(['2026-10-18 SCHEDULED', '2026-10-20 HOLIDAY'])
+    const company = buildOccurrences({ ...g, holidayDates: ['2026-10-18'] }, '2026-10-18', '2026-10-18', '2026-10-18')
+    expect(company[0].status).toBe('HOLIDAY')
+  })
+  it('upcoming sessions follow the same rule', () => {
+    expect(upcomingSessions({ slots: g.slots, from: '2026-10-18', count: 2, holidays: ['2026-10-18', '2026-10-20'], branchHolidays: ['2026-10-18', '2026-10-20'] }))
+      .toEqual([{ date: '2026-10-18', time: '16:00', mode: 'ONLINE' }, { date: '2026-10-25', time: '16:00', mode: 'ONLINE' }])
   })
 })

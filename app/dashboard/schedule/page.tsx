@@ -36,6 +36,8 @@ interface Session {
   totalSessions: number
   isLastOfCycle: boolean
   isExtra?: boolean
+  /** a02: BRANCH / ONLINE / RECORDED */
+  mode?: 'BRANCH' | 'ONLINE' | 'RECORDED'
   teacherId: string | null
   teacherName: string | null
   substitute: { name: string; confirmed: boolean } | null
@@ -270,6 +272,7 @@ function SessionCard({ s, g, compact, isTeacher }: { s: Session; g: Group | unde
       {s.status === 'CANCELLED' && s.cancelReason && <span className="inline-block">{s.cancelReason}</span>}
       {s.status === 'HOLIDAY' && <span className="font-semibold">{L('Holiday · moved', 'إجازة · اتأجلت')}</span>}
       {s.isExtra && <span className="font-semibold text-indigo-700">{L('Extra session', 'حصة إضافية')}</span>}
+      {s.mode && s.mode !== 'BRANCH' && <span className="font-semibold text-indigo-700">{s.mode === 'ONLINE' ? `💻 ${L('Online', 'أونلاين')}` : `🎬 ${L('Recorded', 'مسجلة')}`}</span>}
     </>
   )
   if (compact) {

@@ -33,6 +33,8 @@ interface RosterRow {
   isWithdrawn?: boolean
   excuse?: { status: string; reason: string } | null
   onlineJoinedAt?: string | null
+  /** a02: this student attends this session another way (e.g. ONLINE while travelling) */
+  attendsAs?: string | null
 }
 
 const STATUS_BTNS: AttendanceStatus[] = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']
@@ -539,6 +541,7 @@ export default function SectionAttendancePage() {
                           </span>
                         )}
                       </p>
+                      {row.attendsAs === 'ONLINE' && <p className="mt-1 text-xs font-semibold text-indigo-700">💻 {L('Attends this session online', 'بيحضر الحصة دي أونلاين')}</p>}
                       {row.onlineJoinedAt && <p className="mt-1 text-xs text-emerald-700">🟢 {L('Joined online', 'دخل أونلاين')} {new Date(row.onlineJoinedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>}
                       {row.excuse && (
                         <p className={`mt-1 text-xs ${row.excuse.status === 'APPROVED' ? 'text-indigo-700' : 'text-amber-700'}`}>

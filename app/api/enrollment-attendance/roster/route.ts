@@ -8,6 +8,7 @@ import { getOrSyncSectionEnrollments } from '@/lib/academic/roster-helper'
 import type { Role } from '@prisma/client'
 import { excusesOn } from '@/lib/excuses/engine'
 import { onlineJoinsOn } from '@/lib/online/engine'
+import { sessionModeOn, studentModesOn } from '@/lib/delivery/session-modes'
 import { cairoToday } from '@/lib/dates/cairo'
 
 /** Active enrollments in a class section for attendance marking with batch/shift filters. */
@@ -90,6 +91,8 @@ export async function GET(request: NextRequest) {
   const excuses = await excusesOn(classSectionId, attendanceDate)
   // L5: who pressed Join for the online session (provisional attendance)
   const joins = await onlineJoinsOn(classSectionId, dateStr)
+  // a02: how this session is held, and students attending it another way (e.g. online while travelling)
+  const [sessionMode, studentModes] = await Promise.all([sessionModeOn(classSectionId, dateStr), studentModesOn(classSectionId, dateStr)])
 
   // Calculate attendance statistics for this session
   let present = 0
@@ -104,6 +107,7 @@ export async function GET(request: NextRequest) {
     academicYear: activeYear,
     classSectionId,
     date: dateStr,
+    sessionMode,
     filters: { batchId, shiftId },
     stats: {
       total: enrollments.length,
@@ -120,6 +124,7 @@ export async function GET(request: NextRequest) {
       isWithdrawn: e.isWithdrawn,
       excuse: excuses.get(e.studentId) ? { status: excuses.get(e.studentId)!.status, reason: excuses.get(e.studentId)!.reason } : null,
       onlineJoinedAt: joins.get(e.studentId) ?? null,
+      attendsAs: studentModes.get(e.studentId) ?? null,
     })),
   })
 }

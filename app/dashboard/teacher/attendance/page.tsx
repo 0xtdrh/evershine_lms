@@ -31,6 +31,8 @@ interface RosterRow {
   todayStatus: AttStatus | null
   excuse?: { status: string; reason: string } | null
   onlineJoinedAt?: string | null
+  /** a02: this student attends this session another way (e.g. ONLINE while travelling) */
+  attendsAs?: string | null
 }
 
 interface TeacherClassRecord {
@@ -434,7 +436,8 @@ export default function TeacherAttendancePage() {
                                 {row.student.firstName} {row.student.lastName}
                               </p>
                               <p className="text-xs text-gray-500">{L('No.', 'رقم')} {row.rollNumber}</p>
-                              {row.onlineJoinedAt && <p className="mt-1 text-xs text-emerald-700">🟢 {L('Joined online', 'دخل أونلاين')} {new Date(row.onlineJoinedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>}
+                              {row.attendsAs === 'ONLINE' && <p className="mt-1 text-xs font-semibold text-indigo-700">💻 {L('Attends this session online', 'بيحضر الحصة دي أونلاين')}</p>}
+                      {row.onlineJoinedAt && <p className="mt-1 text-xs text-emerald-700">🟢 {L('Joined online', 'دخل أونلاين')} {new Date(row.onlineJoinedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>}
                               {row.excuse && (
                                 <p className={`mt-1 text-xs ${row.excuse.status === 'APPROVED' ? 'text-indigo-700' : 'text-amber-700'}`}>
                                   {row.excuse.status === 'APPROVED' ? L('Excused', 'بعذر') : L('Excuse waiting for approval', 'عذر مستني الموافقة')}: {row.excuse.reason}

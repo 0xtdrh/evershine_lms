@@ -2218,6 +2218,8 @@ model ClassSection {
   curriculumEditionId       String?
   /// a02 (2026-10-31): curriculum chosen for this group: null = automatic (by place / way), "MAIN" = the main one, else a CurriculumVariant id
   curriculumVariantId       String?
+  /// a02 M1 batch 2: the template its weekly slots were filled from (information; each slot keeps its own mode)
+  deliveryTemplateId        String?
   /// LMS L2: how lessons open for this group (ALL | SCHEDULE | ATTENDANCE | MANUAL | PREVIOUS); null = the level's / company default
   lessonUnlockMode          String?           @db.VarChar(12)
   /// L5: online class link of the group (Zoom / Meet / any https link); null = not online
@@ -2381,22 +2383,24 @@ model TeacherSectionAssignment {
 }
 
 model AcademicSubject {
-  id           String   @id @default(cuid())
-  name         String
-  code         String   @unique
-  description  String?
-  isActive     Boolean  @default(true)
+  id                 String   @id @default(cuid())
+  name               String
+  code               String   @unique
+  description        String?
+  isActive           Boolean  @default(true)
   /// a02 M1 (2026-10-30): ways a session may be attended here — ["BRANCH","ONLINE","RECORDED"]; null = take it from above (none = all)
-  allowedModes Json?
-  createdAt    DateTime @default(now())
+  allowedModes       Json?
+  /// a02 M1 batch 2 (2026-10-31): default mix of ways for new groups (DeliveryTemplate); null = take it from above
+  deliveryTemplateId String?
+  createdAt          DateTime @default(now())
   // Optional: which age-based Track this course belongs to. Nullable so
   // existing courses keep working unassigned until an admin categorizes them.
-  trackId      String?
+  trackId            String?
   // Where this course sits in its Track's progression (e.g. Beginner=1,
   // Intermediate=2). Only meaningful when trackId is set — used so a group
   // that finishes its course's last level can automatically move on to the
   // next course in the same track.
-  trackOrder   Int?
+  trackOrder         Int?
 
   track             Track?                    @relation(fields: [trackId], references: [id])
   offerings         SubjectOffering[]
@@ -2442,22 +2446,24 @@ enum LevelPricingType {
 /// own subscription pricing, since different courses (and different levels
 /// within the same course) can have entirely different structures.
 model Level {
-  id               String           @id @default(cuid())
-  subjectId        String
-  name             String // "Level 1", "Beginner", etc.
-  order            Int // display/progression order within the course
-  numberOfMonths   Int
-  numberOfSessions Int
+  id                 String           @id @default(cuid())
+  subjectId          String
+  name               String // "Level 1", "Beginner", etc.
+  order              Int // display/progression order within the course
+  numberOfMonths     Int
+  numberOfSessions   Int
   /// LMS L2: default way lessons open for groups of this level; null = company default (lms.settings)
-  lessonUnlockMode String?          @db.VarChar(12)
-  pricingType      LevelPricingType @default(MONTHLY)
-  monthlyPrice     Float?
-  fullLevelPrice   Float?
-  isActive         Boolean          @default(true)
+  lessonUnlockMode   String?          @db.VarChar(12)
+  pricingType        LevelPricingType @default(MONTHLY)
+  monthlyPrice       Float?
+  fullLevelPrice     Float?
+  isActive           Boolean          @default(true)
   /// a02 M1 (2026-10-30): ways a session may be attended here — ["BRANCH","ONLINE","RECORDED"]; null = take it from above (none = all)
-  allowedModes     Json?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  allowedModes       Json?
+  /// a02 M1 batch 2 (2026-10-31): default mix of ways for new groups (DeliveryTemplate); null = take it from above
+  deliveryTemplateId String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   subject           AcademicSubject           @relation(fields: [subjectId], references: [id])
   classSections     ClassSection[]
@@ -5195,4 +5201,44 @@ model CurriculumVariant {
   updatedAt DateTime @updatedAt
 
   @@index([levelId])
+}
+
+/// a02 M1 batch 2 (2026-10-31): a ready mix of ways for a group's weekly sessions, e.g. ["ONLINE","BRANCH"] = the first
+/// weekly session online, the second in the branch (repeats when the group has more sessions a week).
+model DeliveryTemplate {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(120)
+  nameAr    String?  @db.VarChar(120)
+  pattern   Json
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// a02 M1 batch 2: one session of a group taught another way that day (e.g. online instead of the branch).
+model SessionModeOverride {
+  id             String   @id @default(cuid())
+  classSectionId String
+  date           DateTime @db.Date
+  mode           String   @db.VarChar(8)
+  note           String?  @db.VarChar(300)
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  @@unique([classSectionId, date])
+}
+
+/// a02 M1 batch 2: one student attends one session another way (e.g. online while travelling); shown as "attended online".
+model StudentSessionMode {
+  id             String   @id @default(cuid())
+  classSectionId String
+  studentId      String
+  date           DateTime @db.Date
+  mode           String   @db.VarChar(8)
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  @@unique([classSectionId, studentId, date])
+  @@index([studentId])
 }

@@ -14,7 +14,7 @@ import { CalendarClock } from 'lucide-react'
 interface Row {
   groupId: string; group: string; course: string | null; date: string; time: string
   status: 'SCHEDULED' | 'NOT_STARTED' | 'CANCELLED' | 'HOLIDAY' | 'HELD' | 'MISSING'
-  sessionNumber: number | null; totalSessions: number; isExtra: boolean; cancelReason: string | null
+  sessionNumber: number | null; totalSessions: number; isExtra: boolean; cancelReason: string | null; mode?: 'BRANCH' | 'ONLINE' | 'RECORDED'
 }
 
 const time12 = (t: string, ar: boolean) => {
@@ -53,6 +53,8 @@ export function UpcomingSessionsCard({ studentId }: { studentId?: string }) {
                 {r.status === 'HOLIDAY' && <span className="rounded-full bg-sky-100 px-2 py-0.5 font-semibold text-sky-700">{L('Holiday — postponed', 'إجازة — اتأجلت')}</span>}
                 {r.status === 'CANCELLED' && <span className="rounded-full bg-slate-200 px-2 py-0.5 font-semibold text-slate-600">{L('Cancelled — will be made up', 'اتلغت — هتتعوّض')}</span>}
                 {r.isExtra && !off && <span className="rounded-full bg-indigo-100 px-2 py-0.5 font-semibold text-indigo-700">{L('Makeup session', 'حصة تعويضية')}</span>}
+                {r.mode === 'ONLINE' && !off && <span className="rounded-full bg-violet-100 px-2 py-0.5 font-semibold text-violet-700">💻 {L('Online — Join opens before it', 'أونلاين — زرار «ادخل» بيظهر قبلها')}</span>}
+                {r.mode === 'RECORDED' && !off && <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700">🎬 {L('Recorded — watch it in My lessons', 'مسجلة — اتفرج عليها في دروسي')}</span>}
                 {r.status === 'NOT_STARTED' && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">{L('First session', 'أول حصة')}</span>}
                 {r.sessionNumber && !off && <span className="text-slate-400">{L('Session', 'حصة')} {r.sessionNumber}/{r.totalSessions}</span>}
               </span>

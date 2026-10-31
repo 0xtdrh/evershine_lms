@@ -14,15 +14,24 @@ const dateOnly = (s: string) => new Date(`${s}T00:00:00.000Z`)
 export async function myOnlineSessions(studentId: string, now = new Date()) {
   const enr = await prisma.studentEnrollment.findMany({
     where: { studentId, status: 'ACTIVE', classSection: { status: 'ACTIVE', onlineMeetingUrl: { not: null } } },
-    select: { classSectionId: true, classSection: { select: { className: true, sectionName: true } } },
+    select: { classSectionId: true, classSection: { select: { className: true, sectionName: true, scheduleSlots: true } } },
   })
   if (!enr.length) return []
   const today = cairoToday(now)
   const occ = await occurrencesFor({ groupIds: enr.map((e) => e.classSectionId) }, today, today)
   const joins = await prisma.onlineJoin.findMany({ where: { studentId, sessionDate: dateOnly(today) }, select: { classSectionId: true, joinedAt: true } })
+  // a02: Join is for ONLINE sessions (or a student attending this one online); a group whose slots have no way set
+  // keeps the old behaviour (a link = an online class)
+  const mine = await prisma.studentSessionMode.findMany({ where: { studentId, date: dateOnly(today) }, select: { classSectionId: true, mode: true } })
+  const hasWays = (gid: string) => {
+    const slots = enr.find((e) => e.classSectionId === gid)?.classSection.scheduleSlots
+    return Array.isArray(slots) && (slots as { mode?: string }[]).some((x) => x.mode && x.mode !== 'BRANCH')
+  }
   const out = []
   for (const g of occ) {
     for (const o of g.occurrences.filter((x) => x.date === today && (x.status === 'SCHEDULED' || x.status === 'HELD') && x.time)) {
+      const online = o.mode === 'ONLINE' || mine.some((m) => m.classSectionId === g.id && m.mode === 'ONLINE') || (!hasWays(g.id) && o.mode === 'BRANCH')
+      if (!online) continue
       const start = cairoDateTimeToUtc(o.date, o.time)
       const w = joinWindow(start, null, now)
       if (!w.open && !w.upcoming) continue

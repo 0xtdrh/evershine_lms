@@ -16,6 +16,7 @@ import { MODES, MODE_LABEL, modesText, type CatalogKind, type Mode } from '@/lib
 import type { CatalogDelivery } from '@/lib/delivery/catalog'
 import { Building2, Film, Loader2, MonitorPlay } from 'lucide-react'
 import { CopyForPlaces } from './CopyForPlaces'
+import { MODE_ICON, useTemplates } from './TemplatesManager'
 
 interface Place { id: string; label?: string; name: string; kind?: string }
 
@@ -31,16 +32,19 @@ export function DeliveryPanel({ kind, id, canEdit }: { kind: CatalogKind; id: st
   const { data: places = [] } = useQuery<Place[]>({ queryKey: ['campuses'], queryFn: () => fetchApi('/api/campuses') })
   const [modes, setModes] = useState<Mode[]>([])
   const [offered, setOffered] = useState<string[]>([])
-  useEffect(() => { if (data) { setModes(data.allowedModes ?? []); setOffered(data.offeredIn) } }, [data])
+  const [templateId, setTemplateId] = useState('')
+  const { data: templates = [] } = useTemplates()
+  useEffect(() => { if (data) { setModes(data.allowedModes ?? []); setOffered(data.offeredIn); setTemplateId(data.templateId ?? '') } }, [data])
 
   const save = useMutation({
-    mutationFn: () => fetchApi('/api/delivery/catalog', { method: 'PUT', body: JSON.stringify({ kind, id, allowedModes: modes.length ? modes : null, offeredIn: offered }) }),
+    mutationFn: () => fetchApi('/api/delivery/catalog', { method: 'PUT', body: JSON.stringify({ kind, id, allowedModes: modes.length ? modes : null, offeredIn: offered, ...(kind !== 'TRACK' && { templateId: templateId || null }) }) }),
     onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); ['delivery', 'tracks', 'academic-subjects', 'levels'].forEach((k) => qc.invalidateQueries({ queryKey: [k] })) },
     onError: (e: Error) => notify.error(e.message),
   })
 
   if (!data) return <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-  const changed = JSON.stringify(modes) !== JSON.stringify(data.allowedModes ?? []) || JSON.stringify([...offered].sort()) !== JSON.stringify([...data.offeredIn].sort())
+  const changed = JSON.stringify(modes) !== JSON.stringify(data.allowedModes ?? []) || JSON.stringify([...offered].sort()) !== JSON.stringify([...data.offeredIn].sort()) || templateId !== (data.templateId ?? '')
+  const inheritedTpl = templates.find((t) => t.id === data.inheritedTemplateId)
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
 
   return (
@@ -85,6 +89,15 @@ export function DeliveryPanel({ kind, id, canEdit }: { kind: CatalogKind; id: st
             : L('No place ticked — offered everywhere.', 'مفيش مكان متعلّم — متاح في كل الأماكن.')}
         </p>
       </div>
+      {kind !== 'TRACK' && (
+        <div>
+          <p className="mb-1.5 font-semibold text-slate-800">{L('Default template for new groups', 'القالب الأساسي للجروبات الجديدة')}</p>
+          <select aria-label={L('Default template', 'القالب الأساسي')} className="h-8 rounded-md border px-2 text-xs" disabled={!canEdit} value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+            <option value="">{kind === 'LEVEL' && inheritedTpl ? `${L('From the course:', 'زي الكورس:')} ${ar && inheritedTpl.nameAr ? inheritedTpl.nameAr : inheritedTpl.name}` : L('None', 'مفيش')}</option>
+            {templates.filter((t) => t.isActive).map((t) => <option key={t.id} value={t.id}>{ar && t.nameAr ? t.nameAr : t.name} {t.pattern.map((m) => MODE_ICON[m]).join('')}</option>)}
+          </select>
+        </div>
+      )}
       {kind !== 'TRACK' && canEdit && <CopyForPlaces kind={kind} id={id} />}
       {canEdit && changed && (
         <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>

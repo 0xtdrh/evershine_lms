@@ -92,10 +92,10 @@ export async function estimateGroupEnds(group: GroupForEstimate): Promise<GroupE
   if (slots.length > 0) {
     const today = day(new Date())
     // Holidays postpone sessions, extra sessions count (phase A).
-    const { holidays, extras } = await exceptionsForGroup(group.id)
+    const { holidays, extras, branchHolidays, modeOverrides } = await exceptionsForGroup(group.id)
     const nth = (n: number) => {
       if (n <= 0) return null
-      const list = upcomingSessions({ slots, from: today, count: n, holidays, extras })
+      const list = upcomingSessions({ slots, from: today, count: n, holidays, extras, branchHolidays, modeOverrides })
       return list.length === n ? list[n - 1].date : null
     }
     const cycleEnd = remainingThisCycle > 0 ? nth(remainingThisCycle) : null

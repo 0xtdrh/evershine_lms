@@ -20,6 +20,7 @@ import { notify } from '@/lib/notify'
 import { Loader2, Plus, Layers, GraduationCap, Pencil, Trash2, ChevronLeft } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
 import { DeliveryPanel } from '@/components/delivery/DeliveryPanel'
+import { TemplatesManager } from '@/components/delivery/TemplatesManager'
 import { codeFromName, uniqueCode } from '@/lib/ids/auto-code'
 import { Settings2 } from 'lucide-react'
 
@@ -325,6 +326,9 @@ export default function CourseConfigPage() {
           {selectedTrack && <div className="mt-3"><DeliveryPanel key={selectedTrack.id} kind="TRACK" id={selectedTrack.id} canEdit={can('class_sections', 'update')} /></div>}
         </CardContent>
       </Card>
+
+      {/* a02: ready mixes of ways for groups (templates) */}
+      <TemplatesManager canEdit={can('class_sections', 'update')} />
 
       {/* Courses in the selected track */}
       {selectedTrackId && (

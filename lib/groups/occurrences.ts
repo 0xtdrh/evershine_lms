@@ -80,6 +80,8 @@ export async function occurrencesFor(
           heldDates: cycleStart ? held.filter((d) => d >= cycleStart) : [],
           cancelledDates: cancelledBy.get(g.id) ?? [],
           holidayDates: exceptions.get(g.id)?.holidays ?? [],
+          branchHolidayDates: exceptions.get(g.id)?.branchHolidays ?? [],
+          modeOverrides: exceptions.get(g.id)?.modeOverrides ?? {},
           extras: exceptions.get(g.id)?.extras ?? [],
         },
         from, to, today
