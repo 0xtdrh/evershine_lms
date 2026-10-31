@@ -1,6 +1,7 @@
 'use client'
 
 import { L, useI18n } from '@/lib/i18n/client'
+import { PresenceInputs, type Presence } from '@/components/attendance/PresenceInputs'
 import { useState, useEffect } from 'react'
 import { GroupLessonsPanel } from '@/components/lms/GroupLessonsPanel'
 import { SessionReportPanel } from '@/components/session-reports/SessionReportPanel'
@@ -29,10 +30,13 @@ interface RosterRow {
   rollNumber: string
   student: { firstName: string; lastName: string }
   todayStatus: AttStatus | null
-  excuse?: { status: string; reason: string } | null
+  excuse?: { status: string; reason: string; kind?: string | null } | null
   onlineJoinedAt?: string | null
   /** a02: this student attends this session another way (e.g. ONLINE while travelling) */
   attendsAs?: string | null
+  /** a02 batch 5: saved detail beside the status, and online minutes */
+  todayDetail?: string | null
+  todayMinutes?: number | null
 }
 
 interface TeacherClassRecord {
@@ -119,6 +123,8 @@ export default function TeacherAttendancePage() {
   const [date,           setDate]           = useState(cairoToday())
   const [activeTab,      setActiveTab]      = useState<'manual' | 'qr'>('manual')
   const [statusMap,      setStatusMap]      = useState<Record<string, AttStatus>>({})
+  // a02 batch 5: online detail + minutes per student (starts from what was saved)
+  const [presence, setPresence] = useState<Record<string, Presence>>({})
   const [qrCode,         setQrCode]         = useState<string | null>(null)
   const [qrExpiresAt,    setQrExpiresAt]    = useState<Date | null>(null)
   const [cardScannerOpen, setCardScannerOpen] = useState(false)
@@ -154,7 +160,7 @@ export default function TeacherAttendancePage() {
 
   const { data: roster, isLoading, refetch } = useQuery({
     queryKey: ['enrollment-roster-teacher', classSectionId, date],
-    queryFn:  () => fetchApi<{ enrollments: RosterRow[] }>(
+    queryFn:  () => fetchApi<{ enrollments: RosterRow[]; sessionMode?: string }>(
       `/api/enrollment-attendance/roster?classSectionId=${classSectionId}&date=${date}`
     ),
     enabled: !!classSectionId,
@@ -168,6 +174,7 @@ export default function TeacherAttendancePage() {
       next[row.studentEnrollmentId] = row.todayStatus ?? (row.excuse?.status === 'APPROVED' ? 'EXCUSED' : 'PRESENT')
     }
     setStatusMap(next)
+    setPresence({}) // a02: a new date / group starts from what was saved
   }, [roster])
 
   /* ── Save bulk attendance ── */
@@ -180,6 +187,7 @@ export default function TeacherAttendancePage() {
         records: (roster?.enrollments ?? []).map(row => ({
           studentEnrollmentId: row.studentEnrollmentId,
           status: statusMap[row.studentEnrollmentId] ?? 'PRESENT',
+          ...(presence[row.studentEnrollmentId] ?? { detail: row.todayDetail ?? null, minutes: row.todayMinutes ?? null }),
         })),
       }),
     }),
@@ -437,10 +445,13 @@ export default function TeacherAttendancePage() {
                               </p>
                               <p className="text-xs text-gray-500">{L('No.', 'رقم')} {row.rollNumber}</p>
                               {row.attendsAs === 'ONLINE' && <p className="mt-1 text-xs font-semibold text-indigo-700">💻 {L('Attends this session online', 'بيحضر الحصة دي أونلاين')}</p>}
+                              <PresenceInputs mode={row.attendsAs ?? roster?.sessionMode} present={current === 'PRESENT' || current === 'LATE'}
+                                value={presence[row.studentEnrollmentId] ?? { detail: row.todayDetail ?? null, minutes: row.todayMinutes ?? null }}
+                                onChange={(v) => setPresence({ ...presence, [row.studentEnrollmentId]: v })} />
                       {row.onlineJoinedAt && <p className="mt-1 text-xs text-emerald-700">🟢 {L('Joined online', 'دخل أونلاين')} {new Date(row.onlineJoinedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>}
                               {row.excuse && (
                                 <p className={`mt-1 text-xs ${row.excuse.status === 'APPROVED' ? 'text-indigo-700' : 'text-amber-700'}`}>
-                                  {row.excuse.status === 'APPROVED' ? L('Excused', 'بعذر') : L('Excuse waiting for approval', 'عذر مستني الموافقة')}: {row.excuse.reason}
+                                  {row.excuse.status === 'APPROVED' ? L('Excused', 'بعذر') : L('Excuse waiting for approval', 'عذر مستني الموافقة')}: {row.excuse.reason}{row.excuse.kind === 'TECHNICAL' ? ` · ${L('technical problem', 'مشكلة تقنية')}` : ''}
                                 </p>
                               )}
                             </div>

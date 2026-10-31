@@ -2,6 +2,7 @@
 
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { L } from '@/lib/i18n/client'
+import { PresenceInputs, type Presence } from '@/components/attendance/PresenceInputs'
 import { useState, useEffect } from 'react'
 import { GroupLessonsPanel } from '@/components/lms/GroupLessonsPanel'
 import { SessionReportPanel } from '@/components/session-reports/SessionReportPanel'
@@ -31,10 +32,13 @@ interface RosterRow {
   student: { firstName: string; lastName: string }
   todayStatus: AttendanceStatus | null
   isWithdrawn?: boolean
-  excuse?: { status: string; reason: string } | null
+  excuse?: { status: string; reason: string; kind?: string | null } | null
   onlineJoinedAt?: string | null
   /** a02: this student attends this session another way (e.g. ONLINE while travelling) */
   attendsAs?: string | null
+  /** a02 batch 5: saved detail beside the status, and online minutes */
+  todayDetail?: string | null
+  todayMinutes?: number | null
 }
 
 const STATUS_BTNS: AttendanceStatus[] = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']
@@ -61,6 +65,8 @@ export default function SectionAttendancePage() {
   const [batchId, setBatchId] = useState('')
   const [shiftId, setShiftId] = useState('')
   const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>({})
+  // a02 batch 5: online detail + minutes per student (starts from what was saved)
+  const [presence, setPresence] = useState<Record<string, Presence>>({})
   const [exportStartDate, setExportStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0])
   const [exportEndDate, setExportEndDate] = useState(cairoToday())
 
@@ -98,7 +104,7 @@ export default function SectionAttendancePage() {
         ...(batchId && { batchId }),
         ...(shiftId && { shiftId }),
       })
-      return fetchApi<{ enrollments: RosterRow[]; stats: any }>(`/api/enrollment-attendance/roster?${params}`)
+      return fetchApi<{ enrollments: RosterRow[]; stats: any; sessionMode?: string }>(`/api/enrollment-attendance/roster?${params}`)
     },
     enabled: !!classSectionId,
   })
@@ -113,6 +119,8 @@ export default function SectionAttendancePage() {
           records: (roster?.enrollments ?? []).map((row) => ({
             studentEnrollmentId: row.studentEnrollmentId,
             status: statusMap[row.studentEnrollmentId] ?? row.todayStatus ?? 'PRESENT',
+            // a02 batch 5: online detail + minutes (the server keeps only what fits the way)
+            ...(presence[row.studentEnrollmentId] ?? { detail: row.todayDetail ?? null, minutes: row.todayMinutes ?? null }),
           })),
         }),
       }),
@@ -225,6 +233,7 @@ export default function SectionAttendancePage() {
       next[row.studentEnrollmentId] = row.todayStatus ?? (row.excuse?.status === 'APPROVED' ? 'EXCUSED' : 'PRESENT')
     }
     setStatusMap(next)
+    setPresence({}) // a02: a new date / group starts from what was saved
   }, [roster])
 
   if (!permsReady) return null
@@ -542,10 +551,13 @@ export default function SectionAttendancePage() {
                         )}
                       </p>
                       {row.attendsAs === 'ONLINE' && <p className="mt-1 text-xs font-semibold text-indigo-700">💻 {L('Attends this session online', 'بيحضر الحصة دي أونلاين')}</p>}
+                      <PresenceInputs mode={row.attendsAs ?? roster?.sessionMode} present={current === 'PRESENT' || current === 'LATE'}
+                        value={presence[row.studentEnrollmentId] ?? { detail: row.todayDetail ?? null, minutes: row.todayMinutes ?? null }}
+                        onChange={(v) => setPresence({ ...presence, [row.studentEnrollmentId]: v })} />
                       {row.onlineJoinedAt && <p className="mt-1 text-xs text-emerald-700">🟢 {L('Joined online', 'دخل أونلاين')} {new Date(row.onlineJoinedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>}
                       {row.excuse && (
                         <p className={`mt-1 text-xs ${row.excuse.status === 'APPROVED' ? 'text-indigo-700' : 'text-amber-700'}`}>
-                          {row.excuse.status === 'APPROVED' ? L('Excused', 'بعذر') : L('Excuse waiting for approval', 'عذر مستني الموافقة')}: {row.excuse.reason}
+                          {row.excuse.status === 'APPROVED' ? L('Excused', 'بعذر') : L('Excuse waiting for approval', 'عذر مستني الموافقة')}: {row.excuse.reason}{row.excuse.kind === 'TECHNICAL' ? ` · ${L('technical problem', 'مشكلة تقنية')}` : ''}
                         </p>
                       )}
                     </div>

@@ -4,7 +4,7 @@
  * confirms. Pure (tests/online-rules.test.ts).
  */
 
-export const OPEN_BEFORE_MIN = 15
+export const OPEN_BEFORE_MIN = 10 // owner 2026-10-26: Join opens 10 minutes before
 export const DEFAULT_SESSION_MIN = 90
 export const LATE_JOIN_MIN = 30 // after the planned end, joining is still allowed for a while
 

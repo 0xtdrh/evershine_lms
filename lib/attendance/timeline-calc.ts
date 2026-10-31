@@ -7,7 +7,7 @@
 
 export type AttStatus = 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED'
 
-export interface SessionRow { n: number; of: number; date: string; status: AttStatus; excuseReason: string | null }
+export interface SessionRow { n: number; of: number; date: string; status: AttStatus; excuseReason: string | null; /** a02 batch 5: how it was attended (online / partial / camera off / watched) */ how?: { en: string; ar: string } | null }
 
 export interface AttendanceStats { sessions: number; present: number; late: number; absent: number; excused: number; pct: number | null }
 

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { ClipboardCheck, Award, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
 
-interface Row { n: number; of: number; date: string; status: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED'; excuseReason: string | null }
+interface Row { n: number; of: number; date: string; status: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED'; excuseReason: string | null; how?: { en: string; ar: string } | null }
 interface Stats { sessions: number; present: number; late: number; absent: number; excused: number; pct: number | null }
 interface Group { classSectionId: string; group: string; course: string | null; level: string | null; cycleNumber: number; cyclesInLevel: number; status: string; finished: boolean; sessions: Row[]; stats: Stats; perfect: boolean }
 interface Data { groups: Group[]; overall: Stats }
@@ -69,6 +69,7 @@ export function AttendanceTimeline({ studentId }: { studentId: string }) {
                           <td className="py-1.5 pr-3">
                             <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS[s.status]?.cls ?? ''}`}>{STATUS[s.status]?.label ?? s.status}</span>
                             {s.excuseReason && <p className="mt-0.5 text-xs text-slate-500">{L('Reason:', 'السبب:')} {s.excuseReason}</p>}
+                            {s.how && <p className="mt-0.5 text-xs text-indigo-700">{L(s.how.en, s.how.ar)}</p>}
                           </td>
                         </tr>
                       ))}

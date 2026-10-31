@@ -41,7 +41,7 @@ async function applyToAttendance(excuse: { studentId: string; classSectionId: st
 /** ok=false → code (HTTP-like) + message. */
 export interface ExcuseOutcome { ok: boolean; id?: string; status?: string; code?: number; message?: string }
 
-export async function submitExcuse(input: { studentId: string; classSectionId: string; sessionDate: string; reason: string; userId: string }): Promise<ExcuseOutcome> {
+export async function submitExcuse(input: { studentId: string; classSectionId: string; sessionDate: string; reason: string; userId: string; /** a02 batch 5: TECHNICAL = internet / device problem online */ kind?: string | null }): Promise<ExcuseOutcome> {
   const reason = input.reason.trim()
   if (reason.length < 2) return { ok: false, code: 400, message: 'Write the reason' }
   const enrollment = await prisma.studentEnrollment.findFirst({
@@ -72,6 +72,7 @@ export async function submitExcuse(input: { studentId: string; classSectionId: s
   const status = settings.autoApprove ? 'APPROVED' : 'PENDING'
   const data = {
     reason: reason.slice(0, 500),
+    kind: input.kind === 'TECHNICAL' ? 'TECHNICAL' : null,
     status,
     autoApproved: settings.autoApprove,
     submittedById: input.userId,
@@ -141,7 +142,7 @@ export async function cancelExcuse(id: string, userId: string): Promise<ExcuseOu
 export async function excusesOn(classSectionId: string, date: Date) {
   const rows = await prisma.absenceExcuse.findMany({
     where: { classSectionId, sessionDate: date, status: { in: ['PENDING', 'APPROVED'] } },
-    select: { id: true, studentId: true, reason: true, status: true },
+    select: { id: true, studentId: true, reason: true, status: true, kind: true },
   })
   return new Map(rows.map((r) => [r.studentId, r]))
 }

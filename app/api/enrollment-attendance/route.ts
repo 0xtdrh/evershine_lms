@@ -2,6 +2,9 @@ import { canSeeGroup, groupWhere, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
+import { presenceFields } from '@/lib/attendance/presence'
+import { sessionModeOn, studentModesOn } from '@/lib/delivery/session-modes'
+import { getRoomsSettings } from '@/lib/rooms/engine'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { markEnrollmentAttendanceSchema } from '@/lib/validation/academic'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
@@ -144,7 +147,7 @@ export async function POST(request: NextRequest) {
     // SECURITY: every record must belong to THIS group (a teacher allowed on
     // group X could otherwise write attendance for any enrollment), and the
     // status must be a real one (bad values used to fail with a 500).
-    const submitted = body.records as { studentEnrollmentId: string; status: string; remarks?: string }[]
+    const submitted = body.records as { studentEnrollmentId: string; status: string; remarks?: string; detail?: string | null; minutes?: number | null }[]
     if (submitted.some((r) => !ATTENDANCE_STATUSES.includes(r.status as (typeof ATTENDANCE_STATUSES)[number]))) {
       return errors.badRequest(`Status must be one of ${ATTENDANCE_STATUSES.join(', ')}`)
     }
@@ -167,9 +170,22 @@ export async function POST(request: NextRequest) {
       })).map((r) => [r.studentEnrollmentId, r.status as string])
     )
 
+    // a02 batch 5: how each student attended (his own way that day, else the session's) + detail / minutes
+    const [sessionMode, studentModes, roomsSettings, enrolls] = await Promise.all([
+      sessionModeOn(classSectionId, attendanceDate), studentModesOn(classSectionId, attendanceDate), getRoomsSettings(),
+      prisma.studentEnrollment.findMany({ where: { id: { in: ids } }, select: { id: true, studentId: true } }),
+    ])
+    const studentOf = new Map(enrolls.map((e) => [e.id, e.studentId]))
+    const extras = new Map(records.map((rec) => {
+      const sub = submitted.find((x) => x.studentEnrollmentId === rec.studentEnrollmentId)
+      const mode = studentModes.get(studentOf.get(rec.studentEnrollmentId) ?? '') ?? sessionMode
+      return [rec.studentEnrollmentId, presenceFields({ status: rec.status, mode, detail: sub?.detail, minutes: sub?.minutes, sessionMinutes: roomsSettings.sessionMinutes })]
+    }))
+
     const results = await prisma.$transaction(async (tx) => {
       const out = []
       for (const rec of records) {
+        const ex = extras.get(rec.studentEnrollmentId)
         const row = await tx.enrollmentAttendanceRecord.upsert({
           where: {
             studentEnrollmentId_attendanceDate: {
@@ -183,11 +199,13 @@ export async function POST(request: NextRequest) {
             status: rec.status,
             markedByTeacherId: markedBy,
             remarks: rec.remarks,
+            ...ex,
           },
           update: {
             status: rec.status,
             markedByTeacherId: markedBy,
             remarks: rec.remarks,
+            ...ex,
           },
         })
         out.push(row)

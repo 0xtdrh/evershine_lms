@@ -6,6 +6,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { sessionsPerCycle, cyclesInLevel } from '@/lib/groups/cycle-rules'
+import { presenceText } from './presence'
 import { attendanceStats, numberSessions, isPerfectAttendance, type SessionRow, type AttendanceStats } from './timeline-calc'
 
 const day = (d: Date) => d.toISOString().slice(0, 10)
@@ -52,7 +53,7 @@ export async function studentAttendanceTimeline(studentId: string, opts: { group
     }),
     prisma.enrollmentAttendanceRecord.findMany({
       where: { studentEnrollmentId: { in: enrollments.map((e) => e.id) } },
-      select: { studentEnrollmentId: true, attendanceDate: true, status: true },
+      select: { studentEnrollmentId: true, attendanceDate: true, status: true, mode: true, presenceDetail: true },
     }),
     prisma.absenceExcuse.findMany({ where: { studentId, classSectionId: { in: groupIds }, status: 'APPROVED' }, select: { classSectionId: true, sessionDate: true, reason: true } }),
   ])
@@ -70,7 +71,11 @@ export async function studentAttendanceTimeline(studentId: string, opts: { group
     const held = [...(heldBy.get(e.classSectionId) ?? [])]
     const recs = own.filter((r) => r.studentEnrollmentId === e.id).map((r) => ({ date: day(r.attendanceDate), status: r.status }))
     const ex = new Map(excuses.filter((x) => x.classSectionId === e.classSectionId).map((x) => [day(x.sessionDate), x.reason]))
-    const sessions = numberSessions(held, recs, per, ex)
+    const how = new Map(own.filter((r) => r.studentEnrollmentId === e.id).map((r) => {
+      const en = presenceText(r.status, r.mode, r.presenceDetail, 'en'), ar = presenceText(r.status, r.mode, r.presenceDetail, 'ar')
+      return [day(r.attendanceDate), en && ar ? { en, ar } : null] as const
+    }))
+    const sessions = numberSessions(held, recs, per, ex).map((s) => ({ ...s, how: how.get(s.date) ?? null }))
     const stats = attendanceStats(sessions.map((s) => s.status))
     allStatuses.push(...sessions.map((s) => s.status))
     const finished = cs.status === 'COMPLETED' || held.length >= per

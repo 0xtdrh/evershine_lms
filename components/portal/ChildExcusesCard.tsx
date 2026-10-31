@@ -30,6 +30,7 @@ export function ChildExcusesCard({ studentId, childName }: { studentId: string; 
   const qc = useQueryClient()
   const [key, setKey] = useState('')
   const [reason, setReason] = useState('')
+  const [technical, setTechnical] = useState(false)
   const { data, isLoading } = useQuery({
     queryKey: ['parent-excuses', studentId],
     queryFn: () => fetchApi<Data>(`/api/guardian-portal/excuses?studentId=${studentId}`),
@@ -42,9 +43,9 @@ export function ChildExcusesCard({ studentId, childName }: { studentId: string; 
   const send = useMutation({
     mutationFn: () => {
       const [classSectionId, sessionDate] = key.split('|')
-      return fetchApi<{ status: string }>('/api/guardian-portal/excuses', { method: 'POST', body: JSON.stringify({ studentId, classSectionId, sessionDate, reason }) })
+      return fetchApi<{ status: string }>('/api/guardian-portal/excuses', { method: 'POST', body: JSON.stringify({ studentId, classSectionId, sessionDate, reason, ...(technical && { kind: 'TECHNICAL' }) }) })
     },
-    onSuccess: (r) => { notify.success(r?.status === 'APPROVED' ? L('Excuse accepted', 'العذر اتقبل') : L('Excuse sent — waiting for approval', 'العذر اتبعت — مستني الموافقة')); setKey(''); setReason(''); refresh() },
+    onSuccess: (r) => { notify.success(r?.status === 'APPROVED' ? L('Excuse accepted', 'العذر اتقبل') : L('Excuse sent — waiting for approval', 'العذر اتبعت — مستني الموافقة')); setKey(''); setReason(''); setTechnical(false); refresh() },
     onError: (e: Error) => notify.error(e.message || L('Could not send the excuse', 'العذر مااتبعتش')),
   })
   const withdraw = useMutation({
@@ -76,6 +77,11 @@ export function ChildExcusesCard({ studentId, childName }: { studentId: string; 
               </Select>
             </div>
             <div className="space-y-1">
+              {/* a02 batch 5: an online session missed because of the internet or the device */}
+              <label className="flex items-center gap-2 text-xs text-slate-700">
+                <input type="checkbox" checked={technical} onChange={(e) => { setTechnical(e.target.checked); if (e.target.checked && !reason.trim()) setReason(L('Internet / device problem', 'مشكلة في النت أو الجهاز')) }} />
+                {L('Technical problem in an online session (internet / device)', 'مشكلة تقنية في حصة أونلاين (النت / الجهاز)')}
+              </label>
               <Label>{L('Reason', 'السبب')}</Label>
               <textarea className="min-h-[70px] w-full rounded-md border border-slate-200 bg-white p-2 text-sm" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={L('e.g. he has a cold', 'مثلاً: عنده برد')} />
             </div>

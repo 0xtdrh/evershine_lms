@@ -121,8 +121,11 @@ export async function GET(request: NextRequest) {
       batch: e.classSection.batch,
       shift: e.classSection.shift,
       todayStatus: Array.isArray(e.attendanceRecords) ? e.attendanceRecords[0]?.status : null,
+      // a02 batch 5: detail beside the status (PARTIAL / CAMERA_OFF / WATCHED) and online minutes, as saved
+      todayDetail: Array.isArray(e.attendanceRecords) ? (e.attendanceRecords[0] as { presenceDetail?: string | null } | undefined)?.presenceDetail ?? null : null,
+      todayMinutes: Array.isArray(e.attendanceRecords) ? (e.attendanceRecords[0] as { minutes?: number | null } | undefined)?.minutes ?? null : null,
       isWithdrawn: e.isWithdrawn,
-      excuse: excuses.get(e.studentId) ? { status: excuses.get(e.studentId)!.status, reason: excuses.get(e.studentId)!.reason } : null,
+      excuse: excuses.get(e.studentId) ? { status: excuses.get(e.studentId)!.status, reason: excuses.get(e.studentId)!.reason, kind: excuses.get(e.studentId)!.kind ?? null } : null,
       onlineJoinedAt: joins.get(e.studentId) ?? null,
       attendsAs: studentModes.get(e.studentId) ?? null,
     })),

@@ -46,6 +46,8 @@ const bodySchema = z.object({
   classSectionId: z.string().min(1),
   sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   reason: z.string().trim().min(2).max(500),
+  /** a02 batch 5: TECHNICAL = internet / device problem in an online session */
+  kind: z.enum(['TECHNICAL']).nullish(),
 })
 
 export async function POST(request: NextRequest) {

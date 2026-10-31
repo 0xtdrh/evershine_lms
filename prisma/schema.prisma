@@ -2833,6 +2833,12 @@ model EnrollmentAttendanceRecord {
   // for accurate per-session pay and, later, the substitute-teacher flow.
   taughtByTeacherId   String?
   remarks             String?
+  /// a02 M1 batch 5 (2026-10-31): how the session was attended (BRANCH / ONLINE / RECORDED); null = the old records (branch)
+  mode                String?          @db.VarChar(8)
+  /// a02: detail beside PRESENT — PARTIAL (left early online), CAMERA_OFF, WATCHED (recorded session watched); null = none
+  presenceDetail      String?          @db.VarChar(12)
+  /// a02: minutes in the online session (typed by the instructor for now; from Zoom / Meet in M2)
+  minutes             Int?
   createdAt           DateTime         @default(now())
 
   studentEnrollment StudentEnrollment @relation(fields: [studentEnrollmentId], references: [id], onDelete: Cascade)
@@ -4036,6 +4042,8 @@ model AbsenceExcuse {
   classSectionId String
   sessionDate    DateTime  @db.Date
   reason         String    @db.VarChar(500)
+  /// a02 batch 5: TECHNICAL = internet / device problem in an online session; null = a normal excuse
+  kind           String?   @db.VarChar(12)
   status         String    @default("PENDING") @db.VarChar(10)
   autoApproved   Boolean   @default(false)
   submittedById  String

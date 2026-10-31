@@ -3,9 +3,9 @@ import { cleanMeetingUrl, joinWindow } from '@/lib/online/rules'
 
 describe('joinWindow', () => {
   const start = new Date('2026-10-12T15:00:00Z')
-  it('opens 15 minutes before and closes 30 minutes after the planned end', () => {
-    expect(joinWindow(start, 90, new Date('2026-10-12T14:44:00Z'))).toMatchObject({ open: false, upcoming: true })
-    expect(joinWindow(start, 90, new Date('2026-10-12T14:45:00Z')).open).toBe(true)
+  it('opens 10 minutes before and closes 30 minutes after the planned end', () => {
+    expect(joinWindow(start, 90, new Date('2026-10-12T14:49:00Z'))).toMatchObject({ open: false, upcoming: true })
+    expect(joinWindow(start, 90, new Date('2026-10-12T14:50:00Z')).open).toBe(true)
     expect(joinWindow(start, 90, new Date('2026-10-12T17:00:00Z')).open).toBe(true)
     expect(joinWindow(start, 90, new Date('2026-10-12T17:01:00Z'))).toMatchObject({ open: false, upcoming: false })
   })

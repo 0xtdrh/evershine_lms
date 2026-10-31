@@ -2318,6 +2318,21 @@ check "his page lists his hours and his weekly sessions" "$(api GET /api/teacher
 check "a secretary cannot change working hours" "$(secapi PUT /api/teachers/$EW/work-hours '{"rows":[]}' | jq_ "d['success']")" "False"
 api POST /api/groups/$TBG/instructor '{"teacherId":null}' >/dev/null
 M "DELETE FROM TeacherWorkHours WHERE teacherId='$EW'"
+echo "== 72. Attendance detail for online / recorded sessions + technical excuse (a02 batch 5, 2026-10-31)"
+LSUN=""; LTUE=""; for i in 0 1 2 3 4 5 6; do [ -z "$LSUN" ] && [ "$(cairo +%w -$i)" = "0" ] && LSUN=$(D -$i); [ -z "$LTUE" ] && [ "$(cairo +%w -$i)" = "2" ] && LTUE=$(D -$i); done
+MEN=$(M "SELECT id FROM StudentEnrollment WHERE classSectionId='$CVG' AND studentId='$MST'")
+check "e2e data: last Sunday (online) and Tuesday (branch) of the group" "$([ -n "$LSUN" ] && [ -n "$LTUE" ] && [ -n "$MEN" ] && echo yes)" "yes"
+api POST /api/enrollment-attendance "{\"classSectionId\":\"$CVG\",\"attendanceDate\":\"$LSUN\",\"records\":[{\"studentEnrollmentId\":\"$MEN\",\"status\":\"PRESENT\",\"minutes\":40}]}" >/dev/null
+check "online session, 40 of 90 minutes -> present, 'part of the session', way ONLINE" "$(M "SELECT CONCAT(status,'/',mode,'/',presenceDetail,'/',minutes) FROM EnrollmentAttendanceRecord WHERE studentEnrollmentId='$MEN' AND attendanceDate='$LSUN'")" "PRESENT/ONLINE/PARTIAL/40"
+api POST /api/enrollment-attendance "{\"classSectionId\":\"$CVG\",\"attendanceDate\":\"$LSUN\",\"records\":[{\"studentEnrollmentId\":\"$MEN\",\"status\":\"PRESENT\",\"detail\":\"CAMERA_OFF\",\"minutes\":85}]}" >/dev/null
+check "…saved again with camera off and 85 minutes" "$(M "SELECT CONCAT(presenceDetail,'/',minutes) FROM EnrollmentAttendanceRecord WHERE studentEnrollmentId='$MEN' AND attendanceDate='$LSUN'")" "CAMERA_OFF/85"
+api POST /api/enrollment-attendance "{\"classSectionId\":\"$CVG\",\"attendanceDate\":\"$LTUE\",\"records\":[{\"studentEnrollmentId\":\"$MEN\",\"status\":\"PRESENT\",\"detail\":\"CAMERA_OFF\",\"minutes\":30}]}" >/dev/null
+check "a branch session keeps no online detail" "$(M "SELECT CONCAT(mode,'/',IFNULL(presenceDetail,'-'),'/',IFNULL(minutes,'-')) FROM EnrollmentAttendanceRecord WHERE studentEnrollmentId='$MEN' AND attendanceDate='$LTUE'")" "BRANCH/-/-"
+check "the attendance sheet shows what was saved" "$(api GET "/api/enrollment-attendance/roster?classSectionId=$CVG&date=$LSUN" | jq_ "[(e['todayDetail'], e['todayMinutes']) for e in d['data']['enrollments'] if e['studentEnrollmentId']=='$MEN']")" "[('CAMERA_OFF', 85)]"
+check "the family's attendance timeline says how (Arabic)" "$(api GET /api/students/$MST/attendance-timeline | PYTHONUTF8=1 jq_ "[s['how']['ar'] for g in d['data']['groups'] for s in g['sessions'] if s['date']=='$LSUN' and s.get('how')]")" "['حضر أونلاين — الكاميرا كانت مقفولة']"
+NSUN=""; for i in 1 2 3 4 5 6 7; do [ -z "$NSUN" ] && [ "$(cairo +%w $i)" = "0" ] && NSUN=$(D $i); done
+api POST /api/absence-excuses "{\"studentId\":\"$MST\",\"classSectionId\":\"$CVG\",\"sessionDate\":\"$NSUN\",\"reason\":\"Internet cut\",\"kind\":\"TECHNICAL\"}" >/dev/null
+check "a technical-problem excuse is kept as such" "$(M "SELECT kind FROM AbsenceExcuse WHERE studentId='$MST' AND classSectionId='$CVG' AND sessionDate='$NSUN'")" "TECHNICAL"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
