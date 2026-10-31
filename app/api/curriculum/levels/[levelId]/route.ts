@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createdResponse, errors, successResponse } from '@/lib/api-response'
 import { courseSkills, createEdition, levelEditions } from '@/lib/curriculum/engine'
 import { curriculumViewer, outcomeError, readJson } from '@/lib/curriculum/api'
+import { levelVariants } from '@/lib/curriculum/variants'
 
 type Ctx = { params: Promise<{ levelId: string }> }
 
@@ -14,7 +15,7 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
   if (err) return err
   const data = await levelEditions(v!, levelId)
   if (!data) return errors.notFound('Level')
-  return successResponse({ ...data, skills: await courseSkills(data.level.subject.id), can: { edit: v!.canEdit, approve: v!.canApprove, delete: v!.canDelete } })
+  return successResponse({ ...data, variants: await levelVariants(levelId), skills: await courseSkills(data.level.subject.id), can: { edit: v!.canEdit, approve: v!.canApprove, delete: v!.canDelete } })
 }
 
 export async function POST(request: NextRequest, { params }: Ctx) {
@@ -23,9 +24,9 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   if (err) return err
   const { body, err: bad } = await readJson(request)
   if (bad) return bad
-  const parsed = z.object({ copyFromId: z.string().nullish(), notes: z.string().max(2000).nullish() }).safeParse(body ?? {})
+  const parsed = z.object({ copyFromId: z.string().nullish(), notes: z.string().max(2000).nullish(), variantId: z.string().nullish() }).safeParse(body ?? {})
   if (!parsed.success) return errors.validation(parsed.error)
-  const o = await createEdition(v!, levelId, parsed.data.copyFromId, parsed.data.notes)
+  const o = await createEdition(v!, levelId, parsed.data.copyFromId, parsed.data.notes, parsed.data.variantId)
   if (!o.ok) return outcomeError(o)
   return createdResponse(o.value, 'New version created')
 }

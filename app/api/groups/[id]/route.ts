@@ -162,6 +162,8 @@ const updateGroupSchema = z.object({
   priceOverride: z.number().min(0).max(1_000_000).nullable().optional(),
   /** Partners part 1: a class without names (number of children); null = a normal group */
   unnamedHeadcount: z.number().int().min(1).max(500).nullable().optional(),
+  /** a02: the group's curriculum — null = automatic (place / way), 'MAIN', or a CurriculumVariant id of its level */
+  curriculumVariantId: z.string().min(1).nullable().optional(),
 })
 
 export async function PATCH(
@@ -202,6 +204,14 @@ export async function PATCH(
     }
   }
 
+  // a02: the curriculum can change only before the group's first session (owner 2026-10-30), then it keeps its version
+  if (parsed.data.curriculumVariantId !== undefined && parsed.data.curriculumVariantId !== existing.curriculumVariantId) {
+    if (existing.startDate) return errorResponse('GROUP_STARTED', 'The group has started — it keeps its curriculum · الجروب بدأ — بيفضل على نفس المنهج', 409)
+    const v = parsed.data.curriculumVariantId
+    const levelId = parsed.data.levelId ?? existing.levelId
+    if (v && v !== 'MAIN' && !(await prisma.curriculumVariant.findFirst({ where: { id: v, levelId: levelId ?? '' }, select: { id: true } }))) return errors.badRequest('This curriculum is not of the group level · المنهج ده مش تبع مستوى الجروب')
+  }
+
   // Session shift follows the group's time when the schedule changes (shift is switched off in the UI).
   let autoShiftId: string | undefined
   if (parsed.data.scheduleSlots && parsed.data.shiftId === undefined) {
@@ -227,6 +237,8 @@ export async function PATCH(
       ...(parsed.data.className !== undefined && { className: parsed.data.className }),
       ...(parsed.data.sectionName !== undefined && { sectionName: parsed.data.sectionName }),
       ...(parsed.data.levelId !== undefined && { levelId: parsed.data.levelId }),
+      // a new curriculum (not started yet) drops any version picked before, so the right one is read
+      ...(parsed.data.curriculumVariantId !== undefined && parsed.data.curriculumVariantId !== existing.curriculumVariantId && { curriculumVariantId: parsed.data.curriculumVariantId, curriculumEditionId: null }),
       ...(parsed.data.startDate !== undefined && { startDate: parsed.data.startDate ? new Date(parsed.data.startDate) : null }),
       ...(parsed.data.expectedEndDate !== undefined && { expectedEndDate: parsed.data.expectedEndDate ? new Date(parsed.data.expectedEndDate) : null }),
       ...(parsed.data.scheduleSlots !== undefined && { scheduleSlots: parsed.data.scheduleSlots }),

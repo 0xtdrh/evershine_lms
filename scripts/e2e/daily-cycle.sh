@@ -2226,6 +2226,34 @@ AC2=$(api POST /api/academic-subjects '{"name":"E2E Python For Kids Two"}' | jq_
 check "a course with no code gets one from its name; the next one never repeats it" "$AC1/$AC2" "EPFK/EPFK2"
 check "a code typed by hand is kept" "$(api POST /api/academic-subjects '{"name":"E2E Hand Code","code":"zz9"}' | jq_ "d['data']['code']")" "ZZ9"
 check "a code already used is refused with a clear message (not an error page)" "$(api POST /api/academic-subjects "{\"name\":\"E2E Clash\",\"code\":\"$AC1\"}" | jq_ "(d['error']['code'], 'used' in d['error']['message'])")" "('CONFLICT', True)"
+echo "== 68. Several curricula per level + copy for a partner / place (a02, 2026-10-31)"
+CVL=$(M "SELECT e.levelId FROM CurriculumEdition e JOIN Level l ON l.id=e.levelId WHERE e.status='PUBLISHED' AND e.variantId IS NULL AND l.isActive=1 ORDER BY e.createdAt LIMIT 1")
+CVE=$(M "SELECT id FROM CurriculumEdition WHERE levelId='$CVL' AND status='PUBLISHED' AND variantId IS NULL ORDER BY number DESC LIMIT 1")
+check "e2e data: a level with a published main curriculum" "$([ -n "$CVL" ] && [ -n "$CVE" ] && echo yes)" "yes"
+VPA=$(api POST /api/curriculum/variants "{\"levelId\":\"$CVL\",\"name\":\"E2E Partner curriculum\",\"campusIds\":[\"$DOTHER\"]}" | jq_ "d['data']['id']")
+VON=$(api POST /api/curriculum/variants "{\"levelId\":\"$CVL\",\"name\":\"E2E Online curriculum\",\"modes\":[\"ONLINE\"]}" | jq_ "d['data']['id']")
+check "another curriculum for a place and one for the online way" "$([ -n "$VPA" ] && [ "$VPA" != "None" ] && [ -n "$VON" ] && [ "$VON" != "None" ] && echo yes)" "yes"
+VPE=$(api POST /api/curriculum/levels/$CVL "{\"copyFromId\":\"$CVE\",\"variantId\":\"$VPA\"}" | jq_ "d['data']['id']")
+api PATCH /api/curriculum/editions/$VPE '{"action":"publish"}' >/dev/null
+check "publishing the partner curriculum does not archive the main one" "$(M "SELECT status FROM CurriculumEdition WHERE id='$VPE'")/$(M "SELECT status FROM CurriculumEdition WHERE id='$CVE'")" "PUBLISHED/PUBLISHED"
+CVG=$(api POST /api/groups "{\"campusId\":\"$DOTHER\",\"className\":\"E2E Curriculum Group\",\"sectionName\":\"C\",\"levelId\":\"$CVL\"}" | jq_ "d['data']['id']")
+check "a new group in the partner's place reads the partner curriculum" "$(api GET /api/groups/$CVG/curriculum | jq_ "(d['data']['reads']['id']=='$VPA', d['data']['canChange'], len(d['data']['options']))")" "(True, True, 2)"
+check "…its lessons come from the partner curriculum" "$(api GET "/api/groups/$CVG/lessons" | jq_ "d['data']['edition']['id']=='$VPE'")" "True"
+api PATCH /api/groups/$CVG '{"curriculumVariantId":"MAIN"}' >/dev/null
+check "before its first session the group can switch to the main curriculum" "$(api GET /api/groups/$CVG/curriculum | jq_ "(d['data']['chosen'], d['data']['reads'])")" "('MAIN', None)"
+STG=$(M "SELECT id FROM ClassSection WHERE levelId='$CVL' AND startDate IS NOT NULL LIMIT 1")
+check "a group that has started keeps its curriculum (409)" "$([ -z "$STG" ] && echo GROUP_STARTED || api PATCH /api/groups/$STG "{\"curriculumVariantId\":\"$VPA\"}" | jq_ "d['error']['code']")" "GROUP_STARTED"
+api PUT /api/places/$CAMPUS/catalog "{\"kind\":\"LEVEL\",\"id\":\"$CVL\",\"curriculumId\":\"$VON\"}" >/dev/null
+check "from a branch page: this branch uses the online curriculum for the level" "$(api GET /api/places/$CAMPUS/catalog | python -c "import sys,json;d=json.load(sys.stdin)['data'];f=lambda xs:[y for x in xs for y in ([x]+f(x['children']))];print([l['curriculumHere']=='$VON' for l in f(d) if l['id']=='$CVL'])")/$(M "SELECT JSON_CONTAINS(campusIds, '\"$CAMPUS\"') FROM CurriculumVariant WHERE id='$VON'")" "[True]/1"
+check "a curriculum with versions cannot be removed" "$(api DELETE /api/curriculum/variants/$VPA | jq_ "d['error']['code']")" "IN_USE"
+CPY=$(api POST /api/delivery/copy "{\"kind\":\"LEVEL\",\"id\":\"$CVL\",\"campusIds\":[\"$DOTHER\"],\"numberOfSessions\":13,\"closeOriginalThere\":true}" | jq_ "d['data']['id']")
+check "copy a level for a partner with 13 sessions: offered there only, original closed there, curriculum copied as a draft" "$(M "SELECT numberOfSessions FROM Level WHERE id='$CPY'")/$(M "SELECT GROUP_CONCAT(campusId) FROM OfferedIn WHERE entityId='$CPY'")/$(api GET "/api/levels?subjectId=$(M "SELECT subjectId FROM Level WHERE id='$CVL'")&campusId=$DOTHER" | jq_ "('$CPY' in [l['id'] for l in d['data']], '$CVL' in [l['id'] for l in d['data']])")/$(M "SELECT status FROM CurriculumEdition WHERE levelId='$CPY'")" "13/$DOTHER/(True, False)/DRAFT"
+CVC=$(M "SELECT subjectId FROM Level WHERE id='$CVL'")
+CPC=$(api POST /api/delivery/copy "{\"kind\":\"COURSE\",\"id\":\"$CVC\",\"campusIds\":[\"$DOTHER\"],\"closeOriginalThere\":false}" | jq_ "d['data']['id']")
+NLV=$(M "SELECT COUNT(*) FROM Level WHERE subjectId='$CVC' AND isActive=1")
+check "copy a whole course: same levels, code filled in, curricula copied (published)" "$(M "SELECT COUNT(*) FROM Level WHERE subjectId='$CPC'")/$(M "SELECT code<>'' FROM AcademicSubject WHERE id='$CPC'")/$(M "SELECT COUNT(*)>0 FROM CurriculumEdition e JOIN Level l ON l.id=e.levelId WHERE l.subjectId='$CPC' AND e.status='PUBLISHED'")" "$NLV/1/1"
+check "copying needs a signed-in person" "$(curl -s -o /dev/null -w '%{http_code}' -b "$(mktemp)" -X POST $B/api/delivery/copy)" "401"
+M "DELETE FROM OfferedIn"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

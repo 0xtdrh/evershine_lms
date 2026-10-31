@@ -2216,6 +2216,8 @@ model ClassSection {
   unnamedHeadcount          Int?
   /// LMS (L1): the curriculum version this group follows (pinned when it starts; null = newest published)
   curriculumEditionId       String?
+  /// a02 (2026-10-31): curriculum chosen for this group: null = automatic (by place / way), "MAIN" = the main one, else a CurriculumVariant id
+  curriculumVariantId       String?
   /// LMS L2: how lessons open for this group (ALL | SCHEDULE | ATTENDANCE | MANUAL | PREVIOUS); null = the level's / company default
   lessonUnlockMode          String?           @db.VarChar(12)
   /// L5: online class link of the group (Zoom / Meet / any https link); null = not online
@@ -4194,6 +4196,8 @@ model CurriculumEdition {
   status        String    @default("DRAFT") @db.VarChar(10)
   notes         String?   @db.Text
   copiedFromId  String?
+  /// a02 (2026-10-31): which curriculum of the level this version belongs to; null = the main curriculum
+  variantId     String?
   createdById   String
   submittedAt   DateTime?
   publishedAt   DateTime?
@@ -5174,4 +5178,21 @@ model OfferedIn {
 
   @@unique([entityType, entityId, campusId])
   @@index([campusId])
+}
+
+/// a02 (2026-10-31): another curriculum of the same level (same sessions / price, different content) — e.g. online,
+/// recorded, or one partner. Picked automatically for groups of these places / ways; versions live in CurriculumEdition.variantId.
+model CurriculumVariant {
+  id        String   @id @default(cuid())
+  levelId   String
+  name      String   @db.VarChar(120)
+  /// ["BRANCH","ONLINE","RECORDED"] or null = any way
+  modes     Json?
+  /// campus ids (branches / partner places / online) or null = any place
+  campusIds Json?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([levelId])
 }

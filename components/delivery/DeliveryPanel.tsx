@@ -15,6 +15,7 @@ import { L, useI18n } from '@/lib/i18n/client'
 import { MODES, MODE_LABEL, modesText, type CatalogKind, type Mode } from '@/lib/delivery/modes'
 import type { CatalogDelivery } from '@/lib/delivery/catalog'
 import { Building2, Film, Loader2, MonitorPlay } from 'lucide-react'
+import { CopyForPlaces } from './CopyForPlaces'
 
 interface Place { id: string; label?: string; name: string; kind?: string }
 
@@ -84,6 +85,7 @@ export function DeliveryPanel({ kind, id, canEdit }: { kind: CatalogKind; id: st
             : L('No place ticked — offered everywhere.', 'مفيش مكان متعلّم — متاح في كل الأماكن.')}
         </p>
       </div>
+      {kind !== 'TRACK' && canEdit && <CopyForPlaces kind={kind} id={id} />}
       {canEdit && changed && (
         <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
           {save.isPending && <Loader2 className="me-1 h-4 w-4 animate-spin" />}{L('Save', 'احفظ')}

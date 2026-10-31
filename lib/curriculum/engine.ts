@@ -11,6 +11,7 @@
 import { Prisma, type Role } from '@prisma/client'
 import type { SessionGate } from '@/lib/lms/gate'
 import { prisma } from '@/lib/prisma'
+import { latestForGroup } from './variants'
 import { checkPermission } from '@/lib/rbac'
 import { curriculumMediaUrl } from '@/lib/cloudinary'
 import { getTeacherByUserId } from '@/lib/academic/teacher-scope'
@@ -150,10 +151,12 @@ export async function getEdition(v: Viewer, editionId: string) {
 }
 
 /** New edition of a level: blank (one empty session per planned session) or a copy of another edition. */
-export async function createEdition(v: Viewer, levelId: string, copyFromId?: string | null, notes?: string | null): Promise<Outcome<{ id: string; number: number }>> {
+export async function createEdition(v: Viewer, levelId: string, copyFromId?: string | null, notes?: string | null, variantId?: string | null): Promise<Outcome<{ id: string; number: number }>> {
   if (!v.canEdit) return fail('FORBIDDEN', 'You cannot write curriculum')
   const level = await prisma.level.findUnique({ where: { id: levelId }, select: { id: true, numberOfSessions: true } })
   if (!level) return fail('NOT_FOUND', 'Level not found')
+  // a02: the new version belongs to one curriculum of the level (null = main)
+  if (variantId && !(await prisma.curriculumVariant.findFirst({ where: { id: variantId, levelId }, select: { id: true } }))) return fail('NOT_FOUND', 'Curriculum not found for this level')
   let source: { id: string; levelId: string } | null = null
   if (copyFromId) {
     source = await prisma.curriculumEdition.findUnique({ where: { id: copyFromId }, select: { id: true, levelId: true } })
@@ -162,7 +165,7 @@ export async function createEdition(v: Viewer, levelId: string, copyFromId?: str
   const created = await prisma.$transaction(async (tx) => {
     const last = await tx.curriculumEdition.findFirst({ where: { levelId }, orderBy: { number: 'desc' }, select: { number: true } })
     const number = (last?.number ?? 0) + 1
-    const ed = await tx.curriculumEdition.create({ data: { levelId, number, status: 'DRAFT', notes: notes ?? null, copiedFromId: source?.id ?? null, createdById: v.userId } })
+    const ed = await tx.curriculumEdition.create({ data: { levelId, number, status: 'DRAFT', notes: notes ?? null, copiedFromId: source?.id ?? null, createdById: v.userId, variantId: variantId ?? null } })
     if (source) await copySessions(tx, source.id, ed.id)
     else {
       const n = Math.max(1, Math.min(level.numberOfSessions || 1, 200))
@@ -173,7 +176,7 @@ export async function createEdition(v: Viewer, levelId: string, copyFromId?: str
   return { ok: true, value: created }
 }
 
-async function copySessions(tx: Prisma.TransactionClient, fromEditionId: string, toEditionId: string) {
+export async function copySessions(tx: Prisma.TransactionClient, fromEditionId: string, toEditionId: string) {
   const sessions = await tx.curriculumSession.findMany({ where: { editionId: fromEditionId }, orderBy: { number: 'asc' } })
   for (const s of sessions) {
     const { id: _id, editionId: _e, createdAt: _c, updatedAt: _u, ...rest } = s
@@ -199,7 +202,8 @@ export async function changeEditionStatus(v: Viewer, editionId: string, action: 
   }
   await prisma.$transaction(async (tx) => {
     if (to === 'PUBLISHED') {
-      await tx.curriculumEdition.updateMany({ where: { levelId: e.levelId, status: 'PUBLISHED', id: { not: e.id } }, data: { status: 'ARCHIVED' } })
+      // a02: only the older version of the SAME curriculum is archived (each curriculum of a level has its own published one)
+      await tx.curriculumEdition.updateMany({ where: { levelId: e.levelId, variantId: e.variantId, status: 'PUBLISHED', id: { not: e.id } }, data: { status: 'ARCHIVED' } })
     }
     await tx.curriculumEdition.update({
       where: { id: e.id },
@@ -237,14 +241,14 @@ export async function deleteDraft(v: Viewer, editionId: string): Promise<Outcome
 
 /** The edition a group reads: the one pinned to it, else the newest published edition of its level. */
 export async function editionForGroup(classSectionId: string) {
-  const g = await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { levelId: true, curriculumEditionId: true } })
+  const g = await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { levelId: true, campusId: true, curriculumEditionId: true, curriculumVariantId: true } })
   if (!g) return null
   if (g.curriculumEditionId) {
     const pinned = await prisma.curriculumEdition.findUnique({ where: { id: g.curriculumEditionId } })
     if (pinned && (pinned.status === 'PUBLISHED' || pinned.status === 'ARCHIVED')) return pinned
   }
   if (!g.levelId) return null
-  return prisma.curriculumEdition.findFirst({ where: { levelId: g.levelId, status: 'PUBLISHED' }, orderBy: { number: 'desc' } })
+  return latestForGroup(g)
 }
 
 // ───────────────────────── sessions ─────────────────────────

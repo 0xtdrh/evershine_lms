@@ -23,6 +23,7 @@ import { TransferStudentDialog } from '@/components/groups/TransferStudentDialog
 import { GroupCapacityPanel, type Seats, type WaitingRow } from '@/components/groups/GroupCapacityPanel'
 import { GroupPricePanel } from '@/components/groups/GroupPricePanel'
 import { GroupRulesPanel } from '@/components/rules/GroupRulesPanel'
+import { GroupCurriculumPicker } from '@/components/groups/GroupCurriculumPicker'
 import { ExtraSessionsPanel, type ExtraSessionRow } from '@/components/groups/ExtraSessionsPanel'
 import { FullGroupDialog } from '@/components/groups/FullGroupDialog'
 import { L, useI18n, dayName } from '@/lib/i18n/client'
@@ -754,6 +755,7 @@ export default function GroupsPage() {
                 <GroupCapacityPanel groupId={detail.id} levelId={detail.level?.id ?? null} seats={detail.seats} waiting={detail.waiting ?? []} canEdit={canEditGroups} />
               )}
               <GroupRulesPanel groupId={detail.id} canEditRules={!!myPerms?.permissions?.agreements?.includes('update')} />
+              {detail.level && <GroupCurriculumPicker key={`cur-${detail.id}`} groupId={detail.id} canEdit={canEditGroups} />}
               {detail.level && (
                 <GroupPricePanel
                   key={`price-${detail.id}`}

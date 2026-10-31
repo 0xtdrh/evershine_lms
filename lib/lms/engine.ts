@@ -19,6 +19,7 @@ import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
 import { occurrencesFor } from '@/lib/groups/occurrences'
 import { cairoDateTimeToUtc, cairoToday } from '@/lib/dates/cairo'
 import { visibleTo } from '@/lib/curriculum/blocks'
+import { latestForGroup, latestPublished } from '@/lib/curriculum/variants'
 import { effectiveMode, sessionStates, sessionDone, isUnlockMode, type SessionState, type UnlockMode } from './unlock'
 import { getLmsSettings } from './settings'
 import { blockedAfter, gateMessage, gateMet, parseGate, type GateMissing, type SessionGate } from './gate'
@@ -41,7 +42,7 @@ async function loadGroup(groupId: string) {
     where: { id: groupId },
     select: {
       id: true, className: true, sectionName: true, campusId: true, status: true, startDate: true, currentCycleNumber: true,
-      curriculumEditionId: true, lessonUnlockMode: true, levelId: true,
+      curriculumEditionId: true, curriculumVariantId: true, lessonUnlockMode: true, levelId: true,
       level: { select: { id: true, name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, lessonUnlockMode: true, subject: { select: { name: true } } } },
     },
   })
@@ -55,7 +56,8 @@ export async function resolveEdition(g: Group) {
     if (pinned && (pinned.status === 'PUBLISHED' || pinned.status === 'ARCHIVED')) return pinned
   }
   if (!g.levelId) return null
-  const latest = await prisma.curriculumEdition.findFirst({ where: { levelId: g.levelId, status: 'PUBLISHED' }, orderBy: { number: 'desc' } })
+  // a02: the group's own curriculum of the level (place / way / chosen), see lib/curriculum/variants.ts
+  const latest = await latestForGroup(g)
   if (latest && g.startDate) {
     await prisma.classSection.update({ where: { id: g.id }, data: { curriculumEditionId: latest.id } }).catch(() => undefined)
   }
@@ -138,8 +140,9 @@ export async function groupLessons(groupId: string, opts: { studentId?: string }
     ...base,
     edition: { id: edition.id, number: edition.number },
     newerEdition: await (async () => {
-      const latest = await prisma.curriculumEdition.findFirst({ where: { levelId: g.levelId!, status: 'PUBLISHED' }, orderBy: { number: 'desc' }, select: { id: true, number: true } })
-      return latest && latest.number > edition.number ? latest : null
+      // a newer version of the SAME curriculum only
+      const latest = await latestPublished(g.levelId!, edition.variantId ?? null)
+      return latest && latest.number > edition.number && latest.variantId === edition.variantId ? { id: latest.id, number: latest.number } : null
     })(),
     range: { from: offset + 1, to: Math.min(sessions.length, offset + perCycle) },
     heldCount,
@@ -269,7 +272,9 @@ export async function setLessonOverride(groupId: string, sessionNumber: number, 
 export async function moveGroupToLatest(groupId: string): Promise<Outcome<{ number: number; ticksMoved: number }>> {
   const g = await loadGroup(groupId)
   if (!g?.levelId) return fail('NOT_FOUND', 'Group not found')
-  const latest = await prisma.curriculumEdition.findFirst({ where: { levelId: g.levelId, status: 'PUBLISHED' }, orderBy: { number: 'desc' } })
+  // stays inside the group's curriculum: the pinned version's one, else the one that fits the group
+  const pinnedVariant = g.curriculumEditionId ? (await prisma.curriculumEdition.findUnique({ where: { id: g.curriculumEditionId }, select: { variantId: true } }))?.variantId ?? null : undefined
+  const latest = pinnedVariant !== undefined ? await latestPublished(g.levelId, pinnedVariant) : await latestForGroup(g)
   if (!latest) return fail('NONE', 'This level has no published curriculum')
   if (latest.id === g.curriculumEditionId) return fail('SAME', 'The group already uses the newest version')
   let ticksMoved = 0

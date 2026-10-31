@@ -13,6 +13,7 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 import { allowsCampus, loadPlaces } from '@/lib/places/server'
 import { placeCatalog, setOfferedHere } from '@/lib/delivery/catalog'
+import { setPlaceVariant } from '@/lib/curriculum/variants'
 import { CATALOG_KINDS } from '@/lib/delivery/modes'
 
 type Ctx = { params: Promise<{ campusId: string }> }
@@ -32,7 +33,11 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   return successResponse(await placeCatalog(campusId))
 }
 
-const schema = z.object({ kind: z.enum(CATALOG_KINDS), id: z.string().min(1), on: z.boolean() })
+const schema = z.union([
+  z.object({ kind: z.enum(CATALOG_KINDS), id: z.string().min(1), on: z.boolean() }),
+  // a02: which curriculum of a level this place uses (null = main / automatic)
+  z.object({ kind: z.literal('LEVEL'), id: z.string().min(1), curriculumId: z.string().min(1).nullable() }),
+])
 
 export async function PUT(request: NextRequest, { params }: Ctx) {
   const { campusId } = await params
@@ -40,8 +45,13 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   if ('error' in g) return g.error
   const parsed = schema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return errors.validation(parsed.error)
-  const { kind, id, on } = parsed.data
+  const { kind, id } = parsed.data
+  if ('curriculumId' in parsed.data) {
+    if (!checkPermission(g.session.user.role, 'curriculum', 'update')) return errors.forbidden()
+    if (!(await setPlaceVariant(id, campusId, (parsed.data as { curriculumId: string | null }).curriculumId ?? null))) return errors.badRequest('This curriculum is not of this level · المنهج ده مش تبع المستوى ده')
+    return successResponse(await placeCatalog(campusId), 'Saved · اتحفظ')
+  }
   if (!checkPermission(g.session.user.role, kind === 'COURSE' ? 'subject_offerings' : 'class_sections', 'update')) return errors.forbidden()
-  await setOfferedHere(kind, id, campusId, on)
+  await setOfferedHere(kind, id, campusId, (parsed.data as { on: boolean }).on)
   return successResponse(await placeCatalog(campusId), 'Saved · اتحفظ')
 }

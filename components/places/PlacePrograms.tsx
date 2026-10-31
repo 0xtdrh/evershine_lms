@@ -24,7 +24,7 @@ export function PlacePrograms({ campusId }: { campusId: string }) {
   const { data, isLoading } = useQuery({ queryKey: ['place-catalog', campusId], queryFn: () => fetchApi<PlaceCatalogItem[]>(`/api/places/${campusId}/catalog`) })
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const save = useMutation({
-    mutationFn: (v: { kind: string; id: string; on: boolean }) => fetchApi<PlaceCatalogItem[]>(`/api/places/${campusId}/catalog`, { method: 'PUT', body: JSON.stringify(v) }),
+    mutationFn: (v: { kind: string; id: string; on?: boolean; curriculumId?: string | null }) => fetchApi<PlaceCatalogItem[]>(`/api/places/${campusId}/catalog`, { method: 'PUT', body: JSON.stringify(v) }),
     onSuccess: (rows) => { qc.setQueryData(['place-catalog', campusId], rows); ['delivery', 'tracks', 'academic-subjects', 'levels'].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); notify.success(L('Saved', 'اتحفظ')) },
     onError: (e: Error) => notify.error(e.message),
   })
@@ -51,6 +51,13 @@ export function PlacePrograms({ campusId }: { campusId: string }) {
           {it.scope === 'EVERYWHERE' && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{L('every place', 'كل الأماكن')}</span>}
           {it.scope === 'HERE' && <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-700">{L('chosen places', 'أماكن مختارة')}</span>}
           {!parentOn && <span className="text-[11px] text-amber-700">{L('closed above it', 'مقفول من اللي فوقه')}</span>}
+          {it.kind === 'LEVEL' && (it.curricula?.length ?? 0) > 0 && (
+            <select aria-label={L('Curriculum used here', 'المنهج هنا')} className="h-7 rounded border px-1 text-xs" disabled={!can('curriculum', 'update') || save.isPending}
+              value={it.curriculumHere ?? ''} onChange={(e) => save.mutate({ kind: 'LEVEL', id: it.id, curriculumId: e.target.value || null })}>
+              <option value="">{L('Curriculum: main / automatic', 'المنهج: الأساسي / تلقائي')}</option>
+              {it.curricula!.map((c) => <option key={c.id} value={c.id}>{L('Curriculum:', 'المنهج:')} {c.name}</option>)}
+            </select>
+          )}
         </div>
         {open[k] && it.children.map((c) => row(c, parentOn && it.offered, depth + 1))}
       </div>

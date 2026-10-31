@@ -108,15 +108,20 @@ export async function setOfferedHere(kind: CatalogKind, id: string, campusId: st
   })
 }
 
-export interface PlaceCatalogItem { kind: CatalogKind; id: string; name: string; scope: 'EVERYWHERE' | 'HERE' | 'NOT_HERE'; offered: boolean; children: PlaceCatalogItem[] }
+export interface PlaceCatalogItem {
+  kind: CatalogKind; id: string; name: string; scope: 'EVERYWHERE' | 'HERE' | 'NOT_HERE'; offered: boolean; children: PlaceCatalogItem[]
+  /** levels: the other curricula of the level, and the one set for this place (null = main / automatic) */
+  curricula?: { id: string; name: string }[]; curriculumHere?: string | null
+}
 
 /** The whole catalog as seen from one place: tracks → courses → levels, plus standalone courses. */
 export async function placeCatalog(campusId: string): Promise<PlaceCatalogItem[]> {
-  const [m, tracks, courses, levels] = await Promise.all([
+  const [m, tracks, courses, levels, variants] = await Promise.all([
     offeredMap(),
     prisma.track.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.academicSubject.findMany({ where: { isActive: true }, select: { id: true, name: true, trackId: true }, orderBy: { name: 'asc' } }),
     prisma.level.findMany({ where: { isActive: true }, select: { id: true, name: true, subjectId: true }, orderBy: { order: 'asc' } }),
+    prisma.curriculumVariant.findMany({ select: { id: true, name: true, levelId: true, campusIds: true }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }),
   ])
   const scope = (kind: CatalogKind, id: string): PlaceCatalogItem['scope'] => {
     const list = m.get(key(kind, id))
@@ -125,6 +130,8 @@ export async function placeCatalog(campusId: string): Promise<PlaceCatalogItem[]
   const levelItems = (c: { id: string; trackId: string | null }) => levels.filter((l) => l.subjectId === c.id).map((l) => ({
     kind: 'LEVEL' as const, id: l.id, name: l.name, scope: scope('LEVEL', l.id),
     offered: levelOffered(m, { id: l.id, subjectId: c.id, trackId: c.trackId }, campusId), children: [],
+    curricula: variants.filter((v) => v.levelId === l.id).map((v) => ({ id: v.id, name: v.name })),
+    curriculumHere: variants.find((v) => v.levelId === l.id && Array.isArray(v.campusIds) && (v.campusIds as string[]).includes(campusId))?.id ?? null,
   }))
   const courseItem = (c: { id: string; name: string; trackId: string | null }): PlaceCatalogItem => ({
     kind: 'COURSE', id: c.id, name: c.name, scope: scope('COURSE', c.id), offered: courseOffered(m, c, campusId), children: levelItems(c),

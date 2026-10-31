@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { codeFromName, keyFromTitle, uniqueCode } from '@/lib/ids/auto-code'
 import { cleanModes, effectiveModes, isOffered, modesText } from '@/lib/delivery/modes'
+import { groupMode, pickVariant } from '@/lib/delivery/variants'
 
 describe('teaching modes — allowed ways', () => {
   it('cleans stored values', () => {
@@ -59,5 +60,29 @@ describe('branch code and agreement key filled in too', () => {
   it('an agreement key is small letters and dashes, never repeated', () => {
     expect(keyFromTitle('Refund Policy')).toBe('refund-policy')
     expect(keyFromTitle('Refund Policy', ['refund-policy'])).toBe('refund-policy-2')
+  })
+})
+
+describe('which curriculum a group reads', () => {
+  const v = [
+    { id: 'online', modes: ['ONLINE'], campusIds: null },
+    { id: 'nour', modes: null, campusIds: ['P1'] },
+    { id: 'nourOnline', modes: ['ONLINE'], campusIds: ['P1'] },
+    { id: 'spare', modes: null, campusIds: null },
+  ]
+  it('the place and the way decide; place counts more', () => {
+    expect(pickVariant(v, { campusId: 'A', mode: 'BRANCH' })).toBeNull() // main
+    expect(pickVariant(v, { campusId: 'A', mode: 'ONLINE' })).toBe('online')
+    expect(pickVariant(v, { campusId: 'P1', mode: 'BRANCH' })).toBe('nour')
+    expect(pickVariant(v, { campusId: 'P1', mode: 'ONLINE' })).toBe('nourOnline')
+  })
+  it('the group own choice wins; MAIN forces the main one; an unknown choice is ignored', () => {
+    expect(pickVariant(v, { campusId: 'P1', mode: 'BRANCH', chosen: 'spare' })).toBe('spare')
+    expect(pickVariant(v, { campusId: 'P1', mode: 'BRANCH', chosen: 'MAIN' })).toBeNull()
+    expect(pickVariant(v, { campusId: 'A', mode: 'ONLINE', chosen: 'gone' })).toBe('online')
+  })
+  it('the online place teaches online', () => {
+    expect(groupMode('ONLINE')).toBe('ONLINE')
+    expect(groupMode('PARTNER')).toBe('BRANCH')
   })
 })

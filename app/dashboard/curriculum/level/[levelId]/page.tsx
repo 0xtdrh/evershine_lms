@@ -15,12 +15,13 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft, Download, Loader2, MessageSquare, Plus, Trash2, Upload } from 'lucide-react'
+import { VariantsManager, type Variant } from '@/components/curriculum/VariantsManager'
 
-interface Edition { id: string; number: number; status: string; notes: string | null; sessionCount: number; groupCount: number; publishedAt: string | null; createdAt: string }
+interface Edition { id: string; number: number; status: string; notes: string | null; variantId: string | null; sessionCount: number; groupCount: number; publishedAt: string | null; createdAt: string }
 interface Skill { id: string; nameEn: string; nameAr: string }
 interface LevelData {
   level: { id: string; name: string; numberOfSessions: number; subject: { id: string; name: string; track: { name: string } | null } }
-  editions: Edition[]; skills: Skill[]; can: { edit: boolean; approve: boolean; delete: boolean }
+  editions: Edition[]; variants: Variant[]; skills: Skill[]; can: { edit: boolean; approve: boolean; delete: boolean }
 }
 interface EditionData { edition: Edition; sessions: { id: string; number: number; titleEn: string; titleAr: string; durationMin: number | null; blockCount: number; openComments: number }[] }
 
@@ -29,23 +30,26 @@ const STATUS_STYLE: Record<string, string> = {
   PUBLISHED: 'border-emerald-200 bg-emerald-50 text-emerald-700', ARCHIVED: 'border-slate-200 bg-slate-50 text-slate-500',
 }
 
-function NewEditionDialog({ data, onDone }: { data: LevelData; onDone: (id: string) => void }) {
-  const [from, setFrom] = useState<string>(data.editions.find((e) => e.status === 'PUBLISHED')?.id ?? 'blank')
+function NewEditionDialog({ data, variantId, onDone }: { data: LevelData; variantId: string; onDone: (id: string) => void }) {
+  // a02: a new version of the curriculum shown (main or another); it may start from any version of any curriculum
+  const [from, setFrom] = useState<string>(data.editions.find((e) => e.status === 'PUBLISHED' && (e.variantId ?? '') === variantId)?.id ?? data.editions.find((e) => e.status === 'PUBLISHED')?.id ?? 'blank')
+  const curName = (id: string | null) => (id ? data.variants.find((v) => v.id === id)?.name ?? '' : L('Main curriculum', 'المنهج الأساسي'))
   const [notes, setNotes] = useState('')
   const { t } = useI18n()
   const create = useMutation({
-    mutationFn: () => fetchApi<{ id: string }>(`/api/curriculum/levels/${data.level.id}`, { method: 'POST', body: JSON.stringify({ copyFromId: from === 'blank' ? null : from, notes: notes || null }) }),
+    mutationFn: () => fetchApi<{ id: string }>(`/api/curriculum/levels/${data.level.id}`, { method: 'POST', body: JSON.stringify({ copyFromId: from === 'blank' ? null : from, notes: notes || null, variantId: variantId || null }) }),
     onSuccess: (r) => { notify.success(L('Draft created', 'المسودة اتعملت')); onDone(r.id) },
     onError: (e: Error) => notify.error(e.message),
   })
   return (
     <div className="space-y-3 text-sm">
+      <p className="text-xs text-slate-600">{L('For:', 'لـ:')} <b>{curName(variantId || null)}</b></p>
       <label className="block space-y-1"><span className="text-xs text-slate-500">{L('Start from', 'ابدأ من')}</span>
         <Select value={from} onValueChange={setFrom}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="blank">{L(`Empty (${data.level.numberOfSessions} empty sessions)`, `فاضية (${data.level.numberOfSessions} حصة فاضية)`)}</SelectItem>
-            {data.editions.map((e) => <SelectItem key={e.id} value={e.id}>{L('Copy of version', 'نسخة من النسخة')} {e.number} ({t(`cur.status.${e.status}` as 'cur.status.DRAFT')})</SelectItem>)}
+            {data.editions.map((e) => <SelectItem key={e.id} value={e.id}>{L('Copy of version', 'نسخة من النسخة')} {e.number} · {curName(e.variantId)} ({t(`cur.status.${e.status}` as 'cur.status.DRAFT')})</SelectItem>)}
           </SelectContent>
         </Select>
       </label>
@@ -99,13 +103,15 @@ export default function CurriculumLevelPage() {
   const qc = useQueryClient()
   const [selected, setSelected] = useState<string | null>(search.get('edition'))
   const [newOpen, setNewOpen] = useState(false)
+  const [variant, setVariant] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const { data, isLoading, error } = useQuery({ queryKey: ['curriculum-level', levelId], queryFn: () => fetchApi<LevelData>(`/api/curriculum/levels/${levelId}`) })
   useEffect(() => {
-    if (data && (!selected || !data.editions.some((e) => e.id === selected))) {
-      setSelected(data.editions.find((e) => e.status === 'DRAFT' || e.status === 'IN_REVIEW')?.id ?? data.editions[0]?.id ?? null)
+    const mine = data?.editions.filter((e) => (e.variantId ?? '') === variant) ?? []
+    if (data && (!selected || !mine.some((e) => e.id === selected))) {
+      setSelected(mine.find((e) => e.status === 'DRAFT' || e.status === 'IN_REVIEW')?.id ?? mine[0]?.id ?? null)
     }
-  }, [data, selected])
+  }, [data, selected, variant])
   const { data: ed } = useQuery({ queryKey: ['curriculum-edition', selected], queryFn: () => fetchApi<EditionData>(`/api/curriculum/editions/${selected}`), enabled: !!selected })
   const refresh = () => { qc.invalidateQueries({ queryKey: ['curriculum-level', levelId] }); qc.invalidateQueries({ queryKey: ['curriculum-edition'] }); qc.invalidateQueries({ queryKey: ['curriculum-tree'] }) }
 
@@ -142,8 +148,10 @@ export default function CurriculumLevelPage() {
         <p className="text-sm text-slate-500">{data.level.subject.track?.name ?? ''} · {data.level.numberOfSessions} {L('sessions planned', 'حصة متخططة')}</p>
       </div>
 
+      <VariantsManager levelId={data.level.id} variants={data.variants ?? []} selected={variant} onSelect={(id) => { setVariant(id); setSelected(null) }} canEdit={can.edit} canDelete={can.delete} />
+
       <div className="flex flex-wrap items-center gap-2">
-        {data.editions.map((e) => (
+        {data.editions.filter((e) => (e.variantId ?? '') === variant).map((e) => (
           <button key={e.id} type="button" onClick={() => setSelected(e.id)} className={`rounded-lg border px-3 py-1.5 text-sm ${selected === e.id ? 'border-indigo-400 bg-indigo-50 font-semibold' : 'border-slate-200 hover:bg-slate-50'}`}>
             v{e.number} <span className={`ms-1 rounded-full border px-1.5 text-[10px] ${STATUS_STYLE[e.status]}`}>{t(`cur.status.${e.status}` as 'cur.status.DRAFT')}</span>
           </button>
@@ -157,7 +165,7 @@ export default function CurriculumLevelPage() {
         )}
       </div>
 
-      {!data.editions.length && <p className="text-sm text-slate-500">{L('No curriculum for this level yet.', 'لسه مفيش منهج للمستوى ده.')}{can.edit ? L(' Create the first version.', ' اعمل أول نسخة.') : ''}</p>}
+      {!data.editions.some((e) => (e.variantId ?? '') === variant) && <p className="text-sm text-slate-500">{L('No curriculum for this level yet.', 'لسه مفيش منهج للمستوى ده.')}{can.edit ? L(' Create the first version.', ' اعمل أول نسخة.') : ''}</p>}
 
       {cur && (
         <Card>
@@ -198,7 +206,7 @@ export default function CurriculumLevelPage() {
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{t('cur.newEdition')}</DialogTitle></DialogHeader>
-          {newOpen && <NewEditionDialog data={data} onDone={(id) => { setNewOpen(false); setSelected(id); refresh() }} />}
+          {newOpen && <NewEditionDialog data={data} variantId={variant} onDone={(id) => { setNewOpen(false); setSelected(id); refresh() }} />}
         </DialogContent>
       </Dialog>
     </div>
