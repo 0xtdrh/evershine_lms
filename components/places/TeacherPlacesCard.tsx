@@ -18,7 +18,7 @@ import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
 import { cairoToday } from '@/lib/dates/cairo'
 
-interface Pay { campusId: string; fixed: number | null; percent: number | null; perSession: number | null }
+interface Pay { campusId: string; fixed: number | null; percent: number | null; perSession: number | null; onlineFixed?: number | null; onlinePercent?: number | null; onlinePerSession?: number | null }
 interface Period { employer: 'TECHNOVA' | 'PARTNER'; partnerName?: string | null; kind: 'TEACHER' | 'TRAINEE'; fromDate: string; toDate?: string | null; note?: string | null }
 interface Data { primary: string; allLocations: boolean; campusIds: string[]; pay: Pay[]; employment: Period[] }
 interface Campus { id: string; name: string; kind?: string }
@@ -63,6 +63,11 @@ export function TeacherPlacesCard({ teacherId }: { teacherId: string }) {
               <label className="flex items-center gap-1">{L('Fixed', 'ثابت')} <Input type="number" className="h-8 w-24" value={p.fixed ?? ''} onChange={(e) => setPay(c.id, { fixed: num(e.target.value) })} /></label>
               <label className="flex items-center gap-1">% <Input type="number" className="h-8 w-20" value={p.percent ?? ''} onChange={(e) => setPay(c.id, { percent: num(e.target.value) })} /></label>
               <label className="flex items-center gap-1">{L('Per session', 'للحصة')} <Input type="number" className="h-8 w-24" value={p.perSession ?? ''} onChange={(e) => setPay(c.id, { perSession: num(e.target.value) })} /></label>
+              <span className="flex flex-wrap items-center gap-1 rounded bg-indigo-50 px-1 py-0.5" title={L('Online (empty = same as above)', 'أونلاين (فاضي = نفس اللي قبله)')}>💻
+                <Input type="number" aria-label={L('Online fixed', 'ثابت أونلاين')} placeholder={L('fixed', 'ثابت')} className="h-7 w-20" value={p.onlineFixed ?? ''} onChange={(e) => setPay(c.id, { onlineFixed: num(e.target.value) })} />
+                <Input type="number" aria-label={L('Online %', '% أونلاين')} placeholder="%" className="h-7 w-16" value={p.onlinePercent ?? ''} onChange={(e) => setPay(c.id, { onlinePercent: num(e.target.value) })} />
+                <Input type="number" aria-label={L('Online per session', 'حصة أونلاين')} placeholder={L('session', 'حصة')} className="h-7 w-20" value={p.onlinePerSession ?? ''} onChange={(e) => setPay(c.id, { onlinePerSession: num(e.target.value) })} />
+              </span>
             </div>
           ) })}
         </div>

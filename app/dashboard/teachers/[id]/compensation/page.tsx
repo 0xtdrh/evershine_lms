@@ -20,6 +20,9 @@ interface TeacherDetail {
   defaultFixedAmount: number | null
   defaultPercentOfStudentPayment: number | null
   defaultPerSessionAmount: number | null
+  defaultOnlineFixedAmount?: number | null
+  defaultOnlinePercent?: number | null
+  defaultOnlinePerSessionAmount?: number | null
 }
 
 function apiErrorMessage(err: unknown, fallback: string): string {
@@ -40,7 +43,7 @@ export default function TeacherCompensationPage() {
     queryFn: () => fetchApi(`/api/teachers/${params.id}`),
   })
 
-  const [form, setForm] = useState({ monthlySalary: '', fixedAmount: '', percentOfStudentPayment: '', perSessionAmount: '' })
+  const [form, setForm] = useState({ monthlySalary: '', fixedAmount: '', percentOfStudentPayment: '', perSessionAmount: '', onlineFixed: '', onlinePercent: '', onlinePerSession: '' })
 
   useEffect(() => {
     if (teacher) {
@@ -49,6 +52,9 @@ export default function TeacherCompensationPage() {
         fixedAmount: teacher.defaultFixedAmount != null ? String(teacher.defaultFixedAmount) : '',
         percentOfStudentPayment: teacher.defaultPercentOfStudentPayment != null ? String(teacher.defaultPercentOfStudentPayment) : '',
         perSessionAmount: teacher.defaultPerSessionAmount != null ? String(teacher.defaultPerSessionAmount) : '',
+        onlineFixed: teacher.defaultOnlineFixedAmount != null ? String(teacher.defaultOnlineFixedAmount) : '',
+        onlinePercent: teacher.defaultOnlinePercent != null ? String(teacher.defaultOnlinePercent) : '',
+        onlinePerSession: teacher.defaultOnlinePerSessionAmount != null ? String(teacher.defaultOnlinePerSessionAmount) : '',
       })
     }
   }, [teacher])
@@ -62,6 +68,9 @@ export default function TeacherCompensationPage() {
           defaultFixedAmount: form.fixedAmount ? Number(form.fixedAmount) : null,
           defaultPercentOfStudentPayment: form.percentOfStudentPayment ? Number(form.percentOfStudentPayment) : null,
           defaultPerSessionAmount: form.perSessionAmount ? Number(form.perSessionAmount) : null,
+          defaultOnlineFixedAmount: form.onlineFixed ? Number(form.onlineFixed) : null,
+          defaultOnlinePercent: form.onlinePercent ? Number(form.onlinePercent) : null,
+          defaultOnlinePerSessionAmount: form.onlinePerSession ? Number(form.onlinePerSession) : null,
         }),
       }),
     onSuccess: () => notify.success(L('Pay settings saved', 'إعدادات الأجر اتحفظت')),
@@ -104,6 +113,15 @@ export default function TeacherCompensationPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="perSession">{L('Fixed amount per session taught', 'مبلغ ثابت لكل حصة')}</Label>
                 <Input id="perSession" type="number" placeholder={L('e.g. 100', 'مثلاً 100')} value={form.perSessionAmount} onChange={(e) => setForm({ ...form, perSessionAmount: e.target.value })} />
+              </div>
+              <div className="space-y-2 rounded-md border border-indigo-100 bg-indigo-50 p-3">
+                <p className="text-sm font-medium text-indigo-800">💻 {L('Online (empty = same as the branch amount)', 'الأونلاين (فاضي = نفس مبلغ الفرع)')}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1"><Label htmlFor="onFixed" className="text-xs">{L('Fixed per group', 'ثابت للجروب')}</Label><Input id="onFixed" type="number" value={form.onlineFixed} onChange={(e) => setForm({ ...form, onlineFixed: e.target.value })} /></div>
+                  <div className="space-y-1"><Label htmlFor="onPct" className="text-xs">{L('Percent (%)', 'نسبة (%)')}</Label><Input id="onPct" type="number" min="0" max="100" value={form.onlinePercent} onChange={(e) => setForm({ ...form, onlinePercent: e.target.value })} /></div>
+                  <div className="space-y-1"><Label htmlFor="onSession" className="text-xs">{L('Per online session', 'لكل حصة أونلاين')}</Label><Input id="onSession" type="number" value={form.onlinePerSession} onChange={(e) => setForm({ ...form, onlinePerSession: e.target.value })} /></div>
+                </div>
+                <p className="text-xs text-indigo-700">{L('An online session is paid the online rate. A fully online group takes the online fixed amount and %. Recorded sessions are not paid per session.', 'الحصة الأونلاين بتتحسب بسعر الأونلاين. الجروب اللي كله أونلاين بياخد المبلغ الثابت والنسبة بتوع الأونلاين. الحصص المسجلة مالهاش أجر بالحصة.')}</p>
               </div>
               <p className="text-xs text-slate-400">{L('Leave any field blank to not use that component. Combine as many as needed — these apply per group the teacher teaches.', 'سيب أي خانة فاضية علشان ماتستخدمهاش. تقدر تجمع أكتر من واحدة — بتتطبّق على كل جروب المدرب بيدرّسه.')}</p>
             </div>

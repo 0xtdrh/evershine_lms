@@ -13,7 +13,8 @@ const dateOnly = (s: string) => new Date(`${s}T00:00:00.000Z`)
 /** Today's online sessions of a student's groups (link only while Join is open). */
 export async function myOnlineSessions(studentId: string, now = new Date()) {
   const enr = await prisma.studentEnrollment.findMany({
-    where: { studentId, status: 'ACTIVE', classSection: { status: 'ACTIVE', onlineMeetingUrl: { not: null } } },
+    // a02 M1 batch 6: a group with only a link for today counts too
+    where: { studentId, status: 'ACTIVE', classSection: { status: 'ACTIVE', OR: [{ onlineMeetingUrl: { not: null } }, { id: { in: (await prisma.sessionMeetingLink.findMany({ where: { date: dateOnly(cairoToday(now)) }, select: { classSectionId: true } })).map((l) => l.classSectionId) } }] } },
     select: { classSectionId: true, classSection: { select: { className: true, sectionName: true, scheduleSlots: true } } },
   })
   if (!enr.length) return []
@@ -48,7 +49,10 @@ export async function myOnlineSessions(studentId: string, now = new Date()) {
 /** The student (or the parent for a young child) presses Join: logged once per session, returns the link. */
 export async function joinOnline(studentId: string, groupId: string, userId: string, now = new Date()): Promise<{ ok: boolean; url?: string; message?: string }> {
   const g = await prisma.classSection.findUnique({ where: { id: groupId }, select: { onlineMeetingUrl: true } })
-  if (!g?.onlineMeetingUrl) return { ok: false, message: 'This group has no online class link' }
+  // a02 M1 batch 6: today's own link wins over the group link
+  const own = await prisma.sessionMeetingLink.findUnique({ where: { classSectionId_date: { classSectionId: groupId, date: dateOnly(cairoToday(now)) } }, select: { url: true } })
+  const link = own?.url ?? g?.onlineMeetingUrl ?? null
+  if (!link) return { ok: false, message: 'This group has no online class link' }
   const session = (await myOnlineSessions(studentId, now)).find((s) => s.groupId === groupId)
   if (!session) return { ok: false, message: 'There is no online session of this group today' }
   if (!session.canJoin) return { ok: false, message: `Join opens at ${session.opensAt.toISOString()}` }
@@ -58,7 +62,7 @@ export async function joinOnline(studentId: string, groupId: string, userId: str
     create: { classSectionId: groupId, studentId, sessionDate, userId },
     update: {},
   })
-  return { ok: true, url: g.onlineMeetingUrl }
+  return { ok: true, url: link }
 }
 
 /** Who joined a group's online session on a date (for the attendance screen). */

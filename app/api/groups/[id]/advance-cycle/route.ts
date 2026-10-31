@@ -187,6 +187,9 @@ export async function POST(
         overrideFixedAmount: currentOffering.overrideFixedAmount,
         overridePercentOfStudentPayment: currentOffering.overridePercentOfStudentPayment,
         overridePerSessionAmount: currentOffering.overridePerSessionAmount,
+        overrideOnlineFixedAmount: currentOffering.overrideOnlineFixedAmount,
+        overrideOnlinePercent: currentOffering.overrideOnlinePercent,
+        overrideOnlinePerSessionAmount: currentOffering.overrideOnlinePerSessionAmount,
       },
     })
   }

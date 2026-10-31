@@ -724,6 +724,10 @@ model Teacher {
   defaultFixedAmount             Decimal? @db.Decimal(10, 2)
   defaultPercentOfStudentPayment Decimal? @db.Decimal(5, 2)
   defaultPerSessionAmount        Decimal? @db.Decimal(10, 2)
+  /// a02 M1 batch 6: the same rule for ONLINE (empty = the branch amount above)
+  defaultOnlineFixedAmount       Decimal? @db.Decimal(10, 2)
+  defaultOnlinePercent           Decimal? @db.Decimal(5, 2)
+  defaultOnlinePerSessionAmount  Decimal? @db.Decimal(10, 2)
   profilePicture                 String? // Cloudinary URL
   isActive                       Boolean  @default(true)
 
@@ -2344,6 +2348,10 @@ model SubjectOffering {
   overrideFixedAmount             Decimal? @db.Decimal(10, 2)
   overridePercentOfStudentPayment Decimal? @db.Decimal(5, 2)
   overridePerSessionAmount        Decimal? @db.Decimal(10, 2)
+  /// a02 M1 batch 6: the group's online rule (empty = the amount above)
+  overrideOnlineFixedAmount       Decimal? @db.Decimal(10, 2)
+  overrideOnlinePercent           Decimal? @db.Decimal(5, 2)
+  overrideOnlinePerSessionAmount  Decimal? @db.Decimal(10, 2)
 
   academicYear           AcademicYear            @relation(fields: [academicYearId], references: [id])
   classSection           ClassSection            @relation(fields: [classSectionId], references: [id])
@@ -4645,6 +4653,10 @@ model TeacherPlacePay {
   fixedAmount             Decimal? @db.Decimal(10, 2)
   percentOfStudentPayment Decimal? @db.Decimal(5, 2)
   perSessionAmount        Decimal? @db.Decimal(10, 2)
+  /// a02 M1 batch 6: online rule in this place (empty = the amount above)
+  onlineFixedAmount       Decimal? @db.Decimal(10, 2)
+  onlinePercent           Decimal? @db.Decimal(5, 2)
+  onlinePerSessionAmount  Decimal? @db.Decimal(10, 2)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
@@ -5235,6 +5247,18 @@ model SessionModeOverride {
   date           DateTime @db.Date
   mode           String   @db.VarChar(8)
   note           String?  @db.VarChar(300)
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  @@unique([classSectionId, date])
+}
+
+/// a02 M1 batch 6: a meeting link for ONE session of a group (e.g. the substitute's own room); wins over ClassSection.onlineMeetingUrl.
+model SessionMeetingLink {
+  id             String   @id @default(cuid())
+  classSectionId String
+  date           DateTime @db.Date
+  url            String   @db.VarChar(500)
   createdById    String?
   createdAt      DateTime @default(now())
 

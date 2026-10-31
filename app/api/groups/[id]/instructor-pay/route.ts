@@ -20,6 +20,10 @@ const bodySchema = z.object({
   fixedAmount: z.number().min(0).optional().nullable(),
   percentOfStudentPayment: z.number().min(0).max(100).optional().nullable(),
   perSessionAmount: z.number().min(0).optional().nullable(),
+  // a02 M1 batch 6: online parts (empty = the amount above)
+  onlineFixedAmount: z.number().min(0).optional().nullable(),
+  onlinePercent: z.number().min(0).max(100).optional().nullable(),
+  onlinePerSessionAmount: z.number().min(0).optional().nullable(),
 })
 
 export async function PATCH(
@@ -60,6 +64,9 @@ export async function PATCH(
       ...(parsed.data.fixedAmount !== undefined && { overrideFixedAmount: parsed.data.fixedAmount }),
       ...(parsed.data.percentOfStudentPayment !== undefined && { overridePercentOfStudentPayment: parsed.data.percentOfStudentPayment }),
       ...(parsed.data.perSessionAmount !== undefined && { overridePerSessionAmount: parsed.data.perSessionAmount }),
+      ...(parsed.data.onlineFixedAmount !== undefined && { overrideOnlineFixedAmount: parsed.data.onlineFixedAmount }),
+      ...(parsed.data.onlinePercent !== undefined && { overrideOnlinePercent: parsed.data.onlinePercent }),
+      ...(parsed.data.onlinePerSessionAmount !== undefined && { overrideOnlinePerSessionAmount: parsed.data.onlinePerSessionAmount }),
     },
   })
 

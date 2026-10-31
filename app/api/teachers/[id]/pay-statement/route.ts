@@ -46,9 +46,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   for (const g of st.groups) {
     for (const s of g.sessions) rows.push({
       group: g.label, place: g.place, kind: s.counted ? 'Session' : s.otherTeacher ? `Covered by ${s.otherTeacher}` : 'Session (not paid)',
-      date: s.date, detail: s.n ? `${s.n}${s.of ? ` / ${s.of}` : ''}` : '', amount: s.counted ? (g.rule.perSession ?? 0) : 0,
+      date: s.date, detail: s.n ? `${s.n}${s.of ? ` / ${s.of}` : ''}` : '', amount: s.counted ? (s.rate ?? 0) : 0,
     })
-    for (const x of g.studentShares) rows.push({ group: g.label, place: g.place, kind: `Share ${g.rule.percent}%`, date: '', detail: x.student, amount: x.share })
+    for (const x of g.studentShares) rows.push({ group: g.label, place: g.place, kind: `Share ${g.online && g.rule.onlinePercent != null ? g.rule.onlinePercent : g.rule.percent}%`, date: '', detail: x.student, amount: x.share })
     if (g.fixedAmount) rows.push({ group: g.label, place: g.place, kind: 'Fixed', date: '', detail: '', amount: g.fixedAmount })
     for (const a of g.adjustments) rows.push({ group: g.label, place: g.place, kind: a.amount >= 0 ? 'Bonus' : 'Deduction', date: a.date, detail: a.reason, amount: a.amount })
   }

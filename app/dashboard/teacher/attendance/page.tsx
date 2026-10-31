@@ -336,7 +336,7 @@ export default function TeacherAttendancePage() {
         </CardContent>
       </Card>
 
-      {classSectionId && <OnlineLinkField groupId={classSectionId} />}
+      {classSectionId && <OnlineLinkField groupId={classSectionId} date={date} />}
       {classSectionId && <GroupLessonsPanel groupId={classSectionId} />}
       {classSectionId && <SessionReportPanel groupId={classSectionId} date={date} />}
 

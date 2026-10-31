@@ -35,7 +35,8 @@ export function periodsProblem(periods: EmploymentPeriod[]): string | null {
 
 /** Pay rule level: group override → the place's rate for this instructor → the instructor's default. */
 export function pickPayRule<T extends { fixed: unknown; percent: unknown; perSession: unknown }>(group: T | null, place: T | null, teacher: T | null): { rule: T | null; source: 'GROUP_OVERRIDE' | 'PLACE_RATE' | 'TEACHER_DEFAULT' | 'NONE' } {
-  const has = (r: T | null) => !!r && (r.fixed != null || r.percent != null || r.perSession != null)
+  // a02 M1 batch 6: an online amount alone also makes the rule count
+  const has = (r: T | null) => !!r && Object.values(r).some((v) => v != null)
   if (has(group)) return { rule: group, source: 'GROUP_OVERRIDE' }
   if (has(place)) return { rule: place, source: 'PLACE_RATE' }
   if (teacher) return { rule: teacher, source: 'TEACHER_DEFAULT' }

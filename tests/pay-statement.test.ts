@@ -46,7 +46,7 @@ describe('instructor pay statement (2026-10-26)', () => {
     const a = statementGroup(base({ sessions: [{ date: '2026-10-20', n: 1, of: 4, counted: true }], adjustments: [{ amount: -20, reason: 'late', date: '2026-10-21', kind: 'MANUAL' }] }))
     const b = statementGroup(base({ id: 'g2', label: 'Robots 2 B', coveredOnly: true, adjustments: [{ amount: 100, reason: 'cover', date: '2026-10-25', kind: 'SUBSTITUTE' }] }))
     const t = statementTotals([a, b], [{ amount: 50, reason: 'transport', date: '2026-10-30', kind: 'MANUAL' }])
-    expect(t).toEqual({ sessions: 1, sessionAmount: 100, percentAmount: 0, fixedAmount: 0, earnings: 100, bonuses: 150, deductions: 20, net: 230 })
+    expect(t).toEqual({ sessions: 1, onlineSessions: 0, onlineAmount: 0, sessionAmount: 100, percentAmount: 0, fixedAmount: 0, earnings: 100, bonuses: 150, deductions: 20, net: 230 })
   })
 
   it('slip lines: one earning line per group, then each bonus / deduction', () => {

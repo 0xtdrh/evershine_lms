@@ -452,7 +452,7 @@ export default function SectionAttendancePage() {
       )}
 
       {/* LMS L2: lesson plan — only for the instructor / managers (hidden for secretaries) */}
-      {classSectionId && <OnlineLinkField groupId={classSectionId} />}
+      {classSectionId && <OnlineLinkField groupId={classSectionId} date={date} />}
       {classSectionId && <GroupLessonsPanel groupId={classSectionId} />}
       {classSectionId && <SessionReportPanel groupId={classSectionId} date={date} />}
 

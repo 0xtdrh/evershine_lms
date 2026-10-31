@@ -47,8 +47,8 @@ export async function GET(_request: NextRequest) {
   for (const r of rows) {
     const dateStr = r.date.toISOString().slice(0, 10)
     const [substituteRate, originalRate, sessionInfo, countedForAbsent] = await Promise.all([
-      resolveGroupSessionRate(r.classSection.id, r.substituteTeacher.id),
-      resolveGroupSessionRate(r.classSection.id, r.originalTeacher.id),
+      resolveGroupSessionRate(r.classSection.id, r.substituteTeacher.id, dateStr),
+      resolveGroupSessionRate(r.classSection.id, r.originalTeacher.id, dateStr),
       getSessionNumberForDate(r.classSection.id, dateStr),
       // 2026-10-25 (live test): is the missed session still counted for the absent instructor's per-session pay?
       // When the substitute marked the attendance it is counted for the substitute only — a deduction would be a 2nd cut.

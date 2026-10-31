@@ -10,6 +10,7 @@ import {
   monthBounds, preDiscountValue, round2, statementGroup, statementTotals,
   type PayRule, type StatementAdjustment, type StatementGroup, type StatementGroupFacts, type StatementSession, type StatementTotals,
 } from './pay-statement-calc'
+import { groupIsOnline, modeOfDay, onlineFrom } from './online-pay'
 
 export interface PayStatement {
   teacher: { id: string; userId: string; name: string; employeeId: string | null }
@@ -26,15 +27,16 @@ const num = (v: unknown) => (v != null ? Number(v) : null)
 /** The pay rule of one instructor in one group: group override → his rate in the group's place → his default. */
 async function ruleFor(groupId: string, campusId: string, teacherId: string, teacherDefault: PayRule): Promise<PayRule> {
   const [offering, placeRow] = await Promise.all([
-    prisma.subjectOffering.findFirst({ where: { classSectionId: groupId, teacherId }, orderBy: { createdAt: 'desc' }, select: { overrideFixedAmount: true, overridePercentOfStudentPayment: true, overridePerSessionAmount: true } }),
+    prisma.subjectOffering.findFirst({ where: { classSectionId: groupId, teacherId }, orderBy: { createdAt: 'desc' }, select: { overrideFixedAmount: true, overridePercentOfStudentPayment: true, overridePerSessionAmount: true, overrideOnlineFixedAmount: true, overrideOnlinePercent: true, overrideOnlinePerSessionAmount: true } }),
     prisma.teacherPlacePay.findUnique({ where: { teacherId_campusId: { teacherId, campusId } } }),
   ])
   const picked = pickPayRule<PayRule>(
-    offering ? { fixed: num(offering.overrideFixedAmount), percent: num(offering.overridePercentOfStudentPayment), perSession: num(offering.overridePerSessionAmount) } : null,
-    placeRow ? { fixed: num(placeRow.fixedAmount), percent: num(placeRow.percentOfStudentPayment), perSession: num(placeRow.perSessionAmount) } : null,
+    offering ? { fixed: num(offering.overrideFixedAmount), percent: num(offering.overridePercentOfStudentPayment), perSession: num(offering.overridePerSessionAmount), ...onlineFrom(offering.overrideOnlineFixedAmount, offering.overrideOnlinePercent, offering.overrideOnlinePerSessionAmount) } : null,
+    placeRow ? { fixed: num(placeRow.fixedAmount), percent: num(placeRow.percentOfStudentPayment), perSession: num(placeRow.perSessionAmount), ...onlineFrom(placeRow.onlineFixedAmount, placeRow.onlinePercent, placeRow.onlinePerSessionAmount) } : null,
     teacherDefault,
   )
-  return { fixed: num(picked.rule?.fixed), percent: num(picked.rule?.percent), perSession: num(picked.rule?.perSession) }
+  const r = picked.rule
+  return { fixed: num(r?.fixed), percent: num(r?.percent), perSession: num(r?.perSession), onlineFixed: r?.onlineFixed ?? null, onlinePercent: r?.onlinePercent ?? null, onlinePerSession: r?.onlinePerSession ?? null }
 }
 
 /**
@@ -50,11 +52,11 @@ export async function teacherPayStatement(
   const { from, to } = bounds
   const teacher = await prisma.teacher.findFirst({
     where: { OR: [{ id: teacherIdOrUserId }, { userId: teacherIdOrUserId }] },
-    select: { id: true, userId: true, firstName: true, lastName: true, employeeId: true, defaultFixedAmount: true, defaultPercentOfStudentPayment: true, defaultPerSessionAmount: true },
+    select: { id: true, userId: true, firstName: true, lastName: true, employeeId: true, defaultFixedAmount: true, defaultPercentOfStudentPayment: true, defaultPerSessionAmount: true, defaultOnlineFixedAmount: true, defaultOnlinePercent: true, defaultOnlinePerSessionAmount: true },
   })
   if (!teacher) return null
   const tId = teacher.id
-  const teacherDefault: PayRule = { fixed: num(teacher.defaultFixedAmount), percent: num(teacher.defaultPercentOfStudentPayment), perSession: num(teacher.defaultPerSessionAmount) }
+  const teacherDefault: PayRule = { fixed: num(teacher.defaultFixedAmount), percent: num(teacher.defaultPercentOfStudentPayment), perSession: num(teacher.defaultPerSessionAmount), ...onlineFrom(teacher.defaultOnlineFixedAmount, teacher.defaultOnlinePercent, teacher.defaultOnlinePerSessionAmount) }
   const periods = await prisma.teacherEmployment.findMany({ where: { teacherId: tId }, select: { employer: true, kind: true, fromDate: true, toDate: true } })
 
   const scopeWhere: Record<string, unknown>[] = []
@@ -62,8 +64,8 @@ export async function teacherPayStatement(
   if (opts.campusId) scopeWhere.push({ campusId: opts.campusId })
   if (opts.groupFilter && Object.keys(opts.groupFilter).length) scopeWhere.push(opts.groupFilter)
   const groupSelect = {
-    id: true, className: true, sectionName: true, campusId: true, startDate: true, expectedEndDate: true,
-    campus: { select: { name: true } },
+    id: true, className: true, sectionName: true, campusId: true, startDate: true, expectedEndDate: true, scheduleSlots: true,
+    campus: { select: { name: true, kind: true } },
     level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } },
   } as const
 
@@ -107,6 +109,9 @@ export async function teacherPayStatement(
     for (const r of records) { const k = ymd(r.attendanceDate); if (!byDay.has(k)) byDay.set(k, r.taughtByTeacherId ?? r.markedByTeacherId ?? null) }
     for (const l of logs) { const k = ymd(l.sessionDate); if (!byDay.has(k)) byDay.set(k, l.taughtByTeacherId ?? null) }
     const days = [...byDay.keys()].sort()
+    // a02 M1 batch 6: the way each session was taught
+    const modeRows = await prisma.sessionModeOverride.findMany({ where: { classSectionId: g.id, date: { gte: from, lt: to } }, select: { date: true, mode: true } })
+    const modeOverrides = new Map(modeRows.map((m) => [ymd(m.date), m.mode]))
     const of = g.level ? sessionsPerCycle(g.level) : null
     const sessions: StatementSession[] = []
     for (const [i, d] of days.entries()) {
@@ -116,7 +121,7 @@ export async function teacherPayStatement(
       const mine = who === tId
       const paid = paidByTechNovaOn(periods, date)
       if (coveredOnly && !mine) continue
-      sessions.push({ date: d, n: i + 1, of, counted: mine && paid, otherTeacher: mine ? null : await nameOf(who), notPaidByTechNova: mine && !paid })
+      sessions.push({ date: d, n: i + 1, of, counted: mine && paid, otherTeacher: mine ? null : await nameOf(who), notPaidByTechNova: mine && !paid, mode: modeOfDay(d, g.scheduleSlots, modeOverrides) })
     }
 
     // percent: money paid in the month on this group's invoices (before discount) minus refunds approved in the month
@@ -166,6 +171,7 @@ export async function teacherPayStatement(
     if (!sessions.length && !students.length && !fixedCounts && !adjustments.length) continue
     facts.push({
       id: g.id, label: `${g.className} ${g.sectionName}`.trim(), place: g.campus?.name ?? '', campusId: g.campusId, coveredOnly,
+      online: groupIsOnline(g.campus?.kind, g.scheduleSlots),
       rule, fixedCounts, sessions, students, adjustments,
     })
   }

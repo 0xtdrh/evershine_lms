@@ -469,6 +469,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
       teacherId: string; teacherName: string
       fixedAmount: number; percentOfStudentPayment: number | null; percentAmount: number
       perSessionAmount: number | null; sessionsCounted: number; sessionAmount: number
+      onlineSessions?: number; onlinePerSessionAmount?: number | null; recordedSessions?: number; groupOnline?: boolean
       adjustmentsTotal: number
       adjustments: { id: string; amount: number; reason: string; createdAt: string }[]
       total: number
@@ -485,7 +486,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
   })
 
   // ── Instructor pay override + adjustments ─────────────────────────────
-  const [payForm, setPayForm] = useState({ fixedAmount: '', percentOfStudentPayment: '', perSessionAmount: '' })
+  const [payForm, setPayForm] = useState({ fixedAmount: '', percentOfStudentPayment: '', perSessionAmount: '', onlineFixedAmount: '', onlinePercent: '', onlinePerSessionAmount: '' })
   const setInstructorPayMutation = useMutation({
     mutationFn: () =>
       fetchApi(`/api/groups/${selectedGroupId}/instructor-pay`, {
@@ -494,6 +495,9 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
           fixedAmount: payForm.fixedAmount ? Number(payForm.fixedAmount) : null,
           percentOfStudentPayment: payForm.percentOfStudentPayment ? Number(payForm.percentOfStudentPayment) : null,
           perSessionAmount: payForm.perSessionAmount ? Number(payForm.perSessionAmount) : null,
+          onlineFixedAmount: payForm.onlineFixedAmount ? Number(payForm.onlineFixedAmount) : null,
+          onlinePercent: payForm.onlinePercent ? Number(payForm.onlinePercent) : null,
+          onlinePerSessionAmount: payForm.onlinePerSessionAmount ? Number(payForm.onlinePerSessionAmount) : null,
         }),
       }),
     onSuccess: () => {
@@ -939,7 +943,10 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                   <p className="text-xs text-slate-500">
                     {L('Fixed', 'ثابت')} {financials.teacherPay.fixedAmount.toLocaleString()}
                     {financials.teacherPay.percentOfStudentPayment != null && ` · ${financials.teacherPay.percentOfStudentPayment}% of payments = ${financials.teacherPay.percentAmount.toLocaleString()}`}
-                    {financials.teacherPay.perSessionAmount != null && ` · ${financials.teacherPay.sessionsCounted} sessions × ${financials.teacherPay.perSessionAmount} = ${financials.teacherPay.sessionAmount.toLocaleString()}`}
+                    {financials.teacherPay.perSessionAmount != null && !financials.teacherPay.onlineSessions && ` · ${financials.teacherPay.sessionsCounted} ${L('sessions', 'حصة')} × ${financials.teacherPay.perSessionAmount} = ${financials.teacherPay.sessionAmount.toLocaleString()}`}
+                    {!!financials.teacherPay.onlineSessions && ` · ${L('branch', 'فرع')} ${financials.teacherPay.sessionsCounted - financials.teacherPay.onlineSessions} × ${financials.teacherPay.perSessionAmount ?? 0} + ${L('online', 'أونلاين')} ${financials.teacherPay.onlineSessions} × ${financials.teacherPay.onlinePerSessionAmount ?? 0} = ${financials.teacherPay.sessionAmount.toLocaleString()}`}
+                    {!!financials.teacherPay.recordedSessions && ` · ${L('recorded (not paid per session)', 'مسجلة (من غير أجر بالحصة)')} ${financials.teacherPay.recordedSessions}`}
+                    {financials.teacherPay.groupOnline && ` · 💻 ${L('online group', 'جروب أونلاين')}`}
                     {financials.teacherPay.adjustmentsTotal !== 0 && ` · adjustments ${financials.teacherPay.adjustmentsTotal.toLocaleString()}`}
                   </p>
                   <p className="text-[10px] text-slate-400">
@@ -964,6 +971,12 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                         <Input placeholder={L('Fixed', 'ثابت')} type="number" value={payForm.fixedAmount} onChange={(e) => setPayForm({ ...payForm, fixedAmount: e.target.value })} className="h-8 text-xs" />
                         <Input placeholder={L('% of payments', '% من المدفوع')} type="number" value={payForm.percentOfStudentPayment} onChange={(e) => setPayForm({ ...payForm, percentOfStudentPayment: e.target.value })} className="h-8 text-xs" />
                         <Input placeholder={L('Per session', 'للحصة')} type="number" value={payForm.perSessionAmount} onChange={(e) => setPayForm({ ...payForm, perSessionAmount: e.target.value })} className="h-8 text-xs" />
+                      </div>
+                      <p className="text-[11px] text-indigo-700">💻 {L('Online (empty = same as above)', 'الأونلاين (فاضي = نفس اللي فوق)')}</p>
+                      <div className="flex gap-2">
+                        <Input placeholder={L('Online fixed', 'ثابت أونلاين')} type="number" value={payForm.onlineFixedAmount} onChange={(e) => setPayForm({ ...payForm, onlineFixedAmount: e.target.value })} className="h-8 text-xs" />
+                        <Input placeholder={L('Online %', '% أونلاين')} type="number" value={payForm.onlinePercent} onChange={(e) => setPayForm({ ...payForm, onlinePercent: e.target.value })} className="h-8 text-xs" />
+                        <Input placeholder={L('Per online session', 'لكل حصة أونلاين')} type="number" value={payForm.onlinePerSessionAmount} onChange={(e) => setPayForm({ ...payForm, onlinePerSessionAmount: e.target.value })} className="h-8 text-xs" />
                       </div>
                       <Button size="sm" className="h-7 text-xs w-full" disabled={setInstructorPayMutation.isPending} onClick={() => setInstructorPayMutation.mutate()}>
                         {L('Save rule for this group', 'احفظ القاعدة للجروب ده')}

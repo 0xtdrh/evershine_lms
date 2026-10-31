@@ -2333,6 +2333,24 @@ check "the family's attendance timeline says how (Arabic)" "$(api GET /api/stude
 NSUN=""; for i in 1 2 3 4 5 6 7; do [ -z "$NSUN" ] && [ "$(cairo +%w $i)" = "0" ] && NSUN=$(D $i); done
 api POST /api/absence-excuses "{\"studentId\":\"$MST\",\"classSectionId\":\"$CVG\",\"sessionDate\":\"$NSUN\",\"reason\":\"Internet cut\",\"kind\":\"TECHNICAL\"}" >/dev/null
 check "a technical-problem excuse is kept as such" "$(M "SELECT kind FROM AbsenceExcuse WHERE studentId='$MST' AND classSectionId='$CVG' AND sessionDate='$NSUN'")" "TECHNICAL"
+echo "== 73. Instructor pay for online sessions + a link for one session (a02 batch 6, 2026-10-31)"
+check "e2e data: the online-way instructor gets the curriculum group (Super Admin force)" "$(api POST /api/groups/$CVG/instructor "{\"teacherId\":\"$EW\",\"force\":true}" | jq_ "d['success']")" "True"
+M "UPDATE EnrollmentAttendanceRecord r JOIN StudentEnrollment e ON e.id=r.studentEnrollmentId SET r.taughtByTeacherId='$EW' WHERE e.classSectionId='$CVG'"
+check "instructor default pay: 100 per session, 80 per online session" "$(api PATCH /api/teachers/$EW '{"defaultPerSessionAmount":100,"defaultOnlinePerSessionAmount":80}' | jq_ "d['success']")/$(M "SELECT CONCAT(ROUND(defaultPerSessionAmount),'/',ROUND(defaultOnlinePerSessionAmount)) FROM Teacher WHERE id='$EW'")" "True/100/80"
+check "pay statement: the online Sunday is paid 80" "$(api GET "/api/teachers/$EW/pay-statement?month=${LSUN:0:7}&groupId=$CVG" | jq_ "[(s['mode'], s['rate']) for g in d['data']['groups'] for s in g['sessions'] if s['date']=='$LSUN']")" "[('ONLINE', 80)]"
+check "pay statement: the branch Tuesday is paid 100" "$(api GET "/api/teachers/$EW/pay-statement?month=${LTUE:0:7}&groupId=$CVG" | jq_ "[(s['mode'], s['rate']) for g in d['data']['groups'] for s in g['sessions'] if s['date']=='$LTUE']")" "[('BRANCH', 100)]"
+check "the group's own online rate wins (70)" "$(api PATCH /api/groups/$CVG/instructor-pay '{"perSessionAmount":100,"onlinePerSessionAmount":70}' | jq_ "d['success']")/$(api GET "/api/teachers/$EW/pay-statement?month=${LSUN:0:7}&groupId=$CVG" | jq_ "[s['rate'] for g in d['data']['groups'] for s in g['sessions'] if s['date']=='$LSUN']")" "True/[70]"
+check "group money: the cycle splits online sessions" "$(api GET /api/groups/$CVG/financials | jq_ "(d['data']['teacherPay']['onlineSessions'], d['data']['teacherPay']['onlinePerSessionAmount'])")" "(1, 70)"
+check "a recorded session is not paid per session" "$(M "INSERT INTO SessionModeOverride (id,classSectionId,date,mode,createdAt) VALUES ('e2e-rec-$LSUN','$CVG','$LSUN','RECORDED',NOW())" >/dev/null; api GET "/api/teachers/$EW/pay-statement?month=${LSUN:0:7}&groupId=$CVG" | jq_ "[(s['mode'], s['counted'], s.get('rate')) for g in d['data']['groups'] for s in g['sessions'] if s['date']=='$LSUN']")" "[('RECORDED', False, None)]"
+M "DELETE FROM SessionModeOverride WHERE id='e2e-rec-$LSUN'"
+api PATCH /api/groups/$CVG/instructor-pay '{"perSessionAmount":null,"onlinePerSessionAmount":null}' >/dev/null
+EWP=$(api GET /api/teachers/$EW/places)
+check "pay per place keeps an online amount" "$(api PUT /api/teachers/$EW/places "$(echo "$EWP" | python -c "import sys,json;d=json.load(sys.stdin)['data'];d['pay']=[{'campusId':'$DOTHER','fixed':None,'percent':None,'perSession':90,'onlineFixed':None,'onlinePercent':12,'onlinePerSession':60}];print(json.dumps(d))")" | jq_ "d['success']")/$(api GET /api/teachers/$EW/places | jq_ "[(p['perSession'], p['onlinePercent'], p['onlinePerSession']) for p in d['data']['pay'] if p['campusId']=='$DOTHER']")" "True/[(90, 12, 60)]"
+check "…and the place's online rate is used for the online Sunday" "$(api GET "/api/teachers/$EW/pay-statement?month=${LSUN:0:7}&groupId=$CVG" | jq_ "[s['rate'] for g in d['data']['groups'] for s in g['sessions'] if s['date']=='$LSUN']")" "[60]"
+check "a link for one session only is saved" "$(api PATCH /api/groups/$CVG/online "{\"date\":\"$NSUN\",\"sessionUrl\":\"https://meet.google.com/abc-defg-hij\"}" | jq_ "d['success']")/$(api GET "/api/groups/$CVG/online?date=$NSUN" | jq_ "d['data']['sessionUrl']")" "True/https://meet.google.com/abc-defg-hij"
+check "…another day keeps the group link (none)" "$(api GET "/api/groups/$CVG/online?date=$LSUN" | jq_ "d['data']['sessionUrl']")" "None"
+check "…a bad link is refused" "$(api PATCH /api/groups/$CVG/online "{\"date\":\"$NSUN\",\"sessionUrl\":\"javascript:alert(1)\"}" | jq_ "d['success']")" "False"
+check "a secretary cannot set a session link" "$(secapi PATCH /api/groups/$CVG/online "{\"date\":\"$NSUN\",\"sessionUrl\":\"https://zoom.us/j/1\"}" | jq_ "d['success']")" "False"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

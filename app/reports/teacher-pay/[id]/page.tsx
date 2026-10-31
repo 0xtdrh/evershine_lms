@@ -19,6 +19,7 @@ import type { PayStatement } from '@/lib/teachers/pay-statement'
 const money = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${L('EGP', 'ج.م')}`
 const thisMonth = () => cairoToday().slice(0, 7)
 const KIND = (k: string, coveredOnly?: boolean) => coveredOnly ? L('covered as a substitute', 'تغطية كبديل') : ({ PER_SESSION: L('per session', 'بالحصة'), PERCENT: L('percent', 'نسبة'), FIXED: L('fixed', 'ثابت'), MIXED: L('mixed', 'مكس'), NONE: L('no pay set', 'مفيش أجر متحدد') } as Record<string, string>)[k] ?? k
+const WAY = (m?: string) => (m === 'ONLINE' ? ` · 💻 ${L('online', 'أونلاين')}` : m === 'RECORDED' ? ` · 🎬 ${L('recorded', 'مسجلة')}` : '')
 const dayName = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' })
 
 function View({ id }: { id: string }) {
@@ -96,6 +97,13 @@ function View({ id }: { id: string }) {
                 <h2 className="text-sm font-bold">{g.label} <span className="font-normal text-gray-500">· {g.place} · {KIND(g.payKind, g.coveredOnly)}</span></h2>
                 <b>{money(g.total)}</b>
               </div>
+              {(g.onlineSessions > 0 || g.recordedSessions > 0 || g.online) && (
+                <p className="mb-1 text-xs text-gray-600">
+                  {g.online && <>💻 {L('online group', 'جروب أونلاين')} · </>}
+                  {L('branch sessions', 'حصص فرع')} {g.branchSessions} = {money(g.branchAmount)} · {L('online sessions', 'حصص أونلاين')} {g.onlineSessions} = {money(g.onlineAmount)}
+                  {g.recordedSessions > 0 && <> · {L('recorded (not paid per session)', 'مسجلة (من غير أجر بالحصة)')} {g.recordedSessions}</>}
+                </p>
+              )}
               {g.payKind === 'NONE' && !g.coveredOnly && (
                 <p className="mb-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800 print:hidden">{L('⚠ No pay is set for this instructor in this group — set it on the group page (instructor pay) or on the instructor page, then open the statement again.', '⚠ مفيش أجر متحدد للمدرب ده في الجروب ده — حدده من صفحة الجروب (أجر المدرب) أو من صفحة المدرب، وافتح الكشف تاني.')}</p>
               )}
@@ -105,16 +113,16 @@ function View({ id }: { id: string }) {
                   <tbody>{g.sessions.map((s) => (
                     <tr key={s.date} className="border-b">
                       <td className="p-1">{s.n ?? '—'}{s.of ? ` ${L('of', 'من')} ${s.of}` : ''}</td>
-                      <td className="p-1">{dayName(s.date)}</td>
+                      <td className="p-1">{dayName(s.date)}{WAY(s.mode)}</td>
                       <td className="p-1">{s.counted ? st.teacher.name : s.otherTeacher ? `${s.otherTeacher} (${L('substitute', 'بديل')})` : s.notPaidByTechNova ? L('not paid by TechNova that day', 'مش على حساب TechNova اليوم ده') : '—'}</td>
-                      <td className="p-1 text-end">{s.counted && g.rule.perSession ? money(g.rule.perSession) : '—'}</td>
+                      <td className="p-1 text-end">{s.counted && s.rate ? money(s.rate) : '—'}</td>
                     </tr>
                   ))}</tbody>
                 </table>
               )}
               {g.studentShares.length > 0 && (
                 <table className="mb-2 w-full text-xs">
-                  <thead><tr className="bg-gray-50"><th className="p-1 text-start">{L('Student', 'الطالب')}</th><th className="p-1 text-end">{L(`Instructor share (${g.rule.percent}%)`, `نصيب المدرب (${g.rule.percent}%)`)}</th></tr></thead>
+                  <thead><tr className="bg-gray-50"><th className="p-1 text-start">{L('Student', 'الطالب')}</th><th className="p-1 text-end">{(() => { const pct = g.online && g.rule.onlinePercent != null ? g.rule.onlinePercent : g.rule.percent; return L(`Instructor share (${pct}%)`, `نصيب المدرب (${pct}%)`) })()}</th></tr></thead>
                   <tbody>{g.studentShares.map((x) => <tr key={x.student} className="border-b"><td className="p-1">{x.student}</td><td className="p-1 text-end">{money(x.share)}</td></tr>)}</tbody>
                 </table>
               )}
