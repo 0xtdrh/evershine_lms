@@ -2367,6 +2367,7 @@ M "INSERT INTO CashCount (id,accountId,date,expected,counted,difference,status,c
 check "the next day opens with the approved count of the day before" "$(api GET "/api/treasury/daily/$TBOX?date=$(D 1)" | jq_ "(d['data']['opening'], d['data']['openingSource'])")" "(777, 'YESTERDAY_COUNT')"
 M "DELETE FROM CashCount WHERE id='e2e-ycount'"
 check "a branch secretary sees only the branch accounts (not the company bank)" "$(secapi GET "/api/treasury/daily?date=$(D 0)" | jq_ "any(s['account']['id']=='$TBANK' for s in d['data']['sheets'])")" "False"
+check "Excel: the totals and one box's sheet download as .xlsx" "$(curl -s -b "$JAR" -o /dev/null -w '%{http_code}/%{content_type}' "$B/api/treasury/daily?date=$(D 0)&format=xlsx" | cut -c1-24)/$(curl -s -b "$JAR" "$B/api/treasury/daily/$TBOX?date=$(D 0)&format=xlsx" | head -c 2)" "200/application/vnd.open/PK"
 check "a bad day is refused; signed-out gets 401" "$(api GET "/api/treasury/daily?date=31-10-2026" | jq_ "d['success']")/$(curl -s -o /dev/null -w '%{http_code}' "$B/api/treasury/daily")" "False/401"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"

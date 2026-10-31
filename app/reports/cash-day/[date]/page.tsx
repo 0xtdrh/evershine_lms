@@ -12,7 +12,8 @@ import { fetchApi } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { DateInput } from '@/components/ui/date-input'
 import { I18nProvider, L, LanguageSwitch, useI18n } from '@/lib/i18n/client'
-import { Printer } from 'lucide-react'
+import { FileSpreadsheet, Printer } from 'lucide-react'
+import { notify } from '@/lib/notify'
 import { MOVEMENT_KIND_LABEL, type MovementKind } from '@/lib/treasury/rules'
 import type { AccountSheet } from '@/lib/treasury/daily-sheet'
 import type { SheetGroup } from '@/lib/treasury/daily-sheet-calc'
@@ -154,6 +155,15 @@ function View({ date }: { date: string }) {
   const accountId = sp?.get('account') || ''
   const campusId = sp?.get('campusId') || ''
   const [day, setDay] = useState(date)
+  const excel = async () => {
+    try {
+      const url = accountId ? `/api/treasury/daily/${accountId}?date=${date}&format=xlsx` : `/api/treasury/daily?date=${date}${campusId ? `&campusId=${campusId}` : ''}&format=xlsx`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error?.message || 'Export failed')
+      const href = URL.createObjectURL(await res.blob())
+      const a = document.createElement('a'); a.href = href; a.download = `cash-close-${date}.xlsx`; a.click(); URL.revokeObjectURL(href)
+    } catch (e) { notify.error((e as Error).message) }
+  }
   const go = (d: string) => { if (d) window.location.href = `/reports/cash-day/${d}${accountId ? `?account=${accountId}` : campusId ? `?campusId=${campusId}` : ''}` }
   return (
     <div className="keep-light min-h-screen bg-gray-100 py-6 print:bg-white print:py-0">
@@ -161,6 +171,7 @@ function View({ date }: { date: string }) {
       <div className="mx-auto mb-4 flex max-w-3xl flex-wrap items-center justify-center gap-2 px-4 print:hidden">
         <DateInput className="h-9 w-40" value={day} onChange={(e) => { setDay(e.target.value); go(e.target.value) }} />
         <Button onClick={() => window.print()}><Printer className="me-2 h-4 w-4" />{L('Print / PDF', 'اطبع / PDF')}</Button>
+        <Button variant="outline" onClick={excel}><FileSpreadsheet className="me-2 h-4 w-4" />Excel</Button>
         {accountId && <Button variant="outline" onClick={() => { window.location.href = `/reports/cash-day/${date}` }}>{L('All accounts', 'كل الحسابات')}</Button>}
         <LanguageSwitch />
       </div>
