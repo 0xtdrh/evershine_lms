@@ -392,6 +392,8 @@ model Campus {
   whatsapp      String?
   workingHours  String?  @db.Text
   roomsCount    Int?
+  /// a02 M1 batch 3 (2026-10-31): NONE = no rooms kept · FIXED = named rooms (Room) · DAILY = only a number of rooms per weekday (RoomDayCount)
+  roomMode      String   @default("NONE") @db.VarChar(6)
   maxStudents   Int?
   managerUserId String?
   profileNotes  String?  @db.Text
@@ -2188,6 +2190,8 @@ model Room {
   campusId  String
   name      String
   capacity  Int      @default(40)
+  /// a02 M1 batch 3 (2026-10-31): room type, e.g. ROBOTICS / COMPUTER / CLASSROOM (free text allowed)
+  kind      String?  @db.VarChar(40)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
@@ -5241,4 +5245,15 @@ model StudentSessionMode {
 
   @@unique([classSectionId, studentId, date])
   @@index([studentId])
+}
+
+/// a02 M1 batch 3: for places whose rooms change by day (e.g. a partner school lends 2 rooms on Sunday, 3 on Tuesday).
+model RoomDayCount {
+  id        String @id @default(cuid())
+  campusId  String
+  /// 0 = Sunday … 6 = Saturday
+  dayOfWeek Int
+  count     Int
+
+  @@unique([campusId, dayOfWeek])
 }

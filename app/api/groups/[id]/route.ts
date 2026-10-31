@@ -20,6 +20,7 @@ import { errors, errorResponse, successResponse } from '@/lib/api-response'
 import { isLevelOfferedIn, levelModes } from '@/lib/delivery/catalog'
 import { MODES, MODE_LABEL, modesText } from '@/lib/delivery/modes'
 import { firstNotAllowed } from '@/lib/delivery/templates'
+import { checkGroupSlots } from '@/lib/rooms/engine'
 import { cleanSlots } from '@/lib/groups/schedule-calendar'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { Prisma, type Role } from '@prisma/client'
@@ -155,7 +156,9 @@ const updateGroupSchema = z.object({
   startDate: z.string().datetime().optional().nullable(),
   expectedEndDate: z.string().datetime().optional().nullable(),
   /** a02: each weekly slot has a way (BRANCH default / ONLINE / RECORDED) */
-  scheduleSlots: z.array(z.object({ dayOfWeek: z.number().int().min(0).max(6), time: z.string().min(1), mode: z.enum(MODES).optional() })).optional().nullable(),
+  scheduleSlots: z.array(z.object({ dayOfWeek: z.number().int().min(0).max(6), time: z.string().min(1), mode: z.enum(MODES).optional(), roomId: z.string().min(1).optional() })).optional().nullable(),
+  /** a02 batch 3: a Super Admin may book a room / size against the rules */
+  forceRooms: z.boolean().optional(),
   /** a02: the template the slots were filled from (information) */
   deliveryTemplateId: z.string().min(1).nullable().optional(),
   status: z.enum(['ACTIVE', 'COMPLETED']).optional(),
@@ -226,6 +229,18 @@ export async function PATCH(
       const allowed = (await levelModes(lvl)).modes
       const bad = firstNotAllowed(slots, allowed)
       if (bad) return errorResponse('MODE_NOT_ALLOWED', `${MODE_LABEL[bad.mode ?? 'BRANCH'].en} sessions are not allowed for this level (allowed: ${modesText(allowed, 'en')}) · طريقة «${MODE_LABEL[bad.mode ?? 'BRANCH'].ar}» مش مسموحة للمستوى ده (المسموح: ${modesText(allowed, 'ar')})`, 409)
+    }
+  }
+
+  // a02 batch 3: rooms — no room booked twice, no group bigger than its room (Super Admin may force; logged)
+  if (parsed.data.scheduleSlots !== undefined || parsed.data.maxStudents !== undefined) {
+    const problem = await checkGroupSlots(
+      { id, campusId: existing.campusId, maxStudents: parsed.data.maxStudents !== undefined ? parsed.data.maxStudents : existing.maxStudents },
+      parsed.data.scheduleSlots !== undefined ? parsed.data.scheduleSlots : existing.scheduleSlots,
+    )
+    if (problem) {
+      if (!(parsed.data.forceRooms && role === 'SUPER_ADMIN')) return errorResponse('ROOM_PROBLEM', problem, 409)
+      await prisma.auditLog.create({ data: { userId: session.user.id, action: 'FORCE_ROOMS', entityType: 'ClassSection', entityId: id, changes: { problem } } }).catch(() => undefined)
     }
   }
 

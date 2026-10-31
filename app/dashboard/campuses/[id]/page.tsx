@@ -3,6 +3,7 @@
 import { roleName } from '@/lib/admin/permission-labels'
 import { PlacePeople } from '@/components/places/PlacePeople'
 import { PlacePrograms } from '@/components/places/PlacePrograms'
+import { PlaceRooms } from '@/components/places/PlaceRooms'
 import { useEffect, useState } from 'react'
 import { use } from 'react'
 import Link from 'next/link'
@@ -171,6 +172,11 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">{L('Programmes offered here', 'البرامج المتاحة هنا')}</CardTitle></CardHeader>
         <CardContent><PlacePrograms campusId={c.id} /></CardContent>
+      </Card>
+      {/* a02 batch 3: rooms of this branch */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">{L('Rooms', 'القاعات')}</CardTitle></CardHeader>
+        <CardContent><PlaceRooms campusId={c.id} canEdit={canEdit} /></CardContent>
       </Card>
     </div>
   )

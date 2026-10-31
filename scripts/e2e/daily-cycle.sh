@@ -2276,6 +2276,27 @@ api POST /api/holidays "{\"date\":\"$SUN\",\"name\":\"E2E branch day off\",\"cam
 check "a branch holiday does not stop an online session" "$(api GET "/api/groups/schedule?from=$SUN&to=$SUN" | jq_ "[o['status'] for o in d['data']['sessions'] if o['groupId']=='$CVG']")" "['NOT_STARTED']"
 M "DELETE FROM Holiday WHERE name='E2E branch day off'"
 check "a secretary of another branch cannot change the group's sessions" "$(secapi POST /api/groups/$CVG/session-mode "{\"date\":\"$TUE\",\"mode\":\"ONLINE\"}" | jq_ "d['success']")" "False"
+echo "== 70. Rooms of branches and partner places (a02 batch 3, 2026-10-31)"
+check "a place starts with rooms not kept (no checks)" "$(api GET /api/places/$DOTHER/rooms | jq_ "d['data']['campus']['roomMode']")" "NONE"
+api PUT /api/places/$DOTHER/rooms '{"roomMode":"FIXED"}' >/dev/null
+R1=$(api POST /api/places/$DOTHER/rooms '{"name":"E2E Small Lab","capacity":3,"kind":"ROBOTICS"}' | jq_ "d['data']['id']")
+R2=$(api POST /api/places/$DOTHER/rooms '{"name":"E2E Big Room","capacity":20,"kind":"CLASSROOM"}' | jq_ "d['data']['id']")
+check "named rooms are added (same name twice refused)" "$([ -n "$R1" ] && [ "$R1" != "None" ] && [ -n "$R2" ] && echo yes)/$(api POST /api/places/$DOTHER/rooms '{"name":"E2E Big Room","capacity":5}' | jq_ "d['error']['code']")" "yes/CONFLICT"
+check "a branch session with no room is refused once the place keeps rooms" "$(api PATCH /api/groups/$CVG '{"scheduleSlots":[{"dayOfWeek":0,"time":"16:00","mode":"ONLINE"},{"dayOfWeek":2,"time":"18:00","mode":"BRANCH"}]}' | jq_ "d['error']['code']")" "ROOM_PROBLEM"
+check "a room too small for the group is refused" "$(api PATCH /api/groups/$CVG "{\"maxStudents\":5,\"scheduleSlots\":[{\"dayOfWeek\":2,\"time\":\"18:00\",\"mode\":\"BRANCH\",\"roomId\":\"$R1\"}]}" | jq_ "(d['error']['code'], 'E2E Small Lab' in d['error']['message'])")" "('ROOM_PROBLEM', True)"
+check "with a free big room it is saved" "$(api PATCH /api/groups/$CVG "{\"maxStudents\":null,\"scheduleSlots\":[{\"dayOfWeek\":0,\"time\":\"16:00\",\"mode\":\"ONLINE\"},{\"dayOfWeek\":2,\"time\":\"18:00\",\"mode\":\"BRANCH\",\"roomId\":\"$R2\"}]}" | jq_ "d['success']")" "True"
+RG2=$(api POST /api/groups "{\"campusId\":\"$DOTHER\",\"className\":\"E2E Room Group\",\"sectionName\":\"R\",\"levelId\":\"$CVL\"}" | jq_ "d['data']['id']")
+check "the same room at an overlapping time is refused (session = 90 min)" "$(api PATCH /api/groups/$RG2 "{\"scheduleSlots\":[{\"dayOfWeek\":2,\"time\":\"18:30\",\"mode\":\"BRANCH\",\"roomId\":\"$R2\"}]}" | jq_ "(d['error']['code'], 'E2E Curriculum Group' in d['error']['message'])")" "('ROOM_PROBLEM', True)"
+check "…after the first session it is free" "$(api PATCH /api/groups/$RG2 "{\"scheduleSlots\":[{\"dayOfWeek\":2,\"time\":\"19:30\",\"mode\":\"BRANCH\",\"roomId\":\"$R2\"}]}" | jq_ "d['success']")" "True"
+check "a Super Admin may force a clash (logged)" "$(api PATCH /api/groups/$RG2 "{\"forceRooms\":true,\"scheduleSlots\":[{\"dayOfWeek\":2,\"time\":\"18:30\",\"mode\":\"BRANCH\",\"roomId\":\"$R2\"}]}" | jq_ "d['success']")/$(M "SELECT COUNT(*)>0 FROM AuditLog WHERE action='FORCE_ROOMS' AND entityId='$RG2'")" "True/1"
+api PATCH /api/groups/$RG2 "{\"scheduleSlots\":[{\"dayOfWeek\":2,\"time\":\"19:30\",\"mode\":\"BRANCH\",\"roomId\":\"$R2\"}]}" >/dev/null
+api PATCH /api/groups/$CVG "{\"scheduleSlots\":[{\"dayOfWeek\":0,\"time\":\"16:00\",\"mode\":\"ONLINE\"},{\"dayOfWeek\":2,\"time\":\"18:00\",\"mode\":\"BRANCH\",\"roomId\":\"$R1\"}]}" >/dev/null
+check "a group in a 3-seat room takes 3 students at most" "$(api GET /api/groups/$CVG | jq_ "d['data']['seats']['max']")" "3"
+check "weekly use of each room (90 min in the small lab)" "$(api GET /api/places/$DOTHER/rooms | jq_ "[u['minutesPerWeek'] for u in d['data']['usage'] if u['roomId']=='$R1']")" "[90]"
+api PUT /api/places/$DOTHER/rooms '{"roomMode":"DAILY","dayCounts":[0,0,1,0,0,0,0]}' >/dev/null
+check "a place with 1 room on Tuesday: a second Tuesday session at the same time is refused" "$(api PATCH /api/groups/$RG2 '{"scheduleSlots":[{"dayOfWeek":2,"time":"18:30","mode":"BRANCH"}]}' | jq_ "d['error']['code']")" "ROOM_PROBLEM"
+check "a branch secretary cannot change another place's rooms" "$(secapi PUT /api/places/$DOTHER/rooms '{"roomMode":"NONE"}' | jq_ "d['success']")" "False"
+api PUT /api/places/$DOTHER/rooms '{"roomMode":"NONE"}' >/dev/null
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

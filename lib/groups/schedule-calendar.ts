@@ -23,7 +23,7 @@
 
 import type { Mode } from '@/lib/delivery/modes'
 
-export interface Slot { dayOfWeek: number; time: string; mode?: Mode }
+export interface Slot { dayOfWeek: number; time: string; mode?: Mode; /** a02 batch 3: the room of a BRANCH session (FIXED places) */ roomId?: string }
 export type OccurrenceStatus = 'HELD' | 'MISSING' | 'SCHEDULED' | 'NOT_STARTED' | 'CANCELLED' | 'HOLIDAY'
 export interface ExtraSlot { date: string; time: string }
 
@@ -72,7 +72,7 @@ export function cleanSlots(raw: unknown): Slot[] {
   if (!Array.isArray(raw)) return []
   return (raw as Slot[])
     .filter((s) => Number.isInteger(s?.dayOfWeek) && s.dayOfWeek >= 0 && s.dayOfWeek <= 6 && typeof s.time === 'string')
-    .map((s) => ({ dayOfWeek: s.dayOfWeek, time: s.time, ...(s.mode && MODE_SET.has(s.mode) && s.mode !== 'BRANCH' && { mode: s.mode }) }))
+    .map((s) => ({ dayOfWeek: s.dayOfWeek, time: s.time, ...(s.mode && MODE_SET.has(s.mode) && s.mode !== 'BRANCH' && { mode: s.mode }), ...(typeof s.roomId === 'string' && s.roomId && (!s.mode || s.mode === 'BRANCH') && { roomId: s.roomId }) }))
     .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.time.localeCompare(b.time))
 }
 

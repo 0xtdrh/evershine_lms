@@ -22,6 +22,7 @@ import type { PartnerDetail } from '@/components/partners/types'
 import { ArrowLeft, FileText, Handshake, Loader2 } from 'lucide-react'
 import { PlacePeople } from '@/components/places/PlacePeople'
 import { PlacePrograms } from '@/components/places/PlacePrograms'
+import { PlaceRooms } from '@/components/places/PlaceRooms'
 import { PartnerRelations } from '@/components/partners/PartnerRelations'
 
 export default function PartnerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -52,6 +53,7 @@ export default function PartnerPage({ params }: { params: Promise<{ id: string }
         <TabsList className="flex-wrap">
           <TabsTrigger value="places">{L('Places', 'الأماكن')} ({p.places.length})</TabsTrigger>
           <TabsTrigger value="programs">{L('Programmes', 'البرامج')}</TabsTrigger>
+          <TabsTrigger value="rooms">{L('Rooms', 'القاعات')}</TabsTrigger>
           <TabsTrigger value="people">{L('Groups · students · instructors', 'الجروبات · الطلاب · المدربين')}</TabsTrigger>
           <TabsTrigger value="relations">{L('Contacts & meetings', 'المسؤولين والاجتماعات')}</TabsTrigger>
           <TabsTrigger value="deals">{L('Deal', 'الاتفاق')}</TabsTrigger>
@@ -63,6 +65,7 @@ export default function PartnerPage({ params }: { params: Promise<{ id: string }
         <Card className="mt-3"><CardContent className="p-4">
           <TabsContent value="places"><PartnerPlaces p={p} canEdit={can('update')} /></TabsContent>
           <TabsContent value="programs">{p.places.length ? <div className="space-y-5">{p.places.map((x) => <div key={x.id}><p className="mb-1 text-sm font-semibold">{x.name}</p><PlacePrograms campusId={x.id} /></div>)}</div> : <p className="text-sm text-slate-500">{L('Add a place first.', 'ضيف مكان الأول.')}</p>}</TabsContent>
+          <TabsContent value="rooms">{p.places.length ? <div className="space-y-5">{p.places.map((x) => <div key={x.id}><p className="mb-1 text-sm font-semibold">{x.name}</p><PlaceRooms campusId={x.id} canEdit={can('update')} /></div>)}</div> : <p className="text-sm text-slate-500">{L('Add a place first.', 'ضيف مكان الأول.')}</p>}</TabsContent>
           <TabsContent value="people">{p.places.length ? <PlacePeople places={p.places.map((x) => ({ id: x.id, name: x.name }))} /> : <p className="text-sm text-slate-500">{L('Add a place first.', 'ضيف مكان الأول.')}</p>}</TabsContent>
           <TabsContent value="relations"><PartnerRelations partnerId={p.id} canEdit={can('update')} /></TabsContent>
           <TabsContent value="deals"><PartnerDeals p={p} canEdit={can('update')} /></TabsContent>

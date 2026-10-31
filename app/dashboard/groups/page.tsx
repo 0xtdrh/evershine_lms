@@ -54,7 +54,7 @@ interface GroupSummary {
   studentCount: number
   startDate: string | null
   expectedEndDate: string | null
-  scheduleSlots: { dayOfWeek: number; time: string; mode?: Mode }[] | null
+  scheduleSlots: { dayOfWeek: number; time: string; mode?: Mode; roomId?: string }[] | null
   status: 'ACTIVE' | 'COMPLETED'
   displayStatus: 'ACTIVE' | 'COMPLETED' | 'UPCOMING'
 }
@@ -295,7 +295,7 @@ export default function GroupsPage() {
     className: '', sectionName: '', trackId: '', courseId: '', levelId: '',
     startDate: '', expectedEndDate: '', requireFullPaymentToStart: false, partialPaymentCounts: false, installmentsAllowed: false,
   })
-  const [scheduleSlots, setScheduleSlots] = useState<{ dayOfWeek: number; time: string; mode?: Mode }[]>([])
+  const [scheduleSlots, setScheduleSlots] = useState<{ dayOfWeek: number; time: string; mode?: Mode; roomId?: string }[]>([])
   const [slotTemplateId, setSlotTemplateId] = useState<string | null>(null)
   // a02: the ways the chosen level allows, and its default template
   const { data: levelDelivery } = useQuery({
@@ -305,6 +305,13 @@ export default function GroupsPage() {
   })
   const { data: deliveryTemplates = [] } = useTemplates()
   const allowedModes: Mode[] = levelDelivery?.effective.modes ?? ['BRANCH', 'ONLINE', 'RECORDED']
+  // a02 batch 3: the rooms of the group's place (named rooms only)
+  const { data: placeRooms } = useQuery({
+    queryKey: ['place-rooms', detail?.campusId],
+    queryFn: () => fetchApi<{ campus: { roomMode: string }; rooms: { id: string; name: string; capacity: number; isActive: boolean }[] }>(`/api/places/${detail?.campusId}/rooms`),
+    enabled: editOpen && !!detail?.campusId,
+  })
+  const roomsHere = placeRooms?.campus.roomMode === 'FIXED' ? placeRooms.rooms.filter((r) => r.isActive) : []
 
   const openEdit = () => {
     if (!detail) return
@@ -335,7 +342,7 @@ export default function GroupsPage() {
   })
 
   const updateGroupMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (force?: boolean) =>
       fetchApi(`/api/groups/${selectedGroupId}`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -348,6 +355,7 @@ export default function GroupsPage() {
           requireFullPaymentToStart: editForm.requireFullPaymentToStart,
           partialPaymentCounts: editForm.partialPaymentCounts,
           installmentsAllowed: editForm.installmentsAllowed,
+          ...(force && { forceRooms: true }),
         }),
       }),
     onSuccess: () => {
@@ -356,7 +364,16 @@ export default function GroupsPage() {
       notify.success(L('Group updated', 'الجروب اتحدّث'))
       setEditOpen(false)
     },
-    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to update group')),
+    onError: (err: unknown) => {
+      // a02 batch 3: a room problem — only a Super Admin may go ahead anyway (it is logged)
+      if (err instanceof ApiError && err.code === 'ROOM_PROBLEM' && session?.user?.role === 'SUPER_ADMIN' && confirm(`${err.message}
+
+${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admin، وبيتسجّل)')}`)) {
+        updateGroupMutation.mutate(true)
+        return
+      }
+      notify.error(apiErrorMessage(err, 'Failed to update group'))
+    },
   })
 
   const toggleStatusMutation = useMutation({
@@ -1213,6 +1230,13 @@ export default function GroupsPage() {
                     onChange={(e) => { const next = [...scheduleSlots]; next[i] = { ...slot, mode: e.target.value as Mode }; setScheduleSlots(next) }}>
                     {(['BRANCH', 'ONLINE', 'RECORDED'] as Mode[]).map((m) => <option key={m} value={m} disabled={!allowedModes.includes(m)}>{MODE_ICON[m]} {MODE_LABEL[m][locale === 'ar' ? 'ar' : 'en']}</option>)}
                   </select>
+                  {roomsHere.length > 0 && (slot.mode ?? 'BRANCH') === 'BRANCH' && (
+                    <select aria-label={L('Room', 'القاعة')} className={`h-9 rounded-md border px-2 text-xs ${slot.roomId ? '' : 'border-amber-400'}`} value={slot.roomId ?? ''}
+                      onChange={(e) => { const next = [...scheduleSlots]; next[i] = { ...slot, roomId: e.target.value || undefined }; setScheduleSlots(next) }}>
+                      <option value="">{L('Room…', 'القاعة…')}</option>
+                      {roomsHere.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.capacity})</option>)}
+                    </select>
+                  )}
                   <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setScheduleSlots(scheduleSlots.filter((_, idx) => idx !== i))}>
                     <X className="w-3.5 h-3.5 text-red-500" />
                   </Button>
@@ -1246,7 +1270,7 @@ export default function GroupsPage() {
             </label>
           </div>
           <DialogFooter>
-            <Button disabled={updateGroupMutation.isPending} onClick={() => updateGroupMutation.mutate()}>
+            <Button disabled={updateGroupMutation.isPending} onClick={() => updateGroupMutation.mutate(false)}>
               {updateGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save changes'}
             </Button>
           </DialogFooter>

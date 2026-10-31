@@ -12,6 +12,8 @@
 
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { seatLimit } from '@/lib/rooms/rules'
+import { groupRoomCapacities } from '@/lib/rooms/engine'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { pickGroupInstructorOffering } from './instructor'
 
@@ -21,11 +23,12 @@ export interface Seats { max: number | null; count: number; free: number | null;
 
 export async function groupSeats(classSectionId: string, db: Db = prisma): Promise<Seats> {
   const [g, count, waiting] = await Promise.all([
-    db.classSection.findUnique({ where: { id: classSectionId }, select: { maxStudents: true } }),
+    db.classSection.findUnique({ where: { id: classSectionId }, select: { maxStudents: true, scheduleSlots: true } }),
     db.studentEnrollment.count({ where: { classSectionId, status: 'ACTIVE' } }),
     db.waitingListEntry.count({ where: { classSectionId, status: 'WAITING' } }),
   ])
-  const max = g?.maxStudents ?? null
+  // a02 batch 3: never more students than the smallest room the group uses
+  const max = seatLimit(g?.maxStudents ?? null, g ? await groupRoomCapacities(g.scheduleSlots) : [])
   const free = max == null ? null : Math.max(0, max - count)
   return { max, count, free, full: max != null && count >= max, waiting }
 }
