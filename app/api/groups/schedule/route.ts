@@ -13,6 +13,7 @@
  * Filtering by branch / track / course / teacher happens in the page.
  */
 
+import { cairoToday } from '@/lib/dates/cairo'
 import { groupWhere, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { Prisma, type Role } from '@prisma/client'
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
     })
     .filter(({ g, teacher }) => !ownTeacherId || teacher?.id === ownTeacherId || coveredIds.has(g.id))
   const ids = groups.map(({ g }) => g.id)
-  if (!ids.length) return successResponse({ from, to, today: toDay(new Date()), groups: [], sessions: [] })
+  if (!ids.length) return successResponse({ from, to, today: cairoToday(), groups: [], sessions: [] })
 
   // Distinct attendance dates per group (= sessions held).
   const heldRows = await prisma.$queryRaw<{ g: string; d: string }[]>`
@@ -118,8 +119,15 @@ export async function GET(request: NextRequest) {
   for (const l of logs.filter((x) => x.status !== 'HELD')) cancelledBy.set(l.classSectionId, [...(cancelledBy.get(l.classSectionId) ?? []), { date: toDay(l.sessionDate), reason: l.status === 'CANCELLED_PARTNER' ? 'Cancelled by the partner' : 'Cancelled by TechNova' }])
   const subOf = new Map(subs.map((s) => [`${s.classSectionId}|${toDay(s.date)}`, s]))
 
-  const today = toDay(new Date())
+  const today = cairoToday()
+  // a02: the room of each session: its one-day room, else the room of its weekly slot
+  const groupIds = groups.map(({ g }) => g.id)
+  const roomDays = await prisma.sessionRoomOverride.findMany({ where: { date: { gte: fromD, lte: toD }, classSectionId: { in: groupIds } }, select: { classSectionId: true, date: true, roomId: true } })
+  const roomIds = new Set([...groups.flatMap(({ g }) => cleanSlots(g.scheduleSlots).map((s) => s.roomId).filter((x): x is string => !!x)), ...roomDays.map((r) => r.roomId)])
+  const roomName = new Map((await prisma.room.findMany({ where: { id: { in: [...roomIds] } }, select: { id: true, name: true } })).map((r) => [r.id, r.name]))
+  const roomDay = new Map(roomDays.map((r) => [`${r.classSectionId}|${toDay(r.date)}`, r.roomId]))
   const sessions: {
+    room?: string | null
     groupId: string; date: string; time: string; status: OccurrenceStatus; sessionNumber: number | null; totalSessions: number
     isLastOfCycle: boolean; isExtra?: boolean; teacherId: string | null; teacherName: string | null
     substitute: { name: string; confirmed: boolean } | null; teacherAbsent: boolean; cancelReason: string | null; conflict: boolean
@@ -153,8 +161,11 @@ export async function GET(request: NextRequest) {
       if (ownTeacherId && teacher?.id !== ownTeacherId && !sub) continue
       const absent = !!teacher && absences.some((a) => a.teacherId === teacher.id && toDay(a.date) === o.date && (a.scope === 'FULL_DAY' || a.classSectionId === g.id))
       const effective = sub?.status === 'CONFIRMED' ? { id: sub.substituteTeacher.id, name: `${sub.substituteTeacher.firstName} ${sub.substituteTeacher.lastName}` } : teacher
+      const weekly = cleanSlots(g.scheduleSlots).find((s) => s.dayOfWeek === new Date(`${o.date}T00:00:00Z`).getUTCDay() && s.time === o.time)
+      const roomId = roomDay.get(`${g.id}|${o.date}`) ?? weekly?.roomId
       sessions.push({
         ...o,
+        room: roomId && o.mode === 'BRANCH' ? roomName.get(roomId) ?? null : null,
         teacherId: effective?.id ?? null,
         teacherName: effective?.name ?? null,
         substitute: sub ? { name: `${sub.substituteTeacher.firstName} ${sub.substituteTeacher.lastName}`, confirmed: sub.status === 'CONFIRMED' } : null,

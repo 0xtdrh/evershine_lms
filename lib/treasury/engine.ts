@@ -13,7 +13,7 @@ import { takeNumber } from '@/lib/ids/counter'
 import { cairoToday } from '@/lib/dates/cairo'
 import { notifyUsers, usersWithPermission } from '@/lib/notifications/events'
 import { syncMovements } from './sync'
-import { countOutcome, DEFAULT_EXPENSE_CATEGORIES, DEFAULT_TREASURY_SETTINGS, type TreasurySettings } from './rules'
+import { countOutcome, DEFAULT_EXPENSE_CATEGORIES, DEFAULT_TREASURY_SETTINGS, openingStart, type TreasurySettings } from './rules'
 
 type Who = { id: string; role: string }
 export class TreasuryError extends Error {}
@@ -51,7 +51,7 @@ async function balances(ids: string[], openings: Map<string, Date>): Promise<Map
   for (const m of rows) {
     if (!m.accountId) continue
     const from = openings.get(m.accountId)
-    if (from && m.date < from) continue
+    if (from && m.date < openingStart(from)) continue
     const b = out.get(m.accountId) ?? { in: 0, out: 0 }
     if (m.direction === 'IN') b.in += num(m.amount); else b.out += num(m.amount)
     out.set(m.accountId, b)

@@ -5,6 +5,8 @@
  * "every branch" route; no route = the movement is "not placed" until one is set.
  */
 
+import { cairoDateTimeToUtc } from '@/lib/dates/cairo'
+
 export const ACCOUNT_KINDS = ['CASH', 'BANK', 'INSTAPAY', 'EWALLET', 'GATEWAY', 'OTHER'] as const
 export type AccountKind = (typeof ACCOUNT_KINDS)[number]
 export const ACCOUNT_KIND_LABEL: Record<AccountKind, [string, string]> = {
@@ -32,11 +34,14 @@ export function pickAccount(routes: Route[], method: string | null | undefined, 
   return (campusId ? same.find((r) => r.campusId === campusId) : undefined)?.accountId ?? same.find((r) => !r.campusId)?.accountId ?? null
 }
 
+/** An account opens at the start of its opening date in Cairo (the date is stored at 00:00 UTC, 2 hours later). */
+export const openingStart = (d: Date | string) => cairoDateTimeToUtc(new Date(d).toISOString().slice(0, 10), '00:00')
+
 export interface MovementLite { direction: 'IN' | 'OUT' | string; amount: number; date: Date | string }
 
 /** Balance = opening balance + money in − money out, counting movements from the opening date on. */
 export function balanceOf(opening: number, openingDate: Date | string, movements: MovementLite[], until?: Date): number {
-  const from = new Date(openingDate).getTime()
+  const from = openingStart(openingDate).getTime()
   const to = until ? until.getTime() : Infinity
   let b = opening
   for (const m of movements) {

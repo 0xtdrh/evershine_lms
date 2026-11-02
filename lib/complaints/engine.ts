@@ -12,6 +12,7 @@
  * Server-only.
  */
 
+import { cairoToday } from '@/lib/dates/cairo'
 import { prisma } from '@/lib/prisma'
 import { getSetting, setSetting } from '@/lib/settings/app-settings'
 import { nextInSequence, isUniqueConflictOn } from '@/lib/ids/sequence'
@@ -219,7 +220,7 @@ export async function sweepComplaints(force = false) {
 
 /** Monthly report: counts by topic / branch / kind, average hours to resolve, satisfaction. */
 export async function complaintsReport(opts: { campusId?: string | null; month?: string }) {
-  const m = /^\d{4}-\d{2}$/.test(opts.month ?? '') ? opts.month! : new Date().toISOString().slice(0, 7)
+  const m = /^\d{4}-\d{2}$/.test(opts.month ?? '') ? opts.month! : cairoToday().slice(0, 7)
   const from = new Date(`${m}-01T00:00:00.000Z`)
   const to = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 1))
   const rows = await prisma.complaint.findMany({

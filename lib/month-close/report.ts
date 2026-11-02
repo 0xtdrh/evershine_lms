@@ -6,6 +6,7 @@
  * comparison with the month before. When a month is closed its report is frozen in MonthLock.snapshot. Server-only.
  */
 
+import { openingStart } from '@/lib/treasury/rules'
 import { prisma } from '@/lib/prisma'
 import { plTotals, salaryWhereFor, staffUserIdsOf } from '@/lib/finance/pnl-totals'
 import { expenseCategoryNamer } from '@/lib/treasury/expense-category'
@@ -91,7 +92,7 @@ export async function monthReport(ym: string, campusId: string | null): Promise<
   ])
 
   const accountRows = await Promise.all(accounts.map(async (a) => {
-    const g = await prisma.moneyMovement.groupBy({ by: ['direction'], where: { accountId: a.id, date: { gte: a.openingDate, lte: end } }, _sum: { amount: true } })
+    const g = await prisma.moneyMovement.groupBy({ by: ['direction'], where: { accountId: a.id, date: { gte: openingStart(a.openingDate), lte: end } }, _sum: { amount: true } })
     const bal = num(a.openingBalance) + num(g.find((x) => x.direction === 'IN')?._sum.amount) - num(g.find((x) => x.direction === 'OUT')?._sum.amount)
     return { id: a.id, name: a.name, kind: a.kind, balance: r2(bal) }
   }))

@@ -4,6 +4,7 @@
  * as what TechNova still owes families (prepaid, not earned yet). Server-only.
  */
 
+import { openingStart } from '@/lib/treasury/rules'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { requestPlaces, campusWhere, invoiceWhere, type Places } from '@/lib/places/server'
@@ -28,7 +29,7 @@ async function balanceNow(p: Places): Promise<number> {
   const accounts = await prisma.moneyAccount.findMany({ where: { isActive: true, ...(p.all ? {} : campusWhere(p)) }, select: { id: true, openingBalance: true, openingDate: true } })
   let total = 0
   for (const a of accounts) {
-    const g = await prisma.moneyMovement.groupBy({ by: ['direction'], where: { accountId: a.id, date: { gte: a.openingDate } }, _sum: { amount: true } })
+    const g = await prisma.moneyMovement.groupBy({ by: ['direction'], where: { accountId: a.id, date: { gte: openingStart(a.openingDate) } }, _sum: { amount: true } })
     total += num(a.openingBalance) + num(g.find((x) => x.direction === 'IN')?._sum.amount) - num(g.find((x) => x.direction === 'OUT')?._sum.amount)
   }
   return r2(total)

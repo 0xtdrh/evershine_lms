@@ -3,6 +3,8 @@
  * docs/design-locations-and-partners.md §3 (م١) + §11.
  */
 
+import { cairoYmd } from '@/lib/dates/cairo'
+
 export const PARTNER_KINDS = ['SCHOOL', 'NURSERY', 'CENTER', 'ACADEMY', 'COMPANY', 'GOVERNMENT', 'NGO', 'OTHER'] as const
 export type PartnerKind = (typeof PARTNER_KINDS)[number]
 
@@ -22,12 +24,14 @@ export const CONTRACT_FILE_MAX_MB = 15
 
 const DAY = 86_400_000
 const dayStart = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+/** Today in Egypt, as a date at 00:00 UTC like the stored dates */
+const todayStart = (now: Date) => { const v = cairoYmd(now); return Date.UTC(v.y, v.m - 1, v.d) }
 
 export type ContractState = 'NOT_STARTED' | 'ACTIVE' | 'ENDING_SOON' | 'ENDED' | 'OPEN_ENDED'
 
 /** Where a contract stands today. "Ending soon" = inside its alert window. */
 export function contractState(c: { startDate: Date; endDate: Date | null; alertDaysBefore: number }, now: Date): ContractState {
-  const today = dayStart(now)
+  const today = todayStart(now)
   if (dayStart(c.startDate) > today) return 'NOT_STARTED'
   if (!c.endDate) return 'OPEN_ENDED'
   const end = dayStart(c.endDate)
@@ -37,7 +41,7 @@ export function contractState(c: { startDate: Date; endDate: Date | null; alertD
 
 /** Days left until the end (0 = ends today; negative = ended). null = no end date. */
 export function daysLeft(endDate: Date | null, now: Date): number | null {
-  return endDate ? Math.round((dayStart(endDate) - dayStart(now)) / DAY) : null
+  return endDate ? Math.round((dayStart(endDate) - todayStart(now)) / DAY) : null
 }
 
 /**

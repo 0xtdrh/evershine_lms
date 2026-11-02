@@ -2599,6 +2599,40 @@ M "UPDATE Teacher SET isActive=1 WHERE id='$EW'"
 M "UPDATE EnrollmentAttendanceRecord r JOIN StudentEnrollment e ON e.id=r.studentEnrollmentId SET r.attendanceDate=DATE(DATE_SUB(UTC_TIMESTAMP(),INTERVAL 9 DAY)) WHERE e.classSectionId='$ODB'"
 curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
 check "a finished cycle not renewed after the hold days gives up its fixed time (daily job)" "$(M "SELECT scheduleSlots IS NULL FROM ClassSection WHERE id='$ODB'")/$(M "SELECT COUNT(*) FROM OneToOneEvent WHERE classSectionId='$ODB' AND note='Not renewed in time'")" "1/1"
+echo "== 80. Small gaps closed: a room for one session, ways of a curriculum session, substitute says no, holiday list (a02 follow-up, 2026-11-02)"
+api PUT /api/places/$DOTHER/rooms '{"roomMode":"FIXED"}' >/dev/null
+GR1=$(api POST /api/places/$DOTHER/rooms '{"name":"E2E Gap Room A","capacity":10,"kind":"CLASSROOM"}' | jq_ "d['data']['id']")
+GR2=$(api POST /api/places/$DOTHER/rooms '{"name":"E2E Gap Room B","capacity":10,"kind":"CLASSROOM"}' | jq_ "d['data']['id']")
+GG1=$(api POST /api/groups "{\"campusId\":\"$DOTHER\",\"className\":\"E2E Gap One\",\"sectionName\":\"G\",\"levelId\":\"$CVL\"}" | jq_ "d['data']['id']")
+GG2=$(api POST /api/groups "{\"campusId\":\"$DOTHER\",\"className\":\"E2E Gap Two\",\"sectionName\":\"G\",\"levelId\":\"$CVL\"}" | jq_ "d['data']['id']")
+api PATCH /api/groups/$GG1 "{\"scheduleSlots\":[{\"dayOfWeek\":2,\"time\":\"06:00\",\"mode\":\"BRANCH\",\"roomId\":\"$GR1\"}]}" >/dev/null
+api PATCH /api/groups/$GG2 "{\"scheduleSlots\":[{\"dayOfWeek\":2,\"time\":\"06:00\",\"mode\":\"BRANCH\",\"roomId\":\"$GR2\"}]}" >/dev/null
+GTU=""; for i in 1 2 3 4 5 6 7; do [ "$(cairo +%w $i)" = "2" ] && GTU=$(D $i); done
+ROOMOF() { api GET "/api/groups/schedule?from=$GTU&to=$GTU" | PYTHONUTF8=1 jq_ "[o.get('room') for o in d['data']['sessions'] if o['groupId']=='$1']"; }
+check "the calendar shows the room of a session" "$(ROOMOF $GG1)" "['E2E Gap Room A']"
+check "one session in a room another group has then: refused" "$(api POST /api/groups/$GG1/session-room "{\"date\":\"$GTU\",\"roomId\":\"$GR2\"}" | jq_ "d['error']['code']")" "ROOM_PROBLEM"
+GR3=$(api POST /api/places/$DOTHER/rooms '{"name":"E2E Gap Room C","capacity":10,"kind":"CLASSROOM"}' | jq_ "d['data']['id']")
+check "one session in a free room: only that date moves" "$(api POST /api/groups/$GG1/session-room "{\"date\":\"$GTU\",\"roomId\":\"$GR3\"}" | jq_ "d['success']")/$(ROOMOF $GG1)" "True/['E2E Gap Room C']"
+check "…the room it left is free for that session" "$(api POST /api/groups/$GG2/session-room "{\"date\":\"$GTU\",\"roomId\":\"$GR1\"}" | jq_ "d['success']")" "True"
+check "back to its usual room" "$(api POST /api/groups/$GG1/session-room "{\"date\":\"$GTU\",\"roomId\":null}" | jq_ "d['success']")/$(ROOMOF $GG1)" "True/['E2E Gap Room A']"
+check "a room of another place is refused" "$(api POST /api/groups/$GG1/session-room "{\"date\":\"$GTU\",\"roomId\":\"$RMR\"}" | jq_ "d['error']['code']")" "ROOM_PROBLEM"
+check "a secretary of another place cannot do it" "$(secapi POST /api/groups/$GG1/session-room "{\"date\":\"$GTU\",\"roomId\":\"$GR3\"}" | jq_ "d['success']")" "False"
+api PUT /api/places/$DOTHER/rooms '{"roomMode":"NONE"}' >/dev/null
+check "a holiday in the list says who is off" "$(api POST /api/holidays "{\"date\":\"$(D 30)\",\"name\":\"E2E Gap Off\",\"appliesTo\":[\"ONLINE\"]}" >/dev/null; api GET "/api/holidays?from=$(D 30)&to=$(D 30)" | jq_ "[h['appliesTo'] for h in d['data'] if h['name']=='E2E Gap Off']")" "[['ONLINE']]"
+M "DELETE FROM Holiday WHERE name='E2E Gap Off'"
+GSD=$(api GET /api/one-to-one | jq_ "[u['date'] for r in d['data'] if r['id']=='$SH1' for u in r['upcoming']][1]")
+M "INSERT INTO OneToOneEvent (id,classSectionId,date,kind,state,choice,countsAgainstParent,createdAt) VALUES ('e2e-gap-ev','$SH1','$GSD','APOLOGY','DONE','SUBSTITUTE',0,UTC_TIMESTAMP())"
+M "INSERT INTO TeacherAbsence (id,teacherId,date,scope,classSectionId,reason,status,requestedAt) VALUES ('e2e-gap-ab','$CALT','$GSD','SINGLE_SESSION','$SH1','e2e','APPROVED',UTC_TIMESTAMP())"
+M "INSERT INTO SubstituteAssignment (id,teacherAbsenceId,classSectionId,date,originalTeacherId,substituteTeacherId,assignedBy,assignedAt) VALUES ('e2e-gap-sa','e2e-gap-ab','$SH1','$GSD','$EW','$CALT','e2e',UTC_TIMESTAMP())"
+check "the substitute says no: the apology goes back to the staff" "$(curl -s -b "$TJ76" -X POST -H 'Content-Type: application/json' -d '{"decision":"DECLINE"}' $B/api/substitute-assignments/e2e-gap-sa/respond | jq_ "d['success']")/$(M "SELECT state FROM OneToOneEvent WHERE id='e2e-gap-ev'")/$(api GET /api/one-to-one/events | jq_ "any(e['id']=='e2e-gap-ev' and e['state']=='WAITING_SUB' for e in d['data'])")" "True/WAITING_SUB/True"
+M "DELETE FROM OneToOneEvent WHERE id='e2e-gap-ev'"
+ES=$(M "SELECT s.id FROM CurriculumSession s JOIN CurriculumEdition e ON e.id=s.editionId WHERE e.levelId='$CVL' AND e.status='PUBLISHED' AND s.number=1 AND e.variantId IS NULL LIMIT 1")
+GG3=$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"className\":\"E2E Gap Three\",\"sectionName\":\"G\",\"levelId\":\"$CVL\"}" | jq_ "d['data']['id']")
+api PATCH /api/groups/$GG3 "{\"scheduleSlots\":[{\"dayOfWeek\":2,\"time\":\"05:00\",\"mode\":\"BRANCH\"}]}" >/dev/null
+M "UPDATE CurriculumSession SET allowedModes='[\"BRANCH\"]' WHERE id='$ES'"
+check "a curriculum session for the branch only: that session cannot go online" "$(api POST /api/groups/$GG3/session-mode "{\"date\":\"$GTU\",\"mode\":\"ONLINE\"}" | jq_ "d['error']['code']")" "MODE_NOT_ALLOWED"
+M "UPDATE CurriculumSession SET allowedModes=NULL WHERE id='$ES'"
+check "…with no such rule it can" "$(api POST /api/groups/$GG3/session-mode "{\"date\":\"$GTU\",\"mode\":\"ONLINE\"}" | jq_ "d['success']")" "True"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

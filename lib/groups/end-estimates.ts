@@ -13,6 +13,7 @@
  * end drifted later every month).
  */
 
+import { cairoToday } from '@/lib/dates/cairo'
 import { prisma } from '@/lib/prisma'
 import { resolveCycleStart } from './cycle-start'
 import { cyclesInLevel, sessionsPerCycle } from './cycle-rules'
@@ -91,7 +92,7 @@ export async function estimateGroupEnds(group: GroupForEstimate): Promise<GroupE
   const slots = cleanSlots(group.scheduleSlots)
 
   if (slots.length > 0) {
-    const today = day(new Date())
+    const today = cairoToday()
     // Holidays postpone sessions, extra sessions count (phase A).
     const { holidays, extras, branchHolidays, onlineHolidays, modeOverrides } = await exceptionsForGroup(group.id)
     const nth = (n: number) => {

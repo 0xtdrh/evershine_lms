@@ -15,11 +15,18 @@ const fmtAr = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('ar-E
 
 type Result = { ok: true } | { ok: false; status: number; message: string }
 
-async function allowed(groupId: string, mode: Mode): Promise<Result | { levelId: string | null; label: string }> {
+async function allowed(groupId: string, mode: Mode, date?: string): Promise<Result | { levelId: string | null; label: string }> {
   const g = await prisma.classSection.findUnique({ where: { id: groupId }, select: { levelId: true, className: true, sectionName: true } })
   if (!g) return { ok: false, status: 404, message: 'Group not found' }
   if (g.levelId) {
-    const m = (await levelModes(g.levelId)).modes
+    // a02: the curriculum session of that date may limit the ways too (the most specific rule wins)
+    let own: unknown = null
+    if (date) {
+      const { occurrencesFor } = await import('@/lib/groups/occurrences')
+      const n = (await occurrencesFor({ groupIds: [groupId] }, date, date))[0]?.occurrences.find((o) => o.date === date)?.sessionNumber
+      if (n) own = await (await import('@/lib/lms/engine')).curriculumSessionModes(groupId, n)
+    }
+    const m = (await levelModes(g.levelId, own)).modes
     if (!m.includes(mode)) return { ok: false, status: 409, message: `${MODE_LABEL[mode].en} is not allowed for this level · «${MODE_LABEL[mode].ar}» مش مسموحة للمستوى ده` }
   }
   return { levelId: g.levelId, label: `${g.className} ${g.sectionName}`.trim() }
@@ -31,7 +38,7 @@ export async function setSessionMode(groupId: string, date: string, mode: Mode |
     await prisma.sessionModeOverride.deleteMany({ where: { classSectionId: groupId, date: day(date) } })
     return { ok: true }
   }
-  const a = await allowed(groupId, mode)
+  const a = await allowed(groupId, mode, date)
   if ('ok' in a) return a
   await prisma.sessionModeOverride.upsert({
     where: { classSectionId_date: { classSectionId: groupId, date: day(date) } },

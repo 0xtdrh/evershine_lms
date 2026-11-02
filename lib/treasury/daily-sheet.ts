@@ -8,6 +8,7 @@
 import { prisma } from '@/lib/prisma'
 import { cairoDateTimeToUtc } from '@/lib/dates/cairo'
 import { syncMovements } from './sync'
+import { openingStart } from './rules'
 import { TreasuryError, visibleAccountWhere } from './engine'
 import { buildSheet, sheetTotals, type DailySheet, type SheetCount } from './daily-sheet-calc'
 
@@ -47,7 +48,7 @@ async function sheetsFor(accounts: { id: string; name: string; kind: string; cam
   const yDate = new Date(`${shift(day, -1)}T00:00:00.000Z`)
   const [before, during, yCounts, counts, campuses] = await Promise.all([
     // the books before the day: movements from the account's opening date up to the start of the day
-    prisma.moneyMovement.groupBy({ by: ['accountId', 'direction'], where: { OR: accounts.map((a) => ({ accountId: a.id, date: { gte: a.openingDate, lt: from } })) }, _sum: { amount: true } }),
+    prisma.moneyMovement.groupBy({ by: ['accountId', 'direction'], where: { OR: accounts.map((a) => ({ accountId: a.id, date: { gte: openingStart(a.openingDate), lt: from } })) }, _sum: { amount: true } }),
     prisma.moneyMovement.findMany({ where: { accountId: { in: ids }, date: { gte: from, lt: to } }, orderBy: { date: 'asc' } }),
     prisma.cashCount.findMany({ where: { accountId: { in: ids }, date: yDate, status: 'APPROVED' }, orderBy: { createdAt: 'desc' } }),
     prisma.cashCount.findMany({ where: { accountId: { in: ids }, date: dayDate, status: { not: 'REJECTED' } }, orderBy: { createdAt: 'desc' } }),
@@ -57,7 +58,8 @@ async function sheetsFor(accounts: { id: string; name: string; kind: string; cam
   const campusName = new Map(campuses.map((c) => [c.id, c.name]))
   const sumOf = (rows: typeof before, id: string, dir: string) => num(rows.find((r) => r.accountId === id && r.direction === dir)?._sum.amount)
   return accounts.map((a) => {
-    const startsLater = a.openingDate >= to
+    const opens = openingStart(a.openingDate)
+    const startsLater = opens >= to
     const computedOpening = startsLater ? 0 : num(a.openingBalance) + sumOf(before, a.id, 'IN') - sumOf(before, a.id, 'OUT')
     const y = yCounts.find((c) => c.accountId === a.id)
     const c = counts.find((x) => x.accountId === a.id)
@@ -69,7 +71,7 @@ async function sheetsFor(accounts: { id: string; name: string; kind: string; cam
     const sheet = buildSheet({
       computedOpening,
       yesterdayCount: y ? { id: y.id, counted: num(y.counted) } : null,
-      dayMovements: during.filter((m) => m.accountId === a.id && m.date >= a.openingDate).map((m) => ({ id: m.id, direction: m.direction, amount: num(m.amount), date: m.date, kind: m.kind, method: m.method, note: m.note, cashCountId: m.cashCountId })),
+      dayMovements: during.filter((m) => m.accountId === a.id && m.date >= opens).map((m) => ({ id: m.id, direction: m.direction, amount: num(m.amount), date: m.date, kind: m.kind, method: m.method, note: m.note, cashCountId: m.cashCountId })),
       count,
     })
     return { ...sheet, account: { id: a.id, name: a.name, kind: a.kind, campus: a.campusId ? campusName.get(a.campusId) ?? '' : null }, date: day }

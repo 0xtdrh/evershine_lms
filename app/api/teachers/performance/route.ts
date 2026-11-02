@@ -3,6 +3,7 @@
  * Managers: every instructor of their scope (table) or one (teacherId). Instructor: own only, when the setting allows.
  */
 
+import { cairoToday } from '@/lib/dates/cairo'
 import { teacherWhere } from '@/lib/places/rules'
 import { canSeeTeacher, requestPlaces } from '@/lib/places/server'
 import type { Role } from '@prisma/client'
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
   const scope = await performanceScope(user)
   if (!scope) return errors.forbidden()
   const q = new URL(req.url).searchParams
-  const to = parseDay(q.get('to'), true) ?? new Date()
+  const to = parseDay(q.get('to'), true) ?? new Date(`${cairoToday()}T23:59:59.999Z`)
   const from = parseDay(q.get('from'), false) ?? new Date(to.getTime() - 30 * DAY)
   if (from > to) return errors.badRequest('"From" must be before "to"')
   if (to.getTime() - from.getTime() > 186 * DAY) return errors.badRequest('The period can be at most 6 months')

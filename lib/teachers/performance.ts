@@ -5,6 +5,7 @@
  * when the setting allows it (`teacherPerformance.settings.teacherCanSee`, off by default). Read-only. Server-only.
  */
 
+import { cairoToday } from '@/lib/dates/cairo'
 import type { Prisma } from '@prisma/client'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
@@ -64,7 +65,7 @@ export async function teacherPerformance(teacherId: string, from: Date, to: Date
     prisma.sessionReport.findMany({ where: { classSectionId: { in: groupIds }, sessionDate: range }, select: { status: true, groupNote: true, _count: { select: { students: true } } } }),
     prisma.classSection.findMany({ where: { id: { in: groupIds } }, select: { id: true, className: true, sectionName: true, status: true } }),
   ])
-  const occ: Awaited<ReturnType<typeof occurrencesFor>> = await occurrencesFor({ groupIds }, ymd(from), ymd(to < new Date() ? to : new Date())).catch(() => [])
+  const occ: Awaited<ReturnType<typeof occurrencesFor>> = await occurrencesFor({ groupIds }, ymd(from), ymd(to) < cairoToday() ? ymd(to) : cairoToday()).catch(() => [])
   const missingAttendance = occ.flatMap((g) => g.occurrences).filter((o) => o.status === 'MISSING').length
   const held = occ.flatMap((g) => g.occurrences).filter((o) => o.status === 'HELD').length
   const attendance = attendanceStats(att.map((a) => a.status))

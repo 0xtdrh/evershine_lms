@@ -5,6 +5,7 @@
  * to review, sessions without attendance) and the settings. Secretaries read only; instructors see their groups.
  */
 
+import { cairoToday } from '@/lib/dates/cairo'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useState } from 'react'
@@ -105,7 +106,7 @@ export default function SessionReportsPage() {
   const allowed = can('session_reports', 'read')
   const canSettings = can('session_reports', 'approve')
   const [from, setFrom] = useState(ymd(new Date(Date.now() - 14 * DAY)))
-  const [to, setTo] = useState(ymd(new Date()))
+  const [to, setTo] = useState(cairoToday())
   const [status, setStatus] = useState('ALL')
   const [open, setOpen] = useState<string | null>(null)
   const qs = new URLSearchParams({ from, to, ...(status !== 'ALL' ? { status } : {}) }).toString()

@@ -16,7 +16,7 @@ import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
 import { cairoToday } from '@/lib/dates/cairo'
 
-interface Holiday { id: string; date: string; name: string; campus: { id: string; name: string } | null }
+interface Holiday { id: string; date: string; name: string; campus: { id: string; name: string } | null; appliesTo?: string[] | null }
 interface Campus { id: string; name: string }
 
 /** Branch / company days off: sessions on those days move to the next scheduled slot (phase A). */
@@ -98,7 +98,7 @@ export default function HolidaysPage() {
               <span>
                 <strong>{new Date(`${h.date}T00:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</strong>
                 {' · '}{h.name}
-                <span className="ml-2 text-xs text-slate-500">{h.campus ? h.campus.name : 'Whole company'}</span>
+                <span className="ml-2 text-xs text-slate-500">{h.campus ? h.campus.name : L('Whole company', 'الشركة كلها')}{Array.isArray(h.appliesTo) && h.appliesTo.length ? ` · ${L('off', 'إجازة')}: ${h.appliesTo.map((w) => ({ BRANCH: L('branch sessions', 'حصص الفرع'), ONLINE: L('online sessions', 'حصص الأونلاين'), ONE_TO_ONE: 'One-to-One' } as Record<string, string>)[w] ?? w).join('، ')}` : ''}</span>
               </span>
               {canDelete && <button type="button" className="text-rose-500 hover:text-rose-700" onClick={() => remove.mutate(h.id)} aria-label={L('Remove', 'شيل')}><Trash2 className="h-4 w-4" /></button>}
             </div>

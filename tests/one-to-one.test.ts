@@ -4,6 +4,8 @@ import { sessionRate } from '@/lib/teachers/online-pay'
 import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
 import { overlapsBy } from '@/lib/rooms/rules'
 import { teachClash } from '@/lib/teachers/work-hours'
+import { daysLeft, contractState } from '@/lib/partners/rules'
+import { openingStart } from '@/lib/treasury/rules'
 import { refundWindowOpen } from '@/lib/refunds/engine'
 import { cleanLocks, transferLockReason } from '@/lib/groups/transfer-lock'
 import { mergeOneToOne } from '@/lib/partners/deal'
@@ -132,5 +134,12 @@ describe('One-to-One (a02 M3)', () => {
     const b = { ...a, groupId: 'b', time: '14:00', minutes: null }
     expect(teachClash(a, [b], 90)).toBeNull()
     expect(teachClash({ ...a, minutes: null }, [b], 90)).toEqual(b)
+  })
+  it('between midnight and 2 am in Cairo the day is already the new one', () => {
+    const night = new Date('2026-11-01T22:30:00Z') // 00:30 on 2 November in Cairo
+    expect(daysLeft(new Date('2026-11-12T00:00:00Z'), night)).toBe(10)
+    expect(contractState({ startDate: new Date('2026-11-02T00:00:00Z'), endDate: null, alertDaysBefore: 10 }, night)).toBe('OPEN_ENDED')
+    // an account opened that day counts what moved since Cairo midnight
+    expect(openingStart('2026-11-02T00:00:00.000Z').getTime()).toBeLessThanOrEqual(night.getTime())
   })
 })

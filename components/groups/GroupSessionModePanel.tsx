@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,7 @@ import { MODES, MODE_LABEL, type Mode } from '@/lib/delivery/modes'
 import { MODE_ICON } from '@/components/delivery/TemplatesManager'
 import { ArrowLeftRight } from 'lucide-react'
 
-export function GroupSessionModePanel({ groupId, students }: { groupId: string; students: { id: string; name: string }[] }) {
+export function GroupSessionModePanel({ groupId, students, campusId }: { groupId: string; students: { id: string; name: string }[]; campusId?: string }) {
   const ar = useI18n().locale === 'ar'
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -25,6 +25,13 @@ export function GroupSessionModePanel({ groupId, students }: { groupId: string; 
   const [mode, setMode] = useState<Mode | ''>('ONLINE')
   const [who, setWho] = useState('')
   const [note, setNote] = useState('')
+  const [roomId, setRoomId] = useState('')
+  const { data: places } = useQuery({ queryKey: ['place-rooms', campusId], queryFn: () => fetchApi<{ rooms: { id: string; name: string }[] }>(`/api/places/${campusId}/rooms`), enabled: open && !!campusId, retry: false })
+  const room = useMutation({
+    mutationFn: () => fetchApi(`/api/groups/${groupId}/session-room`, { method: 'POST', body: JSON.stringify({ date, roomId: roomId || null }) }),
+    onSuccess: () => { notify.success(L('Room saved for this session', 'القاعة اتحفظت للحصة دي')); qc.invalidateQueries({ queryKey: ['groups-schedule'] }) },
+    onError: (e: Error) => notify.error(e.message),
+  })
   const save = useMutation({
     mutationFn: () => fetchApi(`/api/groups/${groupId}/session-mode`, {
       method: 'POST',
@@ -60,6 +67,15 @@ export function GroupSessionModePanel({ groupId, students }: { groupId: string; 
       </div>
       {!who && <Input className="h-8" aria-label={L('Note for families', 'ملاحظة للأهالي')} placeholder={L('Note for families (optional)', 'ملاحظة للأهالي (اختياري)')} value={note} onChange={(e) => setNote(e.target.value)} />}
       <p className="text-xs text-slate-500">{who ? L('Only this student; the attendance screen shows it.', 'للطالب ده بس؛ وبتظهر في شاشة الحضور.') : L('The whole group; families get a message (Arabic + English).', 'للجروب كله؛ والأهالي بيوصلهم إشعار.')}</p>
+      {!!places?.rooms?.length && (
+        <div className="flex flex-wrap items-center gap-2">
+          <select aria-label={L('Room of this session', 'قاعة الحصة دي')} className="h-9 rounded-md border px-2 text-sm" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
+            <option value="">{L('Its usual room', 'قاعتها العادية')}</option>
+            {places.rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+          <Button size="sm" variant="outline" disabled={!date || room.isPending} onClick={() => room.mutate()}>{L('Save the room', 'احفظ القاعة')}</Button>
+        </div>
+      )}
       <div className="flex gap-2">
         <Button size="sm" disabled={!date || save.isPending} onClick={() => save.mutate()}>{L('Save', 'احفظ')}</Button>
         <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>{L('Cancel', 'إلغاء')}</Button>

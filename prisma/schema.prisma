@@ -5278,6 +5278,19 @@ model SessionModeOverride {
   @@unique([classSectionId, date])
 }
 
+/// a02 M1 follow-up: one session of a group in another room, on that date only.
+model SessionRoomOverride {
+  id             String   @id @default(cuid())
+  classSectionId String
+  date           DateTime @db.Date
+  roomId         String
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  @@unique([classSectionId, date])
+  @@index([date])
+}
+
 /// a02 M3 batch 3: what happened to one session of a One-to-One. kind POSTPONE | APOLOGY | RELEASE | CHANGE (parent asks) | MINUTES; state OPEN | WAITING_SUB | DONE.
 model OneToOneEvent {
   id                  String    @id @default(cuid())

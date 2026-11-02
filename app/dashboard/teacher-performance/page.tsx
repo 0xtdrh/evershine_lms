@@ -5,6 +5,7 @@
  * their own page, when the admin allows it. Numbers: attendance, ratings, renewals, complaints, grading, session reports.
  */
 
+import { cairoToday } from '@/lib/dates/cairo'
 import { Fragment, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -80,7 +81,7 @@ export default function TeacherPerformancePage() {
   const { dir } = useI18n()
   const role = session?.user?.role ?? ''
   const [from, setFrom] = useState(ymd(new Date(Date.now() - 30 * DAY)))
-  const [to, setTo] = useState(ymd(new Date()))
+  const [to, setTo] = useState(cairoToday())
   const [open, setOpen] = useState<string | null>(null)
   const allowedRole = ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'TEACHER'].includes(role)
   const { data, isLoading, error } = useQuery({ queryKey: ['teacher-performance', from, to], queryFn: () => fetchApi<{ own: boolean; rows: Perf[] }>(`/api/teachers/performance?from=${from}&to=${to}`), enabled: allowedRole, retry: false })

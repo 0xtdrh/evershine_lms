@@ -81,6 +81,8 @@ export async function POST(
     console.error('[SUBSTITUTE_RESPOND] notification failed:', notifErr)
   }
 
+  // a02 M3: a One-to-One the family wanted a substitute for goes back to the staff to choose another
+  if (parsed.data.decision !== 'ACCEPT') await (await import('@/lib/one-to-one/sessions')).substituteDeclined(updated.classSectionId, updated.date)
   if (parsed.data.decision === 'ACCEPT') await notifySubstitute(updated.classSectionId, updated.date.toISOString().slice(0, 10))
   return successResponse(updated)
 }

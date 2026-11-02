@@ -801,7 +801,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
               )}
               <GroupRulesPanel groupId={detail.id} canEditRules={!!myPerms?.permissions?.agreements?.includes('update')} />
               {canEditGroups && detail.status === 'ACTIVE' && (
-                <GroupSessionModePanel groupId={detail.id} students={detail.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => ({ id: e.student.id, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}` }))} />
+                <GroupSessionModePanel groupId={detail.id} campusId={detail.campus?.id} students={detail.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => ({ id: e.student.id, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}` }))} />
               )}
               {detail.level && <GroupCurriculumPicker key={`cur-${detail.id}`} groupId={detail.id} canEdit={canEditGroups} />}
               {detail.level && (

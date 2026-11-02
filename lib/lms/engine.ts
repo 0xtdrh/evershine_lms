@@ -49,6 +49,16 @@ async function loadGroup(groupId: string) {
 }
 type Group = NonNullable<Awaited<ReturnType<typeof loadGroup>>>
 
+/** a02: the ways allowed for the curriculum session this group reaches at session number n of its current cycle (null = no rule of its own). */
+export async function curriculumSessionModes(groupId: string, sessionNumber: number): Promise<unknown> {
+  const g = await loadGroup(groupId)
+  if (!g?.level) return null
+  const edition = await resolveEdition(g)
+  if (!edition) return null
+  const number = (g.currentCycleNumber - 1) * sessionsPerCycle(g.level, g.cycleSessions) + sessionNumber
+  return (await prisma.curriculumSession.findFirst({ where: { editionId: edition.id, number }, select: { allowedModes: true } }))?.allowedModes ?? null
+}
+
 /** The edition a group reads; pins the newest published one once the group has started. */
 export async function resolveEdition(g: Group) {
   if (g.curriculumEditionId) {

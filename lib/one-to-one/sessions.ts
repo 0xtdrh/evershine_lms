@@ -260,3 +260,15 @@ export async function sweepHolds() {
   }
   return released
 }
+
+/** The substitute said no: the apology is open again for the staff (never breaks his answer). */
+export async function substituteDeclined(groupId: string, day: Date) {
+  try {
+    const moved = await prisma.oneToOneEvent.updateMany({ where: { classSectionId: groupId, kind: 'APOLOGY', date: day, state: 'DONE', choice: 'SUBSTITUTE' }, data: { state: 'WAITING_SUB' } })
+    if (!moved.count) return
+    const g = await prisma.classSection.findUnique({ where: { id: groupId }, select: { className: true, campusId: true } })
+    await notifyUsers(await usersWithPermission('one_to_one', 'create', g?.campusId), 'ONE_TO_ONE_REQUEST', { title: 'One-to-One: the substitute said no', message: `${g?.className ?? ''} · ${ymd(day)}`, titleAr: 'One-to-One: البديل اعتذر', messageAr: `${g?.className ?? ''} · ${ymd(day)}`, relatedId: groupId })
+  } catch (err) {
+    console.error('[ONE_TO_ONE_SUB_DECLINED]', err)
+  }
+}

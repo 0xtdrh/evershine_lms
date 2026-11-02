@@ -3,6 +3,7 @@
  * in each place in a period) and the rows for Excel exports. Server-only.
  */
 
+import { cairoYmd } from '@/lib/dates/cairo'
 import { prisma } from '@/lib/prisma'
 import { contractState, daysLeft } from './rules'
 import { openBalances } from './statement-engine'
@@ -41,7 +42,8 @@ export async function partnersOverview(opts: { withMoney: boolean }, now = new D
     ]
     if (missing.length) incomplete.push({ partnerId: p.id, partner: p.name, missing })
   }
-  const endOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59))
+  const today = cairoYmd(now) // the end of today in Egypt
+  const endOfToday = new Date(Date.UTC(today.y, today.m - 1, today.d, 23, 59, 59))
   const follow = await dueFollowUps(endOfToday)
   const drafts = await prisma.partnerStatement.findMany({ where: { status: 'DRAFT' }, select: { id: true, number: true, partner: { select: { id: true, name: true } } }, take: 50 })
   const balances = opts.withMoney ? await openBalances() : []
