@@ -65,8 +65,8 @@ const httpsUrl = z.string().trim().url().max(1000).refine((u) => u.startsWith('h
 export const blockDataSchemas: Record<BlockType, z.ZodTypeAny> = {
   TEXT: z.object({ textEn: z.string().max(50000).default(''), textAr: z.string().max(50000).default('') }),
   IMAGE: z.object({ media, captionEn: z.string().max(300).optional(), captionAr: z.string().max(300).optional() }),
-  VIDEO: z.object({ media: media.optional(), url: httpsUrl.optional() })
-    .refine((d) => !!d.media || (!!d.url && !!videoEmbedUrl(d.url)), 'Upload a video or paste a YouTube / Vimeo link'),
+  VIDEO: z.object({ media: media.optional(), url: httpsUrl.optional(), protected: z.object({ videoId: z.string().min(1).max(64), name: z.string().max(200), durationSec: z.number().min(0) }).optional() })
+    .refine((d) => !!d.protected || !!d.media || (!!d.url && !!videoEmbedUrl(d.url)), 'Upload a video or paste a YouTube / Vimeo link'),
   FILE: z.object({ media, downloadable: z.boolean().default(false) }),
   LINK: z.object({ url: httpsUrl }),
   CODE: z.object({ language: z.string().max(20).default('text'), code: z.string().max(20000) }),

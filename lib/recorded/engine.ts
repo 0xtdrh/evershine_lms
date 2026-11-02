@@ -18,6 +18,7 @@ import { notifyFamilies } from '@/lib/notifications/events'
 import { parseQuiz } from '@/lib/quizzes/engine'
 import { quizScore } from '@/lib/quizzes/rules'
 import { resolveEdition } from '@/lib/lms/engine'
+import { getVideoSettings, unprotectedVideos } from '@/lib/videos/engine'
 import { accessState, certificateReady, extendAccess, KIND_RECORDED, planOffer, progressPct, SECTION_RECORDED, type AccessPlan, type OpenMode } from './rules'
 
 type Who = { id: string; role: string; campusId?: string | null }
@@ -34,7 +35,7 @@ export async function listCourses() {
   const levels = await prisma.level.findMany({ where: { id: { in: rows.map((r) => r.levelId) } }, select: { id: true, name: true, subject: { select: { name: true } } } })
   return Promise.all(rows.map(async (r) => {
     const l = levels.find((x) => x.id === r.levelId)
-    return { ...row(r), level: l ? `${l.subject?.name ?? ''} — ${l.name}` : '', hasExam: await levelHasExam(r.levelId) }
+    return { ...row(r), level: l ? `${l.subject?.name ?? ''} — ${l.name}` : '', hasExam: await levelHasExam(r.levelId), unprotectedVideos: await unprotectedVideos(r.levelId) }
   }))
 }
 
@@ -47,7 +48,7 @@ async function levelHasExam(levelId: string) {
   return blocks.some((b) => parseQuiz(b.data)?.kind === 'FINAL')
 }
 
-export interface CourseInput { levelId: string; subscriptionPrice?: number | null; subscriptionDays?: number | null; oneTimePrice?: number | null; openMode?: OpenMode; examRequired?: boolean; autoReveal?: boolean; isActive?: boolean }
+export interface CourseInput { levelId: string; subscriptionPrice?: number | null; subscriptionDays?: number | null; oneTimePrice?: number | null; openMode?: OpenMode; examRequired?: boolean; autoReveal?: boolean; isActive?: boolean; videoDevices?: number | null }
 
 export async function saveCourse(i: CourseInput) {
   if (!(await prisma.level.findUnique({ where: { id: i.levelId }, select: { id: true } }))) throw new RecordedError('Level not found', 404)
@@ -55,7 +56,7 @@ export async function saveCourse(i: CourseInput) {
   if (i.subscriptionPrice != null && !i.subscriptionDays) throw new RecordedError('Write how many days the subscription lasts · اكتب مدة الاشتراك بالأيام')
   const data = {
     subscriptionPrice: i.subscriptionPrice ?? null, subscriptionDays: i.subscriptionPrice != null ? i.subscriptionDays ?? null : null, oneTimePrice: i.oneTimePrice ?? null,
-    openMode: i.openMode ?? 'ALL', examRequired: i.examRequired ?? true, autoReveal: i.autoReveal ?? false, isActive: i.isActive ?? true,
+    openMode: i.openMode ?? 'ALL', examRequired: i.examRequired ?? true, autoReveal: i.autoReveal ?? false, isActive: i.isActive ?? true, videoDevices: i.videoDevices ?? null,
   }
   return row(await prisma.recordedCourse.upsert({ where: { levelId: i.levelId }, create: { levelId: i.levelId, ...data }, update: data }))
 }
@@ -76,6 +77,7 @@ export async function enrol(user: Who, i: { studentId: string; campusId: string;
   if (!(await isLevelOfferedIn(i.levelId, i.campusId))) throw new RecordedError('This level is not offered in this place · المستوى ده مش متاح في المكان ده', 409, 'NOT_OFFERED')
   const offer = planOffer(row(course), i.plan)
   if (!offer) throw new RecordedError('This course does not offer that plan · الكورس مش متاح بالنظام ده', 409, 'NO_PLAN')
+  if (offer.price > 0 && (await getVideoSettings()).blockUnprotectedPaid && (await unprotectedVideos(i.levelId)) > 0) throw new RecordedError('This paid course has videos that are not protected. Upload them again first · الكورس المدفوع ده فيه فيديوهات مش محمية. ارفعها تاني الأول', 409, 'UNPROTECTED_VIDEO')
   const same = await prisma.studentEnrollment.count({ where: { studentId: i.studentId, status: 'ACTIVE', classSection: { kind: KIND_RECORDED, levelId: i.levelId, status: 'ACTIVE' } } })
   if (same) throw new RecordedError('The student already has this course · الطالب مسجل في الكورس ده', 409, 'ALREADY')
   const [student, level, year] = await Promise.all([

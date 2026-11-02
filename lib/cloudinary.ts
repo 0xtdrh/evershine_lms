@@ -313,6 +313,15 @@ export function generateAuthenticatedUploadSignature(folderPath: string, allowed
   return { timestamp, signature, cloudName: config.cloudName, apiKey: config.apiKey, folder, allowedFormats, type }
 }
 
+/** a02 M4 batch 3: signed upload of a protected video's encrypted pieces. They are open files on purpose: useless without the key. */
+export function generateRawPieceSignature(folderPath: string) {
+  const config = getRequiredCloudinaryConfig()
+  const folder = normalizeFolderPath(folderPath)
+  const timestamp = Math.round(Date.now() / 1000)
+  const signature = cloudinary.utils.api_sign_request({ folder, timestamp, unique_filename: 'false', use_filename: 'true' }, config.apiSecret)
+  return { timestamp, signature, cloudName: config.cloudName, apiKey: config.apiKey, folder }
+}
+
 /** Signed delivery link of an authenticated curriculum file (only call it for viewers allowed to see it). */
 export function curriculumMediaUrl(publicId: string, resourceType: 'image' | 'video' | 'raw', format?: string, watermarkText?: string) {
   // LMS L2: images for a student carry their name burned into the picture (a screenshot still shows who leaked it).

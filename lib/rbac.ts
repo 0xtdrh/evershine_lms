@@ -78,6 +78,7 @@ export type AcademicResource =
   | 'renewals'
   | 'one_to_one'
   | 'recorded_courses'
+  | 'video_protection'
   | 'holidays'
   // Phase B: wallet (create = top up, approve = approve proof top-ups and withdrawals)
   | 'wallet'
@@ -213,6 +214,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     one_to_one: ['create', 'read', 'update', 'delete'],
     recorded_courses: ['create', 'read', 'update', 'delete'],
+    video_protection: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
     absence_excuses: ['create', 'read', 'update', 'approve'],
@@ -285,6 +287,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     one_to_one: ['create', 'read', 'update', 'delete'],
     recorded_courses: ['create', 'read', 'update', 'delete'],
+    video_protection: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
     absence_excuses: ['create', 'read', 'update', 'approve'],
@@ -358,6 +361,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     one_to_one: [],
     recorded_courses: [],
+    video_protection: [],
     holidays: [],
     wallet: [],
     absence_excuses: ['read'],
@@ -430,6 +434,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     one_to_one: [],
     recorded_courses: [],
+    video_protection: [],
     holidays: [],
     wallet: [],
     absence_excuses: [],
@@ -502,6 +507,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     one_to_one: [],
     recorded_courses: [],
+    video_protection: [],
     holidays: [],
     wallet: [],
     absence_excuses: [],
@@ -576,6 +582,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read'],
     one_to_one: ['read'],
     recorded_courses: ['read'],
+    video_protection: [],
     holidays: ['read'],
     wallet: ['create', 'read', 'approve'],
     absence_excuses: [],
@@ -648,6 +655,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     one_to_one: [],
     recorded_courses: [],
+    video_protection: [],
     holidays: [],
     wallet: [],
     absence_excuses: [],
@@ -724,6 +732,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     one_to_one: ['create', 'read', 'update'],
     recorded_courses: ['create', 'read', 'update'],
+    video_protection: [],
     holidays: ['read'],
     wallet: ['create', 'read'],
     absence_excuses: ['create', 'read', 'approve'],
@@ -801,6 +810,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     one_to_one: ['create', 'read', 'update'],
     recorded_courses: ['create', 'read', 'update'],
+    video_protection: [],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
     absence_excuses: ['create', 'read', 'update', 'approve'],
@@ -876,6 +886,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     one_to_one: [],
     recorded_courses: [],
+    video_protection: [],
     holidays: [],
     wallet: [],
     absence_excuses: [],

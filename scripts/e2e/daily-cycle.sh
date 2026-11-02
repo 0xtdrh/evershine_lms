@@ -67,9 +67,9 @@ SA_EMAIL=$(DATABASE_URL="$URL" npx tsx scripts/e2e/.tmp-sa.ts); rm -f scripts/e2
 if [ "${E2E_PROD:-}" = 1 ]; then
   echo "building the app (E2E_PROD=1)…"
   npx next build > /d/tn-e2e-build.log 2>&1 || { echo "build failed"; tail -20 /d/tn-e2e-build.log; exit 1; }
-  DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" AUTH_TRUST_HOST=true PAYMOB_HMAC_SECRET="e2e-paymob-hmac" CRON_SECRET="e2e-cron" npx next start -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
+  DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" AUTH_TRUST_HOST=true PAYMOB_HMAC_SECRET="e2e-paymob-hmac" CRON_SECRET="e2e-cron" VIDEO_STORAGE=local npx next start -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
 else
-DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" PAYMOB_HMAC_SECRET="e2e-paymob-hmac" CRON_SECRET="e2e-cron" NODE_OPTIONS="--max-old-space-size=6144" npx next dev -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
+DATABASE_URL="$URL" AUTH_SECRET="$SECRET" NEXTAUTH_SECRET="$SECRET" NEXTAUTH_URL="$B" PAYMOB_HMAC_SECRET="e2e-paymob-hmac" CRON_SECRET="e2e-cron" VIDEO_STORAGE=local NODE_OPTIONS="--max-old-space-size=6144" npx next dev -p $APP_PORT > /d/tn-e2e-app.log 2>&1 &
 fi
 APP_PID=$!
 for i in $(seq 1 120); do [ "$(curl -s -o /dev/null -w '%{http_code}' $B/api/auth/csrf)" = "200" ] && break; sleep 3; done
@@ -2718,6 +2718,98 @@ for b in $RB1 $RB2 $RF; do curl -s -b "$RK3J" -X POST -H 'Content-Type: applicat
 check "exam not required + show at once: the certificate is visible when the lessons end" "$(M "SELECT isRevealed FROM Certificate WHERE studentId='$RK3' AND remarks='RECORDED:$RL'")/$(curl -s -b "$RK3J" $B/api/certificates/mine | jq_ "str(d).count('TN-CERT')>0")" "1/True"
 check "a recorded course is not moved like a group" "$(api POST /api/students/$RK/transfer "{\"fromClassSectionId\":\"$RG\",\"toClassSectionId\":\"$GG3\",\"creditTo\":\"WALLET\"}" | jq_ "'not moved like a group' in str(d)")" "True"
 rm -f "$RKJ" "$RK3J"
+echo "== 82. Protected videos: encrypted pieces, short-lived key, device limit, paid courses (a02 M4 batch 3, 2026-11-02)"
+VDIR=$(mktemp -d)
+VPLAY() { curl -s -b "$1" -X POST -H 'Content-Type: application/json' -d "{\"blockId\":\"$2\",\"g\":\"$3\",\"device\":\"$4\"}" $B/api/videos/play; }
+check "a secretary cannot start an upload" "$(secapi POST /api/videos '{"name":"x.mp4"}' | jq_ "d['success']")" "False"
+VU=$(api POST /api/videos '{"name":"lesson.mp4"}')
+VID=$(echo "$VU" | jq_ "d['data']['id']"); VKEY=$(echo "$VU" | jq_ "d['data']['key']"); VIV=$(echo "$VU" | jq_ "d['data']['iv']")
+check "an upload starts on the local store of this copy" "$(echo "$VU" | jq_ "d['data']['mode']")/${#VKEY}/${#VIV}" "local/32/32"
+check "the stored key is sealed, not the plain key" "$(M "SELECT keySealed LIKE '%$VKEY%' FROM ProtectedVideo WHERE id='$VID'")/$(M "SELECT status FROM ProtectedVideo WHERE id='$VID'")" "0/UPLOADING"
+( cd "$VDIR" && ffmpeg -y -v error -f lavfi -i "testsrc2=size=320x180:rate=15" -f lavfi -i "sine=frequency=440" -t 20 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -g 15 -c:a aac in.mp4 \
+  && python -c "open('k.bin','wb').write(bytes.fromhex('$VKEY'))" && printf 'KEY_URI\nk.bin\n%s\n' "$VIV" > k.info \
+  && ffmpeg -y -v error -i in.mp4 -c copy -f hls -hls_time 6 -hls_playlist_type vod -hls_key_info_file k.info -hls_segment_filename 'p%05d.ts' index.m3u8 )
+VJSON() { python -c "import json,sys;print(json.dumps({'manifest':open(sys.argv[1]).read(),'sizeBytes':1000}))" "$VDIR/index.m3u8"; }
+check "a list without encryption is refused" "$(python -c "import json;print(json.dumps({'manifest':'#EXTM3U\n#EXTINF:6.0,\np00000.ts\n#EXT-X-ENDLIST\n','sizeBytes':1}))" > "$VDIR/bad.json"; curl -s -b "$JAR" -X POST -H 'Content-Type: application/json' -d @"$VDIR/bad.json" $B/api/videos/$VID/complete | jq_ "d['success']")" "False"
+VJSON > "$VDIR/ok.json"
+check "finishing before the pieces arrive is refused" "$(curl -s -b "$JAR" -X POST -H 'Content-Type: application/json' -d @"$VDIR/ok.json" $B/api/videos/$VID/complete | jq_ "d['error']['code']")" "PIECES_MISSING"
+check "a strange piece name is refused" "$(curl -s -b "$JAR" -o /dev/null -w '%{http_code}' -X PUT --data-binary 'x' "$B/api/videos/$VID/piece/key.bin")" "403"
+for f in "$VDIR"/p*.ts; do curl -s -o /dev/null -b "$JAR" -X PUT --data-binary @"$f" "$B/api/videos/$VID/piece/$(basename "$f")"; done
+check "ready after every piece is up" "$(curl -s -b "$JAR" -X POST -H 'Content-Type: application/json' -d @"$VDIR/ok.json" $B/api/videos/$VID/complete | jq_ "d['data']['durationSec']")/$(M "SELECT status FROM ProtectedVideo WHERE id='$VID'")" "20/READY"
+check "a finished video cannot be overwritten" "$(curl -s -b "$JAR" -X POST -H 'Content-Type: application/json' -d @"$VDIR/ok.json" $B/api/videos/$VID/complete | jq_ "d['success']")" "False"
+curl -s -o "$VDIR/stolen.ts" $B/api/videos/p/$VID/p00001.ts
+check "a piece can be fetched with no login, but it is not video" "$(python -c "import sys;b=open(sys.argv[1],'rb').read();print(len(b)>500, b[0]==0x47 and b[188]==0x47)" "$VDIR/stolen.ts")" "True False"
+check "…and a player cannot open it" "$(ffmpeg -v error -i "$VDIR/stolen.ts" -f null - >/dev/null 2>&1 && echo opened || echo refused)" "refused"
+api POST /api/levels "{\"subjectId\":\"$SAC\",\"name\":\"Protected Basics\",\"order\":6,\"numberOfMonths\":1,\"numberOfSessions\":1,\"pricingType\":\"FULL_LEVEL\",\"fullLevelPrice\":999}" >/dev/null
+VL=$(M "SELECT id FROM Level WHERE name='Protected Basics'")
+VE=$(api POST /api/curriculum/levels/$VL '{"notes":"videos"}' | jq_ "d['data']['id']"); VS=$(M "SELECT id FROM CurriculumSession WHERE editionId='$VE' AND number=1")
+VB=$(api POST /api/curriculum/sessions/$VS/blocks "{\"type\":\"VIDEO\",\"data\":{\"protected\":{\"videoId\":\"$VID\",\"name\":\"lesson.mp4\",\"durationSec\":20}}}" | jq_ "d['data']['id']")
+check "a protected video goes in a lesson" "$(M "SELECT type FROM CurriculumBlock WHERE id='$VB'")" "VIDEO"
+M "UPDATE CurriculumSession SET titleEn='Video lesson' WHERE id='$VS'"
+api PATCH /api/curriculum/editions/$VE '{"action":"submit"}' >/dev/null; api PATCH /api/curriculum/editions/$VE '{"action":"publish"}' >/dev/null
+api POST /api/levels "{\"subjectId\":\"$SAC\",\"name\":\"Link Basics\",\"order\":7,\"numberOfMonths\":1,\"numberOfSessions\":1,\"pricingType\":\"FULL_LEVEL\",\"fullLevelPrice\":999}" >/dev/null
+VL2=$(M "SELECT id FROM Level WHERE name='Link Basics'")
+VE2=$(api POST /api/curriculum/levels/$VL2 '{"notes":"link"}' | jq_ "d['data']['id']"); VS2=$(M "SELECT id FROM CurriculumSession WHERE editionId='$VE2' AND number=1")
+api POST /api/curriculum/sessions/$VS2/blocks '{"type":"VIDEO","data":{"url":"https://youtu.be/dQw4w9WgXcQ"}}' >/dev/null
+M "UPDATE CurriculumSession SET titleEn='Link lesson' WHERE id='$VS2'"
+api PATCH /api/curriculum/editions/$VE2 '{"action":"submit"}' >/dev/null; api PATCH /api/curriculum/editions/$VE2 '{"action":"publish"}' >/dev/null
+api POST /api/recorded/courses "{\"levelId\":\"$VL2\",\"subscriptionPrice\":100,\"subscriptionDays\":30}" >/dev/null
+api POST /api/recorded/courses "{\"levelId\":\"$VL\",\"subscriptionPrice\":200,\"subscriptionDays\":30}" >/dev/null
+VK=$(mkstu VidKid 01066660411 VidDad 01066660419); VK2=$(mkstu VidOther 01066660412 VidDad2 01066660418)
+VENROL() { api POST /api/recorded "{\"studentId\":\"$1\",\"campusId\":\"$CAMPUS\",\"levelId\":\"$2\",\"plan\":\"SUBSCRIPTION\"}"; }
+check "the catalogue counts the video that is not protected" "$(api GET /api/recorded/courses | jq_ "sorted((c['levelId']=='$VL2', c['unprotectedVideos']) for c in d['data'] if c['levelId'] in ('$VL','$VL2'))")" "[(False, 0), (True, 1)]"
+check "a paid course with a YouTube link refuses enrolling" "$(VENROL $VK $VL2 | jq_ "d['error']['code']")" "UNPROTECTED_VIDEO"
+check "a secretary cannot change the video settings" "$(secapi PUT /api/videos/settings '{"deviceLimit":5}' | jq_ "d['success']")" "False"
+api PUT /api/videos/settings '{"blockUnprotectedPaid":false}' >/dev/null
+check "…the setting can allow it" "$(VENROL $VK2 $VL2 | jq_ "d['success']")" "True"
+api PUT /api/videos/settings '{"blockUnprotectedPaid":true}' >/dev/null
+VG=$(VENROL $VK $VL | jq_ "d['data']['groupId']")
+VKR=$(api POST /api/students/$VK/portal-password '{"target":"student"}'); VJ=$(mktemp); login_jar "$(echo "$VKR" | jq_ "d['data']['loginId']")" "$(echo "$VKR" | jq_ "d['data']['password']")" "$VJ" 10.0.4.81
+VK2R=$(api POST /api/students/$VK2/portal-password '{"target":"student"}'); VJ2=$(mktemp); login_jar "$(echo "$VK2R" | jq_ "d['data']['loginId']")" "$(echo "$VK2R" | jq_ "d['data']['password']")" "$VJ2" 10.0.4.82
+check "not paid: the video is refused" "$(VPLAY "$VJ" $VB $VG dev-a | jq_ "d['success']")" "False"
+pay "$(invid $VK $VG)" 200 >/dev/null
+V1=$(VPLAY "$VJ" $VB $VG dev-a)
+VT=$(echo "$V1" | jq_ "d['data']['token']")
+check "paid: it opens, with the student's name and number for the picture" "$(echo "$V1" | jq_ "'VidKid' in d['data']['name'] and 'TN/' in d['data']['name']")" "True"
+check "the lesson data has no key and no piece links" "$(curl -s -b "$VJ" "$B/api/lessons/$VS?g=$VG" | jq_ "[('key' in str(b['data']).lower(), 'p00000' in str(b['data']), b['data']['videoRef']['g']=='$VG') for b in d['data']['blocks']]")" "[(False, False, True)]"
+check "another student cannot start it" "$(VPLAY "$VJ2" $VB $VG dev-z | jq_ "d['success']")" "False"
+check "the list carries a key link for this viewing" "$(curl -s -b "$VJ" $B/api/videos/m/$VT | python -c "import sys;t=sys.stdin.read();print('/api/videos/k/$VT' in t, 'KEY_URI' in t, '/api/videos/p/$VID/p00000.ts' in t)")" "True False True"
+VKEYHEX() { curl -s -b "$1" "$B/api/videos/k/$2" | python -c "import sys;print(sys.stdin.buffer.read().hex())"; }
+check "the key that comes back is the real one" "$(VKEYHEX "$VJ" $VT)" "$VKEY"
+check "with no login: no key and no list" "$(curl -s -o /dev/null -w '%{http_code}' $B/api/videos/k/$VT)/$(curl -s -o /dev/null -w '%{http_code}' $B/api/videos/m/$VT)" "401/401"
+check "another person with the link gets nothing" "$(curl -s -o /dev/null -w '%{http_code}' -b "$VJ2" $B/api/videos/k/$VT)/$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" $B/api/videos/k/$VT)" "403/403"
+check "a made-up link gets nothing" "$(curl -s -o /dev/null -w '%{http_code}' -b "$VJ" $B/api/videos/k/nothing)" "403"
+check "each key request is counted" "$(M "SELECT keyFetches FROM VideoViewing WHERE studentId='$VK' AND refused=0 ORDER BY startedAt DESC LIMIT 1")" "1"
+VPLAY "$VJ" $VB $VG dev-b >/dev/null
+check "a third device is refused while the limit is 2" "$(VPLAY "$VJ" $VB $VG dev-c | jq_ "d['error']['code']")" "DEVICE_LIMIT"
+check "the same device reopening is fine, and its old link dies" "$(V2=$(VPLAY "$VJ" $VB $VG dev-a); VT2=$(echo "$V2" | jq_ "d['data']['token']"); echo "$(curl -s -o /dev/null -w '%{http_code}' -b "$VJ" $B/api/videos/m/$VT)/$(curl -s -o /dev/null -w '%{http_code}' -b "$VJ" $B/api/videos/m/$VT2)")" "403/200"
+check "the setting changes the number" "$(api PUT /api/videos/settings '{"deviceLimit":3}' | jq_ "d['data']['deviceLimit']")/$(VPLAY "$VJ" $VB $VG dev-c | jq_ "d['success']")/$(VPLAY "$VJ" $VB $VG dev-d | jq_ "d['error']['code']")" "3/True/DEVICE_LIMIT"
+api PUT /api/videos/settings '{"deviceLimit":2}' >/dev/null
+api POST /api/recorded/courses "{\"levelId\":\"$VL\",\"subscriptionPrice\":200,\"subscriptionDays\":30,\"videoDevices\":4}" >/dev/null
+check "a course can have its own number" "$(VPLAY "$VJ" $VB $VG dev-d | jq_ "d['success']")" "True"
+VDEND=$(VPLAY "$VJ" $VB $VG dev-d | jq_ "d['data']['token']")
+curl -s -b "$VJ" -X POST -d "{\"token\":\"$VDEND\",\"end\":true}" $B/api/videos/heartbeat >/dev/null
+check "closing the player frees the device" "$(M "SELECT COUNT(*) FROM VideoViewing WHERE studentId='$VK' AND device='dev-d' AND refused=0 AND lastSeenAt > UTC_TIMESTAMP() - INTERVAL 1 MINUTE")" "0"
+VT3=$(VPLAY "$VJ" $VB $VG dev-a | jq_ "d['data']['token']")
+check "a sign of life keeps the link" "$(curl -s -b "$VJ" -X POST -d "{\"token\":\"$VT3\"}" $B/api/videos/heartbeat | jq_ "d['success']")" "True"
+M "UPDATE VideoViewing SET expiresAt=UTC_TIMESTAMP() - INTERVAL 1 SECOND WHERE studentId='$VK' AND device='dev-a' AND refused=0"
+check "an old link stops: list, key and sign of life" "$(curl -s -o /dev/null -w '%{http_code}' -b "$VJ" $B/api/videos/m/$VT3)/$(curl -s -o /dev/null -w '%{http_code}' -b "$VJ" $B/api/videos/k/$VT3)/$(curl -s -o /dev/null -w '%{http_code}' -b "$VJ" -X POST -d "{\"token\":\"$VT3\"}" $B/api/videos/heartbeat)" "403/403/403"
+VT4=$(VPLAY "$VJ" $VB $VG dev-a | jq_ "d['data']['token']")
+M "UPDATE ClassSection SET accessEndsAt=UTC_TIMESTAMP() - INTERVAL 1 DAY WHERE id='$VG'"
+check "the subscription ended: a live link gets no key, and no new viewing" "$(curl -s -b "$VJ" $B/api/videos/k/$VT4 | jq_ "d['error']['code']")/$(VPLAY "$VJ" $VB $VG dev-a | jq_ "d['success']")" "LOCKED/False"
+M "UPDATE ClassSection SET accessEndsAt=UTC_TIMESTAMP() + INTERVAL 5 DAY WHERE id='$VG'"
+ADMPLAY=$(curl -s -b "$JAR" -X POST -H 'Content-Type: application/json' -d "{\"blockId\":\"$VB\",\"device\":\"staff-1\"}" $B/api/videos/play)
+check "staff can preview it from the curriculum" "$(echo "$ADMPLAY" | jq_ "d['success']")/$(VKEYHEX "$JAR" "$(echo "$ADMPLAY" | jq_ "d['data']['token']")")" "True/$VKEY"
+check "nothing unusual yet" "$(api GET /api/videos/watch | jq_ "'$VK' in str(d['data'])")" "False"
+api PUT /api/videos/settings '{"deviceLimit":1}' >/dev/null
+api POST /api/recorded/courses "{\"levelId\":\"$VL\",\"subscriptionPrice\":200,\"subscriptionDays\":30}" >/dev/null
+for i in 1 2 3 4 5 6; do VPLAY "$VJ" $VB $VG "dev-x$i" >/dev/null; done
+check "many refused devices show on the watching list" "$(api GET /api/videos/watch | jq_ "[w['refused']>=5 for w in d['data'] if w['studentId']=='$VK']")" "[True]"
+check "…and in today's work" "$(api GET /api/today | jq_ "any(t['key']=='videoSuspicious' for t in d['data']['tasks'])")" "True"
+check "a secretary cannot read the watching list" "$(secapi GET /api/videos/watch | jq_ "d['success']")" "False"
+check "the video list shows it with its viewings" "$(api GET /api/videos | jq_ "[(v['status'], v['viewings']>0) for v in d['data'] if v['id']=='$VID']")" "[('READY', True)]"
+api PUT /api/videos/settings '{"deviceLimit":2}' >/dev/null
+rm -rf "$VDIR" "$VJ" "$VJ2"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

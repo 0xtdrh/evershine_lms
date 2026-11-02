@@ -5284,6 +5284,49 @@ model SessionModeOverride {
   @@unique([classSectionId, date])
 }
 
+/// a02 M4 batch 3: an encrypted video. The pieces are on the storage; the sealed key and the list stay here and leave only through a live viewing.
+model ProtectedVideo {
+  id           String   @id
+  /// CLOUDINARY | LOCAL (e2e copy); the provider can change later
+  provider     String   @default("CLOUDINARY") @db.VarChar(20)
+  folder       String   @db.VarChar(300)
+  keySealed    String   @db.VarChar(300)
+  /// UPLOADING | READY
+  status       String   @default("UPLOADING") @db.VarChar(12)
+  manifest     String?  @db.MediumText
+  pieces       Int?
+  durationSec  Int?
+  sizeBytes    Int?
+  originalName String   @db.VarChar(200)
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// a02 M4 batch 3: one viewing of a protected video (refused = a device over the limit).
+model VideoViewing {
+  id             String   @id @default(cuid())
+  tokenHash      String   @unique @db.VarChar(64)
+  videoId        String
+  blockId        String
+  userId         String
+  studentId      String?
+  classSectionId String?
+  device         String   @db.VarChar(64)
+  ip             String?  @db.VarChar(64)
+  userAgent      String?  @db.VarChar(300)
+  refused        Boolean  @default(false)
+  keyFetches     Int      @default(0)
+  startedAt      DateTime @default(now())
+  lastSeenAt     DateTime @default(now())
+  expiresAt      DateTime
+
+  @@index([studentId, lastSeenAt])
+  @@index([userId, lastSeenAt])
+  @@index([videoId])
+  @@index([startedAt])
+}
+
 /// a02 M4 batch 1: a level sold as a recorded course (its curriculum is the course).
 model RecordedCourse {
   id                String   @id @default(cuid())
@@ -5297,6 +5340,8 @@ model RecordedCourse {
   examRequired      Boolean  @default(true)
   /// the certificate shows at once; else it stays hidden until revealed
   autoReveal        Boolean  @default(false)
+  /// devices at once for this course; null = the company setting
+  videoDevices      Int?
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

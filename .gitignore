@@ -212,3 +212,4 @@ graphify-out/
 *.sql.gz
 /*.sql
 /file*
+.e2e-video/

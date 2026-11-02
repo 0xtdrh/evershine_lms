@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 const money = z.number().min(0).max(10_000_000).nullish()
 const schema = z.object({
   levelId: z.string().min(1), subscriptionPrice: money, subscriptionDays: z.number().int().min(1).max(3650).nullish(), oneTimePrice: money,
-  openMode: z.enum(['ALL', 'PREVIOUS']).optional(), examRequired: z.boolean().optional(), autoReveal: z.boolean().optional(), isActive: z.boolean().optional(),
+  openMode: z.enum(['ALL', 'PREVIOUS']).optional(), examRequired: z.boolean().optional(), autoReveal: z.boolean().optional(), isActive: z.boolean().optional(), videoDevices: z.number().int().min(1).max(10).nullish(),
 })
 
 export async function GET() {

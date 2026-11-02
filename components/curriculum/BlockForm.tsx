@@ -2,6 +2,7 @@
 
 /** LMS L1: add / edit form of one curriculum content block (type-specific fields + upload to private Cloudinary). */
 
+import { ProtectedUploader, type UploadedVideo } from '@/components/videos/ProtectedUploader'
 import { useState } from 'react'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
@@ -136,9 +137,10 @@ export function BlockForm({ value, onChange, subjectId }: { value: BlockDraft; o
       )}
       {value.type === 'VIDEO' && (
         <>
-          <p className="text-xs text-slate-500">{L(`Upload a video (private, max ${MAX_MB} MB) or paste a YouTube / Vimeo link.`, `ارفع فيديو (private، أقصى حد ${MAX_MB} MB) أو حط لينك YouTube / Vimeo.`)}</p>
-          {uploadBtn('video/*')}
-          <Input placeholder="https://www.youtube.com/watch?v=…" value={(d.url as string) ?? ''} onChange={(e) => set({ url: e.target.value || undefined })} />
+          <p className="text-xs text-slate-500">{L('Upload a protected video: it is encrypted on this computer, then uploaded. A YouTube / Vimeo link is not protected, and a paid recorded course refuses it.', 'ارفع فيديو محمي: بيتشفر على الجهاز ده وبعدين بيترفع. لينك YouTube / Vimeo مش محمي، والكورس المسجل المدفوع بيرفضه.')}</p>
+          <ProtectedUploader current={(d.protected as UploadedVideo | undefined) ?? null} onDone={(v) => set({ protected: v, media: undefined, url: undefined })} />
+          {!!d.media && !d.protected && <p className="text-xs font-semibold text-amber-700">{L('This is an old unprotected file. Upload it again to protect it.', 'ده ملف قديم مش محمي. ارفعه تاني علشان يتحمى.')}</p>}
+          <Input placeholder="https://www.youtube.com/watch?v=…" value={(d.url as string) ?? ''} onChange={(e) => set({ url: e.target.value || undefined, ...(e.target.value ? { protected: undefined } : {}) })} />
         </>
       )}
       {value.type === 'FILE' && (

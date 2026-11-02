@@ -415,6 +415,8 @@ export async function studentLesson(studentId: string, groupId: string, sessionI
       if (b.type === 'QUIZ') { const qd = parseQuiz(data); data = qd ? (quizSummary(qd) as unknown as Record<string, unknown>) : {} }
       // L5: the H5P package is played through /api/h5p (token links), never downloaded
       if (b.type === 'H5P') data = { height: data.height }
+      // a02 M4: a protected video is played through /api/videos/play
+      if (b.type === 'VIDEO' && (data.protected as { videoId?: string } | undefined)?.videoId) data = { ...data, videoRef: { g: groupId, s: studentId } }
       const hasMedia = !!(data.media as { publicId?: string } | undefined)?.publicId
       return {
         id: b.id, type: b.type, audience: b.audience, titleEn: b.titleEn, titleAr: b.titleAr,

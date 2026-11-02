@@ -12,6 +12,7 @@ import { useI18n } from '@/lib/i18n/client'
 import { videoEmbedUrl } from '@/lib/curriculum/blocks'
 import { Watermark } from './Watermark'
 import { H5PFrame } from './H5PFrame'
+import { ProtectedPlayer } from '@/components/videos/ProtectedPlayer'
 import { L } from '@/lib/i18n/client'
 import { useEffect, useRef, useState } from 'react'
 import { ClipboardList, ListChecks, ExternalLink, FileText, Hourglass, Maximize2, X, ZoomIn, ZoomOut } from 'lucide-react'
@@ -81,7 +82,10 @@ export function BlockView({ block, watermark, groupId }: { block: Block; waterma
       break
     case 'VIDEO': {
       const embed = d.url ? videoEmbedUrl(d.url as string) : null
-      body = d.mediaUrl ? (
+      const ref = d.videoRef as { g?: string; s?: string } | undefined
+      body = d.protected ? (
+        <ProtectedPlayer blockId={block.id} g={ref?.g} s={ref?.s} />
+      ) : d.mediaUrl ? (
         <video src={d.mediaUrl} controls controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={noMenu} className={`rounded-lg bg-black ${fill ? 'h-full w-full' : 'w-full max-w-3xl'}`} />
       ) : embed ? (
         <div className={`overflow-hidden rounded-lg ${fill ? 'h-full w-full' : 'aspect-video w-full max-w-3xl'}`}><iframe src={embed} className="h-full w-full" allow="encrypted-media; fullscreen" allowFullScreen title={title || 'video'} /></div>
@@ -173,7 +177,7 @@ export function BlockView({ block, watermark, groupId }: { block: Block; waterma
           </span>
         </div>
         <div className={`flex-1 overflow-auto p-4 ${fill ? 'flex' : ''}`}>
-          <div className={fill ? 'flex-1' : 'mx-auto max-w-5xl text-base'} style={ZOOM_TYPES.includes(block.type) ? { zoom } : undefined}><div className={`relative ${fill ? 'h-full' : ''}`}>{body}{watermark && <Watermark text={watermark} moving={FILL_TYPES.includes(block.type)} />}</div></div>
+          <div className={fill ? 'flex-1' : 'mx-auto max-w-5xl text-base'} style={ZOOM_TYPES.includes(block.type) ? { zoom } : undefined}><div className={`relative ${fill ? 'h-full' : ''}`}>{body}{watermark && !d.protected && <Watermark text={watermark} moving={FILL_TYPES.includes(block.type)} />}</div></div>
         </div>
       </div>
     )
@@ -186,7 +190,7 @@ export function BlockView({ block, watermark, groupId }: { block: Block; waterma
           {canExpand && <button type="button" className={btn} onClick={open} aria-label="Full screen" title="Full screen"><Maximize2 className="h-4 w-4" /></button>}
         </div>
       ) : null}
-      <div className="relative">{body}{watermark && <Watermark text={watermark} moving={FILL_TYPES.includes(block.type)} />}</div>
+      <div className="relative">{body}{watermark && !d.protected && <Watermark text={watermark} moving={FILL_TYPES.includes(block.type)} />}</div>
     </div>
   )
 }

@@ -176,6 +176,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Course Structure', href: '/dashboard/course-config', icon: GraduationCap, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Groups', href: '/dashboard/groups', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['class_sections', 'read']] },
   { name: 'One-to-One', href: '/dashboard/one-to-one', icon: UserCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['one_to_one', 'read']] },
+  { name: 'Protected Videos', href: '/dashboard/videos', icon: PlayCircle, roles: ['SUPER_ADMIN', 'ADMIN'], perm: [['video_protection', 'read']] },
   { name: 'Recorded Courses', href: '/dashboard/recorded', icon: PlayCircle, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['recorded_courses', 'read']] },
   { name: 'Wallet & Top-ups', href: '/dashboard/wallet', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'ACCOUNTANT'], perm: [['wallet', 'read']] },
   { name: 'Instructor Performance', href: '/dashboard/teacher-performance', icon: Award, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },

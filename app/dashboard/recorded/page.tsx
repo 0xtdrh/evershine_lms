@@ -25,7 +25,7 @@ interface Row {
   student: { id: string; name: string } | null; unpaidRenewal: boolean
   progress: { done: number; total: number; pct: number; hasExam: boolean; examScore: number | null; passMark: number | null; certificate: { certificateNumber: string; isRevealed: boolean } | null } | null
 }
-interface Course { id: string; levelId: string; level: string; subscriptionPrice: number | null; subscriptionDays: number | null; oneTimePrice: number | null; openMode: string; examRequired: boolean; autoReveal: boolean; isActive: boolean; hasExam: boolean }
+interface Course { id: string; levelId: string; level: string; subscriptionPrice: number | null; subscriptionDays: number | null; oneTimePrice: number | null; openMode: string; examRequired: boolean; autoReveal: boolean; isActive: boolean; hasExam: boolean; unprotectedVideos: number; videoDevices: number | null }
 interface LevelRow { id: string; name: string; subject: { name: string } }
 interface StudentRow { id: string; firstName: string; lastName: string; registrationNumber?: string | null; campusId?: string }
 interface Campus { id: string; name: string }
@@ -122,11 +122,11 @@ function Courses({ canEdit }: { canEdit: boolean }) {
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['recorded-courses'], queryFn: () => fetchApi<Course[]>('/api/recorded/courses') })
   const { data: levels } = useQuery({ queryKey: ['levels-all'], queryFn: () => fetchApi<LevelRow[]>('/api/levels') })
-  const empty = { levelId: '', subscriptionPrice: '', subscriptionDays: '30', oneTimePrice: '', openMode: 'ALL', examRequired: true, autoReveal: false }
+  const empty = { levelId: '', subscriptionPrice: '', subscriptionDays: '30', oneTimePrice: '', openMode: 'ALL', examRequired: true, autoReveal: false, videoDevices: '' }
   const [f, setF] = useState(empty)
   const n = (v: string) => (v === '' ? null : Number(v))
   const save = useMutation({
-    mutationFn: () => fetchApi('/api/recorded/courses', { method: 'POST', body: JSON.stringify({ ...f, subscriptionPrice: n(f.subscriptionPrice), subscriptionDays: n(f.subscriptionDays), oneTimePrice: n(f.oneTimePrice) }) }),
+    mutationFn: () => fetchApi('/api/recorded/courses', { method: 'POST', body: JSON.stringify({ ...f, subscriptionPrice: n(f.subscriptionPrice), subscriptionDays: n(f.subscriptionDays), oneTimePrice: n(f.oneTimePrice), videoDevices: n(f.videoDevices) }) }),
     onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); setF(empty); qc.invalidateQueries({ queryKey: ['recorded-courses'] }) }, onError: (e: Error) => notify.error(e.message),
   })
   return (
@@ -139,6 +139,7 @@ function Courses({ canEdit }: { canEdit: boolean }) {
             <label className="space-y-1"><span className={lab}>{L('Subscription price', 'سعر الاشتراك')}</span><Input type="number" min={0} className="h-9 w-28" value={f.subscriptionPrice} onChange={(e) => setF({ ...f, subscriptionPrice: e.target.value })} /></label>
             <label className="space-y-1"><span className={lab}>{L('Days', 'الأيام')}</span><Input type="number" min={1} className="h-9 w-20" value={f.subscriptionDays} onChange={(e) => setF({ ...f, subscriptionDays: e.target.value })} /></label>
             <label className="space-y-1"><span className={lab}>{L('One-time price', 'سعر الشراء مرة واحدة')}</span><Input type="number" min={0} className="h-9 w-28" value={f.oneTimePrice} onChange={(e) => setF({ ...f, oneTimePrice: e.target.value })} /></label>
+            <label className="space-y-1"><span className={lab}>{L('Devices at once (empty = setting)', 'أجهزة في نفس الوقت (فاضي = الإعداد)')}</span><Input type="number" min={1} max={10} className="h-9 w-28" value={f.videoDevices} onChange={(e) => setF({ ...f, videoDevices: e.target.value })} /></label>
             <label className="space-y-1"><span className={lab}>{L('Lessons', 'الدروس')}</span>
               <select className={sel} value={f.openMode} onChange={(e) => setF({ ...f, openMode: e.target.value })}><option value="ALL">{L('All open', 'مفتوحة كلها')}</option><option value="PREVIOUS">{L('In order', 'بالترتيب')}</option></select></label>
           </div>
@@ -158,6 +159,7 @@ function Courses({ canEdit }: { canEdit: boolean }) {
             {c.oneTimePrice != null && `${L('One-time', 'مرة واحدة')} ${c.oneTimePrice.toLocaleString('en-US')}`}
             {` · ${c.openMode === 'ALL' ? L('all open', 'مفتوحة كلها') : L('in order', 'بالترتيب')}`}
           </p>
+          {c.unprotectedVideos > 0 && <p className="text-xs font-semibold text-rose-700">{L(`${c.unprotectedVideos} video(s) are not protected: a paid enrolment is refused until they are uploaded again.`, `فيه فيديوهات مش محمية (${c.unprotectedVideos}): التسجيل المدفوع مرفوض لحد ما تترفع تاني.`)}</p>}
           {c.examRequired && !c.hasExam && <p className="text-xs font-semibold text-rose-700">{L('The certificate needs a final exam and the curriculum has none yet: nobody can get it until one is added.', 'الشهادة محتاجة امتحان نهائي والمنهج لسه مفيهوش: محدش هياخدها لحد ما يتضاف.')}</p>}
         </div>
       ))}
