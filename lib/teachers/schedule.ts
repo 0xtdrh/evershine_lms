@@ -140,7 +140,7 @@ export async function getRemainingCycleSessions(
 
   const slots = cleanSlots(group.scheduleSlots)
   // Holidays move sessions to the next slot; extra sessions count (phase A).
-  const { holidays, extras, branchHolidays, modeOverrides } = await exceptionsForGroup(classSectionId)
+  const { holidays, extras, branchHolidays, onlineHolidays, modeOverrides } = await exceptionsForGroup(classSectionId)
   if (slots.length === 0 && extras.length === 0) return []
 
   const cancelled = await prisma.cancelledSession.findMany({ where: { classSectionId }, select: { date: true } })
@@ -151,6 +151,7 @@ export async function getRemainingCycleSessions(
     holidays,
     extras,
     branchHolidays,
+    onlineHolidays,
     modeOverrides,
     skipDates: [...attendedDates, ...cancelled.map((c) => c.date.toISOString().slice(0, 10))],
     maxDays: 180,

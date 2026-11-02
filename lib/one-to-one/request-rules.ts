@@ -15,9 +15,24 @@ export interface OneToOneSettings {
   parentPicksInstructor: boolean
   /** online: suggest that a parent stays with a child younger than this */
   parentPresentUnderAge: number
+  /** a postponement must be at least this many hours before the session */
+  cancelHours: number
+  /** postponements of a family in a month */
+  postponesPerMonth: number
+  /** minutes the instructor waits before a no-show */
+  noShowWaitMinutes: number
+  /** % of the session pay the instructor keeps when the student does not come */
+  noShowPayPct: number
+  /** sessions missed without notice before the fixed time is released */
+  noShowLimit: number
 }
 
-export const DEFAULT_ONE_TO_ONE_SETTINGS: OneToOneSettings = { portalOpen: true, assignWithoutAsking: false, replyHours: 12, parentPicksInstructor: false, parentPresentUnderAge: 7 }
+export const DEFAULT_ONE_TO_ONE_SETTINGS: OneToOneSettings = { portalOpen: true, assignWithoutAsking: false, replyHours: 12, parentPicksInstructor: false, parentPresentUnderAge: 7, cancelHours: 24, postponesPerMonth: 2, noShowWaitMinutes: 15, noShowPayPct: 50, noShowLimit: 3 }
+
+const within = (v: unknown, fallback: number, min: number, max: number) => {
+  const n = Math.round(Number(v ?? fallback))
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback
+}
 
 export function cleanOneToOneSettings(v: Partial<OneToOneSettings>): OneToOneSettings {
   const d = DEFAULT_ONE_TO_ONE_SETTINGS
@@ -27,6 +42,8 @@ export function cleanOneToOneSettings(v: Partial<OneToOneSettings>): OneToOneSet
     portalOpen: v.portalOpen ?? d.portalOpen, assignWithoutAsking: v.assignWithoutAsking ?? d.assignWithoutAsking, parentPicksInstructor: v.parentPicksInstructor ?? d.parentPicksInstructor,
     replyHours: Number.isFinite(hours) ? Math.min(168, Math.max(1, hours)) : d.replyHours,
     parentPresentUnderAge: Number.isFinite(age) ? Math.min(25, Math.max(0, age)) : d.parentPresentUnderAge,
+    cancelHours: within(v.cancelHours, d.cancelHours, 0, 720), postponesPerMonth: within(v.postponesPerMonth, d.postponesPerMonth, 0, 50),
+    noShowWaitMinutes: within(v.noShowWaitMinutes, d.noShowWaitMinutes, 0, 120), noShowPayPct: within(v.noShowPayPct, d.noShowPayPct, 0, 100), noShowLimit: within(v.noShowLimit, d.noShowLimit, 1, 50),
   }
 }
 
@@ -40,4 +57,18 @@ export function nextCandidate(free: string[], tried: string[], preferred?: strin
 /** Suggest a parent stays in online sessions? (young child, age known) */
 export function suggestParentPresent(age: number | null, slots: { mode?: string | null }[], underAge: number): boolean {
   return age != null && age < underAge && slots.some((s) => s.mode === 'ONLINE')
+}
+
+/** Why a family may not postpone this session now, or null. */
+export function postponeProblem(hoursBefore: number, usedThisMonth: number, s: Pick<OneToOneSettings, 'cancelHours' | 'postponesPerMonth'>): string | null {
+  if (hoursBefore < s.cancelHours) return `A session can be moved up to ${s.cancelHours} hours before it · الحصة بتتأجل قبلها بـ ${s.cancelHours} ساعة على الأقل`
+  if (usedThisMonth >= s.postponesPerMonth) return `${s.postponesPerMonth} postponements a month are already used · خلصت التأجيلات بتوع الشهر (${s.postponesPerMonth})`
+  return null
+}
+
+/** Days everybody in the session was marked absent (an excused absence is not a no-show). */
+export function noShowDays(rows: { date: string; status: string }[]): Set<string> {
+  const by = new Map<string, string[]>()
+  for (const r of rows) by.set(r.date, [...(by.get(r.date) ?? []), r.status])
+  return new Set([...by].filter(([, st]) => st.length > 0 && st.every((x) => x === 'ABSENT')).map(([d]) => d))
 }

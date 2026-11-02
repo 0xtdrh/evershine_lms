@@ -31,6 +31,7 @@ interface Row {
   campus: { id: string; name: string }; level: { id: string; name: string; course: string } | null
   students: { id: string; name: string }[]; teacher: { id: string; name: string } | null
   sessionsDone: number; sessionsTotal: number; sessionsLeft: number; finished: boolean
+  upcoming?: { date: string; time: string; mode: string }[]
 }
 interface Campus { id: string; name: string; kind?: string }
 interface LevelRow { id: string; name: string; subject: { id: string; name: string } }
@@ -42,6 +43,30 @@ const planText = (p: string | null, ar: boolean) => (p && PLAN_LABEL[p as Plan] 
 const way = (m?: string) => (m === 'ONLINE' ? L('online', 'أونلاين') : L('branch', 'فرع'))
 const levelName = (l: LevelRow) => `${l.subject?.name ?? ''} — ${l.name}`
 const useCampuses = () => useQuery({ queryKey: ['campuses-all'], queryFn: () => fetchPaginatedApi<Campus>('/api/campuses?limit=100') })
+
+function Postpone({ r, onDone }: { r: Row; onDone: () => void }) {
+  const [date, setDate] = useState('')
+  const [newDate, setNewDate] = useState('')
+  const [newTime, setNewTime] = useState('16:00')
+  const [override, setOverride] = useState(false)
+  const go = useMutation({
+    mutationFn: () => fetchApi(`/api/one-to-one/${r.id}/postpone`, { method: 'POST', body: JSON.stringify({ date, newDate, newTime, override }) }),
+    onSuccess: () => { notify.success(L('Moved', 'اتأجلت')); setDate(''); setNewDate(''); onDone() }, onError: (e: Error) => notify.error(e.message),
+  })
+  if (!r.upcoming?.length) return null
+  return (
+    <details className="w-full text-xs">
+      <summary className="cursor-pointer text-indigo-600">{L('Move a session', 'أجّل حصة')}</summary>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <select className={sel} aria-label={L('Session', 'الحصة')} value={date} onChange={(e) => setDate(e.target.value)}><option value="">{L('Session', 'الحصة')}</option>{r.upcoming.map((s) => <option key={s.date} value={s.date}>{s.date} {s.time}</option>)}</select>
+        <Input type="date" aria-label={L('New date', 'الميعاد الجديد')} className="h-9 w-40" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+        <Input type="time" aria-label={L('New time', 'الوقت الجديد')} className="h-9 w-28" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
+        <label className="flex items-center gap-1"><input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} /> {L('Outside the rules (not counted for the family)', 'خارج القواعد (مش محسوبة على الأهل)')}</label>
+        <Button size="sm" disabled={!date || !newDate || go.isPending} onClick={() => go.mutate()}>{L('Move', 'أجّل')}</Button>
+      </div>
+    </details>
+  )
+}
 
 function List({ canRenew, ar }: { canRenew: boolean; ar: boolean }) {
   const qc = useQueryClient()
@@ -73,6 +98,7 @@ function List({ canRenew, ar }: { canRenew: boolean; ar: boolean }) {
             {canRenew && r.status === 'ACTIVE' && r.finished && <Button size="sm" disabled={renew.isPending} onClick={() => renew.mutate(r.id)}>{L('Make the next cycle', 'اعمل الدورة الجاية')}</Button>}
             {canRenew && r.status === 'ACTIVE' && r.students.map((s) => <Button key={s.id} size="sm" variant="outline" onClick={() => setMove({ groupId: r.id, studentId: s.id, name: s.name })}>{L(`Move ${s.name} to a group`, `انقل ${s.name} لجروب`)}</Button>)}
           </div>
+          {canRenew && r.status === 'ACTIVE' && <Postpone r={r} onDone={() => qc.invalidateQueries({ queryKey: ['one-to-one'] })} />}
         </CardContent></Card>
       ))}
       {move && <TransferStudentDialog open onOpenChange={(o) => { if (!o) setMove(null) }} studentId={move.studentId} studentName={move.name} fromGroupId={move.groupId} onDone={() => { setMove(null); qc.invalidateQueries({ queryKey: ['one-to-one'] }) }} />}
@@ -168,13 +194,53 @@ function RequestRow({ r, canAct, onDone, ar }: { r: Req; canAct: boolean; onDone
   )
 }
 
+interface Ev { id: string; kind: string; state: string; date: string; note: string | null; groupId: string; name: string; campusId: string; levelId: string | null; slots: { dayOfWeek: number; time: string; mode?: string }[] }
+
+function EventRow({ e, onDone }: { e: Ev; onDone: () => void }) {
+  const [teacherId, setTeacherId] = useState('')
+  const [newDate, setNewDate] = useState('')
+  const [newTime, setNewTime] = useState('16:00')
+  const slotsParam = encodeURIComponent(JSON.stringify(e.slots))
+  const { data: teachers } = useQuery({
+    queryKey: ['one-to-one-teachers', e.campusId, e.levelId, slotsParam],
+    queryFn: () => fetchApi<{ id: string; name: string }[]>(`/api/one-to-one/instructors?campusId=${e.campusId}&levelId=${e.levelId}&slots=${slotsParam}`),
+    enabled: e.kind === 'APOLOGY' && !!e.levelId && e.slots.length > 0,
+  })
+  const act = useMutation({
+    mutationFn: (body: Record<string, unknown>) => fetchApi(`/api/one-to-one/events/${e.id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    onSuccess: () => { notify.success(L('Done', 'تم')); onDone() }, onError: (x: Error) => notify.error(x.message),
+  })
+  return (
+    <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 pt-4 text-sm">
+      <div className="space-y-1">
+        <p className="font-semibold">👤 {e.name} · {e.date}</p>
+        <p className="text-xs text-rose-700">{e.kind === 'RELEASE' ? L('The fixed time was released after no-shows: set a new time, or close this.', 'الميعاد الثابت اتلغى بسبب الغياب: حدد ميعاد جديد أو اقفل ده.') : e.state === 'WAITING_SUB' ? L('The family asked for a substitute', 'الأهل طلبوا مدرب بديل') : L('The instructor cannot come; waiting for the family', 'المدرب اعتذر؛ مستنيين رد الأهل')}{e.note ? ` · ${e.note}` : ''}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {e.kind === 'APOLOGY' && (
+          <>
+            <select className={sel} aria-label={L('Substitute', 'البديل')} value={teacherId} onChange={(x) => setTeacherId(x.target.value)}><option value="">{L('Substitute', 'البديل')}</option>{(teachers ?? []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+            <Button size="sm" disabled={!teacherId || act.isPending} onClick={() => act.mutate({ action: 'SUBSTITUTE', teacherId })}>{L('Send to him', 'ابعتله')}</Button>
+            <Input type="date" aria-label={L('New date', 'الميعاد الجديد')} className="h-9 w-40" value={newDate} onChange={(x) => setNewDate(x.target.value)} />
+            <Input type="time" aria-label={L('New time', 'الوقت الجديد')} className="h-9 w-28" value={newTime} onChange={(x) => setNewTime(x.target.value)} />
+            <Button size="sm" variant="outline" disabled={!newDate || act.isPending} onClick={() => act.mutate({ action: 'POSTPONE', newDate, newTime })}>{L('New date', 'ميعاد جديد')}</Button>
+          </>
+        )}
+        {e.kind === 'RELEASE' && <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: 'CLOSE' })}>{L('Close', 'اقفل')}</Button>}
+      </div>
+    </CardContent></Card>
+  )
+}
+
 function Requests({ canAct, ar }: { canAct: boolean; ar: boolean }) {
   const qc = useQueryClient()
+  const { data: events } = useQuery({ queryKey: ['one-to-one-events'], queryFn: () => fetchApi<Ev[]>('/api/one-to-one/events') })
   const [all, setAll] = useState(false)
   const { data, isLoading } = useQuery({ queryKey: ['one-to-one-requests', all], queryFn: () => fetchApi<Req[]>(`/api/one-to-one/requests${all ? '?all=1' : ''}`) })
   return (
     <div className="space-y-3">
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> {L('Show closed ones too', 'اعرض المقفولة كمان')}</label>
+      {canAct && (events ?? []).map((e) => <EventRow key={e.id} e={e} onDone={() => { qc.invalidateQueries({ queryKey: ['one-to-one-events'] }); qc.invalidateQueries({ queryKey: ['one-to-one'] }) }} />)}
       {isLoading && <p className="text-sm text-slate-500">{L('Loading…', 'بيحمّل…')}</p>}
       {data && !data.length && <p className="py-8 text-center text-sm text-slate-500">{L('No requests waiting.', 'مفيش طلبات مستنية.')}</p>}
       {(data ?? []).map((r) => <RequestRow key={r.id} r={r} canAct={canAct} ar={ar} onDone={() => { qc.invalidateQueries({ queryKey: ['one-to-one-requests'] }); qc.invalidateQueries({ queryKey: ['one-to-one'] }) }} />)}
@@ -227,6 +293,16 @@ function Settings() {
       <Check k="parentPicksInstructor" text={L('Parents may choose the instructor by name', 'ولي الأمر يقدر يختار المدرب بالاسم')} />
       <label className="flex flex-wrap items-center gap-2">{L('Hours an instructor has to answer', 'عدد الساعات اللي المدرب يرد فيها')}
         <Input key={`h${data.replyHours}`} type="number" min={1} max={168} className="h-9 w-20" defaultValue={data.replyHours} onBlur={(e) => { const v = Number(e.target.value); if (v && v !== data.replyHours) save.mutate({ replyHours: v }) }} /></label>
+      {([
+        ['cancelHours', L('A session can be moved up to this many hours before it', 'الحصة بتتأجل قبلها بكام ساعة على الأقل')],
+        ['postponesPerMonth', L('Postponements a family has in a month', 'عدد التأجيلات في الشهر')],
+        ['noShowWaitMinutes', L('Minutes the instructor waits for the student', 'المدرب يستنى الطالب كام دقيقة')],
+        ['noShowPayPct', L('The student did not come: % of the session pay the instructor keeps', 'الطالب ما جاش: المدرب ياخد كام % من أجر الحصة')],
+        ['noShowLimit', L('Sessions missed without notice before the fixed time is released', 'عدد الغيابات من غير إبلاغ قبل ما الميعاد الثابت يتلغي')],
+      ] as const).map(([k, text]) => (
+        <label key={k} className="flex flex-wrap items-center gap-2">{text}
+          <Input key={`${k}${data[k]}`} type="number" min={0} className="h-9 w-20" defaultValue={data[k]} onBlur={(e) => { const v = Number(e.target.value); if (v !== data[k]) save.mutate({ [k]: v }) }} /></label>
+      ))}
       <label className="flex flex-wrap items-center gap-2">{L('Online: suggest a parent stays with a child younger than', 'أونلاين: اقترح وجود ولي الأمر لو الطالب سنه أقل من')}
         <Input key={`a${data.parentPresentUnderAge}`} type="number" min={0} max={25} className="h-9 w-20" defaultValue={data.parentPresentUnderAge} onBlur={(e) => { const v = Number(e.target.value); if (v !== data.parentPresentUnderAge) save.mutate({ parentPresentUnderAge: v }) }} /></label>
     </CardContent></Card>

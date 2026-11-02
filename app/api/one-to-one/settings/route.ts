@@ -11,6 +11,8 @@ export const dynamic = 'force-dynamic'
 const schema = z.object({
   portalOpen: z.boolean().optional(), assignWithoutAsking: z.boolean().optional(), replyHours: z.number().min(1).max(168).optional(),
   parentPicksInstructor: z.boolean().optional(), parentPresentUnderAge: z.number().min(0).max(25).optional(),
+  cancelHours: z.number().min(0).max(720).optional(), postponesPerMonth: z.number().min(0).max(50).optional(), noShowWaitMinutes: z.number().min(0).max(120).optional(),
+  noShowPayPct: z.number().min(0).max(100).optional(), noShowLimit: z.number().min(1).max(50).optional(),
 })
 
 export async function GET() {

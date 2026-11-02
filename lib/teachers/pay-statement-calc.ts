@@ -32,6 +32,8 @@ export interface StatementSession {
   mode?: Mode
   /** the rate paid for it (counted sessions only) */
   rate?: number | null
+  /** a02 M3: One-to-One, the student did not come: the part of the rate he keeps (e.g. 0.5) */
+  noShowFactor?: number
 }
 
 export interface StatementStudentShare { student: string; preDiscountPaid: number }
@@ -93,7 +95,8 @@ export function statementGroup(g: StatementGroupFacts): StatementGroup {
   const sessions = g.sessions.map((s) => {
     if (!s.counted) return s
     if (s.mode === 'RECORDED') return { ...s, counted: false, rate: null }
-    return { ...s, rate: sessionRate(g.rule, s.mode ?? 'BRANCH', !!g.oneToOne) }
+    const rate = sessionRate(g.rule, s.mode ?? 'BRANCH', !!g.oneToOne)
+    return { ...s, rate: rate != null && s.noShowFactor != null ? round2(rate * s.noShowFactor) : rate }
   })
   const recordedSessions = g.coveredOnly ? 0 : g.sessions.filter((s) => s.counted && s.mode === 'RECORDED').length
   const counted = g.coveredOnly ? [] : sessions.filter((s) => s.counted)

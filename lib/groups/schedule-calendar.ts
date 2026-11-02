@@ -43,6 +43,7 @@ export interface GroupForCalendar {
   extras?: ExtraSlot[]
   /** holiday dates that are for the branch only (not company-wide): online / recorded sessions still happen */
   branchHolidayDates?: string[]
+  onlineHolidayDates?: string[]
   /** a02: a session taught another way on that date */
   modeOverrides?: Record<string, Mode>
 }
@@ -83,9 +84,10 @@ export function buildOccurrences(g: GroupForCalendar, from: string, to: string, 
   const cancelled = new Set(g.cancelledDates)
   const holidays = new Set(g.holidayDates ?? [])
   const branchOnly = new Set(g.branchHolidayDates ?? [])
+  const onlineOnly = new Set(g.onlineHolidayDates ?? [])
   const modeOf = (d: string, s: { mode?: Mode }): Mode => g.modeOverrides?.[d] ?? s.mode ?? 'BRANCH'
   // a branch holiday stops branch sessions only (company holidays stop everything)
-  const offOn = (d: string, s: { mode?: Mode; extra: boolean }) => !s.extra && holidays.has(d) && !(branchOnly.has(d) && modeOf(d, s) !== 'BRANCH')
+  const offOn = (d: string, s: { mode?: Mode; extra: boolean }) => !s.extra && holidays.has(d) && !(branchOnly.has(d) && modeOf(d, s) !== 'BRANCH') && !(onlineOnly.has(d) && modeOf(d, s) !== 'ONLINE')
   type DaySlot = Slot & { extra: boolean }
   const extraOn = (d: string): DaySlot[] => (g.extras ?? []).filter((e) => e.date === d).map((e) => ({ dayOfWeek: weekday(d), time: e.time, extra: true }))
   const weeklyOn = (d: string): DaySlot[] => g.slots.filter((s) => s.dayOfWeek === weekday(d)).map((s) => ({ ...s, extra: false }))
@@ -171,10 +173,12 @@ export function upcomingSessions(opts: {
   maxDays?: number
   /** a02: branch-only holidays (online / recorded sessions still happen) and one-off ways per date */
   branchHolidays?: Iterable<string>
+  onlineHolidays?: Iterable<string>
   modeOverrides?: Record<string, Mode>
 }): (ExtraSlot & { mode: Mode })[] {
   const holidays = new Set(opts.holidays ?? [])
   const branchOnly = new Set(opts.branchHolidays ?? [])
+  const onlineOnly = new Set(opts.onlineHolidays ?? [])
   const modeOf = (d: string, m?: Mode): Mode => opts.modeOverrides?.[d] ?? m ?? 'BRANCH'
   const skip = new Set(opts.skipDates ?? [])
   const out: (ExtraSlot & { mode: Mode })[] = []
@@ -183,7 +187,7 @@ export function upcomingSessions(opts: {
     if (skip.has(d)) continue
     const weekly = opts.slots
       .filter((s) => s.dayOfWeek === weekday(d))
-      .filter((s) => !holidays.has(d) || (branchOnly.has(d) && modeOf(d, s.mode) !== 'BRANCH'))
+      .filter((s) => !holidays.has(d) || (branchOnly.has(d) && modeOf(d, s.mode) !== 'BRANCH') || (onlineOnly.has(d) && modeOf(d, s.mode) !== 'ONLINE'))
       .map((s) => ({ time: s.time, mode: modeOf(d, s.mode) }))
     const extra = (opts.extras ?? []).filter((e) => e.date === d).map((e) => ({ time: e.time, mode: modeOf(d) }))
     const all = [...weekly, ...extra].filter((x, i, arr) => arr.findIndex((y) => y.time === x.time) === i).sort((a, b) => a.time.localeCompare(b.time))

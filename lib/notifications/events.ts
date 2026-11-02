@@ -44,6 +44,7 @@ export const NOTIFICATION_EVENTS = [
   { key: 'RENEWAL_REQUEST', label: 'Continuing next month?', description: 'Parent: please confirm if your child continues (renewals)', audience: 'PARENT' },
   { key: 'BIRTHDAY', label: 'Birthday greeting', description: 'Student, parent or staff member: happy birthday', audience: 'PARENT' },
   { key: 'ONE_TO_ONE_BOOKED', label: 'One-to-One booked', description: 'Parent: the One-to-One was booked (instructor and time), or the request was closed', audience: 'PARENT' },
+  { key: 'ONE_TO_ONE_SESSION', label: 'One-to-One session changed', description: 'Parent: a session moved, the instructor cannot come, or the fixed time was released', audience: 'PARENT' },
   { key: 'ONE_TO_ONE_OFFER', label: 'One-to-One request for you', description: 'Instructor: a parent asks for a One-to-One, please accept or decline', audience: 'STAFF' },
   { key: 'ONE_TO_ONE_REQUEST', label: 'One-to-One needs an instructor', description: 'Staff: no instructor took a parent request, please place it', audience: 'STAFF' },
   { key: 'EXCUSE_PENDING', label: 'Excuse to review', description: 'Staff: a parent sent an excuse that needs approval', audience: 'STAFF' },

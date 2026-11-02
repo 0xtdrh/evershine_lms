@@ -2505,6 +2505,59 @@ M "UPDATE DiscountType SET appliesToOneToOne=1 WHERE id='$DT'"
 ODC=$(api POST /api/one-to-one "{\"studentIds\":[\"$OS3\"],\"campusId\":\"$CAMPUS\",\"levelId\":\"$CVL\",\"plan\":\"SESSION\",\"sessions\":1,\"slots\":[{\"dayOfWeek\":3,\"time\":\"12:20\",\"mode\":\"BRANCH\"}],\"teacherId\":\"$CALT\"}" | jq_ "d['data']['groupId']")
 check "chosen + automatic: it applies by itself" "$(inv $OS3 $ODC | cut -d/ -f1,2)" "300/30"
 M "UPDATE DiscountType SET isActive=0 WHERE id='$DT'"
+echo "== 78. One-to-One sessions: postpone, instructor apology, no-show, holidays per system, rules (a02 M3 batch 3 part 2, 2026-11-02)"
+RG=$(api POST /api/one-to-one "{\"studentIds\":[\"$OS2\"],\"campusId\":\"$CAMPUS\",\"levelId\":\"$CVL\",\"plan\":\"PACKAGE\",\"sessions\":8,\"slots\":[{\"dayOfWeek\":2,\"time\":\"05:30\",\"mode\":\"BRANCH\"}],\"teacherId\":\"$CALT\"}" | jq_ "d['data']['groupId']")
+api PUT /api/one-to-one/settings '{"cancelHours":720}' >/dev/null
+UPD=$(papi GET "/api/guardian-portal/one-to-one/sessions?studentId=$OS2" | jq_ "[s['date'] for b in d['data'] if b['id']=='$RG' for s in b['sessions']][0]")
+check "too close to the session: the parent cannot move it" "$(papi POST /api/guardian-portal/one-to-one/sessions "{\"groupId\":\"$RG\",\"date\":\"$UPD\",\"newDate\":\"$(D 40)\",\"newTime\":\"05:15\"}" | jq_ "d['error']['code']")" "POSTPONE_REFUSED"
+api PUT /api/one-to-one/settings '{"cancelHours":1}' >/dev/null
+check "another family cannot touch it" "$(secapi GET /api/one-to-one/events >/dev/null; api POST /api/guardian-portal/one-to-one/sessions "{\"groupId\":\"$RG\",\"date\":\"$UPD\",\"newDate\":\"$(D 40)\",\"newTime\":\"05:15\"}" | jq_ "d['success']")" "False"
+check "the parent moves a session: cancelled there, added on the new date" "$(papi POST /api/guardian-portal/one-to-one/sessions "{\"groupId\":\"$RG\",\"date\":\"$UPD\",\"newDate\":\"$(D 40)\",\"newTime\":\"05:15\"}" | jq_ "d['data']['left']")/$(M "SELECT COUNT(*) FROM CancelledSession WHERE classSectionId='$RG' AND date='$UPD'")/$(M "SELECT time FROM ExtraSession WHERE classSectionId='$RG' AND date='$(D 40)'")" "1/1/05:15"
+check "a date in the past is refused" "$(papi POST /api/guardian-portal/one-to-one/sessions "{\"groupId\":\"$RG\",\"date\":\"$(papi GET "/api/guardian-portal/one-to-one/sessions?studentId=$OS2" | jq_ "[s['date'] for b in d['data'] if b['id']=='$RG' for s in b['sessions']][1]")\",\"newDate\":\"$(D -1)\",\"newTime\":\"05:15\"}" | jq_ "d['success']")" "False"
+UP2=$(papi GET "/api/guardian-portal/one-to-one/sessions?studentId=$OS2" | jq_ "[s['date'] for b in d['data'] if b['id']=='$RG' for s in b['sessions'] if s['date']!='$(D 40)'][0]")
+M "UPDATE OneToOneEvent SET date='$UPD' WHERE classSectionId='$RG'"
+papi POST /api/guardian-portal/one-to-one/sessions "{\"groupId\":\"$RG\",\"date\":\"$UP2\",\"newDate\":\"$(D 41)\",\"newTime\":\"05:15\"}" >/dev/null
+M "UPDATE OneToOneEvent SET date='$UPD' WHERE classSectionId='$RG'"
+UP3=$(papi GET "/api/guardian-portal/one-to-one/sessions?studentId=$OS2" | jq_ "[s['date'] for b in d['data'] if b['id']=='$RG' for s in b['sessions'] if s['date'] not in ('$(D 40)','$(D 41)')][0]")
+M "UPDATE OneToOneEvent SET date='$UP3' WHERE classSectionId='$RG'"
+check "the month's postponements are used: the third is refused" "$(papi POST /api/guardian-portal/one-to-one/sessions "{\"groupId\":\"$RG\",\"date\":\"$UP3\",\"newDate\":\"$(D 42)\",\"newTime\":\"05:15\"}" | jq_ "d['error']['code']")" "POSTPONE_REFUSED"
+check "staff can still move it outside the rules, and it is not counted for the family" "$(api POST /api/one-to-one/$RG/postpone "{\"date\":\"$UP3\",\"newDate\":\"$(D 42)\",\"newTime\":\"05:15\",\"override\":true}" | jq_ "d['success']")/$(M "SELECT countsAgainstParent FROM OneToOneEvent WHERE classSectionId='$RG' ORDER BY createdAt DESC LIMIT 1")" "True/0"
+check "the instructor sees his sessions" "$(tapi GET /api/teacher-portal/one-to-one-offers/sessions | jq_ "any(g['id']=='$RG' and len(g['sessions'])>0 for g in d['data'])")" "True"
+AP1=$(tapi GET /api/teacher-portal/one-to-one-offers/sessions | jq_ "[s['date'] for g in d['data'] if g['id']=='$RG' for s in g['sessions'] if s['date'] not in ('$(D 40)','$(D 41)','$(D 42)')][0]")
+check "another instructor cannot apologise for it" "$(api POST /api/teacher-portal/one-to-one-offers/sessions "{\"groupId\":\"$RG\",\"date\":\"$AP1\",\"reason\":\"sick\"}" | jq_ "d['success']")" "False"
+check "the instructor apologises: cancelled, family asked, staff task" "$(tapi POST /api/teacher-portal/one-to-one-offers/sessions "{\"groupId\":\"$RG\",\"date\":\"$AP1\",\"reason\":\"sick\"}" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM CancelledSession WHERE classSectionId='$RG' AND date='$AP1'")/$(papi GET "/api/guardian-portal/one-to-one/sessions?studentId=$OS2" | jq_ "[a['date']=='$AP1' for b in d['data'] for a in b['apologies']]")/$(api GET /api/today | jq_ "any(t['key']=='oneToOneEvents' for t in d['data']['tasks'])")" "True/1/[True]/True"
+EV1=$(M "SELECT id FROM OneToOneEvent WHERE classSectionId='$RG' AND kind='APOLOGY' AND date='$AP1'")
+check "the family asks for a substitute; staff send it to one: back on, he must accept" "$(papi POST /api/guardian-portal/one-to-one/sessions "{\"eventId\":\"$EV1\",\"choice\":\"SUBSTITUTE\"}" | jq_ "d['success']")/$(M "SELECT state FROM OneToOneEvent WHERE id='$EV1'")/$(api PATCH /api/one-to-one/events/$EV1 "{\"action\":\"SUBSTITUTE\",\"teacherId\":\"$EW\"}" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM CancelledSession WHERE classSectionId='$RG' AND date='$AP1'")/$(M "SELECT status FROM SubstituteAssignment WHERE classSectionId='$RG' AND date='$AP1'")" "True/WAITING_SUB/True/0/PENDING_SUBSTITUTE_APPROVAL"
+AP2=$(tapi GET /api/teacher-portal/one-to-one-offers/sessions | jq_ "[s['date'] for g in d['data'] if g['id']=='$RG' for s in g['sessions'] if s['date'] not in ('$(D 40)','$(D 41)','$(D 42)','$AP1')][0]")
+tapi POST /api/teacher-portal/one-to-one-offers/sessions "{\"groupId\":\"$RG\",\"date\":\"$AP2\",\"reason\":\"travel\"}" >/dev/null
+EV2=$(M "SELECT id FROM OneToOneEvent WHERE classSectionId='$RG' AND kind='APOLOGY' AND date='$AP2'")
+check "or a new date: added, and it does not use up the family's postponements" "$(papi POST /api/guardian-portal/one-to-one/sessions "{\"eventId\":\"$EV2\",\"choice\":\"POSTPONE\",\"newDate\":\"$(D 43)\",\"newTime\":\"05:15\"}" | jq_ "d['success']")/$(M "SELECT CONCAT(state,'/',countsAgainstParent) FROM OneToOneEvent WHERE id='$EV2'")/$(M "SELECT COUNT(*) FROM ExtraSession WHERE classSectionId='$RG' AND date='$(D 43)'")" "True/DONE/0/1"
+check "answered twice: refused" "$(papi POST /api/guardian-portal/one-to-one/sessions "{\"eventId\":\"$EV2\",\"choice\":\"SUBSTITUTE\"}" | jq_ "d['success']")" "False"
+check "the rules the parent accepts say all this" "$(api GET /api/groups/$RG/rules | PYTHONUTF8=1 jq_ "sum('One-to-One' in i['en'] for i in d['data']['items'])")" "4"
+LWED=""; for i in 0 1 2 3 4 5 6; do [ -z "$LWED" ] && [ "$(cairo +%w -$i)" = "3" ] && LWED=$(D -$i); done
+NEN=$(M "SELECT id FROM StudentEnrollment WHERE classSectionId='$ODB' AND studentId='$OS3'")
+api POST /api/enrollment-attendance "{\"classSectionId\":\"$ODB\",\"attendanceDate\":\"$LWED\",\"records\":[{\"studentEnrollmentId\":\"$NEN\",\"status\":\"ABSENT\"}]}" >/dev/null
+M "UPDATE EnrollmentAttendanceRecord SET taughtByTeacherId='$CALT' WHERE studentEnrollmentId='$NEN'"
+api PATCH /api/teachers/$CALT '{"defaultOneToOnePerSession":200}' >/dev/null
+check "the student did not come: the instructor gets 50% of the session" "$(api GET "/api/teachers/$CALT/pay-statement?month=${LWED:0:7}&groupId=$ODB" | jq_ "[s['rate'] for g in d['data']['groups'] for s in g['sessions'] if s['date']=='$LWED']")" "[100]"
+api PUT /api/one-to-one/settings '{"noShowPayPct":100}' >/dev/null
+check "…or all of it (setting)" "$(api GET "/api/teachers/$CALT/pay-statement?month=${LWED:0:7}&groupId=$ODB" | jq_ "[s['rate'] for g in d['data']['groups'] for s in g['sessions'] if s['date']=='$LWED']")" "[200]"
+api PUT /api/one-to-one/settings '{"noShowPayPct":50}' >/dev/null
+check "one no-show keeps the fixed time while the limit is 3" "$(M "SELECT JSON_LENGTH(scheduleSlots) FROM ClassSection WHERE id='$ODB'")" "1"
+api PUT /api/one-to-one/settings '{"noShowLimit":1}' >/dev/null
+api POST /api/enrollment-attendance "{\"classSectionId\":\"$ODB\",\"attendanceDate\":\"$LWED\",\"records\":[{\"studentEnrollmentId\":\"$NEN\",\"status\":\"ABSENT\"}]}" >/dev/null
+check "at the limit the fixed time is released, the student stays, family and staff told" "$(M "SELECT scheduleSlots IS NULL FROM ClassSection WHERE id='$ODB'")/$(M "SELECT status FROM StudentEnrollment WHERE id='$NEN'")/$(M "SELECT COUNT(*) FROM OneToOneEvent WHERE classSectionId='$ODB' AND kind='RELEASE'")/$(api GET /api/one-to-one/events | jq_ "any(e['groupId']=='$ODB' for e in d['data'])")" "1/ACTIVE/1/True"
+api PUT /api/one-to-one/settings '{"noShowLimit":3}' >/dev/null
+NTUE=$(api GET /api/one-to-one | jq_ "[u['date'] for r in d['data'] if r['id']=='$SG' for u in r['upcoming']][0]")
+ONSCH() { api GET "/api/groups/schedule?from=$NTUE&to=$NTUE" | jq_ "sum(1 for o in d['data']['sessions'] if o['groupId']=='$SG' and o['status'] not in ('CANCELLED','HOLIDAY'))"; }
+HN() { api POST /api/holidays "{\"date\":\"$NTUE\",\"name\":\"E2E 1:1 off\",\"appliesTo\":$1}" >/dev/null; }
+check "before any holiday the One-to-One is on that day" "$(ONSCH)" "1"
+HN '["BRANCH","ONLINE"]'
+check "a holiday for branch and online sessions only leaves One-to-One working" "$(ONSCH)" "1"
+M "DELETE FROM Holiday WHERE name='E2E 1:1 off'"
+HN '["ONE_TO_ONE"]'
+check "a holiday for One-to-One stops it" "$(ONSCH)" "0"
+M "DELETE FROM Holiday WHERE name='E2E 1:1 off'"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

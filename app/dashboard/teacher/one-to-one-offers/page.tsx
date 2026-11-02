@@ -2,17 +2,50 @@
 
 /** a02 M3 batch 2: One-to-One requests offered to this instructor: accept (books it) or decline (goes to the next instructor). */
 
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { L, dayName, useI18n } from '@/lib/i18n/client'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { UserCheck } from 'lucide-react'
 
 interface Offer { id: string; level: string; place: string; slots: { dayOfWeek: number; time: string; mode?: string }[]; expiresAt: string | null; students: string[] }
 
 const when = (d: string | null) => (d ? new Date(d).toLocaleString(L('en-GB', 'ar-EG-u-nu-latn'), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Cairo' }) : '')
+
+function MySessions() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['one-to-one-my-sessions'], queryFn: () => fetchApi<{ id: string; name: string; sessions: { date: string; time: string }[] }[]>('/api/teacher-portal/one-to-one-offers/sessions') })
+  const [pick, setPick] = useState<Record<string, string>>({})
+  const [why, setWhy] = useState<Record<string, string>>({})
+  const go = useMutation({
+    mutationFn: (g: string) => fetchApi('/api/teacher-portal/one-to-one-offers/sessions', { method: 'POST', body: JSON.stringify({ groupId: g, date: pick[g], reason: why[g] }) }),
+    onSuccess: () => { notify.success(L('Sent. The family and the branch are told.', 'اتبعت، والأهل والفرع عرفوا.')); qc.invalidateQueries({ queryKey: ['one-to-one-my-sessions'] }) },
+    onError: (e: Error) => notify.error(e.message),
+  })
+  if (!data?.length) return null
+  return (
+    <div className="space-y-2">
+      <h2 className="text-base font-semibold">{L('Your One-to-Ones', 'الـ One-to-One بتوعك')}</h2>
+      {data.map((g) => (
+        <Card key={g.id}><CardContent className="space-y-2 pt-4 text-sm">
+          <p className="font-semibold">{g.name}</p>
+          <p className="text-slate-600">{g.sessions.map((s) => `${s.date} ${s.time}`).join('، ') || L('No coming sessions', 'مفيش حصص جاية')}</p>
+          {g.sessions.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <select className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" aria-label={L('Session', 'الحصة')} value={pick[g.id] ?? ''} onChange={(e) => setPick({ ...pick, [g.id]: e.target.value })}><option value="">{L('I cannot come on', 'مش هقدر أجي يوم')}</option>{g.sessions.map((s) => <option key={s.date} value={s.date}>{s.date} {s.time}</option>)}</select>
+              <Input className="h-9 min-w-[12rem] flex-1" placeholder={L('Reason', 'السبب')} value={why[g.id] ?? ''} onChange={(e) => setWhy({ ...why, [g.id]: e.target.value })} />
+              <Button size="sm" variant="outline" disabled={!pick[g.id] || (why[g.id] ?? '').trim().length < 2 || go.isPending} onClick={() => go.mutate(g.id)}>{L('Send the apology', 'ابعت الاعتذار')}</Button>
+            </div>
+          )}
+        </CardContent></Card>
+      ))}
+    </div>
+  )
+}
 
 export default function OneToOneOffersPage() {
   useI18n()
@@ -41,6 +74,7 @@ export default function OneToOneOffersPage() {
           </div>
         </CardContent></Card>
       ))}
+      <MySessions />
     </div>
   )
 }

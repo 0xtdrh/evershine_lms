@@ -57,8 +57,8 @@ export async function checkTeacherForGroup(teacherId: string, g: GroupRow, slots
 }
 
 /** Is this instructor free for one session? (hours + no clash) — for substitute suggestions. */
-export async function teacherFreeFor(teacherId: string, s: { dayOfWeek: number; time: string; campusId: string; mode?: Mode }): Promise<boolean> {
-  const [hours, others, settings] = await Promise.all([teacherHours(teacherId), teacherSlots(teacherId), getRoomsSettings()])
+export async function teacherFreeFor(teacherId: string, s: { dayOfWeek: number; time: string; campusId: string; mode?: Mode }, exceptGroupId?: string): Promise<boolean> {
+  const [hours, others, settings] = await Promise.all([teacherHours(teacherId), teacherSlots(teacherId, exceptGroupId), getRoomsSettings()])
   const slot: TeachSlot = { groupId: '__cover__', label: '', dayOfWeek: s.dayOfWeek, time: s.time, mode: s.mode ?? 'BRANCH', campusId: s.campusId }
   return hoursCover(hours, slot, settings.sessionMinutes) && !teachClash(slot, others, settings.sessionMinutes)
 }

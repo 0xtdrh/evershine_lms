@@ -4,6 +4,8 @@ import { resolveCycleStart } from './cycle-start'
 import { preDiscountCollected } from '@/lib/discounts/calculate'
 import { groupIsOnline, groupParts, modeOfDay, onlineFrom, sessionRate, type RuleWithOnline } from '@/lib/teachers/online-pay'
 import type { Mode } from '@/lib/delivery/modes'
+import { noShowDays } from '@/lib/one-to-one/request-rules'
+import { getOneToOneSettings } from '@/lib/one-to-one/settings'
 
 export interface TeacherPayBreakdown {
   fixedAmount: number
@@ -167,13 +169,14 @@ export async function computeTeacherGroupPay(
           attendanceDate: { gte: cycleStart },
           OR: [{ taughtByTeacherId: teacherId }, { AND: [{ taughtByTeacherId: null }, { markedByTeacherId: teacherId }] }],
         },
-        select: { attendanceDate: true },
-        distinct: ['attendanceDate'],
+        select: { attendanceDate: true, status: true },
       })
       // Partners part 1: sessions of classes without names (GroupSessionLog) count too
       const logged = await prisma.groupSessionLog.findMany({ where: { classSectionId, status: 'HELD', sessionDate: { gte: cycleStart }, taughtByTeacherId: teacherId }, select: { sessionDate: true } })
       const days = new Map<string, Date>()
       for (const d of [...records.map((r) => r.attendanceDate), ...logged.map((l) => l.sessionDate)]) days.set(d.toISOString().slice(0, 10), d)
+      const noShows = isOneToOne ? noShowDays(records.map((r) => ({ date: r.attendanceDate.toISOString().slice(0, 10), status: r.status }))) : new Set<string>()
+      const noShowFactor = noShows.size ? (await getOneToOneSettings()).noShowPayPct / 100 : 1
       const overrides = new Map((await prisma.sessionModeOverride.findMany({ where: { classSectionId, date: { gte: cycleStart } }, select: { date: true, mode: true } })).map((o) => [o.date.toISOString().slice(0, 10), o.mode]))
       for (const [k, d] of days) {
         if (!paidByTechNovaOn(periods, d)) continue
@@ -181,7 +184,8 @@ export async function computeTeacherGroupPay(
         if (mode === 'RECORDED') { recordedSessions++; continue }
         sessionsCounted++
         if (mode === 'ONLINE') onlineSessions++
-        sessionAmount += sessionRate(rule, mode, isOneToOne) ?? 0
+        // a02 M3: the student did not come: the instructor keeps the set part
+        sessionAmount += (sessionRate(rule, mode, isOneToOne) ?? 0) * (noShows.has(k) ? noShowFactor : 1)
       }
       sessionAmount = Math.round(sessionAmount * 100) / 100
     }

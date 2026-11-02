@@ -5,7 +5,7 @@ import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
 import { refundWindowOpen } from '@/lib/refunds/engine'
 import { cleanLocks, transferLockReason } from '@/lib/groups/transfer-lock'
 import { mergeOneToOne } from '@/lib/partners/deal'
-import { cleanOneToOneSettings, nextCandidate, suggestParentPresent } from '@/lib/one-to-one/request-rules'
+import { cleanOneToOneSettings, nextCandidate, noShowDays, postponeProblem, suggestParentPresent } from '@/lib/one-to-one/request-rules'
 
 const r = (over: Partial<PriceRow>): PriceRow => ({ levelId: 'L', scopeKey: 'ALL', plan: 'MONTH', sessions: 4, price: 1000, siblingPrice: null, minutes: null, ...over })
 
@@ -97,5 +97,15 @@ describe('One-to-One (a02 M3)', () => {
     const line = { label: 'x', labelAr: 'س', quantity: 1, rate: 10, amount: 10, payer: 'PARTNER' as const }
     const m = mergeOneToOne({ lines: [line], shareTotal: 10, balanceForTechNova: 10, sessionsCounted: 2, base }, { lines: [line], shareTotal: 5, balanceForTechNova: -5, sessionsCounted: 1, base })
     expect([m.shareTotal, m.balanceForTechNova, m.sessionsCounted, m.base.net, m.lines[1].label]).toEqual([15, 5, 3, 200, 'One-to-One — x'])
+  })
+  it('a family can move a session in time and within the month limit', () => {
+    const rules = { cancelHours: 24, postponesPerMonth: 2 }
+    expect(postponeProblem(30, 1, rules)).toBeNull()
+    expect(postponeProblem(23, 0, rules)).toContain('24')
+    expect(postponeProblem(30, 2, rules)).toContain('2')
+  })
+  it('a no-show = everybody absent; an excused or present student is not', () => {
+    expect([...noShowDays([{ date: 'a', status: 'ABSENT' }, { date: 'b', status: 'EXCUSED' }, { date: 'c', status: 'PRESENT' }])]).toEqual(['a'])
+    expect([...noShowDays([{ date: 'a', status: 'ABSENT' }, { date: 'a', status: 'PRESENT' }])]).toEqual([])
   })
 })

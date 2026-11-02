@@ -81,6 +81,7 @@ export async function occurrencesFor(
           cancelledDates: cancelledBy.get(g.id) ?? [],
           holidayDates: exceptions.get(g.id)?.holidays ?? [],
           branchHolidayDates: exceptions.get(g.id)?.branchHolidays ?? [],
+          onlineHolidayDates: exceptions.get(g.id)?.onlineHolidays ?? [],
           modeOverrides: exceptions.get(g.id)?.modeOverrides ?? {},
           extras: exceptions.get(g.id)?.extras ?? [],
         },

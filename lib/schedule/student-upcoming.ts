@@ -83,6 +83,7 @@ export async function studentUpcomingSessions(studentId: string, opts: { days?: 
       cancelledDates: cancelled.map((c) => c.date),
       holidayDates: exceptions.get(g.id)?.holidays ?? [],
       branchHolidayDates: exceptions.get(g.id)?.branchHolidays ?? [],
+          onlineHolidayDates: exceptions.get(g.id)?.onlineHolidays ?? [],
       modeOverrides: exceptions.get(g.id)?.modeOverrides ?? {},
       extras: exceptions.get(g.id)?.extras ?? [],
     }, today, to, today)

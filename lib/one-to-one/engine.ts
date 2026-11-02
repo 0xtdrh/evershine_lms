@@ -246,6 +246,8 @@ export async function listOneToOne(user: Who, opts: { campusId?: string | null; 
     if (!heldBy.has(k)) heldBy.set(k, new Set())
     heldBy.get(k)!.add(r.attendanceDate.toISOString().slice(0, 10))
   }
+  const { upcomingOf } = await import('./sessions')
+  const up = await upcomingOf(groups.filter((g) => g.status === 'ACTIVE').map((g) => g.id))
   return groups.map((g) => {
     const t = g.subjectOfferings[0]?.teacher
     const total = g.level ? sessionsPerCycle(g.level, g.cycleSessions) : (g.cycleSessions ?? 0)
@@ -255,7 +257,7 @@ export async function listOneToOne(user: Who, opts: { campusId?: string | null; 
       campus: g.campus, level: g.level ? { id: g.level.id, name: g.level.name, course: g.level.subject?.name ?? '' } : null,
       students: g.enrollments.map((e) => ({ id: e.student.id, name: `${e.student.firstName} ${e.student.lastName}`.trim() })),
       teacher: t ? { id: t.id, name: `${t.firstName} ${t.lastName}`.trim() } : null,
-      sessionsDone: done, sessionsTotal: total, sessionsLeft: Math.max(0, total - done), finished: total > 0 && done >= total,
+      sessionsDone: done, sessionsTotal: total, sessionsLeft: Math.max(0, total - done), finished: total > 0 && done >= total, upcoming: up.get(g.id) ?? [],
     }
   })
 }

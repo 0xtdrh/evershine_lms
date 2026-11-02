@@ -4,6 +4,7 @@
  * Server-only. Pure sentences in ./group-rules.ts.
  */
 
+import { getOneToOneSettings } from '@/lib/one-to-one/settings'
 import { createHash } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { isModuleOn } from '@/lib/platform/settings'
@@ -25,7 +26,7 @@ export async function rulesForGroup(classSectionId: string): Promise<{ items: Ru
     where: { id: classSectionId },
     select: {
       id: true, campusId: true, levelId: true, requireFullPaymentToStart: true, partialPaymentCounts: true, installmentsAllowed: true,
-      maxStudents: true, scheduleSlots: true, unnamedHeadcount: true, priceOverride: true,
+      maxStudents: true, scheduleSlots: true, unnamedHeadcount: true, priceOverride: true, kind: true,
       cycleSessions: true, level: { select: { id: true, pricingType: true, monthlyPrice: true, fullLevelPrice: true, numberOfSessions: true, numberOfMonths: true } },
     },
   })
@@ -55,6 +56,7 @@ export async function rulesForGroup(classSectionId: string): Promise<{ items: Ru
     refund,
     excuse,
     written: written.map((w) => ({ ...w, scope: w.scope as RuleScope })),
+    oneToOne: g.kind === 'ONE_TO_ONE' ? await getOneToOneSettings() : null,
   })
   return { items, hash: hash(items) }
 }

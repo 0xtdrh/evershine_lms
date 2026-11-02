@@ -178,6 +178,11 @@ export async function syncGroupProgress(classSectionId: string, _actingUserId: s
     }
   }
 
+  // a02 M3: a One-to-One with too many no-shows gives up its fixed time
+  if (group.kind === 'ONE_TO_ONE') {
+    try { await (await import('@/lib/one-to-one/sessions')).releaseAfterNoShows(classSectionId) } catch (err) { console.error('[ONE_TO_ONE_RELEASE]', err) }
+  }
+
   // Phase A: close to the last session → ask parents "continuing next month?".
   await ensureRenewalRequests(classSectionId)
 

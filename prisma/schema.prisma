@@ -3943,6 +3943,8 @@ model Holiday {
   date        DateTime @db.Date
   campusId    String?
   name        String
+  /// a02 M3: who is off: [BRANCH, ONLINE, ONE_TO_ONE]; null = as before (a branch holiday stops branch sessions, a company one everything)
+  appliesTo   Json?
   createdById String
   createdAt   DateTime @default(now())
 
@@ -5272,6 +5274,26 @@ model SessionModeOverride {
   createdAt      DateTime @default(now())
 
   @@unique([classSectionId, date])
+}
+
+/// a02 M3 batch 3: what happened to one session of a One-to-One. kind POSTPONE | APOLOGY | RELEASE; state OPEN | WAITING_SUB | DONE.
+model OneToOneEvent {
+  id                  String    @id @default(cuid())
+  classSectionId      String
+  date                DateTime  @db.Date
+  kind                String    @db.VarChar(10)
+  state               String    @default("DONE") @db.VarChar(12)
+  choice              String?   @db.VarChar(12)
+  newDate             DateTime? @db.Date
+  newTime             String?   @db.VarChar(5)
+  /// uses up one of the family's postponements of the month
+  countsAgainstParent Boolean   @default(false)
+  note                String?   @db.VarChar(300)
+  createdById         String?
+  createdAt           DateTime  @default(now())
+
+  @@index([classSectionId, kind, date])
+  @@index([state])
 }
 
 /// a02 M3 batch 2: a parent asks for a One-to-One; it is offered to one qualified, free instructor at a time.

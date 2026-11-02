@@ -5,7 +5,7 @@
 
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { getSetting, setSetting } from '@/lib/settings/app-settings'
+import { getOneToOneSettings, saveOneToOneSettings } from './settings'
 import { loadPlaces, requestPlaces, allowsCampus } from '@/lib/places/server'
 import { getChildrenForGuardianUser } from '@/lib/academic/guardian'
 import { getTeacherByUserId } from '@/lib/academic/teacher-scope'
@@ -14,17 +14,10 @@ import { notifyFamilies, notifyUsers, usersWithPermission } from '@/lib/notifica
 import { ageOn, cairoYmd } from '@/lib/dates/cairo'
 import { OneToOneError, areSiblings, createOneToOne, instructorsFor, listPrices, pickRooms, type SlotInput } from './engine'
 import { pickPrice, type Plan } from './rules'
-import { cleanOneToOneSettings, DEFAULT_ONE_TO_ONE_SETTINGS, nextCandidate, type OneToOneSettings } from './request-rules'
+import { nextCandidate, type OneToOneSettings } from './request-rules'
 
 type Who = { id: string; role: string; campusId?: string | null }
-const KEY = 'oneToOne.settings'
-
-export const getOneToOneSettings = async () => cleanOneToOneSettings(await getSetting<Partial<OneToOneSettings>>(KEY, DEFAULT_ONE_TO_ONE_SETTINGS))
-export async function saveOneToOneSettings(v: Partial<OneToOneSettings>, userId: string) {
-  const next = cleanOneToOneSettings({ ...(await getOneToOneSettings()), ...v })
-  await setSetting(KEY, next, userId)
-  return next
-}
+export { getOneToOneSettings, saveOneToOneSettings }
 
 const triedOf = (v: unknown): string[] => (Array.isArray(v) ? (v as string[]) : [])
 const slotsOf = (v: unknown): SlotInput[] => (Array.isArray(v) ? (v as SlotInput[]) : [])

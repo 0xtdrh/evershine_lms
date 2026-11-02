@@ -37,10 +37,11 @@ export default function HolidaysPage() {
   const { data: rows, isLoading } = useQuery({ queryKey: ['holidays'], queryFn: () => fetchApi<Holiday[]>(`/api/holidays?from=${today}`) })
   const { data: campuses = [] } = useQuery({ queryKey: ['campuses'], queryFn: () => fetchApi<Campus[]>('/api/campuses') })
   const [form, setForm] = useState({ date: '', toDate: '', name: '', campusId: isSuper ? 'ALL' : '' })
+  const [ways, setWays] = useState<string[]>([])
   const add = useMutation({
     mutationFn: () => fetchApi<{ added: number }>('/api/holidays', {
       method: 'POST',
-      body: JSON.stringify({ date: form.date, toDate: form.toDate || null, name: form.name, campusId: form.campusId === 'ALL' ? null : form.campusId || session?.user?.campusId || null }),
+      body: JSON.stringify({ appliesTo: ways.length ? ways : null, date: form.date, toDate: form.toDate || null, name: form.name, campusId: form.campusId === 'ALL' ? null : form.campusId || session?.user?.campusId || null }),
     }),
     onSuccess: (r) => { notify.success(r.added ? `${r.added} day(s) added` : 'Already a holiday'); setForm({ ...form, date: '', toDate: '', name: '' }); qc.invalidateQueries({ queryKey: ['holidays'] }); qc.invalidateQueries({ queryKey: ['groups-schedule'] }) },
     onError: (e: Error) => notify.error(e.message || 'Could not add it'),
@@ -75,6 +76,14 @@ export default function HolidaysPage() {
                 </Select>
               </div>
             )}
+            <div className="w-full space-y-1">
+              <Label className="text-xs">{L('Who is off? (none ticked = as usual: a branch holiday stops branch sessions, a company one stops everything)', 'مين إجازة؟ (من غير اختيار = زي العادي: إجازة الفرع توقف حصص الفرع، وإجازة الشركة توقف كله)')}</Label>
+              <div className="flex flex-wrap gap-3 text-xs">
+                {[['BRANCH', L('Branch sessions', 'حصص الفرع')], ['ONLINE', L('Online sessions', 'حصص الأونلاين')], ['ONE_TO_ONE', 'One-to-One']].map(([k, t]) => (
+                  <label key={k} className="flex items-center gap-1"><input type="checkbox" checked={ways.includes(k)} onChange={() => setWays(ways.includes(k) ? ways.filter((x) => x !== k) : [...ways, k])} /> {t}</label>
+                ))}
+              </div>
+            </div>
             <Button className="h-9" disabled={!form.date || form.name.trim().length < 2 || add.isPending} onClick={() => add.mutate()}>{L('Add', 'ضيف')}</Button>
           </CardContent>
         </Card>

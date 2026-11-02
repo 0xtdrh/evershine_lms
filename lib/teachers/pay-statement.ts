@@ -11,6 +11,8 @@ import {
   type PayRule, type StatementAdjustment, type StatementGroup, type StatementGroupFacts, type StatementSession, type StatementTotals,
 } from './pay-statement-calc'
 import { groupIsOnline, modeOfDay, onlineFrom } from './online-pay'
+import { noShowDays } from '@/lib/one-to-one/request-rules'
+import { getOneToOneSettings } from '@/lib/one-to-one/settings'
 
 export interface PayStatement {
   teacher: { id: string; userId: string; name: string; employeeId: string | null }
@@ -100,7 +102,7 @@ export async function teacherPayStatement(
     const [records, logs] = await Promise.all([
       prisma.enrollmentAttendanceRecord.findMany({
         where: { studentEnrollment: { classSectionId: g.id }, attendanceDate: { lt: to } },
-        select: { attendanceDate: true, taughtByTeacherId: true, markedByTeacherId: true },
+        select: { attendanceDate: true, taughtByTeacherId: true, markedByTeacherId: true, status: true },
         orderBy: { attendanceDate: 'asc' },
       }),
       prisma.groupSessionLog.findMany({ where: { classSectionId: g.id, status: 'HELD', sessionDate: { lt: to } }, select: { sessionDate: true, taughtByTeacherId: true } }),
@@ -109,6 +111,8 @@ export async function teacherPayStatement(
     for (const r of records) { const k = ymd(r.attendanceDate); if (!byDay.has(k)) byDay.set(k, r.taughtByTeacherId ?? r.markedByTeacherId ?? null) }
     for (const l of logs) { const k = ymd(l.sessionDate); if (!byDay.has(k)) byDay.set(k, l.taughtByTeacherId ?? null) }
     const days = [...byDay.keys()].sort()
+    const noShows = g.kind === 'ONE_TO_ONE' ? noShowDays(records.map((r) => ({ date: ymd(r.attendanceDate), status: r.status }))) : new Set<string>()
+    const noShowFactor = noShows.size ? (await getOneToOneSettings()).noShowPayPct / 100 : undefined
     // a02 M1 batch 6: the way each session was taught
     const modeRows = await prisma.sessionModeOverride.findMany({ where: { classSectionId: g.id, date: { gte: from, lt: to } }, select: { date: true, mode: true } })
     const modeOverrides = new Map(modeRows.map((m) => [ymd(m.date), m.mode]))
@@ -121,7 +125,7 @@ export async function teacherPayStatement(
       const mine = who === tId
       const paid = paidByTechNovaOn(periods, date)
       if (coveredOnly && !mine) continue
-      sessions.push({ date: d, n: i + 1, of, counted: mine && paid, otherTeacher: mine ? null : await nameOf(who), notPaidByTechNova: mine && !paid, mode: modeOfDay(d, g.scheduleSlots, modeOverrides) })
+      sessions.push({ date: d, n: i + 1, of, counted: mine && paid, otherTeacher: mine ? null : await nameOf(who), notPaidByTechNova: mine && !paid, mode: modeOfDay(d, g.scheduleSlots, modeOverrides), ...(noShows.has(d) && { noShowFactor }) })
     }
 
     // percent: money paid in the month on this group's invoices (before discount) minus refunds approved in the month

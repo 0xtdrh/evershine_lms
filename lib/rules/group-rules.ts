@@ -18,6 +18,8 @@ export interface GroupRuleInput {
   refund: { allowed: boolean; adminFeeType: 'FIXED' | 'PERCENT'; adminFeeValue: number; deductBasis: 'ATTENDED' | 'HELD' }
   excuse: { autoApprove: boolean; daysAfter: number }
   written: { scope: 'GLOBAL' | 'CAMPUS' | 'LEVEL' | 'GROUP'; textEn: string; textAr: string; sortOrder: number }[]
+  /** a02 M3: One-to-One rules */
+  oneToOne?: { cancelHours: number; postponesPerMonth: number; noShowWaitMinutes: number; noShowLimit: number } | null
 }
 
 const DAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -66,6 +68,13 @@ export function buildGroupRules(i: GroupRuleInput): RuleItem[] {
       ? (i.refund.adminFeeType === 'PERCENT' ? [` and an administration fee of ${i.refund.adminFeeValue}%`, ` ومصاريف إدارية ${i.refund.adminFeeValue}%`] : [` and an administration fee of ${i.refund.adminFeeValue} EGP`, ` ومصاريف إدارية ${i.refund.adminFeeValue} جنيه`])
       : ['', '']
     add(`A refund is the amount paid minus the ${basis[0]}${fee[0]}; it can go back as cash or to the wallet.`, `الاسترداد = المدفوع ناقص ${basis[1]}${fee[1]}، ويرجع كاش أو في المحفظة.`)
+  }
+  if (i.oneToOne) {
+    const o = i.oneToOne
+    add(`One-to-One: a session can be moved up to ${o.cancelHours} hours before it, ${o.postponesPerMonth} times a month.`, `One-to-One: الحصة بتتأجل قبلها بـ ${o.cancelHours} ساعة على الأقل، و${o.postponesPerMonth} مرات في الشهر.`)
+    add(`One-to-One: the instructor waits ${o.noShowWaitMinutes} minutes; a session missed without notice counts as used.`, `One-to-One: المدرب بيستنى ${o.noShowWaitMinutes} دقيقة، والحصة اللي تتفوت من غير إبلاغ بتتحسب.`)
+    add(`One-to-One: after ${o.noShowLimit} sessions missed without notice the fixed time is released.`, `One-to-One: بعد ${o.noShowLimit} حصص غياب من غير إبلاغ الميعاد الثابت بيتلغي.`)
+    add('One-to-One: when the instructor cannot come, you choose a substitute or a new date; it does not use up your postponements.', 'One-to-One: لو المدرب اعتذر، بتختار مدرب بديل أو ميعاد جديد، ومش بيتحسب من تأجيلاتك.')
   }
   const written = [...i.written].sort((a, b) => ORDER[a.scope] - ORDER[b.scope] || a.sortOrder - b.sortOrder)
   for (const w of written) out.push({ source: w.scope, en: w.textEn.trim(), ar: w.textAr.trim() || w.textEn.trim() })

@@ -32,6 +32,53 @@ const stateText = (s: string) => ({
   BOOKED: L('Booked', 'اتحجز'), CANCELLED: L('Cancelled', 'اتلغى'),
 } as Record<string, string>)[s] ?? s
 
+interface Booking { id: string; level: string; sessions: { date: string; time: string; mode: string }[]; postponesLeft: number; postponesPerMonth: number; cancelHours: number; apologies: { id: string; date: string }[] }
+
+function MyBookings({ studentId }: { studentId: string }) {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['portal-one-to-one-sessions', studentId], queryFn: () => fetchApi<Booking[]>(`/api/guardian-portal/one-to-one/sessions?studentId=${studentId}`), enabled: !!studentId })
+  const [f, setF] = useState<Record<string, { date?: string; newDate?: string; newTime?: string }>>({})
+  const send = useMutation({
+    mutationFn: (body: Record<string, unknown>) => fetchApi('/api/guardian-portal/one-to-one/sessions', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => { notify.success(L('Done', 'تم')); setF({}); qc.invalidateQueries({ queryKey: ['portal-one-to-one-sessions', studentId] }) },
+    onError: (e: Error) => notify.error(e.message),
+  })
+  if (!data?.length) return null
+  const set = (k: string, patch: { date?: string; newDate?: string; newTime?: string }) => setF({ ...f, [k]: { ...f[k], ...patch } })
+  return (
+    <Card><CardHeader className="pb-2"><CardTitle className="text-base">{L('The sessions', 'الحصص')}</CardTitle></CardHeader>
+      <CardContent className="space-y-4 text-sm">
+        {data.map((b) => (
+          <div key={b.id} className="space-y-2 rounded-lg border border-slate-200 p-3">
+            <p className="font-semibold">{b.level}</p>
+            {b.apologies.map((a) => (
+              <div key={a.id} className="space-y-2 rounded bg-amber-50 p-2 text-xs">
+                <p className="font-semibold text-amber-800">{L(`The instructor cannot come on ${a.date}. What would you like?`, `المدرب اعتذر عن حصة ${a.date}. تحب إيه؟`)}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" disabled={send.isPending} onClick={() => send.mutate({ eventId: a.id, choice: 'SUBSTITUTE' })}>{L('A substitute instructor', 'مدرب بديل')}</Button>
+                  <Input type="date" aria-label={L('New date', 'الميعاد الجديد')} className="h-9 w-40" value={f[a.id]?.newDate ?? ''} onChange={(e) => set(a.id, { newDate: e.target.value })} />
+                  <Input type="time" aria-label={L('New time', 'الوقت الجديد')} className="h-9 w-28" value={f[a.id]?.newTime ?? '16:00'} onChange={(e) => set(a.id, { newTime: e.target.value })} />
+                  <Button size="sm" disabled={!f[a.id]?.newDate || send.isPending} onClick={() => send.mutate({ eventId: a.id, choice: 'POSTPONE', newDate: f[a.id]?.newDate, newTime: f[a.id]?.newTime ?? '16:00' })}>{L('A new date', 'ميعاد جديد')}</Button>
+                </div>
+              </div>
+            ))}
+            <p className="text-slate-600">{b.sessions.map((s) => `${dayName(new Date(`${s.date}T00:00:00Z`).getUTCDay())} ${s.date} ${s.time}`).join('، ') || L('No coming sessions', 'مفيش حصص جاية')}</p>
+            {b.sessions.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <select className={sel} aria-label={L('Session to move', 'الحصة اللي هتتأجل')} value={f[b.id]?.date ?? ''} onChange={(e) => set(b.id, { date: e.target.value })}><option value="">{L('Move a session', 'أجّل حصة')}</option>{b.sessions.map((s) => <option key={s.date} value={s.date}>{s.date} {s.time}</option>)}</select>
+                <Input type="date" aria-label={L('New date', 'الميعاد الجديد')} className="h-9 w-40" value={f[b.id]?.newDate ?? ''} onChange={(e) => set(b.id, { newDate: e.target.value })} />
+                <Input type="time" aria-label={L('New time', 'الوقت الجديد')} className="h-9 w-28" value={f[b.id]?.newTime ?? '16:00'} onChange={(e) => set(b.id, { newTime: e.target.value })} />
+                <Button size="sm" disabled={!f[b.id]?.date || !f[b.id]?.newDate || !b.postponesLeft || send.isPending} onClick={() => send.mutate({ groupId: b.id, date: f[b.id]?.date, newDate: f[b.id]?.newDate, newTime: f[b.id]?.newTime ?? '16:00' })}>{L('Move', 'أجّل')}</Button>
+                <span className="text-slate-500">{L(`${b.postponesLeft} of ${b.postponesPerMonth} left this month; at least ${b.cancelHours} hours before`, `فاضل ${b.postponesLeft} من ${b.postponesPerMonth} الشهر ده؛ قبلها بـ ${b.cancelHours} ساعة على الأقل`)}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
 export function ChildOneToOneCard({ studentId }: { studentId: string }) {
   const ar = useI18n().locale === 'ar'
   const qc = useQueryClient()
@@ -69,6 +116,7 @@ export function ChildOneToOneCard({ studentId }: { studentId: string }) {
   const lab = 'block text-xs text-slate-500'
   return (
     <div className="space-y-4">
+      <MyBookings studentId={studentId} />
       {data.requests.length > 0 && (
         <Card><CardHeader className="pb-2"><CardTitle className="text-base">{L('Your requests', 'طلباتك')}</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">

@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
     date: r.date.toISOString().slice(0, 10),
     name: r.name,
     campus: r.campusId ? { id: r.campusId, name: names.get(r.campusId) ?? '' } : null,
+    appliesTo: r.appliesTo,
   })))
 }
 
@@ -52,6 +53,8 @@ const bodySchema = z.object({
   toDate: z.string().regex(DATE).optional().nullable(),
   name: z.string().trim().min(2).max(100),
   campusId: z.preprocess((v) => (v === '' ? null : v), z.string().min(1).nullable().optional()),
+  /** a02 M3: who is off; empty = as before */
+  appliesTo: z.array(z.enum(['BRANCH', 'ONLINE', 'ONE_TO_ONE'])).max(3).optional().nullable(),
 })
 
 export async function POST(request: NextRequest) {
@@ -81,7 +84,7 @@ export async function POST(request: NextRequest) {
   const taken = new Set(existing.map((e) => e.date.toISOString().slice(0, 10)))
   const fresh = days.filter((x) => !taken.has(x))
   if (fresh.length) {
-    await prisma.holiday.createMany({ data: fresh.map((x) => ({ date: day(x), campusId, name: d.name, createdById: session.user.id })) })
+    await prisma.holiday.createMany({ data: fresh.map((x) => ({ date: day(x), campusId, name: d.name, ...(d.appliesTo?.length ? { appliesTo: d.appliesTo } : {}), createdById: session.user.id })) })
     await notifyHoliday(campusId, fresh, d.name)
   }
   return createdResponse({ added: fresh.length, skipped: days.length - fresh.length }, fresh.length ? 'Holiday added' : 'Already a holiday')
