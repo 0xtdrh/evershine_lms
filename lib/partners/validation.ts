@@ -63,6 +63,12 @@ export const dealSchema = z.object({
     base: z.enum(['NET', 'GROSS']).optional(),
     hoursPerSession: z.coerce.number().min(0.25).max(12).optional(),
   })).min(1, 'Add at least one piece to the deal').max(10),
+  oneToOneComponents: z.array(z.object({
+    kind: z.enum(['PERCENT', 'FIXED_MONTHLY', 'PER_SESSION', 'PER_HOUR', 'PER_STUDENT_MONTH', 'PER_GROUP_MONTH', 'PER_TERM', 'MINIMUM']),
+    value: z.coerce.number().min(0).max(10_000_000),
+    base: z.enum(['NET', 'GROSS']).optional(),
+    hoursPerSession: z.coerce.number().min(0.25).max(12).optional(),
+  })).max(10).optional().nullable(),
   extras: z.array(z.object({
     label: z.string().trim().min(1).max(80),
     amount: z.coerce.number().min(0).max(10_000_000),

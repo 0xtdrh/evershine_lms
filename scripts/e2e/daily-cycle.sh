@@ -2463,6 +2463,48 @@ api PUT /api/places/$CAMPUS/rooms "{\"roomMode\":\"$RM\"}" >/dev/null
 api PUT /api/one-to-one/settings '{"assignWithoutAsking":false,"replyHours":24}' >/dev/null
 check "settings are kept, and reply hours stay in range" "$(api GET /api/one-to-one/settings | jq_ "(d['data']['replyHours'], d['data']['assignWithoutAsking'], d['data']['portalOpen'])")" "(24, False, True)"
 check "signed out: 401" "$(curl -s -o /dev/null -w '%{http_code}' "$B/api/teacher-portal/one-to-one-offers")" "401"
+echo "== 77. One-to-One money and locks: refund limits, moves, discounts, partner terms (a02 M3 batch 3 part 1, 2026-11-02)"
+KEEPRULES=$(api GET /api/refunds/rules)
+OR1=$(M "SELECT groupId FROM OneToOneRequest WHERE id='$R1'")
+ORI=$(M "SELECT id FROM FeeInvoice WHERE classSectionId='$OR1' AND studentId='$OS1' ORDER BY createdAt DESC LIMIT 1")
+pay "$ORI" 600 >/dev/null
+check "per-session refund price follows the booked sessions, not the level (600 / 2 = 300)" "$(api GET /api/refunds/suggest?invoiceId=$ORI | jq_ "(d['data']['perSession'], d['data']['sessionsInCycle'])")" "(300, 2)"
+RULE() { echo "{\"scopeType\":\"$1\",\"scopeId\":$2,\"allowed\":$3,\"adminFeeType\":\"FIXED\",\"adminFeeValue\":0,\"deductBasis\":\"ATTENDED\",\"untilDaysBeforeFirst\":$4}"; }
+api PUT /api/refunds/rules "{\"rules\":[$(RULE ONE_TO_ONE null false null)]}" >/dev/null
+check "refunds closed on One-to-One" "$(api GET /api/refunds/suggest?invoiceId=$ORI | jq_ "d['data']['allowed']")" "False"
+check "…a normal group is not touched by that rule" "$(M "SELECT scopeType FROM RefundRule LIMIT 1")/$(api GET "/api/refunds/suggest?invoiceId=$(M "SELECT i.id FROM FeeInvoice i JOIN ClassSection g ON g.id=i.classSectionId WHERE g.kind='GROUP' LIMIT 1")" | jq_ "d['data']['allowed']")" "ONE_TO_ONE/True"
+api PUT /api/refunds/rules "{\"rules\":[$(RULE CAMPUS "\"$CAMPUS\"" false null)]}" >/dev/null
+check "refunds closed for one place" "$(api GET /api/refunds/suggest?invoiceId=$ORI | jq_ "d['data']['allowed']")" "False"
+api PUT /api/refunds/rules "{\"rules\":[$(RULE ONE_TO_ONE null true 0)]}" >/dev/null
+check "open until the first session, while it has not started (a day limit of 0)" "$(api GET /api/refunds/suggest?invoiceId=$ORI | jq_ "d['data']['allowed']")" "True"
+M "UPDATE ClassSection SET startDate=UTC_TIMESTAMP() WHERE id='$OR1'"
+check "…closed once it has started" "$(api GET /api/refunds/suggest?invoiceId=$ORI | jq_ "d['data']['allowed']")" "False"
+M "UPDATE ClassSection SET startDate=NULL WHERE id='$OR1'"
+api PUT /api/refunds/rules "$(echo "$KEEPRULES" | python -c "import sys,json;print(json.dumps({'rules':[{k:r.get(k) for k in ('scopeType','scopeId','allowed','adminFeeType','adminFeeValue','deductBasis','note')} for r in json.load(sys.stdin)['data']]}))")" >/dev/null
+OTGT=$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"className\":\"E2E Target Group\",\"sectionName\":\"T\",\"levelId\":\"$CVL\"}" | jq_ "d['data']['id']")
+LOCKS() { echo "{\"all\":${1:-false},\"kinds\":${2:-[]},\"modes\":[],\"campusIds\":${3:-[]},\"partnerIds\":[]}"; }
+api PUT /api/group-transfers/settings "$(LOCKS false '["ONE_TO_ONE"]')" >/dev/null
+check "moves closed for One-to-One: refused with the reason" "$(api GET "/api/students/$OS1/transfer?from=$OR1&to=$OTGT" | jq_ "'One-to-One' in d['error']['message']")" "True"
+api PUT /api/group-transfers/settings "$(LOCKS false '[]' "[\"$CAMPUS\"]")" >/dev/null
+check "moves closed for a place" "$(api GET "/api/students/$OS1/transfer?from=$OR1&to=$OTGT" | jq_ "d['success']")" "False"
+api PUT /api/group-transfers/settings "$(LOCKS true)" >/dev/null
+check "moves closed everywhere" "$(api GET "/api/students/$OS1/transfer?from=$OR1&to=$OTGT" | jq_ "d['success']")" "False"
+check "a secretary cannot open them" "$(secapi PUT /api/group-transfers/settings "$(LOCKS)" | jq_ "d['success']")" "False"
+api PUT /api/group-transfers/settings "$(LOCKS)" >/dev/null
+check "One-to-One to a group: what was not used becomes credit (2 sessions, none held = all 600)" "$(api GET "/api/students/$OS1/transfer?from=$OR1&to=$OTGT" | jq_ "d['data']['invoice']['credit']")" "600"
+api POST /api/students/$OS1/transfer "{\"fromClassSectionId\":\"$OR1\",\"toClassSectionId\":\"$OTGT\",\"creditTo\":\"NEW_INVOICE\",\"discountDecisions\":[]}" >/dev/null
+check "…the student is in the group now, out of the One-to-One" "$(M "SELECT CONCAT(e.status,'/',IFNULL(e.withdrawalReason,'-')) FROM StudentEnrollment e WHERE e.studentId='$OS1' AND e.classSectionId='$OR1'")/$(M "SELECT status FROM StudentEnrollment WHERE studentId='$OS1' AND classSectionId='$OTGT'")" "WITHDRAWN/TRANSFERRED/ACTIVE"
+FG=$(api POST /api/one-to-one "{\"studentIds\":[\"$OS1\"],\"campusId\":\"$CAMPUS\",\"levelId\":\"$CVL\",\"plan\":\"SESSION\",\"sessions\":2,\"slots\":[{\"dayOfWeek\":3,\"time\":\"07:00\",\"mode\":\"BRANCH\"}],\"teacherId\":\"$CALT\",\"fromGroupId\":\"$OTGT\"}")
+check "a group to One-to-One: booked and moved in one step" "$(echo "$FG" | jq_ "d['success']")/$(M "SELECT withdrawalReason FROM StudentEnrollment WHERE studentId='$OS1' AND classSectionId='$OTGT'")/$(M "SELECT COUNT(*) FROM StudentEnrollment WHERE classSectionId='$(echo "$FG" | jq_ "d['data']['groupId']")' AND studentId='$OS1' AND status='ACTIVE'")" "True/TRANSFERRED/1"
+check "if the move is closed, nothing is left behind" "$(api PUT /api/group-transfers/settings "$(LOCKS true)" >/dev/null; C0=$(M "SELECT COUNT(*) FROM ClassSection WHERE kind='ONE_TO_ONE'"); R=$(api POST /api/one-to-one "{\"studentIds\":[\"$OS2\"],\"campusId\":\"$CAMPUS\",\"levelId\":\"$CVL\",\"plan\":\"SESSION\",\"sessions\":2,\"slots\":[{\"dayOfWeek\":3,\"time\":\"09:00\",\"mode\":\"BRANCH\"}],\"teacherId\":\"$CALT\",\"fromGroupId\":\"$OTGT\"}" | jq_ "d['success']"); echo "$R/$(( $(M "SELECT COUNT(*) FROM ClassSection WHERE kind='ONE_TO_ONE'") - C0 ))")" "False/0"
+api PUT /api/group-transfers/settings "$(LOCKS)" >/dev/null
+DT=$(api POST /api/discount-types '{"name":"E2E Auto 10","kind":"PROMO","valueType":"PERCENT","value":10,"duration":"EVERY_CYCLE","autoApply":true,"approvalMode":"STAFF","scopeType":"ALL","stackable":true,"isActive":true}' | jq_ "d['data']['id']")
+ODB=$(api POST /api/one-to-one "{\"studentIds\":[\"$OS3\"],\"campusId\":\"$CAMPUS\",\"levelId\":\"$CVL\",\"plan\":\"SESSION\",\"sessions\":1,\"slots\":[{\"dayOfWeek\":3,\"time\":\"10:40\",\"mode\":\"BRANCH\"}],\"teacherId\":\"$CALT\"}" | jq_ "d['data']['groupId']")
+check "a discount not chosen for One-to-One does not touch it" "$(inv $OS3 $ODB | cut -d/ -f1,2)" "300/0"
+M "UPDATE DiscountType SET appliesToOneToOne=1 WHERE id='$DT'"
+ODC=$(api POST /api/one-to-one "{\"studentIds\":[\"$OS3\"],\"campusId\":\"$CAMPUS\",\"levelId\":\"$CVL\",\"plan\":\"SESSION\",\"sessions\":1,\"slots\":[{\"dayOfWeek\":3,\"time\":\"12:20\",\"mode\":\"BRANCH\"}],\"teacherId\":\"$CALT\"}" | jq_ "d['data']['groupId']")
+check "chosen + automatic: it applies by itself" "$(inv $OS3 $ODC | cut -d/ -f1,2)" "300/30"
+M "UPDATE DiscountType SET isActive=0 WHERE id='$DT'"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

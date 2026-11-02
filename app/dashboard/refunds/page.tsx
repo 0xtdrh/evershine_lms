@@ -32,8 +32,8 @@ interface RefundRow {
   requestedBy: string | null
   approvedBy: string | null
 }
-interface Rule { scopeType: string; scopeId: string | null; allowed: boolean; adminFeeType: 'FIXED' | 'PERCENT'; adminFeeValue: number; deductBasis: 'ATTENDED' | 'HELD'; note?: string | null }
-interface Options {
+interface Rule { untilDaysBeforeFirst?: number | null; scopeType: string; scopeId: string | null; allowed: boolean; adminFeeType: 'FIXED' | 'PERCENT'; adminFeeValue: number; deductBasis: 'ATTENDED' | 'HELD'; note?: string | null }
+interface Options { places?: { id: string; name: string }[]; partners?: { id: string; name: string }[];
   tracks: { id: string; name: string }[]
   courses: { id: string; name: string }[]
   levels: { id: string; name: string; subjectId: string }[]
@@ -151,6 +151,9 @@ function Rules({ canEdit }: { canEdit: boolean }) {
     if (scope === 'COURSE') return options?.courses ?? []
     if (scope === 'LEVEL') return (options?.levels ?? []).map((l) => ({ id: l.id, name: `${options?.courses.find((c) => c.id === l.subjectId)?.name ?? ''} — ${l.name}` }))
     if (scope === 'GROUP') return options?.groups ?? []
+    if (scope === 'CAMPUS') return options?.places ?? []
+    if (scope === 'PARTNER') return options?.partners ?? []
+    if (scope === 'MODE') return [{ id: 'ONLINE', name: L('Online', 'أونلاين') }, { id: 'BRANCH', name: L('In a branch', 'في الفرع') }]
     return []
   }, [options])
   if (!rules) return <p className="text-sm text-muted-foreground">{L('Loading…', 'بيحمّل…')}</p>
@@ -169,16 +172,18 @@ function Rules({ canEdit }: { canEdit: boolean }) {
             <Select value={r.scopeType} onValueChange={(v) => set(i, { scopeType: v, scopeId: null })} disabled={!canEdit}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {['ALL', 'TRACK', 'COURSE', 'LEVEL', 'GROUP'].map((s) => <SelectItem key={s} value={s}>{s === 'ALL' ? 'Everywhere' : s.toLowerCase()}</SelectItem>)}
+                {['ALL', 'TRACK', 'COURSE', 'LEVEL', 'GROUP', 'ONE_TO_ONE', 'MODE', 'CAMPUS', 'PARTNER'].map((s) => <SelectItem key={s} value={s}>{({ ALL: L('Everywhere', 'كل حاجة'), TRACK: L('Track', 'مسار'), COURSE: L('Course', 'كورس'), LEVEL: L('Level', 'مستوى'), GROUP: L('Group', 'جروب'), ONE_TO_ONE: 'One-to-One', MODE: L('Online / branch', 'أونلاين / فرع'), CAMPUS: L('Place', 'مكان'), PARTNER: L('Partner', 'شريك') } as Record<string, string>)[s]}</SelectItem>)}
               </SelectContent>
             </Select>
-            {r.scopeType !== 'ALL' ? (
+            {r.scopeType !== 'ALL' && r.scopeType !== 'ONE_TO_ONE' ? (
               <Select value={r.scopeId ?? undefined} onValueChange={(v) => set(i, { scopeId: v })} disabled={!canEdit}>
                 <SelectTrigger className="sm:col-span-2"><SelectValue placeholder={L('Which one', 'أنهي واحد')} /></SelectTrigger>
                 <SelectContent>{listFor(r.scopeType).map((x) => <SelectItem key={x.id} value={x.id}>{x.name}</SelectItem>)}</SelectContent>
               </Select>
             ) : <div className="sm:col-span-2" />}
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={r.allowed} disabled={!canEdit} onChange={(e) => set(i, { allowed: e.target.checked })} /> {L('Refunds allowed', 'الاسترداد مسموح')}</label>
+            <label className="flex items-center gap-1 text-xs sm:col-span-3">{L('Only until this many days before the first session (empty = no limit; closed after it starts)', 'لحد قبل أول حصة بكام يوم (فاضي = من غير حد؛ بيتقفل بعد ما يبدأ)')}
+              <Input type="number" min={0} className="w-20" value={r.untilDaysBeforeFirst ?? ''} disabled={!canEdit || !r.allowed} onChange={(e) => set(i, { untilDaysBeforeFirst: e.target.value === '' ? null : Number(e.target.value) })} /></label>
             <div className="flex items-center gap-1 sm:col-span-2">
               <span className="text-xs">{L('Fee', 'المصاريف')}</span>
               <Input type="number" min={0} className="w-24" value={r.adminFeeValue} disabled={!canEdit || !r.allowed} onChange={(e) => set(i, { adminFeeValue: Number(e.target.value) || 0 })} />

@@ -3,9 +3,9 @@
  * (preview now; statements in batch B). Server-only. Pure maths in ./deal.ts.
  */
 
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { computeDeal, dealProblem, periodMonths, pickDeal, type Deal, type DealComponent, type DealExtra, type DealFacts } from './deal'
+import { computeDeal, dealProblem, mergeOneToOne, periodMonths, pickDeal, type Deal, type DealComponent, type DealExtra, type DealFacts } from './deal'
 
 type Outcome<T = unknown> = { ok: true; value: T } | { ok: false; code: 'NOT_FOUND' | 'INVALID'; message: string }
 const fail = (code: 'NOT_FOUND' | 'INVALID', message: string): Outcome<never> => ({ ok: false, code, message })
@@ -13,6 +13,8 @@ const r2 = (n: number) => Math.round(n * 100) / 100
 const day = (d: Date) => d.toISOString().slice(0, 10)
 
 export interface DealInput {
+  /** a02 M3: own pieces for One-to-One; empty = counted with the groups */
+  oneToOneComponents?: DealComponent[] | null
   title: string; campusId?: string | null; contractId?: string | null; collector: Deal['collector']; components: DealComponent[]; extras?: DealExtra[] | null
   countPartnerCancelled?: boolean; period?: Deal['period']; validFrom: string; validTo?: string | null; notes?: string | null; isActive?: boolean
 }
@@ -34,7 +36,7 @@ export async function saveDeal(userId: string, partnerId: string, id: string | n
   if (Number.isNaN(validFrom.getTime()) || (validTo && (Number.isNaN(validTo.getTime()) || validTo < validFrom))) return fail('INVALID', 'Check the dates of the deal')
   const data = {
     title: input.title.trim(), campusId: input.campusId || null, contractId: input.contractId || null, collector: deal.collector,
-    components: deal.components as unknown as Prisma.InputJsonValue, extras: (deal.extras ?? []) as unknown as Prisma.InputJsonValue,
+    oneToOneComponents: (input.oneToOneComponents?.length ? input.oneToOneComponents : Prisma.DbNull) as unknown as Prisma.InputJsonValue, components: deal.components as unknown as Prisma.InputJsonValue, extras: (deal.extras ?? []) as unknown as Prisma.InputJsonValue,
     countPartnerCancelled: deal.countPartnerCancelled, period: deal.period, validFrom, validTo, notes: input.notes?.trim() || null,
     ...(input.isActive !== undefined && { isActive: input.isActive }),
   }
@@ -50,13 +52,14 @@ export async function saveDeal(userId: string, partnerId: string, id: string | n
 }
 
 /** The facts of a period for some places, read from what the system already holds. */
-export async function dealFacts(campusIds: string[], from: Date, to: Date): Promise<DealFacts & { groupIds: string[] }> {
+export async function dealFacts(campusIds: string[], from: Date, to: Date, kind?: 'GROUP' | 'ONE_TO_ONE'): Promise<DealFacts & { groupIds: string[] }> {
   const end = new Date(to.getTime() + 86_399_999)
-  const groups = await prisma.classSection.findMany({ where: { campusId: { in: campusIds } }, select: { id: true, unnamedHeadcount: true } })
+  const groups = await prisma.classSection.findMany({ where: { campusId: { in: campusIds }, ...(kind && { kind }) }, select: { id: true, unnamedHeadcount: true } })
   const groupIds = groups.map((g) => g.id)
   const empty = { collected: 0, refunds: 0, discounts: 0, sessionsHeld: 0, sessionsCancelledByPartner: 0, students: 0, groups: 0, months: periodMonths(from, to), groupIds }
   if (!groupIds.length && !campusIds.length) return empty
-  const invoiceScope: Prisma.FeeInvoiceWhereInput = { OR: [{ classSectionId: { in: groupIds } }, { classSectionId: null, student: { campusId: { in: campusIds } } }] }
+  // invoices with no group (extra fees) stay with the normal groups
+  const invoiceScope: Prisma.FeeInvoiceWhereInput = kind === 'ONE_TO_ONE' ? { classSectionId: { in: groupIds } } : { OR: [{ classSectionId: { in: groupIds } }, { classSectionId: null, student: { campusId: { in: campusIds } } }] }
   const [paid, invoiceIds, attendance, logs] = await Promise.all([
     prisma.feePayment.aggregate({ where: { status: 'COMPLETED', paymentDate: { gte: from, lte: end }, invoice: invoiceScope }, _sum: { amount: true } }),
     prisma.feeInvoice.findMany({ where: invoiceScope, select: { id: true } }).then((r) => r.map((x) => x.id)),
@@ -100,12 +103,31 @@ const asDeal = (d: { collector: string; components: unknown; extras: unknown; co
 })
 
 /** Live calculation for one deal over a period (nothing is saved). */
+/**
+ * a02 M3: facts + result of a deal. With its own One-to-One pieces, One-to-One is left out of the normal pieces and priced by its own;
+ * facts stay the sum for display.
+ */
+export async function dealOutcome(d: Parameters<typeof asDeal>[0] & { oneToOneComponents?: unknown }, campusIds: string[], from: Date, to: Date) {
+  const own = Array.isArray(d.oneToOneComponents) && d.oneToOneComponents.length ? (d.oneToOneComponents as DealComponent[]) : null
+  if (!own) {
+    const facts = await dealFacts(campusIds, from, to)
+    return { facts, result: computeDeal(asDeal(d), facts) }
+  }
+  const [main, one] = await Promise.all([dealFacts(campusIds, from, to, 'GROUP'), dealFacts(campusIds, from, to, 'ONE_TO_ONE')])
+  const result = mergeOneToOne(computeDeal(asDeal(d), main), computeDeal({ ...asDeal(d), components: own, extras: [] }, one))
+  const facts = {
+    ...main, collected: r2(main.collected + one.collected), refunds: r2(main.refunds + one.refunds), discounts: r2(main.discounts + one.discounts), sessionsHeld: main.sessionsHeld + one.sessionsHeld,
+    students: main.students + one.students, groups: main.groups + one.groups, groupIds: [...main.groupIds, ...one.groupIds],
+  }
+  return { facts, result }
+}
+
 export async function previewDeal(dealId: string, from: Date, to: Date) {
   const d = await prisma.partnerDeal.findUnique({ where: { id: dealId }, include: { partner: { select: { places: { select: { id: true } } } } } })
   if (!d) return null
   const campusIds = d.campusId ? [d.campusId] : d.partner.places.map((p) => p.id)
-  const facts = await dealFacts(campusIds, from, to)
-  return { deal: { id: d.id, title: d.title, collector: d.collector }, from: day(from), to: day(to), facts, result: computeDeal(asDeal(d), facts) }
+  const { facts, result } = await dealOutcome(d, campusIds, from, to)
+  return { deal: { id: d.id, title: d.title, collector: d.collector }, from: day(from), to: day(to), facts, result }
 }
 
 /** The deal that applies to a place for a period (place-specific first). */

@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { levelFinished, nameFor, pickPrice, quote, type PriceRow } from '@/lib/one-to-one/rules'
 import { sessionRate } from '@/lib/teachers/online-pay'
 import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
+import { refundWindowOpen } from '@/lib/refunds/engine'
+import { cleanLocks, transferLockReason } from '@/lib/groups/transfer-lock'
+import { mergeOneToOne } from '@/lib/partners/deal'
 import { cleanOneToOneSettings, nextCandidate, suggestParentPresent } from '@/lib/one-to-one/request-rules'
 
 const r = (over: Partial<PriceRow>): PriceRow => ({ levelId: 'L', scopeKey: 'ALL', plan: 'MONTH', sessions: 4, price: 1000, siblingPrice: null, minutes: null, ...over })
@@ -70,5 +73,29 @@ describe('One-to-One (a02 M3)', () => {
     expect(suggestParentPresent(5, [{ mode: 'BRANCH' }], 7)).toBe(false)
     expect(suggestParentPresent(9, [{ mode: 'ONLINE' }], 7)).toBe(false)
     expect(suggestParentPresent(null, [{ mode: 'ONLINE' }], 7)).toBe(false)
+  })
+  it('refund until N days before the first session: closed once started', () => {
+    const slots = [{ dayOfWeek: 4 }] // Thursday; 2026-11-01 is a Sunday: 4 days away
+    expect(refundWindowOpen({ until: null, started: true, slots, today: '2026-11-01' })).toBe(true)
+    expect(refundWindowOpen({ until: 4, started: false, slots, today: '2026-11-01' })).toBe(true)
+    expect(refundWindowOpen({ until: 5, started: false, slots, today: '2026-11-01' })).toBe(false)
+    expect(refundWindowOpen({ until: 0, started: true, slots, today: '2026-11-01' })).toBe(false)
+    expect(refundWindowOpen({ until: 3, started: false, slots: [], today: '2026-11-01' })).toBe(true)
+  })
+  it('moves can be closed by system, place or partner; either side of the move counts', () => {
+    const one = { kind: 'ONE_TO_ONE', mode: 'BRANCH', campusId: 'c1', partnerId: null }
+    const grp = { kind: 'GROUP', mode: 'BRANCH', campusId: 'c2', partnerId: 'p1' }
+    expect(transferLockReason(cleanLocks({}), one, grp)).toBeNull()
+    expect(transferLockReason(cleanLocks({ all: true }), one, grp)).toBeTruthy()
+    expect(transferLockReason(cleanLocks({ kinds: ['ONE_TO_ONE'] }), grp, one)).toBeTruthy()
+    expect(transferLockReason(cleanLocks({ campusIds: ['c2'] }), one, grp)).toBeTruthy()
+    expect(transferLockReason(cleanLocks({ partnerIds: ['p1'] }), one, grp)).toBeTruthy()
+    expect(transferLockReason(cleanLocks({ modes: ['ONLINE'] }), one, grp)).toBeNull()
+  })
+  it('a deal with its own One-to-One pieces adds both results', () => {
+    const base = { net: 100, gross: 110 }
+    const line = { label: 'x', labelAr: 'س', quantity: 1, rate: 10, amount: 10, payer: 'PARTNER' as const }
+    const m = mergeOneToOne({ lines: [line], shareTotal: 10, balanceForTechNova: 10, sessionsCounted: 2, base }, { lines: [line], shareTotal: 5, balanceForTechNova: -5, sessionsCounted: 1, base })
+    expect([m.shareTotal, m.balanceForTechNova, m.sessionsCounted, m.base.net, m.lines[1].label]).toEqual([15, 5, 3, 200, 'One-to-One — x'])
   })
 })

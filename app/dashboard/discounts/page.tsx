@@ -26,6 +26,7 @@ interface TypeRow extends DiscountTypeOption {
   validFrom: string | null
   validTo: string | null
   stackable: boolean
+  appliesToOneToOne?: boolean
   _count?: { assignments: number; invoiceDiscounts: number }
 }
 interface Assignment {
@@ -374,6 +375,7 @@ function TypeDialog({ value, options, onClose }: { value: Partial<TypeRow>; opti
           </div>
           <div className="space-y-2 sm:col-span-2">
             {check('Can be combined with other discounts', t.stackable, (v) => set({ stackable: v }), 'If not, it only applies alone (when it is the better deal). Combining must also be allowed in Rules.')}
+            {check('Also on One-to-One', !!t.appliesToOneToOne, (v) => set({ appliesToOneToOne: v }), 'Off = this discount never touches a One-to-One. On + "applied automatically" = it applies by itself.')}
             {check('Active', t.isActive, (v) => set({ isActive: v }))}
           </div>
         </div>

@@ -18,7 +18,7 @@ export async function GET() {
   if (!checkPermission(role, 'discounts', 'read') && !checkPermission(role, 'discount_types', 'read') && !checkPermission(role, 'discounts', 'create') && !checkPermission(role, 'absence_excuses', 'update')) {
     return errors.forbidden()
   }
-  const [tracks, courses, levels, groups] = await Promise.all([
+  const [tracks, courses, levels, groups, places, partners] = await Promise.all([
     prisma.track.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.academicSubject.findMany({ select: { id: true, name: true, trackId: true }, orderBy: { name: 'asc' } }),
     prisma.level.findMany({ select: { id: true, name: true, subjectId: true, order: true }, orderBy: [{ subjectId: 'asc' }, { order: 'asc' }] }),
@@ -28,11 +28,15 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
       take: 500,
     }),
+    prisma.campus.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.partner.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
   ])
   return successResponse({
     tracks,
     courses,
     levels,
+    places,
+    partners,
     groups: groups.map((g) => ({
       id: g.id,
       name: `${g.className} ${g.sectionName}`.trim(),

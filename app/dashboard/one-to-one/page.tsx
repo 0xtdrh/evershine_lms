@@ -20,6 +20,8 @@ import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { campusLabel } from '@/lib/places/label'
 import { Plus, Trash2, UserCheck } from 'lucide-react'
+import { TransferStudentDialog } from '@/components/groups/TransferStudentDialog'
+import type { TransferLocks } from '@/lib/groups/transfer-lock'
 import { PLAN_LABEL, quote, type Plan, type PriceRow } from '@/lib/one-to-one/rules'
 import type { OneToOneSettings } from '@/lib/one-to-one/request-rules'
 
@@ -44,6 +46,7 @@ const useCampuses = () => useQuery({ queryKey: ['campuses-all'], queryFn: () => 
 function List({ canRenew, ar }: { canRenew: boolean; ar: boolean }) {
   const qc = useQueryClient()
   const [all, setAll] = useState(false)
+  const [move, setMove] = useState<{ groupId: string; studentId: string; name: string } | null>(null)
   const { data, isLoading } = useQuery({ queryKey: ['one-to-one', all], queryFn: () => fetchApi<Row[]>(`/api/one-to-one${all ? '?status=ALL' : ''}`) })
   const renew = useMutation({
     mutationFn: (id: string) => fetchApi(`/api/one-to-one/${id}/renew`, { method: 'POST', body: '{}' }),
@@ -68,9 +71,11 @@ function List({ canRenew, ar }: { canRenew: boolean; ar: boolean }) {
               {L(`${r.sessionsDone} of ${r.sessionsTotal} sessions`, `${r.sessionsDone} من ${r.sessionsTotal} حصة`)}{r.status === 'COMPLETED' ? ` · ${L('finished', 'خلص')}` : ''}
             </span>
             {canRenew && r.status === 'ACTIVE' && r.finished && <Button size="sm" disabled={renew.isPending} onClick={() => renew.mutate(r.id)}>{L('Make the next cycle', 'اعمل الدورة الجاية')}</Button>}
+            {canRenew && r.status === 'ACTIVE' && r.students.map((s) => <Button key={s.id} size="sm" variant="outline" onClick={() => setMove({ groupId: r.id, studentId: s.id, name: s.name })}>{L(`Move ${s.name} to a group`, `انقل ${s.name} لجروب`)}</Button>)}
           </div>
         </CardContent></Card>
       ))}
+      {move && <TransferStudentDialog open onOpenChange={(o) => { if (!o) setMove(null) }} studentId={move.studentId} studentName={move.name} fromGroupId={move.groupId} onDone={() => { setMove(null); qc.invalidateQueries({ queryKey: ['one-to-one'] }) }} />}
     </div>
   )
 }
@@ -177,6 +182,33 @@ function Requests({ canAct, ar }: { canAct: boolean; ar: boolean }) {
   )
 }
 
+function TransferLocksCard() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['transfer-locks'], queryFn: () => fetchApi<TransferLocks>('/api/group-transfers/settings') })
+  const { data: campuses } = useCampuses()
+  const { data: options } = useQuery({ queryKey: ['discount-options'], queryFn: () => fetchApi<{ partners?: { id: string; name: string }[] }>('/api/discounts/options') })
+  const save = useMutation({
+    mutationFn: (next: TransferLocks) => fetchApi('/api/group-transfers/settings', { method: 'PUT', body: JSON.stringify(next) }),
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['transfer-locks'] }) }, onError: (e: Error) => notify.error(e.message),
+  })
+  if (!data) return null
+  const flip = (k: 'kinds' | 'modes' | 'campusIds' | 'partnerIds', v: string) => save.mutate({ ...data, [k]: data[k].includes(v) ? data[k].filter((x) => x !== v) : [...data[k], v] })
+  const box = (k: 'kinds' | 'modes' | 'campusIds' | 'partnerIds', v: string, text: string) => <label key={v} className="flex items-center gap-1 text-xs"><input type="checkbox" checked={data[k].includes(v)} onChange={() => flip(k, v)} /> {text}</label>
+  return (
+    <Card><CardContent className="space-y-3 pt-4 text-sm">
+      <p className="font-semibold">{L('Close moving students between groups', 'قفل نقل الطلاب بين الجروبات')}</p>
+      <label className="flex items-center gap-2"><input type="checkbox" checked={data.all} onChange={(e) => save.mutate({ ...data, all: e.target.checked })} /> {L('Closed everywhere', 'مقفول في كل حاجة')}</label>
+      {!data.all && (
+        <>
+          <div className="flex flex-wrap gap-3">{box('kinds', 'ONE_TO_ONE', 'One-to-One')}{box('kinds', 'GROUP', L('Normal groups', 'الجروبات العادية'))}{box('modes', 'ONLINE', L('Online', 'أونلاين'))}{box('modes', 'BRANCH', L('In a branch', 'في الفرع'))}</div>
+          <div className="flex flex-wrap gap-3">{(campuses?.data ?? []).map((c) => box('campusIds', c.id, campusLabel(c)))}</div>
+          {!!options?.partners?.length && <div className="flex flex-wrap gap-3">{options.partners.map((x) => box('partnerIds', x.id, `🤝 ${x.name}`))}</div>}
+        </>
+      )}
+    </CardContent></Card>
+  )
+}
+
 function Settings() {
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['one-to-one-settings'], queryFn: () => fetchApi<OneToOneSettings>('/api/one-to-one/settings') })
@@ -213,11 +245,14 @@ function Book({ onDone, ar, startStudent }: { onDone: () => void; ar: boolean; s
   const [teacherId, setTeacherId] = useState('')
   const [payment, setPayment] = useState<'FULL' | 'INSTALLMENTS'>('FULL')
   const [rate, setRate] = useState('')
+  const [fromGroup, setFromGroup] = useState('')
   const { data: found } = useQuery({ queryKey: ['one-to-one-student-search', q], queryFn: () => fetchPaginatedApi<StudentRow>(`/api/students?search=${encodeURIComponent(q)}&limit=8`), enabled: q.trim().length >= 2 })
   const { data: first } = useQuery({ queryKey: ['one-to-one-start', startStudent], queryFn: () => fetchApi<StudentRow>(`/api/students/${startStudent}`), enabled: !!startStudent })
   useEffect(() => { if (first) setPicked((p) => (p.length ? p : [first])) }, [first])
   const { data: levels } = useQuery({ queryKey: ['levels-of-place', campusId], queryFn: () => fetchApi<LevelRow[]>(`/api/levels?campusId=${campusId}`), enabled: !!campusId })
   const { data: prices } = useQuery({ queryKey: ['one-to-one-prices', levelId], queryFn: () => fetchApi<(PriceRow & { id: string })[]>(`/api/one-to-one/prices?levelId=${levelId}`), enabled: !!levelId })
+  const onlyId = picked.length === 1 ? picked[0].id : ''
+  const { data: studentGroups } = useQuery({ queryKey: ['one-to-one-student-groups', onlyId], queryFn: () => fetchApi<{ enrollments?: { status: string; classSection?: { id: string; className: string; sectionName: string } }[] }>(`/api/students/${onlyId}`), enabled: !!onlyId })
   const { data: rooms } = useQuery({ queryKey: ['place-rooms', campusId], queryFn: () => fetchApi<{ campus: { roomMode: string }; rooms: { id: string; name: string }[] }>(`/api/places/${campusId}/rooms`), enabled: !!campusId, retry: false })
   const usable = useMemo(() => {
     const here = (prices ?? []).filter((r) => r.scopeKey === campusId)
@@ -241,7 +276,7 @@ function Book({ onDone, ar, startStudent }: { onDone: () => void; ar: boolean; s
       method: 'POST',
       body: JSON.stringify({
         studentIds: picked.map((s) => s.id), campusId, levelId, plan: price!.plan, sessions: price!.plan === 'SESSION' ? Number(count) || 1 : price!.sessions,
-        slots: slots.map((s) => ({ dayOfWeek: s.dayOfWeek, time: s.time, mode: s.mode, ...(s.roomId && { roomId: s.roomId }) })), teacherId, payment, ...(rate !== '' && { teacherRate: Number(rate) }),
+        slots: slots.map((s) => ({ dayOfWeek: s.dayOfWeek, time: s.time, mode: s.mode, ...(s.roomId && { roomId: s.roomId }) })), teacherId, payment, ...(rate !== '' && { teacherRate: Number(rate) }), ...(fromGroup && !sibling && { fromGroupId: fromGroup }),
       }),
     }),
     onSuccess: () => { notify.success(L('Booked. The invoice is made.', 'اتحجز، والفاتورة اتعملت.')); onDone() },
@@ -291,6 +326,10 @@ function Book({ onDone, ar, startStudent }: { onDone: () => void; ar: boolean; s
       <div className="flex flex-wrap gap-3">
         <label className={row}><span className={lab}>{L('Instructor (qualified and free at these times)', 'المدرب (مؤهل وفاضي في المواعيد دي)')}</span>
           <select className={sel} value={teacherId} disabled={!levelId} onChange={(e) => setTeacherId(e.target.value)}><option value="">{loadingTeachers ? L('Checking…', 'بيدوّر…') : '—'}</option>{(teachers ?? []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
+        {!sibling && !!studentGroups?.enrollments?.some((e) => e.status === 'ACTIVE' && e.classSection) && (
+          <label className={row}><span className={lab}>{L('Coming from a group (what is left becomes credit)', 'جاي من جروب (الباقي يتحول لرصيد)')}</span>
+            <select className={sel} value={fromGroup} onChange={(e) => setFromGroup(e.target.value)}><option value="">{L('No', 'لا')}</option>{(studentGroups.enrollments ?? []).filter((e) => e.status === 'ACTIVE' && e.classSection).map((e) => <option key={e.classSection!.id} value={e.classSection!.id}>{e.classSection!.className} {e.classSection!.sectionName}</option>)}</select></label>
+        )}
         <label className={row}><span className={lab}>{L('Payment', 'الدفع')}</span>
           <select className={sel} value={payment} onChange={(e) => setPayment(e.target.value as typeof payment)}><option value="FULL">{L('In full before the start', 'كامل قبل البدء')}</option><option value="INSTALLMENTS">{L('Instalments allowed', 'مسموح بالتقسيط')}</option></select></label>
         <label className={row}><span className={lab}>{L('Instructor rate per session (empty = his rate)', 'أجر المدرب للحصة (فاضي = سعره)')}</span><Input type="number" min={0} className="h-9 w-32" value={rate} onChange={(e) => setRate(e.target.value)} /></label>
@@ -326,7 +365,7 @@ export default function OneToOnePage() {
         <TabsContent value="list" className="mt-4"><List canRenew={can('one_to_one', 'update')} ar={ar} /></TabsContent>
         {can('one_to_one', 'create') && <TabsContent value="book" className="mt-4"><Book ar={ar} startStudent={startStudent} onDone={() => { qc.invalidateQueries({ queryKey: ['one-to-one'] }); setUrlTab('list') }} /></TabsContent>}
         <TabsContent value="requests" className="mt-4"><Requests canAct={can('one_to_one', 'create')} ar={ar} /></TabsContent>
-        {can('one_to_one', 'update') && <TabsContent value="settings" className="mt-4"><Settings /></TabsContent>}
+        {can('one_to_one', 'update') && <TabsContent value="settings" className="mt-4 space-y-4"><Settings /><TransferLocksCard /></TabsContent>}
         <TabsContent value="prices" className="mt-4"><Prices canEdit={can('one_to_one', 'update')} ar={ar} /></TabsContent>
       </Tabs>
     </div>

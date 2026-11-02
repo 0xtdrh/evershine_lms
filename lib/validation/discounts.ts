@@ -23,6 +23,7 @@ export const discountTypeSchema = z
     validFrom: optionalDate,
     validTo: optionalDate,
     stackable: z.boolean().default(true),
+    appliesToOneToOne: z.boolean().default(false),
     isActive: z.boolean().default(true),
   })
   .superRefine((v, ctx) => {

@@ -14,6 +14,7 @@
  *    keep their share of the counted sessions only
  */
 
+import { transferClosed } from './transfer-lock'
 import { cyclePrice } from '@/lib/pricing/group-price'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
@@ -38,7 +39,7 @@ async function loadGroup(db: Db, id: string) {
     where: { id },
     select: {
       id: true, className: true, sectionName: true, campusId: true, isActive: true, status: true, startDate: true,
-      scheduleSlots: true, currentCycleNumber: true, levelId: true, priceOverride: true,
+      scheduleSlots: true, currentCycleNumber: true, levelId: true, priceOverride: true, cycleSessions: true, kind: true,
       level: {
         select: {
           id: true, name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, monthlyPrice: true, fullLevelPrice: true,
@@ -54,6 +55,8 @@ async function loadGroup(db: Db, id: string) {
   const price = g.level ? await cyclePrice(g.level, g.campusId, g.priceOverride) : 0
   return {
     id: g.id,
+    cycleSessions: g.cycleSessions,
+    kind: g.kind,
     label: `${g.className} ${g.sectionName}`.trim(),
     campusId: g.campusId,
     isActive: g.isActive,
@@ -134,6 +137,9 @@ async function countSessions(db: Db, basis: 'ATTENDED' | 'HELD', classSectionId:
 
 export async function previewTransfer(studentId: string, fromId: string, toId: string, db: Db = prisma): Promise<PreviewOutcome> {
   if (fromId === toId) return { ok: false, status: 400, message: 'Choose a different group' }
+  // a02 M3: the owner can close moves (everywhere, a system, a place, a partner)
+  const closed = await transferClosed(fromId, toId)
+  if (closed) return { ok: false, status: 409, message: closed }
   const student = await db.student.findUnique({ where: { id: studentId }, select: { id: true, firstName: true, lastName: true } })
   if (!student) return { ok: false, status: 404, message: 'Student not found' }
   const [from, to] = await Promise.all([loadGroup(db, fromId), loadGroup(db, toId)])
@@ -160,7 +166,7 @@ export async function previewTransfer(studentId: string, fromId: string, toId: s
     if (inv.proofStatus === 'PENDING') return { ok: false, status: 409, message: 'A payment proof on the old invoice is waiting for review. Review it first.' }
     const rule = await resolveRefundRule(db, await groupContext(db, fromId))
     const levelForCycle = inv.level ?? from.level
-    const sessionsInCycle = levelForCycle ? sessionsPerCycle(levelForCycle) : null
+    const sessionsInCycle = levelForCycle ? sessionsPerCycle(levelForCycle, from.cycleSessions) : null
     const sessionsCounted = await countSessions(db, rule.deductBasis, fromId, studentId)
     const money = computeTransferMoney({
       totalAmount: Number(inv.totalAmount), paidAmount: Number(inv.paidAmount), refundedAmount: Number(inv.refundedAmount),

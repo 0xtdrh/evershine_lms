@@ -14,7 +14,8 @@ import { errors, successResponse } from '@/lib/api-response'
 export const dynamic = 'force-dynamic'
 
 const ruleSchema = z.object({
-  scopeType: z.enum(['ALL', 'TRACK', 'COURSE', 'LEVEL', 'GROUP']),
+  scopeType: z.enum(['ALL', 'TRACK', 'COURSE', 'LEVEL', 'GROUP', 'ONE_TO_ONE', 'MODE', 'CAMPUS', 'PARTNER']),
+  untilDaysBeforeFirst: z.number().int().min(0).max(365).optional().nullable(),
   scopeId: z.string().optional().nullable(),
   allowed: z.boolean(),
   adminFeeType: z.enum(['FIXED', 'PERCENT']),
@@ -50,7 +51,7 @@ export async function PUT(request: NextRequest) {
   const rules = parsed.data.rules!
   const keys = rules.map((r) => `${r.scopeType}:${r.scopeType === 'ALL' ? '' : r.scopeId ?? ''}`)
   if (new Set(keys).size !== keys.length) return errors.badRequest('Two rules are for the same place')
-  if (rules.some((r) => r.scopeType !== 'ALL' && !r.scopeId)) return errors.badRequest('Choose where each rule applies')
+  if (rules.some((r) => r.scopeType !== 'ALL' && r.scopeType !== 'ONE_TO_ONE' && !r.scopeId)) return errors.badRequest('Choose where each rule applies')
   if (rules.some((r) => r.adminFeeType === 'PERCENT' && Number(r.adminFeeValue) > 100)) return errors.badRequest('A percentage cannot be more than 100')
   await prisma.$transaction(async (tx) => {
     await tx.refundRule.deleteMany({})
@@ -58,7 +59,8 @@ export async function PUT(request: NextRequest) {
       await tx.refundRule.create({
         data: {
           scopeType: r.scopeType!,
-          scopeId: r.scopeType === 'ALL' ? null : r.scopeId ?? null,
+          scopeId: r.scopeType === 'ALL' || r.scopeType === 'ONE_TO_ONE' ? null : r.scopeId ?? null,
+          untilDaysBeforeFirst: r.untilDaysBeforeFirst ?? null,
           allowed: !!r.allowed,
           adminFeeType: r.adminFeeType!,
           adminFeeValue: Number(r.adminFeeValue),

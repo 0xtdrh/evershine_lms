@@ -21,6 +21,7 @@ import { generateMissingCycleInvoices } from '@/lib/groups/generate-invoices'
 import { notifyJoinerHolidays } from '@/lib/notifications/session-events'
 import { resolveBatchId } from '@/lib/batches/default-batch'
 import { resolveShiftId } from '@/lib/shifts/default-shift'
+import { executeTransfer, previewTransfer } from '@/lib/groups/transfer'
 import { KIND_ONE_TO_ONE, SECTION_NAME, levelFinished, nameFor, pickPrice, quote, type Plan, type PriceRow } from './rules'
 import type { Mode } from '@/lib/delivery/modes'
 
@@ -99,6 +100,8 @@ export async function instructorsFor(i: { campusId: string; levelId: string; slo
 export interface BookInput {
   studentIds: string[]; campusId: string; levelId: string; plan: Plan; sessions?: number | null
   slots: SlotInput[]; teacherId: string; payment?: 'FULL' | 'INSTALLMENTS'; teacherRate?: number | null; minutes?: number | null; force?: boolean
+  /** the student moves here from this group: what he has not used becomes credit on the new invoice */
+  fromGroupId?: string | null
 }
 
 async function freeName(campusId: string, base: string) {
@@ -137,7 +140,7 @@ export async function pickRooms(campusId: string, slots: SlotInput[], seats: num
  * Makes the One-to-One: every rule of the group screens first (where offered, allowed ways, rooms, the instructor's hours and clashes),
  * then group + instructor + students + invoices. Nothing is created when a rule refuses. Who may ask is checked by the caller.
  */
-export async function createOneToOne(i: BookInput, actorId: string, opts: { sibling: boolean; force: boolean }) {
+export async function createOneToOne(i: BookInput, actorId: string, opts: { sibling: boolean; force: boolean; noStudents?: boolean }) {
   const students = await prisma.student.findMany({ where: { id: { in: i.studentIds } }, select: { id: true, firstName: true, lastName: true } })
   const ordered = i.studentIds.map((id) => students.find((s) => s.id === id)).filter((s): s is (typeof students)[number] => !!s)
   const level = await prisma.level.findUnique({ where: { id: i.levelId }, select: { name: true, subjectId: true } })
@@ -179,7 +182,7 @@ export async function createOneToOne(i: BookInput, actorId: string, opts: { sibl
   await prisma.subjectOffering.create({
     data: { academicYearId: activeYear.id, classSectionId: group.id, subjectId: level.subjectId, teacherId: i.teacherId, ...(i.teacherRate != null && { overrideOneToOnePerSession: i.teacherRate }) },
   })
-  for (const s of ordered) {
+  for (const s of opts.noStudents ? [] : ordered) {
     await prisma.studentEnrollment.create({ data: { studentId: s.id, academicYearId: activeYear.id, classSectionId: group.id, rollNumber: String(Math.floor(Math.random() * 9000) + 1000) } })
     try { await generateMissingCycleInvoices(group.id, actorId, s.id) } catch (err) { console.error('[ONE_TO_ONE_INVOICE]', err) }
     await notifyJoinerHolidays(s.id, group.id)
@@ -199,7 +202,22 @@ export async function book(user: Who, i: BookInput) {
   }
   const sibling = ids.length === 2
   if (sibling && !(await areSiblings(ids[0], ids[1]))) throw new OneToOneError('These two students are not siblings. Book them separately. · الاتنين مش إخوات، احجز لكل واحد لوحده', 409, 'NOT_SIBLINGS')
-  return createOneToOne({ ...i, studentIds: ids }, user.id, { sibling, force: !!i.force && user.role === 'SUPER_ADMIN' })
+  const force = !!i.force && user.role === 'SUPER_ADMIN'
+  if (!i.fromGroupId) return createOneToOne({ ...i, studentIds: ids }, user.id, { sibling, force })
+  // from a group: same move as between groups (locks, credit, old invoice, discounts as suggested)
+  if (sibling) throw new OneToOneError('Move one student at a time')
+  const made = await createOneToOne({ ...i, studentIds: ids }, user.id, { sibling: false, force, noStudents: true })
+  const pre = await previewTransfer(ids[0], i.fromGroupId, made.groupId)
+  const moved = 'message' in pre ? pre : await executeTransfer({
+    studentId: ids[0], fromClassSectionId: i.fromGroupId, toClassSectionId: made.groupId, creditTo: 'NEW_INVOICE', userId: user.id, reason: 'One-to-One',
+    discountDecisions: pre.preview.discounts.map((d) => ({ assignmentId: d.assignmentId, action: d.suggested })),
+  })
+  if (!('ok' in moved) || !moved.ok) {
+    await prisma.subjectOffering.deleteMany({ where: { classSectionId: made.groupId } })
+    await prisma.classSection.delete({ where: { id: made.groupId } }).catch(() => undefined)
+    throw new OneToOneError((moved as { message: string }).message, (moved as { status: number }).status)
+  }
+  return { ...made, moved: { credit: moved.credit, creditApplied: moved.creditApplied } }
 }
 
 // ── the list ────────────────────────────────────────────────────────────────────────────────────────────────

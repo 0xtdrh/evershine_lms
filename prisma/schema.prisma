@@ -3676,33 +3676,35 @@ model PaymentMethod {
 
 /// A kind of discount, managed from Discounts > Types.
 model DiscountType {
-  id            String    @id @default(cuid())
-  name          String
+  id                String    @id @default(cuid())
+  name              String
   /// MANUAL | SIBLING | PROMO | OTHER
-  kind          String    @db.VarChar(20)
+  kind              String    @db.VarChar(20)
   /// PERCENT | FIXED
-  valueType     String    @db.VarChar(10)
-  value         Decimal   @db.Decimal(10, 2)
+  valueType         String    @db.VarChar(10)
+  value             Decimal   @db.Decimal(10, 2)
   /// Staff may type the value when applying it (up to maxValue).
-  editableValue Boolean   @default(false)
-  maxValue      Decimal?  @db.Decimal(10, 2)
+  editableValue     Boolean   @default(false)
+  maxValue          Decimal?  @db.Decimal(10, 2)
   /// EVERY_CYCLE | FIRST_CYCLE | ONE_TIME
-  duration      String    @db.VarChar(20)
+  duration          String    @db.VarChar(20)
   /// Applied by the system without an assignment (siblings, promos for a scope).
-  autoApply     Boolean   @default(false)
+  autoApply         Boolean   @default(false)
   /// STAFF | MANAGER | STAFF_WITH_APPROVAL
-  approvalMode  String    @db.VarChar(25)
+  approvalMode      String    @db.VarChar(25)
   /// ALL | TRACK | COURSE | LEVEL | GROUP (+ scopeId)
-  scopeType     String    @default("ALL") @db.VarChar(10)
-  scopeId       String?
-  validFrom     DateTime?
-  validTo       DateTime?
+  scopeType         String    @default("ALL") @db.VarChar(10)
+  scopeId           String?
+  validFrom         DateTime?
+  validTo           DateTime?
   /// Can be combined with other discounts on the same invoice.
-  stackable     Boolean   @default(true)
-  isActive      Boolean   @default(true)
-  createdById   String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  stackable         Boolean   @default(true)
+  /// a02 M3: does this discount also apply on a One-to-One? (off by default; with autoApply it applies by itself)
+  appliesToOneToOne Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  createdById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   assignments      DiscountAssignment[]
   invoiceDiscounts InvoiceDiscount[]
@@ -3768,20 +3770,22 @@ model InvoiceDiscount {
 
 /// Refund policy for a scope (most specific wins: GROUP > LEVEL > COURSE > TRACK > ALL).
 model RefundRule {
-  id            String   @id @default(cuid())
-  /// ALL | TRACK | COURSE | LEVEL | GROUP
-  scopeType     String   @default("ALL") @db.VarChar(10)
-  scopeId       String?
-  allowed       Boolean  @default(true)
+  id                   String   @id @default(cuid())
+  /// ALL | TRACK | COURSE | LEVEL | GROUP | ONE_TO_ONE | MODE (scopeId ONLINE/BRANCH) | CAMPUS | PARTNER
+  scopeType            String   @default("ALL") @db.VarChar(10)
+  scopeId              String?
+  allowed              Boolean  @default(true)
+  /// a02 M3: allowed only up to N days before the first session, closed once it started; null = no such limit
+  untilDaysBeforeFirst Int?
   /// FIXED | PERCENT (of what the student paid)
-  adminFeeType  String   @default("FIXED") @db.VarChar(10)
-  adminFeeValue Decimal  @default(0) @db.Decimal(10, 2)
+  adminFeeType         String   @default("FIXED") @db.VarChar(10)
+  adminFeeValue        Decimal  @default(0) @db.Decimal(10, 2)
   /// ATTENDED = sessions the student attended; HELD = sessions the group held
-  deductBasis   String   @default("ATTENDED") @db.VarChar(10)
-  note          String?
-  createdById   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  deductBasis          String   @default("ATTENDED") @db.VarChar(10)
+  note                 String?
+  createdById          String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 /// Money given back for an invoice: cash back, or credit in the student's wallet.
@@ -5006,6 +5010,8 @@ model PartnerDeal {
   components            Json
   /// [{ label, amount, per: ONCE|MONTH|SESSION, payer: TECHNOVA|PARTNER }]
   extras                Json?
+  /// a02 M3: the pieces for One-to-One at this partner; empty = One-to-One counts with the groups under `components`
+  oneToOneComponents    Json?
   countPartnerCancelled Boolean   @default(true)
   /// MONTH / TERM
   period                String    @default("MONTH") @db.VarChar(8)

@@ -8,8 +8,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { nextInSequence } from '@/lib/ids/sequence'
 import { notifyUsers, usersWithPermission } from '@/lib/notifications/events'
-import { computeDeal } from './deal'
-import { asDeal, dealFacts } from './deal-engine'
+import { dealOutcome } from './deal-engine'
 import { overlaps, paymentProblem, periodBalance, remaining, statusAfterPayments, type ManualLine, type StatementPayment } from './statement'
 
 type Outcome<T = unknown> = { ok: true; value: T } | { ok: false; code: 'NOT_FOUND' | 'INVALID' | 'CONFLICT'; message: string }
@@ -54,8 +53,7 @@ const toPay = (p: { direction: string; amount: unknown }): StatementPayment => (
 async function calculate(partnerId: string, campusId: string | null, from: Date, to: Date, manual: ManualLine[]) {
   const deal = await findDeal(partnerId, campusId, from, to)
   if (!deal) return null
-  const facts = await dealFacts(await scopePlaces(partnerId, campusId), from, to)
-  const result = computeDeal(asDeal(deal), facts)
+  const { facts, result } = await dealOutcome(deal, await scopePlaces(partnerId, campusId), from, to)
   const rests = await openRests(partnerId, campusId, from)
   const previous = r2(rests.reduce((s, x) => s + x.rest, 0))
   const pb = periodBalance(result.balanceForTechNova, manual)

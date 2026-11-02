@@ -14,6 +14,7 @@
 
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { groupIsOnline } from '@/lib/teachers/online-pay'
 import { checkPermission } from '@/lib/rbac'
 import { getSetting, setSetting } from '@/lib/settings/app-settings'
 import { computeDiscounts, type DiscountCandidate, type DiscountResult, type DiscountValueType } from './calculate'
@@ -44,18 +45,22 @@ export const getDiscountRules = () => getSetting<DiscountRulesSettings>('discoun
 export const saveDiscountRules = (v: DiscountRulesSettings, userId: string) => setSetting('discounts.rules', v, userId)
 
 // ── context ─────────────────────────────────────────────────────────────────
-export interface GroupContext { classSectionId: string; levelId: string | null; subjectId: string | null; trackId: string | null }
+export interface GroupContext { /** a02 M3 */ kind?: string; campusId?: string | null; partnerId?: string | null; mode?: string; classSectionId: string; levelId: string | null; subjectId: string | null; trackId: string | null }
 
 export async function groupContext(db: Db, classSectionId: string): Promise<GroupContext> {
   const g = await db.classSection.findUnique({
     where: { id: classSectionId },
-    select: { levelId: true, level: { select: { subjectId: true, subject: { select: { trackId: true } } } } },
+    select: { levelId: true, kind: true, campusId: true, scheduleSlots: true, campus: { select: { kind: true, partnerId: true } }, level: { select: { subjectId: true, subject: { select: { trackId: true } } } } },
   })
   return {
     classSectionId,
     levelId: g?.levelId ?? null,
     subjectId: g?.level?.subjectId ?? null,
     trackId: g?.level?.subject?.trackId ?? null,
+    kind: g?.kind ?? 'GROUP',
+    campusId: g?.campusId ?? null,
+    partnerId: g?.campus?.partnerId ?? null,
+    mode: g && groupIsOnline(g.campus?.kind, g.scheduleSlots) ? 'ONLINE' : 'BRANCH',
   }
 }
 
@@ -184,6 +189,7 @@ export async function gatherCandidates(
   for (const a of assignments) {
     const t = a.discountType
     if (!typeIsValidNow(t, now) || !typeMatchesScope(t, ctx)) continue
+    if (ctx.kind === 'ONE_TO_ONE' && !t.appliesToOneToOne) continue // a02 M3: only the types chosen for it
     if (!(await durationAllows(db, t.duration, studentId, ctx, { assignmentId: a.id }, opts.excludeInvoiceId))) continue
     out.push(toCandidate(t, Number(a.value), a.id))
     seenTypes.add(t.id)
@@ -193,6 +199,7 @@ export async function gatherCandidates(
   const autoTypes = await db.discountType.findMany({ where: { autoApply: true, isActive: true } })
   for (const t of autoTypes) {
     if (seenTypes.has(t.id) || !typeIsValidNow(t, now) || !typeMatchesScope(t, ctx)) continue
+    if (ctx.kind === 'ONE_TO_ONE' && !t.appliesToOneToOne) continue
     if (t.kind === 'SIBLING' && !(await siblingDiscountApplies(db, studentId, rules.siblingAppliesTo))) continue
     if (!(await durationAllows(db, t.duration, studentId, ctx, { discountTypeId: t.id }, opts.excludeInvoiceId))) continue
     out.push(toCandidate(t, Number(t.value), null))

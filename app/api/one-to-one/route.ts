@@ -26,6 +26,7 @@ const schema = z.object({
   teacherRate: z.number().min(0).nullish(),
   minutes: z.number().int().min(10).max(300).nullish(),
   force: z.boolean().optional(),
+  fromGroupId: z.string().min(1).nullish(),
 })
 
 export async function GET(request: NextRequest) {

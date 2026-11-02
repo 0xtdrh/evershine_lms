@@ -120,6 +120,15 @@ export function computeDeal(deal: Deal, f: DealFacts): DealResult {
   return { lines, shareTotal, balanceForTechNova, sessionsCounted: sessions, base: { net, gross } }
 }
 
+/** a02 M3: a deal with its own One-to-One pieces: both results added up (One-to-One lines say so). Extras stay with the main result. */
+export function mergeOneToOne(main: DealResult, one: DealResult): DealResult {
+  return {
+    lines: [...main.lines, ...one.lines.map((l) => ({ ...l, label: `One-to-One — ${l.label}`, labelAr: `One-to-One — ${l.labelAr}` }))],
+    shareTotal: r2(main.shareTotal + one.shareTotal), balanceForTechNova: r2(main.balanceForTechNova + one.balanceForTechNova), sessionsCounted: main.sessionsCounted + one.sessionsCounted,
+    base: { net: r2(main.base.net + one.base.net), gross: r2(main.base.gross + one.base.gross) },
+  }
+}
+
 /** A deal that can be saved: known pieces, sensible numbers. */
 export function dealProblem(d: Deal): string | null {
   if (!COLLECTORS.includes(d.collector)) return 'Choose who collects from the parents'

@@ -21,7 +21,7 @@ import { DateInput } from '@/components/ui/date-input'
 import { cairoToday } from '@/lib/dates/cairo'
 
 interface DealRow {
-  id: string; title: string; campusId: string | null; contractId: string | null; collector: Collector; components: DealComponent[]; extras: DealExtra[] | null
+  id: string; title: string; campusId: string | null; contractId: string | null; collector: Collector; components: DealComponent[]; oneToOneComponents?: DealComponent[] | null; extras: DealExtra[] | null
   countPartnerCancelled: boolean; period: 'MONTH' | 'TERM'; validFrom: string; validTo: string | null; notes: string | null; isActive: boolean
 }
 interface Preview {
@@ -162,6 +162,22 @@ export function PartnerDeals({ p, canEdit }: { p: PartnerDetail; canEdit: boolea
               </div>
             ))}
             <Button size="sm" variant="ghost" onClick={() => setF({ ...f, components: [...f.components, { kind: 'FIXED_MONTHLY', value: 0 }] })}><Plus className="me-1 h-4 w-4" />{L('Add piece', 'ضيف قطعة')}</Button>
+          </div>
+          <div className="space-y-2 rounded-md border border-indigo-100 bg-indigo-50 p-2">
+            <Label className="text-xs font-semibold">👤 One-to-One — {L('its own pieces (empty = counted with the groups above)', 'قطع لوحدها (فاضي = بيتحسب مع الجروبات اللي فوق)')}</Label>
+            {(f.oneToOneComponents ?? []).map((c, i) => {
+              const setOne = (patch: Partial<DealComponent>) => setF({ ...f, oneToOneComponents: (f.oneToOneComponents ?? []).map((x, j) => (j === i ? { ...x, ...patch } : x)) })
+              return (
+                <div key={i} className="flex flex-wrap items-center gap-2">
+                  <select className="h-9 rounded-md border border-slate-200 bg-white px-2" aria-label={L('Kind', 'النوع')} value={c.kind} onChange={(e) => setOne({ kind: e.target.value as ComponentKind })}>
+                    {(Object.keys(KIND_LABELS) as ComponentKind[]).map((k) => <option key={k} value={k}>{L(KIND_LABELS[k].en, KIND_LABELS[k].ar)}</option>)}
+                  </select>
+                  <Input type="number" min={0} className="h-9 w-28" aria-label={L('Value', 'القيمة')} value={c.value} onChange={(e) => setOne({ value: Number(e.target.value) })} />
+                  <button type="button" aria-label={L('Remove', 'شيل')} className="text-slate-400 hover:text-rose-600" onClick={() => setF({ ...f, oneToOneComponents: (f.oneToOneComponents ?? []).filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4" /></button>
+                </div>
+              )
+            })}
+            <Button size="sm" variant="ghost" onClick={() => setF({ ...f, oneToOneComponents: [...(f.oneToOneComponents ?? []), { kind: 'PER_SESSION', value: 0 }] })}><Plus className="me-1 h-4 w-4" />{L('Add piece', 'ضيف قطعة')}</Button>
           </div>
           <div className="space-y-2">
             <Label className="text-xs font-semibold">{L('Extras (tools, transport, …)', 'إضافات (أدوات، مواصلات، …)')}</Label>
