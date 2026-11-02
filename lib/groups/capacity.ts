@@ -95,7 +95,7 @@ export async function notifySeatFreed(classSectionId: string) {
 export async function availableGroups(levelId: string, opts: { campusId?: string; where?: Record<string, unknown>; excludeId?: string } = {}) {
   const activeYearId = (await getActiveAcademicYear())?.id
   const groups = await prisma.classSection.findMany({
-    where: { levelId, isActive: true, status: 'ACTIVE', ...(opts.campusId && { campusId: opts.campusId }), ...(opts.where ?? {}), ...(opts.excludeId && { id: { not: opts.excludeId } }) },
+    where: { levelId, kind: 'GROUP', isActive: true, status: 'ACTIVE', ...(opts.campusId && { campusId: opts.campusId }), ...(opts.where ?? {}), ...(opts.excludeId && { id: { not: opts.excludeId } }) },
     select: {
       id: true, className: true, sectionName: true, maxStudents: true, scheduleSlots: true, startDate: true,
       campus: { select: { id: true, name: true } },

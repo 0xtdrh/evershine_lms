@@ -155,7 +155,7 @@ export async function syncGroupProgress(classSectionId: string, _actingUserId: s
   })
   const logged = await prisma.groupSessionLog.findMany({ where: { classSectionId, status: 'HELD', sessionDate: { gte: cycleStart } }, select: { sessionDate: true } })
   const sessionsSoFar = new Set([...records.map((r) => r.attendanceDate.toISOString().slice(0, 10)), ...logged.map((l) => l.sessionDate.toISOString().slice(0, 10))]).size
-  const sessionsPerCycle = cycleSessionCount(group.level)
+  const sessionsPerCycle = cycleSessionCount(group.level, group.cycleSessions)
   const checkpoint50 = sessionsPerCycle * 0.5
 
   const flaggedNames: string[] = []

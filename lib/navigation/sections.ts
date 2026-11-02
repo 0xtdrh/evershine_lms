@@ -14,7 +14,7 @@ export const HUBS: { key: HubKey; en: string; ar: string; items: string[] }[] = 
   { key: 'home', en: 'Home', ar: 'الرئيسية', items: ['Dashboard', 'My Calendar', 'My Schedule', 'My Substitutions', 'User Guide'] },
   { key: 'admissions', en: 'Admissions', ar: 'التسجيل', items: ['Admissions', 'Landing Leads'] },
   { key: 'students', en: 'Students', ar: 'الطلاب', items: ['Students', 'My Students', 'Waiting List', 'Follow-ups', 'Renewals', 'Absence Excuses', 'Birthdays'] },
-  { key: 'groups', en: 'Groups', ar: 'الجروبات', items: ['Groups', 'Groups Schedule', 'Attendance', 'Student Attendance', 'Import Attendance', 'Holidays', 'Attendance Report'] },
+  { key: 'groups', en: 'Groups', ar: 'الجروبات', items: ['Groups', 'One-to-One', 'Groups Schedule', 'Attendance', 'Student Attendance', 'Import Attendance', 'Holidays', 'Attendance Report'] },
   { key: 'learning', en: 'Learning', ar: 'التعليم', items: ['LMS', 'Level Results', 'LMS Results', 'Passport & Stamps', 'Session Reports', 'Course Structure', 'Grading Weights'] },
   { key: 'certificates', en: 'Certificates & documents', ar: 'الشهادات والمستندات', items: ['ID Cards', 'Certificate Designer', 'Certificate Reveal', 'Documents'] },
   { key: 'staff', en: 'Instructors & staff', ar: 'المدربين والموظفين', items: ['Staff Directory', 'Absence Requests', 'Leaves', 'Staff Salaries', 'HR & Salary', 'Instructor Performance', 'Substitute Reconciliation'] },

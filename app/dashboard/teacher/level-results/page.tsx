@@ -70,7 +70,7 @@ export default function LevelResultsPage() {
     queryKey: ['level-results-groups', isTeacher],
     queryFn: async () => {
       if (isTeacher) return fetchApi<SubjectOffering[]>('/api/teacher-portal/subject-offerings')
-      const groups = await fetchApi<{ id: string; label: string; course: { id: string; name: string } | null; status: string }[]>('/api/groups')
+      const groups = await fetchApi<{ id: string; label: string; course: { id: string; name: string } | null; status: string }[]>('/api/groups?kind=ALL')
       return groups.filter((g) => g.course).map((g) => ({ id: g.id, subject: { id: g.course!.id, name: g.course!.name, code: '' }, classSection: { id: g.id, className: g.label, sectionName: '' } }))
     },
     enabled: !!session?.user,

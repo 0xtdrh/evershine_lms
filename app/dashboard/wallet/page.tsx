@@ -224,7 +224,7 @@ function SettingsTab() {
   const { data: rulesData } = useQuery({ queryKey: ['wallet-rules'], queryFn: () => fetchApi<Rule[]>('/api/wallet/rules') })
   const { data: methods } = useQuery({ queryKey: ['payment-methods'], queryFn: () => fetchApi<{ name: string }[]>('/api/payment-methods') })
   const { data: opts } = useQuery({ queryKey: ['discount-options'], queryFn: () => fetchApi<{ tracks: Ref[]; courses: Ref[]; levels: (Ref & { subjectId: string })[]; groups?: Ref[] }>('/api/discounts/options') })
-  const { data: groups } = useQuery({ queryKey: ['groups'], queryFn: () => fetchApi<{ id: string; label: string }[]>('/api/groups') })
+  const { data: groups } = useQuery({ queryKey: ['groups'], queryFn: () => fetchApi<{ id: string; label: string }[]>('/api/groups?kind=ALL') })
   const [s, setS] = useState<Settings | null>(null)
   const [rules, setRules] = useState<Rule[]>([])
   useEffect(() => { if (settings) setS(settings) }, [settings])

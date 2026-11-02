@@ -30,6 +30,8 @@ import { errors, errorResponse, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createCycleInvoice, syncGroupProgress } from '@/lib/groups/sync-progress'
+import { KIND_ONE_TO_ONE } from '@/lib/one-to-one/rules'
+import { oneToOneCarry, oneToOneLevelDone, oneToOneNextName } from '@/lib/one-to-one/engine'
 import type { Role } from '@prisma/client'
 import { findGroupInstructorOffering } from '@/lib/groups/instructor'
 import { getNextStep } from '@/lib/groups/next-step'
@@ -108,7 +110,13 @@ export async function POST(
 
   // Work out what's next: another month of the same level, or the next
   // level/course, or nothing (shared rule: lib/groups/next-step.ts).
-  const nextStep = await getNextStep(level, group.currentCycleNumber)
+  // a02 M3: a One-to-One finishes its level by sessions, not by months (plans differ); until then it stays on the level
+  const isOneToOne = group.kind === KIND_ONE_TO_ONE
+  const nextStep = !isOneToOne
+    ? await getNextStep(level, group.currentCycleNumber)
+    : oneToOneLevelDone(group, level)
+      ? await getNextStep({ ...level, pricingType: 'FULL_LEVEL' }, group.currentCycleNumber)
+      : { kind: 'NEXT_MONTH' as const, level, cycleNumber: group.currentCycleNumber + 1 }
   const cycleLogType: 'MONTH_COMPLETED' | 'LEVEL_COMPLETED' = nextStep?.kind === 'NEXT_MONTH' ? 'MONTH_COMPLETED' : 'LEVEL_COMPLETED'
 
   if (!nextStep) {
@@ -134,7 +142,7 @@ export async function POST(
   // combination regardless of why a collision might happen — check first,
   // and add a growing suffix until it's free, instead of hoping the
   // computed name is unique.
-  const baseClassName = (parsed.data.className ?? `${group.className.trim()} — ${nextLevel.name.trim()} (${nextCycleNumber})`).slice(0, 50)
+  const baseClassName = (parsed.data.className ?? (isOneToOne ? await oneToOneNextName(id, nextLevel.name, group.className) : `${group.className.trim()} — ${nextLevel.name.trim()} (${nextCycleNumber})`)).slice(0, 50)
   const sectionName = parsed.data.sectionName ?? group.sectionName
   let finalClassName = baseClassName
   let suffix = 2
@@ -174,6 +182,7 @@ export async function POST(
       // LMS L2: the next month of the SAME level keeps reading the same curriculum version and the same way of
       // opening lessons; a new level starts fresh (pinned to its newest published version when it starts).
       ...(nextLevel.id === group.levelId && { curriculumEditionId: group.curriculumEditionId, lessonUnlockMode: group.lessonUnlockMode }),
+      ...(isOneToOne && (await oneToOneCarry(group, nextLevel))),
     },
   })
 
@@ -190,6 +199,7 @@ export async function POST(
         overrideOnlineFixedAmount: currentOffering.overrideOnlineFixedAmount,
         overrideOnlinePercent: currentOffering.overrideOnlinePercent,
         overrideOnlinePerSessionAmount: currentOffering.overrideOnlinePerSessionAmount,
+        overrideOneToOnePerSession: currentOffering.overrideOneToOnePerSession,
       },
     })
   }

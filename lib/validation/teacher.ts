@@ -94,6 +94,8 @@ export const updateTeacherSchema = createTeacherSchema
     defaultOnlineFixedAmount: z.number().min(0).optional().nullable(),
     defaultOnlinePercent: z.number().min(0).max(100).optional().nullable(),
     defaultOnlinePerSessionAmount: z.number().min(0).optional().nullable(),
+    // a02 M3: per session in One-to-One (empty = the normal rate)
+    defaultOneToOnePerSession: z.number().min(0).optional().nullable(),
     // 2026-10-20 (live test): an empty "monthly salary" means none — the pay page sends null
     monthlySalary: z.number().min(0).optional().nullable(),
   })

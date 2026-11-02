@@ -28,7 +28,7 @@ export async function GET(_request: NextRequest) {
   const activeYear = await getActiveAcademicYear()
 
   const groups = await prisma.classSection.findMany({
-    where: { isActive: true, ...groupWhere(places) },
+    where: { kind: 'GROUP', isActive: true, ...groupWhere(places) },
     select: {
       id: true,
       className: true,

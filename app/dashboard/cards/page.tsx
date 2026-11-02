@@ -70,7 +70,7 @@ function CardsTab({ kind, canReplace }: { kind: 'STUDENT' | 'STAFF'; canReplace:
   const [replace, setReplace] = useState<IdCardData | null>(null)
   const [history, setHistory] = useState<IdCardData | null>(null)
   const { data: campuses } = useQuery({ queryKey: ['campuses-list'], queryFn: () => fetchApi<Ref[]>('/api/campuses') })
-  const { data: groups } = useQuery({ queryKey: ['groups-list-active'], queryFn: () => fetchApi<Ref[]>('/api/groups?status=ACTIVE'), enabled: kind === 'STUDENT' })
+  const { data: groups } = useQuery({ queryKey: ['groups-list-active'], queryFn: () => fetchApi<Ref[]>('/api/groups?status=ACTIVE&kind=ALL'), enabled: kind === 'STUDENT' })
   const qs = new URLSearchParams({ kind, ...(groupId && { groupId }), ...(campusId && { campusId }) }).toString()
   const chosen = kind === 'STUDENT' ? !!(groupId || campusId) : !!campusId
   const { data: cards, isLoading } = useQuery({ queryKey: ['id-cards', qs], queryFn: () => fetchApi<IdCardData[]>(`/api/cards?${qs}`), enabled: chosen })

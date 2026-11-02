@@ -88,7 +88,7 @@ export async function pendingSurveys(studentId: string) {
     },
     select: {
       classSectionId: true,
-      classSection: { select: { className: true, sectionName: true, status: true, currentCycleNumber: true, currentCycleStartDate: true, startDate: true, level: { select: { name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, subject: { select: { name: true } } } } } },
+      classSection: { select: { className: true, sectionName: true, status: true, currentCycleNumber: true, currentCycleStartDate: true, startDate: true, cycleSessions: true, level: { select: { name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, subject: { select: { name: true } } } } } },
     },
   })
   if (!enrollments.length) return []
@@ -99,7 +99,7 @@ export async function pendingSurveys(studentId: string) {
     if (doneIds.has(e.classSectionId)) continue
     const cs = e.classSection
     if (!cs.level) continue
-    const per = sessionsPerCycle(cs.level)
+    const per = sessionsPerCycle(cs.level, cs.cycleSessions)
     let ready = cs.status === 'COMPLETED'
     if (!ready) {
       const start = cs.currentCycleStartDate ?? cs.startDate

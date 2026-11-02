@@ -39,7 +39,7 @@ export async function occurrencesFor(
     },
     select: {
       id: true, className: true, sectionName: true, status: true, startDate: true, currentCycleStartDate: true, scheduleSlots: true, campusId: true,
-      level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true, subject: { select: { id: true } } } },
+      cycleSessions: true, level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true, subject: { select: { id: true } } } },
       subjectOfferings: { select: { subjectId: true, academicYearId: true, teacherId: true, createdAt: true, teacher: { select: { id: true, userId: true } } } },
     },
   })
@@ -76,7 +76,7 @@ export async function occurrencesFor(
           slots: cleanSlots(g.scheduleSlots),
           completed: g.status === 'COMPLETED',
           cycleStart,
-          sessionsPerCycle: g.level ? sessionsPerCycle(g.level) : 1,
+          sessionsPerCycle: g.level ? sessionsPerCycle(g.level, g.cycleSessions) : 1,
           heldDates: cycleStart ? held.filter((d) => d >= cycleStart) : [],
           cancelledDates: cancelledBy.get(g.id) ?? [],
           holidayDates: exceptions.get(g.id)?.holidays ?? [],

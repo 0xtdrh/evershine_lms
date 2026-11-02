@@ -34,10 +34,10 @@ export type NotContinuingReason = (typeof NOT_CONTINUING_REASONS)[number]
 export async function cycleProgress(classSectionId: string) {
   const g = await prisma.classSection.findUnique({
     where: { id: classSectionId },
-    select: { status: true, startDate: true, currentCycleStartDate: true, level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } } },
+    select: { status: true, startDate: true, currentCycleStartDate: true, cycleSessions: true, level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } } },
   })
   if (!g?.level) return null
-  const per = sessionsPerCycle(g.level)
+  const per = sessionsPerCycle(g.level, g.cycleSessions)
   const start = await resolveCycleStart(classSectionId, g.currentCycleStartDate, g.startDate)
   const held = start
     ? (await prisma.enrollmentAttendanceRecord.findMany({

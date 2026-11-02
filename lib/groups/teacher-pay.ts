@@ -45,6 +45,17 @@ export async function resolveGroupSessionRate(classSectionId: string, teacherId:
     mode = modeOfDay(date, g0?.scheduleSlots, new Map(o ? [[date, o.mode]] : []))
   }
   const online = mode === 'ONLINE'
+  // a02 M3: a One-to-One session is priced at the One-to-One rate first
+  const kind = (await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { kind: true } }))?.kind
+  if (kind === 'ONE_TO_ONE') {
+    const [o, c, t] = await Promise.all([
+      prisma.subjectOffering.findFirst({ where: { classSectionId, overrideOneToOnePerSession: { not: null } }, orderBy: { createdAt: 'desc' }, select: { overrideOneToOnePerSession: true } }),
+      prisma.classSection.findUnique({ where: { id: classSectionId }, select: { campusId: true } }).then((g) => (g ? prisma.teacherPlacePay.findUnique({ where: { teacherId_campusId: { teacherId, campusId: g.campusId } }, select: { oneToOnePerSession: true } }) : null)),
+      prisma.teacher.findUnique({ where: { id: teacherId }, select: { defaultOneToOnePerSession: true } }),
+    ])
+    const rate = o?.overrideOneToOnePerSession ?? c?.oneToOnePerSession ?? t?.defaultOneToOnePerSession
+    if (rate != null) return Number(rate)
+  }
   const groupRule = await prisma.subjectOffering.findFirst({
     where: { classSectionId, OR: [{ overridePerSessionAmount: { not: null } }, ...(online ? [{ overrideOnlinePerSessionAmount: { not: null } }] : [])] },
     orderBy: { createdAt: 'desc' },
@@ -82,27 +93,28 @@ export async function computeTeacherGroupPay(
   const offering = await prisma.subjectOffering.findFirst({
     where: { classSectionId, teacherId },
     orderBy: { createdAt: 'desc' },
-    select: { overrideFixedAmount: true, overridePercentOfStudentPayment: true, overridePerSessionAmount: true, overrideOnlineFixedAmount: true, overrideOnlinePercent: true, overrideOnlinePerSessionAmount: true },
+    select: { overrideFixedAmount: true, overridePercentOfStudentPayment: true, overridePerSessionAmount: true, overrideOnlineFixedAmount: true, overrideOnlinePercent: true, overrideOnlinePerSessionAmount: true, overrideOneToOnePerSession: true },
   })
 
   const teacher = await prisma.teacher.findUnique({
     where: { id: teacherId },
-    select: { defaultFixedAmount: true, defaultPercentOfStudentPayment: true, defaultPerSessionAmount: true, defaultOnlineFixedAmount: true, defaultOnlinePercent: true, defaultOnlinePerSessionAmount: true },
+    select: { defaultFixedAmount: true, defaultPercentOfStudentPayment: true, defaultPerSessionAmount: true, defaultOnlineFixedAmount: true, defaultOnlinePercent: true, defaultOnlinePerSessionAmount: true, defaultOneToOnePerSession: true },
   })
   // M0: group override → the instructor's rate in this place → the instructor's default
-  const groupPlace = await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { campusId: true, scheduleSlots: true, campus: { select: { kind: true } } } })
+  const groupPlace = await prisma.classSection.findUnique({ where: { id: classSectionId }, select: { campusId: true, scheduleSlots: true, kind: true, campus: { select: { kind: true } } } })
+  const isOneToOne = groupPlace?.kind === 'ONE_TO_ONE'
   const placeRow = groupPlace ? await prisma.teacherPlacePay.findUnique({ where: { teacherId_campusId: { teacherId, campusId: groupPlace.campusId } } }) : null
   const picked = pickPayRule(
-    offering ? { fixed: offering.overrideFixedAmount, percent: offering.overridePercentOfStudentPayment, perSession: offering.overridePerSessionAmount, ...onlineFrom(offering.overrideOnlineFixedAmount, offering.overrideOnlinePercent, offering.overrideOnlinePerSessionAmount) } : null,
-    placeRow ? { fixed: placeRow.fixedAmount, percent: placeRow.percentOfStudentPayment, perSession: placeRow.perSessionAmount, ...onlineFrom(placeRow.onlineFixedAmount, placeRow.onlinePercent, placeRow.onlinePerSessionAmount) } : null,
-    teacher ? { fixed: teacher.defaultFixedAmount, percent: teacher.defaultPercentOfStudentPayment, perSession: teacher.defaultPerSessionAmount, ...onlineFrom(teacher.defaultOnlineFixedAmount, teacher.defaultOnlinePercent, teacher.defaultOnlinePerSessionAmount) } : null,
+    offering ? { fixed: offering.overrideFixedAmount, percent: offering.overridePercentOfStudentPayment, perSession: offering.overridePerSessionAmount, ...onlineFrom(offering.overrideOnlineFixedAmount, offering.overrideOnlinePercent, offering.overrideOnlinePerSessionAmount, offering.overrideOneToOnePerSession) } : null,
+    placeRow ? { fixed: placeRow.fixedAmount, percent: placeRow.percentOfStudentPayment, perSession: placeRow.perSessionAmount, ...onlineFrom(placeRow.onlineFixedAmount, placeRow.onlinePercent, placeRow.onlinePerSessionAmount, placeRow.oneToOnePerSession) } : null,
+    teacher ? { fixed: teacher.defaultFixedAmount, percent: teacher.defaultPercentOfStudentPayment, perSession: teacher.defaultPerSessionAmount, ...onlineFrom(teacher.defaultOnlineFixedAmount, teacher.defaultOnlinePercent, teacher.defaultOnlinePerSessionAmount, teacher.defaultOneToOnePerSession) } : null,
   )
   const source: TeacherPayBreakdown['source'] = picked.source
   const num = (v: unknown) => (v != null ? Number(v) : null)
   const r = picked.rule
   const rule: RuleWithOnline = {
     fixed: num(r?.fixed), percent: num(r?.percent), perSession: num(r?.perSession),
-    onlineFixed: r?.onlineFixed ?? null, onlinePercent: r?.onlinePercent ?? null, onlinePerSession: r?.onlinePerSession ?? null,
+    onlineFixed: r?.onlineFixed ?? null, onlinePercent: r?.onlinePercent ?? null, onlinePerSession: r?.onlinePerSession ?? null, oneToOnePerSession: r?.oneToOnePerSession ?? null,
   }
   // a02 M1 batch 6: an online group takes the online % / fixed amount
   const groupOnline = groupIsOnline(groupPlace?.campus?.kind, groupPlace?.scheduleSlots)
@@ -142,7 +154,7 @@ export async function computeTeacherGroupPay(
   let sessionAmount = 0
   let onlineSessions = 0
   let recordedSessions = 0
-  if (perSessionAmount || onlinePerSessionAmount) {
+  if (perSessionAmount || onlinePerSessionAmount || (isOneToOne && rule.oneToOnePerSession)) {
     const group = await prisma.classSection.findUnique({
       where: { id: classSectionId },
       select: { currentCycleStartDate: true, startDate: true },
@@ -169,7 +181,7 @@ export async function computeTeacherGroupPay(
         if (mode === 'RECORDED') { recordedSessions++; continue }
         sessionsCounted++
         if (mode === 'ONLINE') onlineSessions++
-        sessionAmount += sessionRate(rule, mode) ?? 0
+        sessionAmount += sessionRate(rule, mode, isOneToOne) ?? 0
       }
       sessionAmount = Math.round(sessionAmount * 100) / 100
     }

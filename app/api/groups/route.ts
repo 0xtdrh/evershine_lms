@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
   const activeYearId = (await getActiveAcademicYear())?.id
 
   const groups = await prisma.classSection.findMany({
-    where: { isActive: true, ...groupWhere(places) },
+    // a02 M3: a One-to-One never shows as a group; pick lists that need it ask ?kind=ALL
+    where: { isActive: true, ...(searchParams.get('kind') === 'ALL' ? {} : { kind: 'GROUP' }), ...groupWhere(places) },
     orderBy: [{ status: 'asc' }, { startDate: 'asc' }],
     include: {
       campus: { select: { id: true, name: true } },

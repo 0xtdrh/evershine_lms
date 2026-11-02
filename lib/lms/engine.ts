@@ -43,7 +43,7 @@ async function loadGroup(groupId: string) {
     select: {
       id: true, className: true, sectionName: true, campusId: true, status: true, startDate: true, currentCycleNumber: true,
       curriculumEditionId: true, curriculumVariantId: true, lessonUnlockMode: true, levelId: true,
-      level: { select: { id: true, name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, lessonUnlockMode: true, subject: { select: { name: true } } } },
+      cycleSessions: true, level: { select: { id: true, name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, lessonUnlockMode: true, subject: { select: { name: true } } } },
     },
   })
 }
@@ -86,7 +86,7 @@ export async function groupLessons(groupId: string, opts: { studentId?: string }
   const settings = await getLmsSettings()
   const mode = effectiveMode(g.lessonUnlockMode, g.level.lessonUnlockMode, settings.unlockMode)
   const modeSource = isUnlockMode(g.lessonUnlockMode) ? 'GROUP' : isUnlockMode(g.level.lessonUnlockMode) ? 'LEVEL' : 'COMPANY'
-  const perCycle = sessionsPerCycle(g.level)
+  const perCycle = sessionsPerCycle(g.level, g.cycleSessions)
   const base = {
     group: { id: g.id, label: `${g.className} ${g.sectionName}`.trim(), status: g.status, cycleNumber: g.currentCycleNumber, levelId: g.levelId, levelName: g.level.name, courseName: g.level.subject?.name ?? '' },
     mode, modeSource, perCycle, defaultMode: effectiveMode(null, g.level.lessonUnlockMode, settings.unlockMode),

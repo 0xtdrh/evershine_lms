@@ -20,7 +20,7 @@ export async function partnersOverview(opts: { withMoney: boolean }, now = new D
     },
   })
   const placeIds = partners.flatMap((p) => p.places.map((x) => x.id))
-  const groups = placeIds.length ? await prisma.classSection.groupBy({ by: ['campusId'], where: { campusId: { in: placeIds }, status: 'ACTIVE', isActive: true }, _count: { _all: true } }) : []
+  const groups = placeIds.length ? await prisma.classSection.groupBy({ by: ['campusId'], where: { campusId: { in: placeIds }, kind: 'GROUP', status: 'ACTIVE', isActive: true }, _count: { _all: true } }) : []
   const G = new Map(groups.map((g) => [g.campusId, g._count._all]))
   const active = partners.filter((p) => p.isActive)
   const ending: { partnerId: string; partner: string; contract: string; daysLeft: number | null; state: string }[] = []

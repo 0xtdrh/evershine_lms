@@ -37,7 +37,7 @@ export async function studentUpcomingSessions(studentId: string, opts: { days?: 
       classSection: {
         select: {
           id: true, className: true, sectionName: true, campusId: true, scheduleSlots: true, startDate: true, currentCycleStartDate: true,
-          level: { select: { name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, subject: { select: { name: true } } } },
+          cycleSessions: true, level: { select: { name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, subject: { select: { name: true } } } },
         },
       },
     },
@@ -78,7 +78,7 @@ export async function studentUpcomingSessions(studentId: string, opts: { days?: 
       slots: cleanSlots(g.scheduleSlots),
       completed: false,
       cycleStart,
-      sessionsPerCycle: g.level ? sessionsPerCycle(g.level) : 1,
+      sessionsPerCycle: g.level ? sessionsPerCycle(g.level, g.cycleSessions) : 1,
       heldDates: cycleStart ? held.filter((d) => d >= cycleStart) : [],
       cancelledDates: cancelled.map((c) => c.date),
       holidayDates: exceptions.get(g.id)?.holidays ?? [],

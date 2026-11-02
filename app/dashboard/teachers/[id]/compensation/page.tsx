@@ -23,6 +23,7 @@ interface TeacherDetail {
   defaultOnlineFixedAmount?: number | null
   defaultOnlinePercent?: number | null
   defaultOnlinePerSessionAmount?: number | null
+  defaultOneToOnePerSession?: number | null
 }
 
 function apiErrorMessage(err: unknown, fallback: string): string {
@@ -43,7 +44,7 @@ export default function TeacherCompensationPage() {
     queryFn: () => fetchApi(`/api/teachers/${params.id}`),
   })
 
-  const [form, setForm] = useState({ monthlySalary: '', fixedAmount: '', percentOfStudentPayment: '', perSessionAmount: '', onlineFixed: '', onlinePercent: '', onlinePerSession: '' })
+  const [form, setForm] = useState({ monthlySalary: '', fixedAmount: '', percentOfStudentPayment: '', perSessionAmount: '', onlineFixed: '', onlinePercent: '', onlinePerSession: '', oneToOne: '' })
 
   useEffect(() => {
     if (teacher) {
@@ -55,6 +56,7 @@ export default function TeacherCompensationPage() {
         onlineFixed: teacher.defaultOnlineFixedAmount != null ? String(teacher.defaultOnlineFixedAmount) : '',
         onlinePercent: teacher.defaultOnlinePercent != null ? String(teacher.defaultOnlinePercent) : '',
         onlinePerSession: teacher.defaultOnlinePerSessionAmount != null ? String(teacher.defaultOnlinePerSessionAmount) : '',
+        oneToOne: teacher.defaultOneToOnePerSession != null ? String(teacher.defaultOneToOnePerSession) : '',
       })
     }
   }, [teacher])
@@ -71,6 +73,7 @@ export default function TeacherCompensationPage() {
           defaultOnlineFixedAmount: form.onlineFixed ? Number(form.onlineFixed) : null,
           defaultOnlinePercent: form.onlinePercent ? Number(form.onlinePercent) : null,
           defaultOnlinePerSessionAmount: form.onlinePerSession ? Number(form.onlinePerSession) : null,
+          defaultOneToOnePerSession: form.oneToOne ? Number(form.oneToOne) : null,
         }),
       }),
     onSuccess: () => notify.success(L('Pay settings saved', 'إعدادات الأجر اتحفظت')),
@@ -122,6 +125,10 @@ export default function TeacherCompensationPage() {
                   <div className="space-y-1"><Label htmlFor="onSession" className="text-xs">{L('Per online session', 'لكل حصة أونلاين')}</Label><Input id="onSession" type="number" value={form.onlinePerSession} onChange={(e) => setForm({ ...form, onlinePerSession: e.target.value })} /></div>
                 </div>
                 <p className="text-xs text-indigo-700">{L('An online session is paid the online rate. A fully online group takes the online fixed amount and %. Recorded sessions are not paid per session.', 'الحصة الأونلاين بتتحسب بسعر الأونلاين. الجروب اللي كله أونلاين بياخد المبلغ الثابت والنسبة بتوع الأونلاين. الحصص المسجلة مالهاش أجر بالحصة.')}</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="oneToOne">👤 {L('Per One-to-One session (empty = the normal rate)', 'لكل حصة One-to-One (فاضي = سعر الحصة العادي)')}</Label>
+                <Input id="oneToOne" type="number" value={form.oneToOne} onChange={(e) => setForm({ ...form, oneToOne: e.target.value })} />
               </div>
               <p className="text-xs text-slate-400">{L('Leave any field blank to not use that component. Combine as many as needed — these apply per group the teacher teaches.', 'سيب أي خانة فاضية علشان ماتستخدمهاش. تقدر تجمع أكتر من واحدة — بتتطبّق على كل جروب المدرب بيدرّسه.')}</p>
             </div>

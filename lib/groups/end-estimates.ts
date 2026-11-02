@@ -27,6 +27,7 @@ export interface GroupForEstimate {
   currentCycleStartDate: Date | null
   startDate: Date | null
   scheduleSlots: unknown
+  cycleSessions?: number | null
   level: { numberOfSessions: number; numberOfMonths: number; pricingType: string } | null
 }
 
@@ -55,7 +56,7 @@ export async function estimateGroupEnds(group: GroupForEstimate): Promise<GroupE
   }
   if (!group.level) return base
 
-  const per = sessionsPerCycle(group.level)
+  const per = sessionsPerCycle(group.level, group.cycleSessions)
   const totalCycles = cyclesInLevel(group.level)
   base.sessionsPerCycle = per
   base.cyclesInLevel = totalCycles

@@ -10,7 +10,7 @@ export async function placePeople(campusIds: string[]) {
   if (!campusIds.length) return { groups: [], students: [], instructors: [] }
   const [groups, students, instructors] = await Promise.all([
     prisma.classSection.findMany({
-      where: { campusId: { in: campusIds }, isActive: true },
+      where: { campusId: { in: campusIds }, kind: 'GROUP', isActive: true },
       orderBy: [{ status: 'asc' }, { className: 'asc' }],
       select: {
         id: true, className: true, sectionName: true, status: true, startDate: true, scheduleSlots: true, unnamedHeadcount: true,

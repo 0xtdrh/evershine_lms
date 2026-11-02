@@ -42,7 +42,7 @@ export default function BirthdaysPage() {
   const [campusId, setCampusId] = useState('all')
   const [groupId, setGroupId] = useState('all')
   const { data: campuses } = useQuery({ queryKey: ['campuses-list'], queryFn: () => fetchApi<Ref[]>('/api/campuses'), enabled: allowed && role === 'SUPER_ADMIN' })
-  const { data: groups } = useQuery({ queryKey: ['groups-list-active'], queryFn: () => fetchApi<Ref[]>('/api/groups?status=ACTIVE'), enabled: allowed && !isTeacher })
+  const { data: groups } = useQuery({ queryKey: ['groups-list-active'], queryFn: () => fetchApi<Ref[]>('/api/groups?status=ACTIVE&kind=ALL'), enabled: allowed && !isTeacher })
   const qs = new URLSearchParams({ range, kind, ...(campusId !== 'all' && { campusId }), ...(groupId !== 'all' && { groupId }) })
   const { data, isLoading } = useQuery({ queryKey: ['birthdays', qs.toString()], queryFn: () => fetchApi<{ today: string; people: Person[] }>(`/api/birthdays?${qs}`), enabled: allowed })
   if (!role) return null

@@ -2266,7 +2266,7 @@ api PUT /api/delivery/catalog "{\"kind\":\"LEVEL\",\"id\":\"$CVL\",\"allowedMode
 check "a way the level does not allow is refused (409)" "$(api PATCH /api/groups/$CVG '{"scheduleSlots":[{"dayOfWeek":0,"time":"16:00","mode":"ONLINE"}]}' | jq_ "d['error']['code']")" "MODE_NOT_ALLOWED"
 api PUT /api/delivery/catalog "{\"kind\":\"LEVEL\",\"id\":\"$CVL\",\"allowedModes\":null,\"offeredIn\":[],\"templateId\":null}" >/dev/null
 SCH=$(api GET "/api/groups/schedule?from=$(D 1)&to=$(D 8)")
-check "the calendar shows each session's way" "$(echo "$SCH" | jq_ "sorted(set((o['date'], o['mode']) for o in d['data']['sessions'] if o['groupId']=='$CVG' and o['date'] in ('$SUN', '$TUE')))")" "[('$SUN', 'ONLINE'), ('$TUE', 'BRANCH')]"
+check "the calendar shows each session's way" "$(echo "$SCH" | jq_ "sorted(set((o['date'], o['mode']) for o in d['data']['sessions'] if o['groupId']=='$CVG' and o['date'] in ('$SUN', '$TUE')))")" "$(python -c "print(sorted([('$SUN','ONLINE'),('$TUE','BRANCH')]))")"
 MST=$(mkstu Modeboy 01000000691 Modeparent 01000000692)
 api POST /api/groups/$CVG/students "{\"studentId\":\"$MST\"}" >/dev/null
 check "one session of the group moved online: calendar + families told (Arabic too)" "$(api POST /api/groups/$CVG/session-mode "{\"date\":\"$TUE\",\"mode\":\"ONLINE\",\"note\":\"E2E\"}" | jq_ "d['success']")/$(api GET "/api/groups/schedule?from=$TUE&to=$TUE" | jq_ "[o['mode'] for o in d['data']['sessions'] if o['groupId']=='$CVG']")/$(M "SELECT COUNT(*)>0 FROM Notification WHERE type='SESSION_MODE' AND relatedId='$CVG' AND messageAr LIKE '%أونلاين%'")" "True/['ONLINE']/1"
@@ -2369,6 +2369,52 @@ M "DELETE FROM CashCount WHERE id='e2e-ycount'"
 check "a branch secretary sees only the branch accounts (not the company bank)" "$(secapi GET "/api/treasury/daily?date=$(D 0)" | jq_ "any(s['account']['id']=='$TBANK' for s in d['data']['sheets'])")" "False"
 check "Excel: the totals and one box's sheet download as .xlsx" "$(curl -s -b "$JAR" -o /dev/null -w '%{http_code}/%{content_type}' "$B/api/treasury/daily?date=$(D 0)&format=xlsx" | cut -c1-24)/$(curl -s -b "$JAR" "$B/api/treasury/daily/$TBOX?date=$(D 0)&format=xlsx" | head -c 2)" "200/application/vnd.open/PK"
 check "a bad day is refused; signed-out gets 401" "$(api GET "/api/treasury/daily?date=31-10-2026" | jq_ "d['success']")/$(curl -s -o /dev/null -w '%{http_code}' "$B/api/treasury/daily")" "False/401"
+echo "== 75. One-to-One: price list, booking, siblings, instructor rate, next cycle (a02 M3 batch 1, 2026-11-01)"
+M "INSERT INTO TeacherQualifiedSubject (id,teacherId,levelId,createdAt) VALUES ('e2e-q-11','$EW','$CVL',NOW())"
+M "UPDATE User SET allLocations=1 WHERE id=(SELECT userId FROM Teacher WHERE id='$EW')"
+M "DELETE FROM TeacherWorkHours WHERE teacherId='$EW'"
+OS1=$(mkstu Oneboy 01000000751 Oneparent 01000000752); OS2=$(mkstu Twoboy 01000000753 Oneparent 01000000752); OS3=$(mkstu Otherboy 01000000754 Otherparent 01000000755)
+SL='[{"dayOfWeek":5,"time":"06:30","mode":"BRANCH"}]'
+BODY() { echo "{\"studentIds\":$1,\"campusId\":\"$CAMPUS\",\"levelId\":\"$CVL\",\"plan\":\"$2\",\"sessions\":$3,\"slots\":$4,\"teacherId\":\"$EW\"${5:-}}"; }
+check "no price yet: booking refused, nothing left behind" "$(api POST /api/one-to-one "$(BODY "[\"$OS1\"]" SESSION 3 "$SL")" | jq_ "d['error']['code']")/$(M "SELECT COUNT(*) FROM ClassSection WHERE kind='ONE_TO_ONE'")" "NO_PRICE/0"
+api POST /api/one-to-one/prices "{\"levelId\":\"$CVL\",\"plan\":\"SESSION\",\"price\":300,\"siblingPrice\":200,\"minutes\":60}" >/dev/null
+PMON=$(api POST /api/one-to-one/prices "{\"levelId\":\"$CVL\",\"plan\":\"MONTH\",\"price\":1000}" | jq_ "(d['data']['sessions'])")
+check "a month price takes the level's sessions of a month" "$([ "$PMON" -ge 1 ] 2>/dev/null && echo yes)" "yes"
+api POST /api/one-to-one/prices "{\"levelId\":\"$CVL\",\"plan\":\"PACKAGE\",\"sessions\":8,\"price\":1800}" >/dev/null
+check "the price list: session, month and package" "$(api GET "/api/one-to-one/prices?levelId=$CVL" | jq_ "sorted(r['plan'] for r in d['data'])")" "['MONTH', 'PACKAGE', 'SESSION']"
+check "a package needs its size" "$(api POST /api/one-to-one/prices "{\"levelId\":\"$CVL\",\"plan\":\"PACKAGE\",\"price\":100}" | jq_ "d['success']")" "False"
+check "a branch secretary cannot set a price for everywhere" "$(secapi POST /api/one-to-one/prices "{\"levelId\":\"$CVL\",\"plan\":\"SESSION\",\"price\":1}" | jq_ "d['success']")" "False"
+check "only qualified and free instructors are offered" "$(api GET "/api/one-to-one/instructors?campusId=$CAMPUS&levelId=$CVL&slots=%5B%7B%22dayOfWeek%22%3A5%2C%22time%22%3A%2206%3A30%22%7D%5D" | jq_ "any(t['id']=='$EW' for t in d['data'])")" "True"
+OB=$(api POST /api/one-to-one "$(BODY "[\"$OS1\"]" SESSION 3 "$SL")")
+OG=$(echo "$OB" | jq_ "d['data']['groupId']")
+check "booking 3 sessions: 3 x 300 for the student" "$(echo "$OB" | jq_ "(d['data']['amountEach'], d['data']['sessions'], d['data']['sibling'])")" "(900, 3, False)"
+check "stored as One-to-One: plan, sessions, minutes, one seat" "$(M "SELECT CONCAT(kind,'/',oneToOnePlan,'/',cycleSessions,'/',sessionMinutes,'/',maxStudents,'/',requireFullPaymentToStart) FROM ClassSection WHERE id='$OG'")" "ONE_TO_ONE/SESSION/3/60/1/1"
+check "the invoice is made from the booked price" "$(inv $OS1 $OG | cut -d/ -f1)" "900"
+check "it is NOT on the Groups list; pick lists can still ask for it" "$(api GET /api/groups | jq_ "any(g['id']=='$OG' for g in d['data'])")/$(api GET '/api/groups?kind=ALL' | jq_ "any(g['id']=='$OG' for g in d['data'])")" "False/True"
+check "it is on the One-to-One list with its sessions" "$(api GET /api/one-to-one | jq_ "[(r['sessionsDone'], r['sessionsTotal'], len(r['students']), r['teacher']['id']=='$EW') for r in d['data'] if r['id']=='$OG']")" "[(0, 3, 1, True)]"
+check "the attendance list still has it" "$(api GET '/api/class-sections?limit=500' | python -c "import sys,json;d=json.load(sys.stdin)['data'];print(any(g['id']=='$OG' for g in (d if isinstance(d,list) else d.get('items',d.get('sections',[])))))")" "True"
+check "the seat is taken: nobody else joins" "$(api POST /api/groups/$OG/students "{\"studentId\":\"$OS3\"}" | jq_ "d['error']['code']")" "GROUP_FULL"
+check "the same instructor at the same time is refused, nothing left behind" "$(C0=$(M "SELECT COUNT(*) FROM ClassSection WHERE kind='ONE_TO_ONE'"); R=$(api POST /api/one-to-one "$(BODY "[\"$OS3\"]" SESSION 2 "$SL")" | jq_ "d['error']['code']"); echo "$R/$(( $(M "SELECT COUNT(*) FROM ClassSection WHERE kind='ONE_TO_ONE'") - C0 ))")" "TEACHER_PROBLEM/0"
+SL2='[{"dayOfWeek":5,"time":"09:00","mode":"BRANCH"}]'
+check "two who are not siblings cannot share a session" "$(api POST /api/one-to-one "$(BODY "[\"$OS1\",\"$OS3\"]" SESSION 2 "$SL2")" | jq_ "d['error']['code']")" "NOT_SIBLINGS"
+SB=$(api POST /api/one-to-one "$(BODY "[\"$OS1\",\"$OS2\"]" SESSION 4 "$SL2" ",\"teacherRate\":200,\"payment\":\"INSTALLMENTS\"")")
+SG=$(echo "$SB" | jq_ "d['data']['groupId']")
+check "two siblings in one session: the sibling price each, two seats, two invoices" "$(echo "$SB" | jq_ "(d['data']['amountEach'], d['data']['sibling'])")/$(M "SELECT maxStudents FROM ClassSection WHERE id='$SG'")/$(M "SELECT COUNT(*) FROM FeeInvoice WHERE classSectionId='$SG' AND subtotal=800")" "(800, True)/2/2"
+check "instalments chosen, and this One-to-One's own instructor rate" "$(M "SELECT CONCAT(installmentsAllowed,'/',requireFullPaymentToStart) FROM ClassSection WHERE id='$SG'")/$(M "SELECT ROUND(overrideOneToOnePerSession) FROM SubjectOffering WHERE classSectionId='$SG'")" "1/0/200"
+check "a secretary cannot book in another place" "$(secapi POST /api/one-to-one "{\"studentIds\":[\"$OS3\"],\"campusId\":\"$DOTHER\",\"levelId\":\"$CVL\",\"plan\":\"SESSION\",\"sessions\":1,\"slots\":$SL2,\"teacherId\":\"$EW\"}" | jq_ "d['success']")" "False"
+check "signed out: 401" "$(curl -s -o /dev/null -w '%{http_code}' "$B/api/one-to-one")" "401"
+LFRI=""; for i in 0 1 2 3 4 5 6; do [ -z "$LFRI" ] && [ "$(cairo +%w -$i)" = "5" ] && LFRI=$(D -$i); done
+OEN=$(M "SELECT id FROM StudentEnrollment WHERE classSectionId='$OG' AND studentId='$OS1'")
+api POST /api/enrollment-attendance "{\"classSectionId\":\"$OG\",\"attendanceDate\":\"$LFRI\",\"records\":[{\"studentEnrollmentId\":\"$OEN\",\"status\":\"PRESENT\"}]}" >/dev/null
+M "UPDATE EnrollmentAttendanceRecord SET taughtByTeacherId='$EW' WHERE studentEnrollmentId='$OEN'"
+api PATCH /api/teachers/$EW '{"defaultPerSessionAmount":100,"defaultOneToOnePerSession":150}' >/dev/null
+check "instructor pay: the One-to-One rate, not the normal one" "$(api GET "/api/teachers/$EW/pay-statement?month=${LFRI:0:7}&groupId=$OG" | jq_ "[s['rate'] for g in d['data']['groups'] for s in g['sessions'] if s['date']=='$LFRI']")" "[150]"
+check "the list counts the session held" "$(api GET /api/one-to-one | jq_ "[(r['sessionsDone'], r['sessionsLeft']) for r in d['data'] if r['id']=='$OG']")" "[(1, 2)]"
+check "the next cycle waits until its sessions are done" "$(api POST /api/one-to-one/$OG/renew '{}' | jq_ "d['success']")" "False"
+NG=$(api POST /api/one-to-one/$OG/renew '{"force":true}' | jq_ "d['data']['newGroupId']")
+check "next cycle (Super Admin forced it): same kind, plan, sessions and price; the old one finished" "$(M "SELECT CONCAT(kind,'/',oneToOnePlan,'/',cycleSessions,'/',ROUND(priceOverride),'/',maxStudents,'/',levelId='$CVL') FROM ClassSection WHERE id='$NG'")/$(M "SELECT status FROM ClassSection WHERE id='$OG'")" "ONE_TO_ONE/SESSION/3/900/1/1/COMPLETED"
+check "the student is billed for the next cycle" "$(inv $OS1 $NG | cut -d/ -f1)" "900"
+check "the next cycle is not on the Groups list either" "$(api GET /api/groups | jq_ "any(g['id']=='$NG' for g in d['data'])")" "False"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

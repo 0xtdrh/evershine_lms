@@ -11,14 +11,16 @@
 
 import type { Mode } from '@/lib/delivery/modes'
 
-export interface OnlineParts { onlineFixed?: number | null; onlinePercent?: number | null; onlinePerSession?: number | null }
+export interface OnlineParts { onlineFixed?: number | null; onlinePercent?: number | null; onlinePerSession?: number | null; /** a02 M3 */ oneToOnePerSession?: number | null }
 export interface RuleWithOnline extends OnlineParts { fixed: number | null; percent: number | null; perSession: number | null }
 
 const set = (v: number | null | undefined) => v != null && Number.isFinite(v)
 
 /** The per-session rate of one session taught this way (null = no per-session pay). */
-export function sessionRate(rule: RuleWithOnline, mode: Mode | null | undefined): number | null {
+export function sessionRate(rule: RuleWithOnline, mode: Mode | null | undefined, oneToOne = false): number | null {
   if (mode === 'RECORDED') return null
+  // a02 M3: a One-to-One session has its own rate (empty = as usual)
+  if (oneToOne && set(rule.oneToOnePerSession)) return rule.oneToOnePerSession as number
   if (mode === 'ONLINE' && set(rule.onlinePerSession)) return rule.onlinePerSession as number
   return rule.perSession
 }
@@ -45,7 +47,7 @@ export function modeOfDay(date: string, slots: unknown, overrides: Map<string, s
 }
 
 /** Prisma row → online parts (Decimal | null). */
-export function onlineFrom(fixed: unknown, percent: unknown, perSession: unknown): OnlineParts {
+export function onlineFrom(fixed: unknown, percent: unknown, perSession: unknown, oneToOne?: unknown): OnlineParts {
   const n = (v: unknown) => (v != null ? Number(v) : null)
-  return { onlineFixed: n(fixed), onlinePercent: n(percent), onlinePerSession: n(perSession) }
+  return { onlineFixed: n(fixed), onlinePercent: n(percent), onlinePerSession: n(perSession), oneToOnePerSession: n(oneToOne) }
 }

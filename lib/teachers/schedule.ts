@@ -108,7 +108,7 @@ export async function getRemainingCycleSessions(
     where: { id: classSectionId },
     select: {
       currentCycleStartDate: true, startDate: true, scheduleSlots: true,
-      level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } },
+      cycleSessions: true, level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } },
     },
   })
   if (!group || !group.level) return []
@@ -124,7 +124,7 @@ export async function getRemainingCycleSessions(
   }
   if (!cycleStart) return []
 
-  const sessionsPerCycle = cycleSessionCount(group.level)
+  const sessionsPerCycle = cycleSessionCount(group.level, group.cycleSessions)
 
   const attended = await prisma.enrollmentAttendanceRecord.findMany({
     where: { studentEnrollment: { classSectionId }, attendanceDate: { gte: cycleStart } },
@@ -177,7 +177,7 @@ export async function getSessionNumberForDate(
     where: { id: classSectionId },
     select: {
       currentCycleStartDate: true, startDate: true,
-      level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } },
+      cycleSessions: true, level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } },
     },
   })
   const cycleStart = group?.currentCycleStartDate ?? group?.startDate
@@ -191,6 +191,6 @@ export async function getSessionNumberForDate(
   })
   if (!attended.some((a) => a.attendanceDate.toISOString().slice(0, 10) === dateStr)) return null
 
-  const totalSessions = cycleSessionCount(group.level)
+  const totalSessions = cycleSessionCount(group.level, group.cycleSessions)
   return { sessionNumber: attended.length, totalSessions }
 }

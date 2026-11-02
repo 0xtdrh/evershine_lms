@@ -15,7 +15,7 @@ export const NAV_AR: Record<string, string> = {
   'Attendance': 'الحضور', 'Attendance Report': 'تقرير الحضور', 'Staff Attendance': 'حضور الموظفين', 'Biometric Import': 'استيراد البصمة',
   'Exams': 'الامتحانات', 'Results': 'النتائج', 'Report Cards': 'الشهادات الدراسية', 'Certificates': 'الشهادات',
   'Certificate Designer': 'تصميم الشهادات', 'Certificate Reveal': 'كشف الشهادات', 'Promotions': 'الترقيات',
-  'My Courses': 'كورساتي', 'My Children': 'أبنائي', 'Groups': 'الجروبات', 'Groups Schedule': 'جدول الجروبات',
+  'My Courses': 'كورساتي', 'My Children': 'أبنائي', 'Groups': 'الجروبات', 'One-to-One': 'One-to-One', 'Groups Schedule': 'جدول الجروبات',
   'My Calendar': 'جدولي', 'My Schedule': 'جدولي', 'My Substitutions': 'حصص الاحتياطي', 'Absence Requests': 'طلبات الغياب',
   'Substitute Reconciliation': 'حساب البدلاء', 'Course Structure': 'هيكل الكورسات', 'Grading Weights': 'أوزان التقييم',
   'Academic Engine': 'المحرك الأكاديمي', 'Campuses': 'الفروع', 'Reports Centre': 'مركز التقارير', 'Import & Export': 'الاستيراد والتصدير', 'Accounts & Cash': 'الحسابات والخزن', 'Month Close': 'قفل الشهر والتقرير الشهري', 'Fees & Charges': 'الرسوم الإضافية', 'Partners': 'الشركاء', 'Holidays': 'الإجازات الرسمية', 'Renewals': 'التجديدات', 'Session Reports': 'تقارير الحصص', 'Passport & Stamps': 'الجواز والأختام', 'My Passport': 'جوازي', 'My Profile': 'بروفايلي', 'Instructor Performance': 'أداء المدربين',

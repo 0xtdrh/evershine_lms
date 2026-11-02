@@ -33,7 +33,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const [admins, teachers, activeGroups, activeStudents, paid, refunded, overdue, waiting, manager] = await Promise.all([
     staffOfBranch(id),
     prisma.teacher.findMany({ where: { isActive: true, ...teachersOfPlaceWhere(id) }, select: { id: true, firstName: true, lastName: true, designation: true, phoneNumber: true } }),
-    prisma.classSection.count({ where: { campusId: id, isActive: true, status: 'ACTIVE' } }),
+    prisma.classSection.count({ where: { campusId: id, kind: 'GROUP', isActive: true, status: 'ACTIVE' } }),
     prisma.studentEnrollment.findMany({ where: { status: 'ACTIVE', classSection: { campusId: id, status: 'ACTIVE' } }, select: { studentId: true }, distinct: ['studentId'] }),
     prisma.feePayment.aggregate({ where: { paymentDate: { gte: monthStart }, invoice: { student: { campusId: id } } }, _sum: { amount: true } }),
     prisma.refund.findMany({ where: { status: 'APPROVED', approvedAt: { gte: monthStart } }, select: { studentId: true, amount: true } }),

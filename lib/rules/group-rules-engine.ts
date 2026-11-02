@@ -26,7 +26,7 @@ export async function rulesForGroup(classSectionId: string): Promise<{ items: Ru
     select: {
       id: true, campusId: true, levelId: true, requireFullPaymentToStart: true, partialPaymentCounts: true, installmentsAllowed: true,
       maxStudents: true, scheduleSlots: true, unnamedHeadcount: true, priceOverride: true,
-      level: { select: { id: true, pricingType: true, monthlyPrice: true, fullLevelPrice: true, numberOfSessions: true, numberOfMonths: true } },
+      cycleSessions: true, level: { select: { id: true, pricingType: true, monthlyPrice: true, fullLevelPrice: true, numberOfSessions: true, numberOfMonths: true } },
     },
   })
   if (!g) return null
@@ -51,7 +51,7 @@ export async function rulesForGroup(classSectionId: string): Promise<{ items: Ru
     group: { ...g, scheduleSlots: Array.isArray(g.scheduleSlots) ? (g.scheduleSlots as { dayOfWeek: number; time: string }[]) : null },
     price,
     pricingType: (g.level?.pricingType as 'MONTHLY' | 'FULL_LEVEL' | undefined) ?? null,
-    sessionsPerCycle: g.level ? sessionsPerCycle(g.level) : null,
+    sessionsPerCycle: g.level ? sessionsPerCycle(g.level, g.cycleSessions) : null,
     refund,
     excuse,
     written: written.map((w) => ({ ...w, scope: w.scope as RuleScope })),

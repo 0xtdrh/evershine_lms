@@ -19,7 +19,9 @@ export interface LevelForCycle {
   pricingType?: 'MONTHLY' | 'FULL_LEVEL' | string
 }
 
-export function sessionsPerCycle(level: LevelForCycle): number {
+/** @param cycleSessions a02 M3: this group's own number of sessions (a package / per-session One-to-One) wins over the level */
+export function sessionsPerCycle(level: LevelForCycle, cycleSessions?: number | null): number {
+  if (cycleSessions && cycleSessions > 0) return cycleSessions
   if (level.pricingType === 'FULL_LEVEL') return Math.max(1, level.numberOfSessions)
   return Math.max(1, Math.round(level.numberOfSessions / Math.max(1, level.numberOfMonths)))
 }

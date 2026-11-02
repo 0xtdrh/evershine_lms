@@ -36,7 +36,7 @@ export async function studentAttendanceTimeline(studentId: string, opts: { group
       classSection: {
         select: {
           className: true, sectionName: true, status: true, currentCycleNumber: true, currentCycleStartDate: true, startDate: true, createdAt: true,
-          level: { select: { id: true, name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, subject: { select: { name: true } } } },
+          cycleSessions: true, level: { select: { id: true, name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, subject: { select: { name: true } } } },
         },
       },
     },
@@ -66,7 +66,7 @@ export async function studentAttendanceTimeline(studentId: string, opts: { group
   const allStatuses: string[] = []
   const groups = enrollments.map((e) => {
     const cs = e.classSection
-    const per = cs.level ? sessionsPerCycle(cs.level) : 1
+    const per = cs.level ? sessionsPerCycle(cs.level, cs.cycleSessions) : 1
     // Each month is its own group, so every session of the group belongs to this month.
     const held = [...(heldBy.get(e.classSectionId) ?? [])]
     const recs = own.filter((r) => r.studentEnrollmentId === e.id).map((r) => ({ date: day(r.attendanceDate), status: r.status }))

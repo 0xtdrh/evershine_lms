@@ -18,7 +18,7 @@ import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
 import { cairoToday } from '@/lib/dates/cairo'
 
-interface Pay { campusId: string; fixed: number | null; percent: number | null; perSession: number | null; onlineFixed?: number | null; onlinePercent?: number | null; onlinePerSession?: number | null }
+interface Pay { campusId: string; fixed: number | null; percent: number | null; perSession: number | null; onlineFixed?: number | null; onlinePercent?: number | null; onlinePerSession?: number | null; oneToOnePerSession?: number | null }
 interface Period { employer: 'TECHNOVA' | 'PARTNER'; partnerName?: string | null; kind: 'TEACHER' | 'TRAINEE'; fromDate: string; toDate?: string | null; note?: string | null }
 interface Data { primary: string; allLocations: boolean; campusIds: string[]; pay: Pay[]; employment: Period[] }
 interface Campus { id: string; name: string; kind?: string }
@@ -68,6 +68,7 @@ export function TeacherPlacesCard({ teacherId }: { teacherId: string }) {
                 <Input type="number" aria-label={L('Online %', '% أونلاين')} placeholder="%" className="h-7 w-16" value={p.onlinePercent ?? ''} onChange={(e) => setPay(c.id, { onlinePercent: num(e.target.value) })} />
                 <Input type="number" aria-label={L('Online per session', 'حصة أونلاين')} placeholder={L('session', 'حصة')} className="h-7 w-20" value={p.onlinePerSession ?? ''} onChange={(e) => setPay(c.id, { onlinePerSession: num(e.target.value) })} />
               </span>
+              <label className="flex items-center gap-1">👤 1:1 <Input type="number" aria-label={L('Per One-to-One session', 'لكل حصة One-to-One')} className="h-7 w-20" value={p.oneToOnePerSession ?? ''} onChange={(e) => setPay(c.id, { oneToOnePerSession: num(e.target.value) })} /></label>
             </div>
           ) })}
         </div>

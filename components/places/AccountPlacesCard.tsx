@@ -23,7 +23,7 @@ export function AccountPlacesCard({ userId, name }: { userId: string; name: stri
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['user-places', userId], queryFn: () => fetchApi<Access>(`/api/users/${userId}/places`), retry: false })
   const { data: campuses } = useQuery({ queryKey: ['campuses-all'], queryFn: () => fetchPaginatedApi<Campus>('/api/campuses?limit=100') })
-  const { data: groups } = useQuery({ queryKey: ['groups-all-places'], queryFn: () => fetchApi<Group[]>('/api/groups') })
+  const { data: groups } = useQuery({ queryKey: ['groups-all-places'], queryFn: () => fetchApi<Group[]>('/api/groups?kind=ALL') })
   const [a, setA] = useState<Access | null>(null)
   const [q, setQ] = useState('')
   useEffect(() => { if (data) setA(data) }, [data])

@@ -47,6 +47,8 @@ export interface StatementGroupFacts {
   coveredOnly?: boolean
   /** a02 M1 batch 6: the group is online (online % / fixed amount) */
   online?: boolean
+  /** a02 M3: a One-to-One (its own per-session rate) */
+  oneToOne?: boolean
   rule: PayRule
   fixedCounts: boolean    // the group started in this month and TechNova paid him then
   sessions: StatementSession[]
@@ -77,7 +79,7 @@ export interface StatementTotals { sessions: number; onlineSessions: number; onl
 
 export function payKind(rule: PayRule): StatementGroup['payKind'] {
   const on = (a: number | null | undefined, b: number | null | undefined) => (a != null && Number(a) > 0) || (b != null && Number(b) > 0)
-  const ps = on(rule.perSession, rule.onlinePerSession), pc = on(rule.percent, rule.onlinePercent), fx = on(rule.fixed, rule.onlineFixed)
+  const ps = on(rule.perSession, rule.onlinePerSession) || on(rule.oneToOnePerSession, null), pc = on(rule.percent, rule.onlinePercent), fx = on(rule.fixed, rule.onlineFixed)
   const parts = [ps, pc, fx].filter(Boolean).length
   if (parts > 1) return 'MIXED'
   if (ps) return 'PER_SESSION'
@@ -91,7 +93,7 @@ export function statementGroup(g: StatementGroupFacts): StatementGroup {
   const sessions = g.sessions.map((s) => {
     if (!s.counted) return s
     if (s.mode === 'RECORDED') return { ...s, counted: false, rate: null }
-    return { ...s, rate: sessionRate(g.rule, s.mode ?? 'BRANCH') }
+    return { ...s, rate: sessionRate(g.rule, s.mode ?? 'BRANCH', !!g.oneToOne) }
   })
   const recordedSessions = g.coveredOnly ? 0 : g.sessions.filter((s) => s.counted && s.mode === 'RECORDED').length
   const counted = g.coveredOnly ? [] : sessions.filter((s) => s.counted)

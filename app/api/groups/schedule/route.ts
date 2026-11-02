@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       id: true, className: true, sectionName: true, status: true, startDate: true, currentCycleStartDate: true,
       currentCycleNumber: true, scheduleSlots: true, campusId: true,
       campus: { select: { id: true, name: true } },
-      level: {
+      cycleSessions: true, level: {
         select: {
           id: true, name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true,
           subject: { select: { id: true, name: true, track: { select: { id: true, name: true } } } },
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
         slots: cleanSlots(g.scheduleSlots),
         completed: g.status === 'COMPLETED',
         cycleStart,
-        sessionsPerCycle: g.level ? sessionsPerCycle(g.level) : 1,
+        sessionsPerCycle: g.level ? sessionsPerCycle(g.level, g.cycleSessions) : 1,
         heldDates: cycleStart ? held.filter((d) => d >= cycleStart) : [],
         cancelledDates: cancelled.map((c) => c.date),
         holidayDates: exceptions.get(g.id)?.holidays ?? [],

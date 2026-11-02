@@ -7,6 +7,7 @@
  */
 
 import { randomBytes } from 'crypto'
+import { callRoute } from '@/lib/api/call-route'
 import { NextRequest } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
@@ -33,7 +34,7 @@ export async function refLists(user: Who): Promise<{ refs: RefLists; places: Pla
   const places = await loadPlaces(user)
   const [campuses, groups, levels] = await Promise.all([
     prisma.campus.findMany({ where: { isActive: true, ...campusWhere(places, 'id') }, select: { id: true, name: true, code: true }, orderBy: { name: 'asc' } }),
-    prisma.classSection.findMany({ where: { status: 'ACTIVE', isActive: true, levelId: { not: null }, ...groupWhere(places) }, select: { id: true, className: true, sectionName: true, campus: { select: { name: true } } }, orderBy: { className: 'asc' } }),
+    prisma.classSection.findMany({ where: { kind: 'GROUP', status: 'ACTIVE', isActive: true, levelId: { not: null }, ...groupWhere(places) }, select: { id: true, className: true, sectionName: true, campus: { select: { name: true } } }, orderBy: { className: 'asc' } }),
     prisma.level.findMany({ where: { isActive: true }, select: { id: true, name: true, subject: { select: { name: true, code: true } } }, orderBy: [{ subjectId: 'asc' }, { order: 'asc' }] }),
   ])
   return {
@@ -82,7 +83,7 @@ export async function exportRows(key: DatasetKey, user: Who, f: ExportFilters): 
     }
     case 'groups': {
       const rows = await prisma.classSection.findMany({
-        where: AND(groupWhere(places), onlyCampus, { levelId: { not: null }, isActive: true }, f.status ? { status: f.status as never } : {}) as Prisma.ClassSectionWhereInput,
+        where: AND(groupWhere(places), onlyCampus, { kind: 'GROUP', levelId: { not: null }, isActive: true }, f.status ? { status: f.status as never } : {}) as Prisma.ClassSectionWhereInput,
         include: {
           campus: { select: { name: true } }, level: { select: { name: true, subject: { select: { name: true } } } },
           subjectOfferings: { where: { teacherId: { not: null } }, select: { teacher: { select: { firstName: true, lastName: true } } }, take: 1, orderBy: { createdAt: 'desc' } },
@@ -184,20 +185,6 @@ export async function exportRows(key: DatasetKey, user: Who, f: ExportFilters): 
 }
 
 // ── import ─────────────────────────────────────────────────────────────────────────────────────────────────────
-
-/** Call one of our own API handlers with the signed-in person's session (same cookies) and read its JSON. */
-async function callRoute(
-  handler: (req: NextRequest, ctx: { params: Promise<Record<string, string>> }) => Promise<Response>,
-  origin: string, cookie: string, path: string, method: string, body: unknown, params: Record<string, string> = {},
-): Promise<{ ok: boolean; status: number; data: Record<string, unknown> | null; message: string; code: string | null }> {
-  const req = new NextRequest(new URL(path, origin), { method, headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(body) })
-  const res = await handler(req, { params: Promise.resolve(params) })
-  const json = (await res.json().catch(() => null)) as { success?: boolean; data?: Record<string, unknown>; error?: { code?: string; message?: string; details?: unknown }; message?: string } | null
-  // validation errors come as [{ field, message }] (lib/api-response.ts)
-  const detail = json?.error?.details as { field?: string; message?: string }[] | undefined
-  const fieldMsg = Array.isArray(detail) && detail.length ? detail.map((e) => `${e.field ? `${e.field}: ` : ''}${e.message ?? ''}`).join('; ') : ''
-  return { ok: res.ok && json?.success !== false, status: res.status, data: json?.data ?? null, message: fieldMsg || json?.error?.message || json?.message || `HTTP ${res.status}`, code: json?.error?.code ?? null }
-}
 
 export interface ImportCtx { user: Who; origin: string; cookie: string }
 
