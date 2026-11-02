@@ -62,7 +62,7 @@ export async function portalOptions(userId: string, studentId: string) {
   const dob = student.dateOfBirth
   const age = dob ? ageOn(dob, cairoYmd()) : null
   return {
-    open: settings.portalOpen, parentPicksInstructor: settings.parentPicksInstructor, parentPresentUnderAge: settings.parentPresentUnderAge,
+    open: settings.portalOpen, genderPreference: settings.genderPreference, parentPicksInstructor: settings.parentPicksInstructor, parentPresentUnderAge: settings.parentPresentUnderAge,
     age, levels: offered,
     siblings: kids.filter((k) => k.id !== studentId).map((k) => ({ id: k.id, name: `${k.firstName} ${k.lastName}`.trim() })),
     requests: await parentRequests(userId),
@@ -94,7 +94,7 @@ export async function parentRequests(userId: string) {
   return out
 }
 
-export interface RequestInput { studentId: string; siblingId?: string | null; levelId: string; plan: Plan; sessions?: number | null; slots: SlotInput[]; preferredTeacherId?: string | null; note?: string | null }
+export interface RequestInput { studentId: string; siblingId?: string | null; levelId: string; plan: Plan; sessions?: number | null; slots: SlotInput[]; preferredTeacherId?: string | null; preferGender?: 'MALE' | 'FEMALE' | null; note?: string | null }
 
 /** A parent asks for a One-to-One: refused at once when no instructor is free then. */
 export async function createRequest(userId: string, i: RequestInput) {
@@ -110,12 +110,13 @@ export async function createRequest(userId: string, i: RequestInput) {
   if (!pickPrice(await listPrices(i.levelId), student.campusId, i.plan, i.plan === 'SESSION' ? null : i.sessions ?? null)) throw new OneToOneError('This level has no One-to-One price for this plan · المستوى ده مالوش سعر للنظام ده', 409, 'NO_PRICE')
   const open = await prisma.oneToOneRequest.count({ where: { studentId: i.studentId, levelId: i.levelId, state: { in: ['OFFERED', 'NO_TEACHER'] } } })
   if (open) throw new OneToOneError('A request for this level is already waiting · فيه طلب للمستوى ده مستني', 409, 'ALREADY_ASKED')
-  const free = await instructorsFor({ campusId: student.campusId, levelId: i.levelId, slots: i.slots })
+  const gender = settings.genderPreference ? i.preferGender ?? null : null
+  const free = await instructorsFor({ campusId: student.campusId, levelId: i.levelId, slots: i.slots, gender })
   if (!free.length) throw new OneToOneError('No instructor is free at this time. Please choose another time. · مفيش مدرب فاضي في الميعاد ده، اختار ميعاد تاني.', 409, 'NO_TEACHER')
   const r = await prisma.oneToOneRequest.create({
     data: {
       studentId: i.studentId, siblingId: i.siblingId || null, campusId: student.campusId, levelId: i.levelId, plan: i.plan, sessions: i.sessions ?? null,
-      slots: i.slots as unknown as Prisma.InputJsonValue, preferredTeacherId: settings.parentPicksInstructor ? i.preferredTeacherId || null : null, note: i.note?.slice(0, 300) || null, requestedById: userId,
+      slots: i.slots as unknown as Prisma.InputJsonValue, preferredTeacherId: settings.parentPicksInstructor ? i.preferredTeacherId || null : null, preferGender: gender, note: i.note?.slice(0, 300) || null, requestedById: userId,
     },
   })
   await advance(r.id, settings)
@@ -138,7 +139,7 @@ async function advance(id: string, settings?: OneToOneSettings) {
   const r = await prisma.oneToOneRequest.findUnique({ where: { id } })
   if (!r || (r.state !== 'OFFERED' && r.state !== 'NO_TEACHER')) return
   const slots = slotsOf(r.slots)
-  const free = (await instructorsFor({ campusId: r.campusId, levelId: r.levelId, slots })).map((t) => t.id)
+  const free = (await instructorsFor({ campusId: r.campusId, levelId: r.levelId, slots, gender: r.preferGender })).map((t) => t.id)
   const tried = triedOf(r.tried)
   const next = nextCandidate(free, tried, r.preferredTeacherId)
   if (!next) {

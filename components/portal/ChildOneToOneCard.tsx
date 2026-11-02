@@ -19,7 +19,7 @@ import { suggestParentPresent } from '@/lib/one-to-one/request-rules'
 
 interface PlanRow { plan: Plan; sessions: number; price: number; siblingPrice: number | null; minutes: number | null }
 interface Options {
-  open: boolean; parentPicksInstructor: boolean; parentPresentUnderAge: number; age: number | null
+  genderPreference?: boolean; open: boolean; parentPicksInstructor: boolean; parentPresentUnderAge: number; age: number | null
   levels: { id: string; name: string; course: string; plans: PlanRow[] }[]
   siblings: { id: string; name: string }[]
   requests: { id: string; state: string; plan: string; sessions: number | null; slots: { dayOfWeek: number; time: string; mode?: string }[]; level: string; students: string[] }[]
@@ -32,7 +32,7 @@ const stateText = (s: string) => ({
   BOOKED: L('Booked', 'اتحجز'), CANCELLED: L('Cancelled', 'اتلغى'),
 } as Record<string, string>)[s] ?? s
 
-interface Booking { id: string; level: string; sessions: { date: string; time: string; mode: string }[]; postponesLeft: number; postponesPerMonth: number; cancelHours: number; apologies: { id: string; date: string }[] }
+interface Booking { id: string; level: string; sessions: { date: string; time: string; mode: string; minutes?: number | null }[]; postponesLeft: number; postponesPerMonth: number; cancelHours: number; apologies: { id: string; date: string }[] }
 
 function MyBookings({ studentId }: { studentId: string }) {
   const qc = useQueryClient()
@@ -42,6 +42,11 @@ function MyBookings({ studentId }: { studentId: string }) {
     mutationFn: (body: Record<string, unknown>) => fetchApi('/api/guardian-portal/one-to-one/sessions', { method: 'POST', body: JSON.stringify(body) }),
     onSuccess: () => { notify.success(L('Done', 'تم')); setF({}); qc.invalidateQueries({ queryKey: ['portal-one-to-one-sessions', studentId] }) },
     onError: (e: Error) => notify.error(e.message),
+  })
+  const [note, setNote] = useState<Record<string, string>>({})
+  const ask = useMutation({
+    mutationFn: (groupId: string) => fetchApi('/api/guardian-portal/one-to-one/change', { method: 'POST', body: JSON.stringify({ groupId, note: note[groupId] }) }),
+    onSuccess: (_r, id) => { notify.success(L('Sent to the branch', 'اتبعت للفرع')); setNote({ ...note, [id]: '' }) }, onError: (e: Error) => notify.error(e.message),
   })
   if (!data?.length) return null
   const set = (k: string, patch: { date?: string; newDate?: string; newTime?: string }) => setF({ ...f, [k]: { ...f[k], ...patch } })
@@ -62,7 +67,7 @@ function MyBookings({ studentId }: { studentId: string }) {
                 </div>
               </div>
             ))}
-            <p className="text-slate-600">{b.sessions.map((s) => `${dayName(new Date(`${s.date}T00:00:00Z`).getUTCDay())} ${s.date} ${s.time}`).join('، ') || L('No coming sessions', 'مفيش حصص جاية')}</p>
+            <p className="text-slate-600">{b.sessions.map((s) => `${dayName(new Date(`${s.date}T00:00:00Z`).getUTCDay())} ${s.date} ${s.time}${s.minutes ? ` (${s.minutes} ${L('min', 'دقيقة')})` : ''}`).join('، ') || L('No coming sessions', 'مفيش حصص جاية')}</p>
             {b.sessions.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <select className={sel} aria-label={L('Session to move', 'الحصة اللي هتتأجل')} value={f[b.id]?.date ?? ''} onChange={(e) => set(b.id, { date: e.target.value })}><option value="">{L('Move a session', 'أجّل حصة')}</option>{b.sessions.map((s) => <option key={s.date} value={s.date}>{s.date} {s.time}</option>)}</select>
@@ -72,6 +77,10 @@ function MyBookings({ studentId }: { studentId: string }) {
                 <span className="text-slate-500">{L(`${b.postponesLeft} of ${b.postponesPerMonth} left this month; at least ${b.cancelHours} hours before`, `فاضل ${b.postponesLeft} من ${b.postponesPerMonth} الشهر ده؛ قبلها بـ ${b.cancelHours} ساعة على الأقل`)}</span>
               </div>
             )}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <Input className="h-9 min-w-[14rem] flex-1" placeholder={L('Ask for another time or instructor', 'اطلب ميعاد أو مدرب تاني')} value={note[b.id] ?? ''} onChange={(e) => setNote({ ...note, [b.id]: e.target.value })} />
+              <Button size="sm" variant="outline" disabled={(note[b.id] ?? '').trim().length < 2 || ask.isPending} onClick={() => ask.mutate(b.id)}>{L('Send', 'ابعت')}</Button>
+            </div>
           </div>
         ))}
       </CardContent>
@@ -88,6 +97,7 @@ export function ChildOneToOneCard({ studentId }: { studentId: string }) {
   const [count, setCount] = useState('4')
   const [sibling, setSibling] = useState('')
   const [preferred, setPreferred] = useState('')
+  const [gender, setGender] = useState('')
   const [slots, setSlots] = useState<Slot[]>([{ dayOfWeek: 0, time: '16:00', mode: 'BRANCH' }])
   const level = data?.levels.find((l) => l.id === levelId)
   const plan = level?.plans.find((p) => `${p.plan}|${p.sessions}` === planKey)
@@ -103,7 +113,7 @@ export function ChildOneToOneCard({ studentId }: { studentId: string }) {
   const ask = useMutation({
     mutationFn: () => fetchApi<{ state: string }>('/api/guardian-portal/one-to-one', {
       method: 'POST',
-      body: JSON.stringify({ studentId, levelId, plan: plan!.plan, sessions: plan!.plan === 'SESSION' ? Number(count) || 1 : plan!.sessions, slots, ...(sibling && { siblingId: sibling }), ...(preferred && { preferredTeacherId: preferred }) }),
+      body: JSON.stringify({ studentId, levelId, plan: plan!.plan, sessions: plan!.plan === 'SESSION' ? Number(count) || 1 : plan!.sessions, slots, ...(sibling && { siblingId: sibling }), ...(preferred && { preferredTeacherId: preferred }), ...(gender && { preferGender: gender }) }),
     }),
     onSuccess: (r) => { notify.success(r.state === 'BOOKED' ? L('Booked. The invoice is in your account.', 'اتحجز، والفاتورة في حسابك.') : L('Sent. An instructor will confirm soon.', 'اتبعت، ومدرب هيأكد قريب.')); setLevelId(''); setPlanKey(''); refresh() },
     onError: (e: Error) => notify.error(e.message),
@@ -170,6 +180,10 @@ export function ChildOneToOneCard({ studentId }: { studentId: string }) {
               {data.parentPicksInstructor && !!check?.teachers.length && (
                 <label className="space-y-1"><span className={lab}>{L('Instructor you prefer (optional)', 'المدرب اللي تفضّله (اختياري)')}</span>
                   <select className={sel} value={preferred} onChange={(e) => setPreferred(e.target.value)}><option value="">—</option>{check.teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
+              )}
+              {data.genderPreference && (
+                <label className="space-y-1"><span className={lab}>{L('Instructor (optional)', 'المدرب (اختياري)')}</span>
+                  <select className={sel} value={gender} onChange={(e) => setGender(e.target.value)}><option value="">{L('Any', 'أي حد')}</option><option value="MALE">{L('A man', 'راجل')}</option><option value="FEMALE">{L('A woman', 'ست')}</option></select></label>
               )}
               {suggestParentPresent(data.age, slots, data.parentPresentUnderAge) && <p className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-800">{L('For this age we suggest a parent stays nearby during online sessions.', 'في السن ده بنقترح ولي الأمر يكون موجود في الحصص الأونلاين.')}</p>}
               <Button disabled={!plan || !check?.available || ask.isPending} onClick={() => ask.mutate()}>{L('Send the request', 'ابعت الطلب')}</Button>

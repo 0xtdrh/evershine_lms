@@ -31,7 +31,9 @@ import { requireSession, requirePermission, campusScope } from '@/lib/academic/a
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createCycleInvoice, syncGroupProgress } from '@/lib/groups/sync-progress'
 import { KIND_ONE_TO_ONE } from '@/lib/one-to-one/rules'
-import { oneToOneCarry, oneToOneLevelDone, oneToOneNextName } from '@/lib/one-to-one/engine'
+import { oneToOneCarry, oneToOneLevelDone, oneToOneNextName, sessionsToCarry } from '@/lib/one-to-one/engine'
+import { canCarryNow } from '@/lib/one-to-one/request-rules'
+import { cairoToday } from '@/lib/dates/cairo'
 import type { Role } from '@prisma/client'
 import { findGroupInstructorOffering } from '@/lib/groups/instructor'
 import { getNextStep } from '@/lib/groups/next-step'
@@ -40,6 +42,8 @@ const bodySchema = z.object({
   continuingStudentIds: z.array(z.string()).default([]),
   className: z.string().min(1).max(50).optional(),
   sectionName: z.string().min(1).max(10).optional(),
+  /** a02 M3 One-to-One: its month has passed; the sessions not used go on to the next cycle */
+  carry: z.boolean().optional(),
   /** Super Admin only: close the cycle before all its sessions happened. */
   force: z.boolean().optional(),
 })
@@ -83,7 +87,9 @@ export async function POST(
   // page hid the button, but the server itself did not check: a stale tab or a
   // wrong click closed a group after 2 of 4 sessions with nobody continuing.
   const progress = await syncGroupProgress(id, session.user.id)
-  if (!progress.isLastSessionOfCycle && !(parsed.data.force && role === 'SUPER_ADMIN')) {
+  const cycleStartDay = (group.currentCycleStartDate ?? group.startDate)?.toISOString().slice(0, 10) ?? null
+  const carrying = group.kind === KIND_ONE_TO_ONE && !!parsed.data.carry && canCarryNow(cycleStartDay, cairoToday(), progress.sessionsPerCycle - progress.checkedSessionsInCycle)
+  if (!progress.isLastSessionOfCycle && !carrying && !(parsed.data.force && role === 'SUPER_ADMIN')) {
     return errors.conflict(
       `This cycle is not finished yet: ${progress.checkedSessionsInCycle} of ${progress.sessionsPerCycle} sessions recorded.`
     )
@@ -114,7 +120,7 @@ export async function POST(
   const isOneToOne = group.kind === KIND_ONE_TO_ONE
   const nextStep = !isOneToOne
     ? await getNextStep(level, group.currentCycleNumber)
-    : oneToOneLevelDone(group, level)
+    : !carrying && oneToOneLevelDone(group, level) // sessions still to take: he stays on this level
       ? await getNextStep({ ...level, pricingType: 'FULL_LEVEL' }, group.currentCycleNumber)
       : { kind: 'NEXT_MONTH' as const, level, cycleNumber: group.currentCycleNumber + 1 }
   const cycleLogType: 'MONTH_COMPLETED' | 'LEVEL_COMPLETED' = nextStep?.kind === 'NEXT_MONTH' ? 'MONTH_COMPLETED' : 'LEVEL_COMPLETED'
@@ -182,7 +188,7 @@ export async function POST(
       // LMS L2: the next month of the SAME level keeps reading the same curriculum version and the same way of
       // opening lessons; a new level starts fresh (pinned to its newest published version when it starts).
       ...(nextLevel.id === group.levelId && { curriculumEditionId: group.curriculumEditionId, lessonUnlockMode: group.lessonUnlockMode }),
-      ...(isOneToOne && (await oneToOneCarry(group, nextLevel))),
+      ...(isOneToOne && (await oneToOneCarry(group, nextLevel, carrying ? await sessionsToCarry(id) : 0))),
     },
   })
 

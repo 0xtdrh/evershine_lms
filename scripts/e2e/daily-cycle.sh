@@ -2558,6 +2558,47 @@ M "DELETE FROM Holiday WHERE name='E2E 1:1 off'"
 HN '["ONE_TO_ONE"]'
 check "a holiday for One-to-One stops it" "$(ONSCH)" "0"
 M "DELETE FROM Holiday WHERE name='E2E 1:1 off'"
+echo "== 79. One-to-One: change time / instructor / length, hold, carry, instructor preference (a02 M3 batch 3 part 3, 2026-11-02)"
+check "staff change the fixed time" "$(api PATCH /api/one-to-one/$RG '{"slots":[{"dayOfWeek":1,"time":"05:30","mode":"BRANCH"}]}' | jq_ "d['success']")/$(M "SELECT JSON_EXTRACT(scheduleSlots,'\$[0].dayOfWeek') FROM ClassSection WHERE id='$RG'")" "True/1"
+check "…a clash with his other sessions is refused" "$(api PATCH /api/one-to-one/$RG '{"slots":[{"dayOfWeek":3,"time":"07:00","mode":"BRANCH"}]}' | jq_ "d['error']['code']")" "TEACHER_PROBLEM"
+check "staff change the instructor" "$(api PATCH /api/one-to-one/$RG "{\"teacherId\":\"$EW\"}" | jq_ "d['success']")/$(M "SELECT teacherId='$EW' FROM SubjectOffering WHERE classSectionId='$RG'")" "True/1"
+check "a released time: a new one is set and the note closes" "$(api PATCH /api/one-to-one/$ODB '{"slots":[{"dayOfWeek":4,"time":"05:30","mode":"BRANCH"}]}' | jq_ "d['success']")/$(M "SELECT JSON_LENGTH(scheduleSlots) FROM ClassSection WHERE id='$ODB'")/$(M "SELECT state FROM OneToOneEvent WHERE classSectionId='$ODB' AND kind='RELEASE'")" "True/1/DONE"
+api POST /api/one-to-one/prices "{\"levelId\":\"$CVL\",\"plan\":\"PACKAGE\",\"sessions\":3,\"price\":750,\"minutes\":60}" >/dev/null
+BK() { api POST /api/one-to-one "{\"studentIds\":[\"$OS3\"],\"campusId\":\"$CAMPUS\",\"levelId\":\"$CVL\",\"plan\":\"PACKAGE\",\"sessions\":3,\"slots\":[{\"dayOfWeek\":1,\"time\":\"$1\",\"mode\":\"BRANCH\"}],\"teacherId\":\"$CALT\"}"; }
+SH1=$(BK 03:00 | jq_ "d['data']['groupId']")
+check "a 60-minute One-to-One: stored with its length" "$(M "SELECT sessionMinutes FROM ClassSection WHERE id='$SH1'")" "60"
+check "…an hour later is free (not the company's 90 minutes)" "$(BK 04:00 | jq_ "d['success']")" "True"
+check "…half an hour later clashes" "$(BK 03:30 | jq_ "d['error']['code']")" "TEACHER_PROBLEM"
+SHD=$(api GET /api/one-to-one | jq_ "[u['date'] for r in d['data'] if r['id']=='$SH1' for u in r['upcoming']][0]")
+check "the length of one session can differ" "$(api POST /api/one-to-one/$SH1/length "{\"date\":\"$SHD\",\"minutes\":45}" | jq_ "d['success']")/$(api GET /api/one-to-one | jq_ "[u['minutes'] for r in d['data'] if r['id']=='$SH1' for u in r['upcoming'] if u['date']=='$SHD']")" "True/[45]"
+check "the family asks for a change: staff see it; a second one waits" "$(papi POST /api/guardian-portal/one-to-one/change "{\"groupId\":\"$RG\",\"note\":\"Evening please\"}" | jq_ "d['success']")/$(api GET /api/one-to-one/events | jq_ "any(e['kind']=='CHANGE' and e['groupId']=='$RG' for e in d['data'])")/$(papi POST /api/guardian-portal/one-to-one/change "{\"groupId\":\"$RG\",\"note\":\"Again\"}" | jq_ "d['error']['code']")" "True/True/ALREADY_ASKED"
+check "another family cannot ask" "$(papi POST /api/guardian-portal/one-to-one/change "{\"groupId\":\"$SH1\",\"note\":\"Evening\"}" | jq_ "d['success']")" "False"
+check "renewing with sessions left waits for the month to pass" "$(api POST /api/one-to-one/$RG/renew '{"carry":true}' | jq_ "d['success']")" "False"
+CEN=$(M "SELECT id FROM StudentEnrollment WHERE classSectionId='$RG' AND studentId='$OS2'")
+LMON=""; for i in 0 1 2 3 4 5 6; do [ -z "$LMON" ] && [ "$(cairo +%w -$i)" = "1" ] && LMON=$(D -$i); done
+api POST /api/enrollment-attendance "{\"classSectionId\":\"$RG\",\"attendanceDate\":\"$LMON\",\"records\":[{\"studentEnrollmentId\":\"$CEN\",\"status\":\"PRESENT\"}]}" >/dev/null
+M "UPDATE ClassSection SET startDate=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 30 DAY), currentCycleStartDate=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 30 DAY) WHERE id='$RG'"
+M "UPDATE EnrollmentAttendanceRecord SET attendanceDate=DATE(DATE_SUB(UTC_TIMESTAMP(),INTERVAL 29 DAY)) WHERE studentEnrollmentId='$CEN'"
+check "the list offers it after a month" "$(api GET /api/one-to-one | jq_ "[(r['canCarry'], r['sessionsLeft']) for r in d['data'] if r['id']=='$RG']")" "[(True, 7)]"
+NC=$(api POST /api/one-to-one/$RG/renew '{"carry":true}' | jq_ "d['data']['newGroupId']")
+check "next cycle carrying the 7 left: 8 + 7 sessions, billed one package, the old one finished" "$(M "SELECT CONCAT(cycleSessions,'/',carriedSessions,'/',ROUND(priceOverride)) FROM ClassSection WHERE id='$NC'")/$(inv $OS2 $NC | cut -d/ -f1)/$(M "SELECT status FROM ClassSection WHERE id='$RG'")" "15/7/1800/1800/COMPLETED"
+api PUT /api/one-to-one/settings '{"carryMonths":0}' >/dev/null
+check "carrying can be switched off" "$(api GET /api/one-to-one/settings | jq_ "d['data']['carryMonths']")" "0"
+api PUT /api/one-to-one/settings '{"carryMonths":1}' >/dev/null
+api PUT /api/one-to-one/settings '{"genderPreference":true}' >/dev/null
+GP=$(papi GET "/api/guardian-portal/one-to-one?studentId=$OS1" | jq_ "d['data']['genderPreference']")
+check "instructor preference: the parent can choose while the setting is on" "$GP" "True"
+check "…nobody of that kind is free: refused at once" "$(papi POST /api/guardian-portal/one-to-one "{\"studentId\":\"$OS1\",\"levelId\":\"$CVL\",\"plan\":\"SESSION\",\"sessions\":1,\"preferGender\":\"FEMALE\",\"slots\":[{\"dayOfWeek\":0,\"time\":\"05:00\",\"mode\":\"BRANCH\"}]}" | jq_ "d['error']['code']")" "NO_TEACHER"
+api PUT /api/one-to-one/settings '{"genderPreference":false}' >/dev/null
+RGO=$(papi POST /api/guardian-portal/one-to-one "{\"studentId\":\"$OS1\",\"levelId\":\"$CVL\",\"plan\":\"SESSION\",\"sessions\":1,\"preferGender\":\"FEMALE\",\"slots\":[{\"dayOfWeek\":0,\"time\":\"05:00\",\"mode\":\"BRANCH\"}]}" | jq_ "d['data']['id']")
+check "…setting off: the preference is ignored" "$(M "SELECT CONCAT(state,'/',IFNULL(preferGender,'-')) FROM OneToOneRequest WHERE id='$RGO'")" "OFFERED/-"
+papi DELETE /api/guardian-portal/one-to-one/$RGO >/dev/null
+M "UPDATE Teacher SET isActive=0 WHERE id='$EW'"
+check "an instructor left: a task for the staff" "$(api GET /api/today | jq_ "any(t['key']=='oneToOneNoTeacher' for t in d['data']['tasks'])")" "True"
+M "UPDATE Teacher SET isActive=1 WHERE id='$EW'"
+M "UPDATE EnrollmentAttendanceRecord r JOIN StudentEnrollment e ON e.id=r.studentEnrollmentId SET r.attendanceDate=DATE(DATE_SUB(UTC_TIMESTAMP(),INTERVAL 9 DAY)) WHERE e.classSectionId='$ODB'"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "a finished cycle not renewed after the hold days gives up its fixed time (daily job)" "$(M "SELECT scheduleSlots IS NULL FROM ClassSection WHERE id='$ODB'")/$(M "SELECT COUNT(*) FROM OneToOneEvent WHERE classSectionId='$ODB' AND note='Not renewed in time'")" "1/1"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

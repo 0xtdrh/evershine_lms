@@ -31,7 +31,8 @@ interface Row {
   campus: { id: string; name: string }; level: { id: string; name: string; course: string } | null
   students: { id: string; name: string }[]; teacher: { id: string; name: string } | null
   sessionsDone: number; sessionsTotal: number; sessionsLeft: number; finished: boolean
-  upcoming?: { date: string; time: string; mode: string }[]
+  upcoming?: { date: string; time: string; mode: string; minutes: number | null }[]
+  carried?: number; canCarry?: boolean; released?: boolean
 }
 interface Campus { id: string; name: string; kind?: string }
 interface LevelRow { id: string; name: string; subject: { id: string; name: string } }
@@ -68,13 +69,64 @@ function Postpone({ r, onDone }: { r: Row; onDone: () => void }) {
   )
 }
 
+function ChangeForm({ r, onDone }: { r: Row; onDone: () => void }) {
+  const first = r.slots?.[0]
+  const [day, setDay] = useState(first?.dayOfWeek ?? 0)
+  const [time, setTime] = useState(first?.time ?? '16:00')
+  const [mode, setMode] = useState(first?.mode === 'ONLINE' ? 'ONLINE' : 'BRANCH')
+  const [teacherId, setTeacherId] = useState('')
+  const [minutes, setMinutes] = useState(r.minutes ? String(r.minutes) : '')
+  const [lenDate, setLenDate] = useState('')
+  const [lenMin, setLenMin] = useState('')
+  const slotsParam = encodeURIComponent(JSON.stringify([{ dayOfWeek: day, time, mode }]))
+  const { data: teachers } = useQuery({
+    queryKey: ['one-to-one-teachers', r.campus.id, r.level?.id, slotsParam],
+    queryFn: () => fetchApi<{ id: string; name: string }[]>(`/api/one-to-one/instructors?campusId=${r.campus.id}&levelId=${r.level?.id}&slots=${slotsParam}`),
+    enabled: !!r.level?.id,
+  })
+  const go = useMutation({
+    mutationFn: (body: Record<string, unknown>) => fetchApi(`/api/one-to-one/${r.id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    onSuccess: () => { notify.success(L('Changed', 'اتغيّر')); onDone() }, onError: (e: Error) => notify.error(e.message),
+  })
+  const len = useMutation({
+    mutationFn: () => fetchApi(`/api/one-to-one/${r.id}/length`, { method: 'POST', body: JSON.stringify({ date: lenDate, minutes: lenMin === '' ? null : Number(lenMin) }) }),
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); onDone() }, onError: (e: Error) => notify.error(e.message),
+  })
+  return (
+    <details className="w-full text-xs" open={!!r.released}>
+      <summary className="cursor-pointer text-indigo-600">{L('Change the time, instructor or length', 'غيّر الميعاد أو المدرب أو المدة')}</summary>
+      <div className="mt-2 space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <select className={sel} aria-label={L('Day', 'اليوم')} value={day} onChange={(e) => setDay(Number(e.target.value))}>{[0, 1, 2, 3, 4, 5, 6].map((d) => <option key={d} value={d}>{dayName(d)}</option>)}</select>
+          <Input type="time" aria-label={L('Time', 'الوقت')} className="h-9 w-28" value={time} onChange={(e) => setTime(e.target.value)} />
+          <select className={sel} aria-label={L('Way', 'الطريقة')} value={mode} onChange={(e) => setMode(e.target.value as typeof mode)}><option value="BRANCH">{L('In the branch', 'في الفرع')}</option><option value="ONLINE">{L('Online', 'أونلاين')}</option></select>
+          <Button size="sm" disabled={go.isPending} onClick={() => go.mutate({ slots: [{ dayOfWeek: day, time, mode }] })}>{L('Save the time', 'احفظ الميعاد')}</Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select className={sel} aria-label={L('Instructor', 'المدرب')} value={teacherId} onChange={(e) => setTeacherId(e.target.value)}><option value="">{L('Another instructor', 'مدرب تاني')}</option>{(teachers ?? []).filter((t) => t.id !== r.teacher?.id).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+          <Button size="sm" variant="outline" disabled={!teacherId || go.isPending} onClick={() => go.mutate({ teacherId })}>{L('Change him', 'غيّره')}</Button>
+          <Input type="number" min={10} aria-label={L('Minutes of a session', 'دقايق الحصة')} placeholder={L('min', 'دقيقة')} className="h-9 w-20" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+          <Button size="sm" variant="outline" disabled={!minutes || go.isPending} onClick={() => go.mutate({ minutes: Number(minutes) })}>{L('Length of every session', 'مدة كل الحصص')}</Button>
+        </div>
+        {!!r.upcoming?.length && (
+          <div className="flex flex-wrap items-center gap-2">
+            <select className={sel} aria-label={L('Session', 'الحصة')} value={lenDate} onChange={(e) => setLenDate(e.target.value)}><option value="">{L('One session', 'حصة واحدة')}</option>{r.upcoming.map((s) => <option key={s.date} value={s.date}>{s.date} {s.time}{s.minutes ? ` (${s.minutes})` : ''}</option>)}</select>
+            <Input type="number" min={10} aria-label={L('Minutes of this session', 'دقايق الحصة دي')} placeholder={L('min', 'دقيقة')} className="h-9 w-20" value={lenMin} onChange={(e) => setLenMin(e.target.value)} />
+            <Button size="sm" variant="outline" disabled={!lenDate || len.isPending} onClick={() => len.mutate()}>{L('Length of this session', 'مدة الحصة دي')}</Button>
+          </div>
+        )}
+      </div>
+    </details>
+  )
+}
+
 function List({ canRenew, ar }: { canRenew: boolean; ar: boolean }) {
   const qc = useQueryClient()
   const [all, setAll] = useState(false)
   const [move, setMove] = useState<{ groupId: string; studentId: string; name: string } | null>(null)
   const { data, isLoading } = useQuery({ queryKey: ['one-to-one', all], queryFn: () => fetchApi<Row[]>(`/api/one-to-one${all ? '?status=ALL' : ''}`) })
   const renew = useMutation({
-    mutationFn: (id: string) => fetchApi(`/api/one-to-one/${id}/renew`, { method: 'POST', body: '{}' }),
+    mutationFn: ({ id, carry }: { id: string; carry?: boolean }) => fetchApi(`/api/one-to-one/${id}/renew`, { method: 'POST', body: JSON.stringify({ carry }) }),
     onSuccess: () => { notify.success(L('Next cycle made', 'الدورة الجاية اتعملت')); qc.invalidateQueries({ queryKey: ['one-to-one'] }) },
     onError: (e: Error) => notify.error(e.message),
   })
@@ -95,10 +147,14 @@ function List({ canRenew, ar }: { canRenew: boolean; ar: boolean }) {
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${r.finished ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
               {L(`${r.sessionsDone} of ${r.sessionsTotal} sessions`, `${r.sessionsDone} من ${r.sessionsTotal} حصة`)}{r.status === 'COMPLETED' ? ` · ${L('finished', 'خلص')}` : ''}
             </span>
-            {canRenew && r.status === 'ACTIVE' && r.finished && <Button size="sm" disabled={renew.isPending} onClick={() => renew.mutate(r.id)}>{L('Make the next cycle', 'اعمل الدورة الجاية')}</Button>}
+            {canRenew && r.status === 'ACTIVE' && r.finished && <Button size="sm" disabled={renew.isPending} onClick={() => renew.mutate({ id: r.id })}>{L('Make the next cycle', 'اعمل الدورة الجاية')}</Button>}
+            {canRenew && !r.finished && r.canCarry && <Button size="sm" disabled={renew.isPending} onClick={() => renew.mutate({ id: r.id, carry: true })}>{L(`Next cycle, carrying ${r.sessionsLeft} left`, `الدورة الجاية وترحيل ${r.sessionsLeft} باقية`)}</Button>}
+            {!!r.carried && <span className="text-xs text-slate-500">{L(`${r.carried} carried`, `${r.carried} مترحّلة`)}</span>}
             {canRenew && r.status === 'ACTIVE' && r.students.map((s) => <Button key={s.id} size="sm" variant="outline" onClick={() => setMove({ groupId: r.id, studentId: s.id, name: s.name })}>{L(`Move ${s.name} to a group`, `انقل ${s.name} لجروب`)}</Button>)}
           </div>
+          {r.released && <p className="w-full text-xs font-semibold text-rose-700">{L('The fixed time was released: set a new one below.', 'الميعاد الثابت اتلغى: حدد ميعاد جديد تحت.')}</p>}
           {canRenew && r.status === 'ACTIVE' && <Postpone r={r} onDone={() => qc.invalidateQueries({ queryKey: ['one-to-one'] })} />}
+          {canRenew && r.status === 'ACTIVE' && <ChangeForm r={r} onDone={() => qc.invalidateQueries({ queryKey: ['one-to-one'] })} />}
         </CardContent></Card>
       ))}
       {move && <TransferStudentDialog open onOpenChange={(o) => { if (!o) setMove(null) }} studentId={move.studentId} studentName={move.name} fromGroupId={move.groupId} onDone={() => { setMove(null); qc.invalidateQueries({ queryKey: ['one-to-one'] }) }} />}
@@ -214,7 +270,7 @@ function EventRow({ e, onDone }: { e: Ev; onDone: () => void }) {
     <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 pt-4 text-sm">
       <div className="space-y-1">
         <p className="font-semibold">👤 {e.name} · {e.date}</p>
-        <p className="text-xs text-rose-700">{e.kind === 'RELEASE' ? L('The fixed time was released after no-shows: set a new time, or close this.', 'الميعاد الثابت اتلغى بسبب الغياب: حدد ميعاد جديد أو اقفل ده.') : e.state === 'WAITING_SUB' ? L('The family asked for a substitute', 'الأهل طلبوا مدرب بديل') : L('The instructor cannot come; waiting for the family', 'المدرب اعتذر؛ مستنيين رد الأهل')}{e.note ? ` · ${e.note}` : ''}</p>
+        <p className="text-xs text-rose-700">{e.kind === 'CHANGE' ? L('The family asks for a change', 'الأهل طالبين تغيير') : e.kind === 'RELEASE' ? L('The fixed time was released: set a new time in the list, or close this.', 'الميعاد الثابت اتلغى: حدد ميعاد جديد من القايمة أو اقفل ده.') : e.state === 'WAITING_SUB' ? L('The family asked for a substitute', 'الأهل طلبوا مدرب بديل') : L('The instructor cannot come; waiting for the family', 'المدرب اعتذر؛ مستنيين رد الأهل')}{e.note ? ` · ${e.note}` : ''}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {e.kind === 'APOLOGY' && (
@@ -226,7 +282,7 @@ function EventRow({ e, onDone }: { e: Ev; onDone: () => void }) {
             <Button size="sm" variant="outline" disabled={!newDate || act.isPending} onClick={() => act.mutate({ action: 'POSTPONE', newDate, newTime })}>{L('New date', 'ميعاد جديد')}</Button>
           </>
         )}
-        {e.kind === 'RELEASE' && <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: 'CLOSE' })}>{L('Close', 'اقفل')}</Button>}
+        {(e.kind === 'RELEASE' || e.kind === 'CHANGE') && <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: 'CLOSE' })}>{L('Close', 'اقفل')}</Button>}
       </div>
     </CardContent></Card>
   )
@@ -283,7 +339,7 @@ function Settings() {
     onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['one-to-one-settings'] }) }, onError: (e: Error) => notify.error(e.message),
   })
   if (!data) return null
-  const Check = ({ k, text }: { k: 'portalOpen' | 'assignWithoutAsking' | 'parentPicksInstructor'; text: string }) => (
+  const Check = ({ k, text }: { k: 'portalOpen' | 'assignWithoutAsking' | 'parentPicksInstructor' | 'genderPreference'; text: string }) => (
     <label className="flex items-center gap-2"><input type="checkbox" checked={data[k]} onChange={(e) => save.mutate({ [k]: e.target.checked })} /> {text}</label>
   )
   return (
@@ -291,6 +347,7 @@ function Settings() {
       <Check k="portalOpen" text={L('Parents can ask from their portal', 'أولياء الأمور يقدروا يطلبوا من البوابة')} />
       <Check k="assignWithoutAsking" text={L('Book with the first free instructor without asking him', 'احجز مع أول مدرب فاضي من غير ما تسأله')} />
       <Check k="parentPicksInstructor" text={L('Parents may choose the instructor by name', 'ولي الأمر يقدر يختار المدرب بالاسم')} />
+      <Check k="genderPreference" text={L('Parents may ask for a male or female instructor', 'ولي الأمر يقدر يطلب مدرب راجل أو مدرّسة ست')} />
       <label className="flex flex-wrap items-center gap-2">{L('Hours an instructor has to answer', 'عدد الساعات اللي المدرب يرد فيها')}
         <Input key={`h${data.replyHours}`} type="number" min={1} max={168} className="h-9 w-20" defaultValue={data.replyHours} onBlur={(e) => { const v = Number(e.target.value); if (v && v !== data.replyHours) save.mutate({ replyHours: v }) }} /></label>
       {([
@@ -299,6 +356,8 @@ function Settings() {
         ['noShowWaitMinutes', L('Minutes the instructor waits for the student', 'المدرب يستنى الطالب كام دقيقة')],
         ['noShowPayPct', L('The student did not come: % of the session pay the instructor keeps', 'الطالب ما جاش: المدرب ياخد كام % من أجر الحصة')],
         ['noShowLimit', L('Sessions missed without notice before the fixed time is released', 'عدد الغيابات من غير إبلاغ قبل ما الميعاد الثابت يتلغي')],
+        ['holdDays', L('Days the fixed time stays held after the cycle ends', 'الميعاد يفضل محجوز كام يوم بعد آخر الدورة')],
+        ['carryMonths', L('Cycles an unused session can be carried over', 'الحصص الباقية تترحّل لكام دورة')],
       ] as const).map(([k, text]) => (
         <label key={k} className="flex flex-wrap items-center gap-2">{text}
           <Input key={`${k}${data[k]}`} type="number" min={0} className="h-9 w-20" defaultValue={data[k]} onBlur={(e) => { const v = Number(e.target.value); if (v !== data[k]) save.mutate({ [k]: v }) }} /></label>

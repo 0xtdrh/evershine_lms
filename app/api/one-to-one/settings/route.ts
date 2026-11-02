@@ -13,6 +13,7 @@ const schema = z.object({
   parentPicksInstructor: z.boolean().optional(), parentPresentUnderAge: z.number().min(0).max(25).optional(),
   cancelHours: z.number().min(0).max(720).optional(), postponesPerMonth: z.number().min(0).max(50).optional(), noShowWaitMinutes: z.number().min(0).max(120).optional(),
   noShowPayPct: z.number().min(0).max(100).optional(), noShowLimit: z.number().min(1).max(50).optional(),
+  holdDays: z.number().min(0).max(90).optional(), carryMonths: z.number().min(0).max(12).optional(), genderPreference: z.boolean().optional(),
 })
 
 export async function GET() {

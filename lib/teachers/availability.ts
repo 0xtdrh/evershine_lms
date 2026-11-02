@@ -24,15 +24,15 @@ export async function saveTeacherHours(teacherId: string, rows: WorkHours[]) {
   return clean
 }
 
-type GroupRow = { id: string; className: string; sectionName: string; campusId: string; scheduleSlots: unknown }
+type GroupRow = { id: string; className: string; sectionName: string; campusId: string; scheduleSlots: unknown; sessionMinutes?: number | null }
 export const groupTeachSlots = (g: GroupRow, slots?: unknown): TeachSlot[] =>
-  cleanSlots(slots ?? g.scheduleSlots).map((s) => ({ groupId: g.id, label: `${g.className} ${g.sectionName}`.trim(), dayOfWeek: s.dayOfWeek, time: s.time, mode: (s.mode ?? 'BRANCH') as Mode, campusId: g.campusId }))
+  cleanSlots(slots ?? g.scheduleSlots).map((s) => ({ groupId: g.id, label: `${g.className} ${g.sectionName}`.trim(), dayOfWeek: s.dayOfWeek, time: s.time, mode: (s.mode ?? 'BRANCH') as Mode, campusId: g.campusId, minutes: g.sessionMinutes }))
 
 /** Weekly sessions of the running groups this instructor teaches (optionally without one group). */
 export async function teacherSlots(teacherId: string, exceptGroupId?: string): Promise<TeachSlot[]> {
   const offers = await prisma.subjectOffering.findMany({
     where: { teacherId, classSection: { isActive: true, status: 'ACTIVE', ...(exceptGroupId && { id: { not: exceptGroupId } }) } },
-    select: { classSection: { select: { id: true, className: true, sectionName: true, campusId: true, scheduleSlots: true } } },
+    select: { classSection: { select: { id: true, className: true, sectionName: true, campusId: true, scheduleSlots: true, sessionMinutes: true } } },
   })
   const seen = new Set<string>()
   return offers.flatMap((o) => (seen.has(o.classSection.id) ? [] : (seen.add(o.classSection.id), groupTeachSlots(o.classSection))))
@@ -57,8 +57,8 @@ export async function checkTeacherForGroup(teacherId: string, g: GroupRow, slots
 }
 
 /** Is this instructor free for one session? (hours + no clash) — for substitute suggestions. */
-export async function teacherFreeFor(teacherId: string, s: { dayOfWeek: number; time: string; campusId: string; mode?: Mode }, exceptGroupId?: string): Promise<boolean> {
+export async function teacherFreeFor(teacherId: string, s: { dayOfWeek: number; time: string; campusId: string; mode?: Mode; minutes?: number | null }, exceptGroupId?: string): Promise<boolean> {
   const [hours, others, settings] = await Promise.all([teacherHours(teacherId), teacherSlots(teacherId, exceptGroupId), getRoomsSettings()])
-  const slot: TeachSlot = { groupId: '__cover__', label: '', dayOfWeek: s.dayOfWeek, time: s.time, mode: s.mode ?? 'BRANCH', campusId: s.campusId }
+  const slot: TeachSlot = { groupId: '__cover__', label: '', dayOfWeek: s.dayOfWeek, time: s.time, mode: s.mode ?? 'BRANCH', campusId: s.campusId, minutes: s.minutes }
   return hoursCover(hours, slot, settings.sessionMinutes) && !teachClash(slot, others, settings.sessionMinutes)
 }

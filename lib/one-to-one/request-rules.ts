@@ -25,9 +25,15 @@ export interface OneToOneSettings {
   noShowPayPct: number
   /** sessions missed without notice before the fixed time is released */
   noShowLimit: number
+  /** days the fixed time stays held after the last session of a cycle */
+  holdDays: number
+  /** cycles a session not used can be carried over */
+  carryMonths: number
+  /** parents may ask for a male or female instructor */
+  genderPreference: boolean
 }
 
-export const DEFAULT_ONE_TO_ONE_SETTINGS: OneToOneSettings = { portalOpen: true, assignWithoutAsking: false, replyHours: 12, parentPicksInstructor: false, parentPresentUnderAge: 7, cancelHours: 24, postponesPerMonth: 2, noShowWaitMinutes: 15, noShowPayPct: 50, noShowLimit: 3 }
+export const DEFAULT_ONE_TO_ONE_SETTINGS: OneToOneSettings = { portalOpen: true, assignWithoutAsking: false, replyHours: 12, parentPicksInstructor: false, parentPresentUnderAge: 7, cancelHours: 24, postponesPerMonth: 2, noShowWaitMinutes: 15, noShowPayPct: 50, noShowLimit: 3, holdDays: 7, carryMonths: 1, genderPreference: false }
 
 const within = (v: unknown, fallback: number, min: number, max: number) => {
   const n = Math.round(Number(v ?? fallback))
@@ -44,6 +50,7 @@ export function cleanOneToOneSettings(v: Partial<OneToOneSettings>): OneToOneSet
     parentPresentUnderAge: Number.isFinite(age) ? Math.min(25, Math.max(0, age)) : d.parentPresentUnderAge,
     cancelHours: within(v.cancelHours, d.cancelHours, 0, 720), postponesPerMonth: within(v.postponesPerMonth, d.postponesPerMonth, 0, 50),
     noShowWaitMinutes: within(v.noShowWaitMinutes, d.noShowWaitMinutes, 0, 120), noShowPayPct: within(v.noShowPayPct, d.noShowPayPct, 0, 100), noShowLimit: within(v.noShowLimit, d.noShowLimit, 1, 50),
+    holdDays: within(v.holdDays, d.holdDays, 0, 90), carryMonths: within(v.carryMonths, d.carryMonths, 0, 12), genderPreference: v.genderPreference ?? d.genderPreference,
   }
 }
 
@@ -71,4 +78,21 @@ export function noShowDays(rows: { date: string; status: string }[]): Set<string
   const by = new Map<string, string[]>()
   for (const r of rows) by.set(r.date, [...(by.get(r.date) ?? []), r.status])
   return new Set([...by].filter(([, st]) => st.length > 0 && st.every((x) => x === 'ABSENT')).map(([d]) => d))
+}
+
+/** Sessions not used that go into the next cycle: at most `carryMonths` plans' worth. */
+export function carryCount(left: number, baseSessions: number, carryMonths: number): number {
+  return Math.max(0, Math.min(left, baseSessions * Math.max(0, carryMonths)))
+}
+
+/** A cycle may be renewed with sessions left once its month has passed (or at once when all sessions are done). */
+export function canCarryNow(cycleStart: string | null, today: string, left: number): boolean {
+  if (left <= 0 || !cycleStart) return false
+  return (new Date(`${today}T00:00:00Z`).getTime() - new Date(`${cycleStart}T00:00:00Z`).getTime()) / 86_400_000 >= 28
+}
+
+/** Past the time a finished cycle's fixed time stays held? */
+export function holdOver(lastSession: string | null, today: string, holdDays: number): boolean {
+  if (!lastSession) return false
+  return (new Date(`${today}T00:00:00Z`).getTime() - new Date(`${lastSession}T00:00:00Z`).getTime()) / 86_400_000 > holdDays
 }

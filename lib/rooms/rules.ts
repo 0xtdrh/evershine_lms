@@ -12,24 +12,26 @@ export interface RoomsSettings { sessionMinutes: number }
 export const DEFAULT_ROOMS_SETTINGS: RoomsSettings = { sessionMinutes: 90 }
 
 /** A weekly BRANCH session of a group, with its room (FIXED places). */
-export interface Booking { groupId: string; label: string; dayOfWeek: number; time: string; roomId?: string | null }
+export interface Booking { groupId: string; label: string; dayOfWeek: number; time: string; roomId?: string | null; /** a02 M3: its own length; empty = the company's */ minutes?: number | null }
 
 export const toMin = (t: string) => {
   const [h, m] = t.split(':').map(Number)
   return (h || 0) * 60 + (m || 0)
 }
 export const overlaps = (a: string, b: string, minutes: number) => Math.abs(toMin(a) - toMin(b)) < minutes
+/** a02 M3: two sessions of their own lengths overlap? */
+export const overlapsBy = (a: string, aMin: number, b: string, bMin: number) => toMin(a) < toMin(b) + bMin && toMin(b) < toMin(a) + aMin
 
 /** Another group already in this room at this time (null = free). */
 export function roomClash(slot: Booking, others: Booking[], minutes: number): Booking | null {
   if (!slot.roomId) return null
-  return others.find((o) => o.groupId !== slot.groupId && o.roomId === slot.roomId && o.dayOfWeek === slot.dayOfWeek && overlaps(o.time, slot.time, minutes)) ?? null
+  return others.find((o) => o.groupId !== slot.groupId && o.roomId === slot.roomId && o.dayOfWeek === slot.dayOfWeek && overlapsBy(slot.time, slot.minutes || minutes, o.time, o.minutes || minutes)) ?? null
 }
 
 /** DAILY places: would this session need more rooms than the place has that day? Returns the count in use (incl. this one). */
 export function dailyOverflow(slot: Booking, others: Booking[], counts: Map<number, number>, minutes: number): { used: number; have: number } | null {
   const have = counts.get(slot.dayOfWeek) ?? 0
-  const used = 1 + others.filter((o) => o.groupId !== slot.groupId && o.dayOfWeek === slot.dayOfWeek && overlaps(o.time, slot.time, minutes)).length
+  const used = 1 + others.filter((o) => o.groupId !== slot.groupId && o.dayOfWeek === slot.dayOfWeek && overlapsBy(slot.time, slot.minutes || minutes, o.time, o.minutes || minutes)).length
   return used > have ? { used, have } : null
 }
 

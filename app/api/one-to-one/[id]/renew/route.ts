@@ -17,10 +17,10 @@ async function POST_(request: NextRequest, { params }: { params: Promise<{ id: s
   if ('error' in u) return u.error
   const { id } = await params
   try { await assertOneToOne(u.user, id) } catch (e) { return oneToOneError(e) }
-  const body = (await request.json().catch(() => null)) as { force?: boolean } | null
+  const body = (await request.json().catch(() => null)) as { force?: boolean; carry?: boolean } | null
   const rows = await prisma.studentEnrollment.findMany({ where: { classSectionId: id, status: 'ACTIVE' }, select: { studentId: true } })
   const ctx = httpCtx(request)
-  const r = await callRoute(advance as never, ctx.origin, ctx.cookie, `/api/groups/${id}/advance-cycle`, 'POST', { continuingStudentIds: rows.map((x) => x.studentId), ...(body?.force && { force: true }) }, { id })
+  const r = await callRoute(advance as never, ctx.origin, ctx.cookie, `/api/groups/${id}/advance-cycle`, 'POST', { continuingStudentIds: rows.map((x) => x.studentId), ...(body?.force && { force: true }), ...(body?.carry && { carry: true }) }, { id })
   if (!r.ok) return errorResponse(r.code ?? 'CONFLICT', r.message, r.status)
   return successResponse(r.data)
 }

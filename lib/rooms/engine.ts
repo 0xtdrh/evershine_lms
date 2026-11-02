@@ -23,10 +23,10 @@ const isBranch = (s: Slot) => !s.mode || s.mode === 'BRANCH'
 export async function bookingsAt(campusId: string, exceptGroupId?: string): Promise<Booking[]> {
   const groups = await prisma.classSection.findMany({
     where: { campusId, isActive: true, status: 'ACTIVE', ...(exceptGroupId && { id: { not: exceptGroupId } }) },
-    select: { id: true, className: true, sectionName: true, scheduleSlots: true },
+    select: { id: true, className: true, sectionName: true, scheduleSlots: true, sessionMinutes: true },
   })
   return groups.flatMap((g) => cleanSlots(g.scheduleSlots).filter(isBranch).map((s) => ({
-    groupId: g.id, label: `${g.className} ${g.sectionName}`.trim(), dayOfWeek: s.dayOfWeek, time: s.time, roomId: s.roomId ?? null,
+    minutes: g.sessionMinutes, groupId: g.id, label: `${g.className} ${g.sectionName}`.trim(), dayOfWeek: s.dayOfWeek, time: s.time, roomId: s.roomId ?? null,
   })))
 }
 
@@ -67,7 +67,7 @@ const msg = (en: string, ar: string) => `${en} · ${ar}`
  * FIXED: every BRANCH slot needs a room of this place that is free and big enough. DAILY: never more sessions at once
  * than rooms that day. NONE: nothing to check.
  */
-export async function checkGroupSlots(g: { id: string; campusId: string; maxStudents: number | null }, rawSlots: unknown): Promise<string | null> {
+export async function checkGroupSlots(g: { id: string; campusId: string; maxStudents: number | null; minutes?: number | null }, rawSlots: unknown): Promise<string | null> {
   const campus = await prisma.campus.findUnique({ where: { id: g.campusId }, select: { roomMode: true } })
   const mode = (campus?.roomMode ?? 'NONE') as RoomMode
   if (mode === 'NONE') return null
@@ -80,7 +80,7 @@ export async function checkGroupSlots(g: { id: string; campusId: string; maxStud
   if (mode === 'DAILY') {
     const counts = new Map((await prisma.roomDayCount.findMany({ where: { campusId: g.campusId } })).map((c) => [c.dayOfWeek, c.count]))
     for (const s of slots) {
-      const over = dailyOverflow({ groupId: g.id, label: '', dayOfWeek: s.dayOfWeek, time: s.time }, others, counts, settings.sessionMinutes)
+      const over = dailyOverflow({ groupId: g.id, label: '', dayOfWeek: s.dayOfWeek, time: s.time, minutes: g.minutes }, others, counts, settings.sessionMinutes)
       if (over) return msg(`${dayName(s.dayOfWeek)} ${s.time}: the place has ${over.have} room(s) that day and ${over.used} sessions would be at once`, `${dayAr(s.dayOfWeek)} ${s.time}: المكان ليه ${over.have} قاعة اليوم ده و${over.used} حصص هتبقى في نفس الوقت`)
     }
     return null
@@ -93,7 +93,7 @@ export async function checkGroupSlots(g: { id: string; campusId: string; maxStud
     const room = rooms.find((r) => r.id === s.roomId)
     if (!room) return msg('This room is not of this place or is stopped', 'القاعة دي مش تبع المكان ده أو موقوفة')
     if (size > room.capacity) return msg(`${room.name} takes ${room.capacity} students; the group has ${size}`, `${room.name} تاخد ${room.capacity} طالب؛ والجروب ${size}`)
-    const clash = roomClash({ groupId: g.id, label: '', dayOfWeek: s.dayOfWeek, time: s.time, roomId: s.roomId }, others, settings.sessionMinutes)
+    const clash = roomClash({ groupId: g.id, label: '', dayOfWeek: s.dayOfWeek, time: s.time, roomId: s.roomId, minutes: g.minutes }, others, settings.sessionMinutes)
     if (clash) return msg(`${room.name} is taken by ${clash.label} on ${dayName(clash.dayOfWeek)} at ${clash.time}`, `${room.name} محجوزة لـ ${clash.label} يوم ${dayAr(clash.dayOfWeek)} الساعة ${clash.time}`)
   }
   return null

@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic'
 const schema = z.object({
   studentId: z.string().min(1), siblingId: z.string().min(1).nullish(), levelId: z.string().min(1), plan: z.enum(PLANS), sessions: z.number().int().min(1).max(200).nullish(),
   slots: z.array(z.object({ dayOfWeek: z.number().int().min(0).max(6), time: z.string().regex(/^\d{2}:\d{2}$/), mode: z.enum(MODES).optional() })).min(1).max(7),
-  preferredTeacherId: z.string().min(1).nullish(), note: z.string().max(300).nullish(),
+  preferredTeacherId: z.string().min(1).nullish(), preferGender: z.enum(['MALE', 'FEMALE']).nullish(), note: z.string().max(300).nullish(),
 })
 
 async function parent() {

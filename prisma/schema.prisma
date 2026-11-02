@@ -2233,6 +2233,8 @@ model ClassSection {
   kind                      String            @default("GROUP") @db.VarChar(12)
   /// a02 M3: sessions in this cycle when they differ from the level (a package / per-session One-to-One); null = the level's
   cycleSessions             Int?
+  /// a02 M3: of cycleSessions, how many were carried from the cycle before (not billed again)
+  carriedSessions           Int?
   /// a02 M3: MONTH | PACKAGE | SESSION
   oneToOnePlan              String?           @db.VarChar(8)
   /// a02 M3: length of a session in minutes; null = the company default
@@ -5276,7 +5278,7 @@ model SessionModeOverride {
   @@unique([classSectionId, date])
 }
 
-/// a02 M3 batch 3: what happened to one session of a One-to-One. kind POSTPONE | APOLOGY | RELEASE; state OPEN | WAITING_SUB | DONE.
+/// a02 M3 batch 3: what happened to one session of a One-to-One. kind POSTPONE | APOLOGY | RELEASE | CHANGE (parent asks) | MINUTES; state OPEN | WAITING_SUB | DONE.
 model OneToOneEvent {
   id                  String    @id @default(cuid())
   classSectionId      String
@@ -5286,6 +5288,8 @@ model OneToOneEvent {
   choice              String?   @db.VarChar(12)
   newDate             DateTime? @db.Date
   newTime             String?   @db.VarChar(5)
+  /// kind MINUTES: the length of this one session
+  minutes             Int?
   /// uses up one of the family's postponements of the month
   countsAgainstParent Boolean   @default(false)
   note                String?   @db.VarChar(300)
@@ -5308,6 +5312,8 @@ model OneToOneRequest {
   sessions           Int?
   slots              Json
   preferredTeacherId String?
+  /// a02 M3: MALE | FEMALE when the parent chose (only while the setting is open)
+  preferGender       String?   @db.VarChar(6)
   state              String    @default("OFFERED") @db.VarChar(12)
   teacherId          String?
   expiresAt          DateTime?

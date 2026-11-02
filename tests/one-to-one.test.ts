@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { levelFinished, nameFor, pickPrice, quote, type PriceRow } from '@/lib/one-to-one/rules'
 import { sessionRate } from '@/lib/teachers/online-pay'
 import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
+import { overlapsBy } from '@/lib/rooms/rules'
+import { teachClash } from '@/lib/teachers/work-hours'
 import { refundWindowOpen } from '@/lib/refunds/engine'
 import { cleanLocks, transferLockReason } from '@/lib/groups/transfer-lock'
 import { mergeOneToOne } from '@/lib/partners/deal'
-import { cleanOneToOneSettings, nextCandidate, noShowDays, postponeProblem, suggestParentPresent } from '@/lib/one-to-one/request-rules'
+import { canCarryNow, carryCount, cleanOneToOneSettings, holdOver, nextCandidate, noShowDays, postponeProblem, suggestParentPresent } from '@/lib/one-to-one/request-rules'
 
 const r = (over: Partial<PriceRow>): PriceRow => ({ levelId: 'L', scopeKey: 'ALL', plan: 'MONTH', sessions: 4, price: 1000, siblingPrice: null, minutes: null, ...over })
 
@@ -107,5 +109,28 @@ describe('One-to-One (a02 M3)', () => {
   it('a no-show = everybody absent; an excused or present student is not', () => {
     expect([...noShowDays([{ date: 'a', status: 'ABSENT' }, { date: 'b', status: 'EXCUSED' }, { date: 'c', status: 'PRESENT' }])]).toEqual(['a'])
     expect([...noShowDays([{ date: 'a', status: 'ABSENT' }, { date: 'a', status: 'PRESENT' }])]).toEqual([])
+  })
+  it('carrying: at most the set number of plans; only after the month has passed', () => {
+    expect(carryCount(7, 8, 1)).toBe(7)
+    expect(carryCount(9, 8, 1)).toBe(8)
+    expect(carryCount(7, 8, 0)).toBe(0)
+    expect(canCarryNow('2026-10-01', '2026-10-29', 2)).toBe(true)
+    expect(canCarryNow('2026-10-05', '2026-10-29', 2)).toBe(false)
+    expect(canCarryNow('2026-10-01', '2026-10-29', 0)).toBe(false)
+    expect(canCarryNow(null, '2026-10-29', 2)).toBe(false)
+  })
+  it('the fixed time is held for the set days after the last session', () => {
+    expect(holdOver('2026-10-20', '2026-10-27', 7)).toBe(false)
+    expect(holdOver('2026-10-20', '2026-10-28', 7)).toBe(true)
+    expect(holdOver(null, '2026-10-28', 7)).toBe(false)
+  })
+  it('clashes use each session its own length', () => {
+    expect(overlapsBy('13:00', 60, '14:00', 60)).toBe(false)
+    expect(overlapsBy('13:00', 60, '13:30', 60)).toBe(true)
+    expect(overlapsBy('13:00', 90, '14:00', 60)).toBe(true)
+    const a = { groupId: 'a', label: 'A', dayOfWeek: 1, time: '13:00', mode: 'BRANCH' as const, campusId: 'c', minutes: 60 }
+    const b = { ...a, groupId: 'b', time: '14:00', minutes: null }
+    expect(teachClash(a, [b], 90)).toBeNull()
+    expect(teachClash({ ...a, minutes: null }, [b], 90)).toEqual(b)
   })
 })

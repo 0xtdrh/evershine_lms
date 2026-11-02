@@ -22,6 +22,8 @@ import { notifyJoinerHolidays } from '@/lib/notifications/session-events'
 import { resolveBatchId } from '@/lib/batches/default-batch'
 import { resolveShiftId } from '@/lib/shifts/default-shift'
 import { executeTransfer, previewTransfer } from '@/lib/groups/transfer'
+import { canCarryNow, carryCount } from './request-rules'
+import { cairoToday } from '@/lib/dates/cairo'
 import { KIND_ONE_TO_ONE, SECTION_NAME, levelFinished, nameFor, pickPrice, quote, type Plan, type PriceRow } from './rules'
 import type { Mode } from '@/lib/delivery/modes'
 
@@ -73,7 +75,7 @@ export async function removePrice(user: Who, id: string) {
 export interface SlotInput { dayOfWeek: number; time: string; mode?: Mode; roomId?: string | null }
 
 /** Instructors of this place, qualified for the level (track, course or level) and free at every chosen time. */
-export async function instructorsFor(i: { campusId: string; levelId: string; slots: SlotInput[] }) {
+export async function instructorsFor(i: { campusId: string; levelId: string; slots: SlotInput[]; minutes?: number | null; gender?: string | null; exceptGroupId?: string }) {
   const level = await prisma.level.findUnique({ where: { id: i.levelId }, select: { subjectId: true, subject: { select: { trackId: true } } } })
   if (!level) return []
   const qualified = await prisma.teacherQualifiedSubject.findMany({
@@ -81,14 +83,14 @@ export async function instructorsFor(i: { campusId: string; levelId: string; slo
     select: { teacherId: true },
   })
   const teachers = await prisma.teacher.findMany({
-    where: { AND: [teachersOfPlaceWhere(i.campusId), { id: { in: [...new Set(qualified.map((q) => q.teacherId))] }, isActive: true }] },
+    where: { AND: [teachersOfPlaceWhere(i.campusId), { id: { in: [...new Set(qualified.map((q) => q.teacherId))] }, isActive: true, ...(i.gender && { gender: i.gender as 'MALE' | 'FEMALE' }) }] },
     select: { id: true, firstName: true, lastName: true }, orderBy: { firstName: 'asc' },
   })
   const out = []
   for (const t of teachers) {
     let free = true
     for (const s of i.slots) {
-      if (!(await teacherFreeFor(t.id, { dayOfWeek: s.dayOfWeek, time: s.time, campusId: i.campusId, mode: s.mode }))) { free = false; break }
+      if (!(await teacherFreeFor(t.id, { dayOfWeek: s.dayOfWeek, time: s.time, campusId: i.campusId, mode: s.mode, minutes: i.minutes }, i.exceptGroupId))) { free = false; break }
     }
     if (free) out.push({ id: t.id, name: `${t.firstName} ${t.lastName}`.trim() })
   }
@@ -154,7 +156,8 @@ export async function createOneToOne(i: BookInput, actorId: string, opts: { sibl
   const bad = firstNotAllowed(cleanSlots(slots), allowed)
   if (bad) throw new OneToOneError(`${MODE_LABEL[bad.mode ?? 'BRANCH'].en} sessions are not allowed for this level · طريقة «${MODE_LABEL[bad.mode ?? 'BRANCH'].ar}» مش مسموحة للمستوى ده`, 409, 'MODE_NOT_ALLOWED')
   const log = (action: string, problem: string) => prisma.auditLog.create({ data: { userId: actorId, action, entityType: 'ClassSection', entityId: 'one-to-one', changes: { problem } } }).catch(() => undefined)
-  const roomProblem = await checkGroupSlots({ id: '__new__', campusId: i.campusId, maxStudents: ordered.length }, slots)
+  const minutes = i.minutes ?? priced.minutes ?? null
+  const roomProblem = await checkGroupSlots({ id: '__new__', campusId: i.campusId, maxStudents: ordered.length, minutes }, slots)
   if (roomProblem) {
     if (!opts.force) throw new OneToOneError(roomProblem, 409, 'ROOM_PROBLEM')
     await log('FORCE_ROOMS', roomProblem)
@@ -162,7 +165,7 @@ export async function createOneToOne(i: BookInput, actorId: string, opts: { sibl
   const className = await freeName(i.campusId, nameFor(ordered, level.name))
   const teacher = await prisma.teacher.findUnique({ where: { id: i.teacherId }, select: { id: true } })
   if (!teacher) throw new OneToOneError('Instructor not found', 404)
-  const teacherProblem = await checkTeacherForGroup(i.teacherId, { id: '__new__', className, sectionName: SECTION_NAME, campusId: i.campusId, scheduleSlots: slots })
+  const teacherProblem = await checkTeacherForGroup(i.teacherId, { id: '__new__', className, sectionName: SECTION_NAME, campusId: i.campusId, scheduleSlots: slots, sessionMinutes: minutes })
   if (teacherProblem) {
     if (!opts.force) throw new OneToOneError(teacherProblem, 409, 'TEACHER_PROBLEM')
     await log('FORCE_TEACHER', teacherProblem)
@@ -174,7 +177,7 @@ export async function createOneToOne(i: BookInput, actorId: string, opts: { sibl
     data: {
       campusId: i.campusId, batchId: await resolveBatchId(i.campusId, null), shiftId: await resolveShiftId(null, slots),
       className, sectionName: SECTION_NAME, levelId: i.levelId, maxStudents: ordered.length,
-      kind: KIND_ONE_TO_ONE, oneToOnePlan: i.plan, cycleSessions: q.sessions, priceOverride: q.amount, sessionMinutes: i.minutes ?? priced.minutes ?? null,
+      kind: KIND_ONE_TO_ONE, oneToOnePlan: i.plan, cycleSessions: q.sessions, priceOverride: q.amount, sessionMinutes: minutes,
       scheduleSlots: slots as unknown as Prisma.InputJsonValue,
       requireFullPaymentToStart: i.payment !== 'INSTALLMENTS', installmentsAllowed: i.payment === 'INSTALLMENTS',
     },
@@ -228,7 +231,7 @@ export async function listOneToOne(user: Who, opts: { campusId?: string | null; 
     where: { kind: KIND_ONE_TO_ONE, isActive: true, ...(opts.status === 'ALL' ? {} : { status: 'ACTIVE' as const }), ...groupWhere(places) },
     orderBy: { createdAt: 'desc' }, take: 500,
     select: {
-      id: true, className: true, sectionName: true, status: true, scheduleSlots: true, oneToOnePlan: true, cycleSessions: true, priceOverride: true, sessionMinutes: true, currentCycleNumber: true,
+      id: true, className: true, sectionName: true, status: true, scheduleSlots: true, oneToOnePlan: true, cycleSessions: true, carriedSessions: true, campusId: true, levelId: true, priceOverride: true, sessionMinutes: true, currentCycleNumber: true,
       startDate: true, currentCycleStartDate: true, campus: { select: { id: true, name: true } },
       level: { select: { id: true, name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, subject: { select: { name: true } } } },
       enrollments: { where: { status: 'ACTIVE' }, select: { student: { select: { id: true, firstName: true, lastName: true } } } },
@@ -252,12 +255,14 @@ export async function listOneToOne(user: Who, opts: { campusId?: string | null; 
     const t = g.subjectOfferings[0]?.teacher
     const total = g.level ? sessionsPerCycle(g.level, g.cycleSessions) : (g.cycleSessions ?? 0)
     const done = heldBy.get(g.id)?.size ?? 0
+    const start = g.currentCycleStartDate ?? g.startDate
     return {
       id: g.id, status: g.status, plan: g.oneToOnePlan, price: num(g.priceOverride), minutes: g.sessionMinutes, slots: g.scheduleSlots,
       campus: g.campus, level: g.level ? { id: g.level.id, name: g.level.name, course: g.level.subject?.name ?? '' } : null,
       students: g.enrollments.map((e) => ({ id: e.student.id, name: `${e.student.firstName} ${e.student.lastName}`.trim() })),
       teacher: t ? { id: t.id, name: `${t.firstName} ${t.lastName}`.trim() } : null,
       sessionsDone: done, sessionsTotal: total, sessionsLeft: Math.max(0, total - done), finished: total > 0 && done >= total, upcoming: up.get(g.id) ?? [],
+      carried: g.carriedSessions ?? 0, canCarry: g.status === 'ACTIVE' && canCarryNow(start ? start.toISOString().slice(0, 10) : null, cairoToday(), total - done), released: g.status === 'ACTIVE' && !cleanSlots(g.scheduleSlots).length,
     }
   })
 }
@@ -270,26 +275,74 @@ export async function assertOneToOne(user: Who, id: string) {
 
 // ── next cycle ──────────────────────────────────────────────────────────────────────────────────────────────
 
-type Carrying = { id: string; campusId: string; levelId: string | null; className: string; oneToOnePlan: string | null; cycleSessions: number | null; sessionMinutes: number | null; maxStudents: number | null; priceOverride: unknown; currentCycleNumber: number }
+type Carrying = { id: string; campusId: string; levelId: string | null; className: string; oneToOnePlan: string | null; cycleSessions: number | null; carriedSessions: number | null; sessionMinutes: number | null; maxStudents: number | null; priceOverride: unknown; currentCycleNumber: number }
+
+const baseSessions = (g: { cycleSessions: number | null; carriedSessions: number | null }) => (g.cycleSessions ? g.cycleSessions - (g.carriedSessions ?? 0) : null)
 
 /** Has this One-to-One finished its level? (sessions, not months) */
-export function oneToOneLevelDone(g: Pick<Carrying, 'cycleSessions' | 'currentCycleNumber'>, level: { numberOfSessions: number; numberOfMonths: number; pricingType: string }) {
-  return levelFinished(g.currentCycleNumber, sessionsPerCycle(level, g.cycleSessions), level.numberOfSessions)
+export function oneToOneLevelDone(g: Pick<Carrying, 'cycleSessions' | 'carriedSessions' | 'currentCycleNumber'>, level: { numberOfSessions: number; numberOfMonths: number; pricingType: string }) {
+  return levelFinished(g.currentCycleNumber, sessionsPerCycle(level, baseSessions(g)), level.numberOfSessions)
 }
 
 /** What the next cycle of a One-to-One keeps: same plan and people; a new level reads its own price list (no price = the level's price). */
-export async function oneToOneCarry(g: Carrying, nextLevel: { id: string; name: string; numberOfSessions: number; numberOfMonths: number; pricingType: string }): Promise<Prisma.ClassSectionUncheckedCreateInput | Record<string, unknown>> {
-  const base = { kind: KIND_ONE_TO_ONE, oneToOnePlan: g.oneToOnePlan, sessionMinutes: g.sessionMinutes, maxStudents: g.maxStudents, cycleSessions: g.cycleSessions }
+export async function oneToOneCarry(g: Carrying, nextLevel: { id: string; name: string; numberOfSessions: number; numberOfMonths: number; pricingType: string }, carried = 0): Promise<Prisma.ClassSectionUncheckedCreateInput | Record<string, unknown>> {
+  const own = baseSessions(g)
+  const plus = (n: number | null) => (carried > 0 ? { cycleSessions: (n ?? 0) + carried, carriedSessions: carried } : { cycleSessions: n, carriedSessions: null })
+  const base = { kind: KIND_ONE_TO_ONE, oneToOnePlan: g.oneToOnePlan, sessionMinutes: g.sessionMinutes, maxStudents: g.maxStudents, ...plus(own ?? (carried > 0 ? sessionsPerCycle(nextLevel) : null)) }
   if (nextLevel.id === g.levelId) return base
   const plan = (g.oneToOnePlan ?? 'MONTH') as Plan
-  const priced = pickPrice(await listPrices(nextLevel.id), g.campusId, plan, plan === 'PACKAGE' ? g.cycleSessions : null)
-  if (!priced) return { ...base, cycleSessions: plan === 'MONTH' ? null : g.cycleSessions, priceOverride: null }
-  const q = quote(priced, g.cycleSessions, (g.maxStudents ?? 1) > 1)
-  return { ...base, cycleSessions: q.sessions, priceOverride: q.amount, sessionMinutes: priced.minutes ?? g.sessionMinutes }
+  const priced = pickPrice(await listPrices(nextLevel.id), g.campusId, plan, plan === 'PACKAGE' ? own : null)
+  if (!priced) return { ...base, ...plus(plan === 'MONTH' ? (carried > 0 ? sessionsPerCycle(nextLevel) : null) : own), priceOverride: null }
+  const q = quote(priced, own, (g.maxStudents ?? 1) > 1)
+  return { ...base, ...plus(q.sessions), priceOverride: q.amount, sessionMinutes: priced.minutes ?? g.sessionMinutes }
 }
 
 /** The new name when the level changes ("Ahmed Ali — Arduino 2"). */
 export async function oneToOneNextName(groupId: string, levelName: string, fallback: string) {
   const rows = await prisma.studentEnrollment.findMany({ where: { classSectionId: groupId, status: 'ACTIVE' }, select: { student: { select: { firstName: true, lastName: true } } } })
   return rows.length ? nameFor(rows.map((r) => r.student), levelName) : fallback.replace(/ #\d+$/, '')
+}
+
+/** How many unused sessions go on to the next cycle (the setting's limit; the caller checks the month has passed). */
+export async function sessionsToCarry(groupId: string) {
+  const g = await prisma.classSection.findUnique({ where: { id: groupId }, select: { cycleSessions: true, carriedSessions: true, level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } } } })
+  if (!g?.level) return 0
+  const held = await prisma.enrollmentAttendanceRecord.findMany({ where: { studentEnrollment: { classSectionId: groupId } }, select: { attendanceDate: true }, distinct: ['attendanceDate'] })
+  const total = sessionsPerCycle(g.level, g.cycleSessions)
+  const { getOneToOneSettings } = await import('./settings')
+  return carryCount(total - held.length, sessionsPerCycle(g.level, baseSessions(g)), (await getOneToOneSettings()).carryMonths)
+}
+
+export interface ChangeInput { slots?: SlotInput[]; teacherId?: string; teacherRate?: number | null; minutes?: number | null; force?: boolean }
+
+/** Staff change the fixed time, the instructor or the length: the same rules as booking. A new time closes a "released" note. */
+export async function changeOneToOne(user: Who, groupId: string, i: ChangeInput) {
+  await assertOneToOne(user, groupId)
+  const g = await prisma.classSection.findUniqueOrThrow({ where: { id: groupId }, select: { id: true, campusId: true, className: true, sectionName: true, levelId: true, maxStudents: true, scheduleSlots: true, sessionMinutes: true, subjectOfferings: { where: { teacherId: { not: null } }, orderBy: { createdAt: 'desc' }, take: 1, select: { id: true, teacherId: true } } } })
+  const force = !!i.force && user.role === 'SUPER_ADMIN'
+  const slots = i.slots ? toSlots(i.slots) : g.scheduleSlots
+  const minutes = i.minutes !== undefined ? i.minutes : g.sessionMinutes
+  if (i.slots && g.levelId) {
+    const bad = firstNotAllowed(cleanSlots(slots), (await levelModes(g.levelId)).modes)
+    if (bad) throw new OneToOneError(`${MODE_LABEL[bad.mode ?? 'BRANCH'].en} sessions are not allowed for this level · طريقة «${MODE_LABEL[bad.mode ?? 'BRANCH'].ar}» مش مسموحة للمستوى ده`, 409, 'MODE_NOT_ALLOWED')
+  }
+  if (i.slots || i.minutes !== undefined) {
+    const room = await checkGroupSlots({ id: g.id, campusId: g.campusId, maxStudents: g.maxStudents, minutes }, slots)
+    if (room && !force) throw new OneToOneError(room, 409, 'ROOM_PROBLEM')
+  }
+  const teacherId = i.teacherId ?? g.subjectOfferings[0]?.teacherId
+  if (teacherId) {
+    const problem = await checkTeacherForGroup(teacherId, { ...g, scheduleSlots: slots, sessionMinutes: minutes })
+    if (problem && !force) throw new OneToOneError(problem, 409, 'TEACHER_PROBLEM')
+  }
+  await prisma.classSection.update({ where: { id: groupId }, data: { ...(i.slots && { scheduleSlots: slots as unknown as Prisma.InputJsonValue, shiftId: await resolveShiftId(null, slots) }), ...(i.minutes !== undefined && { sessionMinutes: i.minutes }) } })
+  const offering = g.subjectOfferings[0]
+  if ((i.teacherId || i.teacherRate !== undefined) && offering) {
+    await prisma.subjectOffering.update({ where: { id: offering.id }, data: { ...(i.teacherId && { teacherId: i.teacherId }), ...(i.teacherRate !== undefined && { overrideOneToOnePerSession: i.teacherRate }) } })
+  } else if (i.teacherId) {
+    const [y, l] = await Promise.all([getActiveAcademicYear(), g.levelId ? prisma.level.findUnique({ where: { id: g.levelId }, select: { subjectId: true } }) : null])
+    if (y && l) await prisma.subjectOffering.create({ data: { academicYearId: y.id, classSectionId: g.id, subjectId: l.subjectId, teacherId: i.teacherId } })
+  }
+  if (i.slots) await prisma.oneToOneEvent.updateMany({ where: { classSectionId: groupId, kind: 'RELEASE', state: 'OPEN' }, data: { state: 'DONE' } })
+  return { changed: true }
 }

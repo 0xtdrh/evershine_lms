@@ -70,6 +70,7 @@ export async function runDailyJobs(opts: { forceSummary?: boolean } = {}) {
   await step('treasury', async () => (await import('@/lib/treasury/sync')).syncMovements(true))
   await step('announcements', async () => (await import('@/lib/announcements/engine')).deliverDue(true))
   await step('oneToOneOffers', async () => (await import('@/lib/one-to-one/requests')).sweepOffers())
+  await step('oneToOneHolds', async () => (await import('@/lib/one-to-one/sessions')).sweepHolds())
   await step('monthClose', async () => (await import('@/lib/month-close/engine')).autoCloseLastMonth())
   return out
 }

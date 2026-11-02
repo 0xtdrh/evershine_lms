@@ -17,7 +17,8 @@ import { notifyFamilies, notifyUsers, usersWithPermission } from '@/lib/notifica
 import { OneToOneError } from './engine'
 import { getOneToOneSettings } from './settings'
 import { KIND_ONE_TO_ONE } from './rules'
-import { noShowDays, postponeProblem } from './request-rules'
+import { holdOver, noShowDays, postponeProblem } from './request-rules'
+import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
 
 type Who = { id: string; role: string; campusId?: string | null }
 const DAY = /^\d{4}-\d{2}-\d{2}$/
@@ -37,12 +38,14 @@ async function groupOf(id: string) {
 
 /** The coming sessions of One-to-Ones. */
 export async function upcomingOf(groupIds: string[], days = 75) {
-  const out = new Map<string, { date: string; time: string; mode: string }[]>()
+  const out = new Map<string, { date: string; time: string; mode: string; minutes: number | null }[]>()
   if (!groupIds.length) return out
   const today = cairoToday()
+  const lengths = await prisma.oneToOneEvent.findMany({ where: { classSectionId: { in: groupIds }, kind: 'MINUTES', date: { gte: date(today) } }, select: { classSectionId: true, date: true, minutes: true } })
   for (const g of await occurrencesFor({ groupIds }, today, inDays(today, days))) {
+    const own = new Map(lengths.filter((l) => l.classSectionId === g.id).map((l) => [ymd(l.date), l.minutes]))
     out.set(g.id, // a One-to-One that has not had its first session yet shows as NOT_STARTED
-      g.occurrences.filter((o) => (o.status === 'SCHEDULED' || o.status === 'NOT_STARTED') && !!o.time).map((o) => ({ date: o.date, time: o.time, mode: o.mode })).slice(0, 8))
+      g.occurrences.filter((o) => (o.status === 'SCHEDULED' || o.status === 'NOT_STARTED') && !!o.time).map((o) => ({ date: o.date, time: o.time, mode: o.mode, minutes: own.get(o.date) ?? null })).slice(0, 8))
   }
   return out
 }
@@ -220,4 +223,40 @@ export async function assertStaffEvent(user: Who, id: string) {
 export async function closeEvent(user: Who, id: string) {
   await assertStaffEvent(user, id)
   await prisma.oneToOneEvent.update({ where: { id }, data: { state: 'DONE' } })
+}
+
+/** Change the length of one coming session (the level's and the One-to-One's length stay). */
+export async function setSessionLength(actorId: string, groupId: string, day: string, minutes: number | null) {
+  await groupOf(groupId)
+  await prisma.oneToOneEvent.deleteMany({ where: { classSectionId: groupId, kind: 'MINUTES', date: date(day) } })
+  if (minutes) await prisma.oneToOneEvent.create({ data: { classSectionId: groupId, date: date(day), kind: 'MINUTES', state: 'DONE', minutes, createdById: actorId } })
+}
+
+/** The family asks for another time or instructor; the staff do it. */
+export async function askChange(userId: string, groupId: string, note: string) {
+  const g = await groupOf(groupId)
+  if (await prisma.oneToOneEvent.count({ where: { classSectionId: groupId, kind: 'CHANGE', state: 'OPEN' } })) throw new OneToOneError('A request is already waiting · فيه طلب مستني', 409, 'ALREADY_ASKED')
+  await prisma.oneToOneEvent.create({ data: { classSectionId: groupId, date: date(cairoToday()), kind: 'CHANGE', state: 'OPEN', note: note.slice(0, 300), createdById: userId } })
+  await notifyUsers(await usersWithPermission('one_to_one', 'create', g.campusId), 'ONE_TO_ONE_REQUEST', { title: 'One-to-One: the family asks for a change', message: `${g.className}: ${note}`.slice(0, 180), titleAr: 'One-to-One: الأهل طالبين تغيير', messageAr: `${g.className}: ${note}`.slice(0, 180), relatedId: groupId })
+}
+
+/** A finished cycle nobody renewed gives up its fixed time after the hold days (daily job). */
+export async function sweepHolds() {
+  const settings = await getOneToOneSettings()
+  const today = cairoToday()
+  const groups = await prisma.classSection.findMany({ where: { kind: KIND_ONE_TO_ONE, status: 'ACTIVE', isActive: true, NOT: { scheduleSlots: { equals: Prisma.DbNull } } }, select: { id: true, className: true, campusId: true, cycleSessions: true, scheduleSlots: true, level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } }, enrollments: { where: { status: 'ACTIVE' }, select: { studentId: true } } } })
+  let released = 0
+  for (const g of groups) {
+    if (!g.level || !cleanSlots(g.scheduleSlots).length) continue
+    const held = await prisma.enrollmentAttendanceRecord.findMany({ where: { studentEnrollment: { classSectionId: g.id } }, select: { attendanceDate: true }, distinct: ['attendanceDate'], orderBy: { attendanceDate: 'desc' } })
+    if (held.length < sessionsPerCycle(g.level, g.cycleSessions) || !holdOver(ymd(held[0].attendanceDate), today, settings.holdDays)) continue
+    await prisma.$transaction([
+      prisma.classSection.update({ where: { id: g.id }, data: { scheduleSlots: Prisma.DbNull } }),
+      prisma.oneToOneEvent.create({ data: { classSectionId: g.id, date: date(today), kind: 'RELEASE', state: 'OPEN', note: 'Not renewed in time' } }),
+    ])
+    await notifyFamilies(g.enrollments.map((e) => e.studentId), 'ONE_TO_ONE_SESSION', (st) => ({ title: 'One-to-One: the fixed time is no longer held', message: `${st.firstName}: the cycle ended and was not renewed in time. Please contact the branch.`, titleAr: 'One-to-One: الميعاد الثابت اتلغى', messageAr: `${st.firstName}: الدورة خلصت وماتجددتش في الوقت. كلم الفرع.`, relatedId: g.id }))
+    await notifyUsers(await usersWithPermission('one_to_one', 'create', g.campusId), 'ONE_TO_ONE_REQUEST', { title: 'One-to-One: fixed time released', message: g.className, titleAr: 'One-to-One: الميعاد الثابت اتلغى', messageAr: g.className, relatedId: g.id })
+    released++
+  }
+  return released
 }
