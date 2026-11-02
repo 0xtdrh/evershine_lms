@@ -10,6 +10,7 @@
  *   opening and every file is logged (LessonView). Parents see what was learned (titles + objectives), read-only.
  */
 
+import { lockMessage, type AccessState } from '@/lib/recorded/rules'
 import { canSeeGroup } from '@/lib/places/server'
 import { Prisma, type Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
@@ -41,7 +42,7 @@ async function loadGroup(groupId: string) {
   return prisma.classSection.findUnique({
     where: { id: groupId },
     select: {
-      id: true, className: true, sectionName: true, campusId: true, status: true, startDate: true, currentCycleNumber: true,
+      id: true, className: true, sectionName: true, campusId: true, status: true, startDate: true, currentCycleNumber: true, kind: true,
       curriculumEditionId: true, curriculumVariantId: true, lessonUnlockMode: true, levelId: true,
       cycleSessions: true, level: { select: { id: true, name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, lessonUnlockMode: true, subject: { select: { name: true } } } },
     },
@@ -75,7 +76,7 @@ export async function resolveEdition(g: Group) {
 }
 
 export interface GroupLessons {
-  group: { id: string; label: string; status: string; cycleNumber: number; levelId: string | null; levelName: string; courseName: string }
+  group: { id: string; kind: string; label: string; status: string; cycleNumber: number; levelId: string | null; levelName: string; courseName: string }
   edition: { id: string; number: number } | null
   /** newest published version of the level when it is newer than the group's (managers can move the group) */
   newerEdition?: { id: string; number: number } | null
@@ -86,6 +87,8 @@ export interface GroupLessons {
   perCycle: number
   range: { from: number; to: number }
   heldCount: number
+  /** a02 M4: a recorded course's access; null otherwise */
+  access?: { state: string; plan: string | null; endsAt: Date | null; applied: number } | null
   sessions: (SessionState & { id: string; titleEn: string; titleAr: string; objectivesEn: string | null; objectivesAr: string | null; durationMin: number | null; scheduledAt: string | null; override: 'OPEN' | 'LOCKED' | null; gate: SessionGate | null; lockedReason: { en: string; ar: string } | null })[]
 }
 
@@ -98,7 +101,7 @@ export async function groupLessons(groupId: string, opts: { studentId?: string }
   const modeSource = isUnlockMode(g.lessonUnlockMode) ? 'GROUP' : isUnlockMode(g.level.lessonUnlockMode) ? 'LEVEL' : 'COMPANY'
   const perCycle = sessionsPerCycle(g.level, g.cycleSessions)
   const base = {
-    group: { id: g.id, label: `${g.className} ${g.sectionName}`.trim(), status: g.status, cycleNumber: g.currentCycleNumber, levelId: g.levelId, levelName: g.level.name, courseName: g.level.subject?.name ?? '' },
+    group: { id: g.id, kind: g.kind, label: `${g.className} ${g.sectionName}`.trim(), status: g.status, cycleNumber: g.currentCycleNumber, levelId: g.levelId, levelName: g.level.name, courseName: g.level.subject?.name ?? '' },
     mode, modeSource, perCycle, defaultMode: effectiveMode(null, g.level.lessonUnlockMode, settings.unlockMode),
   } as const
   const edition = await resolveEdition(g)
@@ -146,8 +149,16 @@ export async function groupLessons(groupId: string, opts: { studentId?: string }
     scheduledStarts: startsByNo, overrides, completed, gateBlocked, studentOpened, now: new Date(),
   })
   const offset = (Math.max(1, g.currentCycleNumber) - 1) * perCycle
+  // a02 M4: a recorded course locks when it is not paid or the subscription ended (the progress stays)
+  let access: Awaited<ReturnType<typeof import('@/lib/recorded/engine').recordedAccess>> = null
+  let accessLock: { en: string; ar: string } | null = null
+  if (g.kind === 'RECORDED') {
+    access = await (await import('@/lib/recorded/engine')).recordedAccess(g.id)
+    if (opts.studentId && access) accessLock = lockMessage(access.state as AccessState)
+  }
   return {
     ...base,
+    access,
     edition: { id: edition.id, number: edition.number },
     newerEdition: await (async () => {
       // a newer version of the SAME curriculum only
@@ -161,10 +172,11 @@ export async function groupLessons(groupId: string, opts: { studentId?: string }
       const blocker = st.blockedBy != null ? gates.get(st.blockedBy) : undefined
       return {
         ...s, ...st,
+        ...(accessLock && { open: false }),
         scheduledAt: s.number > offset ? startsByNo[s.number - offset] ?? null : null,
         override: overrides[s.number] ?? null,
         gate: gates.get(s.number)?.gate ?? null,
-        lockedReason: st.blockedBy != null ? gateMessage(st.blockedBy, gateMissing.get(st.blockedBy) ?? [], blocker?.gate ?? null) : null,
+        lockedReason: accessLock ?? (st.blockedBy != null ? gateMessage(st.blockedBy, gateMissing.get(st.blockedBy) ?? [], blocker?.gate ?? null) : null),
       }
     }),
   }
@@ -356,6 +368,7 @@ export async function studentLessonsOverview(studentId: string) {
   for (const id of groupIds) {
     const gl = await groupLessons(id, { studentId })
     if (!gl?.edition) continue
+    if (gl.group.kind === 'RECORDED') await (await import('@/lib/recorded/engine')).tryCertificate(studentId, id) // a timed-out or reviewed exam
     const sessionIds = gl.sessions.map((s) => s.id)
     const blocks = await prisma.curriculumBlock.findMany({ where: { sessionId: { in: sessionIds } }, select: { id: true, sessionId: true, audience: true } })
     const done = new Set((await prisma.lessonProgress.findMany({ where: { studentId, sessionId: { in: sessionIds } }, select: { blockId: true } })).map((p) => p.blockId))
@@ -436,6 +449,7 @@ export async function setProgress(studentId: string, groupId: string, blockId: s
       update: {},
     })
   } else await prisma.lessonProgress.deleteMany({ where: { studentId, blockId } })
+  if (done && access.group?.group.kind === 'RECORDED') await (await import('@/lib/recorded/engine')).tryCertificate(studentId, groupId)
   return { ok: true }
 }
 

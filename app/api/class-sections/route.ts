@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
   const sections = await prisma.classSection.findMany({
     where: {
       isActive: true,
+      NOT: { kind: 'RECORDED' }, // a02 M4: no sessions to mark
       ...(teacherSectionIds && { id: { in: teacherSectionIds } }),
       ...(scopedCampus && { campusId: scopedCampus }),
       ...(searchParams.get('batchId') && { batchId: searchParams.get('batchId')! }),

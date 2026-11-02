@@ -116,6 +116,7 @@ const COUNTERS: Record<TaskKey, (c: Ctx) => Promise<number>> = {
     return rows.filter((r) => ok.has(r.classSectionId)).length
   },
   oneToOneNoTeacher: async (c) => prisma.classSection.count({ where: { kind: 'ONE_TO_ONE', status: 'ACTIVE', isActive: true, ...(c.places.all ? {} : { campusId: inIds(c.places.campusIds) }), subjectOfferings: { some: { teacher: { isActive: false } } } } }),
+  recordedEnding: async (c) => prisma.classSection.count({ where: { kind: 'RECORDED', isActive: true, accessPlan: 'SUBSCRIPTION', accessEndsAt: { gte: new Date(), lt: new Date(Date.now() + 7 * 86_400_000) }, ...(c.places.all ? {} : { campusId: inIds(c.places.campusIds) }) } }),
   oneToOneOffers: async (c) => (c.teacherId ? prisma.oneToOneRequest.count({ where: { state: 'OFFERED', teacherId: c.teacherId } }) : 0),
   sessionsWithoutRoom: async (c) => {
     const places = await prisma.campus.findMany({ where: { roomMode: 'FIXED', isActive: true, ...(c.places.all ? {} : { id: inIds(c.places.campusIds) }) }, select: { id: true } })

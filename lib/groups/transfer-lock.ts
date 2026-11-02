@@ -28,6 +28,7 @@ export function cleanLocks(v: Partial<TransferLocks> | null | undefined): Transf
 
 /** Why this move is closed, or null. */
 export function transferLockReason(l: TransferLocks, from: LockSide, to: LockSide): string | null {
+  if (from.kind === 'RECORDED' || to.kind === 'RECORDED') return 'A recorded course is not moved like a group · الكورس المسجل مش بيتنقل زي الجروب'
   if (l.all) return 'Moving students between groups is closed · نقل الطلاب بين الجروبات مقفول'
   for (const s of [from, to]) {
     if (l.kinds.includes(s.kind)) return s.kind === 'ONE_TO_ONE' ? 'Moving to or from a One-to-One is closed · النقل من وإلى One-to-One مقفول' : 'Moving between normal groups is closed · النقل بين الجروبات العادية مقفول'
@@ -53,7 +54,6 @@ async function side(groupId: string): Promise<LockSide | null> {
 /** The reason this move is closed by the setting, or null. */
 export async function transferClosed(fromId: string, toId: string): Promise<string | null> {
   const l = await getTransferLocks()
-  if (!l.all && !l.kinds.length && !l.modes.length && !l.campusIds.length && !l.partnerIds.length) return null
   const [a, b] = await Promise.all([side(fromId), side(toId)])
   return a && b ? transferLockReason(l, a, b) : null
 }

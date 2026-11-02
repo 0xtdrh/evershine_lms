@@ -16,7 +16,7 @@ import { Markdown } from '@/components/curriculum/BlockView'
 import { BookOpen, CheckCircle2, Loader2, Lock } from 'lucide-react'
 
 interface StudentSession { id: string; number: number; titleEn: string; titleAr: string; open: boolean; current: boolean; inThisGroup: boolean; items: number; done: number; lockedReason?: { en: string; ar: string } | null }
-interface StudentGroup { group: { id: string; label: string; courseName: string; levelName: string; status: string }; edition: { number: number } | null; sessions: StudentSession[] }
+interface StudentGroup { group: { id: string; label: string; courseName: string; levelName: string; status: string }; edition: { number: number } | null; access?: { state: string; endsAt: string | null } | null; sessions: StudentSession[] }
 interface ParentGroup { group: { id: string; label: string; courseName: string; levelName: string }; total: number; sessions: { number: number; titleEn: string; titleAr: string; objectivesEn: string | null; objectivesAr: string | null; items: number; done: number }[] }
 interface MyData { mode: 'STUDENT' | 'PARENT'; kidMode?: boolean; groups: (StudentGroup | ParentGroup)[] }
 interface Child { id: string; firstName: string; lastName: string }
@@ -32,6 +32,7 @@ function StudentView({ groups, kid }: { groups: StudentGroup[]; kid: boolean }) 
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{g.group.courseName} — {g.group.levelName}</CardTitle>
               <p className="text-xs text-slate-500">{g.group.label} · {t('les.progress', { done: open.filter((s) => s.items > 0 && s.done >= s.items).length, total: g.sessions.length })}</p>
+              {g.access?.endsAt && <p className="text-xs text-slate-500">{pick('Subscription until', 'الاشتراك لحد')} {new Date(g.access.endsAt).toLocaleDateString(pick('en-GB', 'ar-EG-u-nu-latn'), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Africa/Cairo' })}</p>}
             </CardHeader>
             <CardContent className={`grid gap-2 ${kid ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
               {g.sessions.map((s) => {

@@ -2228,6 +2228,12 @@ model ClassSection {
   curriculumEditionId       String?
   /// a02 (2026-10-31): curriculum chosen for this group: null = automatic (by place / way), "MAIN" = the main one, else a CurriculumVariant id
   curriculumVariantId       String?
+  /// a02 M4: RECORDED = a student alone in a recorded course. access*: SUBSCRIPTION | ONE_TIME, days, end, invoice period, periods paid
+  accessPlan                String?           @db.VarChar(12)
+  accessDays                Int?
+  accessEndsAt              DateTime?
+  accessPeriod              Int?
+  accessApplied             Int?
   /// a02 M3 (2026-11-01): GROUP | ONE_TO_ONE. A One-to-One is stored as a group of 1 (or 2 siblings) so attendance, invoices,
   /// lessons and pay are shared, but it never shows on the Groups screens
   kind                      String            @default("GROUP") @db.VarChar(12)
@@ -5276,6 +5282,24 @@ model SessionModeOverride {
   createdAt      DateTime @default(now())
 
   @@unique([classSectionId, date])
+}
+
+/// a02 M4 batch 1: a level sold as a recorded course (its curriculum is the course).
+model RecordedCourse {
+  id                String   @id @default(cuid())
+  levelId           String   @unique
+  subscriptionPrice Decimal? @db.Decimal(10, 2)
+  subscriptionDays  Int?
+  oneTimePrice      Decimal? @db.Decimal(10, 2)
+  /// ALL | PREVIOUS
+  openMode          String   @default("ALL") @db.VarChar(10)
+  /// the certificate needs the final exam
+  examRequired      Boolean  @default(true)
+  /// the certificate shows at once; else it stays hidden until revealed
+  autoReveal        Boolean  @default(false)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 /// a02 M1 follow-up: one session of a group in another room, on that date only.

@@ -79,9 +79,11 @@ async function context(studentId: string, groupId: string, blockId: string) {
   const allowed = attemptsAllowed(qb.data)
   const used = attempts.filter((a) => !a.paper).length
   const active = attempts.find((a) => a.status === 'IN_PROGRESS') ?? null
-  const check = canStart({ now: new Date(), used, allowed, hasActive: !!active, needsOpen: needsInstructorOpen(qb.data), isOpen: !!win?.open, closesAt: win?.closesAt ?? null })
-  const closed = (needsInstructorOpen(qb.data) && !!win && !win.open) || (!!win?.closesAt && win.closesAt < new Date())
-  return { ...qb, attempts, win, allowed, used, active, check, closed }
+  // a02 M4: a recorded course has no instructor to open the exam
+  const needsOpen = access.group?.group.kind !== 'RECORDED' && needsInstructorOpen(qb.data)
+  const check = canStart({ now: new Date(), used, allowed, hasActive: !!active, needsOpen, isOpen: !!win?.open, closesAt: win?.closesAt ?? null })
+  const closed = (needsOpen && !!win && !win.open) || (!!win?.closesAt && win.closesAt < new Date())
+  return { ...qb, attempts, win, allowed, used, active, check, closed, needsOpen }
 }
 
 /** May the student see the correct answers of a finished attempt? */
@@ -131,7 +133,7 @@ export async function studentQuiz(studentId: string, groupId: string, blockId: s
     ok: true,
     value: {
       blockId, groupId, titleEn: ctx.b.titleEn, titleAr: ctx.b.titleAr, quiz: quizSummary(ctx.data), scoring: ctx.data.scoring,
-      used: ctx.used, allowed: ctx.allowed, canStart: ctx.check, open: !!ctx.win?.open, needsOpen: needsInstructorOpen(ctx.data),
+      used: ctx.used, allowed: ctx.allowed, canStart: ctx.check, open: !!ctx.win?.open, needsOpen: ctx.needsOpen,
       result: quizScore(graded, ctx.data.scoring),
       attempts: ctx.attempts.filter((a) => a.status !== 'IN_PROGRESS').map((a) => attemptForStudent(a, ctx.data, showKey)),
       active: ctx.active ? attemptForStudent(ctx.active, ctx.data, false) : null,
@@ -195,6 +197,7 @@ export async function saveAttempt(studentId: string, attemptId: string, answers:
   try {
     if (done.status === 'GRADED') await prisma.lessonProgress.upsert({ where: { studentId_blockId: { studentId, blockId: a.blockId } }, create: { studentId, blockId: a.blockId, sessionId: a.sessionId, classSectionId: a.classSectionId }, update: {} })
   } catch { /* progress is a nice-to-have */ }
+  if (done.status === 'GRADED') await (await import('@/lib/recorded/engine')).tryCertificate(studentId, a.classSectionId)
   return { ok: true, value: { status: done.status, score: done.score } }
 }
 
@@ -291,6 +294,7 @@ export async function reviewAttempt(user: { id: string; role: string; campusId?:
   if (detail.some((d) => d.review)) return fail('INVALID', 'Give points to every written-code answer')
   const score = Math.round(detail.reduce((s, d) => s + d.points, 0) * 100) / 100
   await prisma.quizAttempt.update({ where: { id: a.id }, data: { detail: detail as unknown as Prisma.InputJsonValue, score, manualScore: score, needsReview: false, status: 'GRADED', feedback: feedback?.trim().slice(0, 5000) || null, gradedById: user.id, gradedAt: new Date() } })
+  await (await import('@/lib/recorded/engine')).tryCertificate(a.studentId, a.classSectionId)
   return { ok: true, value: { score } }
 }
 

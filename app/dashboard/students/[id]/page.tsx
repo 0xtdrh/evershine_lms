@@ -246,6 +246,11 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               <Button variant="outline" size="sm">👤 {L('Book One-to-One', 'حجز One-to-One')}</Button>
             </Link>
           )}
+          {can('recorded_courses', 'create') && (
+            <Link href={`/dashboard/recorded?student=${id}`}>
+              <Button variant="outline" size="sm">▶ {L('Recorded course', 'كورس مسجل')}</Button>
+            </Link>
+          )}
           {/* P1: passport (stamps, printing) — read by every staff role that may see the student */}
           {can('passport', 'read') && (
             <Link href={`/dashboard/passport?s=${id}`}>

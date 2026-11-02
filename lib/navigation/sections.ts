@@ -15,7 +15,7 @@ export const HUBS: { key: HubKey; en: string; ar: string; items: string[] }[] = 
   { key: 'admissions', en: 'Admissions', ar: 'التسجيل', items: ['Admissions', 'Landing Leads'] },
   { key: 'students', en: 'Students', ar: 'الطلاب', items: ['Students', 'My Students', 'Waiting List', 'Follow-ups', 'Renewals', 'Absence Excuses', 'Birthdays'] },
   { key: 'groups', en: 'Groups', ar: 'الجروبات', items: ['Groups', 'One-to-One', 'Groups Schedule', 'Attendance', 'Student Attendance', 'Import Attendance', 'Holidays', 'Attendance Report'] },
-  { key: 'learning', en: 'Learning', ar: 'التعليم', items: ['LMS', 'Level Results', 'LMS Results', 'Passport & Stamps', 'Session Reports', 'Course Structure', 'Grading Weights'] },
+  { key: 'learning', en: 'Learning', ar: 'التعليم', items: ['LMS', 'Recorded Courses', 'Level Results', 'LMS Results', 'Passport & Stamps', 'Session Reports', 'Course Structure', 'Grading Weights'] },
   { key: 'certificates', en: 'Certificates & documents', ar: 'الشهادات والمستندات', items: ['ID Cards', 'Certificate Designer', 'Certificate Reveal', 'Documents'] },
   { key: 'staff', en: 'Instructors & staff', ar: 'المدربين والموظفين', items: ['Staff Directory', 'Absence Requests', 'Leaves', 'Staff Salaries', 'HR & Salary', 'Instructor Performance', 'Substitute Reconciliation'] },
   { key: 'money', en: 'Money', ar: 'الفلوس', items: ['Accounting Hub', 'Fees', 'Fee Collection', 'Accounts & Cash', 'Fees & Charges', 'Wallet & Top-ups', 'Discounts', 'Refunds', 'Expense Ledger', 'Month Close', 'Financial Reports', 'Groups Financials'] },

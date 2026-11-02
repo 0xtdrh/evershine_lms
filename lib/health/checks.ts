@@ -19,7 +19,7 @@ const gName = (g: { className: string; sectionName: string; campus?: { name: str
 async function run(p: Places): Promise<HealthCheck[]> {
   const sw = studentWhere(p), gw = groupWhere(p)
   const activeStudent = { enrollmentStatus: 'ACTIVE' as const, ...sw }
-  const activeGroup = { status: 'ACTIVE' as const, isActive: true, ...gw }
+  const activeGroup = { status: 'ACTIVE' as const, isActive: true, NOT: { kind: 'RECORDED' }, ...gw } // a02 M4: a recorded course has no instructor or schedule
   const stuSel = { id: true, firstName: true, lastName: true, registrationNumber: true }
   const grpSel = { id: true, className: true, sectionName: true, campus: { select: { name: true } } }
   const out: HealthCheck[] = []

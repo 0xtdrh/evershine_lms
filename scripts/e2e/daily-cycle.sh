@@ -2633,6 +2633,91 @@ M "UPDATE CurriculumSession SET allowedModes='[\"BRANCH\"]' WHERE id='$ES'"
 check "a curriculum session for the branch only: that session cannot go online" "$(api POST /api/groups/$GG3/session-mode "{\"date\":\"$GTU\",\"mode\":\"ONLINE\"}" | jq_ "d['error']['code']")" "MODE_NOT_ALLOWED"
 M "UPDATE CurriculumSession SET allowedModes=NULL WHERE id='$ES'"
 check "…with no such rule it can" "$(api POST /api/groups/$GG3/session-mode "{\"date\":\"$GTU\",\"mode\":\"ONLINE\"}" | jq_ "d['success']")" "True"
+echo "== 81. Recorded courses: subscription, lock, progress, exam, certificate (a02 M4 batch 1, 2026-11-02)"
+api PUT /api/platform/settings '{"modules":{"lms":true}}' >/dev/null
+api POST /api/levels "{\"subjectId\":\"$SAC\",\"name\":\"Recorded Basics\",\"order\":5,\"numberOfMonths\":1,\"numberOfSessions\":2,\"pricingType\":\"FULL_LEVEL\",\"fullLevelPrice\":999}" >/dev/null
+RL=$(M "SELECT id FROM Level WHERE name='Recorded Basics'")
+RE=$(api POST /api/curriculum/levels/$RL '{"notes":"recorded"}' | jq_ "d['data']['id']")
+RS1=$(M "SELECT id FROM CurriculumSession WHERE editionId='$RE' AND number=1"); RS2=$(M "SELECT id FROM CurriculumSession WHERE editionId='$RE' AND number=2")
+RB1=$(api POST /api/curriculum/sessions/$RS1/blocks '{"type":"TEXT","data":{"textEn":"one","textAr":"واحد"}}' | jq_ "d['data']['id']")
+RB2=$(api POST /api/curriculum/sessions/$RS2/blocks '{"type":"TEXT","data":{"textEn":"two","textAr":"اتنين"}}' | jq_ "d['data']['id']")
+check "a secretary cannot change the catalogue" "$(secapi POST /api/recorded/courses "{\"levelId\":\"$RL\",\"oneTimePrice\":1}" | jq_ "d['success']")" "False"
+check "a course needs a price" "$(api POST /api/recorded/courses "{\"levelId\":\"$RL\"}" | jq_ "d['success']")" "False"
+check "a subscription needs its days" "$(api POST /api/recorded/courses "{\"levelId\":\"$RL\",\"subscriptionPrice\":300}" | jq_ "d['success']")" "False"
+check "course saved: subscription 300 for 30 days, one-time 500, exam required by default" "$(api POST /api/recorded/courses "{\"levelId\":\"$RL\",\"subscriptionPrice\":300,\"subscriptionDays\":30,\"oneTimePrice\":500}" | jq_ "(float(d['data']['subscriptionPrice']), d['data']['subscriptionDays'], float(d['data']['oneTimePrice']), d['data']['examRequired'], d['data']['autoReveal'])")" "(300.0, 30, 500.0, True, False)"
+RCOURSE() { api GET /api/recorded/courses | jq_ "[c['hasExam'] for c in d['data'] if c['levelId']=='$RL'][0]"; }
+check "the catalogue warns: the exam is required and there is none yet" "$(RCOURSE)" "False"
+RF=$(api POST /api/curriculum/sessions/$RS2/blocks '{"type":"QUIZ","titleEn":"Final","data":{"kind":"FINAL","attempts":3,"passMark":60,"questions":[{"id":"s1","type":"SINGLE","textEn":"Pick A","options":[{"id":"a","textEn":"A"},{"id":"b","textEn":"B"}],"correct":["a"],"points":1}]}}' | jq_ "d['data']['id']")
+M "UPDATE CurriculumSession SET titleEn=CONCAT('Rec ',number) WHERE editionId='$RE' AND titleEn=''"
+api PATCH /api/curriculum/editions/$RE '{"action":"submit"}' >/dev/null
+check "curriculum published" "$(api PATCH /api/curriculum/editions/$RE '{"action":"publish"}' | jq_ "d['data']['status']")" "PUBLISHED"
+check "…now the catalogue sees the exam" "$(RCOURSE)" "True"
+RK=$(mkstu RecKid 01066660311 RecDad 01066660319); RK2=$(mkstu RecTwo 01066660312 RecDad2 01066660318); RK3=$(mkstu RecThree 01066660313 RecDad3 01066660317)
+RENROL() { api POST /api/recorded "{\"studentId\":\"$1\",\"campusId\":\"$CAMPUS\",\"levelId\":\"$RL\",\"plan\":\"$2\"}"; }
+check "a secretary of another place cannot enrol there" "$(secapi POST /api/recorded "{\"studentId\":\"$RK\",\"campusId\":\"$DOTHER\",\"levelId\":\"$RL\",\"plan\":\"SUBSCRIPTION\"}" | jq_ "d['success']")" "False"
+RG=$(RENROL $RK SUBSCRIPTION | jq_ "d['data']['groupId']")
+check "enrolled: one invoice of 300, kind RECORDED, one student, no instructor" "$(M "SELECT CONCAT(kind,'/',maxStudents,'/',cycleSessions) FROM ClassSection WHERE id='$RG'")/$(M "SELECT COUNT(*) FROM FeeInvoice WHERE classSectionId='$RG'")/$(M "SELECT ROUND(totalAmount) FROM FeeInvoice WHERE classSectionId='$RG'")/$(M "SELECT COUNT(*) FROM SubjectOffering WHERE classSectionId='$RG'")" "RECORDED/1/2/1/300/0"
+check "the same student cannot take it twice" "$(RENROL $RK SUBSCRIPTION | jq_ "d['error']['code']")" "ALREADY"
+check "not on the Groups page or the attendance list" "$(api GET /api/groups | jq_ "'$RG' in str(d)")/$(api GET /api/class-sections | jq_ "'$RG' in str(d)")" "False/False"
+check "data health does not call it a group without an instructor" "$(api GET /api/data-health | jq_ "'$RG' in str(d)")" "False"
+RKR=$(api POST /api/students/$RK/portal-password '{"target":"student"}'); RKJ=$(mktemp); login_jar "$(echo "$RKR" | jq_ "d['data']['loginId']")" "$(echo "$RKR" | jq_ "d['data']['password']")" "$RKJ" 10.0.3.81
+rget() { curl -s -b "$RKJ" "$B$1"; }
+RTICK() { curl -s -b "$RKJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$RG\",\"blockId\":\"$1\",\"done\":true}" $B/api/lessons/progress; }
+RMY() { rget /api/lessons/my | jq_ "[(s['open'], s['lockedReason']['en'] if s['lockedReason'] else None) for g in d['data']['groups'] if g['group']['id']=='$RG' for s in g['sessions']][0]"; }
+check "not paid: closed, with the reason" "$(RMY)" "(False, 'Opens when the invoice is paid')"
+check "…the lesson itself is refused" "$(rget "/api/lessons/$RS1?g=$RG" | jq_ "d['error']['code']")" "LOCKED"
+check "…and ticking too" "$(RTICK $RB1 | jq_ "d['success']")" "False"
+check "…and the exam" "$(curl -s -b "$RKJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$RG\",\"blockId\":\"$RF\"}" $B/api/quizzes/item | jq_ "d['success']")" "False"
+pay "$(invid $RK $RG)" 300 >/dev/null
+check "paid: all lessons open" "$(rget /api/lessons/my | jq_ "[s['open'] for g in d['data']['groups'] if g['group']['id']=='$RG' for s in g['sessions']]")" "[True, True]"
+check "the 30 days start from the payment" "$(M "SELECT DATEDIFF(accessEndsAt, UTC_TIMESTAMP()) BETWEEN 29 AND 30 FROM ClassSection WHERE id='$RG'")" "1"
+check "the student sees until when" "$(rget /api/lessons/my | jq_ "[g['access']['state'] for g in d['data']['groups'] if g['group']['id']=='$RG'][0]")" "OPEN"
+check "lesson opens and a tick counts" "$(rget "/api/lessons/$RS1?g=$RG" | jq_ "d['success']")/$(RTICK $RB1 | jq_ "d['success']")" "True/True"
+RLIST() { api GET /api/recorded | jq_ "[$1 for r in d['data'] if r['id']=='$2'][0]"; }
+check "staff list: progress 1 of 3 (2 lessons + the exam)" "$(RLIST "(r['state'], r['progress']['done'], r['progress']['total'], r['progress']['pct'])" $RG)" "('OPEN', 1, 3, 33)"
+RTICK $RB2 >/dev/null
+check "the exam starts with no instructor to open it" "$(curl -s -b "$RKJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$RG\",\"blockId\":\"$RF\"}" $B/api/quizzes/item | jq_ "d['success']")/$(rget "/api/quizzes/item?g=$RG&b=$RF" | jq_ "d['data']['needsOpen']")" "True/False"
+RA=$(rget "/api/quizzes/item?g=$RG&b=$RF" | jq_ "d['data']['active']['id']")
+RPUT() { curl -s -b "$RKJ" -X PUT -H 'Content-Type: application/json' -d "$2" $B/api/quizzes/attempts/$1; }
+RPUT $RA '{"answers":{"s1":"b"},"submit":true}' >/dev/null
+RCERT() { M "SELECT COUNT(*) FROM Certificate WHERE studentId='$1' AND remarks='RECORDED:$RL'"; }
+check "failed the exam: every lesson done, no certificate" "$(RLIST "(r['progress']['done'], r['progress']['examScore'], r['progress']['certificate'])" $RG)/$(RCERT $RK)" "(3, 0, None)/0"
+curl -s -b "$RKJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$RG\",\"blockId\":\"$RF\"}" $B/api/quizzes/item >/dev/null
+RA=$(rget "/api/quizzes/item?g=$RG&b=$RF" | jq_ "d['data']['active']['id']")
+RPUT $RA '{"answers":{"s1":"a"},"submit":true}' >/dev/null
+check "passed: the certificate is made, hidden, with a TN-CERT number" "$(RCERT $RK)/$(M "SELECT CONCAT(isRevealed,'/',type,'/',LEFT(certificateNumber,8)) FROM Certificate WHERE studentId='$RK' AND remarks='RECORDED:$RL'")" "1/0/COMPLETION/TN-CERT-"
+check "…the student sees it only as waiting to be revealed" "$(rget /api/certificates/mine | jq_ "[c['isRevealed'] for c in d['data'] if c['remarks']=='RECORDED:$RL']")" "[False]"
+rget /api/lessons/my >/dev/null; RTICK $RB1 >/dev/null
+check "…and never a second one" "$(RCERT $RK)" "1"
+M "UPDATE ClassSection SET accessEndsAt=UTC_TIMESTAMP() - INTERVAL 1 DAY WHERE id='$RG'"
+check "subscription ended: closed, says the progress is kept" "$(RMY)" "(False, 'The subscription ended; renew it to continue. Your progress is kept.')"
+check "…the progress really is kept" "$(M "SELECT COUNT(*) FROM LessonProgress WHERE studentId='$RK' AND classSectionId='$RG'")" "3"
+RK4=$(mkstu RecFour 01066660314 RecDad4 01066660316); RG4=$(api POST /api/recorded "{\"studentId\":\"$RK4\",\"campusId\":\"$DOTHER\",\"levelId\":\"$RL\",\"plan\":\"SUBSCRIPTION\"}" | jq_ "d['data']['groupId']")
+check "a secretary of another place cannot renew or see it" "$(secapi POST /api/recorded/$RG4/renew '{}' | jq_ "d['success']")/$(secapi GET /api/recorded | jq_ "'$RG4' in str(d)")" "False/False"
+check "renew: a new invoice, still closed until it is paid" "$(api POST /api/recorded/$RG/renew '{}' | jq_ "d['data']['period']")/$(M "SELECT COUNT(*) FROM FeeInvoice WHERE classSectionId='$RG'")/$(RMY)" "2/2/(False, 'The subscription ended; renew it to continue. Your progress is kept.')"
+check "…no second renewal before it is paid" "$(api POST /api/recorded/$RG/renew '{}' | jq_ "d['error']['code']")" "NOT_PAID"
+pay "$(M "SELECT id FROM FeeInvoice WHERE classSectionId='$RG' AND cycleNumber=2")" 300 >/dev/null
+check "…paid: open again for 30 days from today" "$(rget /api/lessons/my | jq_ "[s['open'] for g in d['data']['groups'] if g['group']['id']=='$RG' for s in g['sessions']]")/$(M "SELECT DATEDIFF(accessEndsAt, UTC_TIMESTAMP()) BETWEEN 29 AND 30 FROM ClassSection WHERE id='$RG'")" "[True, True]/1"
+M "UPDATE ClassSection SET accessEndsAt=UTC_TIMESTAMP() + INTERVAL 62 HOUR WHERE id='$RG'"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "daily job: the family hears 3 days before the end, in Arabic" "$(M "SELECT COUNT(*) FROM Notification n JOIN Guardian g ON g.userId=n.userId WHERE g.phoneNumber='01066660319' AND n.titleAr='الاشتراك قرب يخلص'")" "1"
+check "today list counts subscriptions ending this week" "$(api GET /api/today | jq_ "[t['count'] for t in d['data']['tasks'] if t['key']=='recordedEnding'][0]>=1")" "True"
+RG2=$(RENROL $RK2 ONE_TIME | jq_ "d['data']['groupId']")
+pay "$(invid $RK2 $RG2)" 500 >/dev/null
+RSTATE() { api GET /api/recorded | jq_ "[r['state'] for r in d['data'] if r['id']=='$1'][0]"; }
+check "one-time purchase: open with no end date" "$(RSTATE $RG2)/$(M "SELECT accessEndsAt IS NULL FROM ClassSection WHERE id='$RG2'")" "OPEN/1"
+check "…it has nothing to renew" "$(api POST /api/recorded/$RG2/renew '{}' | jq_ "d['success']")" "False"
+M "UPDATE FeeInvoice SET refundedAmount=paidAmount WHERE classSectionId='$RG2'"
+check "…all the money refunded: closed" "$(RSTATE $RG2)" "NOT_PAID"
+M "UPDATE FeeInvoice SET refundedAmount=0 WHERE classSectionId='$RG2'"
+api POST /api/recorded/courses "{\"levelId\":\"$RL\",\"subscriptionPrice\":300,\"subscriptionDays\":30,\"oneTimePrice\":0,\"examRequired\":false,\"autoReveal\":true}" >/dev/null
+RG3=$(RENROL $RK3 ONE_TIME | jq_ "d['data']['groupId']")
+check "a free course: open at once, no invoice" "$(RSTATE $RG3)/$(M "SELECT COUNT(*) FROM FeeInvoice WHERE classSectionId='$RG3'")" "OPEN/0"
+RK3R=$(api POST /api/students/$RK3/portal-password '{"target":"student"}'); RK3J=$(mktemp); login_jar "$(echo "$RK3R" | jq_ "d['data']['loginId']")" "$(echo "$RK3R" | jq_ "d['data']['password']")" "$RK3J" 10.0.3.82
+for b in $RB1 $RB2 $RF; do curl -s -b "$RK3J" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$RG3\",\"blockId\":\"$b\",\"done\":true}" $B/api/lessons/progress >/dev/null; done
+check "exam not required + show at once: the certificate is visible when the lessons end" "$(M "SELECT isRevealed FROM Certificate WHERE studentId='$RK3' AND remarks='RECORDED:$RL'")/$(curl -s -b "$RK3J" $B/api/certificates/mine | jq_ "str(d).count('TN-CERT')>0")" "1/True"
+check "a recorded course is not moved like a group" "$(api POST /api/students/$RK/transfer "{\"fromClassSectionId\":\"$RG\",\"toClassSectionId\":\"$GG3\",\"creditTo\":\"WALLET\"}" | jq_ "'not moved like a group' in str(d)")" "True"
+rm -f "$RKJ" "$RK3J"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
