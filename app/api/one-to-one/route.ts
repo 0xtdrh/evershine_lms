@@ -8,7 +8,7 @@ import { z } from 'zod'
 import { createdResponse, errors, successResponse } from '@/lib/api-response'
 import { MODES } from '@/lib/delivery/modes'
 import { book, listOneToOne, type BookInput } from '@/lib/one-to-one/engine'
-import { httpCtx, oneToOneError, oneToOneUser } from '@/lib/one-to-one/http'
+import { oneToOneError, oneToOneUser } from '@/lib/one-to-one/http'
 import { PLANS } from '@/lib/one-to-one/rules'
 import { withMonthLock } from '@/lib/month-close/with-lock'
 
@@ -40,7 +40,7 @@ async function POST_(request: NextRequest) {
   if ('error' in u) return u.error
   const parsed = schema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return errors.validation(parsed.error)
-  try { return createdResponse(await book(u.user, httpCtx(request), parsed.data as BookInput)) } catch (e) { return oneToOneError(e) }
+  try { return createdResponse(await book(u.user, parsed.data as BookInput)) } catch (e) { return oneToOneError(e) }
 }
 
 // a03: it makes invoices

@@ -1,7 +1,8 @@
 /**
  * a02 M3 One-to-One — price list, who can teach it, booking, the list and what carries into the next cycle. Server-only.
- * Booking calls the SAME group routes the screens use (create, schedule, instructor, add student), so every rule applies:
- * where offered, allowed ways, rooms, instructor hours / clashes, invoices, wallet. Rules: lib/one-to-one/rules.ts.
+ * Booking applies the same rules as the group screens (where offered, allowed ways, rooms, instructor hours / clashes) and bills
+ * through the same invoice path (wallet too); it needs no group permission, so a parent's request or an instructor's accept can
+ * finish it. Rules: lib/one-to-one/rules.ts.
  */
 
 import { Prisma } from '@prisma/client'
@@ -9,11 +10,17 @@ import { prisma } from '@/lib/prisma'
 import { allowsCampus, canSeeGroup, canSeeStudent, groupWhere, loadPlaces, requestPlaces, teachersOfPlaceWhere } from '@/lib/places/server'
 import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
 import { teacherFreeFor } from '@/lib/teachers/availability'
-import { callRoute } from '@/lib/api/call-route'
-import { POST as createGroup } from '@/app/api/groups/route'
-import { PATCH as patchGroup } from '@/app/api/groups/[id]/route'
-import { POST as setInstructor } from '@/app/api/groups/[id]/instructor/route'
-import { POST as addStudent } from '@/app/api/groups/[id]/students/route'
+import { checkTeacherForGroup } from '@/lib/teachers/availability'
+import { checkGroupSlots } from '@/lib/rooms/engine'
+import { isLevelOfferedIn, levelModes } from '@/lib/delivery/catalog'
+import { firstNotAllowed } from '@/lib/delivery/templates'
+import { MODE_LABEL } from '@/lib/delivery/modes'
+import { cleanSlots } from '@/lib/groups/schedule-calendar'
+import { getActiveAcademicYear } from '@/lib/academic/engine'
+import { generateMissingCycleInvoices } from '@/lib/groups/generate-invoices'
+import { notifyJoinerHolidays } from '@/lib/notifications/session-events'
+import { resolveBatchId } from '@/lib/batches/default-batch'
+import { resolveShiftId } from '@/lib/shifts/default-shift'
 import { KIND_ONE_TO_ONE, SECTION_NAME, levelFinished, nameFor, pickPrice, quote, type Plan, type PriceRow } from './rules'
 import type { Mode } from '@/lib/delivery/modes'
 
@@ -93,7 +100,6 @@ export interface BookInput {
   studentIds: string[]; campusId: string; levelId: string; plan: Plan; sessions?: number | null
   slots: SlotInput[]; teacherId: string; payment?: 'FULL' | 'INSTALLMENTS'; teacherRate?: number | null; minutes?: number | null; force?: boolean
 }
-export interface HttpCtx { origin: string; cookie: string }
 
 async function freeName(campusId: string, base: string) {
   let name = base
@@ -101,55 +107,99 @@ async function freeName(campusId: string, base: string) {
   return name
 }
 
-/** Book a One-to-One: one student, or two siblings in the same level sharing the same session. */
-export async function book(user: Who, ctx: HttpCtx, i: BookInput) {
+/** Two students share a family? (same guardian or parent) */
+export async function areSiblings(a: string, b: string) {
+  const rows = await prisma.student.findMany({ where: { id: { in: [a, b] } }, select: { guardians: { select: { id: true } }, parents: { select: { id: true } } } })
+  if (rows.length !== 2) return false
+  const fam = (r: (typeof rows)[number]) => [...r.guardians.map((g) => g.id), ...r.parents.map((p) => p.id)]
+  const first = new Set(fam(rows[0]))
+  return fam(rows[1]).some((x) => first.has(x))
+}
+
+const toSlots = (slots: SlotInput[]) => slots.map((s) => ({ dayOfWeek: s.dayOfWeek, time: s.time, mode: s.mode ?? 'BRANCH', ...(s.roomId && { roomId: s.roomId }) }))
+
+/** A place that keeps rooms: give each branch session the first room that really is free (for requests nobody at the desk placed). */
+export async function pickRooms(campusId: string, slots: SlotInput[], seats: number): Promise<SlotInput[]> {
+  const campus = await prisma.campus.findUnique({ where: { id: campusId }, select: { roomMode: true, rooms: { where: { isActive: true }, select: { id: true } } } })
+  if (campus?.roomMode !== 'FIXED') return slots
+  const out = [...slots]
+  for (const [i, s] of out.entries()) {
+    if (s.roomId || (s.mode ?? 'BRANCH') !== 'BRANCH') continue
+    for (const r of campus.rooms) {
+      const tryThis = out.slice(0, i + 1).map((x, j) => (j === i ? { ...x, roomId: r.id } : x))
+      if (!(await checkGroupSlots({ id: '__new__', campusId, maxStudents: seats }, toSlots(tryThis)))) { out[i] = tryThis[i]; break }
+    }
+  }
+  return out
+}
+
+/**
+ * Makes the One-to-One: every rule of the group screens first (where offered, allowed ways, rooms, the instructor's hours and clashes),
+ * then group + instructor + students + invoices. Nothing is created when a rule refuses. Who may ask is checked by the caller.
+ */
+export async function createOneToOne(i: BookInput, actorId: string, opts: { sibling: boolean; force: boolean }) {
+  const students = await prisma.student.findMany({ where: { id: { in: i.studentIds } }, select: { id: true, firstName: true, lastName: true } })
+  const ordered = i.studentIds.map((id) => students.find((s) => s.id === id)).filter((s): s is (typeof students)[number] => !!s)
+  const level = await prisma.level.findUnique({ where: { id: i.levelId }, select: { name: true, subjectId: true } })
+  if (!level) throw new OneToOneError('Level not found', 404)
+  if (!(await isLevelOfferedIn(i.levelId, i.campusId))) throw new OneToOneError('This level is not offered in this place · المستوى ده مش متاح في المكان ده', 409, 'NOT_OFFERED')
+  const priced = pickPrice(await listPrices(i.levelId), i.campusId, i.plan, i.plan === 'SESSION' ? null : i.sessions ?? null)
+  if (!priced) throw new OneToOneError('This level has no One-to-One price for this plan yet · المستوى ده مالوش سعر One-to-One للنظام ده', 409, 'NO_PRICE')
+  const q = quote(priced, i.sessions ?? null, opts.sibling)
+  const slots = toSlots(i.slots)
+  const allowed = (await levelModes(i.levelId)).modes
+  const bad = firstNotAllowed(cleanSlots(slots), allowed)
+  if (bad) throw new OneToOneError(`${MODE_LABEL[bad.mode ?? 'BRANCH'].en} sessions are not allowed for this level · طريقة «${MODE_LABEL[bad.mode ?? 'BRANCH'].ar}» مش مسموحة للمستوى ده`, 409, 'MODE_NOT_ALLOWED')
+  const log = (action: string, problem: string) => prisma.auditLog.create({ data: { userId: actorId, action, entityType: 'ClassSection', entityId: 'one-to-one', changes: { problem } } }).catch(() => undefined)
+  const roomProblem = await checkGroupSlots({ id: '__new__', campusId: i.campusId, maxStudents: ordered.length }, slots)
+  if (roomProblem) {
+    if (!opts.force) throw new OneToOneError(roomProblem, 409, 'ROOM_PROBLEM')
+    await log('FORCE_ROOMS', roomProblem)
+  }
+  const className = await freeName(i.campusId, nameFor(ordered, level.name))
+  const teacher = await prisma.teacher.findUnique({ where: { id: i.teacherId }, select: { id: true } })
+  if (!teacher) throw new OneToOneError('Instructor not found', 404)
+  const teacherProblem = await checkTeacherForGroup(i.teacherId, { id: '__new__', className, sectionName: SECTION_NAME, campusId: i.campusId, scheduleSlots: slots })
+  if (teacherProblem) {
+    if (!opts.force) throw new OneToOneError(teacherProblem, 409, 'TEACHER_PROBLEM')
+    await log('FORCE_TEACHER', teacherProblem)
+  }
+  const activeYear = await getActiveAcademicYear()
+  if (!activeYear) throw new OneToOneError('No active academic year is set', 409)
+
+  const group = await prisma.classSection.create({
+    data: {
+      campusId: i.campusId, batchId: await resolveBatchId(i.campusId, null), shiftId: await resolveShiftId(null, slots),
+      className, sectionName: SECTION_NAME, levelId: i.levelId, maxStudents: ordered.length,
+      kind: KIND_ONE_TO_ONE, oneToOnePlan: i.plan, cycleSessions: q.sessions, priceOverride: q.amount, sessionMinutes: i.minutes ?? priced.minutes ?? null,
+      scheduleSlots: slots as unknown as Prisma.InputJsonValue,
+      requireFullPaymentToStart: i.payment !== 'INSTALLMENTS', installmentsAllowed: i.payment === 'INSTALLMENTS',
+    },
+  })
+  await prisma.subjectOffering.create({
+    data: { academicYearId: activeYear.id, classSectionId: group.id, subjectId: level.subjectId, teacherId: i.teacherId, ...(i.teacherRate != null && { overrideOneToOnePerSession: i.teacherRate }) },
+  })
+  for (const s of ordered) {
+    await prisma.studentEnrollment.create({ data: { studentId: s.id, academicYearId: activeYear.id, classSectionId: group.id, rollNumber: String(Math.floor(Math.random() * 9000) + 1000) } })
+    try { await generateMissingCycleInvoices(group.id, actorId, s.id) } catch (err) { console.error('[ONE_TO_ONE_INVOICE]', err) }
+    await notifyJoinerHolidays(s.id, group.id)
+  }
+  return { groupId: group.id, amountEach: q.amount, sessions: q.sessions, sibling: opts.sibling }
+}
+
+/** Staff book a One-to-One: one student, or two siblings in the same level sharing the same session. */
+export async function book(user: Who, i: BookInput) {
   const ids = [...new Set(i.studentIds)]
   if (ids.length < 1 || ids.length > 2) throw new OneToOneError('Choose one student, or two siblings for the same session')
   if (!i.slots.length) throw new OneToOneError('Choose the weekly time')
-  const students = await prisma.student.findMany({ where: { id: { in: ids } }, select: { id: true, firstName: true, lastName: true, guardians: { select: { id: true } }, parents: { select: { id: true } } } })
-  if (students.length !== ids.length) throw new OneToOneError('Student not found', 404)
-  for (const s of students) if (!(await canSeeStudent(user as never, s.id))) throw new OneToOneError('This student is not in your places', 403)
-  const sibling = students.length === 2
-  if (sibling) {
-    const fam = (s: (typeof students)[number]) => new Set([...s.guardians.map((g) => g.id), ...s.parents.map((p) => p.id)])
-    const a = fam(students[0])
-    if (![...fam(students[1])].some((x) => a.has(x))) throw new OneToOneError('These two students are not siblings. Book them separately.', 409, 'NOT_SIBLINGS')
+  if (!allowsCampus(await loadPlaces(user as never), i.campusId)) throw new OneToOneError('This place is not yours', 403)
+  for (const id of ids) {
+    if (!(await prisma.student.findUnique({ where: { id }, select: { id: true } }))) throw new OneToOneError('Student not found', 404)
+    if (!(await canSeeStudent(user as never, id))) throw new OneToOneError('This student is not in your places', 403)
   }
-  const level = await prisma.level.findUnique({ where: { id: i.levelId }, select: { name: true, numberOfSessions: true, numberOfMonths: true, pricingType: true } })
-  if (!level) throw new OneToOneError('Level not found', 404)
-  const priced = pickPrice(await listPrices(i.levelId), i.campusId, i.plan, i.plan === 'SESSION' ? null : i.sessions ?? null)
-  if (!priced) throw new OneToOneError('This level has no One-to-One price for this plan yet (One-to-One → Prices)', 409, 'NO_PRICE')
-  const q = quote(priced, i.sessions ?? null, sibling)
-
-  const call = (h: unknown, path: string, method: string, body: unknown, params?: Record<string, string>) => callRoute(h as never, ctx.origin, ctx.cookie, path, method, body, params)
-  const made = await call(createGroup, '/api/groups', 'POST', {
-    campusId: i.campusId, levelId: i.levelId, className: await freeName(i.campusId, nameFor(students, level.name)), sectionName: SECTION_NAME, maxStudents: students.length,
-    requireFullPaymentToStart: i.payment !== 'INSTALLMENTS', installmentsAllowed: i.payment === 'INSTALLMENTS',
-  })
-  if (!made.ok || !made.data) throw new OneToOneError(made.message, made.status, made.code)
-  const groupId = String(made.data.id)
-  try {
-    // before students join: their invoices read this price
-    await prisma.classSection.update({
-      where: { id: groupId },
-      data: { kind: KIND_ONE_TO_ONE, oneToOnePlan: i.plan, cycleSessions: q.sessions, priceOverride: q.amount, sessionMinutes: i.minutes ?? priced.minutes ?? null },
-    })
-    const sch = await call(patchGroup, `/api/groups/${groupId}`, 'PATCH', { scheduleSlots: i.slots.map((s) => ({ dayOfWeek: s.dayOfWeek, time: s.time, mode: s.mode ?? 'BRANCH', ...(s.roomId && { roomId: s.roomId }) })), ...(i.force && { forceRooms: true }) }, { id: groupId })
-    if (!sch.ok) throw new OneToOneError(sch.message, sch.status, sch.code)
-    const tch = await call(setInstructor, `/api/groups/${groupId}/instructor`, 'POST', { teacherId: i.teacherId, ...(i.force && { force: true }) }, { id: groupId })
-    if (!tch.ok) throw new OneToOneError(tch.message, tch.status, tch.code)
-    if (i.teacherRate != null) await prisma.subjectOffering.updateMany({ where: { classSectionId: groupId, teacherId: i.teacherId }, data: { overrideOneToOnePerSession: i.teacherRate } })
-  } catch (e) {
-    // nothing half-made stays behind (no student joined yet, so no invoice exists)
-    await prisma.subjectOffering.deleteMany({ where: { classSectionId: groupId } }).catch(() => {})
-    await prisma.classSection.delete({ where: { id: groupId } }).catch(() => {})
-    throw e
-  }
-  for (const s of students) {
-    const added = await call(addStudent, `/api/groups/${groupId}/students`, 'POST', { studentId: s.id }, { id: groupId })
-    if (!added.ok) throw new OneToOneError(`${s.firstName}: ${added.message}`, added.status, added.code)
-  }
-  return { groupId, amountEach: q.amount, sessions: q.sessions, sibling }
+  const sibling = ids.length === 2
+  if (sibling && !(await areSiblings(ids[0], ids[1]))) throw new OneToOneError('These two students are not siblings. Book them separately. · الاتنين مش إخوات، احجز لكل واحد لوحده', 409, 'NOT_SIBLINGS')
+  return createOneToOne({ ...i, studentIds: ids }, user.id, { sibling, force: !!i.force && user.role === 'SUPER_ADMIN' })
 }
 
 // ── the list ────────────────────────────────────────────────────────────────────────────────────────────────

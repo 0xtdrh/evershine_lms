@@ -5268,6 +5268,35 @@ model SessionModeOverride {
   @@unique([classSectionId, date])
 }
 
+/// a02 M3 batch 2: a parent asks for a One-to-One; it is offered to one qualified, free instructor at a time.
+/// state OFFERED (waiting for teacherId until expiresAt) | NO_TEACHER (staff must place it) | BOOKED | CANCELLED.
+model OneToOneRequest {
+  id                 String    @id @default(cuid())
+  studentId          String
+  siblingId          String?
+  campusId           String
+  levelId            String
+  plan               String    @db.VarChar(8)
+  sessions           Int?
+  slots              Json
+  preferredTeacherId String?
+  state              String    @default("OFFERED") @db.VarChar(12)
+  teacherId          String?
+  expiresAt          DateTime?
+  /// instructors who declined or did not answer
+  tried              Json?
+  groupId            String?
+  note               String?   @db.VarChar(300)
+  requestedById      String
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([state, expiresAt])
+  @@index([studentId])
+  @@index([teacherId, state])
+  @@index([campusId, state])
+}
+
 /// a02 M3: price list of One-to-One per level. scopeKey "ALL" = everywhere, else a campus id (a place row wins).
 /// plan MONTH (price of a month), PACKAGE (price of `sessions` sessions), SESSION (price of ONE session).
 /// siblingPrice = price per student when two siblings share the same session.

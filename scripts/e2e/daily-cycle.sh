@@ -2415,6 +2415,54 @@ NG=$(api POST /api/one-to-one/$OG/renew '{"force":true}' | jq_ "d['data']['newGr
 check "next cycle (Super Admin forced it): same kind, plan, sessions and price; the old one finished" "$(M "SELECT CONCAT(kind,'/',oneToOnePlan,'/',cycleSessions,'/',ROUND(priceOverride),'/',maxStudents,'/',levelId='$CVL') FROM ClassSection WHERE id='$NG'")/$(M "SELECT status FROM ClassSection WHERE id='$OG'")" "ONE_TO_ONE/SESSION/3/900/1/1/COMPLETED"
 check "the student is billed for the next cycle" "$(inv $OS1 $NG | cut -d/ -f1)" "900"
 check "the next cycle is not on the Groups list either" "$(api GET /api/groups | jq_ "any(g['id']=='$NG' for g in d['data'])")" "False"
+echo "== 76. One-to-One: parent request, instructor accepts or passes, staff place it (a02 M3 batch 2, 2026-11-02)"
+M "INSERT INTO TeacherQualifiedSubject (id,teacherId,levelId,createdAt) VALUES ('e2e-q-12','$CALT','$CVL',NOW())"
+M "UPDATE User SET allLocations=1 WHERE id=(SELECT userId FROM Teacher WHERE id='$CALT')"
+M "DELETE FROM TeacherWorkHours WHERE teacherId='$CALT'"
+OPG=$(M "SELECT A FROM _GuardianToStudent WHERE B='$OS1' LIMIT 1")
+OPW=$(api POST /api/students/$OS1/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$OPG\"}" | jq_ "d['data']['password']")
+OPJ=$(mktemp); login_jar 01000000752 "$OPW" "$OPJ" 10.0.3.76
+papi() { curl -s -b "$OPJ" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+TJ76=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ76" 10.0.3.77
+tapi() { curl -s -b "$TJ76" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+RS() { echo "[{\"dayOfWeek\":6,\"time\":\"$1\",\"mode\":\"BRANCH\"}]"; }
+RB() { echo "{\"studentId\":\"$1\",\"levelId\":\"$CVL\",\"plan\":\"SESSION\",\"sessions\":2,\"slots\":$(RS "$2")${3:-}}"; }
+check "the parent sees the level and its plans, and the sibling" "$(papi GET "/api/guardian-portal/one-to-one?studentId=$OS1" | jq_ "(any(l['id']=='$CVL' for l in d['data']['levels']), [s['id']=='$OS2' for s in d['data']['siblings']])")" "(True, [True])"
+check "another family's child is refused" "$(papi GET "/api/guardian-portal/one-to-one?studentId=$OS3" | jq_ "d['success']")" "False"
+check "staff cannot use the parent route" "$(api GET "/api/guardian-portal/one-to-one?studentId=$OS1" | jq_ "d['success']")" "False"
+check "the parent sees how many are free, not who" "$(papi GET "/api/guardian-portal/one-to-one?studentId=$OS1&levelId=$CVL&slots=%5B%7B%22dayOfWeek%22%3A6%2C%22time%22%3A%2207%3A00%22%7D%5D" | jq_ "(d['data']['available']>=2, d['data']['teachers'])")" "(True, [])"
+check "not a sibling: refused" "$(papi POST /api/guardian-portal/one-to-one "$(RB $OS1 07:00 ",\"siblingId\":\"$OS3\"")" | jq_ "d['error']['code']")" "NOT_SIBLINGS"
+NOLV=$(M "SELECT id FROM Level WHERE id<>'$CVL' AND id NOT IN (SELECT levelId FROM TeacherQualifiedSubject WHERE levelId IS NOT NULL) LIMIT 1")
+api POST /api/one-to-one/prices "{\"levelId\":\"$NOLV\",\"plan\":\"SESSION\",\"price\":100}" >/dev/null
+check "no instructor free for that level: refused at once, no request kept" "$(papi POST /api/guardian-portal/one-to-one "{\"studentId\":\"$OS1\",\"levelId\":\"$NOLV\",\"plan\":\"SESSION\",\"sessions\":1,\"slots\":$(RS 07:00)}" | jq_ "d['error']['code']")/$(M "SELECT COUNT(*) FROM OneToOneRequest WHERE levelId='$NOLV'")" "NO_TEACHER/0"
+R1=$(papi POST /api/guardian-portal/one-to-one "$(RB $OS1 07:00)" | jq_ "d['data']['id']")
+check "the request goes to one instructor, with a deadline" "$(M "SELECT CONCAT(state,'/',teacherId='$CALT',' ',expiresAt>NOW()) FROM OneToOneRequest WHERE id='$R1'")" "OFFERED/1 1"
+check "no second request for the same level while one waits" "$(papi POST /api/guardian-portal/one-to-one "$(RB $OS1 08:40)" | jq_ "d['error']['code']")" "ALREADY_ASKED"
+check "the instructor sees it (no surname of the child) + a task today + a notification" "$(tapi GET /api/teacher-portal/one-to-one-offers | jq_ "[(o['students'], o['id']=='$R1') for o in d['data']]")/$(tapi GET /api/today | jq_ "any(t['key']=='oneToOneOffers' for t in d['data']['tasks'])")/$(M "SELECT COUNT(*)>0 FROM Notification WHERE type='ONE_TO_ONE_OFFER' AND relatedId='$R1'")" "[(['Oneboy'], True)]/True/1"
+check "he declines: it goes to the next instructor" "$(tapi POST /api/teacher-portal/one-to-one-offers/$R1 '{"accept":false}' | jq_ "d['data']['booked']")/$(M "SELECT CONCAT(state,'/',teacherId='$EW') FROM OneToOneRequest WHERE id='$R1'")" "False/OFFERED/1"
+check "it is no longer his to answer" "$(tapi POST /api/teacher-portal/one-to-one-offers/$R1 '{"accept":true}' | jq_ "d['error']['code']")" "OFFER_GONE"
+M "UPDATE OneToOneRequest SET expiresAt=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 MINUTE) WHERE id='$R1'"
+check "no answer in time and nobody left: staff must place it, and see a task" "$(api GET /api/one-to-one/requests | jq_ "[(r['state'], r['triedCount']) for r in d['data'] if r['id']=='$R1']")/$(api GET /api/today | jq_ "any(t['key']=='oneToOneRequests' for t in d['data']['tasks'])")" "[('NO_TEACHER', 2)]/True"
+check "staff place it with an instructor: booked, invoice made, family told" "$(api PATCH /api/one-to-one/requests/$R1 "{\"action\":\"assign\",\"teacherId\":\"$CALT\"}" | jq_ "d['success']")/$(M "SELECT state FROM OneToOneRequest WHERE id='$R1'")/$(M "SELECT COUNT(*) FROM FeeInvoice i JOIN OneToOneRequest r ON r.groupId=i.classSectionId WHERE r.id='$R1' AND i.studentId='$OS1' AND i.subtotal=600")/$(M "SELECT COUNT(*)>0 FROM Notification WHERE type='ONE_TO_ONE_BOOKED' AND relatedId='$R1'")" "True/BOOKED/1/1"
+R2=$(papi POST /api/guardian-portal/one-to-one "$(RB $OS2 08:40)" | jq_ "d['data']['id']")
+check "the instructor accepts: booked on his schedule, not on the Groups list" "$(tapi POST /api/teacher-portal/one-to-one-offers/$R2 '{"accept":true}' | jq_ "d['data']['booked']")/$(M "SELECT CONCAT(g.kind,'/',o.teacherId='$CALT') FROM OneToOneRequest r JOIN ClassSection g ON g.id=r.groupId JOIN SubjectOffering o ON o.classSectionId=g.id WHERE r.id='$R2'")/$(api GET /api/groups | jq_ "any(g['id']=='$(M "SELECT groupId FROM OneToOneRequest WHERE id='$R2'")' for g in d['data'])")" "True/ONE_TO_ONE/1/False"
+check "a booked request cannot be cancelled by the parent" "$(papi DELETE /api/guardian-portal/one-to-one/$R2 | jq_ "d['success']")" "False"
+R3=$(papi POST /api/guardian-portal/one-to-one "$(RB $OS1 10:20 ",\"siblingId\":\"$OS2\"")" | jq_ "d['data']['id']")
+check "two siblings in one request; the parent can cancel while it waits" "$(M "SELECT siblingId='$OS2' FROM OneToOneRequest WHERE id='$R3'")/$(papi DELETE /api/guardian-portal/one-to-one/$R3 | jq_ "d['success']")/$(M "SELECT state FROM OneToOneRequest WHERE id='$R3'")" "1/True/CANCELLED"
+check "the parent sees how each request stands" "$(papi GET "/api/guardian-portal/one-to-one?studentId=$OS1" | jq_ "sorted(r['state'] for r in d['data']['requests'])")" "['BOOKED', 'BOOKED', 'CANCELLED']"
+check "a secretary cannot change the company settings" "$(secapi PUT /api/one-to-one/settings '{"replyHours":1}' | jq_ "d['success']")" "False"
+api PUT /api/one-to-one/settings '{"portalOpen":false}' >/dev/null
+check "portal closed: the parent cannot ask" "$(papi POST /api/guardian-portal/one-to-one "$(RB $OS1 12:00)" | jq_ "d['error']['code']")" "PORTAL_CLOSED"
+api PUT /api/one-to-one/settings '{"portalOpen":true,"assignWithoutAsking":true}' >/dev/null
+RM=$(M "SELECT roomMode FROM Campus WHERE id='$CAMPUS'")
+api PUT /api/places/$CAMPUS/rooms '{"roomMode":"FIXED"}' >/dev/null
+RMR=$(api POST /api/places/$CAMPUS/rooms '{"name":"E2E One Room","capacity":2,"kind":"CLASSROOM"}' | jq_ "d['data']['id']")
+R4=$(papi POST /api/guardian-portal/one-to-one "$(RB $OS1 12:00)" | jq_ "d['data']['id']")
+check "assign without asking: booked at once, and a place that keeps rooms gets a free room" "$(M "SELECT state FROM OneToOneRequest WHERE id='$R4'")/$(M "SELECT JSON_UNQUOTE(JSON_EXTRACT(g.scheduleSlots,'\$[0].roomId'))='$RMR' FROM OneToOneRequest r JOIN ClassSection g ON g.id=r.groupId WHERE r.id='$R4'")" "BOOKED/1"
+api PUT /api/places/$CAMPUS/rooms "{\"roomMode\":\"$RM\"}" >/dev/null
+api PUT /api/one-to-one/settings '{"assignWithoutAsking":false,"replyHours":24}' >/dev/null
+check "settings are kept, and reply hours stay in range" "$(api GET /api/one-to-one/settings | jq_ "(d['data']['replyHours'], d['data']['assignWithoutAsking'], d['data']['portalOpen'])")" "(24, False, True)"
+check "signed out: 401" "$(curl -s -o /dev/null -w '%{http_code}' "$B/api/teacher-portal/one-to-one-offers")" "401"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

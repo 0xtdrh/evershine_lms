@@ -45,6 +45,7 @@ describe('settings centre / reports centre / today (5-C)', () => {
       'app/api/fee-types/settings/route.ts': '/dashboard/fee-types',
       'app/api/lessons/settings/route.ts': '/dashboard/admin/lms',
       'app/api/notifications/settings/route.ts': '/dashboard/admin/notifications',
+      'app/api/one-to-one/settings/route.ts': '/dashboard/one-to-one',
       'app/api/passport/settings/route.ts': '/dashboard/admin/passport',
       'app/api/platform/settings/route.ts': '/dashboard/admin/platform',
       'app/api/profile/settings/route.ts': '/dashboard/admin/passport',

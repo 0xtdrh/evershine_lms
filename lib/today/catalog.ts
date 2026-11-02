@@ -12,12 +12,12 @@ export const TASK_KEYS = [
   // office / managers
   'admissions', 'leads', 'followUps', 'proofs', 'topUps', 'withdrawals', 'refunds', 'discounts', 'excuses',
   'complaintsLate', 'complaintsMine', 'absenceRequests', 'noSubstitute', 'leaves', 'missingAttendance',
-  'groupsToAdvance', 'renewalsUnanswered', 'waitingList', 'overdueInvoices', 'birthdays',
+  'groupsToAdvance', 'renewalsUnanswered', 'oneToOneRequests', 'waitingList', 'overdueInvoices', 'birthdays',
   // partners / learning
   'partnerStatements', 'partnerContracts', 'curriculumReview', 'announcementsToApprove', 'announcementsToConfirm',
   'cashCountsToApprove', 'transfersToApprove', 'cashBoxesNotCounted', 'moneyNotPlaced', 'budgetOver', 'cashForecastLow', 'bankNotReconciled', 'monthNotClosed', 'sessionsWithoutRoom',
   // instructors
-  'mySessionsToday', 'myMissingAttendance', 'homeworkToGrade', 'substituteRequests',
+  'mySessionsToday', 'myMissingAttendance', 'homeworkToGrade', 'substituteRequests', 'oneToOneOffers',
 ] as const
 export type TaskKey = (typeof TASK_KEYS)[number]
 
@@ -75,6 +75,8 @@ export const TASKS: TaskDef[] = [
   { key: 'bankNotReconciled', en: 'Bank / e-wallet movements older than a week not matched with the statement', ar: 'حركات بنك / محافظ عدّى عليها أسبوع ومش متطابقة مع الكشف', href: '/dashboard/treasury?tab=reconcile', perm: ['treasury', 'approve'], roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'] },
   { key: 'monthNotClosed', en: 'Last month is not closed yet (check it, then close it)', ar: 'الشهر اللي فات لسه متقفلش (راجعه واقفله)', href: '/dashboard/month-close', perm: ['month_close', 'create'], roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'] },
   { key: 'sessionsWithoutRoom', en: 'Branch sessions with no room yet (set it in the group schedule)', ar: 'حصص في الفرع لسه ملهاش قاعة (حددها من مواعيد الجروب)', href: '/reports/rooms', roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: ['class_sections', 'update'] },
+  { key: 'oneToOneRequests', en: 'One-to-One requests no instructor took (place them)', ar: 'طلبات One-to-One محدش من المدربين قبلها (حدد مدرب)', href: '/dashboard/one-to-one?tab=requests', urgent: true, perm: ['one_to_one', 'create'] },
+  { key: 'oneToOneOffers', en: 'One-to-One requests waiting for your answer', ar: 'طلبات One-to-One مستنية ردك', href: '/dashboard/teacher/one-to-one-offers', urgent: true, roles: ['TEACHER'] },
   { key: 'birthdays', en: 'Student birthdays today', ar: 'أعياد ميلاد طلاب النهارده', href: '/dashboard/birthdays', perm: ['birthdays', 'read'], roles: OFFICE },
 ]
 

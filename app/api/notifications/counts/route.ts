@@ -33,6 +33,12 @@ export async function GET() {
       /* never break the badge counts */
     }
   }
+  // a02 M3 batch 2: an offer nobody answered in time goes to the next instructor (the host only allows a daily cron).
+  try {
+    await (await import('@/lib/one-to-one/requests')).sweepOffers()
+  } catch {
+    /* never break the badge counts */
+  }
   // R1: session reports go out N hours after the session (everyone's poll helps; throttled to 2 min, sending is guarded).
   try {
     await (await import('@/lib/session-reports/engine')).sweepSessionReports()

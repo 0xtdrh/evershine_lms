@@ -10,6 +10,7 @@ import { UpcomingSessionsCard } from '@/components/portal/UpcomingSessionsCard'
 import { PortalIdCard } from '@/components/cards/PortalIdCard'
 import { AnnouncementFeed } from '@/components/announcements/AnnouncementFeed'
 import { ChildExcusesCard } from '@/components/portal/ChildExcusesCard'
+import { ChildOneToOneCard } from '@/components/portal/ChildOneToOneCard'
 import { AttendanceTimeline } from '@/components/attendance/AttendanceTimeline'
 import { StudentReportsList } from '@/components/reports/StudentReportsList'
 import { BirthdayBanner } from '@/components/birthdays/BirthdayBanner'
@@ -311,6 +312,7 @@ export default function MyChildrenPage() {
                 <TabsTrigger value="monitoring">{L('Monitoring', 'المتابعة')}</TabsTrigger>
                 <TabsTrigger value="fees">{L('Invoices', 'الفواتير')}</TabsTrigger>
                 <TabsTrigger value="excuses">{L('Absence excuse', 'اعتذار عن غياب')}</TabsTrigger>
+                <TabsTrigger value="one-to-one">One-to-One</TabsTrigger>
                 <TabsTrigger value="reports">{L('Reports', 'التقارير')}</TabsTrigger>
               </TabsList>
 
@@ -699,6 +701,9 @@ export default function MyChildrenPage() {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+              <TabsContent value="one-to-one" className="mt-4">
+                <ChildOneToOneCard studentId={childId} />
               </TabsContent>
               <TabsContent value="excuses" className="mt-4">
                 <ChildExcusesCard studentId={childId} childName={`${academic.student?.firstName ?? ''}`} />

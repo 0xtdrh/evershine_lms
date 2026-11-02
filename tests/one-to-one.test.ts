@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { levelFinished, nameFor, pickPrice, quote, type PriceRow } from '@/lib/one-to-one/rules'
 import { sessionRate } from '@/lib/teachers/online-pay'
 import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
+import { cleanOneToOneSettings, nextCandidate, suggestParentPresent } from '@/lib/one-to-one/request-rules'
 
 const r = (over: Partial<PriceRow>): PriceRow => ({ levelId: 'L', scopeKey: 'ALL', plan: 'MONTH', sessions: 4, price: 1000, siblingPrice: null, minutes: null, ...over })
 
@@ -50,5 +51,24 @@ describe('One-to-One (a02 M3)', () => {
     expect(sessionRate(rule, 'RECORDED', true)).toBeNull()
     expect(sessionRate(rule, 'BRANCH', false)).toBe(100)
     expect(sessionRate({ ...rule, oneToOnePerSession: null }, 'ONLINE', true)).toBe(80)
+  })
+  it('the next instructor: the one the parent prefers, never someone who passed', () => {
+    expect(nextCandidate(['a', 'b', 'c'], [], null)).toBe('a')
+    expect(nextCandidate(['a', 'b', 'c'], ['a'], null)).toBe('b')
+    expect(nextCandidate(['a', 'b', 'c'], [], 'c')).toBe('c')
+    expect(nextCandidate(['a', 'b'], ['b'], 'b')).toBe('a')
+    expect(nextCandidate(['a'], ['a'], null)).toBeNull()
+    expect(nextCandidate([], [], null)).toBeNull()
+  })
+  it('settings stay in range; missing ones take the default', () => {
+    expect(cleanOneToOneSettings({})).toMatchObject({ portalOpen: true, assignWithoutAsking: false, replyHours: 12, parentPresentUnderAge: 7 })
+    expect(cleanOneToOneSettings({ replyHours: 0 }).replyHours).toBe(1)
+    expect(cleanOneToOneSettings({ replyHours: 9999 }).replyHours).toBe(168)
+  })
+  it('suggest a parent stays: young child, online only, age known', () => {
+    expect(suggestParentPresent(5, [{ mode: 'ONLINE' }], 7)).toBe(true)
+    expect(suggestParentPresent(5, [{ mode: 'BRANCH' }], 7)).toBe(false)
+    expect(suggestParentPresent(9, [{ mode: 'ONLINE' }], 7)).toBe(false)
+    expect(suggestParentPresent(null, [{ mode: 'ONLINE' }], 7)).toBe(false)
   })
 })

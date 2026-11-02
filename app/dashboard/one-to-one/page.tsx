@@ -21,6 +21,7 @@ import { useUrlTab } from '@/hooks/use-url-tab'
 import { campusLabel } from '@/lib/places/label'
 import { Plus, Trash2, UserCheck } from 'lucide-react'
 import { PLAN_LABEL, quote, type Plan, type PriceRow } from '@/lib/one-to-one/rules'
+import type { OneToOneSettings } from '@/lib/one-to-one/request-rules'
 
 interface Row {
   id: string; status: string; plan: Plan | null; price: number | null; minutes: number | null
@@ -120,6 +121,83 @@ function Prices({ canEdit, ar }: { canEdit: boolean; ar: boolean }) {
         {rows && !rows.length && <p className="py-6 text-center text-sm text-slate-500">{L('No prices yet. Add one for each level.', 'لسه مفيش أسعار. ضيف سعر لكل مستوى.')}</p>}
       </div>
     </div>
+  )
+}
+
+interface Req {
+  id: string; state: string; plan: string; sessions: number | null; slots: { dayOfWeek: number; time: string; mode?: string }[]; note: string | null; expiresAt: string | null
+  campusId: string; levelId: string; level: string; place: string; teacher: string | null; triedCount: number; students: { id: string; name: string }[]
+}
+
+function RequestRow({ r, canAct, onDone, ar }: { r: Req; canAct: boolean; onDone: () => void; ar: boolean }) {
+  const [teacherId, setTeacherId] = useState('')
+  const open = r.state === 'OFFERED' || r.state === 'NO_TEACHER'
+  const slotsParam = encodeURIComponent(JSON.stringify(r.slots))
+  const { data: teachers } = useQuery({
+    queryKey: ['one-to-one-teachers', r.campusId, r.levelId, slotsParam],
+    queryFn: () => fetchApi<{ id: string; name: string }[]>(`/api/one-to-one/instructors?campusId=${r.campusId}&levelId=${r.levelId}&slots=${slotsParam}`),
+    enabled: canAct && open,
+  })
+  const act = useMutation({
+    mutationFn: (body: Record<string, unknown>) => fetchApi(`/api/one-to-one/requests/${r.id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    onSuccess: () => { notify.success(L('Done', 'تم')); onDone() }, onError: (e: Error) => notify.error(e.message),
+  })
+  const state = ({ OFFERED: L('Offered to an instructor', 'معروض على مدرب'), NO_TEACHER: L('No instructor took it: place it', 'محدش قبل: حدد مدرب'), BOOKED: L('Booked', 'اتحجز'), CANCELLED: L('Cancelled', 'اتلغى') } as Record<string, string>)[r.state] ?? r.state
+  return (
+    <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 pt-4 text-sm">
+      <div className="min-w-0 space-y-1">
+        <p className="font-semibold">👤 {r.students.map((s) => s.name).join(' + ')}</p>
+        <p className="text-slate-600">{r.level} · {r.place} · {planText(r.plan, ar)}{r.sessions ? ` (${r.sessions})` : ''}</p>
+        <p className="text-slate-600">{r.slots.map((s) => `${dayName(s.dayOfWeek)} ${s.time} (${way(s.mode)})`).join('، ')}</p>
+        <p className={`text-xs font-semibold ${r.state === 'NO_TEACHER' ? 'text-rose-700' : 'text-slate-500'}`}>{state}{r.teacher ? ` · ${r.teacher}` : ''}{r.triedCount ? ` · ${L(`${r.triedCount} passed`, `${r.triedCount} اعتذروا`)}` : ''}</p>
+        {r.note && <p className="text-xs text-slate-500">{r.note}</p>}
+      </div>
+      {canAct && open && (
+        <div className="flex flex-wrap items-center gap-2">
+          <select className={sel} value={teacherId} aria-label={L('Instructor', 'المدرب')} onChange={(e) => setTeacherId(e.target.value)}><option value="">{L('Instructor', 'المدرب')}</option>{(teachers ?? []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+          <Button size="sm" disabled={!teacherId || act.isPending} onClick={() => act.mutate({ action: 'assign', teacherId })}>{L('Book with him', 'احجز معاه')}</Button>
+          <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: 'cancel' })}>{L('Close', 'اقفل')}</Button>
+        </div>
+      )}
+    </CardContent></Card>
+  )
+}
+
+function Requests({ canAct, ar }: { canAct: boolean; ar: boolean }) {
+  const qc = useQueryClient()
+  const [all, setAll] = useState(false)
+  const { data, isLoading } = useQuery({ queryKey: ['one-to-one-requests', all], queryFn: () => fetchApi<Req[]>(`/api/one-to-one/requests${all ? '?all=1' : ''}`) })
+  return (
+    <div className="space-y-3">
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> {L('Show closed ones too', 'اعرض المقفولة كمان')}</label>
+      {isLoading && <p className="text-sm text-slate-500">{L('Loading…', 'بيحمّل…')}</p>}
+      {data && !data.length && <p className="py-8 text-center text-sm text-slate-500">{L('No requests waiting.', 'مفيش طلبات مستنية.')}</p>}
+      {(data ?? []).map((r) => <RequestRow key={r.id} r={r} canAct={canAct} ar={ar} onDone={() => { qc.invalidateQueries({ queryKey: ['one-to-one-requests'] }); qc.invalidateQueries({ queryKey: ['one-to-one'] }) }} />)}
+    </div>
+  )
+}
+
+function Settings() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['one-to-one-settings'], queryFn: () => fetchApi<OneToOneSettings>('/api/one-to-one/settings') })
+  const save = useMutation({
+    mutationFn: (patch: Partial<OneToOneSettings>) => fetchApi('/api/one-to-one/settings', { method: 'PUT', body: JSON.stringify(patch) }),
+    onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: ['one-to-one-settings'] }) }, onError: (e: Error) => notify.error(e.message),
+  })
+  if (!data) return null
+  const Check = ({ k, text }: { k: 'portalOpen' | 'assignWithoutAsking' | 'parentPicksInstructor'; text: string }) => (
+    <label className="flex items-center gap-2"><input type="checkbox" checked={data[k]} onChange={(e) => save.mutate({ [k]: e.target.checked })} /> {text}</label>
+  )
+  return (
+    <Card><CardContent className="space-y-3 pt-4 text-sm">
+      <Check k="portalOpen" text={L('Parents can ask from their portal', 'أولياء الأمور يقدروا يطلبوا من البوابة')} />
+      <Check k="assignWithoutAsking" text={L('Book with the first free instructor without asking him', 'احجز مع أول مدرب فاضي من غير ما تسأله')} />
+      <Check k="parentPicksInstructor" text={L('Parents may choose the instructor by name', 'ولي الأمر يقدر يختار المدرب بالاسم')} />
+      <label className="flex flex-wrap items-center gap-2">{L('Hours an instructor has to answer', 'عدد الساعات اللي المدرب يرد فيها')}
+        <Input key={`h${data.replyHours}`} type="number" min={1} max={168} className="h-9 w-20" defaultValue={data.replyHours} onBlur={(e) => { const v = Number(e.target.value); if (v && v !== data.replyHours) save.mutate({ replyHours: v }) }} /></label>
+      <label className="flex flex-wrap items-center gap-2">{L('Online: suggest a parent stays with a child younger than', 'أونلاين: اقترح وجود ولي الأمر لو الطالب سنه أقل من')}
+        <Input key={`a${data.parentPresentUnderAge}`} type="number" min={0} max={25} className="h-9 w-20" defaultValue={data.parentPresentUnderAge} onBlur={(e) => { const v = Number(e.target.value); if (v !== data.parentPresentUnderAge) save.mutate({ parentPresentUnderAge: v }) }} /></label>
+    </CardContent></Card>
   )
 }
 
@@ -241,10 +319,14 @@ export default function OneToOnePage() {
         <TabsList>
           <TabsTrigger value="list">{L('The list', 'القايمة')}</TabsTrigger>
           {can('one_to_one', 'create') && <TabsTrigger value="book">{L('New booking', 'حجز جديد')}</TabsTrigger>}
+          <TabsTrigger value="requests">{L('Parent requests', 'طلبات الأهالي')}</TabsTrigger>
           <TabsTrigger value="prices">{L('Prices', 'الأسعار')}</TabsTrigger>
+          {can('one_to_one', 'update') && <TabsTrigger value="settings">{L('Settings', 'الإعدادات')}</TabsTrigger>}
         </TabsList>
         <TabsContent value="list" className="mt-4"><List canRenew={can('one_to_one', 'update')} ar={ar} /></TabsContent>
         {can('one_to_one', 'create') && <TabsContent value="book" className="mt-4"><Book ar={ar} startStudent={startStudent} onDone={() => { qc.invalidateQueries({ queryKey: ['one-to-one'] }); setUrlTab('list') }} /></TabsContent>}
+        <TabsContent value="requests" className="mt-4"><Requests canAct={can('one_to_one', 'create')} ar={ar} /></TabsContent>
+        {can('one_to_one', 'update') && <TabsContent value="settings" className="mt-4"><Settings /></TabsContent>}
         <TabsContent value="prices" className="mt-4"><Prices canEdit={can('one_to_one', 'update')} ar={ar} /></TabsContent>
       </Tabs>
     </div>

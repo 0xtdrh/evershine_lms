@@ -190,6 +190,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Absence Requests', href: '/dashboard/absence-requests', icon: AlertOctagon, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'] },
   { name: 'Substitute Reconciliation', href: '/dashboard/reports/substitute-reconciliation', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'] },
   { name: 'My Schedule', href: '/dashboard/teacher/my-schedule', icon: CalendarClock, roles: ['TEACHER'] },
+  { name: 'One-to-One Requests', href: '/dashboard/teacher/one-to-one-offers', icon: UserCheck, roles: ['TEACHER'] },
   { name: 'My Calendar', href: '/dashboard/schedule', icon: CalendarDays, roles: ['TEACHER'] },
   { name: 'My Substitutions', href: '/dashboard/teacher/my-substitutions', icon: ClipboardList, roles: ['TEACHER'] },
   { name: 'Promotions',      href: '/dashboard/promotions',   icon: GraduationCap,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },

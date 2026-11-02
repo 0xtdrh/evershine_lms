@@ -108,6 +108,8 @@ const COUNTERS: Record<TaskKey, (c: Ctx) => Promise<number>> = {
   cashForecastLow: async (c) => (await import('@/lib/finance/engine')).forecastNegativeCount(c.user),
   bankNotReconciled: async (c) => prisma.moneyMovement.count({ where: { reconciledAt: null, date: { lt: new Date(Date.now() - 7 * 86_400_000), gte: new Date(Date.now() - 90 * 86_400_000) }, account: { kind: { not: 'CASH' }, ...(c.places.all ? {} : { campusId: inIds(c.places.campusIds) }) } } }),
   monthNotClosed: async (c) => (await import('@/lib/month-close/engine')).lastMonthOpenCount(c.user),
+  oneToOneRequests: async (c) => prisma.oneToOneRequest.count({ where: { state: 'NO_TEACHER', ...(c.places.all ? {} : { campusId: inIds(c.places.campusIds) }) } }),
+  oneToOneOffers: async (c) => (c.teacherId ? prisma.oneToOneRequest.count({ where: { state: 'OFFERED', teacherId: c.teacherId } }) : 0),
   sessionsWithoutRoom: async (c) => {
     const places = await prisma.campus.findMany({ where: { roomMode: 'FIXED', isActive: true, ...(c.places.all ? {} : { id: inIds(c.places.campusIds) }) }, select: { id: true } })
     const { bookingsAt } = await import('@/lib/rooms/engine')
