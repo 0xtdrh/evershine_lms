@@ -20,7 +20,7 @@ interface Suggestion {
   perSession: number
   sessionsCounted: number
   sessionsInCycle: number | null
-  basis: 'ATTENDED' | 'HELD'
+  basis: 'ATTENDED' | 'HELD' | 'OPENED'
   deduction: number
   adminFee: number
   suggested: number
@@ -94,7 +94,7 @@ export function RefundDialog({ invoiceId, open, onOpenChange }: { invoiceId: str
               <div className="flex justify-between"><span>{L('Paid on this invoice', 'المدفوع على الفاتورة دي')}</span><span className="font-mono">{money(s.netPaid)}</span></div>
               <div className="flex justify-between">
                 <span>
-                  {s.sessionsCounted} {L('session(s)', 'حصة')} {s.basis === 'HELD' ? L('held', 'اتعملت') : L('attended', 'حضرها')}
+                  {s.sessionsCounted} {L('session(s)', 'حصة')} {s.basis === 'OPENED' ? L('lesson(s) opened', 'درس اتفتح') : s.basis === 'HELD' ? L('held', 'اتعملت') : L('attended', 'حضرها')}
                   {s.sessionsInCycle ? ` × ${money(s.perSession)}` : ''}
                 </span>
                 <span className="font-mono">- {money(s.deduction)}</span>

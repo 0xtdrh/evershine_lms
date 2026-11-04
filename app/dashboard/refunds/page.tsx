@@ -172,10 +172,10 @@ function Rules({ canEdit }: { canEdit: boolean }) {
             <Select value={r.scopeType} onValueChange={(v) => set(i, { scopeType: v, scopeId: null })} disabled={!canEdit}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {['ALL', 'TRACK', 'COURSE', 'LEVEL', 'GROUP', 'ONE_TO_ONE', 'MODE', 'CAMPUS', 'PARTNER'].map((s) => <SelectItem key={s} value={s}>{({ ALL: L('Everywhere', 'كل حاجة'), TRACK: L('Track', 'مسار'), COURSE: L('Course', 'كورس'), LEVEL: L('Level', 'مستوى'), GROUP: L('Group', 'جروب'), ONE_TO_ONE: 'One-to-One', MODE: L('Online / branch', 'أونلاين / فرع'), CAMPUS: L('Place', 'مكان'), PARTNER: L('Partner', 'شريك') } as Record<string, string>)[s]}</SelectItem>)}
+                {['ALL', 'TRACK', 'COURSE', 'LEVEL', 'GROUP', 'ONE_TO_ONE', 'RECORDED', 'MODE', 'CAMPUS', 'PARTNER'].map((s) => <SelectItem key={s} value={s}>{({ ALL: L('Everywhere', 'كل حاجة'), TRACK: L('Track', 'مسار'), COURSE: L('Course', 'كورس'), LEVEL: L('Level', 'مستوى'), GROUP: L('Group', 'جروب'), ONE_TO_ONE: 'One-to-One', RECORDED: L('Recorded courses', 'الكورسات المسجلة'), MODE: L('Online / branch', 'أونلاين / فرع'), CAMPUS: L('Place', 'مكان'), PARTNER: L('Partner', 'شريك') } as Record<string, string>)[s]}</SelectItem>)}
               </SelectContent>
             </Select>
-            {r.scopeType !== 'ALL' && r.scopeType !== 'ONE_TO_ONE' ? (
+            {r.scopeType !== 'ALL' && r.scopeType !== 'ONE_TO_ONE' && r.scopeType !== 'RECORDED' ? (
               <Select value={r.scopeId ?? undefined} onValueChange={(v) => set(i, { scopeId: v })} disabled={!canEdit}>
                 <SelectTrigger className="sm:col-span-2"><SelectValue placeholder={L('Which one', 'أنهي واحد')} /></SelectTrigger>
                 <SelectContent>{listFor(r.scopeType).map((x) => <SelectItem key={x.id} value={x.id}>{x.name}</SelectItem>)}</SelectContent>

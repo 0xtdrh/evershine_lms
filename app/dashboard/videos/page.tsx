@@ -16,11 +16,16 @@ import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { ShieldCheck } from 'lucide-react'
 
-interface VideoRow { id: string; status: string; originalName: string; durationSec: number | null; sizeBytes: number | null; pieces: number | null; viewings: number; createdAt: string }
+interface VideoRow { id: string; status: string; originalName: string; durationSec: number | null; sizeBytes: number | null; pieces: number | null; viewings: number; uses: number; createdAt: string }
 interface WatchRow { studentId: string; name: string; registrationNumber: string | null; sessions: number; refused: number; ips: number; devices: number; keyFetches: number }
 interface Settings { deviceLimit: number; blockUnprotectedPaid: boolean }
 
-function Videos() {
+function Videos({ canEdit }: { canEdit: boolean }) {
+  const qc = useQueryClient()
+  const remove = useMutation({
+    mutationFn: (id: string) => fetchApi(`/api/videos/${id}`, { method: 'DELETE' }),
+    onSuccess: () => { notify.success(L('Removed', 'اتمسح')); qc.invalidateQueries({ queryKey: ['videos'] }) }, onError: (e: Error) => notify.error(e.message),
+  })
   const { data, isLoading } = useQuery({ queryKey: ['videos'], queryFn: () => fetchApi<VideoRow[]>('/api/videos') })
   return (
     <div className="space-y-2">
@@ -31,9 +36,10 @@ function Videos() {
         <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
           <div className="min-w-0">
             <p className="truncate font-semibold">{v.originalName}</p>
-            <p className="text-xs text-slate-500">{v.durationSec != null ? `${Math.floor(v.durationSec / 60)}:${String(v.durationSec % 60).padStart(2, '0')}` : ''}{v.sizeBytes ? ` · ${Math.round(v.sizeBytes / 1048576)} MB` : ''} · {L(`${v.viewings} viewings`, `${v.viewings} مشاهدة`)}</p>
+            <p className="text-xs text-slate-500">{v.durationSec != null ? `${Math.floor(v.durationSec / 60)}:${String(v.durationSec % 60).padStart(2, '0')}` : ''}{v.sizeBytes ? ` · ${Math.round(v.sizeBytes / 1048576)} MB` : ''} · {L(`${v.viewings} viewings`, `${v.viewings} مشاهدة`)} · {v.uses ? L(`in ${v.uses} lesson(s)`, `في ${v.uses} درس`) : L('not in any lesson', 'مش في أي درس')}</p>
           </div>
           <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${v.status === 'READY' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{v.status === 'READY' ? L('Ready', 'جاهز') : L('Not finished', 'الرفع ما خلصش')}</span>
+          {canEdit && !v.uses && <Button size="sm" variant="outline" disabled={remove.isPending} onClick={() => { if (window.confirm(L('Remove this video for good?', 'تمسح الفيديو ده نهائيًا؟'))) remove.mutate(v.id) }}>{L('Remove', 'امسح')}</Button>}
         </div>
       ))}
     </div>
@@ -93,7 +99,7 @@ export default function VideosPage() {
           <TabsTrigger value="watch">{L('Unusual watching', 'مشاهدة غير عادية')}</TabsTrigger>
           <TabsTrigger value="settings">{L('Settings', 'الإعدادات')}</TabsTrigger>
         </TabsList>
-        <TabsContent value="list" className="mt-4"><Videos /></TabsContent>
+        <TabsContent value="list" className="mt-4"><Videos canEdit={can('video_protection', 'update')} /></TabsContent>
         <TabsContent value="watch" className="mt-4"><Watching /></TabsContent>
         <TabsContent value="settings" className="mt-4"><SettingsCard canEdit={can('video_protection', 'update')} /></TabsContent>
       </Tabs>

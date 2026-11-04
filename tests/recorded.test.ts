@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { accessState, certificateReady, extendAccess, lockMessage, planOffer, progressPct } from '@/lib/recorded/rules'
+import { accessState, certificateReady, extendAccess, lessonsUsed, lockMessage, planOffer, progressPct } from '@/lib/recorded/rules'
 
 const at = (s: string) => new Date(s)
 
@@ -59,5 +59,21 @@ describe('recorded course offer', () => {
   it('percent', () => {
     expect(progressPct(1, 3)).toBe(33)
     expect(progressPct(0, 0)).toBe(0)
+  })
+})
+
+describe('lessons taken off a refund', () => {
+  const now = at('2026-11-03T10:00:00Z')
+  const base = { opened: 1, total: 4, plan: 'SUBSCRIPTION', cycle: 1, applied: 1, endsAt: at('2026-11-20T00:00:00Z') }
+  it('counts the lessons opened', () => {
+    expect(lessonsUsed(base, now)).toBe(1)
+    expect(lessonsUsed({ ...base, opened: 9 }, now)).toBe(4)
+  })
+  it('a period that is over counts as all of them', () => {
+    expect(lessonsUsed({ ...base, endsAt: at('2026-11-01T00:00:00Z') }, now)).toBe(4)
+    expect(lessonsUsed({ ...base, applied: 2 }, now)).toBe(4)
+  })
+  it('a one-time purchase only counts what was opened', () => {
+    expect(lessonsUsed({ ...base, plan: 'ONE_TIME', endsAt: null }, now)).toBe(1)
   })
 })

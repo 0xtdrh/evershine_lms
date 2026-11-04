@@ -163,12 +163,44 @@ export async function endViewing(token: string, userId: string) {
   await prisma.videoViewing.updateMany({ where: { tokenHash: hash(token), userId }, data: { expiresAt: new Date(), lastSeenAt: new Date(0) } })
 }
 
+/** How many lesson blocks use each video. */
+async function videoUses() {
+  const blocks = await prisma.curriculumBlock.findMany({ where: { type: 'VIDEO' }, select: { data: true } })
+  const uses = new Map<string, number>()
+  for (const b of blocks) { const id = (b.data as { protected?: { videoId?: string } })?.protected?.videoId; if (id) uses.set(id, (uses.get(id) ?? 0) + 1) }
+  return uses
+}
+
+/** Removes the pieces from the storage, then the row. If the storage refuses, the row stays so nothing is left behind unnoticed. */
+export async function removeVideo(id: string) {
+  const v = await prisma.protectedVideo.findUnique({ where: { id } })
+  if (!v) throw new VideoError('Video not found', 404)
+  if ((await videoUses()).get(id)) throw new VideoError('A lesson uses this video. Remove it from the lesson first · فيه درس بيستخدم الفيديو ده. شيله من الدرس الأول', 409, 'IN_USE')
+  if (v.provider === 'LOCAL') fs.rmSync(localDir(id), { recursive: true, force: true })
+  else {
+    try {
+      // a call removes up to 1000 files and says when more are left
+      for (let i = 0; i < 10; i++) {
+        const r = await cloudinary.api.delete_resources_by_prefix(`${v.folder}/`, { resource_type: 'raw', type: 'upload' })
+        if (!r.partial) break
+      }
+      await cloudinary.api.delete_folder(v.folder).catch(() => null)
+    } catch (e) {
+      console.error('[VIDEO_REMOVE]', e)
+      throw new VideoError('The storage did not remove the video. Try again · التخزين ما مسحش الفيديو، جرّب تاني', 502, 'STORAGE')
+    }
+  }
+  await prisma.videoViewing.deleteMany({ where: { videoId: id } })
+  await prisma.protectedVideo.delete({ where: { id } })
+}
+
 // ── reports ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 export async function listVideos() {
   const rows = await prisma.protectedVideo.findMany({ orderBy: { createdAt: 'desc' }, take: 200, select: { id: true, status: true, originalName: true, durationSec: true, sizeBytes: true, pieces: true, provider: true, createdAt: true } })
   const counts = await prisma.videoViewing.groupBy({ by: ['videoId'], where: { refused: false, videoId: { in: rows.map((r) => r.id) } }, _count: { _all: true } })
-  return rows.map((r) => ({ ...r, viewings: counts.find((c) => c.videoId === r.id)?._count._all ?? 0 }))
+  const uses = await videoUses()
+  return rows.map((r) => ({ ...r, viewings: counts.find((c) => c.videoId === r.id)?._count._all ?? 0, uses: uses.get(r.id) ?? 0 }))
 }
 
 /** Students to look at over the last `days` days. */
@@ -204,6 +236,7 @@ export async function videoDailyJob() {
     await notifyUsers(admins.map((a) => a.id), 'VIDEO_SUSPICIOUS', { title: 'Unusual video watching', message: `${flagged.length} student(s) to look at`, titleAr: 'مشاهدة فيديو غير عادية', messageAr: `عدد الطلاب اللي محتاجين مراجعة: ${flagged.length}` })
   }
   await prisma.videoViewing.deleteMany({ where: { startedAt: { lt: new Date(Date.now() - 90 * 86_400_000) } } })
-  await prisma.protectedVideo.deleteMany({ where: { status: 'UPLOADING', createdAt: { lt: new Date(Date.now() - 7 * 86_400_000) } } })
+  const stale = await prisma.protectedVideo.findMany({ where: { status: 'UPLOADING', createdAt: { lt: new Date(Date.now() - 7 * 86_400_000) } }, select: { id: true } })
+  for (const s of stale) await removeVideo(s.id).catch((e) => console.error('[VIDEO_CLEAN]', s.id, e))
   return { flagged: flagged.length }
 }

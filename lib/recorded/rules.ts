@@ -52,3 +52,9 @@ export function planOffer(c: { subscriptionPrice: number | null; subscriptionDay
   if (plan === 'ONE_TIME') return c.oneTimePrice == null ? null : { price: c.oneTimePrice, days: null }
   return c.subscriptionPrice == null || !c.subscriptionDays ? null : { price: c.subscriptionPrice, days: c.subscriptionDays }
 }
+
+/** Lessons to take off a refund: the ones opened since this invoice; a subscription period that is over counts as all of them. */
+export function lessonsUsed(i: { opened: number; total: number; plan: string | null; cycle: number | null; applied: number; endsAt: Date | null }, now: Date): number {
+  const over = i.plan === 'SUBSCRIPTION' && ((i.cycle ?? 1) < i.applied || (!!i.endsAt && i.endsAt <= now))
+  return over ? i.total : Math.min(i.opened, i.total)
+}

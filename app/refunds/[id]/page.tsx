@@ -61,7 +61,7 @@ export default function RefundReceiptPage({ params }: { params: Promise<{ id: st
         {r.invoice && row('Invoice', `${r.invoice.challanNumber} (${r.invoice.month})`)}
         <hr className="my-2 border-dashed border-black" />
         {r.calc && row('Paid', money(r.calc.netPaid))}
-        {r.calc && row(`Sessions ${r.calc.basis === 'HELD' ? 'held' : 'attended'} (${r.calc.sessionsCounted ?? 0})`, `- ${money(r.calc.deduction)}`)}
+        {r.calc && row(`${r.calc.basis === 'OPENED' ? 'Lessons opened' : r.calc.basis === 'HELD' ? 'Sessions held' : 'Sessions attended'} (${r.calc.sessionsCounted ?? 0})`, `- ${money(r.calc.deduction)}`)}
         {r.calc && row('Admin fee', `- ${money(r.calc.adminFee)}`)}
         <div className="my-1 flex justify-between gap-2 border-y border-black py-1 font-bold" style={{ fontSize: thermal ? '14px' : '17px' }}>
           <span>REFUNDED</span><span>{money(r.amount)}</span>

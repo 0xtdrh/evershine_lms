@@ -116,7 +116,11 @@ async function oneGroup(user: Who, groupId: string) {
 
 /** One more subscription period: a new invoice; the days are added when it is paid. */
 export async function renew(user: Who, groupId: string) {
-  const g = await oneGroup(user, groupId)
+  return renewGroup(await oneGroup(user, groupId), user.id)
+}
+
+async function renewGroup(g: Awaited<ReturnType<typeof oneGroup>>, actorId: string) {
+  const groupId = g.id
   if (g.accessPlan !== 'SUBSCRIPTION') throw new RecordedError('A one-time purchase does not need renewing · الشراء مرة واحدة مش محتاج تجديد', 409)
   await syncAccess(groupId)
   const now = await prisma.classSection.findUniqueOrThrow({ where: { id: groupId }, select: { accessPeriod: true, accessApplied: true } })
@@ -129,8 +133,33 @@ export async function renew(user: Who, groupId: string) {
   const period = (now.accessPeriod ?? 1) + 1
   const year = await getActiveAcademicYear()
   await prisma.classSection.update({ where: { id: groupId }, data: { accessPeriod: period, accessDays: days, priceOverride: price, ...(price <= 0 && { accessApplied: period, accessEndsAt: extendAccess(g.accessEndsAt, new Date(), days) }) } })
-  if (price > 0) await bill(groupId, studentId, g.levelId!, period, price, year?.name ?? String(new Date().getFullYear()), user.id, `${g.level?.subject?.name ?? ''} — ${g.level?.name ?? ''} (recorded, ${period})`)
+  if (price > 0) await bill(groupId, studentId, g.levelId!, period, price, year?.name ?? String(new Date().getFullYear()), actorId, `${g.level?.subject?.name ?? ''} — ${g.level?.name ?? ''} (recorded, ${period})`)
   return { period, price }
+}
+
+const portalInclude = { enrollments: { where: { status: 'ACTIVE' as const }, select: { studentId: true } }, level: { select: { id: true, name: true, subject: { select: { name: true } } } } }
+
+/** What a parent sees for one child. */
+export async function portalCourses(studentId: string) {
+  const groups = await prisma.classSection.findMany({ where: { kind: KIND_RECORDED, isActive: true, enrollments: { some: { studentId, status: 'ACTIVE' } } }, orderBy: { createdAt: 'desc' }, include: portalInclude })
+  return Promise.all(groups.map(async (g) => {
+    const a = (await recordedAccess(g.id))!
+    const course = g.levelId ? await prisma.recordedCourse.findUnique({ where: { levelId: g.levelId } }) : null
+    const unpaidRenewal = a.applied < (g.accessPeriod ?? 1)
+    return {
+      id: g.id, level: g.level ? `${g.level.subject?.name ?? ''} — ${g.level.name}` : '', plan: g.accessPlan, state: a.state, endsAt: a.endsAt, unpaidRenewal,
+      canRenew: g.accessPlan === 'SUBSCRIPTION' && !unpaidRenewal && !!course?.isActive && course.subscriptionPrice != null && !!course.subscriptionDays,
+      price: num(course?.subscriptionPrice), days: course?.subscriptionDays ?? null, progress: await progressOf(studentId, g.id),
+    }
+  }))
+}
+
+export async function portalRenew(studentId: string, groupId: string, actorId: string) {
+  const g = await prisma.classSection.findFirst({ where: { id: groupId, kind: KIND_RECORDED, enrollments: { some: { studentId, status: 'ACTIVE' } } }, include: portalInclude })
+  if (!g) throw new RecordedError('Recorded course not found', 404)
+  const course = g.levelId ? await prisma.recordedCourse.findUnique({ where: { levelId: g.levelId }, select: { isActive: true } }) : null
+  if (!course?.isActive) throw new RecordedError('This course is not offered now. Call us · الكورس مش متاح دلوقتي، كلمنا', 409, 'NOT_A_COURSE')
+  return renewGroup(g, actorId)
 }
 
 /** Count the periods paid since last time: the days run from the payment. */

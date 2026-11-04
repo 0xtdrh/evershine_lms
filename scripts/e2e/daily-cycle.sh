@@ -2810,6 +2810,65 @@ check "a secretary cannot read the watching list" "$(secapi GET /api/videos/watc
 check "the video list shows it with its viewings" "$(api GET /api/videos | jq_ "[(v['status'], v['viewings']>0) for v in d['data'] if v['id']=='$VID']")" "[('READY', True)]"
 api PUT /api/videos/settings '{"deviceLimit":2}' >/dev/null
 rm -rf "$VDIR" "$VJ" "$VJ2"
+echo "== 83. Recorded courses: refund counts lessons, parent renews, a video can be removed (2026-11-03)"
+api POST /api/levels "{\"subjectId\":\"$SAC\",\"name\":\"Refund Basics\",\"order\":8,\"numberOfMonths\":1,\"numberOfSessions\":4,\"pricingType\":\"FULL_LEVEL\",\"fullLevelPrice\":999}" >/dev/null
+GL=$(M "SELECT id FROM Level WHERE name='Refund Basics'")
+GE=$(api POST /api/curriculum/levels/$GL '{"notes":"gaps"}' | jq_ "d['data']['id']")
+M "UPDATE CurriculumSession SET titleEn=CONCAT('Gap ',number) WHERE editionId='$GE'"
+GS1=$(M "SELECT id FROM CurriculumSession WHERE editionId='$GE' AND number=1")
+GB1=$(api POST /api/curriculum/sessions/$GS1/blocks '{"type":"TEXT","data":{"textEn":"one","textAr":"واحد"}}' | jq_ "d['data']['id']")
+api PATCH /api/curriculum/editions/$GE '{"action":"submit"}' >/dev/null; api PATCH /api/curriculum/editions/$GE '{"action":"publish"}' >/dev/null
+api POST /api/recorded/courses "{\"levelId\":\"$GL\",\"subscriptionPrice\":400,\"subscriptionDays\":30,\"oneTimePrice\":800}" >/dev/null
+GK=$(mkstu GapKid 01066660511 GapDad 01066660519)
+GG=$(api POST /api/recorded "{\"studentId\":\"$GK\",\"campusId\":\"$CAMPUS\",\"levelId\":\"$GL\",\"plan\":\"SUBSCRIPTION\"}" | jq_ "d['data']['groupId']")
+pay "$(invid $GK $GG)" 400 >/dev/null
+GKR=$(api POST /api/students/$GK/portal-password '{"target":"student"}'); GJ=$(mktemp); login_jar "$(echo "$GKR" | jq_ "d['data']['loginId']")" "$(echo "$GKR" | jq_ "d['data']['password']")" "$GJ" 10.0.5.81
+GSUG() { api GET "/api/refunds/suggest?invoiceId=$1" | jq_ "(d['data']['basis'], d['data']['sessionsCounted'], float(d['data']['suggested']))"; }
+GI1=$(invid $GK $GG)
+check "refund before any lesson: all of it back, minus the 10% admin fee of the rule" "$(GSUG $GI1)" "('OPENED', 0, 360.0)"
+curl -s -b "$GJ" -X POST -H 'Content-Type: application/json' -d "{\"groupId\":\"$GG\",\"blockId\":\"$GB1\",\"done\":true}" $B/api/lessons/progress >/dev/null
+check "one lesson of four opened: a quarter and the admin fee come off" "$(GSUG $GI1)" "('OPENED', 1, 260.0)"
+M "UPDATE ClassSection SET accessEndsAt=UTC_TIMESTAMP() - INTERVAL 1 DAY WHERE id='$GG'"
+check "the period is over: nothing to give back" "$(GSUG $GI1)" "('OPENED', 4, 0.0)"
+GPW=$(M "SELECT g.id FROM Guardian g WHERE g.phoneNumber='01066660519'")
+GPR=$(api POST /api/students/$GK/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$GPW\"}" | jq_ "d['data']['password']"); GPJ=$(mktemp); login_jar 01066660519 "$GPR" "$GPJ" 10.0.5.82
+GP() { curl -s -b "$GPJ" "$B/api/guardian-portal/recorded?studentId=$GK"; }
+GREN() { curl -s -b "$1" -X POST -H 'Content-Type: application/json' -d "{\"studentId\":\"$GK\",\"groupId\":\"$GG\"}" $B/api/guardian-portal/recorded; }
+check "the parent sees it ended, with the price to renew" "$(GP | jq_ "[(c['state'], c['canRenew'], c['price'], c['days'], c['progress']['done']) for c in d['data']]")" "[('EXPIRED', True, 400, 30, 1)]"
+check "the student cannot renew" "$(GREN "$GJ" | jq_ "d['success']")" "False"
+check "another parent cannot renew" "$(GREN "$LPJ" | jq_ "d['success']")" "False"
+check "another parent cannot read it" "$(curl -s -b "$LPJ" "$B/api/guardian-portal/recorded?studentId=$GK" | jq_ "d['success']")" "False"
+check "the parent renews: an invoice, still closed" "$(GREN "$GPJ" | jq_ "d['data']['period']")/$(M "SELECT COUNT(*) FROM FeeInvoice WHERE classSectionId='$GG'")/$(GP | jq_ "[(c['state'], c['canRenew'], c['unpaidRenewal']) for c in d['data']]")" "2/2/[('EXPIRED', False, True)]"
+check "…not a second time before it is paid" "$(GREN "$GPJ" | jq_ "d['error']['code']")" "NOT_PAID"
+GI2=$(M "SELECT id FROM FeeInvoice WHERE classSectionId='$GG' AND cycleNumber=2")
+pay "$GI2" 400 >/dev/null
+check "paid: open again" "$(GP | jq_ "[c['state'] for c in d['data']]")" "['OPEN']"
+check "a lesson of the old period does not count on the new invoice" "$(GSUG $GI2)" "('OPENED', 0, 360.0)"
+check "…and the old invoice stays used up" "$(GSUG $GI1)" "('OPENED', 4, 0.0)"
+api POST /api/recorded/courses "{\"levelId\":\"$GL\",\"subscriptionPrice\":400,\"subscriptionDays\":30,\"isActive\":false}" >/dev/null
+M "UPDATE ClassSection SET accessEndsAt=UTC_TIMESTAMP() - INTERVAL 1 DAY WHERE id='$GG'"
+check "a stopped course cannot be renewed by the parent" "$(GREN "$GPJ" | jq_ "d['error']['code']")" "NOT_A_COURSE"
+check "a normal group refund still counts attendance" "$(api GET "/api/refunds/suggest?invoiceId=$LATEINV" | jq_ "d['data']['basis'] in ('ATTENDED','HELD')")" "True"
+check "a secretary cannot remove a finished video" "$(secapi DELETE /api/videos/$VID | jq_ "d['success']")" "False"
+check "a video a lesson uses cannot be removed" "$(api DELETE /api/videos/$VID | jq_ "d['error']['code']")" "IN_USE"
+check "the list says where it is used" "$(api GET /api/videos | jq_ "[v['uses'] for v in d['data'] if v['id']=='$VID']")" "[1]"
+GV=$(api POST /api/videos '{"name":"unused.mp4"}' | jq_ "d['data']['id']")
+curl -s -o /dev/null -b "$JAR" -X PUT --data-binary 'x' "$B/api/videos/$GV/piece/p00000.ts"
+check "an unfinished upload: its piece is on the store" "$(curl -s -o /dev/null -w '%{http_code}' $B/api/videos/p/$GV/p00000.ts)" "200"
+check "…removing it removes the piece and the row" "$(api DELETE /api/videos/$GV | jq_ "d['success']")/$(curl -s -o /dev/null -w '%{http_code}' $B/api/videos/p/$GV/p00000.ts)/$(M "SELECT COUNT(*) FROM ProtectedVideo WHERE id='$GV'")" "True/404/0"
+GV2=$(api POST /api/videos '{"name":"old.mp4"}' | jq_ "d['data']['id']")
+M "UPDATE ProtectedVideo SET createdAt=UTC_TIMESTAMP() - INTERVAL 8 DAY WHERE id='$GV2'"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "the daily job clears uploads left for a week" "$(M "SELECT COUNT(*) FROM ProtectedVideo WHERE id='$GV2'")" "0"
+GKEEP=$(api GET /api/refunds/rules)
+GALLOWED() { api GET "/api/refunds/suggest?invoiceId=$1" | jq_ "d['data']['allowed']"; }
+check "refunds are open for a recorded course by default" "$(GALLOWED $GI2)" "True"
+api PUT /api/refunds/rules "$(echo "$GKEEP" | python -c "import sys,json;rs=json.load(sys.stdin)['data'];print(json.dumps({'rules':[{k:r.get(k) for k in ('scopeType','scopeId','allowed','adminFeeType','adminFeeValue','deductBasis','untilDaysBeforeFirst')} for r in rs]+[{'scopeType':'RECORDED','allowed':False,'adminFeeType':'FIXED','adminFeeValue':0,'deductBasis':'ATTENDED'}]}))")" >/dev/null
+check "closing refunds for recorded courses closes this one" "$(GALLOWED $GI2)" "False"
+check "…a request is refused" "$(api POST /api/refunds "{\"invoiceId\":\"$GI2\",\"amount\":10,\"method\":\"CASH\",\"reason\":\"e2e\"}" | jq_ "d['success']")" "False"
+check "…a normal group is not affected" "$(GALLOWED $LATEINV)" "$(echo "$GKEEP" | python -c "import sys,json;print(all(r['allowed'] for r in json.load(sys.stdin)['data'] if r['scopeType']=='ALL'))")"
+api PUT /api/refunds/rules "$(echo "$GKEEP" | python -c "import sys,json;rs=json.load(sys.stdin)['data'];print(json.dumps({'rules':[{k:r.get(k) for k in ('scopeType','scopeId','allowed','adminFeeType','adminFeeValue','deductBasis','untilDaysBeforeFirst')} for r in rs]}))")" >/dev/null
+rm -f "$GJ" "$GPJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

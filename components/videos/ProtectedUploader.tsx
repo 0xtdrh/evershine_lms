@@ -47,7 +47,7 @@ export function ProtectedUploader({ current, onDone }: { current?: UploadedVideo
     if (file.size > MAX_FILE_GB * 1024 ** 3) throw new Error(L(`The file is larger than ${MAX_FILE_GB} GB. Compress it first.`, `الملف أكبر من ${MAX_FILE_GB} جيجا. اضغطه الأول.`))
     setStep(L('Preparing…', 'بيجهز…')); setPct(null)
     const { FFmpeg } = await importBrowser(`${location.origin}/vendor/ffmpeg/index.js`)
-    const ff = new FFmpeg(); let log = ''
+    const ff = new FFmpeg(); let log = '', started: string | null = null, finished = false
     ff.on('log', ({ message }) => { log += message + '\n' })
     ff.on('progress', ({ progress }) => { if (progress >= 0 && progress <= 1) setPct(Math.round(progress * 100)) })
     try {
@@ -58,6 +58,7 @@ export function ProtectedUploader({ current, onDone }: { current?: UploadedVideo
       if (plan === 'NOT_A_VIDEO') throw new Error(L('This file is not a video.', 'الملف ده مش فيديو.'))
       if (plan === 'CONVERT' && !window.confirm(L('This video must be converted first. A long video can take about as long as the video itself, and this tab must stay open. Continue?', 'الفيديو ده لازم يتحوّل الأول. الفيديو الطويل ممكن ياخد وقت قريب من طوله، والصفحة لازم تفضل مفتوحة. تكمل؟'))) return
       const v = await fetchApi<{ id: string; key: string; iv: string; mode: string }>('/api/videos', { method: 'POST', body: JSON.stringify({ name: file.name }) })
+      started = v.id
       await ff.writeFile('k.bin', hexBytes(v.key))
       await ff.writeFile('k.info', new TextEncoder().encode(`KEY_URI\nk.bin\n${v.iv}\n`))
       setStep(plan === 'COPY' ? L('Encrypting…', 'بيتشفر…') : L('Converting and encrypting…', 'بيتحوّل ويتشفر…')); setPct(0); log = ''
@@ -93,9 +94,14 @@ export function ProtectedUploader({ current, onDone }: { current?: UploadedVideo
       }
       await Promise.all(Array.from({ length: PARALLEL }, worker))
       const out = await fetchApi<{ id: string; name: string; durationSec: number }>(`/api/videos/${v.id}/complete`, { method: 'POST', body: JSON.stringify({ manifest, sizeBytes: size }) })
+      finished = true
       onDone({ videoId: out.id, name: out.name, durationSec: out.durationSec })
       notify.success(L('The video is protected and ready', 'الفيديو اتحمى وجاهز'))
-    } finally { ff.terminate() }
+    } finally {
+      ff.terminate()
+      // a failed upload leaves nothing behind (if this fails too, the daily job removes it after a week)
+      if (started && !finished) void fetch(`/api/videos/${started}`, { method: 'DELETE' }).catch(() => null)
+    }
   }
 
   const stay = (e: BeforeUnloadEvent) => { e.preventDefault() }

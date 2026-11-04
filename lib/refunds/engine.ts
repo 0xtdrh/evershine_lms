@@ -14,6 +14,7 @@
  * nothing is counted twice.
  */
 
+import { lessonsUsed } from '@/lib/recorded/rules'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { cairoToday } from '@/lib/dates/cairo'
@@ -42,7 +43,7 @@ export interface ResolvedRule {
 /** No rule at all: refunds allowed, no admin fee, attended sessions deducted. */
 export const DEFAULT_REFUND_RULE: ResolvedRule = { id: null, scopeType: 'ALL', allowed: true, adminFeeType: 'FIXED', adminFeeValue: 0, deductBasis: 'ATTENDED' }
 
-const SPECIFICITY = ['GROUP', 'LEVEL', 'COURSE', 'TRACK', 'ONE_TO_ONE', 'MODE', 'CAMPUS', 'PARTNER', 'ALL']
+const SPECIFICITY = ['GROUP', 'LEVEL', 'COURSE', 'TRACK', 'ONE_TO_ONE', 'RECORDED', 'MODE', 'CAMPUS', 'PARTNER', 'ALL']
 
 export async function resolveRefundRule(db: Db, ctx: GroupContext | null): Promise<ResolvedRule> {
   const rules = await db.refundRule.findMany()
@@ -54,6 +55,7 @@ export async function resolveRefundRule(db: Db, ctx: GroupContext | null): Promi
     if (r.scopeType === 'COURSE') return r.scopeId === ctx.subjectId
     if (r.scopeType === 'TRACK') return r.scopeId === ctx.trackId
     if (r.scopeType === 'ONE_TO_ONE') return ctx.kind === 'ONE_TO_ONE'
+    if (r.scopeType === 'RECORDED') return ctx.kind === 'RECORDED'
     if (r.scopeType === 'MODE') return r.scopeId === ctx.mode
     if (r.scopeType === 'CAMPUS') return r.scopeId === ctx.campusId
     if (r.scopeType === 'PARTNER') return !!ctx.partnerId && r.scopeId === ctx.partnerId
@@ -118,7 +120,8 @@ export interface RefundSuggestion extends RefundCalc {
   studentId: string
   allowed: boolean
   rule: ResolvedRule
-  basis: 'ATTENDED' | 'HELD'
+  /** a02 M4: OPENED = lessons of a recorded course */
+  basis: 'ATTENDED' | 'HELD' | 'OPENED'
   sessionsInCycle: number | null
   pending: number
   maxRefundable: number
@@ -128,8 +131,8 @@ export async function suggestRefund(invoiceId: string, db: Db = prisma): Promise
   const inv = await db.feeInvoice.findUnique({
     where: { id: invoiceId },
     select: {
-      id: true, studentId: true, totalAmount: true, paidAmount: true, refundedAmount: true, classSectionId: true,
-      classSection: { select: { cycleSessions: true, startDate: true, scheduleSlots: true } },
+      id: true, studentId: true, totalAmount: true, paidAmount: true, refundedAmount: true, classSectionId: true, cycleNumber: true, createdAt: true,
+      classSection: { select: { cycleSessions: true, startDate: true, scheduleSlots: true, kind: true, accessPlan: true, accessEndsAt: true, accessApplied: true } },
       level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } },
     },
   })
@@ -142,7 +145,16 @@ export async function suggestRefund(invoiceId: string, db: Db = prisma): Promise
 
   let sessionsCounted = 0
   const sessionsInCycle = inv.level ? sessionsPerCycle(inv.level, inv.classSection?.cycleSessions) : null
-  if (inv.classSectionId) {
+  const recorded = inv.classSection?.kind === 'RECORDED'
+  if (inv.classSectionId && recorded) {
+    // a recorded course has no attendance: the lessons opened since this invoice count
+    const scope = { studentId: inv.studentId, classSectionId: inv.classSectionId }
+    const [views, ticks] = await Promise.all([
+      db.lessonView.findMany({ where: { ...scope, createdAt: { gte: inv.createdAt } }, select: { sessionId: true }, distinct: ['sessionId'] }),
+      db.lessonProgress.findMany({ where: { ...scope, completedAt: { gte: inv.createdAt } }, select: { sessionId: true }, distinct: ['sessionId'] }),
+    ])
+    sessionsCounted = lessonsUsed({ opened: new Set([...views, ...ticks].map((r) => r.sessionId)).size, total: sessionsInCycle ?? 0, plan: inv.classSection!.accessPlan, cycle: inv.cycleNumber, applied: inv.classSection!.accessApplied ?? 0, endsAt: inv.classSection!.accessEndsAt }, new Date())
+  } else if (inv.classSectionId) {
     if (rule.deductBasis === 'HELD') {
       const dates = await db.enrollmentAttendanceRecord.findMany({
         where: { studentEnrollment: { classSectionId: inv.classSectionId } },
@@ -163,7 +175,7 @@ export async function suggestRefund(invoiceId: string, db: Db = prisma): Promise
     studentId: inv.studentId,
     allowed: rule.allowed && refundWindowOpen({ until: rule.untilDaysBeforeFirst, started: !!inv.classSection?.startDate, slots: inv.classSection?.scheduleSlots, today: cairoToday() }),
     rule,
-    basis: rule.deductBasis,
+    basis: recorded ? 'OPENED' : rule.deductBasis,
     sessionsInCycle,
     pending,
     maxRefundable: round2(Math.max(0, netPaid - pending)),

@@ -11,6 +11,7 @@ import { PortalIdCard } from '@/components/cards/PortalIdCard'
 import { AnnouncementFeed } from '@/components/announcements/AnnouncementFeed'
 import { ChildExcusesCard } from '@/components/portal/ChildExcusesCard'
 import { ChildOneToOneCard } from '@/components/portal/ChildOneToOneCard'
+import { ChildRecordedCard, type PortalCourse } from '@/components/portal/ChildRecordedCard'
 import { AttendanceTimeline } from '@/components/attendance/AttendanceTimeline'
 import { StudentReportsList } from '@/components/reports/StudentReportsList'
 import { BirthdayBanner } from '@/components/birthdays/BirthdayBanner'
@@ -201,6 +202,7 @@ export default function MyChildrenPage() {
   })
 
   const childId = selectedChildId || children?.[0]?.id || ''
+  const { data: recordedCourses } = useQuery({ queryKey: ['portal-recorded', childId], queryFn: () => fetchApi<PortalCourse[]>(`/api/guardian-portal/recorded?studentId=${childId}`), enabled: !!childId, retry: false })
   const { data: bdays } = useBirthdayToday()
   const birthdayIds = new Set((bdays?.children ?? []).map((c) => c.studentId))
 
@@ -313,6 +315,7 @@ export default function MyChildrenPage() {
                 <TabsTrigger value="fees">{L('Invoices', 'الفواتير')}</TabsTrigger>
                 <TabsTrigger value="excuses">{L('Absence excuse', 'اعتذار عن غياب')}</TabsTrigger>
                 <TabsTrigger value="one-to-one">One-to-One</TabsTrigger>
+                {!!recordedCourses?.length && <TabsTrigger value="recorded">{L('Recorded courses', 'الكورسات المسجلة')}</TabsTrigger>}
                 <TabsTrigger value="reports">{L('Reports', 'التقارير')}</TabsTrigger>
               </TabsList>
 
@@ -704,6 +707,9 @@ export default function MyChildrenPage() {
               </TabsContent>
               <TabsContent value="one-to-one" className="mt-4">
                 <ChildOneToOneCard studentId={childId} />
+              </TabsContent>
+              <TabsContent value="recorded" className="mt-4">
+                <ChildRecordedCard studentId={childId} courses={recordedCourses ?? []} />
               </TabsContent>
               <TabsContent value="excuses" className="mt-4">
                 <ChildExcusesCard studentId={childId} childName={`${academic.student?.firstName ?? ''}`} />
