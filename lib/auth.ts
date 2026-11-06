@@ -26,6 +26,7 @@
  *  5. session() callback → maps JWT claims to session.user for client components
  */
 
+import { checkSignInCode, signInNeed } from '@/lib/security/two-factor'
 import NextAuth, { CredentialsSignin } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
@@ -42,6 +43,14 @@ import { guardSession } from '@/lib/session-guard'
 /** Shown on the login page as ?code=default_password */
 class DefaultPasswordSignin extends CredentialsSignin {
   code = 'default_password'
+}
+
+/** Security part 2: the account uses two-step sign-in; the login page asks for the code. */
+class OtpRequiredSignin extends CredentialsSignin {
+  code = 'otp_required'
+}
+class OtpInvalidSignin extends CredentialsSignin {
+  code = 'otp_invalid'
 }
 
 /** Shown on the login page: too many failed attempts (lib/login-throttle.ts). */
@@ -61,6 +70,7 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
       credentials: {
         email:    { label: 'Email or phone', type: 'text' },
         password: { label: 'Password', type: 'password' },
+        otp:      { label: 'Code', type: 'text' },
       },
 
       async authorize(credentials, request) {
@@ -136,6 +146,18 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
         if (!passwordValid) {
           await recordLoginFailure(key, ip)
           return null
+        }
+
+        // ── Two-step sign-in (security part 2) ──────────────────────────
+        // A right password is not enough when the account uses an app code. A wrong code counts like a wrong password.
+        const need = await signInNeed(user.id, String(user.role))
+        if (need === 'CODE') {
+          const otp = String((credentials as { otp?: unknown } | undefined)?.otp ?? '').trim()
+          if (!otp) throw new OtpRequiredSignin()
+          if (!(await checkSignInCode(user.id, otp))) {
+            await recordLoginFailure(key, ip)
+            throw new OtpInvalidSignin()
+          }
         }
         await clearLoginFailures(key)
 
@@ -214,6 +236,7 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
           campusId:       campusId ?? null,
           profilePicture: profilePicture ?? null,
           mustChangePassword: user.mustChangePassword,
+          twoFactorSetup: need === 'SETUP',
         }
       },
     }),

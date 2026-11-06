@@ -67,6 +67,8 @@ export default function LoginPage() {
   const [formError, setFormError]       = useState<string | null>(null)
   const [callbackUrl, setCallbackUrl]   = useState('/dashboard')
   const [showPassword, setShowPassword] = useState(false)
+  const [needCode, setNeedCode]         = useState(false)
+  const [otp, setOtp]                   = useState('')
 
   useEffect(() => {
     try {
@@ -75,6 +77,8 @@ export default function LoginPage() {
       const err = sp.get('error')
       if (sp.get('code') === 'default_password') setFormError(DEFAULT_PASSWORD_MESSAGE())
       else if (sp.get('code') === 'too_many_attempts') setFormError(TOO_MANY_ATTEMPTS_MESSAGE())
+      else if (sp.get('code') === 'idle') setFormError(L('You were signed out because nothing was used for a while.', 'خرجت لأن مفيش استخدام فترة.'))
+      else if (sp.get('code') === '2fa_ready') notify.success(L('Two-step sign-in is on', 'التحقق بخطوتين اشتغل'), { description: L('Sign in with your password and the code from the app.', 'ادخل بالباسورد والكود اللي في التطبيق.') })
       else if (err) setFormError(L('Authentication failed. Please check your credentials.', 'الدخول ماتمّش. راجع بياناتك.'))
       if (sp.get('changed') === '1') notify.success(L('Password changed', 'الباسورد اتغير'), { description: L('Sign in with your new password.', 'ادخل بالباسورد الجديد.') })
     } catch {}
@@ -91,6 +95,7 @@ export default function LoginPage() {
       redirect: false,
       email:    data.email,
       password: data.password,
+      ...(needCode ? { otp } : {}),
       callbackUrl,
     })
     setIsLoading(false)
@@ -103,11 +108,25 @@ export default function LoginPage() {
         setFormError(TOO_MANY_ATTEMPTS_MESSAGE())
         return
       }
+      if ((result as { code?: string }).code === 'otp_required') {
+        setNeedCode(true)
+        setFormError(L('Type the 6-number code from your authenticator app.', 'اكتب الكود (6 أرقام) اللي في تطبيق التحقق على موبايلك.'))
+        return
+      }
+      if ((result as { code?: string }).code === 'otp_invalid') {
+        setNeedCode(true); setOtp('')
+        setFormError(L('The code is not right. Type the newest one from the app, or a spare code.', 'الكود غلط. اكتب أحدث كود في التطبيق، أو كود احتياطي.'))
+        return
+      }
       setFormError(L('Invalid credentials. Please check your email/phone and password.', 'البيانات غلط. راجع اسم الدخول والباسورد.'))
       notify.error(L('Sign in failed', 'الدخول ماتمّش'), { description: L('Invalid email/phone or password.', 'بيانات الدخول أو الباسورد غلط.') })
       return
     }
     const session = await getSession()
+    if ((session?.user as { twoFactorSetup?: boolean } | undefined)?.twoFactorSetup) {
+      router.replace('/setup-2fa')
+      return
+    }
     if ((session?.user as { mustChangePassword?: boolean } | undefined)?.mustChangePassword) {
       router.replace('/change-password')
       return
@@ -222,6 +241,15 @@ export default function LoginPage() {
             )}
           </AnimatePresence>
         </div>
+
+        {/* ── Two-step code (security part 2) ── */}
+        {needCode && (
+          <div className="space-y-1.5">
+            <Label htmlFor="otp" className="text-sm font-semibold text-slate-700">{L('Code from the app', 'الكود من التطبيق')}</Label>
+            <Input id="otp" dir="ltr" inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={11} placeholder="123456" value={otp} onChange={(e) => setOtp(e.target.value.trim())} className="text-center text-lg tracking-widest" />
+            <p className="text-xs text-slate-500">{L('Lost the phone? Type one of your spare codes, or ask the Super Admin.', 'الموبايل ضاع؟ اكتب كود من الأكواد الاحتياطية، أو كلّم الـ Super Admin.')}</p>
+          </div>
+        )}
 
         {/* ── Submit ── */}
         <Button

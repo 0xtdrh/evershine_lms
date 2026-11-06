@@ -47,6 +47,7 @@ describe('settings centre / reports centre / today (5-C)', () => {
       'app/api/notifications/settings/route.ts': '/dashboard/admin/notifications',
       'app/api/one-to-one/settings/route.ts': '/dashboard/one-to-one',
       'app/api/videos/settings/route.ts': '/dashboard/videos',
+      'app/api/security/settings/route.ts': '/dashboard/admin/security',
       'app/api/group-transfers/settings/route.ts': '/dashboard/one-to-one',
       'app/api/passport/settings/route.ts': '/dashboard/admin/passport',
       'app/api/platform/settings/route.ts': '/dashboard/admin/platform',

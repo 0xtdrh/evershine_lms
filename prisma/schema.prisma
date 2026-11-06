@@ -273,6 +273,11 @@ model User {
   // Sessions that signed in before this moment are rejected (set when the
   // password changes or is reset). See lib/session-guard.ts.
   sessionsRevokedAt      DateTime?
+  /// security part 2: two-step sign-in (app secret sealed; spare codes as hashes; last code step used)
+  totpSecret             String?                  @db.VarChar(255)
+  totpEnabledAt          DateTime?
+  totpRecovery           String?                  @db.Text
+  totpLastStep           Int?
   /// M0: this staff member sees every place (branches + partners)
   allLocations           Boolean                  @default(false)
   placeAccess            UserPlaceAccess[]

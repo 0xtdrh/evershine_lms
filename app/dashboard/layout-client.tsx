@@ -94,6 +94,7 @@ import { I18nProvider, LanguageSwitch, useI18n } from '@/lib/i18n/client'
 import { SidebarNav } from '@/components/layout/SidebarNav'
 import { HubTabs } from '@/components/layout/HubTabs'
 import { ActivityPing } from '@/components/layout/ActivityPing'
+import { IdleSignOut } from '@/components/layout/IdleSignOut'
 
 // ─── Role-gated nav items ─────────────────────────────────────────────────────
 interface NavItem {
@@ -513,6 +514,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             <AgreementsGate />
             {(role === 'PARENT' || role === 'GUARDIAN') && <GroupRulesGate />}
             <ActivityPing />
+            <IdleSignOut />
             {/* 2026-10-24 (owner): the template's monthly questionnaire (CompulsoryFeedbackBlocker, English, wrong month) is
                 gone for students; the student's rating of each session + the instructor comes with lib/ratings (plan). */}
             {role === 'STUDENT' && <FeeOverdueModal />}

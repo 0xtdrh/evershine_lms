@@ -59,6 +59,18 @@ export default auth((req) => {
     return Response.redirect(new URL(getRoleHome(role), nextUrl.origin))
   }
 
+  // ── Security part 2: an account that must use two-step sign-in sets it up first; nothing else opens until then ──
+  const twoFactorSetup = !!(session?.user as { twoFactorSetup?: boolean } | undefined)?.twoFactorSetup
+  if (isAuthenticated && twoFactorSetup && nextUrl.pathname !== '/setup-2fa' && !nextUrl.pathname.startsWith('/api/security/two-factor')) {
+    if (nextUrl.pathname.startsWith('/api/')) {
+      return Response.json({ success: false, error: { code: 'TWO_FACTOR_SETUP', message: 'Set up two-step sign-in first · ظبط التحقق بخطوتين الأول' } }, { status: 403 })
+    }
+    if (isProtectedRoute || nextUrl.pathname === '/change-password') return Response.redirect(new URL('/setup-2fa', nextUrl.origin))
+  }
+  if (nextUrl.pathname === '/setup-2fa' && !isAuthenticated) {
+    return Response.redirect(new URL('/login', nextUrl.origin))
+  }
+
   // ── Temporary password issued by staff: must be changed first ─────────────
   const mustChangePassword = !!(session?.user as { mustChangePassword?: boolean } | undefined)?.mustChangePassword
   if (isProtectedRoute && isAuthenticated && mustChangePassword) {

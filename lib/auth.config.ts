@@ -22,6 +22,8 @@ declare module 'next-auth' {
       campusId?: string | null
       profilePicture?: string | null
       mustChangePassword?: boolean
+      /** must set up two-step sign-in before using the app */
+      twoFactorSetup?: boolean
       /** When this session signed in (ms). Used to revoke older sessions. */
       loginAt?: number
     }
@@ -31,6 +33,7 @@ declare module 'next-auth' {
     campusId?: string | null
     profilePicture?: string | null
     mustChangePassword?: boolean
+    twoFactorSetup?: boolean
   }
 }
 
@@ -52,6 +55,7 @@ declare module '@auth/core/jwt' {
     profilePicture?: string | null
     /** Password was issued by someone else; must be changed before using the app. */
     mustChangePassword?: boolean
+    twoFactorSetup?: boolean
     /** Sign-in time (ms). Kept across token refreshes, unlike iat. */
     loginAt?: number
   }
@@ -92,6 +96,7 @@ export const authConfig = {
         // re-login (or we invalidate via a profile-update endpoint).
         token.profilePicture = (user as { profilePicture?: string | null }).profilePicture ?? null
         token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false
+        token.twoFactorSetup = (user as { twoFactorSetup?: boolean }).twoFactorSetup ?? false
         token.loginAt = Date.now()
       }
 
@@ -131,6 +136,7 @@ export const authConfig = {
           campusId:       token.campusId ?? null,
           profilePicture: token.profilePicture ?? null,
           mustChangePassword: token.mustChangePassword ?? false,
+          twoFactorSetup: token.twoFactorSetup ?? false,
           loginAt:        token.loginAt,
         },
       }

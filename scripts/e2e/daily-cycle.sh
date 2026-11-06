@@ -51,6 +51,7 @@ for i in $(seq 1 40); do "$MYSQL_DIR/bin/mysqladmin.exe" --no-defaults -h 127.0.
 "$MYSQL_DIR/bin/mysql.exe" --no-defaults -h 127.0.0.1 -P $DB_PORT -u root -e "CREATE DATABASE e2e CHARACTER SET utf8mb4"
 gzip -dc "$BACKUP" > /d/tn-e2e-restore.sql && "$MYSQL_DIR/bin/mysql.exe" --no-defaults -h 127.0.0.1 -P $DB_PORT -u root --default-character-set=utf8mb4 e2e -e "source D:/tn-e2e-restore.sql"
 DATABASE_URL="$URL" npx prisma db push --skip-generate --accept-data-loss >/tmp/tn-e2e-push.log 2>&1 || { echo "schema push failed"; cat /tmp/tn-e2e-push.log; exit 1; }
+"$MYSQL_DIR/bin/mysql.exe" --no-defaults -h 127.0.0.1 -P $DB_PORT -u root e2e -e "REPLACE INTO AppSetting (\`key\`, value, updatedAt) VALUES ('security.settings', '{\"twoFactorEnabled\":false,\"twoFactorRoles\":[\"SUPER_ADMIN\",\"ADMIN\"],\"idleMinutes\":0}', NOW())"
 cat > scripts/e2e/.tmp-sa.ts <<'EOF'
 import { prisma } from '../../lib/prisma'
 import { hash } from '@node-rs/argon2'
@@ -881,7 +882,8 @@ check "absent → parent notified; late switched off → nothing" "$(NOTIF ATTEN
 sess $WB "$(D -3)" "$(rec $W1E LATE),$(rec $W2E ABSENT)" >/dev/null
 check "saving the same sheet again does not notify twice" "$(NOTIF ATTENDANCE_ABSENT)" "1"
 api PUT /api/notifications/settings '{"switches":{"ATTENDANCE_LATE":true}}' >/dev/null
-sess $WB "$(D -2)" "$(rec $W1E LATE),$(rec $W2E ABSENT)" >/dev/null
+RD2=$(D -2) # kept: the run may pass midnight before the rating below
+sess $WB "$RD2" "$(rec $W1E LATE),$(rec $W2E ABSENT)" >/dev/null
 check "late switched on → parent notified" "$(NOTIF ATTENDANCE_LATE)" "1"
 check "absent twice in a row → staff alert + follow-up in the contact log" "$(M "SELECT COUNT(*) FROM Notification WHERE type='CONSECUTIVE_ABSENCE' AND relatedId='$W2'" | python -c "import sys;print(int(sys.stdin.read())>=1)")/$(M "SELECT COUNT(*) FROM ContactLog WHERE studentId='$W2' AND reason='ABSENCE' AND followUpAt IS NOT NULL")" "True/1"
 # 2) excuses
@@ -912,8 +914,8 @@ check "parent cannot read another family's attendance" "$(curl -s -o /dev/null -
 # 4) ratings
 M "UPDATE Student SET dateOfBirth='2021-03-03' WHERE id='$W1'"
 check "young child: the parent rates the session for them" "$(pget /api/ratings/parent | jq_ "[c['young'] and len(c['sessions'])>0 for c in d['data']['children'] if c['studentId']=='$W1'][0]")" "True"
-check "rating 🙁 → managers alerted + follow-up" "$(ppost POST /api/ratings/parent "{\"type\":\"session\",\"studentId\":\"$W1\",\"classSectionId\":\"$WB\",\"sessionDate\":\"$(D -2)\",\"rating\":1,\"comment\":\"too noisy\"}" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM Notification WHERE type='LOW_RATING' AND relatedId='$W1'" | python -c "import sys;print(int(sys.stdin.read())>=1)")/$(M "SELECT COUNT(*) FROM ContactLog WHERE studentId='$W1' AND reason='COMPLAINT'")" "True/True/1"
-check "the same session cannot be rated twice" "$(ppost POST /api/ratings/parent "{\"type\":\"session\",\"studentId\":\"$W1\",\"classSectionId\":\"$WB\",\"sessionDate\":\"$(D -2)\",\"rating\":4}" | jq_ "d['success']")" "False"
+check "rating 🙁 → managers alerted + follow-up" "$(ppost POST /api/ratings/parent "{\"type\":\"session\",\"studentId\":\"$W1\",\"classSectionId\":\"$WB\",\"sessionDate\":\"$RD2\",\"rating\":1,\"comment\":\"too noisy\"}" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM Notification WHERE type='LOW_RATING' AND relatedId='$W1'" | python -c "import sys;print(int(sys.stdin.read())>=1)")/$(M "SELECT COUNT(*) FROM ContactLog WHERE studentId='$W1' AND reason='COMPLAINT'")" "True/True/1"
+check "the same session cannot be rated twice" "$(ppost POST /api/ratings/parent "{\"type\":\"session\",\"studentId\":\"$W1\",\"classSectionId\":\"$WB\",\"sessionDate\":\"$RD2\",\"rating\":4}" | jq_ "d['success']")" "False"
 M "UPDATE ClassSection SET status='COMPLETED', completedAt=NOW(3) WHERE id='$WB2'"
 check "month ended → the parent survey opens" "$(pget /api/ratings/parent | jq_ "any(s['classSectionId']=='$WB2' for c in d['data']['children'] for s in c['surveys'])")" "True"
 check "survey with a low answer → saved + managers alerted" "$(ppost POST /api/ratings/parent "{\"type\":\"survey\",\"studentId\":\"$W2\",\"classSectionId\":\"$WB2\",\"sessionsRating\":5,\"teacherRating\":4,\"companyRating\":2,\"comment\":\"prices\"}" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM ParentSurvey WHERE studentId='$W2'")" "True/1"
@@ -1853,7 +1855,7 @@ api PUT /api/treasury/routes "{\"method\":\"Bank Transfer\",\"campusId\":null,\"
 check "every staff / receipt / online payment became one movement; wallet payments did not (money came in once)" "$(M "SELECT COUNT(*) FROM FeePayment WHERE status='COMPLETED' AND (source IS NULL OR source IN ('STAFF','PROOF','ONLINE'))")/$(M "SELECT COUNT(*) FROM MoneyMovement m JOIN FeePayment p ON p.id=m.feePaymentId WHERE p.source='WALLET'")" "$(M "SELECT COUNT(*) FROM MoneyMovement WHERE kind='PAYMENT'")/0"
 check "setting the route placed the waiting cash of this branch in its box" "$(M "SELECT COUNT(*) FROM MoneyMovement m LEFT JOIN Campus c ON c.id=m.campusId WHERE m.accountId IS NULL AND m.method='Cash' AND m.campusId='$CAMPUS'")" "0"
 B0=$(api GET /api/treasury | jq_ "float([a['balance'] for a in d['data']['accounts'] if a['id']=='$TBOX'][0])")
-check "box balance = opening + in − out (from the opening date)" "$B0" "$(M "SELECT CAST(1000 + COALESCE(SUM(CASE WHEN direction='IN' THEN amount ELSE -amount END),0) AS DECIMAL(12,1)) FROM MoneyMovement m JOIN MoneyAccount a ON a.id=m.accountId WHERE m.accountId='$TBOX' AND m.date >= a.openingDate" | python -c "import sys;print(float(sys.stdin.read()))")"
+check "box balance = opening + in − out (from the opening date)" "$B0" "$(M "SELECT CAST(1000 + COALESCE(SUM(CASE WHEN direction='IN' THEN amount ELSE -amount END),0) AS DECIMAL(12,1)) FROM MoneyMovement m JOIN MoneyAccount a ON a.id=m.accountId WHERE m.accountId='$TBOX' AND m.date >= a.openingDate - INTERVAL $CAIRO_OFF HOUR" | python -c "import sys;print(float(sys.stdin.read()))")"
 TINV=$(M "SELECT i.id FROM FeeInvoice i JOIN ClassSection g ON g.id=i.classSectionId JOIN StudentEnrollment e ON e.classSectionId=g.id AND e.studentId=i.studentId AND e.status='ACTIVE' WHERE g.campusId='$CAMPUS' AND g.status='ACTIVE' AND i.status='ISSUED' AND i.paidAmount=0 AND i.refundedAmount=0 AND i.proofStatus IS NULL ORDER BY i.createdAt DESC LIMIT 1")
 TAMT=$(M "SELECT CAST(totalAmount AS DECIMAL(10,2)) FROM FeeInvoice WHERE id='$TINV'")
 pay "$TINV" "$TAMT" >/dev/null
@@ -2885,6 +2887,56 @@ check "the build no longer drops data by itself" "$(grep -c "'--accept-data-loss
 check "no known fallback secret is left in the code" "$(grep -rln "dev-secret-key-change-in-production\|'dev-only-secret'" lib app --include=*.ts | grep -v lib/security/secret.ts | wc -l | tr -d ' ')" "0"
 G88=$(M "SELECT userId FROM Guardian WHERE phoneNumber='01066660519'")
 check "a parent may still use an 8-character password" "$(api POST /api/users/reset-credentials "{\"userId\":\"$G88\",\"newPassword\":\"Parent88\"}" | jq_ "d['success']")" "True"
+echo "== 85. Security part 2: two-step sign-in (on / off, roles, spare codes, reset), idle sign-out (2026-11-06)"
+TOTP() { python -c "import sys,hmac,hashlib,struct,time,base64;s=sys.argv[1];k=base64.b32decode(s+'='*(-len(s)%8));t=int(time.time()//30)+int(sys.argv[2]);m=hmac.new(k,struct.pack('>Q',t),hashlib.sha1).digest();o=m[-1]&15;print('%06d'%((struct.unpack('>I',m[o:o+4])[0]&0x7fffffff)%1000000))" "$1" "${2:-0}"; }
+LOGIN_OTP() { # email pw otp jar ip -> Location header
+  local t; t=$(curl -s -c "$4" -b "$4" -H "X-Forwarded-For: $5" $B/api/auth/csrf | jq_ "d['csrfToken']")
+  curl -s -o /dev/null -D - -c "$4" -b "$4" -H "X-Forwarded-For: $5" -X POST $B/api/auth/callback/credentials --data-urlencode "csrfToken=$t" --data-urlencode "email=$1" --data-urlencode "password=$2" --data-urlencode "otp=$3" --data-urlencode "callbackUrl=$B/dashboard" | grep -i '^location' | tr -d '\r'
+}
+check "a secretary cannot read or change the sign-in security settings" "$(secapi GET /api/security/settings | jq_ "d['success']")/$(secapi PUT /api/security/settings '{"twoFactorEnabled":true}' | jq_ "d['success']")" "False/False"
+check "two-step sign-in switched on for Super Admin and Admin" "$(api PUT /api/security/settings '{"twoFactorEnabled":true,"twoFactorRoles":["SUPER_ADMIN","ADMIN"],"idleMinutes":30}' | jq_ "(d['data']['twoFactorEnabled'], d['data']['twoFactorRoles'])")" "(True, ['SUPER_ADMIN', 'ADMIN'])"
+TA=$(mktemp); M "DELETE FROM LoginAttempt"
+LOGIN_OTP secadmin@e2e.local Another2026Pass "" "$TA" 10.0.8.51 >/dev/null
+check "an admin without the app signs in but must set it up: other APIs refuse" "$(curl -s -b "$TA" $B/api/auth/session | jq_ "d['user']['twoFactorSetup']")/$(curl -s -b "$TA" "$B/api/students?limit=1" | jq_ "d['error']['code']")" "True/TWO_FACTOR_SETUP"
+check "…and pages open the setup page" "$(curl -s -o /dev/null -D - -b "$TA" $B/dashboard/students | grep -i '^location' | grep -c setup-2fa)" "1"
+check "my status says required, not on yet" "$(curl -s -b "$TA" $B/api/security/two-factor | jq_ "(d['data']['required'], d['data']['enabled'])")" "(True, False)"
+ST=$(curl -s -b "$TA" -X POST -H 'Content-Type: application/json' -d '{"action":"start"}' $B/api/security/two-factor)
+SEC=$(echo "$ST" | jq_ "d['data']['secret']")
+check "setup gives a secret and a QR picture" "$(echo "$ST" | jq_ "(len(d['data']['secret'])>=32, d['data']['qr'].startswith('data:image/png'), d['data']['url'].startswith('otpauth://totp/TechNova'))")" "(True, True, True)"
+check "the secret is stored sealed, never as typed" "$(M "SELECT totpSecret LIKE '%$SEC%' FROM User WHERE email='secadmin@e2e.local'")" "0"
+check "a wrong first code is refused" "$(curl -s -b "$TA" -X POST -H 'Content-Type: application/json' -d '{"action":"confirm","code":"000000"}' $B/api/security/two-factor | jq_ "d['success']")" "False"
+CF=$(curl -s -b "$TA" -X POST -H 'Content-Type: application/json' -d "{\"action\":\"confirm\",\"code\":\"$(TOTP "$SEC")\"}" $B/api/security/two-factor)
+SP1=$(echo "$CF" | jq_ "d['data']['spares'][0]"); SP2=$(echo "$CF" | jq_ "d['data']['spares'][1]")
+check "the right code turns it on with 8 spare codes, and the session ends" "$(echo "$CF" | jq_ "len(d['data']['spares'])")/$(curl -s -o /dev/null -w '%{http_code}' -b "$TA" $B/api/security/two-factor)" "8/401"
+check "the spare codes are stored only as hashes" "$(M "SELECT totpRecovery LIKE '%$SP1%' FROM User WHERE email='secadmin@e2e.local'")" "0"
+M "DELETE FROM LoginAttempt"
+check "password only: the login page asks for the code" "$(LOGIN_OTP secadmin@e2e.local Another2026Pass "" "$(mktemp)" 10.0.8.52 | grep -c 'code=otp_required')" "1"
+check "a wrong code is refused" "$(LOGIN_OTP secadmin@e2e.local Another2026Pass 111111 "$(mktemp)" 10.0.8.53 | grep -c 'code=otp_invalid')" "1"
+check "a wrong code counts like a wrong password" "$(M "SELECT COUNT(*) FROM LoginAttempt")" "1"
+TB=$(mktemp); C1=$(TOTP "$SEC" 1) # the next step: the one used to turn it on is spent
+LOGIN_OTP secadmin@e2e.local Another2026Pass "$C1" "$TB" 10.0.8.54 >/dev/null
+check "password + the right code: signed in, nothing more to set up" "$(curl -s -b "$TB" $B/api/auth/session | jq_ "(d['user']['email'], d['user']['twoFactorSetup'])")/$(curl -s -b "$TB" "$B/api/students?limit=1" | jq_ "d['success']")" "('secadmin@e2e.local', False)/True"
+check "the same code cannot be used twice" "$(LOGIN_OTP secadmin@e2e.local Another2026Pass "$C1" "$(mktemp)" 10.0.8.55 | grep -c 'code=otp_invalid')" "1"
+M "DELETE FROM LoginAttempt"
+TC=$(mktemp); LOGIN_OTP secadmin@e2e.local Another2026Pass "$SP1" "$TC" 10.0.8.56 >/dev/null
+check "a spare code works once" "$(curl -s -b "$TC" $B/api/auth/session | jq_ "d['user']['email']")/$(LOGIN_OTP secadmin@e2e.local Another2026Pass "$SP1" "$(mktemp)" 10.0.8.57 | grep -c 'code=otp_invalid')" "secadmin@e2e.local/1"
+check "…and it was counted down" "$(curl -s -b "$TC" $B/api/security/two-factor | jq_ "d['data']['sparesLeft']")" "7"
+check "a secretary does not need it (not a required role)" "$(curl -s -b "$SECJ" "$B/api/students?limit=1" | jq_ "d['success']")" "True"
+check "the staff list shows who has it" "$(api GET /api/security/two-factor/users | jq_ "[(r['totpEnabledAt'] is not None, r['required']) for r in d['data'] if r['email']=='secadmin@e2e.local']")" "[(True, True)]"
+SAID=$(M "SELECT id FROM User WHERE email='secadmin@e2e.local'")
+check "only a Super Admin can reset it" "$(secapi POST /api/security/two-factor/users "{\"userId\":\"$SAID\"}" | jq_ "d['success']")" "False"
+N5=$(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.role='SUPER_ADMIN' AND n.titleAr LIKE 'تنبيه أمان:%'")
+check "a Super Admin resets it (lost phone): the person is signed out and told about" "$(api POST /api/security/two-factor/users "{\"userId\":\"$SAID\"}" | jq_ "d['success']")/$(curl -s -o /dev/null -w '%{http_code}' -b "$TB" "$B/api/students?limit=1")/$(( $(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.role='SUPER_ADMIN' AND n.titleAr LIKE 'تنبيه أمان:%'") > N5 ))" "True/401/1"
+TD=$(mktemp); M "DELETE FROM LoginAttempt"; LOGIN_OTP secadmin@e2e.local Another2026Pass "" "$TD" 10.0.8.58 >/dev/null
+check "…next sign-in: set it up again" "$(curl -s -b "$TD" $B/api/auth/session | jq_ "d['user']['twoFactorSetup']")" "True"
+IPJ=$(mktemp); login_jar 01066660519 Parent88 "$IPJ" 10.0.8.60
+check "idle sign-out: 30 minutes for staff, never for families" "$(api GET /api/security/policy | jq_ "d['data']['idleMinutes']")/$(curl -s -b "$IPJ" $B/api/security/policy | jq_ "d['data']['idleMinutes']")" "30/0"
+N6=$(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.role='SUPER_ADMIN' AND n.titleAr LIKE 'تنبيه أمان:%'")
+check "switching it off: the Super Admin is told, and nobody is asked any more" "$(api PUT /api/security/settings '{"twoFactorEnabled":false}' | jq_ "d['data']['twoFactorEnabled']")/$(( $(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.role='SUPER_ADMIN' AND n.titleAr LIKE 'تنبيه أمان:%'") > N6 ))" "False/1"
+M "DELETE FROM LoginAttempt"
+check "…with it off the reset admin signs in with the password only" "$(TE=$(mktemp); LOGIN_OTP secadmin@e2e.local Another2026Pass "" "$TE" 10.0.8.59 >/dev/null; curl -s -b "$TE" "$B/api/students?limit=1" | jq_ "d['success']")" "True"
+api PUT /api/security/settings '{"idleMinutes":0}' >/dev/null
+rm -f "$TA" "$TB" "$TC" "$TD"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
