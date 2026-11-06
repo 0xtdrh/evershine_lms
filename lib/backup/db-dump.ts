@@ -113,6 +113,8 @@ export async function createSqlDump(options: { deadlineMs?: number } = {}): Prom
 
   try {
     await query(conn, "SET SESSION time_zone = '+00:00'")
+    // 2026-11-06: Aiven runs with ANSI_QUOTES, so SHOW CREATE TABLE wrote "name" and a normal MySQL refused the backup.
+    await query(conn, "SET SESSION sql_mode = REPLACE(@@SESSION.sql_mode, 'ANSI_QUOTES', '')")
     await query(conn, 'SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ')
     await query(conn, 'START TRANSACTION WITH CONSISTENT SNAPSHOT')
 

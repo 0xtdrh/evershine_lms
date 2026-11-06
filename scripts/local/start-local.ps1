@@ -69,7 +69,16 @@ if ($Restore) {
   $sql = Join-Path $Home_ 'restore.sql'
   $in = [IO.File]::OpenRead($Restore); $gz = New-Object IO.Compression.GZipStream($in, [IO.Compression.CompressionMode]::Decompress)
   $out = [IO.File]::Create($sql); $gz.CopyTo($out); $out.Close(); $gz.Close(); $in.Close()
+  # backups made on Aiven before 2026-11-06 write table definitions with "double quotes" (ANSI_QUOTES)
+  $text = [IO.File]::ReadAllText($sql)
+  if ($text.Contains('CREATE TABLE "')) {
+    Say 'this backup uses ANSI quotes: reading it that way'
+    $text = $text.Replace("SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';", "SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO,ANSI_QUOTES';")
+    [IO.File]::WriteAllText($sql, $text, (New-Object Text.UTF8Encoding($false)))
+  }
+  $text = $null
   & "$bin\mysql.exe" --no-defaults -h 127.0.0.1 -P $DbPort -u root --default-character-set=utf8mb4 $db -e "source $($sql -replace '\\','/')"
+  if ($LASTEXITCODE -ne 0) { throw 'The restore failed: the local data was NOT replaced with this backup (see the message above)' }
   Remove-Item $sql
   $needSchema = $true
 } else {
