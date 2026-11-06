@@ -2,6 +2,7 @@
  * PATCH /api/users/[id]/role — Elevate, update, or toggle roles/statuses of users
  */
 
+import { securityAlert } from '@/lib/security/alerts'
 import { allowsCampus } from '@/lib/places/rules'
 import { canSeeUser, loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
@@ -321,6 +322,7 @@ export async function PATCH(
       })
     })
 
+    if (role && (role === 'SUPER_ADMIN' || role === 'ADMIN')) await securityAlert('ROLE_RAISED', { actorId: session.user.id, text: `${userId} → ${role}` })
     return successResponse(null, { message: 'User role and assignments updated successfully' })
   } catch (err: any) {
     console.error('[USER_ROLE_UPDATE_ERROR]', err)

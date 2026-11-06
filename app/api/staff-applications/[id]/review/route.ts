@@ -14,6 +14,9 @@
  * A partial write (User without Teacher) creates an orphaned auth record.
  */
 
+import { randomInt } from 'crypto'
+import { generateTempPassword } from '@/lib/students/portal-password'
+import { securityAlert } from '@/lib/security/alerts'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { nextTeacherEmployeeId } from '@/lib/ids/sequence'
@@ -77,8 +80,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           return errors.conflict('A user with this email already exists in the system.')
         }
 
-        // Default password = CNIC without hyphens (never logged, communicated as "your CNIC" in email)
-        const rawPassword = application.cnic.replace(/-/g, '')
+        // Security batch 2026-11-06: was the national ID (guessable). Now a temporary password the person must change at first sign-in.
+        const rawPassword = generateTempPassword((max) => randomInt(max))
         const passwordHash = await hash(rawPassword, ARGON2_OPTIONS)
 
         // Determine role and generate employee ID
@@ -102,6 +105,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                 passwordHash,
                 role: prismaRole,
                 isActive: true,
+                mustChangePassword: true,
               },
             })
 
@@ -174,14 +178,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             console.warn('[STAFF_APPROVE] credentials email failed', _emailErr)
           }
 
+          if (prismaRole === 'ADMIN') await securityAlert('NEW_ADMIN', { actorId: session.user.id, text: `${application.fullName} (job application)`, textAr: `${application.fullName} (طلب توظيف)` })
           return successResponse(
             {
               id: application.id,
               employeeId: result.employeeId,
               userId: result.user.id,
               teacherId: result.teacher.id,
+              tempPassword: rawPassword,
             },
-            `Staff application approved. Employee ID: ${result.employeeId}. Credentials email sent.`
+            `Staff application approved. Employee ID: ${result.employeeId}. Temporary password: ${rawPassword} (they must change it at first sign-in) · كلمة السر المؤقتة: ${rawPassword}`
           )
         } catch (txErr: unknown) {
           const prismaErr = txErr as { code?: string; meta?: { target?: string[] } }

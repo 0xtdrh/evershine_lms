@@ -4,6 +4,7 @@
  * POST  /api/agreements/[id] { action: 'remind' } — notify everyone still pending
  */
 
+import { safeCell } from '@/lib/security/password-policy'
 import { NextRequest, NextResponse } from 'next/server'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const st = await agreementStatus(id)
   if (!st) return errors.notFound('Agreement')
   if (new URL(request.url).searchParams.get('format') === 'csv') {
-    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const esc = (v: unknown) => `"${safeCell(v).replace(/"/g, '""')}"`
     const lines = [['Name', 'Role', 'Contact', 'Accepted at', 'Device'].map(esc).join(','), ...st.rows.map((r) => [r.name, r.role, r.contact, r.acceptedAt ? new Date(r.acceptedAt).toISOString() : 'PENDING', r.device ?? ''].map(esc).join(','))]
     return new NextResponse('﻿' + lines.join('\n'), { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="agreement-${st.agreement.key}-v${st.agreement.version}.csv"` } })
   }

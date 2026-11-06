@@ -3,6 +3,7 @@
  * Public endpoint for updating a user's password using a reset token.
  */
 
+import { passwordProblem } from '@/lib/security/password-policy'
 import { NextRequest } from 'next/server'
 import { hash } from '@node-rs/argon2'
 import { prisma } from '@/lib/prisma'
@@ -42,6 +43,8 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return errors.validation({ errors: [{ path: ['token'], message: 'Reset token is invalid or has expired' }] } as never)
     }
+    const weak = passwordProblem(user.role, password)
+    if (weak) return errors.validation({ errors: [{ path: ['password'], message: `${weak.en} · ${weak.ar}` }] } as never)
 
     const passwordHash = await hash(password, ARGON2_OPTIONS)
 

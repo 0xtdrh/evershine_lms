@@ -1,3 +1,4 @@
+import { securityAlert } from '@/lib/security/alerts'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errors } from '@/lib/api-response'
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
     const length = Number(upstream.headers.get('content-length') ?? NaN)
     if (upstream.ok && Number.isFinite(length) && length < PROXY_MAX_BYTES) {
       const body = Buffer.from(await upstream.arrayBuffer())
+      await securityAlert('BACKUP_DOWNLOAD', { actorId: userId })
       return new NextResponse(body, {
         status: 200,
         headers: {

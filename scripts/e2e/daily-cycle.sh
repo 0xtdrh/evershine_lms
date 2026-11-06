@@ -2869,6 +2869,22 @@ check "…a request is refused" "$(api POST /api/refunds "{\"invoiceId\":\"$GI2\
 check "…a normal group is not affected" "$(GALLOWED $LATEINV)" "$(echo "$GKEEP" | python -c "import sys,json;print(all(r['allowed'] for r in json.load(sys.stdin)['data'] if r['scopeType']=='ALL'))")"
 api PUT /api/refunds/rules "$(echo "$GKEEP" | python -c "import sys,json;rs=json.load(sys.stdin)['data'];print(json.dumps({'rules':[{k:r.get(k) for k in ('scopeType','scopeId','allowed','adminFeeType','adminFeeValue','deductBasis','untilDaysBeforeFirst')} for r in rs]}))")" >/dev/null
 rm -f "$GJ" "$GPJ"
+echo "== 84. Security part 1: staff passwords, no data loss on build, alerts to the Super Admin (2026-11-06)"
+SECN() { M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.role='SUPER_ADMIN' AND n.titleAr LIKE 'تنبيه أمان:%' AND n.titleAr LIKE '%$1%'"; }
+check "a short staff password is refused" "$(api POST /api/users/create-admin "{\"firstName\":\"Weak\",\"lastName\":\"Pass\",\"email\":\"weak@e2e.local\",\"password\":\"Abc12345\",\"role\":\"SECRETARY\",\"campusId\":\"$CAMPUS\"}" | jq_ "d['success']")" "False"
+check "…letters only is refused too" "$(api POST /api/users/create-admin "{\"firstName\":\"Weak\",\"lastName\":\"Pass\",\"email\":\"weak@e2e.local\",\"password\":\"abcdefghijkl\",\"role\":\"SECRETARY\",\"campusId\":\"$CAMPUS\"}" | jq_ "d['success']")" "False"
+N0=$(SECN 'مدير جديد')
+check "a new admin account is made with a good password" "$(api POST /api/users/create-admin "{\"firstName\":\"Sec\",\"lastName\":\"Admin\",\"email\":\"secadmin@e2e.local\",\"password\":\"Strong2026Pass\",\"role\":\"ADMIN\",\"campusId\":\"$CAMPUS\"}" | jq_ "d['success']")" "True"
+check "…and every Super Admin is told" "$(( $(SECN 'مدير جديد') > N0 ))" "1"
+SAU=$(M "SELECT id FROM User WHERE email='secadmin@e2e.local'")
+check "resetting an admin's password to a short one is refused" "$(api POST /api/users/reset-credentials "{\"userId\":\"$SAU\",\"newPassword\":\"short1\"}" | jq_ "d['success']")" "False"
+N1=$(SECN 'باسورد أو إيميل')
+api POST /api/users/reset-credentials "{\"userId\":\"$SAU\",\"newPassword\":\"Another2026Pass\"}" >/dev/null
+check "…a good one works and the Super Admin is told" "$(( $(SECN 'باسورد أو إيميل') > N1 ))" "1"
+check "the build no longer drops data by itself" "$(grep -c "'--accept-data-loss', '--skip-generate'" scripts/db-push-with-timeout.js)/$(grep -c 'DB_PUSH_ALLOW_DATA_LOSS' scripts/db-push-with-timeout.js)" "0/2"
+check "no known fallback secret is left in the code" "$(grep -rln "dev-secret-key-change-in-production\|'dev-only-secret'" lib app --include=*.ts | grep -v lib/security/secret.ts | wc -l | tr -d ' ')" "0"
+G88=$(M "SELECT userId FROM Guardian WHERE phoneNumber='01066660519'")
+check "a parent may still use an 8-character password" "$(api POST /api/users/reset-credentials "{\"userId\":\"$G88\",\"newPassword\":\"Parent88\"}" | jq_ "d['success']")" "True"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

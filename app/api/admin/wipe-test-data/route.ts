@@ -6,6 +6,7 @@
  * backup fails nothing is deleted. See lib/setup/wipe-test-data.ts.
  */
 
+import { securityAlert } from '@/lib/security/alerts'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
     } catch (auditErr) {
       console.error('[WIPE_AUDIT]', auditErr)
     }
+    await securityAlert('WIPE', { actorId: userId })
     return successResponse({ backupFile, deleted: result.deleted }, 'Test data deleted')
   } catch (err) {
     console.error('[WIPE_TEST_DATA]', err)

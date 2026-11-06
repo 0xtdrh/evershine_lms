@@ -3,6 +3,7 @@
  * POST /api/teachers  — create staff member (Admin/Super Admin only)
  */
 
+import { passwordProblem } from '@/lib/security/password-policy'
 import { allowsCampus, narrow, teacherWhere } from '@/lib/places/rules'
 import { loadPlaces, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
@@ -192,6 +193,7 @@ export async function POST(request: NextRequest) {
 
   // Hash the password outside the transaction to avoid long-running CPU work
   // inside Prisma's transaction timeout window.
+  { const weak = passwordProblem('TEACHER', data.password); if (weak) return errors.validation({ errors: [{ path: ['password'], message: `${weak.en} · ${weak.ar}` }] } as never) }
   const passwordHash = await hash(data.password, ARGON2_OPTIONS)
 
   let teacher: Awaited<ReturnType<typeof prisma.teacher.create>>

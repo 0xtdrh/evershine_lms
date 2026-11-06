@@ -2,6 +2,7 @@
  * POST /api/users/change-password — Allow any logged-in user to change their own password securely
  */
 
+import { passwordProblem } from '@/lib/security/password-policy'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
 
     // The new password must not be one of the guessable defaults (phone number,
     // registration number...), or the account would be open to anyone again.
+    { const weak = passwordProblem(user.role, newPassword); if (weak) return errors.validation({ errors: [{ path: ['newPassword'], message: `${weak.en} · ${weak.ar}` }] } as never) }
     if (await isDefaultPortalPassword(user.id, user.role, newPassword)) {
       return errors.validation({
         errors: [{ path: ['newPassword'], message: 'Choose a password that is not your phone or registration number' }],

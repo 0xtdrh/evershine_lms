@@ -248,7 +248,7 @@ export async function importRow(key: DatasetKey, ctx: ImportCtx, v: Record<strin
         firstName: v.firstName, lastName: v.lastName, cnic: v.nationalId, gender: v.gender, dateOfBirth: iso(v.dateOfBirth), joiningDate: iso(v.joiningDate),
         designation: v.designation, phoneNumber: v.phoneNumber, email: v.email, address: v.address, city: v.city, emergencyContact: v.emergencyContact,
         campusId: v.campus, qualification: str(v.qualification) ?? '', specialization: str(v.specialization), experienceYears: 0,
-        password: `Tn-${randomBytes(9).toString('base64url')}`, // never shown; staff give the real one with "Reset password"
+        password: `Tn-${randomBytes(9).toString('base64url')}-${10 + (randomBytes(1)[0] % 90)}`, // letters + numbers, as the staff password rule needs // never shown; staff give the real one with "Reset password"
       })
       return r.ok ? { ok: true, id: String(r.data?.id ?? '') } : { ok: false, reason: r.message }
     }

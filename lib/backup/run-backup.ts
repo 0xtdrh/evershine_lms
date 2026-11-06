@@ -1,3 +1,5 @@
+import { securityAlert } from '@/lib/security/alerts'
+import { MAX_BACKUP_BYTES } from './storage'
 import { prisma } from '@/lib/prisma'
 import { createSqlDump } from './db-dump'
 import { backupFileName, pruneBackups, uploadBackup, type StoredBackup } from './storage'
@@ -23,6 +25,7 @@ export async function runBackup(manual: boolean): Promise<BackupRunResult> {
     const dump = await createSqlDump({ deadlineMs: DUMP_DEADLINE_MS })
     const backup = await uploadBackup(dump.gz, backupFileName(dump.createdAt, manual))
     const deleted = await pruneBackups()
+    if (dump.gz.length > MAX_BACKUP_BYTES * 0.75) await securityAlert('BACKUP_NEAR_LIMIT', { text: `${(dump.gz.length / 1048576).toFixed(1)} MB of ${(MAX_BACKUP_BYTES / 1048576).toFixed(1)} MB`, textAr: `${(dump.gz.length / 1048576).toFixed(1)} ميجا من ${(MAX_BACKUP_BYTES / 1048576).toFixed(1)}` })
     return {
       backup,
       tables: dump.tables.length,

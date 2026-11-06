@@ -4,9 +4,9 @@
  * Production systems should use 'jsonwebtoken' package instead
  */
 
+import { signingSecret } from '@/lib/security/secret'
 import { createHmac, randomBytes } from 'crypto'
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'dev-secret-key-change-in-production'
 
 interface TokenPayload {
   [key: string]: any
@@ -29,7 +29,7 @@ export function createToken(payload: TokenPayload, expiresInSeconds: number = 36
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64')
   const body = Buffer.from(JSON.stringify(token)).toString('base64')
 
-  const signature = createHmac('sha256', JWT_SECRET)
+  const signature = createHmac('sha256', signingSecret())
     .update(`${header}.${body}`)
     .digest('base64')
     .replace(/=/g, '')
@@ -48,7 +48,7 @@ export function verifyToken(token: string): TokenPayload | null {
     if (!header || !body || !signature) return null
 
     // Verify signature
-    const expectedSignature = createHmac('sha256', JWT_SECRET)
+    const expectedSignature = createHmac('sha256', signingSecret())
       .update(`${header}.${body}`)
       .digest('base64')
       .replace(/=/g, '')

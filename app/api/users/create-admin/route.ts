@@ -2,6 +2,8 @@
  * POST /api/users/create-admin — Allow SUPER_ADMIN to provision a campus-level administrator account (User + Admin profile)
  */
 
+import { securityAlert } from '@/lib/security/alerts'
+import { passwordProblem } from '@/lib/security/password-policy'
 import { allowsCampus } from '@/lib/places/rules'
 import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
@@ -53,6 +55,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { firstName, lastName, email, password, role, campusId, department } = parsed.data
+  { const weak = passwordProblem(role, password); if (weak) return errors.validation({ errors: [{ path: ['password'], message: `${weak.en} · ${weak.ar}` }] } as never) }
   // M0: new staff only in one of the person's places
   if (campusId && !allowsCampus(await loadPlaces(session.user), campusId)) return errors.forbidden('This place is not yours')
 
@@ -152,6 +155,7 @@ export async function POST(request: NextRequest) {
       return { userId: newUser.id, profileId }
     })
 
+    if (['SUPER_ADMIN', 'ADMIN'].includes(String(role))) await securityAlert('NEW_ADMIN', { actorId: session.user.id, text: `${email} (${role})` })
     return successResponse(result, { message: 'Account created successfully' })
   } catch (err: any) {
     console.error('[CREATE_ADMIN_ERROR]', err)

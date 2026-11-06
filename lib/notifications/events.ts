@@ -44,6 +44,7 @@ export const NOTIFICATION_EVENTS = [
   { key: 'RENEWAL_REQUEST', label: 'Continuing next month?', description: 'Parent: please confirm if your child continues (renewals)', audience: 'PARENT' },
   { key: 'BIRTHDAY', label: 'Birthday greeting', description: 'Student, parent or staff member: happy birthday', audience: 'PARENT' },
   { key: 'ONE_TO_ONE_BOOKED', label: 'One-to-One booked', description: 'Parent: the One-to-One was booked (instructor and time), or the request was closed', audience: 'PARENT' },
+  { key: 'SECURITY_ALERT', label: 'Security alert', description: 'Super Admin: a new admin, a role raised, permissions changed, a backup downloaded, data wiped, a month reopened, a full export, an admin account locked', audience: 'STAFF' },
   { key: 'VIDEO_SUSPICIOUS', label: 'Unusual video watching', description: 'Managers: students with many refused devices, networks or key requests', audience: 'STAFF' },
   { key: 'RECORDED_ENDING', label: 'Subscription ends soon', description: 'Parent: a recorded course ends in 3 days', audience: 'PARENT' },
   { key: 'ONE_TO_ONE_SESSION', label: 'One-to-One session changed', description: 'Parent: a session moved, the instructor cannot come, or the fixed time was released', audience: 'PARENT' },

@@ -3,6 +3,7 @@
  * GET — every setting of the place; PUT { role, items: [{ resource, action, allowed }] } — replaces that role's settings.
  */
 
+import { securityAlert } from '@/lib/security/alerts'
 import { NextRequest } from 'next/server'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession } from '@/lib/academic/api-helpers'
@@ -26,5 +27,6 @@ export async function PUT(request: NextRequest, { params }: P) {
   if (!parsed.success) return errors.validation(parsed.error)
   const problem = await savePlaceOverrides(session.user.id, (await params).campusId, parsed.data.role ?? 'ALL', parsed.data.items as never)
   if (problem) return errors.badRequest(problem)
+  await securityAlert('PERMISSIONS', { actorId: session.user.id, text: `${parsed.data.items.length} rule(s)`, textAr: `${parsed.data.items.length} قاعدة` })
   return successResponse({ saved: parsed.data.items.length }, 'Saved')
 }

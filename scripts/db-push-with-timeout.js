@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 /**
- * Runs `prisma db push --accept-data-loss --skip-generate` with a time limit.
+ * Runs `prisma db push --skip-generate` with a time limit.
+ *
+ * SECURITY BATCH (2026-11-06): no --accept-data-loss any more. A schema change that would drop or lose data now STOPS the
+ * build and the live version stays; the change is then done by hand after a backup. Set DB_PUSH_ALLOW_DATA_LOSS=1 on the host
+ * for one build only when the loss is intended.
  *
  * WHY: on 2026-09-29 a Vercel build hung for 46 minutes (Vercel's 45-minute
  * limit) with no schema change at all, most likely waiting on the Railway
@@ -23,7 +27,8 @@ function attempt(n) {
     // Run the Prisma CLI directly with node (no npx / shell), so the kill
     // below stops the real process.
     const cli = require.resolve('prisma/build/index.js')
-    const child = spawn(process.execPath, [cli, 'db', 'push', '--accept-data-loss', '--skip-generate'], {
+    const args = ['db', 'push', '--skip-generate', ...(process.env.DB_PUSH_ALLOW_DATA_LOSS === '1' ? ['--accept-data-loss'] : [])]
+    const child = spawn(process.execPath, [cli, ...args], {
       stdio: 'inherit',
     })
     const timer = setTimeout(() => {

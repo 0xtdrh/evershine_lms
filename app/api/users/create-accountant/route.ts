@@ -13,6 +13,7 @@
  * be able to provision them, unlike general ADMIN accounts which an ADMIN can also create.
  */
 
+import { passwordProblem } from '@/lib/security/password-policy'
 import { allowsCampus } from '@/lib/places/rules'
 import { loadPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { firstName, lastName, email, password, phoneNumber, campusId, employeeId } = parsed.data
+  { const weak = passwordProblem('ACCOUNTANT', password); if (weak) return errors.validation({ errors: [{ path: ['password'], message: `${weak.en} · ${weak.ar}` }] } as never) }
   // M0: new staff only in one of the person's places ("all" needs every place)
   {
     const pl = await loadPlaces(session.user)

@@ -1,5 +1,6 @@
 /** POST /api/month-close/reopen { ym, campusId?, reason } — a03: reopen a closed month (Super Admin; the reason is kept). */
 
+import { securityAlert } from '@/lib/security/alerts'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { errors, successResponse } from '@/lib/api-response'
@@ -15,6 +16,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return errors.validation(parsed.error)
   try {
     const row = await reopenMonth(u.user, parsed.data.ym, scopeParam(parsed.data.campusId), parsed.data.reason)
+    await securityAlert('MONTH_REOPEN', { actorId: u.user.id, text: `${parsed.data.ym}` })
     return successResponse({ id: row.id, status: row.status }, 'Month reopened · الشهر اتفتح')
   } catch (e) { return monthCloseError(e) }
 }

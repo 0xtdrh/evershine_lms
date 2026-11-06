@@ -3,9 +3,10 @@
  * so its file requests carry this token instead: block + viewer + expiry, HMAC with the auth secret. Pure + node crypto.
  */
 
+import { signingSecret } from '@/lib/security/secret'
 import { createHmac, timingSafeEqual } from 'crypto'
 
-const secret = () => process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'dev-only-secret'
+const secret = () => signingSecret()
 const b64 = (s: Buffer | string) => Buffer.from(s).toString('base64url')
 
 export const H5P_TOKEN_HOURS = 6

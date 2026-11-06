@@ -2,6 +2,8 @@
  * POST /api/users/reset-credentials — Reset email & password credentials for any user (Admin/Super Admin only)
  */
 
+import { securityAlert } from '@/lib/security/alerts'
+import { passwordProblem } from '@/lib/security/password-policy'
 import { canSeeUser } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
@@ -87,9 +89,8 @@ export async function POST(request: NextRequest) {
 
   // 2. Process password reset
   if (newPassword) {
-    if (newPassword.length < 8) {
-      return errors.validation({ errors: [{ path: ['newPassword'], message: 'Password must be at least 8 characters long' }] } as never)
-    }
+    const weak = passwordProblem(user.role, newPassword)
+    if (weak) return errors.validation({ errors: [{ path: ['newPassword'], message: `${weak.en} · ${weak.ar}` }] } as never)
     const passwordHash = await hash(newPassword, ARGON2_OPTIONS)
     updateData.passwordHash = passwordHash
     updateData.sessionsRevokedAt = new Date() // sign out the old sessions of that account
@@ -148,6 +149,7 @@ export async function POST(request: NextRequest) {
       })
     })
 
+    if (['SUPER_ADMIN', 'ADMIN'].includes(user.role) && userId !== session.user.id) await securityAlert('ADMIN_RESET', { actorId: session.user.id, text: user.email })
     return successResponse(null, { message: 'Credentials updated successfully' })
   } catch (err: any) {
     console.error('[CREDENTIALS_RESET_ERROR]', err)

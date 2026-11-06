@@ -3,6 +3,7 @@
  * The AES key is stored sealed with VIDEO_KEY_SECRET (else NEXTAUTH_SECRET): changing that secret makes every protected video unplayable.
  */
 
+import { signingSecret } from '@/lib/security/secret'
 import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
@@ -26,7 +27,7 @@ export async function saveVideoSettings(v: Partial<VideoSettings>, userId: strin
 
 // ── the key, sealed at rest ─────────────────────────────────────────────────────────────────────────────────
 
-const sealKey = () => crypto.createHash('sha256').update(`video-key:${process.env.VIDEO_KEY_SECRET || process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || ''}`).digest()
+const sealKey = () => crypto.createHash('sha256').update(`video-key:${process.env.VIDEO_KEY_SECRET?.trim() || signingSecret()}`).digest()
 export function seal(key: Buffer): string {
   const iv = crypto.randomBytes(12), c = crypto.createCipheriv('aes-256-gcm', sealKey(), iv)
   const out = Buffer.concat([c.update(key), c.final()])
