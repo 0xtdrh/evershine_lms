@@ -39,6 +39,7 @@ const { mockAuth, mockPrisma, mockTx, mockHash, mockSendApprovalNotification, mo
   }
 })
 
+vi.mock('@/lib/students/duplicates-server', () => ({ findDuplicateStudents: async () => [], duplicateMessage: () => '' }))
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 // M0: places come from the signed-in person (super admin = every place, others = their campus)
 vi.mock('@/lib/places/server', async () => {

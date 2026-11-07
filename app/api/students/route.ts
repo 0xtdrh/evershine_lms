@@ -7,6 +7,7 @@
  * would leave an orphaned auth account with no profile.
  */
 
+import { duplicateMessage, findDuplicateStudents } from '@/lib/students/duplicates-server'
 import { requestPlaces, studentWhere } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
@@ -228,6 +229,17 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return errors.validation(parsed.error)
 
   const data = parsed.data
+
+  // Duplicate-student warning (2026-11-07): the same child may already be registered (any branch, also withdrawn).
+  // The form shows the matches first; "it is another child" sends confirmNotDuplicate: true.
+  if ((body as { confirmNotDuplicate?: unknown })?.confirmNotDuplicate !== true) {
+    const dup = await findDuplicateStudents({
+      firstName: data.firstName, lastName: data.lastName, dateOfBirth: data.dateOfBirth,
+      phones: [data.guardianPhone, data.phoneNumber, data.emergencyContact, (data as { fatherPhoneNumber?: string }).fatherPhoneNumber],
+    })
+    if (dup.length) return errorResponse('DUPLICATE_SUSPECT', duplicateMessage(dup), 409, dup.map((d) => ({ id: d.id, name: d.name, registrationNumber: d.registrationNumber, campus: d.campus ?? '', status: d.status, level: d.level })))
+  }
+
   // Batches are switched off: the branch's default batch (lib/batches/default-batch.ts).
   const batchId = await resolveBatchId(data.campusId, data.batchId)
 

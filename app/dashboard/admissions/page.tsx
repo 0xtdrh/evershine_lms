@@ -277,7 +277,7 @@ export default function AdmissionsDashboard() {
 
   // Approval Mutation
   const approveMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (confirmNotDuplicate?: boolean) => {
       return fetchApi(`/api/admissions/${selectedRequest?.id}/approve`, {
         method: 'POST',
         body: JSON.stringify({
@@ -287,6 +287,7 @@ export default function AdmissionsDashboard() {
           shift,
           deliveryMode,
           classSectionId: classSectionId || undefined,
+          ...(confirmNotDuplicate === true ? { confirmNotDuplicate: true } : {}),
         })
       })
     },
@@ -297,6 +298,11 @@ export default function AdmissionsDashboard() {
       resetAssignmentState()
     },
     onError: (err: any) => {
+      // Duplicate-student warning: the child may already be registered
+      if (err?.code === 'DUPLICATE_SUSPECT') {
+        if (window.confirm(`${err.message}\n\n${L('Approve anyway as a NEW student?', 'توافق برضه كطالب جديد؟')}`)) approveMutation.mutate(true)
+        return
+      }
       notify.error(err.message || 'Failed to approve admission')
     }
   })
@@ -352,7 +358,7 @@ export default function AdmissionsDashboard() {
       notify.error(L('Total academic fee must be at least the sum of admission fee and course fee', 'الإجمالي لازم يبقى على الأقل مجموع مصاريف التسجيل والكورس'))
       return
     }
-    approveMutation.mutate()
+    approveMutation.mutate(false)
   }
 
   // Route guard: only SUPER_ADMIN and ADMIN can access admissions management

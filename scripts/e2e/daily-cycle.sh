@@ -3002,6 +3002,24 @@ check "the person who asked can withdraw a request" "$(api PATCH /api/payment-vo
 api PUT /api/payment-voids/settings '{"maxDays":7}' >/dev/null
 M "UPDATE FeePayment SET createdAt=NOW() WHERE id='$VP2'"
 rm -f "$VAJ"
+echo "== 88. Duplicate-student warning: the same child is not registered twice by mistake (2026-11-07)"
+DK=$(mkstu Dupkid 01000000881 Dparent 01000000882)
+check "a new child is saved normally" "$( [ -n "$DK" ] && echo ok)" "ok"
+DR=$(api POST /api/students "$(stu Dupkid 01000000883 Dparent +201000000882)")
+check "same name + same parent phone (written +20…): refused with the old record shown" "$(echo "$DR" | jq_ "(d['error']['code'], d['error']['details'][0]['id']=='$DK', d['error']['details'][0]['level'])")" "('DUPLICATE_SUSPECT', True, 'SURE')"
+check "…the check the form calls says the same" "$(api POST /api/students/duplicates '{"firstName":"dupkid","lastName":"e2e","phones":["1000000882"]}' | jq_ "[(c['id']=='$DK', c['level']) for c in d['data']]")" "[(True, 'SURE')]"
+check "a brother / sister (same parent phone, another name) is not a duplicate" "$(api POST /api/students "$(stu Dupsib 01000000884 Dparent 01000000882)" | jq_ "d['success']")" "True"
+check "staff confirm it is another child: saved" "$(api POST /api/students "$(stu Dupkid 01000000885 Dparent 01000000882 | sed 's/}$/,"confirmNotDuplicate":true}/')" | jq_ "d['success']")" "True"
+AK=$(mkstu "\u0623\u062d\u0645\u062f" 01000000886 "Aparent" 01000000887)
+check "Arabic names: أحمد and احمد are the same name (sent as \u codes: Git Bash breaks Arabic in curl)" "$(api POST /api/students "$(stu "\u0627\u062d\u0645\u062f" 01000000888 Aparent 01000000887)" | jq_ "d['error']['code']")" "DUPLICATE_SUSPECT"
+M "UPDATE Student SET enrollmentStatus='WITHDRAWN' WHERE id='$AK'"
+check "an old (withdrawn) child is found too (re-add the old record instead)" "$(api POST /api/students/duplicates '{"firstName":"\u0623\u062d\u0645\u062f","lastName":"E2e","phones":["01000000887"]}' | jq_ "[(c['id']=='$AK', c['status']) for c in d['data']]")" "[(True, 'WITHDRAWN')]"
+TJ8=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ8" 10.0.8.90
+check "an instructor cannot run the check" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ8" -X POST -H 'Content-Type: application/json' -d '{"firstName":"x","phones":[]}' $B/api/students/duplicates)" "403"
+curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.8.88' -d '{"firstName":"Dupkid","lastName":"E2e","fullNameAr":"طفل مكرر","fatherName":"Dparent","dateOfBirth":"2015-01-01","gender":"MALE","address":"Sheraton street, Hurghada","city":"Hurghada","phoneNumber":"01000000889","emergencyContact":"01000000882","guardianFirstName":"Dparent","guardianLastName":"E2e","guardianPhoneNumber":"01000000882","guardianRelationship":"Father","preferredCampusId":"","preferredShift":"","deliveryMode":"PHYSICAL","termsAccepted":true}' $B/api/admissions/apply
+DAR=$(M "SELECT id FROM AdmissionRequest WHERE firstName='Dupkid' AND status='PENDING' LIMIT 1")
+check "approving an online application for a child already registered asks first" "$(api POST /api/admissions/$DAR/approve "{\"campusId\":\"$CAMPUS\"}" | jq_ "d['error']['code']")/$(M "SELECT status FROM AdmissionRequest WHERE id='$DAR'")" "DUPLICATE_SUSPECT/PENDING"
+check "…and approves it when staff say it is another child" "$(api POST /api/admissions/$DAR/approve "{\"campusId\":\"$CAMPUS\",\"confirmNotDuplicate\":true}" | jq_ "d['success']")/$(M "SELECT status FROM AdmissionRequest WHERE id='$DAR'")" "True/APPROVED"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

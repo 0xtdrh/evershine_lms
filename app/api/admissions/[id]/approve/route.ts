@@ -1,3 +1,4 @@
+import { duplicateMessage, findDuplicateStudents } from '@/lib/students/duplicates-server'
 import { allowsCampus, loadPlaces } from '@/lib/places/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
@@ -96,6 +97,12 @@ export async function POST(
 
     if (!allowsCampus(await loadPlaces(session.user), campusId)) {
       return NextResponse.json({ success: false, error: 'You can approve admissions only for your own places.' }, { status: 403 })
+    }
+
+    // Duplicate-student warning (2026-11-07): the child may already be registered. The screen asks, then sends confirmNotDuplicate.
+    if ((body as { confirmNotDuplicate?: unknown })?.confirmNotDuplicate !== true) {
+      const dup = await findDuplicateStudents({ firstName: request.firstName, lastName: request.lastName, dateOfBirth: request.dateOfBirth, phones: [request.guardianPhoneNumber, request.phoneNumber, request.fatherPhoneNumber] })
+      if (dup.length) return NextResponse.json({ success: false, error: { code: 'DUPLICATE_SUSPECT', message: duplicateMessage(dup), details: dup } }, { status: 409 })
     }
 
     const separationRequired = batchRequiresGenderSeparation(batch.academicLevel, batch.forceGenderSeparation)

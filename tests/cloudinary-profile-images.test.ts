@@ -55,6 +55,7 @@ const {
   }
 })
 
+vi.mock('@/lib/students/duplicates-server', () => ({ findDuplicateStudents: async () => [], duplicateMessage: () => '' }))
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 vi.mock('@/lib/rbac', () => ({ checkPermission: mockCheckPermission }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))

@@ -1,7 +1,7 @@
 'use client'
 
 import { GroupRulesPreview } from '@/components/rules/GroupRulesPreview'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import NextImage from 'next/image'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/lib/notify'
@@ -68,6 +68,9 @@ export default function AdmissionPage() {
   const [enrollmentStatus, setEnrollmentStatus] = useState<'none' | 'enrolled' | 'skipped'>('none')
   // Change 1: global client-side validation error summary
   const [validationErrors, setValidationErrors] = useState<{ field: string; label: string }[]>([])
+  // Duplicate-student warning (2026-11-07): matches found before saving; "another child" saves anyway
+  const [dupes, setDupes] = useState<{ id: string; name: string; registrationNumber: string; campus: string | null; status: string; level: string }[]>([])
+  const notDuplicate = useRef(false)
 
   const {
     register,
@@ -164,6 +167,17 @@ export default function AdmissionPage() {
     setEnrollmentStatus('none')
 
     try {
+      if (!notDuplicate.current) {
+        const found = await fetchApi<typeof dupes>('/api/students/duplicates', {
+          method: 'POST',
+          body: JSON.stringify({ firstName: data.firstName, lastName: data.lastName, dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString() : null, phones: [data.guardianPhone, data.phoneNumber, data.emergencyContact, (data as { fatherPhoneNumber?: string }).fatherPhoneNumber].filter(Boolean) }),
+        })
+        if (found.length) {
+          setDupes(found)
+          setTimeout(() => document.getElementById('duplicate-banner')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
+          return
+        }
+      }
       const result = await fetchApi<{
         id: string
         registrationNumber: string
@@ -176,6 +190,7 @@ export default function AdmissionPage() {
         body: JSON.stringify({
           ...data,
           dateOfBirth: new Date(data.dateOfBirth).toISOString(),
+          ...(notDuplicate.current ? { confirmNotDuplicate: true } : {}),
         }),
       })
 
@@ -238,6 +253,7 @@ export default function AdmissionPage() {
         notify.error(L('Unexpected error', 'حصل خطأ'), { description: 'Please try again or contact support.' })
       }
     } finally {
+      notDuplicate.current = false
       setIsLoading(false)
     }
   }
@@ -296,6 +312,29 @@ export default function AdmissionPage() {
           </p>
         </div>
       </div>
+
+      {dupes.length > 0 && (
+        <Alert id="duplicate-banner" className="border-amber-300 bg-amber-50">
+          <AlertCircle className="h-4 w-4 text-amber-700" />
+          <AlertTitle className="text-amber-900">{L('This child may already be registered', 'الطفل ده ممكن يكون متسجل قبل كده')}</AlertTitle>
+          <AlertDescription className="space-y-2 text-amber-900">
+            <p className="text-xs">{L('If it is the same child, open the old record (re-add them to a group from there) so attendance, invoices and certificates stay together.', 'لو هو نفس الطفل افتح ملفه القديم (وضيفه لجروب من هناك) علشان الحضور والفواتير والشهادات تفضل مع بعض.')}</p>
+            <ul className="space-y-1 text-sm">
+              {dupes.map((d) => (
+                <li key={d.id} className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${d.level === 'SURE' ? 'bg-rose-100 text-rose-800' : d.level === 'LIKELY' ? 'bg-amber-200 text-amber-900' : 'bg-slate-100 text-slate-700'}`}>{d.level === 'SURE' ? L('Same child', 'نفس الطفل غالبًا') : d.level === 'LIKELY' ? L('Very likely', 'محتمل جدًا') : L('Same name', 'نفس الاسم')}</span>
+                  <b>{d.name}</b> <span dir="ltr" className="text-xs">{d.registrationNumber}</span> {d.campus && <span className="text-xs">· {d.campus}</span>} <span className="text-xs">· {d.status}</span>
+                  <Link href={`/dashboard/students/${d.id}`} className="text-xs text-indigo-700 underline">{L('Open', 'افتح ملفه')}</Link>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button type="button" size="sm" variant="outline" disabled={isLoading} onClick={() => { notDuplicate.current = true; setDupes([]); void handleSubmit(onSubmit, onInvalid)() }}>{L('It is another child: save', 'ده طفل تاني: احفظ')}</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setDupes([])}>{L('Back to the form', 'ارجع للفورم')}</Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* CHANGE 1: Global client-side validation error banner — lists every missing required field */}
       {validationErrors.length > 0 && (

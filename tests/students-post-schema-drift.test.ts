@@ -18,6 +18,7 @@ const { mockAuth, mockCheckPermission, mockHash, mockPrisma } = vi.hoisted(() =>
   return { mockAuth, mockCheckPermission, mockHash, mockPrisma }
 })
 
+vi.mock('@/lib/students/duplicates-server', () => ({ findDuplicateStudents: async () => [], duplicateMessage: () => '' }))
 vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
 vi.mock('@/lib/rbac', () => ({ checkPermission: mockCheckPermission }))
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
