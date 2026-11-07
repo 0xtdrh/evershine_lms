@@ -233,7 +233,7 @@ export default function StudentAcademicsPage() {
   useEffect(() => {
     if (status === 'loading') return
     if (role && role !== 'STUDENT') {
-      router.replace('/dashboard/results')
+      router.replace('/dashboard')
     }
   }, [status, role, router])
 

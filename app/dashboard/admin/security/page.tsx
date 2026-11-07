@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ShieldCheck } from 'lucide-react'
 
 interface Settings { twoFactorEnabled: boolean; twoFactorRoles: string[]; idleMinutes: number; roleChoices: string[] }
+interface CspRow { id: string; directive: string; blocked: string; page: string; count: number; lastAt: string }
 interface Row { id: string; email: string; role: string; totpEnabledAt: string | null; required: boolean }
 
 const ROLE: Record<string, [string, string]> = { SUPER_ADMIN: ['Super Admin', 'Super Admin'], ADMIN: ['Admin', 'مدير'], BRANCH_MANAGER: ['Branch manager', 'مدير فرع'], ACCOUNTANT: ['Accountant', 'محاسب'], SECRETARY: ['Secretary', 'سكرتارية'], MARKETING: ['Marketing', 'تسويق'], TEACHER: ['Instructor', 'مدرب'] }
@@ -32,6 +33,11 @@ export default function SecuritySettingsPage() {
   const reset = useMutation({
     mutationFn: (userId: string) => fetchApi('/api/security/two-factor/users', { method: 'POST', body: JSON.stringify({ userId }) }),
     onSuccess: () => { notify.success(L('Reset. They set it up again at the next sign-in.', 'اتلغى، وهيظبطه تاني أول ما يدخل.')); qc.invalidateQueries({ queryKey: ['security-users'] }) }, onError: (e: Error) => notify.error(e.message),
+  })
+  const { data: csp } = useQuery({ queryKey: ['csp-reports'], queryFn: () => fetchApi<{ enforced: boolean; rows: CspRow[] }>('/api/security/csp-report') })
+  const clearCsp = useMutation({
+    mutationFn: () => fetchApi('/api/security/csp-report', { method: 'DELETE' }),
+    onSuccess: () => { notify.success(L('Cleared', 'اتمسح')); qc.invalidateQueries({ queryKey: ['csp-reports'] }) }, onError: (e: Error) => notify.error(e.message),
   })
   const role = (r: string) => (ROLE[r] ? L(ROLE[r][0], ROLE[r][1]) : r)
   return (
@@ -55,7 +61,7 @@ export default function SecuritySettingsPage() {
         </CardContent></Card>
       )}
       <div className="space-y-2">
-        <h2 className="font-semibold">{L('Staff accounts', 'حسابات الموظفين')}</h2>
+        <h2 className="text-base font-semibold">{L('Staff accounts', 'حسابات الموظفين')}</h2>
         {(rows ?? []).map((r) => (
           <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3">
             <div><p className="font-medium" dir="ltr">{r.email}</p><p className="text-xs text-slate-500">{role(r.role)}</p></div>
@@ -68,6 +74,19 @@ export default function SecuritySettingsPage() {
           </div>
         ))}
       </div>
+      {csp && (
+        <Card><CardContent className="space-y-3 pt-4">
+          <h2 className="text-base font-semibold">{L('Browser protection (CSP)', 'حماية المتصفح (CSP)')}</h2>
+          <p className="text-xs text-slate-600">{csp.enforced
+            ? L('ON: pages refuse scripts and connections from sites not on the allowed list. Anything below was blocked.', 'شغالة: الصفحات بترفض أي كود أو اتصال من موقع مش في القايمة المسموحة. اللي تحت ده اتمنع.')
+            : L('WATCH mode: nothing is blocked yet; the browser only reports what would be blocked. When this list stays empty for a while of normal use, it can be switched on (host setting CSP_ENFORCE=1).', 'وضع المراقبة: لسه مفيش حاجة بتتمنع، المتصفح بيبلّغ بس عن اللي كان هيتمنع. لما القايمة دي تفضل فاضية فترة استخدام عادي، نشغّلها (إعداد CSP_ENFORCE=1 على السيرفر).')}</p>
+          {csp.rows.length === 0 ? <p className="text-xs text-emerald-700">{L('No reports.', 'مفيش تقارير.')}</p> : (
+            <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="text-slate-500"><th className="p-1 text-start">{L('Rule', 'القاعدة')}</th><th className="p-1 text-start">{L('Blocked', 'الممنوع')}</th><th className="p-1 text-start">{L('Page', 'الصفحة')}</th><th className="p-1 text-start">{L('Times', 'مرات')}</th><th className="p-1 text-start">{L('Last', 'آخر مرة')}</th></tr></thead>
+              <tbody>{csp.rows.map((r) => <tr key={r.id} className="border-t border-slate-100"><td className="p-1" dir="ltr">{r.directive}</td><td className="p-1 break-all" dir="ltr">{r.blocked || '-'}</td><td className="p-1 break-all" dir="ltr">{r.page}</td><td className="p-1">{r.count}</td><td className="p-1" dir="ltr">{new Date(r.lastAt).toLocaleString('ar-EG-u-nu-latn', { timeZone: 'Africa/Cairo' })}</td></tr>)}</tbody></table></div>
+          )}
+          {csp.rows.length > 0 && <Button size="sm" variant="outline" disabled={clearCsp.isPending} onClick={() => clearCsp.mutate()}>{L('Clear the list', 'امسح القايمة')}</Button>}
+        </CardContent></Card>
+      )}
     </div>
   )
 }

@@ -18,6 +18,7 @@
 
 import NextAuth from 'next-auth'
 import { authConfig } from '@/lib/auth.config'
+import { legacyGuard } from '@/lib/security/legacy'
 
 // Instantiate a minimal Edge-compatible NextAuth instance using only authConfig.
 // providers: [] in authConfig means no provider is registered here — this instance
@@ -61,7 +62,7 @@ export default auth((req) => {
 
   // ── Security part 2: an account that must use two-step sign-in sets it up first; nothing else opens until then ──
   const twoFactorSetup = !!(session?.user as { twoFactorSetup?: boolean } | undefined)?.twoFactorSetup
-  if (isAuthenticated && twoFactorSetup && nextUrl.pathname !== '/setup-2fa' && !nextUrl.pathname.startsWith('/api/security/two-factor')) {
+  if (isAuthenticated && twoFactorSetup && nextUrl.pathname !== '/setup-2fa' && !nextUrl.pathname.startsWith('/api/security/two-factor') && nextUrl.pathname !== '/api/security/csp-report') {
     if (nextUrl.pathname.startsWith('/api/')) {
       return Response.json({ success: false, error: { code: 'TWO_FACTOR_SETUP', message: 'Set up two-step sign-in first · ظبط التحقق بخطوتين الأول' } }, { status: 403 })
     }
@@ -70,6 +71,13 @@ export default auth((req) => {
   if (nextUrl.pathname === '/setup-2fa' && !isAuthenticated) {
     return Response.redirect(new URL('/login', nextUrl.origin))
   }
+
+  // ── Security part 3: old template screens + their APIs are for the Super Admin only (lib/security/legacy.ts) ──
+  const legacy = legacyGuard(nextUrl.pathname, isAuthenticated ? role : undefined)
+  if (legacy === 'API_LOCKED') {
+    return Response.json({ success: false, error: { code: 'LEGACY_LOCKED', message: 'This old screen is closed · الشاشة القديمة دي مقفولة' } }, { status: 403 })
+  }
+  if (legacy === 'PAGE_LOCKED') return Response.redirect(new URL(getRoleHome(role), nextUrl.origin))
 
   // ── Temporary password issued by staff: must be changed first ─────────────
   const mustChangePassword = !!(session?.user as { mustChangePassword?: boolean } | undefined)?.mustChangePassword

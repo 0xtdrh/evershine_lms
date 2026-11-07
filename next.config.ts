@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { browserProtectionHeaders } from "./lib/security/csp";
 
 const nextConfig: NextConfig = {
   // Standalone output bundles node_modules into .next/standalone,
@@ -87,6 +88,11 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
+      },
+      // Security part 3: HSTS + page protection (CSP, watch mode until CSP_ENFORCE=1). Pages only, not the JSON APIs.
+      {
+        source: "/((?!api/).*)",
+        headers: browserProtectionHeaders(),
       },
       // LMS L5: the H5P player is shown in a (sandboxed) frame of our own lesson page
       {

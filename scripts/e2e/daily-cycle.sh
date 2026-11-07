@@ -2937,6 +2937,28 @@ M "DELETE FROM LoginAttempt"
 check "…with it off the reset admin signs in with the password only" "$(TE=$(mktemp); LOGIN_OTP secadmin@e2e.local Another2026Pass "" "$TE" 10.0.8.59 >/dev/null; curl -s -b "$TE" "$B/api/students?limit=1" | jq_ "d['success']")" "True"
 api PUT /api/security/settings '{"idleMinutes":0}' >/dev/null
 rm -f "$TA" "$TB" "$TC" "$TD"
+echo "== 86. Security part 3: HSTS + page protection (CSP watch mode + report log), old template screens Super Admin only (2026-11-07)"
+HD=$(curl -s -o /dev/null -D - $B/login | tr -d '\r')
+check "pages send HSTS and the page protection in watch mode" "$(echo "$HD" | grep -ci '^strict-transport-security: max-age=63072000')/$(echo "$HD" | grep -ci '^content-security-policy-report-only:.*object-src .none.')/$(echo "$HD" | grep -ci '^content-security-policy:')" "1/1/0"
+check "the JSON APIs do not carry it (H5P keeps its own frame rule)" "$(curl -s -o /dev/null -D - $B/api/public/policies | grep -ci '^content-security-policy')" "0"
+M "DELETE FROM CspReport"
+curl -s -o /dev/null -X POST -H 'Content-Type: application/csp-report' -d '{"csp-report":{"document-uri":"http://x/dashboard/students?tab=2","violated-directive":"script-src-elem","blocked-uri":"https://evil.example/a.js?token=SECRET123"}}' $B/api/security/csp-report
+CR=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/reports+json' -d '[{"type":"csp-violation","body":{"documentURL":"http://x/dashboard/students","effectiveDirective":"script-src-elem","blockedURL":"https://evil.example/b.js"}}]' $B/api/security/csp-report)
+check "the browser can report without signing in (both formats), the same place is counted once" "$CR/$(M "SELECT CONCAT(COUNT(*),':',MAX(count)) FROM CspReport")" "204/1:2"
+check "only the place is kept, never the link with its token" "$(M "SELECT CONCAT(blocked,' ',page) FROM CspReport")/$(M "SELECT COUNT(*) FROM CspReport WHERE blocked LIKE '%SECRET%' OR page LIKE '%tab=%'")" "https://evil.example /dashboard/students/0"
+check "junk is ignored quietly" "$(curl -s -o /dev/null -w '%{http_code}' -X POST -d 'not json' $B/api/security/csp-report)/$(M "SELECT COUNT(*) FROM CspReport")" "204/1"
+check "the Super Admin sees the list (watch mode); a secretary cannot" "$(api GET /api/security/csp-report | jq_ "(d['data']['enforced'], d['data']['rows'][0]['blocked'], d['data']['rows'][0]['count'])")/$(secapi GET /api/security/csp-report | jq_ "d['success']")/$(secapi DELETE /api/security/csp-report | jq_ "d['success']")" "(False, 'https://evil.example', 2)/False/False"
+check "the Super Admin clears the list" "$(api DELETE /api/security/csp-report | jq_ "d['data']['removed']")/$(M "SELECT COUNT(*) FROM CspReport")" "1/0"
+check "old template APIs are closed for a secretary" "$(secapi GET /api/timetable | jq_ "d['error']['code']")/$(secapi GET /api/exams | jq_ "d['error']['code']")/$(secapi POST /api/academic/bootstrap '{}' | jq_ "d['error']['code']")" "LEGACY_LOCKED/LEGACY_LOCKED/LEGACY_LOCKED"
+TJ6=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ6" 10.0.8.71
+check "…and for an instructor (old tasks / results / attendance)" "$(curl -s -b "$TJ6" $B/api/teacher-portal/tasks | jq_ "d['error']['code']")/$(curl -s -b "$TJ6" $B/api/teacher-portal/results | jq_ "d['error']['code']")/$(curl -s -b "$TJ6" $B/api/teacher-portal/attendance | jq_ "d['error']['code']")" "LEGACY_LOCKED/LEGACY_LOCKED/LEGACY_LOCKED"
+check "the instructor's active screens still work (groups, attendance roster list)" "$(curl -s -b "$TJ6" $B/api/teacher-portal/sections | jq_ "d['success']")/$(curl -s -b "$TJ6" $B/api/teachers/profile | jq_ "d['success']")" "True/True"
+NOTOLD="d.get('error',{}).get('code','') != 'LEGACY_LOCKED'"
+check "shared APIs the active screens use are not closed for a secretary" "$(secapi GET /api/class-sections | jq_ "$NOTOLD")/$(secapi GET /api/academic-years | jq_ "$NOTOLD")/$(secapi GET /api/campuses | jq_ "$NOTOLD")/$(secapi GET /api/rooms/settings | jq_ "$NOTOLD")" "True/True/True/True"
+check "old pages send a secretary / instructor home" "$(curl -s -o /dev/null -D - -b "$SECJ" $B/dashboard/timetable | grep -i '^location' | tr -d '\r' | sed 's#^[Ll]ocation: ##; s#^https\?://[^/]*##')/$(curl -s -o /dev/null -D - -b "$TJ6" $B/dashboard/teacher/grade-entry | grep -i '^location' | tr -d '\r' | sed 's#^[Ll]ocation: ##; s#^https\?://[^/]*##')" "/dashboard//dashboard/teacher"
+check "…but the Super Admin still opens them, and the old API answers him" "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" $B/dashboard/timetable)/$(api GET /api/timetable | jq_ "$NOTOLD")" "200/True"
+check "an active page next to an old one is not closed" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/dashboard/students)" "200"
+rm -f "$TJ6"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

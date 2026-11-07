@@ -296,13 +296,13 @@ export default function DashboardPage() {
               </p>
               <div className="flex gap-4 mb-6">
                 <Link
-                  href="/dashboard/enrollment"
+                  href="/dashboard/learning"
                   className="inline-flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 text-sm font-semibold text-white border border-white/30 hover:bg-white/30 transition-colors"
                 >
                   <BookOpen className="w-4 h-4" /> {L('My Courses', 'كورساتي')}
                 </Link>
                 <Link
-                  href="/dashboard/enrollment"
+                  href="/dashboard/learning"
                   className="inline-flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 text-sm font-semibold text-white border border-white/30 hover:bg-white/30 transition-colors"
                 >
                   <Award className="w-4 h-4" /> {L('My Results', 'نتايجي')}
@@ -575,7 +575,7 @@ export default function DashboardPage() {
               <CardTitle className="text-base font-bold text-indigo-800 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-indigo-600" /> {L('Today\'s Schedule', 'جدول النهارده')}
               </CardTitle>
-              <Link href="/dashboard/timetable">
+              <Link href="/dashboard/schedule">
                 <Button variant="ghost" size="sm" className="text-xs text-indigo-700 hover:text-indigo-800 font-bold">
                   {L('View Full Timetable →', 'الجدول كامل ←')}
                 </Button>

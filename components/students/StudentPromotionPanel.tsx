@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowUpCircle, Loader2, Wand2, ExternalLink } from 'lucide-react'
 import { notify } from '@/lib/notify'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import type { StudentEnrollmentRow } from './StudentEnrollmentsPanel'
 
 interface Props {
@@ -26,6 +27,7 @@ export function StudentPromotionPanel({
   canManage = false,
 }: Props) {
   const qc = useQueryClient()
+  const isSuperAdmin = useSession().data?.user?.role === 'SUPER_ADMIN' // old bulk promotions screen (lib/security/legacy.ts)
   const activeEnrollments = enrollments.filter((e) => e.status === 'ACTIVE')
 
   const [fromEnrollmentId, setFromEnrollmentId] = useState('')
@@ -208,7 +210,7 @@ export function StudentPromotionPanel({
           >
             {promoteMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Apply promotion'}
           </Button>
-          <Link
+          {isSuperAdmin && <Link
             href={
               fromEnrollment
                 ? `/dashboard/promotions?studentId=${studentId}&fromYearId=${fromEnrollment.academicYear.id}&fromSectionId=${fromEnrollment.classSection.id}`
@@ -219,7 +221,7 @@ export function StudentPromotionPanel({
               <ExternalLink className="w-3.5 h-3.5" />
               Bulk wizard
             </Button>
-          </Link>
+          </Link>}
         </div>
       </CardContent>
     </Card>

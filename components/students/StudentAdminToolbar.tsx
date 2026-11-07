@@ -83,11 +83,13 @@ export function StudentAdminToolbar({
           </Button>
         </Link>
       )}
-      <Link href={promotionHref}>
-        <Button variant="outline" size="sm" className="gap-1 text-xs h-8">
-          <ArrowUpCircle className="w-3.5 h-3.5" /> {L('Promote', 'ترقية')}
-        </Button>
-      </Link>
+      {session?.user?.role === 'SUPER_ADMIN' && ( /* old promotions screen: Super Admin only (lib/security/legacy.ts) */
+        <Link href={promotionHref}>
+          <Button variant="outline" size="sm" className="gap-1 text-xs h-8">
+            <ArrowUpCircle className="w-3.5 h-3.5" /> {L('Promote', 'ترقية')}
+          </Button>
+        </Link>
+      )}
       {!canSuspend ? null : enrollmentStatus === 'SUSPENDED' ? (
         <Button
           variant="outline"

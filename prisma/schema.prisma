@@ -3633,6 +3633,20 @@ model LoginAttempt {
 /// One request counted by the generic rate limiter (lib/rate-limit-db.ts) for
 /// public forms: forgot password, contact form, job applications, admission
 /// applications, certificate verification. Rows older than a day are deleted.
+/// Security part 3 (2026-11-07): what the browser reported the page protection (CSP) would block / blocked. Grouped, place only (no full links).
+model CspReport {
+  id        String   @id @default(cuid())
+  directive String   @db.VarChar(64)
+  blocked   String   @db.VarChar(191)
+  page      String   @db.VarChar(191)
+  count     Int      @default(1)
+  firstAt   DateTime @default(now())
+  lastAt    DateTime @default(now())
+
+  @@unique([directive, blocked, page])
+  @@index([lastAt])
+}
+
 model RateLimitHit {
   id        String   @id @default(cuid())
   /// e.g. "forgot-password:ip:1.2.3.4" or "forgot-password:email:a@b.com"
