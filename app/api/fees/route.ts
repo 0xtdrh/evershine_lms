@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        payments: { orderBy: { createdAt: 'desc' }, take: 5 },
+        payments: { where: { status: 'COMPLETED' }, orderBy: { createdAt: 'desc' }, take: 5 },
       },
     }),
   ])

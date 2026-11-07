@@ -75,6 +75,7 @@ import {
   BadgePercent,
   Undo2,
   CalendarCheck,
+  Ban,
   PlayCircle,
 } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
@@ -121,6 +122,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Settings Centre', href: '/dashboard/settings-center',        icon: Settings2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY'], match: ['/dashboard/admin/finance-settings', '/dashboard/admin/lms', '/dashboard/admin/login-locks', '/dashboard/admin/setup', '/dashboard/admin/wipe-test-data', '/dashboard/admin/rubrics', '/dashboard/admin/reserve-fund'] },
   { name: 'Fees & Charges',   href: '/dashboard/fee-types',              icon: Wallet,          roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'], perm: [['finance_settings', 'update']] },
   { name: 'Accounts & Cash',  href: '/dashboard/treasury',               icon: Wallet,          roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY'], perm: [['treasury', 'read']] },
+  { name: 'Payment Cancels',  href: '/dashboard/payment-voids',          icon: Ban,             roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY'], perm: [['payment_voids', 'read']] },
   { name: 'Month Close',      href: '/dashboard/month-close',            icon: CalendarCheck,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'], perm: [['month_close', 'read'], ['financial_reports', 'read']] },
   { name: 'Import & Export', href: '/dashboard/data',                   icon: BarChart2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY', 'MARKETING'], perm: [['data_export', 'read'], ['data_import', 'create']] },
   { name: 'Reports Centre',  href: '/dashboard/reports-center',         icon: BarChart2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY', 'MARKETING'] },

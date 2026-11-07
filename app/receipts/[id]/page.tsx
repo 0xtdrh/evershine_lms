@@ -14,6 +14,7 @@ import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Copy, MessageCircle, Printer } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { PaymentVoidButton } from '@/components/payments/PaymentVoidButton'
 
 interface Receipt {
   receiptNumber: string
@@ -103,6 +104,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
           <span className="self-center text-xs text-gray-500">{L('No parent phone for WhatsApp', 'مفيش تليفون ولي أمر للواتساب')}</span>
         )}
         <Button variant="outline" onClick={copy}><Copy className="mr-2 h-4 w-4" /> {L('Copy text', 'انسخ النص')}</Button>
+        {r.status === 'COMPLETED' && <PaymentVoidButton paymentId={id} />}
       </div>
 
       <div
@@ -137,7 +139,8 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         {row('المدفوع لحد دلوقتي · Paid so far', money(r.invoice.paidSoFar))}
         {row('الباقي · Remaining', money(r.invoice.remaining), true)}
         {row('استلم · Received by', r.receivedBy)}
-        {r.status !== 'COMPLETED' && <div className="mt-1 text-center font-bold">STATUS: {r.status}</div>}
+        {r.status === 'VOIDED' && <div className="mt-2 border-2 border-black py-1 text-center font-bold" style={{ fontSize: thermal ? '15px' : '20px' }}>ملغي · CANCELLED<div style={{ fontSize: '11px', fontWeight: 'normal' }}>اتسجل بالغلط ومش محسوب · recorded by mistake, not counted</div></div>}
+        {r.status !== 'COMPLETED' && r.status !== 'VOIDED' && <div className="mt-1 text-center font-bold">STATUS: {r.status}</div>}
         <hr className="my-2 border-dashed border-black" />
         {r.company.receiptFooter && <div className="text-center">{r.company.receiptFooter}</div>}
       </div>

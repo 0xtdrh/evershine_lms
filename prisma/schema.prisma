@@ -84,6 +84,8 @@ enum PaymentStatus {
   COMPLETED
   FAILED
   REFUNDED
+  /// 2026-11-07: recorded by mistake and cancelled after approval (PaymentVoid). Never counted anywhere.
+  VOIDED
 }
 
 enum InvoiceStatus {
@@ -1143,6 +1145,8 @@ model FeePayment {
   receiptNumber String?       @unique @db.VarChar(30)
   /// STAFF | PROOF | ONLINE | WALLET — how the payment came in.
   source        String?       @db.VarChar(10)
+  /// set when the payment was cancelled (status VOIDED, details in PaymentVoid)
+  voidedAt      DateTime?
   createdAt     DateTime      @default(now())
 
   invoice FeeInvoice @relation(fields: [invoiceId], references: [id])
@@ -3633,6 +3637,29 @@ model LoginAttempt {
 /// One request counted by the generic rate limiter (lib/rate-limit-db.ts) for
 /// public forms: forgot password, contact form, job applications, admission
 /// applications, certificate verification. Rows older than a day are deleted.
+/// 2026-11-07: cancel a payment recorded by mistake (wrong amount / student / twice). Request → another person approves → the
+/// payment becomes VOIDED and everything it did is undone (invoice, student summary, wallet lines, cash-box movement). lib/payments/void.ts
+model PaymentVoid {
+  id            String    @id @default(cuid())
+  paymentId     String
+  invoiceId     String
+  studentId     String
+  amount        Decimal   @db.Decimal(10, 2)
+  receiptNumber String?   @db.VarChar(30)
+  reason        String    @db.Text
+  /// PENDING | APPROVED | REJECTED
+  status        String    @default("PENDING") @db.VarChar(10)
+  requestedById String
+  decidedById   String?
+  decidedAt     DateTime?
+  decisionNote  String?   @db.Text
+  createdAt     DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([paymentId])
+  @@index([studentId])
+}
+
 /// Security part 3 (2026-11-07): what the browser reported the page protection (CSP) would block / blocked. Grouped, place only (no full links).
 model CspReport {
   id        String   @id @default(cuid())

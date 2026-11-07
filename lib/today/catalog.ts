@@ -10,7 +10,7 @@ import type { AcademicResource as Resource, Action } from '@/lib/rbac'
 
 export const TASK_KEYS = [
   // office / managers
-  'admissions', 'leads', 'followUps', 'proofs', 'topUps', 'withdrawals', 'refunds', 'discounts', 'excuses',
+  'admissions', 'leads', 'followUps', 'proofs', 'topUps', 'withdrawals', 'refunds', 'paymentVoids', 'discounts', 'excuses',
   'complaintsLate', 'complaintsMine', 'absenceRequests', 'noSubstitute', 'leaves', 'missingAttendance',
   'groupsToAdvance', 'renewalsUnanswered', 'oneToOneRequests', 'oneToOneEvents', 'oneToOneNoTeacher', 'recordedEnding', 'videoSuspicious', 'waitingList', 'overdueInvoices', 'birthdays',
   // partners / learning
@@ -45,6 +45,7 @@ export const TASKS: TaskDef[] = [
   { key: 'proofs', en: 'Payment receipts to check', ar: 'إيصالات دفع محتاجة مراجعة', href: '/dashboard/fees', urgent: true, perm: ['fees', 'update'], roles: STAFF },
   { key: 'topUps', en: 'Wallet top-up receipts to check', ar: 'إيصالات شحن محفظة محتاجة مراجعة', href: '/dashboard/wallet?tab=approve', urgent: true, perm: ['wallet', 'approve'] },
   { key: 'withdrawals', en: 'Wallet withdrawals to decide', ar: 'طلبات سحب من المحفظة مستنية قرار', href: '/dashboard/wallet?tab=withdrawals', urgent: true, perm: ['wallet', 'approve'] },
+  { key: 'paymentVoids', en: 'Payments to cancel (recorded by mistake)', ar: 'طلبات إلغاء دفعات اتسجلت غلط', href: '/dashboard/payment-voids', urgent: true, perm: ['payment_voids', 'approve'] },
   { key: 'refunds', en: 'Refund requests to approve', ar: 'طلبات استرداد مستنية موافقة', href: '/dashboard/refunds?tab=requests', urgent: true, perm: ['refunds', 'approve'] },
   { key: 'discounts', en: 'Discounts waiting for approval', ar: 'خصومات مستنية موافقة', href: '/dashboard/discounts?tab=requests', urgent: true, perm: ['discount_approvals', 'approve'] },
   { key: 'admissions', en: 'New applications to review', ar: 'طلبات تسجيل جديدة محتاجة مراجعة', href: '/dashboard/admissions', urgent: true, perm: ['admissions', 'update'], roles: [...OFFICE, 'MARKETING'] },

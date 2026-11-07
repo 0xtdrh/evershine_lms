@@ -34,6 +34,7 @@ export async function GET(
     include: {
       items: true,
       payments: {
+        where: { status: 'COMPLETED' }, // a cancelled (voided) payment never counts
         orderBy: { paymentDate: 'desc' },
       },
     },

@@ -69,6 +69,8 @@ export const NOTIFICATION_EVENTS = [
   { key: 'ANNOUNCEMENT_PENDING', label: 'Announcement to approve', description: 'Approvers: an announcement waits for approval', audience: 'STAFF' },
   { key: 'ANNOUNCEMENT_DECIDED', label: 'Announcement approved / not approved', description: 'Sender: the announcement was approved or not', audience: 'STAFF' },
   { key: 'TREASURY_APPROVAL', label: 'Money to approve', description: 'Approvers: a transfer between accounts or a cash count difference waits for approval', audience: 'STAFF' },
+  { key: 'PAYMENT_VOID_REQUEST', label: 'Payment to cancel', description: 'Approvers: someone asks to cancel a payment recorded by mistake; the person who asked hears the answer', audience: 'STAFF' },
+  { key: 'PAYMENT_VOIDED', label: 'Receipt cancelled', description: 'Parent: a receipt recorded by mistake was cancelled and the invoice is due again', audience: 'PARENT' },
   { key: 'MONTH_CLOSE', label: 'Month closed / reopened', description: 'Finance people: a financial month was closed (by hand or automatically) or reopened', audience: 'STAFF' },
   { key: 'MORNING_SUMMARY', label: 'Morning summary', description: 'Managers: today\'s sessions, missing attendance, overdue invoices, items waiting', audience: 'STAFF' },
 ] as const satisfies readonly EventDef[]

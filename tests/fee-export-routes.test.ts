@@ -57,7 +57,7 @@ describe('fee Excel export routes', () => {
         ],
       }),
       include: expect.objectContaining({
-        payments: { orderBy: { paymentDate: 'desc' } },
+        payments: { where: { status: 'COMPLETED' }, orderBy: { paymentDate: 'desc' } },
       }),
     }))
     expect(mockBuildPaidListReport).toHaveBeenCalledWith([invoice], 'August 2025')
@@ -96,7 +96,7 @@ describe('fee Excel export routes', () => {
         academicYear: '2025-2026',
       }),
       include: expect.objectContaining({
-        payments: { orderBy: { paymentDate: 'desc' } },
+        payments: { where: { status: 'COMPLETED' }, orderBy: { paymentDate: 'desc' } },
       }),
     }))
     expect(mockBuildDefaulterListReport).toHaveBeenCalledWith([

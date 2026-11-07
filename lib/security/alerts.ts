@@ -7,7 +7,7 @@
 import { prisma } from '@/lib/prisma'
 import { notifyUsers } from '@/lib/notifications/events'
 
-export type SecurityKind = 'NEW_ADMIN' | 'ROLE_RAISED' | 'PERMISSIONS' | 'BACKUP_DOWNLOAD' | 'WIPE' | 'MONTH_REOPEN' | 'FULL_EXPORT' | 'ADMIN_LOCKED' | 'ADMIN_RESET' | 'BACKUP_NEAR_LIMIT'
+export type SecurityKind = 'NEW_ADMIN' | 'ROLE_RAISED' | 'PERMISSIONS' | 'BACKUP_DOWNLOAD' | 'WIPE' | 'MONTH_REOPEN' | 'FULL_EXPORT' | 'ADMIN_LOCKED' | 'ADMIN_RESET' | 'BACKUP_NEAR_LIMIT' | 'PAYMENT_VOID'
 
 const TEXT: Record<SecurityKind, { en: string; ar: string }> = {
   NEW_ADMIN: { en: 'A new admin account was made', ar: 'اتعمل حساب مدير جديد' },
@@ -20,6 +20,7 @@ const TEXT: Record<SecurityKind, { en: string; ar: string }> = {
   ADMIN_LOCKED: { en: 'An admin account was locked after wrong passwords', ar: 'حساب مدير اتقفل بعد باسوردات غلط' },
   ADMIN_RESET: { en: 'An admin password or email was reset', ar: 'باسورد أو إيميل حساب مدير اتغير' },
   BACKUP_NEAR_LIMIT: { en: 'The backup is close to the storage limit', ar: 'النسخة الاحتياطية قربت من حد التخزين' },
+  PAYMENT_VOID: { en: 'A payment was cancelled', ar: 'دفعة اتلغت' },
 }
 
 export async function securityAlert(kind: SecurityKind, detail: { actorId?: string | null; text?: string; textAr?: string } = {}) {

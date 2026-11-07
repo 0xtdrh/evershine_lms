@@ -48,6 +48,7 @@ export async function GET(
       dueDate: true,
       student: { select: { id: true, firstName: true, lastName: true, fullNameEn: true, registrationNumber: true } },
       payments: {
+        where: { status: 'COMPLETED' },
         select: { id: true, amount: true, paymentDate: true, paymentMethod: true, status: true },
         orderBy: { paymentDate: 'asc' },
       },

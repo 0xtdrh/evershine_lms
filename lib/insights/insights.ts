@@ -61,7 +61,7 @@ async function waitingItems(campusId?: string | null) {
 export async function managerMetrics(campusId?: string | null): Promise<Metric[]> {
   const p = periods()
   const [payments, refunds, invoices, active, newStudents, renewals, od, prepaid, sessions, waiting] = await Promise.all([
-    prisma.feePayment.aggregate({ where: { paymentDate: { gte: p.monthStart }, ...studentFilter(campusId) }, _sum: { amount: true } }),
+    prisma.feePayment.aggregate({ where: { status: 'COMPLETED', paymentDate: { gte: p.monthStart }, ...studentFilter(campusId) }, _sum: { amount: true } }),
     prisma.refund.aggregate({ where: { status: 'APPROVED', approvedAt: { gte: p.monthStart }, ...studentFilter(campusId) }, _sum: { amount: true } }),
     prisma.feeInvoice.aggregate({ where: { createdAt: { gte: p.monthStart }, status: { not: 'CANCELLED' }, ...studentFilter(campusId) }, _sum: { totalAmount: true, paidAmount: true } }),
     prisma.studentEnrollment.findMany({ where: { status: 'ACTIVE', classSection: { status: 'ACTIVE', levelId: { not: null }, ...(campusId && { campusId }) } }, select: { studentId: true }, distinct: ['studentId'] }),
@@ -95,8 +95,8 @@ export async function managerMetrics(campusId?: string | null): Promise<Metric[]
 export async function accountantMetrics(campusId?: string | null): Promise<Metric[]> {
   const p = periods()
   const [todayPay, monthPay, od, prepaid, waiting] = await Promise.all([
-    prisma.feePayment.aggregate({ where: { paymentDate: { gte: p.today }, ...studentFilter(campusId) }, _sum: { amount: true }, _count: { _all: true } }),
-    prisma.feePayment.aggregate({ where: { paymentDate: { gte: p.monthStart }, ...studentFilter(campusId) }, _sum: { amount: true } }),
+    prisma.feePayment.aggregate({ where: { status: 'COMPLETED', paymentDate: { gte: p.today }, ...studentFilter(campusId) }, _sum: { amount: true }, _count: { _all: true } }),
+    prisma.feePayment.aggregate({ where: { status: 'COMPLETED', paymentDate: { gte: p.monthStart }, ...studentFilter(campusId) }, _sum: { amount: true } }),
     overdue(campusId),
     prepaidTotal(campusId),
     waitingItems(campusId),

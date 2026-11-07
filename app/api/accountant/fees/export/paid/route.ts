@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
     include: {
       student: { include: { class: true, campus: { select: { name: true } } } },
       payments: {
+        where: { status: 'COMPLETED' }, // a cancelled (voided) payment never counts
         orderBy: { paymentDate: 'desc' },
       },
     },

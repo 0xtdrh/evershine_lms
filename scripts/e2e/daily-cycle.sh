@@ -2959,6 +2959,49 @@ check "old pages send a secretary / instructor home" "$(curl -s -o /dev/null -D 
 check "…but the Super Admin still opens them, and the old API answers him" "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" $B/dashboard/timetable)/$(api GET /api/timetable | jq_ "$NOTOLD")" "200/True"
 check "an active page next to an old one is not closed" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SECJ" $B/dashboard/students)" "200"
 rm -f "$TJ6"
+echo "== 87. Cancel a payment recorded by mistake: request, another person approves, everything undone (2026-11-07)"
+VI=$(M "SELECT i.id FROM FeeInvoice i WHERE i.status IN ('ISSUED','OVERDUE') AND i.paidAmount=0 AND i.refundedAmount=0 AND i.totalAmount>0 AND i.classSectionId IS NOT NULL ORDER BY i.createdAt DESC LIMIT 1")
+VAMT=$(M "SELECT totalAmount FROM FeeInvoice WHERE id='$VI'"); VST=$(M "SELECT studentId FROM FeeInvoice WHERE id='$VI'")
+VSP0=$(M "SELECT paidAmount FROM Student WHERE id='$VST'"); VSD0=$(M "SELECT dueAmount FROM Student WHERE id='$VST'")
+VW0=$(M "SELECT COALESCE(SUM(amount),0) FROM WalletTransaction WHERE studentId='$VST'")
+pay "$VI" "$VAMT" >/dev/null
+VP=$(M "SELECT id FROM FeePayment WHERE invoiceId='$VI' ORDER BY createdAt DESC LIMIT 1")
+api GET /api/treasury >/dev/null
+check "a cash payment was recorded (wallet lines + cash-box movement)" "$(M "SELECT status FROM FeeInvoice WHERE id='$VI'")/$(M "SELECT COUNT(*) FROM WalletTransaction WHERE paymentId='$VP' OR topUpId IN (SELECT id FROM WalletTopUp WHERE paymentId='$VP')")/$(M "SELECT COUNT(*) FROM MoneyMovement WHERE feePaymentId='$VP'")" "PAID/2/1"
+check "the receipt can be cancelled (button check)" "$(api GET "/api/payment-voids/check?paymentId=$VP" | jq_ "d['data']['possible']")" "True"
+check "a reason is required" "$(api POST /api/payment-voids "{\"paymentId\":\"$VP\",\"reason\":\"x\"}" | jq_ "d['success']")" "False"
+VR=$(api POST /api/payment-voids "{\"paymentId\":\"$VP\",\"reason\":\"Saved twice by mistake\"}")
+VID=$(echo "$VR" | jq_ "d['data']['id']")
+check "the request waits; the payment still counts until it is approved" "$(echo "$VR" | jq_ "d['data']['state']")/$(M "SELECT status FROM FeePayment WHERE id='$VP'")" "PENDING/COMPLETED"
+check "only one request at a time" "$(api POST /api/payment-voids "{\"paymentId\":\"$VP\",\"reason\":\"Saved twice by mistake\"}" | jq_ "d['error']['code']")" "PENDING"
+check "the person who asked cannot approve it (not even the Super Admin)" "$(api PATCH /api/payment-voids/$VID '{"action":"approve"}' | jq_ "d['error']['code']")" "OWN_REQUEST"
+check "a secretary cannot approve it" "$(secapi PATCH /api/payment-voids/$VID '{"action":"approve"}' | jq_ "d['success']")" "False"
+M "UPDATE User SET allLocations=1 WHERE email='secadmin@e2e.local'"; M "DELETE FROM LoginAttempt"
+VAJ=$(mktemp); login_jar secadmin@e2e.local Another2026Pass "$VAJ" 10.0.8.81
+vadm() { curl -s -b "$VAJ" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+check "the approvers are told, and it is in their work today" "$(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.email='secadmin@e2e.local' AND n.type='PAYMENT_VOID_REQUEST' AND n.relatedId='$VID'")/$(vadm GET /api/today | TK "t.get('paymentVoids',0)>=1")" "1/True"
+NV=$(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.role='SUPER_ADMIN' AND n.titleAr LIKE 'تنبيه أمان:%'")
+check "another person (an admin) approves" "$(vadm PATCH /api/payment-voids/$VID '{"action":"approve","note":"checked the cash box"}' | jq_ "d['data']['state']")" "APPROVED"
+check "the payment is cancelled, the invoice is due again" "$(M "SELECT CONCAT(status,'/',voidedAt IS NOT NULL) FROM FeePayment WHERE id='$VP'")/$(M "SELECT CONCAT(FLOOR(paidAmount),'/',status) FROM FeeInvoice WHERE id='$VI'" | sed 's#/ISSUED#/DUE#; s#/OVERDUE#/DUE#')" "VOIDED/1/0/DUE"
+check "the student's summary is back as before" "$(M "SELECT paidAmount FROM Student WHERE id='$VST'")/$(M "SELECT dueAmount FROM Student WHERE id='$VST'")" "$VSP0/$(python -c "a=float('$VAMT');d=float('$VSD0');print('%.2f' % (max(0,d-a)+a))")"
+check "wallet lines gone, the top-up marked cancelled, the wallet balance unchanged" "$(M "SELECT COUNT(*) FROM WalletTransaction WHERE paymentId='$VP'")/$(M "SELECT status FROM WalletTopUp WHERE paymentId='$VP'")/$(M "SELECT COALESCE(SUM(amount),0) FROM WalletTransaction WHERE studentId='$VST'")" "0/VOIDED/$VW0"
+check "the cash-box movement is gone and never comes back" "$(M "SELECT COUNT(*) FROM MoneyMovement WHERE feePaymentId='$VP'")/$(api GET /api/treasury >/dev/null; M "SELECT COUNT(*) FROM MoneyMovement WHERE feePaymentId='$VP'")" "0/0"
+check "the receipt shows CANCELLED; it cannot be cancelled twice" "$(api GET /api/payments/$VP/receipt | jq_ "d['data']['status']")/$(api GET "/api/payment-voids/check?paymentId=$VP" | jq_ "d['data']['possible']")" "VOIDED/False"
+check "the Super Admin gets a security alert; the request log keeps who and why" "$(( $(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.role='SUPER_ADMIN' AND n.titleAr LIKE 'تنبيه أمان:%'") > NV ))/$(api GET '/api/payment-voids?status=ALL' | jq_ "[(r['reason'], r['decisionNote'], r['decidedBy'] is not None) for r in d['data'] if r['id']=='$VID'][0]")" "1/('Saved twice by mistake', 'checked the cash box', True)"
+check "the invoice can be paid again normally" "$(pay "$VI" "$VAMT" | jq_ "d['success']")/$(M "SELECT status FROM FeeInvoice WHERE id='$VI'")" "True/PAID"
+VP2=$(M "SELECT id FROM FeePayment WHERE invoiceId='$VI' AND status='COMPLETED' ORDER BY createdAt DESC LIMIT 1")
+M "UPDATE FeePayment SET source='ONLINE' WHERE id='$VP2'"
+check "an online payment cannot be cancelled (refund it)" "$(api POST /api/payment-voids "{\"paymentId\":\"$VP2\",\"reason\":\"wrong student here\"}" | jq_ "d['error']['code']")" "ONLINE"
+M "UPDATE FeePayment SET source='STAFF', createdAt=NOW() - INTERVAL 8 DAY WHERE id='$VP2'"
+check "after 7 days it cannot be cancelled (refund it)" "$(api POST /api/payment-voids "{\"paymentId\":\"$VP2\",\"reason\":\"wrong student here\"}" | jq_ "d['error']['code']")" "TOO_OLD"
+check "the days are a setting (approvers only)" "$(secapi PUT /api/payment-voids/settings '{"maxDays":10}' | jq_ "d['success']")/$(api PUT /api/payment-voids/settings '{"maxDays":10}' | jq_ "d['data']['maxDays']")/$(api POST /api/payment-voids "{\"paymentId\":\"$VP2\",\"reason\":\"wrong student here\"}" | jq_ "d['data']['state']")" "False/10/PENDING"
+VID2=$(M "SELECT id FROM PaymentVoid WHERE paymentId='$VP2' AND status='PENDING'")
+check "refused: the payment stays, the person who asked is told" "$(vadm PATCH /api/payment-voids/$VID2 '{"action":"reject","note":"the money is in the box"}' | jq_ "d['data']['state']")/$(M "SELECT status FROM FeePayment WHERE id='$VP2'")/$(M "SELECT status FROM FeeInvoice WHERE id='$VI'")/$(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.role='SUPER_ADMIN' AND n.type='PAYMENT_VOID_REQUEST' AND n.relatedId='$VID2'")" "REJECTED/COMPLETED/PAID/1"
+VR3=$(api POST /api/payment-voids "{\"paymentId\":\"$VP2\",\"reason\":\"asked again by mistake\"}" | jq_ "d['data']['id']")
+check "the person who asked can withdraw a request" "$(api PATCH /api/payment-voids/$VR3 '{"action":"reject"}' | jq_ "d['data']['state']")/$(M "SELECT status FROM FeePayment WHERE id='$VP2'")" "REJECTED/COMPLETED"
+api PUT /api/payment-voids/settings '{"maxDays":7}' >/dev/null
+M "UPDATE FeePayment SET createdAt=NOW() WHERE id='$VP2'"
+rm -f "$VAJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

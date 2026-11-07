@@ -133,7 +133,7 @@ export async function exportRows(key: DatasetKey, user: Who, f: ExportFilters): 
     }
     case 'payments': {
       const rows = await prisma.feePayment.findMany({
-        where: AND({ invoice: AND(invoiceWhere(places), f.campusId ? { student: { campusId: f.campusId } } : {}) }, dateRange(f) ? { paymentDate: dateRange(f) } : {}) as Prisma.FeePaymentWhereInput,
+        where: AND({ status: 'COMPLETED', invoice: AND(invoiceWhere(places), f.campusId ? { student: { campusId: f.campusId } } : {}) }, dateRange(f) ? { paymentDate: dateRange(f) } : {}) as Prisma.FeePaymentWhereInput,
         include: { invoice: { select: { challanNumber: true, student: { select: { firstName: true, lastName: true, registrationNumber: true } } } } },
         orderBy: { paymentDate: 'desc' }, take: LIMIT,
       })

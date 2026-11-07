@@ -35,7 +35,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     prisma.teacher.findMany({ where: { isActive: true, ...teachersOfPlaceWhere(id) }, select: { id: true, firstName: true, lastName: true, designation: true, phoneNumber: true } }),
     prisma.classSection.count({ where: { campusId: id, kind: 'GROUP', isActive: true, status: 'ACTIVE' } }),
     prisma.studentEnrollment.findMany({ where: { status: 'ACTIVE', classSection: { campusId: id, status: 'ACTIVE' } }, select: { studentId: true }, distinct: ['studentId'] }),
-    prisma.feePayment.aggregate({ where: { paymentDate: { gte: monthStart }, invoice: { student: { campusId: id } } }, _sum: { amount: true } }),
+    prisma.feePayment.aggregate({ where: { status: 'COMPLETED', paymentDate: { gte: monthStart }, invoice: { student: { campusId: id } } }, _sum: { amount: true } }),
     prisma.refund.findMany({ where: { status: 'APPROVED', approvedAt: { gte: monthStart } }, select: { studentId: true, amount: true } }),
     prisma.feeInvoice.count({ where: { student: { campusId: id }, status: { in: ['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'] }, dueDate: { lt: new Date() } } }),
     prisma.waitingListEntry.count({ where: { campusId: id, status: 'WAITING' } }),

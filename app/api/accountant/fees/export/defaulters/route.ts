@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
         },
       },
       payments: {
+        where: { status: 'COMPLETED' }, // a cancelled (voided) payment never counts
         orderBy: { paymentDate: 'desc' },
       },
     },

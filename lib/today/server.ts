@@ -49,6 +49,7 @@ const COUNTERS: Record<TaskKey, (c: Ctx) => Promise<number>> = {
   topUps: async (c) => prisma.walletTopUp.count({ where: { status: 'PENDING', ...(await studentIn(c)) } }),
   withdrawals: async (c) => prisma.walletWithdrawal.count({ where: { status: 'PENDING', ...(await studentIn(c)) } }),
   refunds: async (c) => prisma.refund.count({ where: { status: 'PENDING', ...(await studentIn(c)) } }),
+  paymentVoids: async (c) => prisma.paymentVoid.count({ where: { status: 'PENDING', requestedById: { not: c.user.id }, ...(await studentIn(c)) } }),
   discounts: async (c) => {
     const [s, g] = [await c.students(), await c.groups()]
     return prisma.discountAssignment.count({ where: { status: 'PENDING', ...(s && g ? { OR: [{ studentId: inIds(s) }, { classSectionId: inIds(g) }] } : {}) } })
