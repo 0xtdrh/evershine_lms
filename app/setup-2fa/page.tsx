@@ -34,6 +34,14 @@ export default function SetupTwoFactorPage() {
   return (
     <main className="mx-auto max-w-lg space-y-5 p-6 text-sm">
       <h1 className="flex items-center gap-2 text-xl font-bold"><ShieldCheck className="h-6 w-6 text-indigo-600" /> {L('Two-step sign-in', 'التحقق بخطوتين')}</h1>
+      {/* switched off / not required any more while this session was waiting: sign in again to drop the old flag */}
+      {status && !status.required && !status.enabled && !setup && !spares && (
+        <div className="space-y-2 rounded-lg bg-sky-50 p-3 text-sky-900">
+          <p className="font-semibold">{L('Your account does not need two-step sign-in now.', 'حسابك مش محتاج التحقق بخطوتين دلوقتي.')}</p>
+          <p>{L('Sign in again to continue (you can still turn it on for yourself below).', 'ادخل تاني علشان تكمل (وتقدر برضه تشغّله لنفسك من تحت).')}</p>
+          <Button onClick={() => signOut({ callbackUrl: '/login' })}>{L('Sign in again', 'ادخل تاني')}</Button>
+        </div>
+      )}
       {status?.required && !status.enabled && !spares && <p className="rounded-lg bg-amber-50 p-3 text-amber-900">{L('Your account must use two-step sign-in. Set it up to continue.', 'حسابك لازم يستخدم التحقق بخطوتين. ظبطه علشان تكمل.')}</p>}
       {status?.enabled && !spares && (
         <div className="space-y-2 rounded-lg bg-emerald-50 p-3 text-emerald-900">
@@ -71,6 +79,7 @@ export default function SetupTwoFactorPage() {
           <Button onClick={() => signOut({ callbackUrl: '/login?code=2fa_ready' })}>{L('I wrote them down: sign in again', 'كتبتهم، ادخل تاني')}</Button>
         </div>
       )}
+      {!spares && <button type="button" className="text-xs text-slate-500 underline" onClick={() => signOut({ callbackUrl: '/login' })}>{L('Sign out', 'خروج')}</button>}
     </main>
   )
 }
