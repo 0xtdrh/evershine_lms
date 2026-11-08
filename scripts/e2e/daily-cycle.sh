@@ -3038,6 +3038,31 @@ check "an instructor sees sessions and attendance, never the money" "$(curl -s -
 MNOT=$(M "SELECT c.id FROM ClassSection c WHERE c.id NOT IN (SELECT o.classSectionId FROM SubjectOffering o JOIN Teacher t ON t.id=o.teacherId JOIN User u ON u.id=t.userId WHERE u.email='tch@e2e.local' AND o.classSectionId IS NOT NULL) AND c.id NOT IN (SELECT s.classSectionId FROM SubstituteAssignment s JOIN Teacher t ON t.id=s.substituteTeacherId JOIN User u ON u.id=t.userId WHERE u.email='tch@e2e.local' AND s.classSectionId IS NOT NULL) LIMIT 1")
 check "an instructor cannot open the months of a group that is not his" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ9" $B/api/groups/$MNOT/months)" "403"
 rm -f "$TJ9"
+echo "== 90. Instructors: no money anywhere, a finished group closes after the set days (2026-11-08)"
+TJ0=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ0" 10.0.8.95
+tget() { curl -s -b "$TJ0" "$B$1"; }
+NG=$(M "SELECT o.classSectionId FROM SubjectOffering o JOIN Teacher t ON t.id=o.teacherId JOIN User u ON u.id=t.userId JOIN ClassSection c ON c.id=o.classSectionId WHERE u.email='tch@e2e.local' AND c.status='ACTIVE' AND EXISTS (SELECT 1 FROM StudentEnrollment e WHERE e.classSectionId=c.id AND e.status='ACTIVE') LIMIT 1")
+NS=$(M "SELECT studentId FROM StudentEnrollment WHERE classSectionId='$NG' AND status='ACTIVE' LIMIT 1")
+NOFEE="not any(k in str(d) for k in ['dueAmount','paidAmount','totalFeeAmount','feeStatus'])"
+check "students list: no money for an instructor" "$(tget "/api/students?limit=50" | jq_ "(d['success'], $NOFEE)")" "(True, True)"
+check "one student: no money for an instructor" "$(tget /api/students/$NS | jq_ "(d['success'], $NOFEE)")" "(True, True)"
+check "…the office still sees it" "$(api GET /api/students/$NS | jq_ "'dueAmount' in d['data']")/$(api GET '/api/students?limit=5' | jq_ "'dueAmount' in d['data'][0]")" "True/True"
+M "UPDATE StudentEnrollment SET withdrawalReason='PAYMENT_OVERDUE_WARNING' WHERE classSectionId='$NG' AND studentId='$NS'"
+check "group window: no price and no 'has not paid' flag for an instructor" "$(tget /api/groups/$NG | jq_ "(d['data']['effectivePrice'], d['data']['priceOverride'], d['data']['feeBlocked'], any(e.get('withdrawalReason')=='PAYMENT_OVERDUE_WARNING' for e in d['data']['enrollments']))")" "(None, None, [], False)"
+check "…the office still sees the flag" "$(api GET /api/groups/$NG | jq_ "any(e.get('withdrawalReason')=='PAYMENT_OVERDUE_WARNING' for e in d['data']['enrollments'])")" "True"
+M "UPDATE StudentEnrollment SET withdrawalReason=NULL WHERE classSectionId='$NG' AND studentId='$NS'"
+check "invoices, a student's fees and financials are closed to an instructor" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ0" $B/api/fees)/$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ0" $B/api/students/$NS/fees)/$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ0" $B/api/groups/$NG/financials)" "403/403/403"
+DAYS=$(api GET /api/teachers/access/settings | jq_ "d['data']['finishedGroupDays']")
+M "UPDATE ClassSection SET status='COMPLETED', completedAt=NOW() - INTERVAL 5 DAY WHERE id='$NG'"
+api PUT /api/teachers/access/settings "{\"finishedGroupDays\":$DAYS}" >/dev/null
+check "a group finished 5 days ago still opens for its instructor" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ0" $B/api/groups/$NG)/$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ0" $B/api/groups/$NG/months)" "200/200"
+M "UPDATE ClassSection SET completedAt=NOW() - INTERVAL 400 DAY WHERE id='$NG'"
+api PUT /api/teachers/access/settings "{\"finishedGroupDays\":$DAYS}" >/dev/null
+check "after the set days it closes, even with the link" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ0" $B/api/groups/$NG)/$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ0" $B/api/groups/$NG/months)" "403/403"
+check "…the office still opens it" "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" $B/api/groups/$NG)" "200"
+M "UPDATE ClassSection SET status='ACTIVE', completedAt=NULL WHERE id='$NG'"
+api PUT /api/teachers/access/settings "{\"finishedGroupDays\":$DAYS}" >/dev/null
+rm -f "$TJ0"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

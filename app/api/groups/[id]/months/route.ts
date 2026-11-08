@@ -43,20 +43,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     frontier = [...found].filter((x) => !done.has(x))
   }
   const chain = walkChain(raw, id)
-  let allowed = (await Promise.all(chain.map(async (g) => ((await canSeeGroup(session.user, g)) ? g : null)))).filter((g): g is string => !!g)
-
-  // Owner rule: an instructor sees only the groups he teaches or covers, even with an "every place" account.
-  if (role === 'TEACHER') {
-    const t = await prisma.teacher.findUnique({ where: { userId: session.user.id }, select: { id: true } })
-    if (!t) return errors.forbidden()
-    const [teaches, covers] = await Promise.all([
-      prisma.subjectOffering.findMany({ where: { classSectionId: { in: allowed }, teacherId: t.id }, select: { classSectionId: true } }),
-      prisma.substituteAssignment.findMany({ where: { classSectionId: { in: allowed }, substituteTeacherId: t.id, status: 'CONFIRMED' }, select: { classSectionId: true } }),
-    ])
-    const mine = new Set([...teaches, ...covers].map((x) => x.classSectionId))
-    if (!mine.has(id)) return errors.forbidden()
-    allowed = allowed.filter((g) => mine.has(g))
-  }
+  // canSeeGroup also keeps an instructor to his own groups, finished ones for N days only (owner rule)
+  const allowed = (await Promise.all(chain.map(async (g) => ((await canSeeGroup(session.user, g)) ? g : null)))).filter((g): g is string => !!g)
 
   const seeMoney = checkPermission(role, 'fees', 'read')
   const [groups, enrolled, records, logs, invoices] = await Promise.all([

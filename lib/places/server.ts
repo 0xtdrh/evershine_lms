@@ -89,16 +89,7 @@ export async function canSeeGroup(user: Who, groupId: string): Promise<boolean> 
   const g = await prisma.classSection.findUnique({ where: { id: groupId }, select: { id: true, campusId: true } })
   if (!g) return false
   if (allowsGroup(p, g)) return true
-  // an instructor always sees the groups he teaches or covers, wherever they are
-  if (user.role === 'TEACHER') {
-    const t = await prisma.teacher.findUnique({ where: { userId: user.id }, select: { id: true } })
-    if (!t) return false
-    const [teaches, covers] = await Promise.all([
-      prisma.subjectOffering.count({ where: { classSectionId: groupId, teacherId: t.id } }),
-      prisma.substituteAssignment.count({ where: { classSectionId: groupId, substituteTeacherId: t.id, status: 'CONFIRMED' } }),
-    ])
-    return teaches + covers > 0
-  }
+  // An instructor: allowsGroup already decided from his own list (groups he teaches or covers, finished ones for N days: loadPlaces).
   return false
 }
 

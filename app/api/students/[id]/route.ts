@@ -3,6 +3,7 @@
  * PATCH /api/students/[id] — update student details (Admin/Super Admin only)
  */
 
+import { PAYMENT_REASONS, seesFees, withoutFeeFields } from '@/lib/fees/hide-money'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -70,7 +71,7 @@ export async function GET(
     if (own?.id !== id) return errors.forbidden()
   }
 
-  return successResponse(student)
+  return successResponse(seesFees(session.user.role) ? student : withoutFeeFields(student))
 }
 
 export async function PATCH(

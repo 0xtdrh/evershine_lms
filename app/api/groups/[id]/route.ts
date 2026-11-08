@@ -7,6 +7,7 @@
  *                            Subject Offerings flow — not duplicated here.
  */
 
+import { PAYMENT_REASONS, seesFees, withoutFeeFields } from '@/lib/fees/hide-money'
 import { cyclePrice } from '@/lib/pricing/group-price'
 import { checkPermission } from '@/lib/rbac'
 import { canSeeGroup } from '@/lib/places/server'
@@ -112,10 +113,12 @@ export async function GET(
   const effectivePrice = group.level ? await cyclePrice(group.level, group.campusId, group.priceOverride) : null
   // FIN-2: students who cannot move to the next month / level until an unpaid fee is paid
   const { blockedForNext } = await import('@/lib/fees-extra/engine')
+  const money = seesFees(role)
   const feeBlocked = await blockedForNext(group.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => e.student.id))
   return successResponse({
     ...groupFields,
-    effectivePrice,
+    effectivePrice: money ? effectivePrice : null,
+    ...(money ? {} : { priceOverride: null, enrollments: groupFields.enrollments.map((e) => (PAYMENT_REASONS.includes(String(e.withdrawalReason)) ? { ...e, withdrawalReason: null } : e)) }),
     seats,
     waiting: waitingRows.map((w, i) => ({
       id: w.id,
@@ -125,7 +128,7 @@ export async function GET(
       student: { id: w.student.id, name: `${w.student.firstName} ${w.student.lastName}`, registrationNumber: w.student.registrationNumber },
     })),
     renewals,
-    feeBlocked,
+    feeBlocked: money ? feeBlocked : [],
     extraSessions: extraSessions.map((x) => ({ ...x, date: x.date.toISOString().slice(0, 10) })),
     teacher: instructor
       ? {

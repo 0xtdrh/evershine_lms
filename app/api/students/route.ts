@@ -7,6 +7,7 @@
  * would leave an orphaned auth account with no profile.
  */
 
+import { PAYMENT_REASONS, seesFees, withoutFeeFields } from '@/lib/fees/hide-money'
 import { duplicateMessage, findDuplicateStudents } from '@/lib/students/duplicates-server'
 import { requestPlaces, studentWhere } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
@@ -105,7 +106,7 @@ export async function GET(request: NextRequest) {
     ...(classId && { classId }),
     ...(section && { section }),
     ...(enrollmentStatus && { enrollmentStatus }),
-    ...(feeStatus && { feeStatus }),
+    ...(feeStatus && seesFees(session.user.role) && { feeStatus }),
     ...(academicYear && { academicYear }),
     ...(houseId && { houseId }),
     ...(shift && { shift }),
@@ -175,7 +176,8 @@ export async function GET(request: NextRequest) {
   const lastContact = checkPermission(session.user.role as Role, 'contact_logs', 'read')
     ? await lastContactByStudent(students.map((s) => s.id))
     : new Map<string, Date>()
-  const withContact = <T extends { id: string }>(s: T) => ({ ...s, lastContactAt: lastContact.get(s.id) ?? null })
+  const money = seesFees(session.user.role)
+  const withContact = <T extends { id: string }>(s: T) => ({ ...(money ? s : withoutFeeFields(s)), lastContactAt: lastContact.get(s.id) ?? null })
 
   if (includeEnrollments && students.length > 0) {
     const activeYear = await getActiveAcademicYear()
