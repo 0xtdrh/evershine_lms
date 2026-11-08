@@ -109,7 +109,16 @@ export default function SessionReportsPage() {
   const [to, setTo] = useState(cairoToday())
   const [status, setStatus] = useState('ALL')
   const [open, setOpen] = useState<string | null>(null)
-  const qs = new URLSearchParams({ from, to, ...(status !== 'ALL' ? { status } : {}) }).toString()
+  // b03: opened from one month of a group: /dashboard/session-reports?groupId=&from=&to=
+  const [groupId, setGroupId] = useState<string | null>(null)
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search)
+    const g = sp.get('groupId'), f = sp.get('from'), t = sp.get('to')
+    if (g) setGroupId(g)
+    if (f) setFrom(f)
+    if (t) setTo(t)
+  }, [])
+  const qs = new URLSearchParams({ from, to, ...(status !== 'ALL' ? { status } : {}), ...(groupId ? { groupId } : {}) }).toString()
   const { data, isLoading } = useQuery({ queryKey: ['session-reports', qs], queryFn: () => fetchApi<ListData>(`/api/session-reports?${qs}`), enabled: allowed })
   if (!role) return null
   if (role && !permsReady) return null

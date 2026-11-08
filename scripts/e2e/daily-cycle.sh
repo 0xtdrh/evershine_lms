@@ -3020,6 +3020,24 @@ curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -H 'X-Forwarded
 DAR=$(M "SELECT id FROM AdmissionRequest WHERE firstName='Dupkid' AND status='PENDING' LIMIT 1")
 check "approving an online application for a child already registered asks first" "$(api POST /api/admissions/$DAR/approve "{\"campusId\":\"$CAMPUS\"}" | jq_ "d['error']['code']")/$(M "SELECT status FROM AdmissionRequest WHERE id='$DAR'")" "DUPLICATE_SUSPECT/PENDING"
 check "…and approves it when staff say it is another child" "$(api POST /api/admissions/$DAR/approve "{\"campusId\":\"$CAMPUS\",\"confirmNotDuplicate\":true}" | jq_ "d['success']")/$(M "SELECT status FROM AdmissionRequest WHERE id='$DAR'")" "True/APPROVED"
+echo "== 89. Months of a group: every billing cycle opens from the group window (b03, 2026-11-08)"
+MA=$(M "SELECT l.classSectionId FROM GroupCycleLog l JOIN FeeInvoice i ON i.classSectionId=l.classSectionId WHERE l.newClassSectionId IS NOT NULL ORDER BY l.completedAt DESC LIMIT 1")
+MB=$(M "SELECT newClassSectionId FROM GroupCycleLog WHERE classSectionId='$MA' AND newClassSectionId IS NOT NULL ORDER BY completedAt DESC LIMIT 1")
+MF=$(api GET /api/groups/$MA/months); MT=$(api GET /api/groups/$MB/months)
+check "the old month and the new month show the same list, in order" "$(echo "$MF" | jq_ "[m['id'] for m in d['data']['months']]==$(echo "$MT" | jq_ "[m['id'] for m in d['data']['months']]")")/$(echo "$MF" | jq_ "(lambda i: i.index('$MA')<i.index('$MB'))([m['id'] for m in d['data']['months']])")" "True/True"
+check "the group opened is the one marked" "$(echo "$MF" | jq_ "[m['id'] for m in d['data']['months'] if m['current']]==['$MA']")/$(echo "$MT" | jq_ "[m['id'] for m in d['data']['months'] if m['current']]==['$MB']")" "True/True"
+MFIN=$(api GET /api/groups/$MA/financials)
+check "the money of a month equals its Financials window" "$(echo "$MF" | jq_ "[(float(m['expected']), float(m['collected'])) for m in d['data']['months'] if m['id']=='$MA'][0]")" "$(echo "$MFIN" | jq_ "(float(d['data']['totals']['expected']), float(d['data']['totals']['collected']))")"
+check "sessions and attendance % come from that month's records" "$(echo "$MF" | jq_ "[(m['sessions'], m['attendancePct']) for m in d['data']['months'] if m['id']=='$MA'][0]")" "($(M "SELECT COUNT(DISTINCT d) FROM (SELECT r.attendanceDate d FROM EnrollmentAttendanceRecord r JOIN StudentEnrollment e ON e.id=r.studentEnrollmentId WHERE e.classSectionId='$MA' UNION SELECT DATE(sessionDate) FROM GroupSessionLog WHERE classSectionId='$MA' AND status='HELD') x"), $(M "SELECT COALESCE(ROUND(100*SUM(r.status IN ('PRESENT','LATE'))/COUNT(*)),'None') FROM EnrollmentAttendanceRecord r JOIN StudentEnrollment e ON e.id=r.studentEnrollmentId WHERE e.classSectionId='$MA'"))"
+check "who continued and who stopped match the two months' students" "$(echo "$MF" | jq_ "[(m['continued'], len(m['stopped'])) for m in d['data']['months'] if m['id']=='$MA'][0]")" "($(M "SELECT COUNT(*) FROM StudentEnrollment WHERE classSectionId='$MA' AND studentId IN (SELECT studentId FROM StudentEnrollment WHERE classSectionId='$MB')"), $(M "SELECT COUNT(*) FROM StudentEnrollment WHERE classSectionId='$MA' AND COALESCE(withdrawalReason,'')<>'TRANSFERRED' AND studentId NOT IN (SELECT studentId FROM StudentEnrollment WHERE classSectionId='$MB')"))"
+MSOLO=$(M "SELECT c.id FROM ClassSection c WHERE c.id NOT IN (SELECT classSectionId FROM GroupCycleLog WHERE newClassSectionId IS NOT NULL) AND c.id NOT IN (SELECT newClassSectionId FROM GroupCycleLog WHERE newClassSectionId IS NOT NULL) LIMIT 1")
+check "a group with one month gives just that month" "$(api GET /api/groups/$MSOLO/months | jq_ "len(d['data']['months'])")" "1"
+TJ9=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ9" 10.0.8.91
+MOWN=$(M "SELECT o.classSectionId FROM SubjectOffering o JOIN Teacher t ON t.id=o.teacherId JOIN User u ON u.id=t.userId WHERE u.email='tch@e2e.local' LIMIT 1")
+check "an instructor sees sessions and attendance, never the money" "$(curl -s -b "$TJ9" $B/api/groups/$MOWN/months | jq_ "(d['data']['seeMoney'], any('expected' in m or 'collected' in m for m in d['data']['months']))")" "(False, False)"
+MNOT=$(M "SELECT c.id FROM ClassSection c WHERE c.id NOT IN (SELECT o.classSectionId FROM SubjectOffering o JOIN Teacher t ON t.id=o.teacherId JOIN User u ON u.id=t.userId WHERE u.email='tch@e2e.local' AND o.classSectionId IS NOT NULL) AND c.id NOT IN (SELECT s.classSectionId FROM SubstituteAssignment s JOIN Teacher t ON t.id=s.substituteTeacherId JOIN User u ON u.id=t.userId WHERE u.email='tch@e2e.local' AND s.classSectionId IS NOT NULL) LIMIT 1")
+check "an instructor cannot open the months of a group that is not his" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ9" $B/api/groups/$MNOT/months)" "403"
+rm -f "$TJ9"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

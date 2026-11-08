@@ -26,6 +26,7 @@ import { GroupRulesPanel } from '@/components/rules/GroupRulesPanel'
 import { GroupCurriculumPicker } from '@/components/groups/GroupCurriculumPicker'
 import { GroupSessionModePanel } from '@/components/groups/GroupSessionModePanel'
 import { ExtraSessionsPanel, type ExtraSessionRow } from '@/components/groups/ExtraSessionsPanel'
+import { GroupMonthsPanel } from '@/components/groups/GroupMonthsPanel'
 import { FullGroupDialog } from '@/components/groups/FullGroupDialog'
 import { L, useI18n, dayName } from '@/lib/i18n/client'
 import { DateInput } from '@/components/ui/date-input'
@@ -796,6 +797,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                 )}
               </div>
 
+              <GroupMonthsPanel key={`months-${detail.id}`} groupId={detail.id} onOpen={(id) => setSelectedGroupId(id)} onInvoices={(id) => { setSelectedGroupId(id); setFinancialsOpen(true) }} />
               {detail.seats && (
                 <GroupCapacityPanel groupId={detail.id} levelId={detail.level?.id ?? null} seats={detail.seats} waiting={detail.waiting ?? []} canEdit={canEditGroups} />
               )}
