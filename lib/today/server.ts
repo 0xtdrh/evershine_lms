@@ -4,6 +4,8 @@
  * A counter that fails returns 0 (never breaks the dashboard). Server-only.
  */
 
+import { Prisma } from '@prisma/client'
+import { getSessionReportSettings } from '@/lib/session-reports/engine'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { cairoToday } from '@/lib/dates/cairo'
@@ -49,6 +51,11 @@ const COUNTERS: Record<TaskKey, (c: Ctx) => Promise<number>> = {
   topUps: async (c) => prisma.walletTopUp.count({ where: { status: 'PENDING', ...(await studentIn(c)) } }),
   withdrawals: async (c) => prisma.walletWithdrawal.count({ where: { status: 'PENDING', ...(await studentIn(c)) } }),
   refunds: async (c) => prisma.refund.count({ where: { status: 'PENDING', ...(await studentIn(c)) } }),
+  reportsNotRated: async (c) => {
+    if (!(await getSessionReportSettings()).enabled) return 0
+    const g = await c.groups()
+    return prisma.sessionReport.count({ where: { sessionDate: { gte: new Date(Date.now() - 7 * 86_400_000) }, ...(g ? { classSectionId: { in: g } } : {}), students: { none: { scores: { not: Prisma.DbNull } } } } })
+  },
   paymentVoids: async (c) => prisma.paymentVoid.count({ where: { status: 'PENDING', requestedById: { not: c.user.id }, ...(await studentIn(c)) } }),
   discounts: async (c) => {
     const [s, g] = [await c.students(), await c.groups()]

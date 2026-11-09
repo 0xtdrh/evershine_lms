@@ -42,6 +42,7 @@ describe('settings centre / reports centre / today (5-C)', () => {
       'app/api/treasury/settings/route.ts': '/dashboard/treasury',
       'app/api/month-close/settings/route.ts': '/dashboard/month-close',
       'app/api/payment-voids/settings/route.ts': '/dashboard/payment-voids',
+      'app/api/ratings/settings/route.ts': '/dashboard/ratings',
       'app/api/rooms/settings/route.ts': '/dashboard/campuses',
       'app/api/fee-types/settings/route.ts': '/dashboard/fee-types',
       'app/api/lessons/settings/route.ts': '/dashboard/admin/lms',

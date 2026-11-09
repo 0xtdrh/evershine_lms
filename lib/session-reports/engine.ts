@@ -12,7 +12,8 @@
  */
 
 import { canSeeGroup, groupWhere, requestPlaces } from '@/lib/places/server'
-import type { Role } from '@prisma/client'
+import { Prisma, type Role } from '@prisma/client'
+import { logContact } from '@/lib/contacts/contact-log'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { campusScope } from '@/lib/academic/api-helpers'
@@ -23,8 +24,9 @@ import { cairoDateTimeToUtc, cairoToday } from '@/lib/dates/cairo'
 import { canManageGroupLessons, groupLessons } from '@/lib/lms/engine'
 import { groupAssignments, policyForGroup, visibility } from '@/lib/assignments/engine'
 import { parseQuiz } from '@/lib/quizzes/engine'
-import { notifyFamilies } from '@/lib/notifications/events'
+import { managerUserIds, notifyFamilies, notifyUsers } from '@/lib/notifications/events'
 import { studentViewer } from '@/lib/students/access'
+import { cleanScores, hasLowScore, visibleScores, type Scores } from './rules'
 import {
   SESSION_REPORT_DEFAULTS, DEFAULT_SESSION_MIN, cleanPhrases, computeSendAt, homeworkLine, missingPieces, quizLine,
   type SessionReportSettings,
@@ -42,7 +44,7 @@ const name = (p: { firstName: string; lastName: string } | null | undefined) => 
 
 export async function getSessionReportSettings(): Promise<SessionReportSettings> {
   const s = await getSetting<Partial<SessionReportSettings>>(KEY, {})
-  return { ...SESSION_REPORT_DEFAULTS, ...s, phrases: s.phrases?.length ? s.phrases : SESSION_REPORT_DEFAULTS.phrases }
+  return { ...SESSION_REPORT_DEFAULTS, ...s, phrases: s.phrases?.length ? s.phrases : SESSION_REPORT_DEFAULTS.phrases, criteria: s.criteria?.length ? s.criteria : SESSION_REPORT_DEFAULTS.criteria }
 }
 export const saveSessionReportSettings = (v: SessionReportSettings, userId: string) => setSetting(KEY, v, userId)
 
@@ -120,7 +122,7 @@ async function groupLabel(groupId: string) {
 async function deliver(reportId: string, byUserId: string | null): Promise<boolean> {
   const done = await prisma.sessionReport.updateMany({ where: { id: reportId, status: 'DRAFT' }, data: { status: 'SENT', sentAt: new Date(), sentById: byUserId } })
   if (done.count !== 1) return false
-  const r = await prisma.sessionReport.findUnique({ where: { id: reportId }, include: { students: { select: { studentId: true, star: true } } } })
+  const r = await prisma.sessionReport.findUnique({ where: { id: reportId }, include: { students: { select: { studentId: true, star: true, scores: true } } } })
   if (!r) return true
   const date = ymd(r.sessionDate)
   const ids = (await attendanceOf(r.classSectionId, date)).map((a) => a.studentEnrollment.studentId)
@@ -133,6 +135,11 @@ async function deliver(reportId: string, byUserId: string | null): Promise<boole
     messageAr: `${st.firstName}: تقرير حصة ${label}${r.sessionNumber ? ` رقم ${r.sessionNumber}` : ''} (${date}) جاهز.${stars.has(st.id) ? ' ⭐ نجم الحصة!' : ''}`,
     relatedId: r.id,
   }), { includeStudent: true })
+  const low = r.students.filter((x) => hasLowScore(x.scores as Scores | null))
+  if (low.length) {
+    const g = await prisma.classSection.findUnique({ where: { id: r.classSectionId }, select: { campusId: true } })
+    await notifyUsers(await managerUserIds(g?.campusId), 'SESSION_SCORE_LOW', { title: 'Low session rating', titleAr: 'تقييم حصة قليل', message: `${label} (${date}): ${low.length} student(s) got a low rating from the instructor. Families do not see it until you release it.`, messageAr: `${label} (${date}): ${low.length} طالب تقييمهم قليل من المدرب. ولي الأمر مش هيشوفه غير لما توافق.`, relatedId: r.id })
+  }
   return true
 }
 
@@ -194,13 +201,14 @@ export async function staffSession(user: User, groupId: string, date: string) {
   return {
     ok: true,
     value: {
-      enabled: settings.enabled, mode: settings.mode, hours: settings.hours, phrases: settings.phrases,
+      enabled: settings.enabled, mode: settings.mode, hours: settings.hours, phrases: settings.phrases, criteria: settings.criteria,
+      canRelease: checkPermission(user.role as Role, 'session_reports', 'approve'),
       canEdit: !!report && report.status === 'DRAFT' && (await canEditGroupReports(user, groupId)),
-      report: report && { id: report.id, status: report.status, sendAt: report.sendAt, sentAt: report.sentAt, sessionNumber: report.sessionNumber, groupNote: report.groupNote },
+      report: report && { id: report.id, status: report.status, sendAt: report.sendAt, sentAt: report.sentAt, sessionNumber: report.sessionNumber, groupNote: report.groupNote, homeTip: report.homeTip },
       missing,
       students: students.map((st) => {
         const e = extras.find((x) => x.studentId === st.id)
-        return { id: st.id, name: name(st), attendance: att.find((a) => a.studentEnrollment.studentId === st.id)?.status ?? null, star: !!e?.star, phrases: (e?.phrases as string[] | null) ?? [], comment: e?.comment ?? '' }
+        return { id: st.id, name: name(st), attendance: att.find((a) => a.studentEnrollment.studentId === st.id)?.status ?? null, star: !!e?.star, phrases: (e?.phrases as string[] | null) ?? [], comment: e?.comment ?? '', scores: (e?.scores as Scores | null) ?? {}, lowReleased: !!e?.lowReleased, read: !!e?.readAt, reply: e?.parentReply ?? null }
       }),
     },
   }
@@ -223,7 +231,7 @@ async function reportMissing(groupId: string, sessionNumber: number | null) {
   return missingPieces({ ungradedHomework, quizReview }).map((k) => ({ key: k, count: k === 'HOMEWORK_UNGRADED' ? ungradedHomework : quizReview }))
 }
 
-export async function updateExtras(user: User, reportId: string, input: { groupNote?: string | null; students?: { studentId: string; star?: boolean; phrases?: string[]; comment?: string | null }[] }): Promise<Outcome> {
+export async function updateExtras(user: User, reportId: string, input: { groupNote?: string | null; homeTip?: string | null; students?: { studentId: string; star?: boolean; phrases?: string[]; comment?: string | null; scores?: Scores | null }[] }): Promise<Outcome> {
   const r = await prisma.sessionReport.findUnique({ where: { id: reportId } })
   if (!r) return fail('NOT_FOUND', 'Report not found')
   if (!(await canEditGroupReports(user, r.classSectionId))) return fail('FORBIDDEN', 'Not your group')
@@ -231,16 +239,41 @@ export async function updateExtras(user: User, reportId: string, input: { groupN
   const settings = await getSessionReportSettings()
   const inSession = new Set((await attendanceOf(r.classSectionId, ymd(r.sessionDate))).map((a) => a.studentEnrollment.studentId))
   if (input.groupNote !== undefined) await prisma.sessionReport.update({ where: { id: r.id }, data: { groupNote: input.groupNote || null } })
+  if (input.homeTip !== undefined) await prisma.sessionReport.update({ where: { id: r.id }, data: { homeTip: input.homeTip || null } })
   for (const st of input.students ?? []) {
     if (!inSession.has(st.studentId)) continue
     const data = {
       ...(st.star !== undefined && { star: st.star }),
       ...(st.phrases !== undefined && { phrases: cleanPhrases(st.phrases, settings.phrases) }),
       ...(st.comment !== undefined && { comment: st.comment || null }),
+      ...(st.scores !== undefined && { scores: cleanScores(st.scores, settings.criteria) ?? Prisma.DbNull }),
     }
     await prisma.sessionReportStudent.upsert({ where: { reportId_studentId: { reportId: r.id, studentId: st.studentId } }, create: { reportId: r.id, studentId: st.studentId, ...data }, update: data })
   }
   return { ok: true }
+}
+
+/** The parent answers under the report: it goes to the follow-ups and the managers. Once per report. */
+export async function replyToReport(user: User, reportId: string, studentId: string, text: string): Promise<Outcome> {
+  const r = await prisma.sessionReport.findUnique({ where: { id: reportId }, include: { students: { where: { studentId } } } })
+  if (!r || r.status !== 'SENT') return fail('NOT_FOUND', 'Report not found')
+  const viewer = await studentViewer(user, studentId)
+  if (viewer !== 'PARENT') return fail('FORBIDDEN', 'Only the parent can reply')
+  if (r.students[0]?.parentReply) return fail('ALREADY', 'You already replied · رديت قبل كده')
+  const body = text.trim().slice(0, 1000)
+  if (body.length < 2) return fail('EMPTY', 'Write your reply · اكتب ردك')
+  await prisma.sessionReportStudent.upsert({ where: { reportId_studentId: { reportId, studentId } }, create: { reportId, studentId, parentReply: body, repliedAt: new Date() }, update: { parentReply: body, repliedAt: new Date() } })
+  await logContact({ studentId, channel: 'SYSTEM', direction: 'IN', reason: 'OTHER', summary: `Reply to the session report ${ymd(r.sessionDate)}: ${body}`, followUpAt: new Date(), auto: true, userId: user.id })
+  return { ok: true }
+}
+
+/** A manager lets the family see this student's low ratings. */
+export async function releaseLowScores(user: User, reportId: string, studentId: string): Promise<Outcome> {
+  const r = await prisma.sessionReport.findUnique({ where: { id: reportId }, select: { classSectionId: true } })
+  if (!r) return fail('NOT_FOUND', 'Report not found')
+  if (!checkPermission(user.role as Role, 'session_reports', 'approve') || !(await canViewGroupReports(user, r.classSectionId))) return fail('FORBIDDEN', 'Not allowed')
+  const done = await prisma.sessionReportStudent.updateMany({ where: { reportId, studentId }, data: { lowReleased: true } })
+  return done.count ? { ok: true } : fail('NOT_FOUND', 'Nothing to release')
 }
 
 // ───────────────────────── one student's report ─────────────────────────
@@ -301,7 +334,13 @@ export async function studentReport(user: User, reportId: string, studentId: str
   }
   const e = r.students[0]
   const phraseIds = (e?.phrases as string[] | null) ?? []
+  // the family opened it: remember the first time (staff previews do not count)
+  if (family && r.status === 'SENT' && !e?.readAt) await prisma.sessionReportStudent.upsert({ where: { reportId_studentId: { reportId: r.id, studentId } }, create: { reportId: r.id, studentId, readAt: new Date() }, update: { readAt: new Date() } })
   return {
+    homeTip: r.homeTip,
+    scores: visibleScores(e?.scores as Scores | null, settings.criteria, { family, released: !!e?.lowReleased }),
+    canReply: family && r.status === 'SENT' && !e?.parentReply,
+    parentReply: e?.parentReply ?? null,
     id: r.id, status: r.status, sentAt: r.sentAt, date, sessionNumber: r.sessionNumber, perCycle: gl?.perCycle ?? null,
     student: { id: studentId, name: name(student), reg: student?.registrationNumber ?? '' },
     group: { id: r.classSectionId, label: `${group?.className ?? ''} ${group?.sectionName ?? ''}`.trim(), course: group?.level?.subject?.name ?? '', level: group?.level?.name ?? '', campus: group?.campus?.name ?? '' },
@@ -364,13 +403,14 @@ export async function staffList(user: User, f: { from: string; to: string; statu
     prisma.classSection.findMany({ where: { id: { in: gIds } }, select: { id: true, className: true, sectionName: true, campus: { select: { name: true } }, level: { select: { name: true, subject: { select: { name: true } } } } } }),
     prisma.teacher.findMany({ where: { id: { in: reports.map((r) => r.teacherId).filter((x): x is string => !!x) } }, select: { id: true, firstName: true, lastName: true } }),
   ])
+  const reads = await prisma.sessionReportStudent.groupBy({ by: ['reportId'], where: { reportId: { in: reports.map((r) => r.id) }, readAt: { not: null } }, _count: { _all: true } })
   const rows = []
   for (const r of reports) {
     const g = groups.find((x) => x.id === r.classSectionId)
     rows.push({
       id: r.id, groupId: r.classSectionId, date: ymd(r.sessionDate), sessionNumber: r.sessionNumber, status: r.status, sendAt: r.sendAt, sentAt: r.sentAt,
       group: `${g?.className ?? ''} ${g?.sectionName ?? ''}`.trim(), course: g?.level?.subject?.name ?? '', level: g?.level?.name ?? '', campus: g?.campus?.name ?? '',
-      teacher: name(teachers.find((t) => t.id === r.teacherId)), extras: r._count.students,
+      teacher: name(teachers.find((t) => t.id === r.teacherId)), extras: r._count.students, readCount: reads.find((x) => x.reportId === r.id)?._count._all ?? 0,
       missing: r.status === 'DRAFT' || ymd(r.sessionDate) >= ymd(new Date(Date.now() - 14 * DAY)) ? await reportMissing(r.classSectionId, r.sessionNumber) : [],
     })
   }

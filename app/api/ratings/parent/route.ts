@@ -37,7 +37,8 @@ const sessionSchema = z.object({
   studentId: z.string().min(1),
   classSectionId: z.string().min(1),
   sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  rating: z.number().int().min(1).max(4),
+  rating: z.number().int().min(1).max(4).optional(),
+  answers: z.record(z.string(), z.number().int().min(1).max(5)).optional().nullable(),
   comment: z.string().trim().max(500).optional().nullable(),
 })
 const surveySchema = z.object({
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
   if (d.type === 'session') {
     const s = d as z.infer<typeof sessionSchema>
     if (!(await isYoungChild(s.studentId!))) return errors.forbidden('Your child rates the sessions from their own portal')
-    r = await rateSession({ studentId: s.studentId!, classSectionId: s.classSectionId!, sessionDate: s.sessionDate!, rating: s.rating!, comment: s.comment, userId: session.user.id, byRole: 'PARENT' })
+    r = await rateSession({ studentId: s.studentId!, classSectionId: s.classSectionId!, sessionDate: s.sessionDate!, rating: s.rating, answers: s.answers ?? null, comment: s.comment, userId: session.user.id, byRole: 'PARENT' })
   } else {
     const s = d as z.infer<typeof surveySchema>
     r = await submitSurvey({ studentId: s.studentId!, classSectionId: s.classSectionId!, sessionsRating: s.sessionsRating!, teacherRating: s.teacherRating!, companyRating: s.companyRating!, recommend: s.recommend, comment: s.comment, userId: session.user.id })

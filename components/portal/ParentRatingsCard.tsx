@@ -1,5 +1,6 @@
 'use client'
 
+import { SessionRatingForm, type AskedQuestion } from './SessionRatingForm'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -10,7 +11,7 @@ import { Star } from 'lucide-react'
 import { ParentReferralCard } from './ParentReferralCard'
 import { L } from '@/lib/i18n/client'
 
-interface PendingSession { classSectionId: string; group: string; date: string }
+interface PendingSession { classSectionId: string; group: string; date: string; questions: AskedQuestion[] }
 interface PendingSurvey { classSectionId: string; group: string; course: string | null; level: string | null; kind: 'MONTHLY' | 'LEVEL' }
 interface Child { studentId: string; name: string; young: boolean; sessions: PendingSession[]; surveys: PendingSurvey[] }
 
@@ -92,7 +93,7 @@ export function ParentRatingsCard() {
   const { data } = useQuery({ queryKey: ['parent-ratings'], queryFn: () => fetchApi<{ children: Child[] }>('/api/ratings/parent') })
   const refresh = () => qc.invalidateQueries({ queryKey: ['parent-ratings'] })
   const face = useMutation({
-    mutationFn: (p: { studentId: string; classSectionId: string; sessionDate: string; rating: number }) => fetchApi('/api/ratings/parent', { method: 'POST', body: JSON.stringify({ type: 'session', ...p }) }),
+    mutationFn: (p: { studentId: string; classSectionId: string; sessionDate: string; answers: Record<string, number>; comment: string | null }) => fetchApi('/api/ratings/parent', { method: 'POST', body: JSON.stringify({ type: 'session', ...p }) }),
     onSuccess: () => { notify.success(L('Thank you!', 'شكراً!')); refresh() },
     onError: (e: Error) => notify.error(e.message),
   })
@@ -110,12 +111,7 @@ export function ParentRatingsCard() {
             {c.sessions.map((s) => (
               <div key={`${s.classSectionId}|${s.date}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
                 <span>{L('How was', 'إيه رأيك في')} {c.name.split(' ')[0]}&apos;s session on {fmt(s.date)} ({s.group})?</span>
-                <div className="flex gap-1">
-                  {FACES.map((x) => (
-                    <button key={x.v} type="button" title={x.l} className="rounded-lg px-1.5 text-2xl hover:bg-slate-100" disabled={face.isPending}
-                      onClick={() => face.mutate({ studentId: c.studentId, classSectionId: s.classSectionId, sessionDate: s.date, rating: x.v })}>{x.f}</button>
-                  ))}
-                </div>
+                <SessionRatingForm questions={s.questions} mode="FACES" busy={face.isPending} onSend={(answers, comment) => face.mutate({ studentId: c.studentId, classSectionId: s.classSectionId, sessionDate: s.date, answers, comment })} />
               </div>
             ))}
             {c.surveys.map((s) => <SurveyForm key={s.classSectionId} child={c} s={s} onDone={refresh} />)}

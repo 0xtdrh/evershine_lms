@@ -26,10 +26,10 @@ import { AlertTriangle, ChevronDown, ExternalLink, FileText, Loader2, Plus, Star
 import { DateInput } from '@/components/ui/date-input'
 
 interface Missing { key: 'HOMEWORK_UNGRADED' | 'QUIZ_REVIEW'; count: number }
-interface Row { id: string; groupId: string; date: string; sessionNumber: number | null; status: string; sendAt: string | null; sentAt: string | null; group: string; course: string; level: string; campus: string; teacher: string; extras: number; missing: Missing[] }
+interface Row { id: string; groupId: string; date: string; sessionNumber: number | null; status: string; sendAt: string | null; sentAt: string | null; group: string; course: string; level: string; campus: string; teacher: string; extras: number; readCount: number; missing: Missing[] }
 interface ListData { reports: Row[]; noAttendance: { groupId: string; group: string; date: string; sessionNumber: number | null }[] }
 interface Phrase { id: string; en: string; ar: string }
-interface Settings { enabled: boolean; mode: 'AUTO' | 'MANUAL'; hours: number; phrases: Phrase[] }
+interface Settings { enabled: boolean; mode: 'AUTO' | 'MANUAL'; hours: number; phrases: Phrase[]; criteria: Phrase[] }
 interface SessionData { students: { id: string; name: string; attendance: string | null; star: boolean; phrases: string[]; comment: string }[] }
 
 const DAY = 86_400_000
@@ -91,7 +91,18 @@ function SettingsCard() {
           ))}
           <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setS({ ...s, phrases: [...s.phrases, { id: `p${Date.now().toString(36)}`, en: '', ar: '' }] })}><Plus className="h-4 w-4" /> {L('Phrase', 'جملة')}</Button>
         </div>
-        <Button disabled={save.isPending || s.phrases.some((p) => !p.en.trim())} onClick={() => save.mutate()}>{save.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}{L('Save settings', 'احفظ الإعدادات')}</Button>
+        <div className="space-y-2">
+          <p className="font-medium">{L('What the instructor rates (1 to 5)', 'المدرب بيقيّم إيه (من 1 لـ 5)')}</p>
+          {s.criteria.map((c, i) => (
+            <div key={c.id} className="flex gap-2">
+              <Input className="h-8 text-xs" dir="rtl" placeholder="عربي" value={c.ar} onChange={(e) => setS({ ...s, criteria: s.criteria.map((x, j) => (j === i ? { ...x, ar: e.target.value } : x)) })} />
+              <Input className="h-8 text-xs" dir="ltr" placeholder="English" value={c.en} onChange={(e) => setS({ ...s, criteria: s.criteria.map((x, j) => (j === i ? { ...x, en: e.target.value } : x)) })} />
+              <Button type="button" size="sm" variant="ghost" disabled={s.criteria.length < 2} onClick={() => setS({ ...s, criteria: s.criteria.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
+            </div>
+          ))}
+          <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setS({ ...s, criteria: [...s.criteria, { id: `c${Date.now().toString(36)}`, en: '', ar: '' }] })}><Plus className="h-4 w-4" /> {L('Add', 'ضيف')}</Button>
+        </div>
+        <Button disabled={save.isPending || s.phrases.some((p) => !p.en.trim()) || s.criteria.some((c) => !c.en.trim())} onClick={() => save.mutate()}>{save.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}{L('Save settings', 'احفظ الإعدادات')}</Button>
       </CardContent>
     </Card>
   )

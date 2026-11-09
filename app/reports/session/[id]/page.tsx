@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { I18nProvider, L, LanguageSwitch, useI18n } from '@/lib/i18n/client'
 import { Button } from '@/components/ui/button'
+import { ReportReply } from '@/components/session-reports/ReportReply'
 import { ArrowLeft, Printer } from 'lucide-react'
 
 interface Report {
@@ -27,6 +28,10 @@ interface Report {
   phrases: { en: string; ar: string }[]
   comment: string | null
   groupNote: string | null
+  homeTip: string | null
+  scores: { id: string; en: string; ar: string; value: number }[]
+  canReply: boolean
+  parentReply: string | null
 }
 
 const fmtDay = (d: string, ar: boolean) => new Date(`${d}T00:00:00Z`).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -129,12 +134,22 @@ function ReportBody({ id }: { id: string }) {
             </Section>
           )}
 
+          {r.scores.length > 0 && (
+            <Section title={L('How the session went', 'كان عامل إيه في الحصة')}>
+              {r.scores.map((s) => <p key={s.id} className="flex justify-between"><span>{ar ? s.ar : s.en}</span><span dir="ltr">{'★'.repeat(s.value)}{'☆'.repeat(5 - s.value)}</span></p>)}
+            </Section>
+          )}
+
           {(r.phrases.length > 0 || r.comment) && (
             <Section title={L("Instructor's note", 'كلمة المدرب')}>
               {r.phrases.length > 0 && <p className="flex flex-wrap gap-1">{r.phrases.map((p, i) => <span key={i} className="rounded-full border border-indigo-300 px-2 py-0.5 text-xs">{ar ? p.ar : p.en}</span>)}</p>}
               {r.comment && <p>{r.comment}</p>}
             </Section>
           )}
+
+          {r.parentReply && <Section title={L('Your reply', 'ردك')}><p>{r.parentReply}</p></Section>}
+          {r.canReply && <ReportReply reportId={r.id} studentId={r.student.id} />}
+          {r.homeTip && <Section title={L('A tip for home', 'نصيحة للبيت')}><p>{r.homeTip}</p></Section>}
 
           {r.nextHomework.length > 0 && (
             <Section title={L('Next homework', 'الواجب الجاي')}>

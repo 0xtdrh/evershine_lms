@@ -50,6 +50,7 @@ export const NOTIFICATION_TYPE_TO_MODULE: Record<string, string> = {
   ANNOUNCEMENT_DECIDED: 'announcements',
   TREASURY_APPROVAL: 'fees',
   MONTH_CLOSE: 'fees',
+  SESSION_SCORE_LOW: 'lms',
   PAYMENT_VOID_REQUEST: 'fees',
   PAYMENT_VOIDED: 'fees',
 }

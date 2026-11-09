@@ -11,7 +11,16 @@ import { z } from 'zod'
 import { quizScore, type SCORING } from '@/lib/quizzes/rules'
 
 export interface Phrase { id: string; en: string; ar: string }
-export interface SessionReportSettings { enabled: boolean; mode: 'AUTO' | 'MANUAL'; hours: number; phrases: Phrase[] }
+export interface Criterion { id: string; en: string; ar: string }
+export interface SessionReportSettings { enabled: boolean; mode: 'AUTO' | 'MANUAL'; hours: number; phrases: Phrase[]; criteria: Criterion[] }
+
+/** What the instructor rates for each student, 1..5 (2026-11-09). Changed in Session reports > Settings. */
+export const DEFAULT_CRITERIA: Criterion[] = [
+  { id: 'participation', en: 'Participation', ar: 'المشاركة' },
+  { id: 'understanding', en: 'Understanding', ar: 'الفهم' },
+  { id: 'behaviour', en: 'Behaviour', ar: 'السلوك' },
+  { id: 'practical', en: 'Hands-on work', ar: 'التطبيق العملي' },
+]
 
 export const DEFAULT_PHRASES: Phrase[] = [
   { id: 'participated', en: 'Participated very well', ar: 'شارك كويس جدًا' },
@@ -24,22 +33,25 @@ export const DEFAULT_PHRASES: Phrase[] = [
   { id: 'improving', en: 'Improving every session', ar: 'بيتحسّن كل حصة' },
 ]
 
-export const SESSION_REPORT_DEFAULTS: SessionReportSettings = { enabled: false, mode: 'AUTO', hours: 3, phrases: DEFAULT_PHRASES }
+export const SESSION_REPORT_DEFAULTS: SessionReportSettings = { enabled: false, mode: 'AUTO', hours: 3, phrases: DEFAULT_PHRASES, criteria: DEFAULT_CRITERIA }
 
 export const settingsSchema = z.object({
   enabled: z.boolean(),
   mode: z.enum(['AUTO', 'MANUAL']),
   hours: z.number().min(0).max(72),
   phrases: z.array(z.object({ id: z.string().min(1).max(40), en: z.string().trim().min(1).max(80), ar: z.string().trim().max(80) })).max(40),
+  criteria: z.array(z.object({ id: z.string().min(1).max(40), en: z.string().trim().min(1).max(60), ar: z.string().trim().max(60) })).min(1).max(12).optional(),
 })
 
 export const extrasSchema = z.object({
   groupNote: z.string().trim().max(1000).nullable().optional(),
+  homeTip: z.string().trim().max(500).nullable().optional(),
   students: z.array(z.object({
     studentId: z.string().min(1),
     star: z.boolean().optional(),
     phrases: z.array(z.string().max(40)).max(10).optional(),
     comment: z.string().trim().max(500).nullable().optional(),
+    scores: z.record(z.string(), z.number().int().min(1).max(5)).nullable().optional(),
   })).max(200).optional(),
 })
 
@@ -53,6 +65,20 @@ export function computeSendAt(o: { mode: 'AUTO' | 'MANUAL'; hours: number; sessi
   const floor = o.now.getTime() + MIN_WINDOW_MIN * MIN
   const planned = o.sessionEnd ? o.sessionEnd.getTime() + o.hours * 60 * MIN : o.now.getTime() + o.hours * 60 * MIN
   return new Date(Math.max(planned, floor))
+}
+
+export type Scores = Record<string, number>
+export const LOW_SCORE = 2
+/** Only known criteria, each 1..5. Nothing left = null. */
+export function cleanScores(s: Scores | null | undefined, criteria: Criterion[]): Scores | null {
+  const out: Scores = {}
+  for (const c of criteria) { const v = s?.[c.id]; if (Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 5) out[c.id] = v as number }
+  return Object.keys(out).length ? out : null
+}
+export const hasLowScore = (s: Scores | null | undefined) => Object.values(s ?? {}).some((v) => v <= LOW_SCORE)
+/** Low ratings stay with the managers: a family sees them only after a manager releases them. */
+export function visibleScores(s: Scores | null | undefined, criteria: Criterion[], o: { family: boolean; released: boolean }) {
+  return criteria.filter((c) => s?.[c.id] != null && (!o.family || o.released || s![c.id] > LOW_SCORE)).map((c) => ({ id: c.id, en: c.en, ar: c.ar || c.en, value: s![c.id] }))
 }
 
 /** Phrase ids kept only when they exist in the settings (old ids are dropped). */

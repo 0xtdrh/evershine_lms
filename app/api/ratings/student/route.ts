@@ -37,12 +37,13 @@ export async function POST(request: NextRequest) {
   const parsed = z.object({
     classSectionId: z.string().min(1),
     sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    rating: z.number().int().min(1).max(4),
+    rating: z.number().int().min(1).max(4).optional(),
+    answers: z.record(z.string(), z.number().int().min(1).max(5)).optional().nullable(),
     comment: z.string().trim().max(500).optional().nullable(),
   }).safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
   const d = parsed.data
-  const r = await rateSession({ studentId: m.studentId!, classSectionId: d.classSectionId!, sessionDate: d.sessionDate!, rating: d.rating!, comment: d.comment, userId: m.userId!, byRole: 'STUDENT' })
+  const r = await rateSession({ studentId: m.studentId!, classSectionId: d.classSectionId!, sessionDate: d.sessionDate!, rating: d.rating, answers: d.answers ?? null, comment: d.comment, userId: m.userId!, byRole: 'STUDENT' })
   if (!r.ok) return r.code === 400 ? errors.badRequest(r.message) : errors.conflict(r.message)
   return createdResponse({ ok: true }, 'Thank you!')
 }

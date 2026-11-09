@@ -13,9 +13,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, Star } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { RatingQuestionsCard } from '@/components/ratings/RatingQuestionsCard'
 
 interface Overview {
   since: string
+  questions?: { id: string; en: string; ar: string; count: number; average: number | null }[]
   totals: { sessionFaces: number | null; sessionCount: number; instructor: number | null; sessionsQ: number | null; company: number | null; surveyCount: number }
   byTeacher: { teacherId: string; name: string; sessionFaces: number | null; sessionCount: number; instructor: number | null; sessionsQ: number | null; company: number | null; surveyCount: number }[]
   latestSurveys: { id: string; student: string; studentId: string; group: string; kind: string; instructor: string; sessionsRating: number; teacherRating: number; companyRating: number; comment: string | null; createdAt: string }[]
@@ -118,6 +120,7 @@ export default function RatingsPage() {
               </CardContent>
             </Card>
           </div>
+          <RatingQuestionsCard averages={data.questions ?? []} />
         </>
       )}
     </div>

@@ -18,10 +18,11 @@ import { Input } from '@/components/ui/input'
 import { ExternalLink, FileText, Loader2, Send, Star } from 'lucide-react'
 
 interface Phrase { id: string; en: string; ar: string }
-interface Row { id: string; name: string; attendance: string | null; star: boolean; phrases: string[]; comment: string }
+interface Criterion { id: string; en: string; ar: string }
+interface Row { id: string; name: string; attendance: string | null; star: boolean; phrases: string[]; comment: string; scores: Record<string, number>; lowReleased: boolean; read: boolean; reply: string | null }
 interface Data {
-  enabled: boolean; mode: 'AUTO' | 'MANUAL'; hours: number; phrases: Phrase[]; canEdit: boolean
-  report: { id: string; status: string; sendAt: string | null; sentAt: string | null; sessionNumber: number | null; groupNote: string | null } | null
+  enabled: boolean; mode: 'AUTO' | 'MANUAL'; hours: number; phrases: Phrase[]; criteria: Criterion[]; canRelease: boolean; canEdit: boolean
+  report: { id: string; status: string; sendAt: string | null; sentAt: string | null; sessionNumber: number | null; groupNote: string | null; homeTip: string | null } | null
   missing: { key: 'HOMEWORK_UNGRADED' | 'QUIZ_REVIEW'; count: number }[]
   students: Row[]
 }
@@ -39,12 +40,20 @@ export function SessionReportPanel({ groupId, date }: { groupId: string; date: s
   const { data, isLoading } = useQuery({ queryKey: key, queryFn: () => fetchApi<Data>(`/api/session-reports?groupId=${groupId}&date=${date}`), enabled: !hidden && !!groupId && !!date, retry: false })
   const [rows, setRows] = useState<Row[]>([])
   const [note, setNote] = useState('')
+  const [tip, setTip] = useState('')
+  const [picked, setPicked] = useState<string[]>([])
+  const [bulk, setBulk] = useState<Record<string, number>>({})
   const [dirty, setDirty] = useState(false)
-  useEffect(() => { if (data) { setRows(data.students); setNote(data.report?.groupNote ?? ''); setDirty(false) } }, [data])
+  useEffect(() => { if (data) { setRows(data.students); setNote(data.report?.groupNote ?? ''); setTip(data.report?.homeTip ?? ''); setDirty(false) } }, [data])
 
   const save = useMutation({
-    mutationFn: () => fetchApi(`/api/session-reports/${data!.report!.id}`, { method: 'PATCH', body: JSON.stringify({ groupNote: note, students: rows.map((r) => ({ studentId: r.id, star: r.star, phrases: r.phrases, comment: r.comment })) }) }),
+    mutationFn: () => fetchApi(`/api/session-reports/${data!.report!.id}`, { method: 'PATCH', body: JSON.stringify({ groupNote: note, homeTip: tip, students: rows.map((r) => ({ studentId: r.id, star: r.star, phrases: r.phrases, comment: r.comment, scores: r.scores })) }) }),
     onSuccess: () => { notify.success(L('Saved', 'اتحفظ')); qc.invalidateQueries({ queryKey: key }) },
+    onError: (e: Error) => notify.error(e.message),
+  })
+  const release = useMutation({
+    mutationFn: (studentId: string) => fetchApi(`/api/session-reports/${data!.report!.id}/release`, { method: 'POST', body: JSON.stringify({ studentId }) }),
+    onSuccess: () => { notify.success(L('The family can see it now', 'ولي الأمر يقدر يشوفه دلوقتي')); qc.invalidateQueries({ queryKey: key }) },
     onError: (e: Error) => notify.error(e.message),
   })
   const send = useMutation({
@@ -62,6 +71,8 @@ export function SessionReportPanel({ groupId, date }: { groupId: string; date: s
   const r = data.report
   const edit = data.canEdit
   const set = (id: string, p: Partial<Row>) => { setRows((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x))); setDirty(true) }
+  const applyBulk = () => { setRows((xs) => xs.map((x) => (picked.includes(x.id) ? { ...x, scores: { ...x.scores, ...bulk } } : x))); setDirty(true); setPicked([]); setBulk({}) }
+  const stars = (value: number | undefined, onPick: (n: number) => void) => <span className="inline-flex">{[1, 2, 3, 4, 5].map((n) => <button key={n} type="button" disabled={!edit} aria-label={`${n} / 5`} onClick={() => onPick(n)}><Star className={`h-4 w-4 ${n <= (value ?? 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} /></button>)}</span>
   const phraseText = (p: Phrase) => (locale === 'ar' && p.ar ? p.ar : p.en)
 
   return (
@@ -101,11 +112,25 @@ export function SessionReportPanel({ groupId, date }: { groupId: string; date: s
             <textarea className="min-h-[60px] w-full rounded-md border border-slate-200 bg-white p-2 text-sm" disabled={!edit} maxLength={1000} value={note} onChange={(e) => { setNote(e.target.value); setDirty(true) }}
               placeholder={L('e.g. Today we built a robot that follows a line', 'مثلًا: النهارده عملنا روبوت بيمشي على خط')} />
           </label>
+          <label className="block space-y-1 text-sm">
+            <span className="text-xs text-slate-500">{L('A tip for home (optional)', 'نصيحة للبيت (اختياري)')}</span>
+            <Input className="h-8 text-xs" disabled={!edit} maxLength={500} value={tip} onChange={(e) => { setTip(e.target.value); setDirty(true) }} placeholder={L('e.g. Try the same circuit with two LEDs', 'مثلًا: جرّب نفس الدايرة بلمبتين')} />
+          </label>
+          {edit && (
+            <div className="space-y-1 rounded-lg border border-indigo-200 bg-indigo-50 p-2 text-xs">
+              <p className="font-medium text-indigo-900">{L('Same rating for several students: tick them, choose, then apply', 'نفس التقييم لكذا طالب: علّم عليهم، واختار، ودوس طبّق')} ({picked.length})</p>
+              <div className="flex flex-wrap items-center gap-3">
+                {data.criteria.map((c) => <span key={c.id} className="inline-flex items-center gap-1">{locale === 'ar' && c.ar ? c.ar : c.en} {stars(bulk[c.id], (n) => setBulk({ ...bulk, [c.id]: n }))}</span>)}
+                <Button type="button" size="sm" className="h-7 text-xs" disabled={!picked.length || !Object.keys(bulk).length} onClick={applyBulk}>{L('Apply', 'طبّق')}</Button>
+              </div>
+            </div>
+          )}
           <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
             {rows.map((s) => (
               <div key={s.id} className="space-y-2 p-2 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
+                    {edit && <input type="checkbox" aria-label={s.name} checked={picked.includes(s.id)} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, s.id] : p.filter((x) => x !== s.id)))} />}
                     <button type="button" disabled={!edit} title={L('Star of the session', 'نجم الحصة')} onClick={() => set(s.id, { star: !s.star })}
                       className={`rounded-full p-1 ${s.star ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'}`}><Star className="h-5 w-5" fill={s.star ? 'currentColor' : 'none'} /></button>
                     <span className="font-medium text-slate-800">{s.name}</span>
@@ -113,6 +138,11 @@ export function SessionReportPanel({ groupId, date }: { groupId: string; date: s
                   </div>
                   <a href={`/reports/session/${r.id}?student=${s.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-indigo-700 hover:underline">{L('Preview', 'معاينة')} <ExternalLink className="h-3 w-3" /></a>
                 </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
+                  {data.criteria.map((c) => <span key={c.id} className="inline-flex items-center gap-1">{locale === 'ar' && c.ar ? c.ar : c.en} {stars(s.scores[c.id], (n) => set(s.id, { scores: { ...s.scores, [c.id]: n } }))}</span>)}
+                </div>
+                {data.canRelease && !s.lowReleased && Object.values(s.scores).some((v) => v <= 2) && <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={release.isPending || !Object.keys(data.students.find((x) => x.id === s.id)?.scores ?? {}).length} onClick={() => release.mutate(s.id)}>{L('Low rating: let the family see it', 'تقييم قليل: خلّي ولي الأمر يشوفه')}</Button>}
+                {r.status === 'SENT' && <p className="text-xs text-slate-500">{s.read ? L('Read by the family', 'ولي الأمر قرأه') : L('Not read yet', 'لسه ما اتقراش')}{s.reply && <> · <b>{L('Reply', 'الرد')}:</b> {s.reply}</>}</p>}
                 <div className="flex flex-wrap gap-1">
                   {data.phrases.map((p) => {
                     const on = s.phrases.includes(p.id)

@@ -11,6 +11,7 @@
  * Server-only.
  */
 
+import { DEFAULT_PER_SESSION, DEFAULT_QUESTIONS, cleanPerSession, cleanQuestions, pickQuestions, questionAverages, summarize, validAnswers, type Answers, type RatingQuestion } from './questions'
 import { prisma } from '@/lib/prisma'
 import { getSetting, setSetting } from '@/lib/settings/app-settings'
 import { cairoYmd, ageOn } from '@/lib/dates/cairo'
@@ -18,9 +19,12 @@ import { sessionsPerCycle, cyclesInLevel } from '@/lib/groups/cycle-rules'
 import { pickGroupInstructorOffering } from '@/lib/groups/instructor'
 import { notifyUsers, managerUserIds } from '@/lib/notifications/events'
 
-export interface FeedbackSettings { parentAnswersUnderAge: number; sessionDays: number; surveyDays: number }
-export const FEEDBACK_DEFAULTS: FeedbackSettings = { parentAnswersUnderAge: 8, sessionDays: 2, surveyDays: 21 }
-export const getFeedbackSettings = async () => ({ ...FEEDBACK_DEFAULTS, ...(await getSetting<Partial<FeedbackSettings>>('ratings.settings', {})) })
+export interface FeedbackSettings { parentAnswersUnderAge: number; sessionDays: number; surveyDays: number; perSession: number; questions: RatingQuestion[] }
+export const FEEDBACK_DEFAULTS: FeedbackSettings = { parentAnswersUnderAge: 8, sessionDays: 2, surveyDays: 21, perSession: DEFAULT_PER_SESSION, questions: DEFAULT_QUESTIONS }
+export const getFeedbackSettings = async (): Promise<FeedbackSettings> => {
+  const s = { ...FEEDBACK_DEFAULTS, ...(await getSetting<Partial<FeedbackSettings>>('ratings.settings', {})) }
+  return { ...s, perSession: cleanPerSession(s.perSession), questions: cleanQuestions(s.questions) }
+}
 export const saveFeedbackSettings = (v: FeedbackSettings, userId: string) => setSetting('ratings.settings', v, userId)
 
 export const SESSION_FACES = ['', '🙁', '😐', '🙂', '😀'] as const
@@ -34,7 +38,7 @@ export async function isYoungChild(studentId: string): Promise<boolean> {
 
 /** Sessions of the last few days the student attended and has not rated yet. */
 export async function pendingSessionRatings(studentId: string) {
-  const { sessionDays } = await getFeedbackSettings()
+  const { sessionDays, questions, perSession } = await getFeedbackSettings()
   const since = new Date(Date.now() - (sessionDays + 1) * 86_400_000)
   const records = await prisma.enrollmentAttendanceRecord.findMany({
     where: { attendanceDate: { gte: since }, status: { in: ['PRESENT', 'LATE'] }, studentEnrollment: { studentId } },
@@ -46,7 +50,7 @@ export async function pendingSessionRatings(studentId: string) {
   const doneKeys = new Set(done.map((d) => `${d.classSectionId}|${day(d.sessionDate)}`))
   return records
     .filter((r) => !doneKeys.has(`${r.studentEnrollment.classSectionId}|${day(r.attendanceDate)}`))
-    .map((r) => ({ classSectionId: r.studentEnrollment.classSectionId, group: `${r.studentEnrollment.classSection.className} ${r.studentEnrollment.classSection.sectionName}`.trim(), date: day(r.attendanceDate) }))
+    .map((r) => ({ classSectionId: r.studentEnrollment.classSectionId, group: `${r.studentEnrollment.classSection.className} ${r.studentEnrollment.classSection.sectionName}`.trim(), date: day(r.attendanceDate), questions: pickQuestions(questions, perSession, day(r.attendanceDate)).map((q) => ({ id: q.id, en: q.en, ar: q.ar })) }))
 }
 
 /**
@@ -65,15 +69,24 @@ async function lowRatingAlert(studentId: string, text: string, by: { userId: str
 
 export interface FeedbackOutcome { ok: boolean; code?: number; message?: string }
 
-export async function rateSession(input: { studentId: string; classSectionId: string; sessionDate: string; rating: number; comment?: string | null; userId: string; byRole: 'STUDENT' | 'PARENT' }): Promise<FeedbackOutcome> {
-  if (!Number.isInteger(input.rating) || input.rating < 1 || input.rating > 4) return { ok: false, code: 400, message: 'Choose a face' }
+export async function rateSession(input: { studentId: string; classSectionId: string; sessionDate: string; rating?: number; answers?: Answers | null; comment?: string | null; userId: string; byRole: 'STUDENT' | 'PARENT' }): Promise<FeedbackOutcome> {
+  if (!input.answers && (!Number.isInteger(input.rating) || input.rating! < 1 || input.rating! > 4)) return { ok: false, code: 400, message: 'Choose a face' }
   const pending = await pendingSessionRatings(input.studentId)
   const g = pending.find((p) => p.classSectionId === input.classSectionId && p.date === input.sessionDate)
   if (!g) return { ok: false, code: 409, message: 'This session cannot be rated (already rated, too old, or the student was absent)' }
+  let rating = input.rating ?? 0
+  let low = rating <= 1
+  let detail: string = SESSION_FACES[rating] ?? ''
+  if (input.answers) {
+    const { questions, perSession } = await getFeedbackSettings()
+    if (!validAnswers(input.answers, pickQuestions(questions, perSession, input.sessionDate))) return { ok: false, code: 400, message: 'Answer every question · جاوب كل الأسئلة' }
+    const s = summarize(input.answers)
+    rating = s.rating; low = s.low; detail = `${s.average}/5`
+  }
   await prisma.sessionFeedback.create({
-    data: { studentId: input.studentId, classSectionId: input.classSectionId, sessionDate: new Date(`${input.sessionDate}T00:00:00.000Z`), rating: input.rating, comment: input.comment?.slice(0, 500) || null, byUserId: input.userId, byRole: input.byRole },
+    data: { studentId: input.studentId, classSectionId: input.classSectionId, sessionDate: new Date(`${input.sessionDate}T00:00:00.000Z`), rating, answers: input.answers ?? undefined, comment: input.comment?.slice(0, 500) || null, byUserId: input.userId, byRole: input.byRole },
   })
-  if (input.rating <= 1) await lowRatingAlert(input.studentId, `session ${input.sessionDate} in ${g.group} rated ${SESSION_FACES[input.rating]}${input.comment ? ` — "${input.comment.slice(0, 200)}"` : ''}`, { userId: input.userId, role: input.byRole, topic: 'SESSION', classSectionId: input.classSectionId })
+  if (low) await lowRatingAlert(input.studentId, `session ${input.sessionDate} in ${g.group} rated ${detail}${input.comment ? ` — "${input.comment.slice(0, 200)}"` : ''}`, { userId: input.userId, role: input.byRole, topic: 'SESSION', classSectionId: input.classSectionId })
   return { ok: true }
 }
 
@@ -149,11 +162,12 @@ export async function teacherAverages(teacherId: string, sinceDays = 180) {
   const since = new Date(Date.now() - sinceDays * 86_400_000)
   const groups = (await prisma.subjectOffering.findMany({ where: { teacherId }, select: { classSectionId: true } })).map((o) => o.classSectionId)
   const [sessions, surveys] = await Promise.all([
-    prisma.sessionFeedback.findMany({ where: { classSectionId: { in: groups }, createdAt: { gte: since } }, select: { rating: true } }),
+    prisma.sessionFeedback.findMany({ where: { classSectionId: { in: groups }, createdAt: { gte: since } }, select: { rating: true, answers: true } }),
     prisma.parentSurvey.findMany({ where: { teacherId, createdAt: { gte: since } }, select: { sessionsRating: true, teacherRating: true } }),
   ])
   return {
     sessionFaces: { average: avg(sessions.map((s) => s.rating)), count: sessions.length, outOf: 4 },
+    questions: questionAverages(sessions.map((s) => s.answers as Answers | null), (await getFeedbackSettings()).questions),
     parentsOnInstructor: { average: avg(surveys.map((s) => s.teacherRating)), count: surveys.length, outOf: 5 },
     parentsOnSessions: { average: avg(surveys.map((s) => s.sessionsRating)), count: surveys.length, outOf: 5 },
   }
@@ -190,6 +204,7 @@ export async function feedbackOverview(opts: { campusId?: string | null; sinceDa
 
   return {
     since: day(since),
+    questions: questionAverages(sessions.map((s) => s.answers as Answers | null), (await getFeedbackSettings()).questions),
     totals: {
       sessionFaces: avg(sessions.map((s) => s.rating)), sessionCount: sessions.length,
       instructor: avg(surveys.map((s) => s.teacherRating)), sessionsQ: avg(surveys.map((s) => s.sessionsRating)), company: avg(surveys.map((s) => s.companyRating)), surveyCount: surveys.length,

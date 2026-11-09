@@ -3063,6 +3063,45 @@ check "…the office still opens it" "$(curl -s -o /dev/null -w '%{http_code}' -
 M "UPDATE ClassSection SET status='ACTIVE', completedAt=NULL WHERE id='$NG'"
 api PUT /api/teachers/access/settings "{\"finishedGroupDays\":$DAYS}" >/dev/null
 rm -f "$TJ0"
+echo "== 91. Session rating questions, the instructor rates each student, the report for each student (2026-11-09)"
+check "default questions; a secretary cannot change them" "$(api GET /api/ratings/settings | jq_ "(len(d['data']['questions']), d['data']['perSession'])")/$(secapi PUT /api/ratings/settings '{"perSession":2}' | jq_ "d['success']")" "(4, 3)/False"
+api PUT /api/session-reports/settings '{"enabled":true,"mode":"MANUAL","hours":3,"phrases":[{"id":"focus","en":"Needs more focus","ar":""}]}' >/dev/null
+LKE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$LK' AND classSectionId='$LG'")
+LOE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$LO' AND classSectionId='$LG'")
+D2=$(D -2)
+sess $LG "$D2" "$(rec $LKE PRESENT),$(rec $LOE PRESENT)" >/dev/null
+LKR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); LK9=$(mktemp); login_jar "$(echo "$LKR" | jq_ "d['data']['loginId']")" "$(echo "$LKR" | jq_ "d['data']['password']")" "$LK9" 10.0.9.11
+LPW9=$(api POST /api/students/$LK/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$LGU\"}" | jq_ "d['data']['password']"); LP9=$(mktemp); login_jar 01066660119 "$LPW9" "$LP9" 10.0.9.12
+TJ9=$(mktemp); login_jar tch@e2e.local E2eTch12345 "$TJ9" 10.0.9.13
+RS=$(curl -s -b "$LK9" $B/api/ratings/student)
+Q2=$(echo "$RS" | jq_ "[s['questions'] for s in d['data']['sessions'] if s['date']=='$D2'][0]" | tr -d '\r')
+check "the student gets 3 questions for that session" "$(echo "$RS" | jq_ "[len(s['questions']) for s in d['data']['sessions'] if s['date']=='$D2'][0]")" "3"
+ANS() { python -c "import sys,json,ast;q=ast.literal_eval(sys.argv[1]);print(json.dumps({x['id']:int(sys.argv[2]) for x in q}))" "$Q2" "$1"; }
+rpost() { curl -s -b "$LK9" -X POST -H 'Content-Type: application/json' -d "$1" $B/api/ratings/student; }
+check "every question must be answered" "$(rpost "{\"classSectionId\":\"$LG\",\"sessionDate\":\"$D2\",\"answers\":{\"fun\":5}}" | jq_ "d['success']")" "False"
+NLOW=$(M "SELECT COUNT(*) FROM Notification WHERE type='LOW_RATING'")
+check "all low answers are saved and alert the managers" "$(rpost "{\"classSectionId\":\"$LG\",\"sessionDate\":\"$D2\",\"answers\":$(ANS 2)}" | jq_ "d['success']")/$(M "SELECT rating FROM SessionFeedback WHERE studentId='$LK' AND classSectionId='$LG' AND sessionDate='$D2'")/$(( $(M "SELECT COUNT(*) FROM Notification WHERE type='LOW_RATING'") > NLOW ))" "True/1/1"
+check "managers see the average of each question, the instructor without names" "$(api GET /api/ratings/overview | jq_ "any(q['count']>0 for q in d['data']['questions'])")/$(M "SELECT JSON_LENGTH(answers) FROM SessionFeedback WHERE studentId='$LK' AND classSectionId='$LG' AND sessionDate='$D2'")" "True/3"
+P9=$(curl -s -b "$TJ9" "$B/api/session-reports?groupId=$LG&date=$D2")
+R9=$(echo "$P9" | jq_ "d['data']['report']['id']")
+check "the instructor gets the rating items (default 4)" "$(echo "$P9" | jq_ "[c['id'] for c in d['data']['criteria']]")" "['participation', 'understanding', 'behaviour', 'practical']"
+check "today: a report with no rating is on the managers' list" "$(api GET /api/today | python -c "import sys,json;d=json.load(sys.stdin);print(any(x['key']=='reportsNotRated' for x in d['data']['tasks']))")" "True"
+curl -s -o /dev/null -b "$TJ9" -X PATCH -H 'Content-Type: application/json' -d "{\"homeTip\":\"Try two LEDs\",\"students\":[{\"studentId\":\"$LK\",\"scores\":{\"participation\":5,\"behaviour\":2,\"nope\":3}},{\"studentId\":\"$LO\",\"scores\":{\"participation\":5,\"behaviour\":5}}]}" $B/api/session-reports/$R9
+check "each student has his own rating; unknown items are dropped" "$(M "SELECT JSON_LENGTH(scores) FROM SessionReportStudent WHERE reportId='$R9' AND studentId='$LK'")/$(M "SELECT JSON_EXTRACT(scores,'\$.behaviour') FROM SessionReportStudent WHERE reportId='$R9' AND studentId='$LO'")" "2/5"
+NSL=$(M "SELECT COUNT(*) FROM Notification WHERE type='SESSION_SCORE_LOW' AND relatedId='$R9'")
+curl -s -o /dev/null -b "$TJ9" -X POST $B/api/session-reports/$R9/send
+check "sending a report with a low rating tells the managers" "$(( $(M "SELECT COUNT(*) FROM Notification WHERE type='SESSION_SCORE_LOW' AND relatedId='$R9'") > NSL ))" "1"
+pv() { curl -s -b "$LP9" "$B/api/session-reports/$R9?student=$LK"; }
+check "the instructor's panel shows it unread first" "$(curl -s -b "$TJ9" "$B/api/session-reports?groupId=$LG&date=$D2" | jq_ "[s['read'] for s in d['data']['students'] if s['id']=='$LK'][0]")" "False"
+check "the parent sees the tip and the good rating, not the low one" "$(pv | jq_ "(d['data']['homeTip'], [s['id'] for s in d['data']['scores']])")" "('Try two LEDs', ['participation'])"
+check "…and it is marked as read" "$(M "SELECT readAt IS NOT NULL FROM SessionReportStudent WHERE reportId='$R9' AND studentId='$LK'")" "1"
+check "staff see the low one" "$(api GET "/api/session-reports/$R9?student=$LK" | jq_ "[s['id'] for s in d['data']['scores']]")" "['participation', 'behaviour']"
+check "a secretary cannot release it" "$(secapi POST /api/session-reports/$R9/release "{\"studentId\":\"$LK\"}" | jq_ "d['success']")" "False"
+check "a manager releases it and the parent sees it" "$(api POST /api/session-reports/$R9/release "{\"studentId\":\"$LK\"}" | jq_ "d['success']")/$(pv | jq_ "len(d['data']['scores'])")" "True/2"
+NCT=$(M "SELECT COUNT(*) FROM ContactLog WHERE studentId='$LK'")
+check "the student cannot reply, the parent can, once, and it reaches the follow-ups" "$(curl -s -b "$LK9" -X POST -H 'Content-Type: application/json' -d "{\"studentId\":\"$LK\",\"text\":\"hello there\"}" $B/api/session-reports/$R9/reply | jq_ "d['success']")/$(curl -s -b "$LP9" -X POST -H 'Content-Type: application/json' -d "{\"studentId\":\"$LK\",\"text\":\"He did not understand part two\"}" $B/api/session-reports/$R9/reply | jq_ "d['success']")/$(curl -s -b "$LP9" -X POST -H 'Content-Type: application/json' -d "{\"studentId\":\"$LK\",\"text\":\"again\"}" $B/api/session-reports/$R9/reply | jq_ "d['success']")/$(( $(M "SELECT COUNT(*) FROM ContactLog WHERE studentId='$LK'") - NCT ))" "False/True/False/1"
+api PUT /api/session-reports/settings '{"enabled":false,"mode":"AUTO","hours":3,"phrases":[{"id":"focus","en":"Needs more focus","ar":""}]}' >/dev/null
+rm -f "$LK9" "$LP9" "$TJ9"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

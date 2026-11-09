@@ -4160,6 +4160,8 @@ model SessionFeedback {
   classSectionId String
   sessionDate    DateTime @db.Date
   rating         Int
+  /// 2026-11-09: { questionId: 1..5 } for the questions asked this session; null = an old one-tap rating
+  answers        Json?
   comment        String?  @db.VarChar(500)
   byUserId       String
   byRole         String   @db.VarChar(8)
@@ -4896,6 +4898,8 @@ model SessionReport {
   sessionNumber  Int?
   teacherId      String?
   groupNote      String?                @db.Text
+  /// 2026-11-09: one tip for practising at home
+  homeTip        String?                @db.Text
   status         String                 @default("DRAFT") @db.VarChar(8)
   sendAt         DateTime?
   sentAt         DateTime?
@@ -4917,6 +4921,12 @@ model SessionReportStudent {
   star      Boolean       @default(false)
   phrases   Json?
   comment   String?       @db.VarChar(500)
+  /// 2026-11-09: the instructor's rating { criterionId: 1..5 }. Low ones stay with the managers until released.
+  scores    Json?
+  lowReleased Boolean     @default(false)
+  readAt    DateTime?
+  parentReply String?     @db.Text
+  repliedAt DateTime?
   updatedAt DateTime      @updatedAt
 
   @@unique([reportId, studentId])
