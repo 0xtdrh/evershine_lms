@@ -71,7 +71,8 @@ export function SessionReportPanel({ groupId, date }: { groupId: string; date: s
   const r = data.report
   const edit = data.canEdit
   const set = (id: string, p: Partial<Row>) => { setRows((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x))); setDirty(true) }
-  const applyBulk = () => { setRows((xs) => xs.map((x) => (picked.includes(x.id) ? { ...x, scores: { ...x.scores, ...bulk } } : x))); setDirty(true); setPicked([]); setBulk({}) }
+  const attended = (x: Row) => x.attendance === 'PRESENT' || x.attendance === 'LATE'
+  const applyBulk = () => { setRows((xs) => xs.map((x) => (picked.includes(x.id) && attended(x) ? { ...x, scores: { ...x.scores, ...bulk } } : x))); setDirty(true); setPicked([]); setBulk({}) }
   const stars = (value: number | undefined, onPick: (n: number) => void) => <span className="inline-flex">{[1, 2, 3, 4, 5].map((n) => <button key={n} type="button" disabled={!edit} aria-label={`${n} / 5`} onClick={() => onPick(n)}><Star className={`h-4 w-4 ${n <= (value ?? 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} /></button>)}</span>
   const phraseText = (p: Phrase) => (locale === 'ar' && p.ar ? p.ar : p.en)
 
@@ -130,7 +131,7 @@ export function SessionReportPanel({ groupId, date }: { groupId: string; date: s
               <div key={s.id} className="space-y-2 p-2 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    {edit && <input type="checkbox" aria-label={s.name} checked={picked.includes(s.id)} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, s.id] : p.filter((x) => x !== s.id)))} />}
+                    {edit && attended(s) && <input type="checkbox" aria-label={s.name} checked={picked.includes(s.id)} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, s.id] : p.filter((x) => x !== s.id)))} />}
                     <button type="button" disabled={!edit} title={L('Star of the session', 'نجم الحصة')} onClick={() => set(s.id, { star: !s.star })}
                       className={`rounded-full p-1 ${s.star ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'}`}><Star className="h-5 w-5" fill={s.star ? 'currentColor' : 'none'} /></button>
                     <span className="font-medium text-slate-800">{s.name}</span>
@@ -138,10 +139,10 @@ export function SessionReportPanel({ groupId, date }: { groupId: string; date: s
                   </div>
                   <a href={`/reports/session/${r.id}?student=${s.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-indigo-700 hover:underline">{L('Preview', 'معاينة')} <ExternalLink className="h-3 w-3" /></a>
                 </div>
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
+                {attended(s) && <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
                   {data.criteria.map((c) => <span key={c.id} className="inline-flex items-center gap-1">{locale === 'ar' && c.ar ? c.ar : c.en} {stars(s.scores[c.id], (n) => set(s.id, { scores: { ...s.scores, [c.id]: n } }))}</span>)}
-                </div>
-                {data.canRelease && !s.lowReleased && Object.values(s.scores).some((v) => v <= 2) && <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={release.isPending || !Object.keys(data.students.find((x) => x.id === s.id)?.scores ?? {}).length} onClick={() => release.mutate(s.id)}>{L('Low rating: let the family see it', 'تقييم قليل: خلّي ولي الأمر يشوفه')}</Button>}
+                </div>}
+                {r.status === 'SENT' && data.canRelease && !s.lowReleased && Object.values(s.scores).some((v) => v <= 2) && <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={release.isPending} onClick={() => release.mutate(s.id)}>{L('Low rating: let the family see it', 'تقييم قليل: خلّي ولي الأمر يشوفه')}</Button>}
                 {r.status === 'SENT' && <p className="text-xs text-slate-500">{s.read ? L('Read by the family', 'ولي الأمر قرأه') : L('Not read yet', 'لسه ما اتقراش')}{s.reply && <> · <b>{L('Reply', 'الرد')}:</b> {s.reply}</>}</p>}
                 <div className="flex flex-wrap gap-1">
                   {data.phrases.map((p) => {

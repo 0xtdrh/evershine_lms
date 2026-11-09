@@ -43,7 +43,7 @@ export default function RatingsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><Star className="h-7 w-7 fill-amber-400 text-amber-400" /> {L('Ratings', 'التقييمات')}</h1>
-          <p className="mt-1 text-sm text-slate-500">{L('Students rate each session (😀 4 · 🙂 3 · 😐 2 · 🙁 1). Parents rate the sessions, the instructor and TechNova at the end of each month (1–5). Instructors only see their own averages.', 'الطلاب بيقيّموا كل حصة (😀 4 · 🙂 3 · 😐 2 · 🙁 1). وأولياء الأمور بيقيّموا الحصص والمدرب وTechNova آخر كل شهر (1–5). المدربين بيشوفوا متوسطاتهم بس.')}</p>
+          <p className="mt-1 text-sm text-slate-500">{L('After each session students answer a few short questions (stars; for young children the parent answers with faces). Parents rate the sessions, the instructor and TechNova at the end of each month. Instructors only see their own averages.', 'بعد كل حصة الطالب بيجاوب على أسئلة قصيرة بنجوم، والطفل الصغير ولي أمره بيجاوب بوجوه. وأولياء الأمور بيقيّموا الحصص والمدرب وTechNova آخر كل شهر. والمدرب بيشوف متوسطاته بس.')}</p>
         </div>
         <Select value={days} onValueChange={setDays}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>

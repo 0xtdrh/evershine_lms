@@ -237,7 +237,9 @@ export async function updateExtras(user: User, reportId: string, input: { groupN
   if (!(await canEditGroupReports(user, r.classSectionId))) return fail('FORBIDDEN', 'Not your group')
   if (r.status !== 'DRAFT') return fail('ALREADY_SENT', 'This report was already sent and cannot be changed')
   const settings = await getSessionReportSettings()
-  const inSession = new Set((await attendanceOf(r.classSectionId, ymd(r.sessionDate))).map((a) => a.studentEnrollment.studentId))
+  const att = await attendanceOf(r.classSectionId, ymd(r.sessionDate))
+  const inSession = new Set(att.map((a) => a.studentEnrollment.studentId))
+  const absent = new Set(att.filter((a) => a.status !== 'PRESENT' && a.status !== 'LATE').map((a) => a.studentEnrollment.studentId))
   if (input.groupNote !== undefined) await prisma.sessionReport.update({ where: { id: r.id }, data: { groupNote: input.groupNote || null } })
   if (input.homeTip !== undefined) await prisma.sessionReport.update({ where: { id: r.id }, data: { homeTip: input.homeTip || null } })
   for (const st of input.students ?? []) {
@@ -246,7 +248,7 @@ export async function updateExtras(user: User, reportId: string, input: { groupN
       ...(st.star !== undefined && { star: st.star }),
       ...(st.phrases !== undefined && { phrases: cleanPhrases(st.phrases, settings.phrases) }),
       ...(st.comment !== undefined && { comment: st.comment || null }),
-      ...(st.scores !== undefined && { scores: cleanScores(st.scores, settings.criteria) ?? Prisma.DbNull }),
+      ...(st.scores !== undefined && !absent.has(st.studentId) && { scores: cleanScores(st.scores, settings.criteria) ?? Prisma.DbNull }),
     }
     await prisma.sessionReportStudent.upsert({ where: { reportId_studentId: { reportId: r.id, studentId: st.studentId } }, create: { reportId: r.id, studentId: st.studentId, ...data }, update: data })
   }

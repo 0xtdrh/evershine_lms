@@ -3088,6 +3088,12 @@ check "the instructor gets the rating items (default 4)" "$(echo "$P9" | jq_ "[c
 check "today: a report with no rating is on the managers' list" "$(api GET /api/today | python -c "import sys,json;d=json.load(sys.stdin);print(any(x['key']=='reportsNotRated' for x in d['data']['tasks']))")" "True"
 curl -s -o /dev/null -b "$TJ9" -X PATCH -H 'Content-Type: application/json' -d "{\"homeTip\":\"Try two LEDs\",\"students\":[{\"studentId\":\"$LK\",\"scores\":{\"participation\":5,\"behaviour\":2,\"nope\":3}},{\"studentId\":\"$LO\",\"scores\":{\"participation\":5,\"behaviour\":5}}]}" $B/api/session-reports/$R9
 check "each student has his own rating; unknown items are dropped" "$(M "SELECT JSON_LENGTH(scores) FROM SessionReportStudent WHERE reportId='$R9' AND studentId='$LK'")/$(M "SELECT JSON_EXTRACT(scores,'\$.behaviour') FROM SessionReportStudent WHERE reportId='$R9' AND studentId='$LO'")" "2/5"
+LOE9=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$LO' AND classSectionId='$LG'")
+D3=$(D -3)
+sess $LG "$D3" "$(rec $LKE PRESENT),$(rec $LOE9 ABSENT)" >/dev/null
+R3=$(curl -s -b "$TJ9" "$B/api/session-reports?groupId=$LG&date=$D3" | jq_ "d['data']['report']['id']")
+curl -s -o /dev/null -b "$TJ9" -X PATCH -H 'Content-Type: application/json' -d "{\"students\":[{\"studentId\":\"$LO\",\"scores\":{\"participation\":5}},{\"studentId\":\"$LK\",\"scores\":{\"participation\":4}}]}" $B/api/session-reports/$R3
+check "an absent student cannot be rated" "$(M "SELECT COUNT(*) FROM SessionReportStudent WHERE reportId='$R3' AND studentId='$LO' AND scores IS NOT NULL")/$(M "SELECT COUNT(*) FROM SessionReportStudent WHERE reportId='$R3' AND studentId='$LK' AND scores IS NOT NULL")" "0/1"
 NSL=$(M "SELECT COUNT(*) FROM Notification WHERE type='SESSION_SCORE_LOW' AND relatedId='$R9'")
 curl -s -o /dev/null -b "$TJ9" -X POST $B/api/session-reports/$R9/send
 check "sending a report with a low rating tells the managers" "$(( $(M "SELECT COUNT(*) FROM Notification WHERE type='SESSION_SCORE_LOW' AND relatedId='$R9'") > NSL ))" "1"

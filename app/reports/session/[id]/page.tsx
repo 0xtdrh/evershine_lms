@@ -40,7 +40,7 @@ const fmtTime = (d: string, ar: boolean) => new Date(d).toLocaleString(ar ? 'ar-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mt-4">
-      <h3 className="border-b border-gray-400 pb-0.5 font-bold">{title}</h3>
+      <h3 className="border-b border-gray-400 pb-0.5 text-sm font-bold">{title}</h3>
       <div className="mt-1 space-y-1">{children}</div>
     </div>
   )
@@ -147,8 +147,6 @@ function ReportBody({ id }: { id: string }) {
             </Section>
           )}
 
-          {r.parentReply && <Section title={L('Your reply', 'ردك')}><p>{r.parentReply}</p></Section>}
-          {r.canReply && <ReportReply reportId={r.id} studentId={r.student.id} />}
           {r.homeTip && <Section title={L('A tip for home', 'نصيحة للبيت')}><p>{r.homeTip}</p></Section>}
 
           {r.nextHomework.length > 0 && (
@@ -156,6 +154,9 @@ function ReportBody({ id }: { id: string }) {
               {r.nextHomework.map((h, i) => <p key={i}><span className="font-medium">{h.title}</span>{h.dueAt ? ` — ${L('due', 'آخر معاد')} ${fmtTime(h.dueAt, ar)}` : ''}</p>)}
             </Section>
           )}
+
+          {r.parentReply && <Section title={L('Your reply', 'ردك')}><p>{r.parentReply}</p></Section>}
+          {r.canReply && <ReportReply reportId={r.id} studentId={r.student.id} />}
 
           <p className="mt-5 text-[11px] text-gray-500">{L('Prepared automatically from attendance, homework and quizzes. Grades given later appear here by themselves. You can rate the session from the portal.', 'التقرير ده بيتعمل أوتوماتيك من الحضور والواجبات والكويزات. الدرجات اللي بتتحط بعدين بتظهر هنا لوحدها. تقدر تقيّم الحصة من البورتال.')}</p>
         </div>
