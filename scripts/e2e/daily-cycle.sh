@@ -3111,7 +3111,7 @@ api PUT /api/session-reports/settings '{"enabled":false,"mode":"AUTO","hours":3,
 rm -f "$LK9" "$LP9" "$TJ9"
 echo "== 92. The inventor's journey: islands map details, title, stars, what is left, timeline (2026-11-10)"
 JP=$(api GET /api/profile/$LK)
-check "the profile carries the journey: title, levels, timeline" "$(echo "$JP" | jq_ "(isinstance(d['data']['journey']['title']['ar'], str), len(d['data']['journey']['levels'])>0, any(e['kind']=='JOINED' for e in d['data']['journey']['timeline']))")" "(True, True, True)"
+check "the profile carries the journey: title, levels, timeline (joining comes first, even for an old student added later)" "$(echo "$JP" | jq_ "(isinstance(d['data']['journey']['title']['ar'], str), len(d['data']['journey']['levels'])>0, d['data']['journey']['timeline'][0]['kind']=='JOINED')")" "(True, True, True)"
 check "every station of the map has its details" "$(echo "$JP" | jq_ "all(any(j['levelId']==l['id'] for j in d['data']['journey']['levels']) for i in d['data']['map']['islands'] for c in i['courses'] for l in c['levels'] if l['state'] in ('DONE','CURRENT'))")" "True"
 check "the current level says what is left; a finished one does not" "$(echo "$JP" | jq_ "all((l['left'] is not None)==(l['state']=='CURRENT') for l in d['data']['journey']['levels'])")" "True"
 check "stars only on finished levels, 0..3, and the total adds up" "$(echo "$JP" | jq_ "(all(0<=l['stars']<=3 and (l['stars']==0 or l['state']=='DONE') for l in d['data']['journey']['levels']), d['data']['journey']['stars']==sum(l['stars'] for l in d['data']['journey']['levels'] if l['state']=='DONE'))")" "(True, True)"

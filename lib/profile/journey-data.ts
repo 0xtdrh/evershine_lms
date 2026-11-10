@@ -35,7 +35,10 @@ export async function journeyData(o: { studentId: string; joinedAt: Date | null;
   const certs = results.length ? await prisma.certificate.findMany({ where: { levelResultId: { in: results.map((r) => r.id) } }, select: { levelResultId: true, isRevealed: true, revealedAt: true, createdAt: true } }) : []
 
   const events: TimelineEvent[] = []
-  if (o.joinedAt) events.push({ at: o.joinedAt.toISOString(), kind: 'JOINED', en: 'Joined TechNova', ar: 'انضم لـ TechNova' })
+  // Joined = the earliest of the account date and the first session attended (old students are often added later).
+  const firstRecord = records.reduce<Date | null>((a, r) => (!a || r.attendanceDate < a ? r.attendanceDate : a), null)
+  const joined = [o.joinedAt, firstRecord].filter((d): d is Date => !!d).sort((a, b) => a.getTime() - b.getTime())[0]
+  if (joined) events.push({ at: joined.toISOString(), kind: 'JOINED', en: 'Joined TechNova', ar: 'انضم لـ TechNova' })
 
   const details = levels.map((l) => {
     const myEnr = enr.filter((e) => e.classSection.levelId === l.id)
