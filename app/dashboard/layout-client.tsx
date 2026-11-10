@@ -77,6 +77,7 @@ import {
   CalendarCheck,
   Ban,
   PlayCircle,
+  TrendingUp as TrendingUpIcon,
 } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
 import { PlaceSwitcher } from '@/components/places/PlaceSwitcher'
@@ -125,6 +126,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Payment Cancels',  href: '/dashboard/payment-voids',          icon: Ban,             roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY'], perm: [['payment_voids', 'read']] },
   { name: 'Month Close',      href: '/dashboard/month-close',            icon: CalendarCheck,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'], perm: [['month_close', 'read'], ['financial_reports', 'read']] },
   { name: 'Import & Export', href: '/dashboard/data',                   icon: BarChart2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY', 'MARKETING'], perm: [['data_export', 'read'], ['data_import', 'create']] },
+  { name: 'Business Growth', href: '/dashboard/business-growth',        icon: TrendingUpIcon,  roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'], perm: [['business_growth', 'read']] },
   { name: 'Reports Centre',  href: '/dashboard/reports-center',         icon: BarChart2,       roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'SECRETARY', 'MARKETING'] },
   { name: 'Platform',        href: '/dashboard/admin/platform',         icon: Power,           roles: ['SUPER_ADMIN', 'ADMIN'], perm: [['platform_settings', 'read']] },
   { name: 'Agreements',      href: '/dashboard/admin/agreements',       icon: FileSignature,   roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY'], perm: [['agreements', 'read']] },

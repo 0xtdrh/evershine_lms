@@ -110,6 +110,7 @@ export type AcademicResource =
   // a03: month close — read = see closed months + the monthly report, create = close a month, approve = reopen (Super Admin)
   | 'month_close'
   | 'payment_voids'
+  | 'business_growth'
 
 type Resource = AcademicResource
 
@@ -210,6 +211,7 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: ['read', 'approve'],
     refunds: ['create', 'read', 'approve'],
     payment_voids: ['create', 'read', 'approve'],
+    business_growth: ['read', 'update', 'export'],
     group_transfers: ['create', 'read'],
     contact_logs: ['create', 'read', 'update'],
     group_capacity: ['approve'],
@@ -284,6 +286,7 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: ['read', 'approve'],
     refunds: ['create', 'read', 'approve'],
     payment_voids: ['create', 'read', 'approve'],
+    business_growth: ['read', 'update', 'export'],
     group_transfers: ['create', 'read'],
     contact_logs: ['create', 'read', 'update'],
     group_capacity: ['approve'],
@@ -359,6 +362,7 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: [],
     payment_voids: [],
+    business_growth: [],
     group_transfers: [],
     contact_logs: [],
     group_capacity: [],
@@ -433,6 +437,7 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: [],
     payment_voids: [],
+    business_growth: [],
     group_transfers: [],
     contact_logs: [],
     group_capacity: [],
@@ -507,6 +512,7 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: [],
     payment_voids: [],
+    business_growth: [],
     group_transfers: [],
     contact_logs: [],
     group_capacity: [],
@@ -583,6 +589,7 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: ['create', 'read'],
     payment_voids: ['create', 'read'],
+    business_growth: [],
     group_transfers: ['read'],
     contact_logs: ['create', 'read'],
     group_capacity: [],
@@ -657,6 +664,7 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: [],
     payment_voids: [],
+    business_growth: [],
     group_transfers: [],
     contact_logs: [],
     group_capacity: [],
@@ -735,6 +743,7 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: ['read'],
     payment_voids: ['create', 'read'],
+    business_growth: [],
     group_transfers: ['create', 'read'],
     contact_logs: ['create', 'read', 'update'],
     group_capacity: [],
@@ -814,6 +823,7 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: ['read', 'approve'],
     refunds: ['create', 'read', 'approve'],
     payment_voids: ['create', 'read', 'approve'],
+    business_growth: ['read', 'export'],
     group_transfers: ['create', 'read'],
     contact_logs: ['create', 'read', 'update'],
     group_capacity: ['approve'],
@@ -891,6 +901,7 @@ const PERMISSIONS: PermissionMap = {
     discount_approvals: [],
     refunds: [],
     payment_voids: [],
+    business_growth: [],
     group_transfers: [],
     contact_logs: [],
     group_capacity: [],

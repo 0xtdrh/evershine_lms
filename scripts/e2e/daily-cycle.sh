@@ -3123,6 +3123,36 @@ check "the map look follows the age (young <= 8, older from the setting)" "$(ech
 check "the parent summary points at the last session report sent" "$(echo "$JPP" | jq_ "(d['data']['journey']['lastReport'] or {}).get('id')")" "$(M "SELECT IFNULL((SELECT s.reportId FROM SessionReportStudent s JOIN SessionReport r ON r.id=s.reportId WHERE s.studentId='$LK' AND r.status='SENT' ORDER BY r.sessionDate DESC LIMIT 1),'None')")"
 check "another family cannot open it" "$(curl -s -b "$LP2" $B/api/profile/$LO | jq_ "d['success']")" "False"
 echo
+echo "== 93. Business growth: the company month by month, targets, a branch manager sees his place only (2026-11-10)"
+YM=$(cairo +%Y-%m)
+BG=$(api GET "/api/business-growth?months=12")
+check "the screen loads: 12 months, the running month last, profit shown to the company" "$(echo "$BG" | jq_ "(d['success'], len(d['data']['months']), d['data']['months'][-1]=='$YM', d['data']['companyMoney'], any(h['en']=='Profit' for h in d['data']['headline']))")" "(True, 12, True, True, True)"
+INC93=$(M "SELECT (IFNULL((SELECT SUM(amount) FROM FeePayment WHERE status='COMPLETED' AND DATE_FORMAT(CONVERT_TZ(paymentDate,'+00:00','+02:00'),'%Y-%m')='$YM'),0) - IFNULL((SELECT SUM(amount) FROM Refund WHERE status='APPROVED' AND DATE_FORMAT(CONVERT_TZ(approvedAt,'+00:00','+02:00'),'%Y-%m')='$YM'),0))")
+check "this month's income = payments − refunds of the month (same rule as the P&L)" "$(echo "$BG" | jq_ "abs(d['data']['monthRows'][-1]['income']-d['data']['monthRows'][-1]['refunds']-float('$INC93'))<0.01")" "True"
+check "active students this month = students with a session this month" "$(echo "$BG" | jq_ "d['data']['monthRows'][-1]['active']")" "$(M "SELECT COUNT(DISTINCT e.studentId) FROM EnrollmentAttendanceRecord r JOIN StudentEnrollment e ON e.id=r.studentEnrollmentId WHERE DATE_FORMAT(r.attendanceDate,'%Y-%m')='$YM'")"
+check "new students this month = their first session ever is this month" "$(echo "$BG" | jq_ "d['data']['monthRows'][-1]['newStudents']")" "$(M "SELECT COUNT(*) FROM (SELECT e.studentId, MIN(r.attendanceDate) f FROM EnrollmentAttendanceRecord r JOIN StudentEnrollment e ON e.id=r.studentEnrollmentId GROUP BY e.studentId) t WHERE DATE_FORMAT(t.f,'%Y-%m')='$YM'")"
+check "the running month has no continuation yet; comparisons cover places, tracks, courses, levels, instructors, partners" "$(echo "$BG" | jq_ "(d['data']['monthRows'][-1]['continuation'], sorted(k for k in d['data']['comparisons'] if k!='month'))")" "(None, ['campus', 'course', 'level', 'partner', 'teacher', 'track'])"
+check "where students stop: the bands add up to the students who stopped" "$(echo "$BG" | jq_ "sum(b['count'] for b in d['data']['value']['bands'])==d['data']['value']['stoppedCount']")" "True"
+check "an instructor cannot open it" "$(tapi GET /api/business-growth | jq_ "d['success']")" "False"
+
+# targets
+check "a % target above 100 is refused" "$(api PUT /api/business-growth/targets "{\"ym\":\"$YM\",\"values\":{\"attendance\":150}}" | jq_ "d['success']")" "False"
+check "the manager sets this month's targets" "$(api PUT /api/business-growth/targets "{\"ym\":\"$YM\",\"values\":{\"income\":1000000,\"attendance\":90}}" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM BusinessTarget WHERE ym='$YM' AND scopeKey='ALL'")" "True/2"
+check "the screen compares them: an income target this big is behind" "$(api GET "/api/business-growth?months=12" | jq_ "[(i['target'], i['state']) for i in d['data']['targets'][0]['items'] if i['metric']=='income'][0]")" "(1000000, 'BEHIND')"
+check "an empty value removes a target" "$(api PUT /api/business-growth/targets "{\"ym\":\"$YM\",\"values\":{\"income\":null}}" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM BusinessTarget WHERE ym='$YM' AND scopeKey='ALL'")" "True/1"
+check "Excel download works" "$(curl -s -o /dev/null -w '%{content_type}' -b "$JAR" "$B/api/business-growth?months=6&format=xlsx")" "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+# a branch manager of one place
+SECHASH=$(M "SELECT passwordHash FROM User WHERE email='sec@e2e.local'")
+M "INSERT INTO User (id, email, passwordHash, role, isActive, updatedAt) VALUES ('e2e-bm-user', 'bm@e2e.local', '$SECHASH', 'BRANCH_MANAGER', 1, NOW(3))"
+M "INSERT INTO BranchManager (id, userId, firstName, lastName, campusId, updatedAt) VALUES ('e2e-bm', 'e2e-bm-user', 'Branch', 'Manager', '$CAMPUS', NOW(3))"
+BMJ=$(mktemp); login_jar bm@e2e.local E2eSec12345 "$BMJ" 10.0.0.93
+BGM=$(curl -s -b "$BMJ" "$B/api/business-growth?months=12")
+check "a branch manager sees it without company profit or salaries" "$(echo "$BGM" | jq_ "(d['success'], d['data']['companyMoney'], any(h['en']=='Profit' for h in d['data']['headline']), all(r['profit'] is None and r['salaries']==0 for r in d['data']['monthRows']))")" "(True, False, False, True)"
+check "…and only his own place" "$(echo "$BGM" | jq_ "all(c['id']=='$CAMPUS' for c in d['data']['comparisons']['campus'])")" "True"
+check "…his income is his place's (group place, else the student's)" "$(echo "$BGM" | jq_ "round(d['data']['monthRows'][-1]['income'])")" "$(M "SELECT ROUND(IFNULL(SUM(p.amount),0)) FROM FeePayment p JOIN FeeInvoice i ON i.id=p.invoiceId LEFT JOIN ClassSection c ON c.id=i.classSectionId JOIN Student s ON s.id=p.studentId WHERE p.status='COMPLETED' AND COALESCE(c.campusId,s.campusId)='$CAMPUS' AND DATE_FORMAT(CONVERT_TZ(p.paymentDate,'+00:00','+02:00'),'%Y-%m')='$YM'")"
+check "…and cannot set targets" "$(curl -s -b "$BMJ" -X PUT -H 'Content-Type: application/json' -d "{\"ym\":\"$YM\",\"values\":{\"income\":5}}" $B/api/business-growth/targets | jq_ "d['success']")" "False"
+echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
 [ $FAIL -eq 0 ]

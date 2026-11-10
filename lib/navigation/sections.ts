@@ -21,7 +21,7 @@ export const HUBS: { key: HubKey; en: string; ar: string; items: string[] }[] = 
   { key: 'money', en: 'Money', ar: 'الفلوس', items: ['Accounting Hub', 'Fees', 'Fee Collection', 'Accounts & Cash', 'Fees & Charges', 'Wallet & Top-ups', 'Discounts', 'Refunds', 'Payment Cancels', 'Expense Ledger', 'Month Close', 'Financial Reports', 'Groups Financials'] },
   { key: 'communication', en: 'Communication', ar: 'التواصل', items: ['Announcements', 'My Announcements', 'Complaints', 'Referrals', 'Ratings'] },
   { key: 'places', en: 'Branches & partners', ar: 'الفروع والشركاء', items: ['Campuses', 'Partners'] },
-  { key: 'reports', en: 'Reports', ar: 'التقارير', items: ['Reports Centre', 'Usage', 'Import & Export', 'Attendance Report', 'Groups Financials', 'Financial Reports', 'Month Close', 'Instructor Performance', 'Substitute Reconciliation', 'Ratings'] },
+  { key: 'reports', en: 'Reports', ar: 'التقارير', items: ['Reports Centre', 'Business Growth', 'Usage', 'Import & Export', 'Attendance Report', 'Groups Financials', 'Financial Reports', 'Month Close', 'Instructor Performance', 'Substitute Reconciliation', 'Ratings'] },
   { key: 'settings', en: 'Settings', ar: 'الإعدادات', items: ['Settings Centre', 'Import & Export', 'Platform', 'Agreements', 'Notifications', 'Permissions', 'Credential Management', 'Backups', 'Change Log', 'Data Health', 'Settings'] },
 ]
 

@@ -4914,20 +4914,20 @@ model SessionReport {
 
 /// R1: the instructor's optional extras for one student in one session report (star, ready phrases, a comment).
 model SessionReportStudent {
-  id        String        @id @default(cuid())
-  reportId  String
-  report    SessionReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  studentId String
-  star      Boolean       @default(false)
-  phrases   Json?
-  comment   String?       @db.VarChar(500)
+  id          String        @id @default(cuid())
+  reportId    String
+  report      SessionReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  studentId   String
+  star        Boolean       @default(false)
+  phrases     Json?
+  comment     String?       @db.VarChar(500)
   /// 2026-11-09: the instructor's rating { criterionId: 1..5 }. Low ones stay with the managers until released.
-  scores    Json?
-  lowReleased Boolean     @default(false)
-  readAt    DateTime?
-  parentReply String?     @db.Text
-  repliedAt DateTime?
-  updatedAt DateTime      @updatedAt
+  scores      Json?
+  lowReleased Boolean       @default(false)
+  readAt      DateTime?
+  parentReply String?       @db.Text
+  repliedAt   DateTime?
+  updatedAt   DateTime      @updatedAt
 
   @@unique([reportId, studentId])
   @@index([studentId])
@@ -5541,4 +5541,19 @@ model TeacherWorkHours {
   createdAt  DateTime @default(now())
 
   @@index([teacherId])
+}
+
+/// p14 (2026-11-10): monthly targets on the business growth screen. scopeKey = "ALL" (company) or a campus id.
+model BusinessTarget {
+  id          String   @id @default(cuid())
+  ym          String   @db.VarChar(7)
+  scopeKey    String   @db.VarChar(40)
+  metric      String   @db.VarChar(30)
+  value       Float
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([ym, scopeKey, metric])
+  @@index([ym])
 }
