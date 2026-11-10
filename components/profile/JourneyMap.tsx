@@ -23,10 +23,20 @@ export interface Journey {
   title: { en: string; ar: string }; stars: number; levelsDone: number; levels: JourneyLevel[]
   timeline: { at: string; kind: string; en: string; ar: string }[]
   discover: { id: string; name: string; firstLevelId: string | null; courses: string[]; levels: number; ages: (number | null)[] }[]
+  lastReport: { id: string; date: string } | null
 }
+export type MapLook = 'YOUNG' | 'MIDDLE' | 'OLDER'
 interface Island { id: string; name: string; courses: { id: string; name: string; levels: { id: string; name: string; state: string }[] }[] }
 
 const PALETTE = ['#2FA37C', '#3F7FD0', '#C8642F', '#8B5CC6', '#C9A227', '#D04F7A']
+/** Older students get calmer, deeper colours. */
+const CALM = ['#2E6F5E', '#33598A', '#7A4E36', '#5B4A82', '#7A6A2E', '#7E3F57']
+/** Sizes per look: young = big stations and bigger names; older = smaller, quieter. */
+const SIZE: Record<MapLook, { s: number; row: number; robot: number; name: string; nameW: number }> = {
+  YOUNG: { s: 76, row: 132, robot: 50, name: 'text-sm', nameW: 130 },
+  MIDDLE: { s: 60, row: 108, robot: 40, name: 'text-xs', nameW: 110 },
+  OLDER: { s: 52, row: 96, robot: 34, name: 'text-xs', nameW: 120 },
+}
 const STATION: Record<string, string> = {
   DONE: 'bg-[#FFC83D] text-[#0C2340] border-white shadow-[0_5px_0_#B98500]',
   CURRENT: 'bg-[#E8503A] text-white border-white shadow-[0_5px_0_#9E2F1D]',
@@ -49,9 +59,10 @@ function Robot({ size = 44 }: { size?: number }) {
 }
 
 /** One island: stations zig-zag down a dotted path; the tower closes it. */
-function IslandView({ island, color, details, onPick }: { island: Island; color: string; details: Map<string, JourneyLevel>; onPick: (l: JourneyLevel | { levelId: string; name: string; course: string; state: string }) => void }) {
+function IslandView({ island, color, details, onPick, look }: { island: Island; color: string; details: Map<string, JourneyLevel>; look: MapLook; onPick: (l: JourneyLevel | { levelId: string; name: string; course: string; state: string }) => void }) {
   const stops = island.courses.flatMap((c) => c.levels.map((l, i) => ({ ...l, course: c.name, firstOfCourse: i === 0, n: i + 1 })))
-  const ROW = 108, top = 70
+  const z = SIZE[look]
+  const half = z.s / 2, ROW = z.row, top = 70 + Math.max(0, half - 30)
   const xs = [50, 76, 50, 24]
   const GAP = 40 // room for the course name where a new course starts
   let extra = 0
@@ -65,23 +76,25 @@ function IslandView({ island, color, details, onPick }: { island: Island; color:
       </svg>
       <h3 className="relative pt-4 text-center text-lg font-extrabold text-white [text-shadow:0_2px_0_rgba(0,0,0,.25)]">{island.name}</h3>
       {stops.map((s, i) => s.firstOfCourse && (
-        <div key={`c-${s.id}`} className="absolute left-1/2 max-w-[85%] -translate-x-1/2 truncate rounded-full bg-white/90 px-3 py-0.5 text-xs font-bold text-[#0C2340]" style={{ top: pts[i].y - 30 - GAP + 6 }}>{s.course}</div>
+        <div key={`c-${s.id}`} className="absolute left-1/2 max-w-[85%] -translate-x-1/2 truncate rounded-full bg-white/90 px-3 py-0.5 text-xs font-bold text-[#0C2340]" style={{ top: pts[i].y - half - GAP + 6 }}>{s.course}</div>
       ))}
       {stops.map((s, i) => {
         const d = details.get(s.id)
         const st = (d?.state ?? s.state) as keyof typeof STATION
         return (
-          <div key={s.id} className="absolute -translate-x-1/2 text-center" style={{ left: `${pts[i].x}%`, top: pts[i].y - 30 }}>
-            <div className="relative mx-auto h-[60px] w-[60px]">
-              {st === 'CURRENT' && <span className="absolute inset-0 rounded-full border-4 border-[#FFC83D] motion-safe:animate-ping" aria-hidden="true" />}
-              {st === 'CURRENT' && <span className="absolute -top-12 left-1/2 -translate-x-1/2 motion-safe:animate-bounce"><Robot size={40} /></span>}
+          <div key={s.id} className="absolute -translate-x-1/2 text-center" style={{ left: `${pts[i].x}%`, top: pts[i].y - half }}>
+            <div className="relative mx-auto" style={{ width: z.s, height: z.s }}>
+              {st === 'CURRENT' && look !== 'OLDER' && <span className="absolute inset-0 rounded-full border-4 border-[#FFC83D] motion-safe:animate-ping" aria-hidden="true" />}
+              {st === 'CURRENT' && <span className={`absolute left-1/2 -translate-x-1/2 ${look === 'OLDER' ? '' : 'motion-safe:animate-bounce'}`} style={{ top: -z.robot * 1.2 }}><Robot size={z.robot} /></span>}
               <button type="button" onClick={() => onPick(d ?? { levelId: s.id, name: s.name, course: s.course, state: st })} aria-label={`${s.course} · ${s.name} · ${L(STATE_TEXT[st][0], STATE_TEXT[st][1])}`}
-                className={`relative flex h-[60px] w-[60px] items-center justify-center rounded-full border-4 text-xl font-extrabold transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-4 focus-visible:outline-white ${STATION[st]}`}>
-                {st === 'DONE' ? '✓' : st === 'LATER' ? <Lock className="h-5 w-5" aria-hidden="true" /> : s.n}
+                style={{ width: z.s, height: z.s }}
+                className={`relative flex items-center justify-center rounded-full border-4 ${look === 'YOUNG' ? 'text-3xl' : look === 'OLDER' ? 'text-base' : 'text-xl'} font-extrabold transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-4 focus-visible:outline-white ${STATION[st]}`}>
+                {st === 'DONE' ? (look === 'YOUNG' ? '⭐' : '✓') : st === 'LATER' ? <Lock className={look === 'YOUNG' ? 'h-7 w-7' : 'h-5 w-5'} aria-hidden="true" /> : s.n}
               </button>
             </div>
-            <div className="mt-1.5 max-w-[110px] text-xs font-bold leading-tight text-white [text-shadow:0_1px_0_rgba(0,0,0,.35)]">{s.name}</div>
-            {d?.stars ? <div className="text-sm tracking-widest text-[#FFE08A]" aria-label={`${d.stars} / 3`}>{stars(d.stars)}</div> : null}
+            <div className={`mt-1.5 ${z.name} font-bold leading-tight text-white [text-shadow:0_1px_0_rgba(0,0,0,.35)]`} style={{ maxWidth: z.nameW }}>{s.name}</div>
+            {d?.stars ? <div className={`${look === 'YOUNG' ? 'text-lg' : 'text-sm'} tracking-widest text-[#FFE08A]`} aria-label={`${d.stars} / 3`}>{stars(d.stars)}</div> : null}
+            {look === 'OLDER' && st === 'DONE' && d?.finalScore != null ? <div className="text-[11px] font-bold text-white/85">{d.finalScore}%</div> : null}
           </div>
         )
       })}
@@ -92,7 +105,7 @@ function IslandView({ island, color, details, onPick }: { island: Island; color:
   )
 }
 
-export function JourneyMap({ islands, journey, canBook, onBook, booking }: { islands: Island[]; journey: Journey; canBook: boolean; onBook: (levelId: string) => void; booking: boolean }) {
+export function JourneyMap({ islands, journey, canBook, onBook, booking, look = 'MIDDLE' }: { islands: Island[]; journey: Journey; canBook: boolean; onBook: (levelId: string) => void; booking: boolean; look?: MapLook }) {
   const [sel, setSel] = useState<null | { kind: 'level'; l: JourneyLevel | { levelId: string; name: string; course: string; state: string } } | { kind: 'fog'; t: Journey['discover'][number] }>(null)
   const ar = useI18n().locale === 'ar'
   const details = new Map(journey.levels.map((l) => [l.levelId, l]))
@@ -101,7 +114,7 @@ export function JourneyMap({ islands, journey, canBook, onBook, booking }: { isl
   return (
     <div className="keep-light space-y-6 rounded-3xl bg-[#0C2340] px-3 py-6 sm:px-6">
       {!shown.length && <p className="text-center text-sm text-[#C9D8EC]">{L('The map fills in once the student joins a group.', 'الخريطة بتتملا أول ما الطالب يدخل جروب.')}</p>}
-      {shown.map((isl, i) => <IslandView key={isl.id} island={isl} color={PALETTE[i % PALETTE.length]} details={details} onPick={(l) => setSel({ kind: 'level', l })} />)}
+      {shown.map((isl, i) => <IslandView key={isl.id} island={isl} look={look} color={(look === 'OLDER' ? CALM : PALETTE)[i % PALETTE.length]} details={details} onPick={(l) => setSel({ kind: 'level', l })} />)}
       {journey.discover.map((t) => (
         <div key={t.id} className="mx-auto max-w-[420px] rounded-[40px] border-2 border-dashed border-[#7FA5CE] bg-[#102E52] px-4 py-5 text-center text-white">
           <p className="text-lg font-extrabold">{t.name}</p>
@@ -214,5 +227,42 @@ export function JourneyTimeline({ events, ar }: { events: Journey['timeline']; a
         </li>
       ))}
     </ol>
+  )
+}
+
+/** The parent's summary above the map (owner 2026-11-10): where the child is, attendance, what is left, the last report, the next step. */
+export function ParentSummary({ journey, studentId, next, canBook, onBook, booking }: { journey: Journey; studentId: string; next: { levelId: string; label: string } | null; canBook: boolean; onBook: (levelId: string) => void; booking: boolean }) {
+  const ar = useI18n().locale === 'ar'
+  const now = journey.levels.filter((l) => l.state === 'CURRENT')
+  const Item = ({ k, v, warn }: { k: string; v: string; warn?: boolean }) => (
+    <div className="rounded-xl bg-white px-3 py-2"><p className="text-xs text-slate-500">{k}</p><p className={`font-bold ${warn ? 'text-rose-600' : 'text-slate-900'}`}>{v}</p></div>
+  )
+  return (
+    <section aria-label={L('Summary for the parent', 'ملخص لولي الأمر')} className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+      <h2 className="mb-3 text-base font-bold text-slate-900">{L('At a glance', 'الملخص في ثانية')}</h2>
+      {now.length === 0 && <p className="mb-3 text-sm text-slate-600">{L('Not in a level right now.', 'مش في مستوى دلوقتي.')}</p>}
+      {now.map((l) => (
+        <div key={l.levelId} className="mb-3">
+          <p className="mb-2 text-sm font-semibold text-indigo-800">{L('Now', 'دلوقتي')}: {l.course} · {l.name}</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Item k={L('Attendance', 'الحضور')} v={l.attendancePct != null ? `${l.attendancePct}%` : '—'} warn={l.attendancePct != null && l.attendancePct < 75} />
+            <Item k={L('Homework not handed in', 'واجبات ما اتسلمتش')} v={String(l.left?.homework ?? 0)} warn={(l.left?.homework ?? 0) > 0} />
+            <Item k={L('Sessions left', 'حصص فاضلة')} v={String(l.left?.sessions ?? 0)} />
+            <Item k={L('Quizzes', 'الكويزات')} v={l.quizPct != null ? `${l.quizPct}%` : '—'} />
+          </div>
+        </div>
+      ))}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {journey.lastReport
+          ? <a href={`/reports/session/${journey.lastReport.id}?student=${studentId}`} className="inline-flex min-h-11 items-center rounded-xl bg-white px-3 font-medium text-indigo-700 underline-offset-2 hover:underline">{L('Last session report', 'آخر تقرير حصة')}: {day(journey.lastReport.date, ar)}</a>
+          : <span className="text-slate-500">{L('No session report yet.', 'لسه مفيش تقرير حصة.')}</span>}
+        {next && (
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <span className="text-slate-700">{L('Next step', 'الخطوة الجاية')}: <b>{next.label}</b></span>
+            {canBook && <Button size="sm" disabled={booking} onClick={() => onBook(next.levelId)}>{L('I want to book', 'عايز أحجز')}</Button>}
+          </span>
+        )}
+      </div>
+    </section>
   )
 }

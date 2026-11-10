@@ -16,6 +16,7 @@ import { studentSkills } from '@/lib/reports/lms-summary'
 import { canManageStudent } from '@/lib/passport/engine'
 import { notifyFamilies, notifyUsers, usersWithPermission } from '@/lib/notifications/events'
 import { journeyData } from './journey-data'
+import { mapLook } from './journey'
 import {
   PROFILE_DEFAULTS, PROFILE_UPLOAD_FORMATS, ageOn, buildMap, checkUpload, goalProgress, recapWeek,
   type GoalMetric, type ProfileSettings, type UploadMedia,
@@ -129,7 +130,7 @@ export async function profileView(user: User, studentId: string) {
   const recapYears = recapWeek(student.admissionDate, now)
 
   return {
-    viewer, age, older,
+    viewer, age, older, look: mapLook(age, settings.olderAge),
     student: { id: studentId, name: `${student.firstName} ${student.lastName}`.trim(), photo: student.profilePicture, campus: student.campus?.name ?? '', joinedAt: student.admissionDate },
     can: {
       goal: true,

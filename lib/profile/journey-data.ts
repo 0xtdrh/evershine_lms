@@ -32,6 +32,8 @@ export async function journeyData(o: { studentId: string; joinedAt: Date | null;
     prisma.subjectOffering.findMany({ where: { classSectionId: { in: gIds }, teacherId: { not: null } }, orderBy: { createdAt: 'desc' }, select: { classSectionId: true, teacher: { select: { firstName: true, lastName: true } } } }),
     prisma.studentStamp.findMany({ where: { studentId: o.studentId }, orderBy: { awardedAt: 'desc' }, take: 20, select: { awardedAt: true, label: true, stamp: { select: { nameEn: true, nameAr: true } } } }),
   ])
+  // For the parent's summary: the last session report sent about this student.
+  const lastRep = await prisma.sessionReportStudent.findFirst({ where: { studentId: o.studentId, report: { status: 'SENT' } }, orderBy: { report: { sessionDate: 'desc' } }, select: { reportId: true, report: { select: { sessionDate: true } } } })
   const certs = results.length ? await prisma.certificate.findMany({ where: { levelResultId: { in: results.map((r) => r.id) } }, select: { levelResultId: true, isRevealed: true, revealedAt: true, createdAt: true } }) : []
 
   const events: TimelineEvent[] = []
@@ -92,5 +94,6 @@ export async function journeyData(o: { studentId: string; joinedAt: Date | null;
     levels: details,
     timeline: timeline(events),
     discover,
+    lastReport: lastRep ? { id: lastRep.reportId, date: ymd(lastRep.report.sessionDate) } : null,
   }
 }

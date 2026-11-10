@@ -21,12 +21,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Camera, Loader2, MapPin, Printer, Sparkles, Trash2, UserRound } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
 import { useUrlTab } from '@/hooks/use-url-tab'
-import { JourneyCover, JourneyMap, JourneyTimeline, type Journey } from '@/components/profile/JourneyMap'
+import { JourneyCover, JourneyMap, JourneyTimeline, ParentSummary, type Journey, type MapLook } from '@/components/profile/JourneyMap'
 
 type Media = { url: string; type: 'image' | 'video' } | null
 interface Station { id: string; name: string; state: 'DONE' | 'CURRENT' | 'NEXT' | 'LATER' }
 interface Profile {
-  viewer: string; age: number; older: boolean
+  viewer: string; age: number; older: boolean; look: MapLook
   student: { id: string; name: string; photo: string | null; campus: string; joinedAt: string }
   can: { goal: boolean; upload: boolean; diary: boolean; thank: boolean; moment: boolean; experience: boolean; portfolio: boolean; interest: boolean }
   journey: Journey
@@ -131,7 +131,8 @@ export default function ProfilePage() {
 
       {tab === 'journey' && (
         <>
-          <JourneyMap islands={p.map.islands} journey={p.journey} canBook={p.can.interest} booking={act.isPending} onBook={(levelId) => act.mutate({ action: 'interest', levelId })} />
+          {p.viewer === 'PARENT' && <ParentSummary journey={p.journey} studentId={studentId} next={p.map.next} canBook={p.can.interest} booking={act.isPending} onBook={(levelId) => act.mutate({ action: 'interest', levelId })} />}
+          <JourneyMap islands={p.map.islands} journey={p.journey} canBook={p.can.interest} booking={act.isPending} look={p.look} onBook={(levelId) => act.mutate({ action: 'interest', levelId })} />
           {p.journey.timeline.length > 0 && (
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-base">{L('The journey in dates', 'الرحلة بالتواريخ')}</CardTitle></CardHeader>

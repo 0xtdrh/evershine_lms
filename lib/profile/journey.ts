@@ -39,3 +39,12 @@ export function timeline(events: TimelineEvent[], limit = 40): TimelineEvent[] {
 }
 
 export const percent = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : null)
+
+/** The map's look by age (owner 2026-11-10): young = big stations, few words; older = calmer, numbers shown. */
+export type MapLook = 'YOUNG' | 'MIDDLE' | 'OLDER'
+export const YOUNG_UNTIL = 8
+export function mapLook(age: number | null, olderAge: number): MapLook {
+  if (age == null || !Number.isFinite(age)) return 'MIDDLE'
+  if (age <= YOUNG_UNTIL) return 'YOUNG'
+  return age >= olderAge ? 'OLDER' : 'MIDDLE'
+}

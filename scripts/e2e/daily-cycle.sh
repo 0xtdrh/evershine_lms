@@ -3119,6 +3119,8 @@ check "attendance % matches the student's records in that level" "$(echo "$JP" |
 LPW2=$(api POST /api/students/$LK/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$LGU\"}" | jq_ "d['data']['password']"); LP2=$(mktemp); login_jar 01066660119 "$LPW2" "$LP2" 10.0.9.21
 JPP=$(curl -s -b "$LP2" $B/api/profile/$LK)
 check "the parent sees the same journey, never money" "$(echo "$JPP" | jq_ "(len(d['data']['journey']['levels'])>0, any(k in str(d['data']['journey']) for k in ['amount','price','paid','invoice']))")" "(True, False)"
+check "the map look follows the age (young <= 8, older from the setting)" "$(echo "$JP" | jq_ "('YOUNG' if d['data']['age']<=8 else 'OLDER' if d['data']['older'] else 'MIDDLE')==d['data']['look']")" "True"
+check "the parent summary points at the last session report sent" "$(echo "$JPP" | jq_ "(d['data']['journey']['lastReport'] or {}).get('id')")" "$(M "SELECT IFNULL((SELECT s.reportId FROM SessionReportStudent s JOIN SessionReport r ON r.id=s.reportId WHERE s.studentId='$LK' AND r.status='SENT' ORDER BY r.sessionDate DESC LIMIT 1),'None')")"
 check "another family cannot open it" "$(curl -s -b "$LP2" $B/api/profile/$LO | jq_ "d['success']")" "False"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inventorTitle, levelStars, percent, timeline, whatIsLeft } from '@/lib/profile/journey'
+import { inventorTitle, levelStars, mapLook, percent, timeline, whatIsLeft } from '@/lib/profile/journey'
 
 describe("the inventor's journey", () => {
   it('stars come only from a final, passed result', () => {
@@ -31,5 +31,12 @@ describe("the inventor's journey", () => {
   it('percent of nothing is nothing', () => {
     expect(percent(3, 4)).toBe(75)
     expect(percent(0, 0)).toBeNull()
+  })
+  it('the map look follows the age', () => {
+    expect(mapLook(6, 12)).toBe('YOUNG')
+    expect(mapLook(8, 12)).toBe('YOUNG')
+    expect(mapLook(10, 12)).toBe('MIDDLE')
+    expect(mapLook(12, 12)).toBe('OLDER')
+    expect(mapLook(null, 12)).toBe('MIDDLE')
   })
 })
