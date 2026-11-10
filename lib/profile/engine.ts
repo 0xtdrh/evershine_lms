@@ -15,6 +15,7 @@ import { canManageGroupLessons } from '@/lib/lms/engine'
 import { studentSkills } from '@/lib/reports/lms-summary'
 import { canManageStudent } from '@/lib/passport/engine'
 import { notifyFamilies, notifyUsers, usersWithPermission } from '@/lib/notifications/events'
+import { journeyData } from './journey-data'
 import {
   PROFILE_DEFAULTS, PROFILE_UPLOAD_FORMATS, ageOn, buildMap, checkUpload, goalProgress, recapWeek,
   type GoalMetric, type ProfileSettings, type UploadMedia,
@@ -88,6 +89,7 @@ export async function profileView(user: User, studentId: string) {
   ])
   const current = new Set(activeEnr.map((e) => e.classSection.levelId).filter((x): x is string => !!x))
   const map = buildMap(tracks.map((t) => ({ ...t, courses: t.courses.map((c) => ({ id: c.id, name: c.name, order: c.trackOrder, levels: c.levels })) })), passed, current, age)
+  const journey = await journeyData({ studentId, joinedAt: student.admissionDate, age, tracks: tracks.map((t) => ({ id: t.id, name: t.name, minAge: t.minAge, maxAge: t.maxAge, courses: t.courses.map((c) => ({ id: c.id, name: c.name, levels: c.levels })) })), passed, current, nextLevelId: map.next?.levelId ?? null })
 
   // goals with progress
   const metrics = new Map<string, number>()
@@ -139,7 +141,7 @@ export async function profileView(user: User, studentId: string) {
       portfolio: (staffManage && user.role !== 'TEACHER') || (viewer === 'PARENT' && settings.parentPortfolio && older),
       interest: viewer === 'PARENT',
     },
-    map, goals: goalRows, skills,
+    map, journey, goals: goalRows, skills,
     projects: [
       ...gallery.map((g) => { const t = galleryTitles.find((x) => x.id === g.blockId); return { id: `g-${g.id}`, source: 'GALLERY', titleEn: t?.titleEn || 'Project', titleAr: t?.titleAr || t?.titleEn || 'مشروع', status: 'APPROVED', media: null as ReturnType<typeof mediaUrl>, at: g.galleryAt } }),
       ...uploads.map((u) => ({ id: u.id, source: 'UPLOAD', titleEn: u.title, titleAr: u.title, status: u.status, media: mediaUrl(u.media), at: u.createdAt, description: u.description })),

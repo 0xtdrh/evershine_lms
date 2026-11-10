@@ -20,6 +20,8 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Camera, Loader2, MapPin, Printer, Sparkles, Trash2, UserRound } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
+import { useUrlTab } from '@/hooks/use-url-tab'
+import { JourneyCover, JourneyMap, JourneyTimeline, type Journey } from '@/components/profile/JourneyMap'
 
 type Media = { url: string; type: 'image' | 'video' } | null
 interface Station { id: string; name: string; state: 'DONE' | 'CURRENT' | 'NEXT' | 'LATER' }
@@ -27,6 +29,7 @@ interface Profile {
   viewer: string; age: number; older: boolean
   student: { id: string; name: string; photo: string | null; campus: string; joinedAt: string }
   can: { goal: boolean; upload: boolean; diary: boolean; thank: boolean; moment: boolean; experience: boolean; portfolio: boolean; interest: boolean }
+  journey: Journey
   map: { next: { levelId: string; label: string; reason: string } | null; islands: { id: string; name: string; ageFits: boolean; courses: { id: string; name: string; levels: Station[] }[] }[] }
   goals: { id: string; title: string; kind: string; metric: string | null; value: number; target: number; percent: number; done: boolean; createdByRole: string }[]
   skills: { course: string; scores: { id: string; nameEn: string; nameAr: string; percent: number | null }[]; strong: { nameEn: string; nameAr: string }[]; weak: { nameEn: string; nameAr: string }[] }[]
@@ -46,6 +49,8 @@ interface Profile {
 const METRICS: Record<string, [string, string]> = { SESSIONS: ['Attend a number of sessions', 'أحضر عدد من الحصص'], STAMPS: ['Collect a number of stamps', 'أجمع عدد من الأختام'], HOMEWORK: ['Hand in a number of homework', 'أسلّم عدد من الواجبات'], QUIZ90: ['90%+ in a number of quizzes', '90% أو أكتر في عدد من الكويزات'] }
 const ROLES: Record<string, [string, string]> = { ASSISTANT: ['Assistant instructor', 'مساعد مدرب'], AMBASSADOR: ['Ambassador', 'سفير'], ALUMNI: ['Alumni', 'خريج'], OTHER: ['Experience', 'خبرة'] }
 const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+
+const TABS: [string, string, string][] = [['journey', 'My journey', 'رحلتي'], ['wins', 'My achievements', 'إنجازاتي'], ['works', 'My work', 'أعمالي'], ['about', 'About me', 'عني']]
 
 function MediaView({ m }: { m: Media }) {
   if (!m) return null
@@ -80,6 +85,8 @@ export default function ProfilePage() {
   const [up, setUp] = useState({ title: '', busy: false })
   const [moment, setMoment] = useState({ title: '', note: '', busy: false })
   const [exp, setExp] = useState({ role: 'ASSISTANT', titleEn: '', from: '' })
+  const [urlTab, setTab] = useUrlTab()
+  const tab = urlTab ?? 'journey'
 
   const pickFile = (accept: string, onFile: (f: File) => void) => { const i = document.createElement('input'); i.type = 'file'; i.accept = accept; i.onchange = () => { const f = i.files?.[0]; if (f) onFile(f) }; i.click() }
   const uploadProject = () => pickFile('image/*,video/*', async (f) => {
@@ -109,42 +116,32 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {p.recap && (
+      <JourneyCover name={p.student.name} photo={p.student.photo} campus={p.student.campus} journey={p.journey} />
+      <div role="tablist" className="flex gap-1 overflow-x-auto rounded-2xl bg-slate-100 p-1">
+        {TABS.map(([k, en, arText]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`min-h-11 flex-1 whitespace-nowrap rounded-xl px-3 text-sm font-bold ${tab === k ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600'}`}>{L(en, arText)}</button>
+        ))}
+      </div>
+
+      {tab === 'journey' && p.recap && (
         <Link href={`/dashboard/profile/recap?s=${studentId}`} className="flex items-center justify-between gap-2 rounded-2xl bg-gradient-to-r from-pink-500 to-indigo-600 p-4 text-white">
           <span className="flex items-center gap-2 font-semibold"><Sparkles className="h-5 w-5" /> {L(`${p.recap.years} year(s) at TechNova — see the year in numbers!`, `${p.recap.years} سنة في TechNova — شوف السنة بالأرقام!`)}</span><span>→</span>
         </Link>
       )}
 
-      {/* map */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base"><MapPin className="h-4 w-4 text-indigo-600" /> {L('TechNova map', 'خريطة TechNova')}</CardTitle>
-          {p.map.next && <CardDescription>{L('Next stop', 'المحطة الجاية')}: <b>{p.map.next.label}</b>{p.map.next.reason === 'NEW_TRACK' ? L(' (fits the age)', ' (مناسبة للسن)') : ''}</CardDescription>}
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {!p.map.islands.length && <p className="text-sm text-slate-500">{L('The map fills in once the student joins a group.', 'الخريطة بتتملا أول ما الطالب يدخل جروب.')}</p>}
-          {p.map.islands.filter((i) => i.courses.some((c) => c.levels.length)).map((isl) => (
-            <div key={isl.id} className={`rounded-2xl border p-3 ${isl.ageFits ? 'border-sky-200 bg-sky-50/50' : 'border-slate-100 bg-slate-50/50 opacity-70'}`}>
-              <p className="mb-2 text-sm font-bold text-slate-700">🏝️ {isl.name}</p>
-              <div className="space-y-2">
-                {isl.courses.filter((c) => c.levels.length).map((c) => (
-                  <div key={c.id} className="flex flex-wrap items-center gap-1">
-                    <span className="w-32 shrink-0 truncate text-xs text-slate-500">{c.name}</span>
-                    {c.levels.map((l, i) => (
-                      <span key={l.id} className="flex items-center gap-1">
-                        {i > 0 && <span className={`h-0.5 w-4 ${l.state === 'DONE' ? 'bg-emerald-400' : 'bg-slate-200'}`} />}
-                        <span title={l.name} className={`flex h-8 min-w-8 items-center justify-center rounded-full border-2 px-2 text-[11px] font-semibold ${stationCls[l.state]}`}>{l.state === 'CURRENT' ? '📍' : l.state === 'DONE' ? '✓' : ''} {l.name}</span>
-                      </span>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-          {p.can.interest && p.map.next && <Button size="sm" disabled={act.isPending} onClick={() => act.mutate({ action: 'interest', levelId: p.map.next!.levelId })}>{L(`Book ${p.map.next.label}`, `احجز ${p.map.next.label}`)}</Button>}
-        </CardContent>
-      </Card>
+      {tab === 'journey' && (
+        <>
+          <JourneyMap islands={p.map.islands} journey={p.journey} canBook={p.can.interest} booking={act.isPending} onBook={(levelId) => act.mutate({ action: 'interest', levelId })} />
+          {p.journey.timeline.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-base">{L('The journey in dates', 'الرحلة بالتواريخ')}</CardTitle></CardHeader>
+              <CardContent><JourneyTimeline events={p.journey.timeline} ar={ar} /></CardContent>
+            </Card>
+          )}
+        </>
+      )}
 
+      {tab === 'wins' && (<>
       {/* goals */}
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-base">🎯 {L('Goals', 'الأهداف')}</CardTitle></CardHeader>
@@ -186,8 +183,10 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       )}
+      </>)}
 
       {/* projects */}
+      {tab === 'works' && (
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-base">🖼️ {L('Projects', 'المشاريع')}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
@@ -209,8 +208,10 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* album */}
+      {tab === 'wins' && (
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-base">📸 {L('First times', 'أول مرة')}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
@@ -230,6 +231,8 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+      )}
+      {tab === 'about' && (<>
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* quotes */}
@@ -255,7 +258,9 @@ export default function ProfilePage() {
         </Card>
       </div>
 
+      </>)}
       {/* diary */}
+      {tab === 'works' && (<>
       {(p.older || p.diary.length > 0) && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">📓 {L("Inventor's diary", 'مذكرات المخترع')}</CardTitle></CardHeader>
@@ -267,8 +272,10 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       )}
+      </>)}
 
       {/* experience */}
+      {tab === 'about' && (<>
       {(p.experience.length > 0 || p.can.experience) && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">🏅 {L('Experience', 'الخبرة')}</CardTitle></CardHeader>
@@ -288,6 +295,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       )}
+      </>)}
     </div>
   )
 }

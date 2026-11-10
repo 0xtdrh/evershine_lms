@@ -2508,7 +2508,8 @@ ODC=$(api POST /api/one-to-one "{\"studentIds\":[\"$OS3\"],\"campusId\":\"$CAMPU
 check "chosen + automatic: it applies by itself" "$(inv $OS3 $ODC | cut -d/ -f1,2)" "300/30"
 M "UPDATE DiscountType SET isActive=0 WHERE id='$DT'"
 echo "== 78. One-to-One sessions: postpone, instructor apology, no-show, holidays per system, rules (a02 M3 batch 3 part 2, 2026-11-02)"
-RG=$(api POST /api/one-to-one "{\"studentIds\":[\"$OS2\"],\"campusId\":\"$CAMPUS\",\"levelId\":\"$CVL\",\"plan\":\"PACKAGE\",\"sessions\":8,\"slots\":[{\"dayOfWeek\":2,\"time\":\"05:30\",\"mode\":\"BRANCH\"}],\"teacherId\":\"$CALT\"}" | jq_ "d['data']['groupId']")
+DW3=$(cairo +%w 3)  # the weekday 3 days from now (fixed weekdays failed on that weekday once its time had passed)
+RG=$(api POST /api/one-to-one "{\"studentIds\":[\"$OS2\"],\"campusId\":\"$CAMPUS\",\"levelId\":\"$CVL\",\"plan\":\"PACKAGE\",\"sessions\":8,\"slots\":[{\"dayOfWeek\":$DW3,\"time\":\"03:00\",\"mode\":\"BRANCH\"}],\"teacherId\":\"$CALT\"}" | jq_ "d['data']['groupId']")
 api PUT /api/one-to-one/settings '{"cancelHours":720}' >/dev/null
 UPD=$(papi GET "/api/guardian-portal/one-to-one/sessions?studentId=$OS2" | jq_ "[s['date'] for b in d['data'] if b['id']=='$RG' for s in b['sessions']][0]")
 check "too close to the session: the parent cannot move it" "$(papi POST /api/guardian-portal/one-to-one/sessions "{\"groupId\":\"$RG\",\"date\":\"$UPD\",\"newDate\":\"$(D 40)\",\"newTime\":\"05:15\"}" | jq_ "d['error']['code']")" "POSTPONE_REFUSED"
@@ -2607,9 +2608,9 @@ GR1=$(api POST /api/places/$DOTHER/rooms '{"name":"E2E Gap Room A","capacity":10
 GR2=$(api POST /api/places/$DOTHER/rooms '{"name":"E2E Gap Room B","capacity":10,"kind":"CLASSROOM"}' | jq_ "d['data']['id']")
 GG1=$(api POST /api/groups "{\"campusId\":\"$DOTHER\",\"className\":\"E2E Gap One\",\"sectionName\":\"G\",\"levelId\":\"$CVL\"}" | jq_ "d['data']['id']")
 GG2=$(api POST /api/groups "{\"campusId\":\"$DOTHER\",\"className\":\"E2E Gap Two\",\"sectionName\":\"G\",\"levelId\":\"$CVL\"}" | jq_ "d['data']['id']")
-api PATCH /api/groups/$GG1 "{\"scheduleSlots\":[{\"dayOfWeek\":2,\"time\":\"06:00\",\"mode\":\"BRANCH\",\"roomId\":\"$GR1\"}]}" >/dev/null
-api PATCH /api/groups/$GG2 "{\"scheduleSlots\":[{\"dayOfWeek\":2,\"time\":\"06:00\",\"mode\":\"BRANCH\",\"roomId\":\"$GR2\"}]}" >/dev/null
-GTU=""; for i in 1 2 3 4 5 6 7; do [ "$(cairo +%w $i)" = "2" ] && GTU=$(D $i); done
+api PATCH /api/groups/$GG1 "{\"scheduleSlots\":[{\"dayOfWeek\":$DW3,\"time\":\"06:00\",\"mode\":\"BRANCH\",\"roomId\":\"$GR1\"}]}" >/dev/null
+api PATCH /api/groups/$GG2 "{\"scheduleSlots\":[{\"dayOfWeek\":$DW3,\"time\":\"06:00\",\"mode\":\"BRANCH\",\"roomId\":\"$GR2\"}]}" >/dev/null
+GTU=$(D 3)  # 3 days ahead: never today, so the session is always still to come
 ROOMOF() { api GET "/api/groups/schedule?from=$GTU&to=$GTU" | PYTHONUTF8=1 jq_ "[o.get('room') for o in d['data']['sessions'] if o['groupId']=='$1']"; }
 check "the calendar shows the room of a session" "$(ROOMOF $GG1)" "['E2E Gap Room A']"
 check "one session in a room another group has then: refused" "$(api POST /api/groups/$GG1/session-room "{\"date\":\"$GTU\",\"roomId\":\"$GR2\"}" | jq_ "d['error']['code']")" "ROOM_PROBLEM"
@@ -2630,7 +2631,7 @@ check "the substitute says no: the apology goes back to the staff" "$(curl -s -b
 M "DELETE FROM OneToOneEvent WHERE id='e2e-gap-ev'"
 ES=$(M "SELECT s.id FROM CurriculumSession s JOIN CurriculumEdition e ON e.id=s.editionId WHERE e.levelId='$CVL' AND e.status='PUBLISHED' AND s.number=1 AND e.variantId IS NULL LIMIT 1")
 GG3=$(api POST /api/groups "{\"campusId\":\"$CAMPUS\",\"className\":\"E2E Gap Three\",\"sectionName\":\"G\",\"levelId\":\"$CVL\"}" | jq_ "d['data']['id']")
-api PATCH /api/groups/$GG3 "{\"scheduleSlots\":[{\"dayOfWeek\":2,\"time\":\"05:00\",\"mode\":\"BRANCH\"}]}" >/dev/null
+api PATCH /api/groups/$GG3 "{\"scheduleSlots\":[{\"dayOfWeek\":$DW3,\"time\":\"05:00\",\"mode\":\"BRANCH\"}]}" >/dev/null
 M "UPDATE CurriculumSession SET allowedModes='[\"BRANCH\"]' WHERE id='$ES'"
 check "a curriculum session for the branch only: that session cannot go online" "$(api POST /api/groups/$GG3/session-mode "{\"date\":\"$GTU\",\"mode\":\"ONLINE\"}" | jq_ "d['error']['code']")" "MODE_NOT_ALLOWED"
 M "UPDATE CurriculumSession SET allowedModes=NULL WHERE id='$ES'"
@@ -3108,6 +3109,17 @@ NCT=$(M "SELECT COUNT(*) FROM ContactLog WHERE studentId='$LK'")
 check "the student cannot reply, the parent can, once, and it reaches the follow-ups" "$(curl -s -b "$LK9" -X POST -H 'Content-Type: application/json' -d "{\"studentId\":\"$LK\",\"text\":\"hello there\"}" $B/api/session-reports/$R9/reply | jq_ "d['success']")/$(curl -s -b "$LP9" -X POST -H 'Content-Type: application/json' -d "{\"studentId\":\"$LK\",\"text\":\"He did not understand part two\"}" $B/api/session-reports/$R9/reply | jq_ "d['success']")/$(curl -s -b "$LP9" -X POST -H 'Content-Type: application/json' -d "{\"studentId\":\"$LK\",\"text\":\"again\"}" $B/api/session-reports/$R9/reply | jq_ "d['success']")/$(( $(M "SELECT COUNT(*) FROM ContactLog WHERE studentId='$LK'") - NCT ))" "False/True/False/1"
 api PUT /api/session-reports/settings '{"enabled":false,"mode":"AUTO","hours":3,"phrases":[{"id":"focus","en":"Needs more focus","ar":""}]}' >/dev/null
 rm -f "$LK9" "$LP9" "$TJ9"
+echo "== 92. The inventor's journey: islands map details, title, stars, what is left, timeline (2026-11-10)"
+JP=$(api GET /api/profile/$LK)
+check "the profile carries the journey: title, levels, timeline" "$(echo "$JP" | jq_ "(isinstance(d['data']['journey']['title']['ar'], str), len(d['data']['journey']['levels'])>0, any(e['kind']=='JOINED' for e in d['data']['journey']['timeline']))")" "(True, True, True)"
+check "every station of the map has its details" "$(echo "$JP" | jq_ "all(any(j['levelId']==l['id'] for j in d['data']['journey']['levels']) for i in d['data']['map']['islands'] for c in i['courses'] for l in c['levels'] if l['state'] in ('DONE','CURRENT'))")" "True"
+check "the current level says what is left; a finished one does not" "$(echo "$JP" | jq_ "all((l['left'] is not None)==(l['state']=='CURRENT') for l in d['data']['journey']['levels'])")" "True"
+check "stars only on finished levels, 0..3, and the total adds up" "$(echo "$JP" | jq_ "(all(0<=l['stars']<=3 and (l['stars']==0 or l['state']=='DONE') for l in d['data']['journey']['levels']), d['data']['journey']['stars']==sum(l['stars'] for l in d['data']['journey']['levels'] if l['state']=='DONE'))")" "(True, True)"
+check "attendance % matches the student's records in that level" "$(echo "$JP" | jq_ "[l['attendancePct'] for l in d['data']['journey']['levels'] if l['levelId']=='$(M "SELECT levelId FROM ClassSection WHERE id='$LG'")'][0]")" "$(M "SELECT ROUND(100*SUM(r.status IN ('PRESENT','LATE'))/COUNT(*)) FROM EnrollmentAttendanceRecord r JOIN StudentEnrollment e ON e.id=r.studentEnrollmentId JOIN ClassSection c ON c.id=e.classSectionId WHERE e.studentId='$LK' AND c.levelId=(SELECT levelId FROM ClassSection WHERE id='$LG')")"
+LPW2=$(api POST /api/students/$LK/portal-password "{\"target\":\"guardian\",\"guardianId\":\"$LGU\"}" | jq_ "d['data']['password']"); LP2=$(mktemp); login_jar 01066660119 "$LPW2" "$LP2" 10.0.9.21
+JPP=$(curl -s -b "$LP2" $B/api/profile/$LK)
+check "the parent sees the same journey, never money" "$(echo "$JPP" | jq_ "(len(d['data']['journey']['levels'])>0, any(k in str(d['data']['journey']) for k in ['amount','price','paid','invoice']))")" "(True, False)"
+check "another family cannot open it" "$(curl -s -b "$LP2" $B/api/profile/$LO | jq_ "d['success']")" "False"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
