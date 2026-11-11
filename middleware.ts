@@ -95,6 +95,11 @@ export default auth((req) => {
     }
   }
 
+  // ── x01: the new website preview is for admins only until the owner approves it (a real 404 for everyone else) ──
+  if (nextUrl.pathname === '/new-home' && role !== 'SUPER_ADMIN' && role !== 'ADMIN') {
+    return new Response('Not found', { status: 404 })
+  }
+
   // All other routes (public landing, API, static): pass through unchanged.
   // return undefined (implicit) means "continue to the handler".
 })

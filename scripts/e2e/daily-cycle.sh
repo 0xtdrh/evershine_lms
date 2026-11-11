@@ -3153,6 +3153,15 @@ check "…and only his own place" "$(echo "$BGM" | jq_ "all(c['id']=='$CAMPUS' f
 check "…his income is his place's (group place, else the student's)" "$(echo "$BGM" | jq_ "round(d['data']['monthRows'][-1]['income'])")" "$(M "SELECT ROUND(IFNULL(SUM(p.amount),0)) FROM FeePayment p JOIN FeeInvoice i ON i.id=p.invoiceId LEFT JOIN ClassSection c ON c.id=i.classSectionId JOIN Student s ON s.id=p.studentId WHERE p.status='COMPLETED' AND COALESCE(c.campusId,s.campusId)='$CAMPUS' AND DATE_FORMAT(CONVERT_TZ(p.paymentDate,'+00:00','+02:00'),'%Y-%m')='$YM'")"
 check "…and cannot set targets" "$(curl -s -b "$BMJ" -X PUT -H 'Content-Type: application/json' -d "{\"ym\":\"$YM\",\"values\":{\"income\":5}}" $B/api/business-growth/targets | jq_ "d['success']")" "False"
 echo
+echo "== 94. New website home page preview (x01): admins only, both languages, live numbers (2026-11-11)"
+NH=$(curl -s -b "$JAR" -o /tmp/nh94.html -w '%{http_code}' "$B/new-home")
+check "an admin opens the preview" "$NH/$(grep -c 'tns-hero' /tmp/nh94.html | tr -d ' ' | sed 's/^[1-9][0-9]*$/yes/')" "200/yes"
+check "…and search engines are told not to index it" "$(grep -o 'noindex' /tmp/nh94.html | head -1)" "noindex"
+check "a visitor who is not signed in gets nothing (404)" "$(curl -s -o /dev/null -w '%{http_code}' "$B/new-home")" "404"
+check "an instructor gets nothing either (404)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ76" "$B/new-home")" "404"
+check "the current home page still opens" "$(curl -s -o /dev/null -w '%{http_code}' "$B/")" "200"
+
+echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
 [ $FAIL -eq 0 ]
