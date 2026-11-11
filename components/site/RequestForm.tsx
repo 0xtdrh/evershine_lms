@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n/client'
 import { KIND_LABEL, NEEDS_ORG, normalizePhone, type RequestKind } from '@/lib/site/request-rules'
+import { getSid, track } from './tracker'
 
 export interface FormOpen { kind: RequestKind; page: string; topic?: string }
 
@@ -44,9 +45,10 @@ export function RequestForm({ open, onClose, solutions, partnerKinds }: { open: 
     if (needsOrg && !f.organisation.trim()) return setErr(ar ? 'اكتب اسم المدرسة أو الشركة.' : 'Write the name of the school / company.')
     setBusy(true)
     try {
-      const res = await fetch('/api/public/website-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...f, kind: open.kind, page: open.page }) })
+      const res = await fetch('/api/public/website-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...f, kind: open.kind, page: open.page, sid: getSid() }) })
       if (res.status === 429) return setErr(ar ? 'بعت طلبات كتير. جرّب كمان شوية.' : 'Too many requests. Try again later.')
       if (!res.ok) return setErr(ar ? 'حصلت مشكلة. جرّب تاني.' : 'Something went wrong. Try again.')
+      track('FORM_SENT', `${open.kind}:${open.page}`)
       setDone(true)
     } catch {
       setErr(ar ? 'مفيش اتصال. جرّب تاني.' : 'No connection. Try again.')

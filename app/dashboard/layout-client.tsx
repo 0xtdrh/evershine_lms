@@ -119,6 +119,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'User Guide',      href: '/dashboard/guide',        icon: BookOpen },
   { name: 'Admin Workspace', href: '/dashboard/admin',        icon: ShieldCheck,     roles: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'] },
   { name: 'Permissions',     href: '/dashboard/admin/permissions',      icon: ShieldCheck,     roles: ['SUPER_ADMIN'] },
+  { name: 'Website Visitors', href: '/dashboard/website-visitors',     icon: TrendingUpIcon,  roles: ['SUPER_ADMIN', 'ADMIN', 'MARKETING'], perm: [['website', 'read']] },
   { name: 'Website',         href: '/dashboard/website',              icon: Globe,           roles: ['SUPER_ADMIN', 'ADMIN', 'MARKETING'], perm: [['website', 'read']] },
   { name: 'Notifications',   href: '/dashboard/admin/notifications',    icon: BellRing,        roles: ['SUPER_ADMIN', 'ADMIN'] },
   // match: settings pages that are not menu items belong here (their tabs + title), not to the old Admin Workspace

@@ -73,6 +73,7 @@ export async function runDailyJobs(opts: { forceSummary?: boolean } = {}) {
   await step('oneToOneHolds', async () => (await import('@/lib/one-to-one/sessions')).sweepHolds())
   await step('videos', async () => (await import('@/lib/videos/engine')).videoDailyJob())
   await step('recordedCourses', async () => (await import('@/lib/recorded/engine')).recordedDailyJob())
+  await step('websiteIps', async () => (await import('@/lib/site/analytics')).wipeOldVisitorIps())
   await step('monthClose', async () => (await import('@/lib/month-close/engine')).autoCloseLastMonth())
   return out
 }

@@ -7,7 +7,7 @@ export const NAV_AR: Record<string, string> = {
   'Dashboard': 'الرئيسية', 'Admin Workspace': 'مساحة الإدارة', 'Permissions': 'الصلاحيات', 'Notifications': 'الإشعارات',
   'Settings Centre': 'مركز الإعدادات', 'User Guide': 'دليل الاستخدام', 'Change Log': 'سجل التعديلات', 'Usage': 'الاستخدام', 'Data Health': 'صحة البيانات', 'Settings': 'الإعدادات', 'Platform': 'تشغيل الأنظمة', 'Agreements': 'الموافقات',
   'Role Assumptions': 'الدخول بدور آخر', 'Credential Management': 'إدارة الحسابات', 'Backups': 'النسخ الاحتياطي',
-  'Admissions': 'طلبات الالتحاق', 'Landing Leads': 'طلبات الموقع', 'Website': 'الموقع', 'Students': 'الطلاب', 'Waiting List': 'قائمة الانتظار',
+  'Admissions': 'طلبات الالتحاق', 'Landing Leads': 'طلبات الموقع', 'Website': 'الموقع', 'Website Visitors': 'زوار الموقع', 'Students': 'الطلاب', 'Waiting List': 'قائمة الانتظار',
   'Staff Directory': 'الموظفين', 'Fees': 'الفواتير', 'Accounting Hub': 'ملخص الحسابات', 'Fee Collection': 'التحصيل',
   'Discounts': 'الخصومات', 'Refunds': 'الاسترداد', 'Expense Ledger': 'مصاريف التشغيل', 'Financial Reports': 'التقارير المالية',
   'Wallet & Top-ups': 'المحفظة والشحن', 'Groups Financials': 'ماليات الجروبات', 'Leaves': 'الإجازات', 'Complaints': 'الشكاوى',

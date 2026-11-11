@@ -12,6 +12,8 @@ import { useTheme } from 'next-themes'
 import { I18nProvider, useI18n } from '@/lib/i18n/client'
 import { visible, type Bi, type Card, type MediaCard, type SiteContent } from '@/lib/site/content'
 import { RequestForm, type FormOpen } from './RequestForm'
+import { CookieNotice } from './CookieNotice'
+import { track, useSiteTracker } from './tracker'
 import { shownStats, type SiteStats } from '@/lib/site/stats-shared'
 
 const ICONS: Record<string, string> = {
@@ -109,10 +111,12 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
   const [mounted, setMounted] = useState(false)
   const [menu, setMenu] = useState(false)
   const [cert, setCert] = useState('')
-  const [form, setForm] = useState<FormOpen | null>(null)
+  const [form, setFormRaw] = useState<FormOpen | null>(null)
+  const setForm = (f: FormOpen | null) => { if (f) track('FORM_OPEN', `${f.kind}:${f.page}`); setFormRaw(f) }
   const router = useRouter()
   useEffect(() => setMounted(true), [])
   useReveal()
+  useSiteTracker(locale)
 
   const nav = visible(C.nav, preview)
   const numbers = shownStats(C.stats, stats)
@@ -155,7 +159,7 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
             <span className="tns-word">Tech<b>Nova</b></span>
           </a>
           <nav className="tns-nav" aria-label={locale === 'ar' ? 'القائمة الرئيسية' : 'Main menu'}>
-            {nav.map((n) => <a key={n.href} href={n.href}>{t(n.label)}</a>)}
+            {nav.map((n) => <a key={n.href} href={n.href} onClick={() => track('NAV', n.label.en)}>{t(n.label)}</a>)}
           </nav>
           <div className="tns-tools">
             <button type="button" className="tns-icon-btn en" onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')} aria-label={locale === 'ar' ? 'English' : 'العربية'}>{locale === 'ar' ? 'EN' : 'ع'}</button>
@@ -213,7 +217,7 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
             </div>
             <div className="tns-aud">
               {visible(C.audience, preview).map((a, i) => (
-                <a key={i} href={a.href}>
+                <a key={i} href={a.href} onClick={() => track('AUDIENCE', a.title.en)}>
                   <span className="n">0{i + 1}</span>
                   <strong>{t(a.title)}</strong>
                   <span className="t">{t(a.text)}</span>
@@ -431,7 +435,7 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
               <p className="tns-lead" style={{ margin: '0 auto', color: '#cfe0ec' }}>{t(C.cta.text)}</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginTop: 26 }}>
                 <button type="button" className="tns-btn primary" onClick={() => setForm({ kind: 'CONTACT', page: 'contact' })}>{locale === 'ar' ? 'ابعتلنا رسالة' : 'Send us a message'}</button>
-                {wa ? <a href={wa} target="_blank" rel="noopener noreferrer" className="tns-btn ghost" style={{ borderColor: '#5d8bb0', color: '#fff' }}>{locale === 'ar' ? 'كلّمنا واتساب' : 'WhatsApp us'}</a> : null}
+                {wa ? <a href={wa} onClick={() => track('WHATSAPP', 'contact')} target="_blank" rel="noopener noreferrer" className="tns-btn ghost" style={{ borderColor: '#5d8bb0', color: '#fff' }}>{locale === 'ar' ? 'كلّمنا واتساب' : 'WhatsApp us'}</a> : null}
                 {C.contact.phone ? <a href={`tel:${C.contact.phone}`} className="tns-btn ghost ghost-d" style={{ borderColor: '#5d8bb0', color: '#fff' }}>{C.contact.phone}</a> : null}
                 {C.contact.email ? <a href={`mailto:${C.contact.email}`} className="tns-btn ghost" style={{ borderColor: '#5d8bb0', color: '#fff' }}>{C.contact.email}</a> : null}
               </div>
@@ -462,7 +466,8 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
       </footer>
 
       {form ? <RequestForm open={form} onClose={() => setForm(null)} solutions={C.solutions.items.filter((x) => x.show !== false).map((x) => t(x.title))} partnerKinds={C.partners.kinds.filter((x) => x.show !== false).map((x) => t(x.title))} /> : null}
-      {wa ? <a className="tns-wa" href={wa} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.3-4.4A9 9 0 1 1 21 12z" /></svg></a> : null}
+      <CookieNotice />
+      {wa ? <a className="tns-wa" onClick={() => track('WHATSAPP', 'float')} href={wa} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.3-4.4A9 9 0 1 1 21 12z" /></svg></a> : null}
     </div>
   )
 }

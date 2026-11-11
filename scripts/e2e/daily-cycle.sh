@@ -3190,6 +3190,27 @@ check "an instructor cannot read website requests" "$(tapi GET /api/landing/inqu
 check "back to the original texts" "$(api PUT /api/website/content '{"reset":true}' | jq_ "d['data']['content']['hero']['title1']['ar']")/$(M "SELECT COUNT(*) FROM AppSetting WHERE \`key\`='website.content'")" "بنعلّم التكنولوجيا…/0"
 
 echo
+echo "== 96. Website visitors: where they come from, time, events, IP only with consent (x01 batch 3, 2026-11-11)"
+UA96='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
+trk() { curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H "User-Agent: $UA96" -H "X-Forwarded-For: $1" -d "$2" "$B/api/public/site-track"; }
+check "a visit from Google (no cookies) starts" "$(trk 10.0.96.1 '{"t":"start","sid":"e2evisit96aaaa01","consent":false,"path":"/new-home","ref":"https://www.google.com.eg/search?q=robotics","lang":"ar"}')/$(M "SELECT CONCAT(source,'/',device,'/',IFNULL(ip,'no-ip')) FROM SiteVisit WHERE sessionId='e2evisit96aaaa01'")" "204/GOOGLE/MOBILE/no-ip"
+curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -d '{"t":"start","sid":"e2evisit96bot001","path":"/new-home"}' "$B/api/public/site-track"
+check "a bot / script is not counted" "$(M "SELECT COUNT(*) FROM SiteVisit WHERE sessionId='e2evisit96bot001'")" "0"
+trk 10.0.96.1 '{"t":"ping","sid":"e2evisit96aaaa01"}' >/dev/null; trk 10.0.96.1 '{"t":"ping","sid":"e2evisit96aaaa01"}' >/dev/null
+trk 10.0.96.1 '{"t":"event","sid":"e2evisit96aaaa01","kind":"AUDIENCE","label":"For my school"}' >/dev/null
+trk 10.0.96.1 '{"t":"event","sid":"e2evisit96aaaa01","kind":"FORM_SENT","label":"SCHOOL:education"}' >/dev/null
+check "time on site grows by the pings; sending a form marks the visit" "$(M "SELECT CONCAT(seconds,'/',converted) FROM SiteVisit WHERE sessionId='e2evisit96aaaa01'")" "30/1"
+check "a campaign link with cookies accepted keeps the IP" "$(trk 10.0.96.2 '{"t":"start","sid":"e2evisit96bbbb02","vid":"e2evisitor96xx01","consent":true,"path":"/new-home?utm_source=facebook&utm_campaign=winter-camp","utm":{"source":"facebook","campaign":"winter-camp"}}')/$(M "SELECT CONCAT(source,'/',utmCampaign,'/',ip,'/',visitorId) FROM SiteVisit WHERE sessionId='e2evisit96bbbb02'")" "204/FACEBOOK/winter-camp/10.0.96.2/e2evisitor96xx01"
+curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.96.3' -d '{"kind":"CONTACT","name":"E2E Tracked","phone":"01044455566","sid":"e2evisit96aaaa01"}' "$B/api/public/website-request"
+V96=$(api GET "/api/website/visitors?days=7")
+check "the visitors screen: visits, sources, campaign, cards, forms, requests by source" "$(echo "$V96" | jq_ "(d['success'], d['data']['totals']['visits'] >= 2, [s['count'] for s in d['data']['bySource'] if s['key']=='GOOGLE'][0] >= 1, [c['key'] for c in d['data']['byCampaign']][0], [a['count'] for a in d['data']['audience'] if a['key']=='For my school'][0], [s['requests'] for s in d['data']['bySource'] if s['key']=='GOOGLE'][0] >= 1)")" "(True, True, True, 'winter-camp', 1, True)"
+check "…and never shows an IP" "$(echo "$V96" | grep -c '10.0.96.2')" "0"
+check "an instructor cannot open it" "$(tapi GET /api/website/visitors | jq_ "d['success']")" "False"
+M "UPDATE SiteVisit SET startedAt = NOW(3) - INTERVAL 100 DAY WHERE sessionId='e2evisit96bbbb02'"
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "the daily job wipes IPs older than 90 days (the visit stays)" "$(M "SELECT CONCAT(COUNT(*),'/',IFNULL(MAX(ip),'wiped')) FROM SiteVisit WHERE sessionId='e2evisit96bbbb02'")" "1/wiped"
+
+echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
 [ $FAIL -eq 0 ]

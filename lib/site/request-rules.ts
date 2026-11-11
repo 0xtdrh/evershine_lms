@@ -35,6 +35,8 @@ export const websiteRequestSchema = z
     topic: z.string().trim().max(80).optional().or(z.literal('')),
     message: z.string().trim().max(2000).optional().or(z.literal('')),
     page: z.string().trim().max(80).optional().or(z.literal('')),
+    /** the website visit (analytics) that sent it */
+    sid: z.string().regex(/^[A-Za-z0-9_-]{8,40}$/).optional().or(z.literal('')),
     /** honeypot: people never fill it */
     website: z.string().max(0).optional().or(z.literal('')),
   })

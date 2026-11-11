@@ -3494,14 +3494,16 @@ model LandingInquiry {
   // Metadata — stored for spam detection, never exposed in public API
   // x01 (2026-11-11): the new website forms (all nullable: old contact-form rows keep working)
   /// CONTACT / SOLUTION / SCHOOL / PARTNER / PRODUCT
-  kind         String? @db.VarChar(12)
-  organisation String? @db.VarChar(160)
+  kind           String? @db.VarChar(12)
+  organisation   String? @db.VarChar(160)
   /// what it is about: the solution, the partnership type or the product
-  topic        String? @db.VarChar(80)
+  topic          String? @db.VarChar(80)
   /// the website page / button the visitor came from
-  page         String? @db.VarChar(80)
+  page           String? @db.VarChar(80)
   /// set when staff turn the request into a (possible) partner
-  partnerId    String?
+  partnerId      String?
+  /// x01 analytics: the website visit that sent it (SiteVisit.sessionId)
+  visitSessionId String? @db.VarChar(40)
 
   ipAddress String?
   userAgent String?
@@ -5567,4 +5569,50 @@ model BusinessTarget {
 
   @@unique([ym, scopeKey, metric])
   @@index([ym])
+}
+
+/// x01 (2026-11-11): one visit to the public website (one browser tab session). IP kept only with the visitor's
+/// consent and wiped after 90 days (daily job). City / country come from the host's headers when it gives them.
+model SiteVisit {
+  id           String   @id @default(cuid())
+  sessionId    String   @unique @db.VarChar(40)
+  /// set only when the visitor accepted the cookie notice (repeat visitors)
+  visitorId    String?  @db.VarChar(40)
+  startedAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  seconds      Int      @default(0)
+  pages        Int      @default(1)
+  landing      String   @db.VarChar(200)
+  /// DIRECT / GOOGLE / FACEBOOK / INSTAGRAM / WHATSAPP / TIKTOK / YOUTUBE / OTHER_SEARCH / REFERRAL / CAMPAIGN
+  source       String   @db.VarChar(16)
+  referrerHost String?  @db.VarChar(120)
+  utmSource    String?  @db.VarChar(80)
+  utmMedium    String?  @db.VarChar(80)
+  utmCampaign  String?  @db.VarChar(80)
+  /// MOBILE / TABLET / DESKTOP
+  device       String   @db.VarChar(8)
+  lang         String?  @db.VarChar(4)
+  country      String?  @db.VarChar(4)
+  city         String?  @db.VarChar(80)
+  ip           String?  @db.VarChar(64)
+  consent      Boolean  @default(false)
+  converted    Boolean  @default(false)
+
+  @@index([startedAt])
+  @@index([lastSeenAt])
+  @@index([visitorId])
+}
+
+/// x01: something a visitor did on the website (card clicked, form opened / sent, WhatsApp).
+model SiteEvent {
+  id        String   @id @default(cuid())
+  sessionId String   @db.VarChar(40)
+  /// AUDIENCE / CTA / FORM_OPEN / FORM_SENT / WHATSAPP / NAV
+  kind      String   @db.VarChar(12)
+  label     String?  @db.VarChar(80)
+  page      String?  @db.VarChar(120)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([sessionId])
 }

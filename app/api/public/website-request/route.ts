@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
         organisation: v.organisation || null,
         topic: v.topic || null,
         page: v.page || null,
+        visitSessionId: v.sid || null,
         message: v.message || '',
         source: 'CONTACT_FORM',
         status: 'NEW',
