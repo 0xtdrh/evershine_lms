@@ -3157,8 +3157,8 @@ echo "== 94. New website home page preview (x01): admins only, both languages, l
 NH=$(curl -s -b "$JAR" -o /tmp/nh94.html -w '%{http_code}' "$B/new-home")
 check "an admin opens the preview" "$NH/$(grep -c 'tns-hero' /tmp/nh94.html | tr -d ' ' | sed 's/^[1-9][0-9]*$/yes/')" "200/yes"
 check "…and search engines are told not to index it" "$(grep -o 'noindex' /tmp/nh94.html | head -1)" "noindex"
-check "a visitor who is not signed in gets nothing (404)" "$(curl -s -o /dev/null -w '%{http_code}' "$B/new-home")" "404"
-check "an instructor gets nothing either (404)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$TJ76" "$B/new-home")" "404"
+check "on this computer (localhost) a visitor who is not signed in can open it too" "$(curl -s -o /dev/null -w '%{http_code}' "$B/new-home")" "200"
+check "…but on a real domain a visitor gets nothing (404)" "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: technova.example' "$B/new-home")" "404"
 check "the current home page still opens" "$(curl -s -o /dev/null -w '%{http_code}' "$B/")" "200"
 
 echo

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { SITE_CONTENT, visible } from '@/lib/site/content'
 import { shownStats } from '@/lib/site/stats-shared'
+import { canOpenSitePreview } from '@/lib/site/preview-access'
 
 describe('x01 website content', () => {
   it('examples show only in the preview, hidden items never', () => {
@@ -19,6 +20,15 @@ describe('x01 website content', () => {
     const items = [{ source: 'students' as const, min: 50 }, { source: 'sessions' as const, min: 10 }, { value: 4 }, { value: 9, show: false }]
     expect(shownStats(items, { students: 20, sessions: 300, certificates: 0, partnerPlaces: 0, branches: 1 })).toEqual([{ i: 1, value: 300 }, { i: 2, value: 4 }])
     expect(shownStats(items, null)).toEqual([{ i: 2, value: 4 }])
+  })
+
+  it('preview: anyone on the owner\'s computer, only admins on a real domain', () => {
+    expect(canOpenSitePreview('localhost:3000', undefined)).toBe(true)
+    expect(canOpenSitePreview('127.0.0.1:5099', 'TEACHER')).toBe(true)
+    expect(canOpenSitePreview('evershine-lms-technova.vercel.app', undefined)).toBe(false)
+    expect(canOpenSitePreview('evershine-lms-technova.vercel.app', 'TEACHER')).toBe(false)
+    expect(canOpenSitePreview('evershine-lms-technova.vercel.app', 'ADMIN')).toBe(true)
+    expect(canOpenSitePreview('localhost.evil.com', undefined)).toBe(false)
   })
 
   it('every text has both languages', () => {
