@@ -111,6 +111,7 @@ export type AcademicResource =
   | 'month_close'
   | 'payment_voids'
   | 'business_growth'
+  | 'website'
 
 type Resource = AcademicResource
 
@@ -212,6 +213,7 @@ const PERMISSIONS: PermissionMap = {
     refunds: ['create', 'read', 'approve'],
     payment_voids: ['create', 'read', 'approve'],
     business_growth: ['read', 'update', 'export'],
+    website: ['read', 'update'],
     group_transfers: ['create', 'read'],
     contact_logs: ['create', 'read', 'update'],
     group_capacity: ['approve'],
@@ -287,6 +289,7 @@ const PERMISSIONS: PermissionMap = {
     refunds: ['create', 'read', 'approve'],
     payment_voids: ['create', 'read', 'approve'],
     business_growth: ['read', 'update', 'export'],
+    website: ['read', 'update'],
     group_transfers: ['create', 'read'],
     contact_logs: ['create', 'read', 'update'],
     group_capacity: ['approve'],
@@ -363,6 +366,7 @@ const PERMISSIONS: PermissionMap = {
     refunds: [],
     payment_voids: [],
     business_growth: [],
+    website: [],
     group_transfers: [],
     contact_logs: [],
     group_capacity: [],
@@ -438,6 +442,7 @@ const PERMISSIONS: PermissionMap = {
     refunds: [],
     payment_voids: [],
     business_growth: [],
+    website: [],
     group_transfers: [],
     contact_logs: [],
     group_capacity: [],
@@ -513,6 +518,7 @@ const PERMISSIONS: PermissionMap = {
     refunds: [],
     payment_voids: [],
     business_growth: [],
+    website: [],
     group_transfers: [],
     contact_logs: [],
     group_capacity: [],
@@ -590,6 +596,7 @@ const PERMISSIONS: PermissionMap = {
     refunds: ['create', 'read'],
     payment_voids: ['create', 'read'],
     business_growth: [],
+    website: [],
     group_transfers: ['read'],
     contact_logs: ['create', 'read'],
     group_capacity: [],
@@ -665,6 +672,7 @@ const PERMISSIONS: PermissionMap = {
     refunds: [],
     payment_voids: [],
     business_growth: [],
+    website: [],
     group_transfers: [],
     contact_logs: [],
     group_capacity: [],
@@ -744,6 +752,7 @@ const PERMISSIONS: PermissionMap = {
     refunds: ['read'],
     payment_voids: ['create', 'read'],
     business_growth: [],
+    website: [],
     group_transfers: ['create', 'read'],
     contact_logs: ['create', 'read', 'update'],
     group_capacity: [],
@@ -824,6 +833,7 @@ const PERMISSIONS: PermissionMap = {
     refunds: ['create', 'read', 'approve'],
     payment_voids: ['create', 'read', 'approve'],
     business_growth: ['read', 'export'],
+    website: [],
     group_transfers: ['create', 'read'],
     contact_logs: ['create', 'read', 'update'],
     group_capacity: ['approve'],
@@ -902,6 +912,7 @@ const PERMISSIONS: PermissionMap = {
     refunds: [],
     payment_voids: [],
     business_growth: [],
+    website: ['read', 'update'],
     group_transfers: [],
     contact_logs: [],
     group_capacity: [],

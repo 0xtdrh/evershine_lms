@@ -8,6 +8,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 import { inquiryActionSchema } from '@/lib/validation/staff-application'
 import { sendInquiryReplyNotification } from '@/lib/notifications'
@@ -25,7 +26,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   if (!session?.user) return errors.unauthorized()
 
   const role = session.user.role as Role
-  if (!['SUPER_ADMIN', 'ADMIN'].includes(role)) return errors.forbidden()
+  if (!checkPermission(role, 'admissions', 'read')) return errors.forbidden()
 
   const { id } = await context.params
 
@@ -55,7 +56,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (!session?.user) return errors.unauthorized()
 
   const role = session.user.role as Role
-  if (!['SUPER_ADMIN', 'ADMIN'].includes(role)) return errors.forbidden()
+  if (!checkPermission(role, 'admissions', 'read')) return errors.forbidden()
 
   const { id } = await context.params
 

@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { checkPermission } from '@/lib/rbac'
 import { errors, paginatedResponse, createdResponse } from '@/lib/api-response'
 import { inquirySchema } from '@/lib/validation/staff-application'
 import { sendInquiryAckNotification, sendAdminInquiryAlert } from '@/lib/notifications'
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
   if (!session?.user) return errors.unauthorized()
 
   const role = session.user.role as Role
-  if (!['SUPER_ADMIN', 'ADMIN'].includes(role)) return errors.forbidden()
+  if (!checkPermission(role, 'admissions', 'read')) return errors.forbidden()
 
   const { searchParams } = new URL(request.url)
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
@@ -103,6 +104,8 @@ export async function GET(request: NextRequest) {
   const q = searchParams.get('q') || undefined
 
   const where: Record<string, unknown> = {}
+  const kind = searchParams.get('kind') || undefined
+  if (kind && kind !== 'ALL') where.kind = kind === 'OLD' ? null : kind
   if (status && status !== 'ALL') {
     where.status = status
   }
@@ -114,6 +117,7 @@ export async function GET(request: NextRequest) {
       { email: { contains: q } },
       { phone: { contains: q } },
       { message: { contains: q } },
+      { organisation: { contains: q } },
     ]
   }
 
@@ -134,6 +138,11 @@ export async function GET(request: NextRequest) {
         adminReply: true,
         repliedAt: true,
         createdAt: true,
+        kind: true,
+        organisation: true,
+        topic: true,
+        page: true,
+        partnerId: true,
         // WHY: ipAddress and userAgent excluded from response — internal use only
       },
     }),

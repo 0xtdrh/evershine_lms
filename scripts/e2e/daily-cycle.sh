@@ -3162,6 +3162,34 @@ check "…but on a real domain a visitor gets nothing (404)" "$(curl -s -o /dev/
 check "the current home page still opens" "$(curl -s -o /dev/null -w '%{http_code}' "$B/")" "200"
 
 echo
+echo "== 95. Website screen + website requests (x01 batch 2, 2026-11-11)"
+WC=$(api GET /api/website/content)
+check "the website screen loads the texts (saved or the originals)" "$(echo "$WC" | jq_ "(d['success'], d['data']['content']['hero']['title2']['ar'])")" "(True, 'وبنبنيها.')"
+check "an instructor cannot change the website" "$(tapi PUT /api/website/content '{"content":{}}' | jq_ "d['success']")" "False"
+SAVE=$(api PUT /api/website/content '{"content":{"hero":{"title1":{"en":"E2E title","ar":"\u0639\u0646\u0648\u0627\u0646 \u062a\u062c\u0631\u0628\u0629"}},"contact":{"whatsapp":"01011112222"},"why":{"show":false},"hero_extra":"x"}}')
+check "the admin saves a new title, a WhatsApp number and hides a section" "$(echo "$SAVE" | jq_ "(d['success'], d['data']['content']['hero']['title1']['ar'], d['data']['content']['contact']['whatsapp'], d['data']['content']['why']['show'], 'hero_extra' in d['data']['content'])")" "(True, 'عنوان تجربة', '01011112222', False, False)"
+NH95=$(curl -s "$B/new-home")
+check "…the website shows the new title and the WhatsApp button at once" "$(echo "$NH95" | grep -c 'عنوان تجربة' | sed 's/^[1-9][0-9]*$/yes/')/$(echo "$NH95" | grep -c 'wa.me/201011112222' | sed 's/^[1-9][0-9]*$/yes/')" "yes/yes"
+
+# public forms (Arabic goes as JSON \u escapes: curl on Windows breaks Arabic arguments)
+R95A=$(curl -s -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.95.1' -d '{"kind":"CONTACT","name":"E2E Visitor","phone":"\u0660\u0661\u0660\u0662\u0662\u0662\u0663\u0663\u0663\u0664\u0664","message":"hello","page":"hero"}' "$B/api/public/website-request")
+check "a visitor sends a message from the website (Arabic digits work)" "$(echo "$R95A" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM LandingInquiry WHERE name='E2E Visitor' AND kind='CONTACT' AND phone='01022233344' AND status='NEW'")" "True/1"
+check "a school request without the school name is refused" "$(curl -s -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.95.2' -d '{"kind":"SCHOOL","name":"E2E School Mgr","phone":"01033344455"}' "$B/api/public/website-request" | jq_ "d['success']")" "False"
+R95S=$(curl -s -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.95.2' -d '{"kind":"SCHOOL","name":"E2E School Mgr","phone":"01033344455","organisation":"E2E Nile School","message":"We want robotics"}' "$B/api/public/website-request")
+check "…with the school name it is saved" "$(echo "$R95S" | jq_ "d['success']")" "True"
+curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.95.3' -d '{"kind":"CONTACT","name":"Bot","phone":"01099999999","website":"spam.example"}' "$B/api/public/website-request"
+check "a bot that fills the hidden field is kept out" "$(M "SELECT COUNT(*) FROM LandingInquiry WHERE name='Bot'")" "0"
+check "the admins are told (in Arabic too)" "$(M "SELECT COUNT(*) FROM Notification n JOIN User u ON u.id=n.userId WHERE u.role='SUPER_ADMIN' AND n.titleAr LIKE 'طلب جديد من الموقع%'")" "$(M "SELECT 2*COUNT(*) FROM User WHERE role='SUPER_ADMIN' AND isActive=1")"
+L95=$(api GET "/api/landing/inquiries?kind=SCHOOL")
+check "website requests: the school request shows with its school" "$(echo "$L95" | jq_ "[(i['organisation'], i['kind']) for i in d['data'] if i['name']=='E2E School Mgr'][0]")" "('E2E Nile School', 'SCHOOL')"
+SID95=$(M "SELECT id FROM LandingInquiry WHERE name='E2E School Mgr' LIMIT 1")
+P95=$(api POST "/api/landing/inquiries/$SID95/partner")
+check "'make a partner' creates a possible partner (stopped until a deal)" "$(echo "$P95" | jq_ "d['success']")/$(M "SELECT CONCAT(kind,'/',isActive,'/',contactPhone) FROM Partner WHERE name='E2E Nile School'")/$(M "SELECT status FROM LandingInquiry WHERE id='$SID95'")" "True/SCHOOL/0/01033344455/RESOLVED"
+check "…a second click links to the same partner, never a copy" "$(api POST "/api/landing/inquiries/$SID95/partner" | jq_ "d['data']['existing']")/$(M "SELECT COUNT(*) FROM Partner WHERE name='E2E Nile School'")" "True/1"
+check "an instructor cannot read website requests" "$(tapi GET /api/landing/inquiries | jq_ "d['success']")" "False"
+check "back to the original texts" "$(api PUT /api/website/content '{"reset":true}' | jq_ "d['data']['content']['hero']['title1']['ar']")/$(M "SELECT COUNT(*) FROM AppSetting WHERE \`key\`='website.content'")" "بنعلّم التكنولوجيا…/0"
+
+echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
 [ $FAIL -eq 0 ]

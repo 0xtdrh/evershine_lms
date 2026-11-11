@@ -10,6 +10,7 @@ import { notFound } from 'next/navigation'
 import { IBM_Plex_Sans_Arabic, Space_Grotesk } from 'next/font/google'
 import { auth } from '@/lib/auth'
 import { siteStats } from '@/lib/site/stats'
+import { getSiteContent } from '@/lib/site/content-store'
 import { canOpenSitePreview } from '@/lib/site/preview-access'
 import SiteHome from '@/components/site/SiteHome'
 
@@ -26,6 +27,6 @@ export default async function NewHomePreview() {
   const host = (await headers()).get('host')
   const session = await auth()
   if (!canOpenSitePreview(host, session?.user?.role)) notFound()
-  const stats = await siteStats()
-  return <SiteHome stats={stats} preview fontClass={`${ar.variable} ${en.variable}`} />
+  const [stats, content] = await Promise.all([siteStats(), getSiteContent()])
+  return <SiteHome content={content} stats={stats} preview fontClass={`${ar.variable} ${en.variable}`} />
 }

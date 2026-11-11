@@ -166,6 +166,17 @@ html[dir='ltr'] .tns-chain .arr svg, html[dir='ltr'] .tns .flip svg { transform:
 .tns-wa { position: fixed; bottom: 20px; inset-inline-start: 20px; width: 56px; height: 56px; border-radius: 50%; background: #1faf5a; color: #fff !important; display: flex; align-items: center; justify-content: center; z-index: 45; box-shadow: 0 10px 24px rgba(0,0,0,.25); }
 .tns-preview { background: #fff1d6; color: #5c3900; font-size: 13px; text-align: center; padding: 8px 16px; }
 
+/* request form dialog */
+.tns-modal { position: fixed; inset: 0; z-index: 60; background: rgba(4, 18, 32, .6); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.tns-modal-box { position: relative; width: 100%; max-width: 560px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--surface); color: var(--text); border-radius: 20px; padding: 28px 24px; box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+.tns-modal-x { position: absolute; top: 14px; inset-inline-end: 14px; width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.tns-fields { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.tns-fields label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; }
+.tns-fields label.wide { grid-column: 1 / -1; }
+.tns-fields input, .tns-fields select, .tns-fields textarea { min-height: 46px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); padding: 10px 12px; font: inherit; font-weight: 400; }
+.tns-fields input:focus, .tns-fields select:focus, .tns-fields textarea:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
+.tns-btn[disabled] { opacity: .6; cursor: wait; }
+
 /* reveal on scroll */
 .tns-reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
 .tns-reveal.tns-in { opacity: 1; transform: none; }

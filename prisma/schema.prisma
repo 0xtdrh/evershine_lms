@@ -3492,6 +3492,17 @@ model LandingInquiry {
   repliedBy  String? // User.id of admin who replied
 
   // Metadata — stored for spam detection, never exposed in public API
+  // x01 (2026-11-11): the new website forms (all nullable: old contact-form rows keep working)
+  /// CONTACT / SOLUTION / SCHOOL / PARTNER / PRODUCT
+  kind         String? @db.VarChar(12)
+  organisation String? @db.VarChar(160)
+  /// what it is about: the solution, the partnership type or the product
+  topic        String? @db.VarChar(80)
+  /// the website page / button the visitor came from
+  page         String? @db.VarChar(80)
+  /// set when staff turn the request into a (possible) partner
+  partnerId    String?
+
   ipAddress String?
   userAgent String?
 

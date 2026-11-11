@@ -30,6 +30,9 @@ import {
   RotateCcw,
 } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { notify } from '@/lib/notify'
+import { KIND_LABEL, REQUEST_KINDS, type RequestKind } from '@/lib/site/request-rules'
+import { useMyPermissions } from '@/hooks/use-my-permissions'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +46,11 @@ interface Inquiry {
   status: string
   adminReply: string | null
   createdAt: string
+  kind: string | null
+  organisation: string | null
+  topic: string | null
+  page: string | null
+  partnerId: string | null
 }
 
 interface StaffApp {
@@ -249,12 +257,26 @@ export default function LeadsPage() {
 function InquiriesTable({ searchQuery, statusFilter, page, setPage }: {
   searchQuery: string; statusFilter: string; page: number; setPage: (p: number) => void
 }) {
+  const { locale } = useI18n()
+  const { can } = useMyPermissions()
+  const [kind, setKind] = useState('ALL')
   const params = new URLSearchParams({ page: String(page), limit: '20' })
   if (statusFilter !== 'ALL') params.set('status', statusFilter)
   if (searchQuery) params.set('q', searchQuery)
+  if (kind !== 'ALL') params.set('kind', kind)
+
+  const makePartner = async (id: string) => {
+    const res = await fetch(`/api/landing/inquiries/${id}/partner`, { method: 'POST' })
+    const json = await res.json().catch(() => null)
+    if (!res.ok || !json?.success) { notify.error(json?.error?.message ?? L('Could not create the partner', 'معرفتش أعمل الشريك')); return }
+    notify.success(json.data.existing ? L('Linked to the partner that already exists', 'اتربط بالشريك الموجود') : L('Possible partner created (stopped until a deal)', 'اتعمل شريك محتمل (موقوف لحد ما نتفق)'))
+    refetch()
+  }
+  const waLink = (phone: string) => `https://wa.me/${phone.startsWith('+') ? phone.slice(1) : phone.startsWith('0') ? `2${phone}` : phone}`
+  const kindName = (k: string | null) => (k && k in KIND_LABEL ? (locale === 'ar' ? KIND_LABEL[k as RequestKind].ar : KIND_LABEL[k as RequestKind].en) : L('Old contact form', 'فورم التواصل القديم'))
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['inquiries', page, statusFilter, searchQuery],
+    queryKey: ['inquiries', page, statusFilter, searchQuery, kind],
     queryFn: () => fetchPaginatedApi<Inquiry>(`/api/landing/inquiries?${params}`),
   })
 
@@ -276,23 +298,34 @@ function InquiriesTable({ searchQuery, statusFilter, page, setPage }: {
     return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
   }
 
+  const kindFilter = (
+    <div className="flex flex-wrap gap-1.5 mb-3">
+      {(['ALL', ...REQUEST_KINDS, 'OLD'] as string[]).map((k) => (
+        <button key={k} type="button" onClick={() => { setKind(k); setPage(1) }} className={`rounded-full border px-3 py-1 text-xs font-semibold ${kind === k ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}>
+          {k === 'ALL' ? L('All', 'الكل') : kindName(k === 'OLD' ? null : k)}
+        </button>
+      ))}
+    </div>
+  )
+
   if (inquiries.length === 0) {
-    return (
+    return (<>{kindFilter}
       <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
         <Inbox className="w-12 h-12 mx-auto mb-3 text-gray-300" />
         <p className="font-semibold">{L('No inquiries found', 'مفيش استفسارات')}</p>
         <p className="text-sm mt-1">{L('Visitor inquiries from the contact form will appear here.', 'استفسارات الزوار من فورم التواصل هتظهر هنا.')}</p>
-      </div>
+      </div></>
     )
   }
 
-  return (
+  return (<>{kindFilter}
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Name', 'الاسم')}</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Request', 'الطلب')}</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Phone', 'التليفون')}</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">{L('Message', 'الرسالة')}</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-600">{L('Status', 'الحالة')}</th>
@@ -305,7 +338,13 @@ function InquiriesTable({ searchQuery, statusFilter, page, setPage }: {
               <tr key={inq.id} className="hover:bg-gray-50/50">
                 <td className="px-4 py-3">
                   <p className="font-medium text-gray-900">{inq.name}</p>
+                  {inq.organisation && <p className="text-xs font-semibold text-gray-700">{inq.organisation}</p>}
                   {inq.email && <p className="text-xs text-gray-500">{inq.email}</p>}
+                </td>
+                <td className="px-4 py-3">
+                  <span className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-800">{kindName(inq.kind)}</span>
+                  {inq.topic && <p className="mt-1 text-xs text-gray-600">{inq.topic}</p>}
+                  {inq.page && <p className="text-[11px] text-gray-400">{L('from', 'من')}: {inq.page}</p>}
                 </td>
                 <td className="px-4 py-3 text-gray-700">
                   <a href={`tel:${inq.phone}`} className="hover:text-blue-600">{inq.phone}</a>
@@ -315,6 +354,12 @@ function InquiriesTable({ searchQuery, statusFilter, page, setPage }: {
                 <td className="px-4 py-3 text-gray-500 text-xs">{new Date(inq.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-1">
+                    <a href={waLink(inq.phone)} target="_blank" rel="noopener noreferrer" className="rounded-md px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-50" title={L('Reply on WhatsApp', 'رد على الواتساب')}>WhatsApp</a>
+                    {inq.partnerId ? (
+                      <a href={`/dashboard/partners/${inq.partnerId}`} className="rounded-md px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-50">{L('Partner', 'الشريك')}</a>
+                    ) : inq.kind && ['SCHOOL', 'PARTNER', 'SOLUTION'].includes(inq.kind) && can('partners', 'create') ? (
+                      <button type="button" onClick={() => makePartner(inq.id)} className="rounded-md px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-50">{L('Make a partner', 'اعمله شريك')}</button>
+                    ) : null}
                     {inq.status !== 'RESOLVED' && inq.status !== 'SPAM' && (
                       <button
                         onClick={() => handleAction(inq.id, 'resolve')}
@@ -361,7 +406,7 @@ function InquiriesTable({ searchQuery, statusFilter, page, setPage }: {
           </button>
         </div>
       )}
-    </div>
+    </div></>
   )
 }
 

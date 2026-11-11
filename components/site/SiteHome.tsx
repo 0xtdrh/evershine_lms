@@ -10,7 +10,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { I18nProvider, useI18n } from '@/lib/i18n/client'
-import { SITE_CONTENT as C, visible, type Bi, type Card, type MediaCard } from '@/lib/site/content'
+import { visible, type Bi, type Card, type MediaCard, type SiteContent } from '@/lib/site/content'
+import { RequestForm, type FormOpen } from './RequestForm'
 import { shownStats, type SiteStats } from '@/lib/site/stats-shared'
 
 const ICONS: Record<string, string> = {
@@ -100,7 +101,7 @@ function Sample({ on }: { on?: boolean }) {
   return on ? <span className="tns-sample">{locale === 'ar' ? 'مثال' : 'Example'}</span> : null
 }
 
-function View({ stats, preview }: { stats: SiteStats | null; preview: boolean }) {
+function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; preview: boolean }) {
   const { locale, setLocale } = useI18n()
   const t = (x: Bi) => (locale === 'ar' ? x.ar : x.en)
   const arr = locale === 'ar' ? '←' : '→'
@@ -108,6 +109,7 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
   const [mounted, setMounted] = useState(false)
   const [menu, setMenu] = useState(false)
   const [cert, setCert] = useState('')
+  const [form, setForm] = useState<FormOpen | null>(null)
   const router = useRouter()
   useEffect(() => setMounted(true), [])
   useReveal()
@@ -118,7 +120,8 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
   const products = visible(C.products.items, preview)
   const media = visible(C.media.items, preview)
   const events = visible(C.events.items, preview)
-  const wa = C.contact.whatsapp ? `https://wa.me/${C.contact.whatsapp.replace(/\D/g, '')}` : ''
+  const waDigits = C.contact.whatsapp.replace(/\D/g, '').replace(/^00/, '')
+  const wa = waDigits ? `https://wa.me/${waDigits.startsWith('0') ? `2${waDigits}` : waDigits}` : ''
   const dark = mounted && resolvedTheme === 'dark'
 
   const cards = (items: Card[], d = false) => items.filter((c) => c.show !== false).map((c, i) => (
@@ -129,13 +132,14 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
       {c.href ? <a className="more flip" href={c.href}>{locale === 'ar' ? 'ادخل القسم' : 'Explore'} {arr}</a> : null}
     </div>
   ))
-  const mediaCards = (items: MediaCard[], label?: (m: MediaCard) => string) => items.map((m, i) => (
+  const mediaCards = (items: MediaCard[], label?: (m: MediaCard) => string, order?: boolean) => items.map((m, i) => (
     <div key={i} className="tns-card tns-reveal" style={{ padding: 14 }}>
       <Sample on={m.sample} />
       <div className="tns-thumb"><Icon name={m.kind === 'video' ? 'play' : m.kind === 'competition' ? 'trophy' : m.kind === 'product' ? 'layers' : m.kind === 'event' ? 'route' : 'screen'} size={34} /></div>
       {label ? <span className="tns-tag" style={{ marginTop: 12 }}>{label(m)}</span> : null}
       <h3 style={{ fontSize: 17, marginTop: 10 }}>{t(m.title)}</h3>
       <p style={{ fontSize: 14 }}>{t(m.meta)}</p>
+      {order ? <button type="button" className="tns-btn ghost sm" style={{ marginTop: 12 }} onClick={() => setForm({ kind: 'PRODUCT', page: 'products', topic: t(m.title) })}>{locale === 'ar' ? 'اطلب المنتج' : 'Order'}</button> : null}
     </div>
   ))
 
@@ -159,7 +163,7 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">{dark ? <path d="M12 4V2M12 22v-2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" /> : <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />}</svg>
             </button>
             <a href="/login" className="tns-btn ghost sm hide-sm">{locale === 'ar' ? 'دخول' : 'Sign in'}</a>
-            <a href="#contact" className="tns-btn primary sm hide-sm">{locale === 'ar' ? 'تواصل معانا' : 'Contact us'}</a>
+            <button type="button" className="tns-btn primary sm hide-sm" onClick={() => setForm({ kind: 'CONTACT', page: 'header' })}>{locale === 'ar' ? 'تواصل معانا' : 'Contact us'}</button>
             <button type="button" className="tns-icon-btn tns-burger" onClick={() => setMenu(!menu)} aria-expanded={menu} aria-label={locale === 'ar' ? 'القائمة' : 'Menu'}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d={menu ? 'M6 6l12 12M18 6L6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg>
             </button>
@@ -169,7 +173,7 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
           {nav.map((n) => <a key={n.href} className="item" href={n.href} onClick={() => setMenu(false)}>{t(n.label)}</a>)}
           <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
             <a href="/login" className="tns-btn ghost sm" style={{ flex: 1 }}>{locale === 'ar' ? 'دخول' : 'Sign in'}</a>
-            <a href="#contact" className="tns-btn primary sm" style={{ flex: 1 }} onClick={() => setMenu(false)}>{locale === 'ar' ? 'تواصل معانا' : 'Contact us'}</a>
+            <button type="button" className="tns-btn primary sm" style={{ flex: 1 }} onClick={() => { setMenu(false); setForm({ kind: 'CONTACT', page: 'menu' }) }}>{locale === 'ar' ? 'تواصل معانا' : 'Contact us'}</button>
           </div>
         </div>
       </header>
@@ -187,7 +191,7 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
                 <p className="text">{t(C.hero.text)}</p>
                 <div className="btns">
                   <a href="#divisions" className="tns-btn brand">{t(C.hero.primary)}</a>
-                  <a href="#contact" className="tns-btn ghost">{t(C.hero.secondary)}</a>
+                  <button type="button" className="tns-btn ghost" onClick={() => setForm({ kind: 'CONTACT', page: 'hero' })}>{t(C.hero.secondary)}</button>
                 </div>
               </div>
               <div className="media">
@@ -283,7 +287,7 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
                 <span className="tns-tag">{t(C.education.schools.tag!)}</span>
                 <h3 style={{ fontSize: 23 }}>{t(C.education.schools.title)}</h3>
                 <p>{t(C.education.schools.text)}</p>
-                <a className="tns-btn brand" style={{ marginTop: 18 }} href={C.education.schools.href}>{t(C.education.schools.cta!)}</a>
+                <button type="button" className="tns-btn brand" style={{ marginTop: 18 }} onClick={() => setForm({ kind: 'SCHOOL', page: 'education' })}>{t(C.education.schools.cta!)}</button>
               </div>
             </div>
             <h3 style={{ fontSize: 21, margin: '48px 0 0' }}>{locale === 'ar' ? 'رحلة الطالب مع TechNova' : 'The student journey'}</h3>
@@ -319,7 +323,7 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
             <h2 className="tns-h2">{t(C.solutions.title)}</h2>
             <p className="tns-lead">{t(C.solutions.text)}</p>
             <div className="tns-grid" style={{ ['--min' as string]: '260px' }}>{cards(C.solutions.items, true)}</div>
-            <div style={{ marginTop: 30 }}><a href="#contact" className="tns-btn primary">{t(C.solutions.cta)}</a></div>
+            <div style={{ marginTop: 30 }}><button type="button" className="tns-btn primary" onClick={() => setForm({ kind: 'SOLUTION', page: 'solutions' })}>{t(C.solutions.cta)}</button></div>
           </div>
         </section>
       ) : null}
@@ -374,7 +378,7 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
             <p className="tns-kick">Products</p>
             <h2 className="tns-h2">{t(C.products.title)}</h2>
             <p className="tns-lead">{t(C.products.text)}</p>
-            <div className="tns-grid" style={{ ['--min' as string]: '240px' }}>{mediaCards(products, (m) => t((m as MediaCard & { type: Bi }).type))}</div>
+            <div className="tns-grid" style={{ ['--min' as string]: '240px' }}>{mediaCards(products, (m) => t((m as MediaCard & { type: Bi }).type), true)}</div>
           </div>
         </section>
       ) : null}
@@ -390,7 +394,7 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
             {visible(C.partners.places, preview).length ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 24 }}>{visible(C.partners.places, preview).map((p, i) => <span key={i} className="tns-chip">{t(p.name)}</span>)}</div>
             ) : null}
-            <div style={{ marginTop: 28 }}><a href="#contact" className="tns-btn brand">{locale === 'ar' ? 'قدّم طلب شراكة' : 'Apply for a partnership'}</a></div>
+            <div style={{ marginTop: 28 }}><button type="button" className="tns-btn brand" onClick={() => setForm({ kind: 'PARTNER', page: 'partners' })}>{locale === 'ar' ? 'قدّم طلب شراكة' : 'Apply for a partnership'}</button></div>
           </div>
         </section>
       ) : null}
@@ -426,12 +430,13 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
               <h2 className="tns-h2">{t(C.cta.title)}</h2>
               <p className="tns-lead" style={{ margin: '0 auto', color: '#cfe0ec' }}>{t(C.cta.text)}</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginTop: 26 }}>
-                {wa ? <a href={wa} target="_blank" rel="noopener noreferrer" className="tns-btn primary">{locale === 'ar' ? 'كلّمنا واتساب' : 'WhatsApp us'}</a> : null}
+                <button type="button" className="tns-btn primary" onClick={() => setForm({ kind: 'CONTACT', page: 'contact' })}>{locale === 'ar' ? 'ابعتلنا رسالة' : 'Send us a message'}</button>
+                {wa ? <a href={wa} target="_blank" rel="noopener noreferrer" className="tns-btn ghost" style={{ borderColor: '#5d8bb0', color: '#fff' }}>{locale === 'ar' ? 'كلّمنا واتساب' : 'WhatsApp us'}</a> : null}
                 {C.contact.phone ? <a href={`tel:${C.contact.phone}`} className="tns-btn ghost ghost-d" style={{ borderColor: '#5d8bb0', color: '#fff' }}>{C.contact.phone}</a> : null}
                 {C.contact.email ? <a href={`mailto:${C.contact.email}`} className="tns-btn ghost" style={{ borderColor: '#5d8bb0', color: '#fff' }}>{C.contact.email}</a> : null}
               </div>
               <p style={{ margin: '18px 0 0', color: '#cfe0ec', fontSize: 15 }}>{t(C.contact.address)}</p>
-              {preview && !wa ? <p style={{ margin: '10px 0 0', color: '#fff1d6', fontSize: 13 }}>{locale === 'ar' ? 'رقم الواتساب والتليفون والإيميل لسه مش متسجلين. وزرار «احجز حصة تجريبية» هييجي بعد خطوات التسجيل.' : 'WhatsApp, phone and email are not set yet. “Book a trial” comes after the registration process.'}</p> : null}
+              {preview && !wa ? <p style={{ margin: '10px 0 0', color: '#fff1d6', fontSize: 13 }}>{locale === 'ar' ? 'رقم الواتساب والتليفون والإيميل بيتكتبوا من شاشة «الموقع» في السيستم. وزرار «احجز حصة تجريبية» هييجي بعد خطوات التسجيل.' : 'WhatsApp, phone and email are set in the system ("Website" screen). “Book a trial” comes after the registration process.'}</p> : null}
             </div>
           </div>
         </div>
@@ -447,7 +452,7 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
             </div>
             <div><h4>{locale === 'ar' ? 'استكشف' : 'Explore'}</h4>{nav.slice(0, 4).map((n) => <a key={n.href} href={n.href}>{t(n.label)}</a>)}</div>
             <div><h4>{locale === 'ar' ? 'اكتشف' : 'Discover'}</h4>{nav.slice(4).map((n) => <a key={n.href} href={n.href}>{t(n.label)}</a>)}<a href="#verify">{locale === 'ar' ? 'تأكّد من شهادة' : 'Check a certificate'}</a></div>
-            <div><h4>{locale === 'ar' ? 'تواصل' : 'Connect'}</h4><a href="#contact">{locale === 'ar' ? 'تواصل معانا' : 'Contact us'}</a><a href="#partners">{locale === 'ar' ? 'الشراكات' : 'Partnerships'}</a><a href="/admissions/apply">{locale === 'ar' ? 'التقديم أونلاين' : 'Apply online'}</a></div>
+            <div><h4>{locale === 'ar' ? 'تواصل' : 'Connect'}</h4><a href="#contact" onClick={(e) => { e.preventDefault(); setForm({ kind: 'CONTACT', page: 'footer' }) }}>{locale === 'ar' ? 'تواصل معانا' : 'Contact us'}</a><a href="#partners">{locale === 'ar' ? 'الشراكات' : 'Partnerships'}</a><a href="/admissions/apply">{locale === 'ar' ? 'التقديم أونلاين' : 'Apply online'}</a></div>
           </div>
           <div className="bottom">
             <span className="en">© {new Date().getFullYear()} TechNova</span>
@@ -456,15 +461,16 @@ function View({ stats, preview }: { stats: SiteStats | null; preview: boolean })
         </div>
       </footer>
 
+      {form ? <RequestForm open={form} onClose={() => setForm(null)} solutions={C.solutions.items.filter((x) => x.show !== false).map((x) => t(x.title))} partnerKinds={C.partners.kinds.filter((x) => x.show !== false).map((x) => t(x.title))} /> : null}
       {wa ? <a className="tns-wa" href={wa} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.3-4.4A9 9 0 1 1 21 12z" /></svg></a> : null}
     </div>
   )
 }
 
-export default function SiteHome({ stats, preview, fontClass }: { stats: SiteStats | null; preview: boolean; fontClass: string }) {
+export default function SiteHome({ content, stats, preview, fontClass }: { content: SiteContent; stats: SiteStats | null; preview: boolean; fontClass: string }) {
   return (
     <div className={fontClass}>
-      <I18nProvider defaults={{ staff: 'ar', portal: 'ar' }}><View stats={stats} preview={preview} /></I18nProvider>
+      <I18nProvider defaults={{ staff: 'ar', portal: 'ar' }}><View C={content} stats={stats} preview={preview} /></I18nProvider>
     </div>
   )
 }
