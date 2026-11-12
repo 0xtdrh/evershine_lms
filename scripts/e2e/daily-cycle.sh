@@ -3229,6 +3229,22 @@ check "hiding the product takes it off the website" "$(api PATCH "/api/website/i
 check "deleting an item removes it" "$(api DELETE "/api/website/items/$IDA" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM SiteItem WHERE id='$IDA'")" "True/0"
 
 echo
+echo "== 98. Website pages: education, solutions (+ each), products, achievements (+ each), media, partners, about, certificate check (x01 batch 6, 2026-11-12)"
+P98=""
+for p in education solutions products achievements media partners about verify; do P98="$P98$(curl -s -o /dev/null -w '%{http_code}' "$B/$p") "; done
+check "every website page opens (on this computer)" "$P98" "200 200 200 200 200 200 200 200 "
+check "…but on a real domain they are still locked (404) while the site is a preview" "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: technova.example' "$B/about")/$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: technova.example' "$B/solutions/smart-hotels-and-resorts")" "404/404"
+check "a certificate check link stays open everywhere" "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: technova.example' "$B/verify/TN-CERT-2026-00001")" "200"
+check "each solution has its own page; an unknown one shows 'not found' (kept out of Google)" "$(curl -s -o /dev/null -w '%{http_code}' "$B/solutions/smart-hotels-and-resorts")/$(curl -s "$B/solutions/no-such-thing" | grep -o 'NEXT_HTTP_ERROR_FALLBACK;404' | head -1)" "200/NEXT_HTTP_ERROR_FALLBACK;404"
+HM98=$(curl -s "$B/new-home")
+check "the menu and the home page link to the pages" "$(echo "$HM98" | grep -o 'href="/education"' | head -1)/$(echo "$HM98" | grep -o 'href="/solutions/smart-hotels-and-resorts"' | head -1)" 'href="/education"/href="/solutions/smart-hotels-and-resorts"'
+I98=$(api POST /api/website/items '{"kind":"ACHIEVEMENT","category":"PROJECT","titleEn":"E2E Reef Guard","titleAr":"E2E Reef Guard","textEn":"A sensor that watches the reef","videoUrl":"https://youtu.be/abcDEF12345"}' | jq_ "d['data']['id']")
+AP98=$(curl -s "$B/achievements/$I98")
+check "an achievement has its own page with its video" "$(echo "$AP98" | grep -c 'E2E Reef Guard' | sed 's/^[1-9][0-9]*$/yes/')/$(echo "$AP98" | grep -o 'youtube-nocookie.com/embed/abcDEF12345' | head -1)" "yes/youtube-nocookie.com/embed/abcDEF12345"
+check "…the achievements page links to it; an unknown one shows 'not found'" "$(curl -s "$B/achievements" | grep -o "href=\"/achievements/$I98\"" | head -1)/$(curl -s "$B/achievements/nope" | grep -o 'NEXT_HTTP_ERROR_FALLBACK;404' | head -1)" "href=\"/achievements/$I98\"/NEXT_HTTP_ERROR_FALLBACK;404"
+api DELETE "/api/website/items/$I98" >/dev/null
+
+echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
 [ $FAIL -eq 0 ]

@@ -15,6 +15,7 @@ import { RequestForm, type FormOpen } from './RequestForm'
 import { CookieNotice } from './CookieNotice'
 import { CATEGORIES, youtubeEmbed } from '@/lib/site/items'
 import type { PublicItem } from '@/lib/site/items-store'
+import { PAGE_PATH, PAGE_SECTIONS, PAGE_TITLE, SITE_HOME, pageHref, pageOf, slugify, type SitePage } from '@/lib/site/pages'
 import { track, useSiteTracker } from './tracker'
 import { shownStats, type SiteStats } from '@/lib/site/stats-shared'
 
@@ -133,7 +134,9 @@ function Sample({ on }: { on?: boolean }) {
   return on ? <span className="tns-sample">{locale === 'ar' ? 'مثال' : 'Example'}</span> : null
 }
 
-function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[]; stats: SiteStats | null; preview: boolean }) {
+export interface SiteDetail { solution?: Card; item?: PublicItem }
+
+function View({ C, items, stats, preview, page, detail }: { C: SiteContent; items: PublicItem[]; stats: SiteStats | null; preview: boolean; page: SitePage; detail?: SiteDetail }) {
   const { locale, setLocale } = useI18n()
   const t = (x: Bi) => (locale === 'ar' ? x.ar : x.en)
   const arr = locale === 'ar' ? '←' : '→'
@@ -166,7 +169,17 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
   }, [C.nav])
   useSiteTracker(locale)
 
-  const nav = visible(C.nav, preview)
+  const nav = visible(C.nav, preview).map((n) => ({ ...n, href: pageHref(n.href) }))
+  const home = page === 'home'
+  const on = (k: string) => PAGE_SECTIONS[page].includes(k)
+  const [cat, setCat] = useState('ALL')
+  const listPage = page === 'products' || page === 'achievements' || page === 'media'
+  const head = (title: Bi, key: string) => (
+    <div className="tns-head-row">
+      <h2 className="tns-h2">{t(title)}</h2>
+      {home && PAGE_PATH[key] ? <a className="tns-more" href={PAGE_PATH[key]}>{locale === 'ar' ? 'اعرف أكتر' : 'Learn more'} {arr}</a> : null}
+    </div>
+  )
   const numbers = shownStats(C.stats, stats)
   const real = (k: PublicItem['kind']) => items.filter((i) => i.kind === k)
   const realAchievements = real('ACHIEVEMENT')
@@ -180,12 +193,12 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
   const wa = waDigits ? `https://wa.me/${waDigits.startsWith('0') ? `2${waDigits}` : waDigits}` : ''
   const dark = mounted && resolvedTheme === 'dark'
 
-  const cards = (items: Card[], d = false) => items.filter((c) => c.show !== false).map((c, i) => (
+  const cards = (items: Card[], d = false, linkOf?: (c: Card) => string) => items.filter((c) => c.show !== false).map((c, i) => (
     <div key={i} className={`tns-card tns-reveal${d ? ' d' : ''}`} style={{ ['--d' as string]: `${Math.min(i, 8) * 70}ms` }}>
       {c.icon ? <span className="tns-ico"><Icon name={c.icon} /></span> : null}
       <h3>{t(c.title)}</h3>
       <p>{t(c.text)}</p>
-      {c.href ? <a className="more flip" href={c.href}>{locale === 'ar' ? 'ادخل القسم' : 'Explore'} {arr}</a> : null}
+      {linkOf ? <a className="more flip" href={linkOf(c)}>{locale === 'ar' ? 'التفاصيل' : 'Details'} {arr}</a> : c.href ? <a className="more flip" href={pageHref(c.href)}>{locale === 'ar' ? 'ادخل القسم' : 'Explore'} {arr}</a> : null}
     </div>
   ))
   const thumbOf = (it: PublicItem) => {
@@ -193,7 +206,7 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
     const yt = youtubeEmbed(it.videoUrl)
     return yt ? `https://img.youtube.com/vi/${yt.split('/').pop()}/hqdefault.jpg` : null
   }
-  const itemCards = (list: PublicItem[], kind: PublicItem['kind']) => list.slice(0, kind === 'MEDIA' ? 6 : 8).map((it, i) => {
+  const itemCards = (all: PublicItem[], kind: PublicItem['kind']) => (home ? all.slice(0, kind === 'MEDIA' ? 6 : 8) : all.filter((x) => cat === 'ALL' || x.category === cat)).map((it, i) => {
     const img = thumbOf(it)
     const href = it.videoUrl || it.linkUrl
     const cat = (CATEGORIES[kind] as Record<string, Bi>)[it.category]
@@ -219,10 +232,22 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
             {it.inStock ? <button type="button" className="tns-btn ghost sm" onClick={() => setForm({ kind: 'PRODUCT', page: 'products', topic: t(it.title) })}>{locale === 'ar' ? 'اطلب المنتج' : 'Order'}</button>
               : <span className="tns-tag" style={{ background: '#fdecec', color: '#9b1c1c' }}>{locale === 'ar' ? 'مش متاح دلوقتي' : 'Not available now'}</span>}
           </div>
-        ) : href ? <a className="more flip" href={href} target="_blank" rel="noopener noreferrer">{it.videoUrl ? (locale === 'ar' ? 'شوف الفيديو' : 'Watch') : locale === 'ar' ? 'اقرأ أكتر' : 'Read more'} {arr}</a> : null}
+        ) : kind === 'ACHIEVEMENT' ? <a className="more flip" href={`/achievements/${it.id}`}>{locale === 'ar' ? 'التفاصيل' : 'Details'} {arr}</a>
+          : href ? <a className="more flip" href={href} target="_blank" rel="noopener noreferrer">{it.videoUrl ? (locale === 'ar' ? 'شوف الفيديو' : 'Watch') : locale === 'ar' ? 'اقرأ أكتر' : 'Read more'} {arr}</a> : null}
       </div>
     )
   })
+  const filterChips = (kind: PublicItem['kind'], list: PublicItem[]) => {
+    if (!listPage) return null
+    const used = [...new Set(list.map((x) => x.category))]
+    if (used.length < 2) return null
+    const names = CATEGORIES[kind] as Record<string, Bi>
+    return (
+      <div className="tns-filter" role="group" aria-label={locale === 'ar' ? 'فلتر' : 'Filter'}>
+        {['ALL', ...used].map((k) => <button key={k} type="button" className={cat === k ? 'on' : ''} onClick={() => setCat(k)}>{k === 'ALL' ? (locale === 'ar' ? 'الكل' : 'All') : names[k] ? t(names[k]) : k}</button>)}
+      </div>
+    )
+  }
   const mediaCards = (items: MediaCard[], label?: (m: MediaCard) => string, order?: boolean) => items.map((m, i) => (
     <div key={i} className="tns-card tns-reveal" style={{ padding: 14, ['--d' as string]: `${Math.min(i, 8) * 70}ms` }}>
       <Sample on={m.sample} />
@@ -241,12 +266,12 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
       {/* 01 header */}
       <header className={`tns-head${scrolled ? ' scrolled' : ''}`}>
         <div className="tns-wrap row">
-          <a href="#top" className="tns-logo" aria-label="TechNova">
+          <a href={SITE_HOME} className="tns-logo" aria-label="TechNova">
             <span className="tns-mark">TN</span>
             <span className="tns-word">Tech<b>Nova</b></span>
           </a>
           <nav className="tns-nav" aria-label={locale === 'ar' ? 'القائمة الرئيسية' : 'Main menu'}>
-            {nav.map((n) => <a key={n.href} href={n.href} className={active && n.href === `#${active}` ? 'on' : undefined} aria-current={active && n.href === `#${active}` ? 'true' : undefined} onClick={() => track('NAV', n.label.en)}>{t(n.label)}</a>)}
+            {nav.map((n) => <a key={n.href} href={n.href} className={pageOf(n.href) === page || (page === 'solution' && n.href === '/solutions') || (page === 'achievement' && n.href === '/achievements') ? 'on' : undefined} aria-current={pageOf(n.href) === page ? 'page' : undefined} onClick={() => track('NAV', n.label.en)}>{t(n.label)}</a>)}
           </nav>
           <div className="tns-tools">
             <button type="button" className="tns-icon-btn en" onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')} aria-label={locale === 'ar' ? 'English' : 'العربية'}>{locale === 'ar' ? 'EN' : 'ع'}</button>
@@ -269,8 +294,73 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
         </div>
       </header>
 
+      {!home ? (
+        <section className="tns-band">
+          <Circuit />
+          <div className="tns-wrap" style={{ position: 'relative' }}>
+            <nav className="crumbs" aria-label={locale === 'ar' ? 'مكانك' : 'Breadcrumb'}>
+              <a href={SITE_HOME}>{locale === 'ar' ? 'الرئيسية' : 'Home'}</a> <span aria-hidden="true">/</span>{' '}
+              {page === 'solution' ? <><a href="/solutions">{t(PAGE_TITLE.solutions)}</a> <span aria-hidden="true">/</span> </> : null}
+              {page === 'achievement' ? <><a href="/achievements">{t(PAGE_TITLE.achievements)}</a> <span aria-hidden="true">/</span> </> : null}
+            </nav>
+            <h1>{page === 'solution' && detail?.solution ? t(detail.solution.title) : page === 'achievement' && detail?.item ? t(detail.item.title) : t(PAGE_TITLE[page as keyof typeof PAGE_TITLE])}</h1>
+          </div>
+        </section>
+      ) : null}
+
+      {page === 'solution' && detail?.solution ? (
+        <section className="tns-sec">
+          <div className="tns-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 32, alignItems: 'flex-start' }}>
+            <div style={{ flex: '1 1 420px', minWidth: 0 }}>
+              <span className="tns-ico" style={{ width: 64, height: 64 }}><Icon name={detail.solution.icon ?? 'chip'} size={30} /></span>
+              <p className="tns-lead" style={{ marginTop: 18 }}>{t(detail.solution.text)}</p>
+              <p className="tns-lead" style={{ marginTop: 10 }}>{t(C.solutions.text)}</p>
+              <button type="button" className="tns-btn brand" style={{ marginTop: 24 }} onClick={() => setForm({ kind: 'SOLUTION', page: `solution:${slugify(detail.solution!.title.en)}`, topic: t(detail.solution!.title) })}>{t(C.solutions.cta)}</button>
+            </div>
+            <div className="tns-card" style={{ flex: '1 1 340px', minWidth: 0 }}>
+              <h3 style={{ marginTop: 0 }}>{locale === 'ar' ? 'إزاي بنشتغل' : 'How we work'}</h3>
+              <ol className="tns-steps">
+                {[['We listen to the problem', 'بنسمع المشكلة'], ['We visit and assess', 'بنزور ونقيّم'], ['We propose the solution and its price', 'بنقترح الحل وسعره'], ['We build it and follow up', 'بننفّذ ونتابع']].map(([en, ar], i) => <li key={i}><b className="en">0{i + 1}</b>{locale === 'ar' ? ar : en}</li>)}
+              </ol>
+            </div>
+          </div>
+          <div className="tns-wrap" style={{ marginTop: 56 }}>
+            <h2 className="tns-h2" style={{ fontSize: 24 }}>{locale === 'ar' ? 'حلول تانية' : 'Other solutions'}</h2>
+            <div className="tns-grid" style={{ ['--min' as string]: '240px' }}>{cards(C.solutions.items.filter((x) => x.title.en !== detail.solution!.title.en), false, (c) => `/solutions/${slugify(c.title.en)}`)}</div>
+          </div>
+        </section>
+      ) : null}
+
+      {page === 'achievement' && detail?.item ? (() => {
+        const it = detail.item
+        const yt = youtubeEmbed(it.videoUrl)
+        const cat = (CATEGORIES.ACHIEVEMENT as Record<string, Bi>)[it.category]
+        return (
+          <section className="tns-sec">
+            <div className="tns-wrap" style={{ maxWidth: 900 }}>
+              {yt ? <div className="tns-embed"><iframe src={yt} title={t(it.title)} loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
+                : it.videoUrl ? <video className="tns-embed" src={it.videoUrl} controls playsInline preload="metadata" />
+                : it.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="tns-embed" src={it.imageUrl} alt="" />
+                ) : null}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 20 }}>
+                {cat ? <span className="tns-tag">{t(cat)}</span> : null}
+                {it.date ? <span className="tns-tag en" style={{ background: 'transparent', color: 'var(--muted)' }}>{it.date}</span> : null}
+              </div>
+              {t(it.meta) ? <p className="tns-lead" style={{ marginTop: 12, fontWeight: 600 }}>{t(it.meta)}</p> : null}
+              {t(it.text) ? <p className="tns-lead" style={{ marginTop: 12, whiteSpace: 'pre-line' }}>{t(it.text)}</p> : null}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 24 }}>
+                {it.linkUrl ? <a className="tns-btn brand" href={it.linkUrl} target="_blank" rel="noopener noreferrer">{locale === 'ar' ? 'اعرف أكتر' : 'Learn more'}</a> : null}
+                <a className="tns-btn ghost" href="/achievements">{locale === 'ar' ? 'كل الإنجازات' : 'All achievements'}</a>
+              </div>
+            </div>
+          </section>
+        )
+      })() : null}
+
       {/* 02 hero + audience */}
-      {C.hero.show !== false ? (
+      {on('hero') && (C.hero.show !== false) ? (
         <section id="top" className="tns-hero">
           <div className="shape" aria-hidden="true"><i className="s1" /><i className="s2" /><i className="s3" /></div>
           <div className="tns-wrap">
@@ -304,7 +394,7 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
             </div>
             <div className="tns-aud">
               {visible(C.audience, preview).map((a, i) => (
-                <a key={i} href={a.href} onClick={() => track('AUDIENCE', a.title.en)}>
+                <a key={i} href={pageHref(a.href)} onClick={() => track('AUDIENCE', a.title.en)}>
                   <span className="n">0{i + 1}</span>
                   <strong>{t(a.title)}</strong>
                   <span className="t">{t(a.text)}</span>
@@ -317,7 +407,7 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
       ) : null}
 
       {/* 02b field tiles */}
-      {C.fields.show !== false && visible(C.fields.items, preview).length ? (
+      {on('fields') && (C.fields.show !== false && visible(C.fields.items, preview).length) ? (
         <section className="tns-fields-sec">
           <div className="tns-wrap">
             <h2 className="tns-h2" style={{ fontSize: 'clamp(22px, 2.6vw, 30px)', textAlign: 'center' }}>{t(C.fields.title)}</h2>
@@ -335,7 +425,7 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
       ) : null}
 
       {/* 03 numbers */}
-      {numbers.length ? (
+      {on('numbers') && (numbers.length) ? (
         <section style={{ background: 'var(--surface)', borderBlock: '1px solid var(--line)' }}>
           <div className="tns-wrap tns-stats">
             {numbers.slice(0, 4).map(({ i, value }) => (
@@ -346,12 +436,12 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
       ) : null}
 
       {/* 04 about */}
-      {C.about.show !== false ? (
+      {on('about') && (C.about.show !== false) ? (
         <section id="about" className="tns-sec">
           <div className="tns-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 48, alignItems: 'center' }}>
             <div className="tns-reveal" style={{ flex: '1 1 440px', minWidth: 0 }}>
               <p className="tns-kick">Who we are · {locale === 'ar' ? 'مين إحنا' : 'TechNova'}</p>
-              <h2 className="tns-h2">{t(C.about.title)}</h2>
+              {head(C.about.title, 'about')}
               <p className="tns-lead">{t(C.about.text)}</p>
             </div>
             <div className="tns-chain tns-reveal" style={{ flex: '1 1 440px', minWidth: 0 }}>
@@ -367,7 +457,7 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
       ) : null}
 
       {/* 05 divisions */}
-      {C.divisions.show !== false ? (
+      {on('divisions') && (C.divisions.show !== false) ? (
         <section id="divisions" className="tns-sec alt">
           <div className="tns-wrap">
             <p className="tns-kick">Our divisions</p>
@@ -378,11 +468,11 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
       ) : null}
 
       {/* 06 education: families (B2C) + schools (B2B) + journey */}
-      {C.education.show !== false ? (
+      {on('education') && (C.education.show !== false) ? (
         <section id="education" className="tns-sec">
           <div className="tns-wrap">
             <p className="tns-kick">Education</p>
-            <h2 className="tns-h2">{t(C.education.title)}</h2>
+            {head(C.education.title, 'education')}
             <p className="tns-lead">{t(C.education.text)}</p>
             <div className="tns-grid" style={{ ['--min' as string]: '400px' }}>
               <div className="tns-card tns-reveal">
@@ -408,7 +498,7 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
       ) : null}
 
       {/* 07 curriculum quality */}
-      {C.curriculum.show !== false ? (
+      {on('curriculum') && (C.curriculum.show !== false) ? (
         <section id="curriculum" className="tns-sec alt">
           <div className="tns-wrap">
             <p className="tns-kick">Our curriculum</p>
@@ -424,21 +514,21 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
       ) : null}
 
       {/* 08 solutions (dark + circuit) */}
-      {C.solutions.show !== false ? (
+      {on('solutions') && (C.solutions.show !== false) ? (
         <section id="solutions" className="tns-sec dark tns-reveal">
           <Circuit />
           <div className="tns-wrap" style={{ position: 'relative' }}>
             <p className="tns-kick">Our solutions</p>
-            <h2 className="tns-h2">{t(C.solutions.title)}</h2>
+            {head(C.solutions.title, 'solutions')}
             <p className="tns-lead">{t(C.solutions.text)}</p>
-            <div className="tns-grid" style={{ ['--min' as string]: '260px' }}>{cards(C.solutions.items, true)}</div>
+            <div className="tns-grid" style={{ ['--min' as string]: '260px' }}>{cards(C.solutions.items, true, (c) => `/solutions/${slugify(c.title.en)}`)}</div>
             <div style={{ marginTop: 30 }}><button type="button" className="tns-btn primary" onClick={() => setForm({ kind: 'SOLUTION', page: 'solutions' })}>{t(C.solutions.cta)}</button></div>
           </div>
         </section>
       ) : null}
 
       {/* 09 why */}
-      {C.why.show !== false ? (
+      {on('why') && (C.why.show !== false) ? (
         <section className="tns-sec">
           <div className="tns-wrap">
             <p className="tns-kick">Why TechNova</p>
@@ -449,19 +539,20 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
       ) : null}
 
       {/* 10 achievements & projects */}
-      {C.achievements.show !== false && (achievements.length || realAchievements.length) ? (
+      {on('achievements') && (C.achievements.show !== false && (achievements.length || realAchievements.length)) ? (
         <section id="achievements" className="tns-sec alt">
           <div className="tns-wrap">
             <p className="tns-kick">Ideas in action</p>
-            <h2 className="tns-h2">{t(C.achievements.title)}</h2>
+            {head(C.achievements.title, 'achievements')}
             <p className="tns-lead">{t(C.achievements.text)}</p>
+            {filterChips('ACHIEVEMENT', realAchievements)}
             <div className="tns-grid" style={{ ['--min' as string]: '280px' }}>{realAchievements.length ? itemCards(realAchievements, 'ACHIEVEMENT') : mediaCards(achievements)}</div>
           </div>
         </section>
       ) : null}
 
       {/* 11 certificate check */}
-      {C.verify.show !== false ? (
+      {on('verify') && (C.verify.show !== false) ? (
         <section id="verify" className="tns-sec" style={{ paddingBlock: 64 }}>
           <div className="tns-wrap">
             <div className="tns-card tns-reveal" style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'center' }}>
@@ -481,23 +572,24 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
       ) : null}
 
       {/* 12 products */}
-      {C.products.show !== false && (products.length || realProducts.length) ? (
+      {on('products') && (C.products.show !== false && (products.length || realProducts.length)) ? (
         <section id="products" className="tns-sec alt">
           <div className="tns-wrap">
             <p className="tns-kick">Products</p>
-            <h2 className="tns-h2">{t(C.products.title)}</h2>
+            {head(C.products.title, 'products')}
             <p className="tns-lead">{t(C.products.text)}</p>
+            {filterChips('PRODUCT', realProducts)}
             <div className="tns-grid" style={{ ['--min' as string]: '240px' }}>{realProducts.length ? itemCards(realProducts, 'PRODUCT') : mediaCards(products, (m) => t((m as MediaCard & { type: Bi }).type), true)}</div>
           </div>
         </section>
       ) : null}
 
       {/* 13 partnerships */}
-      {C.partners.show !== false ? (
+      {on('partners') && (C.partners.show !== false) ? (
         <section id="partners" className="tns-sec">
           <div className="tns-wrap">
             <p className="tns-kick">Partnerships</p>
-            <h2 className="tns-h2">{t(C.partners.title)}</h2>
+            {head(C.partners.title, 'partners')}
             <p className="tns-lead">{t(C.partners.text)}</p>
             <div className="tns-grid" style={{ ['--min' as string]: '210px' }}>{cards(C.partners.kinds)}</div>
             {visible(C.partners.places, preview).length ? (
@@ -509,7 +601,7 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
       ) : null}
 
       {/* 14 events + media */}
-      {(C.events.show !== false && events.length) || (C.media.show !== false && (media.length || realMedia.length)) ? (
+      {on('media') && ((C.events.show !== false && events.length) || (C.media.show !== false && (media.length || realMedia.length))) ? (
         <section id="media" className="tns-sec alt">
           <div className="tns-wrap">
             {C.events.show !== false && events.length ? (
@@ -522,7 +614,8 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
             {C.media.show !== false && (media.length || realMedia.length) ? (
               <>
                 <p className="tns-kick">Media & news</p>
-                <h2 className="tns-h2">{t(C.media.title)}</h2>
+                {head(C.media.title, 'media')}
+                {filterChips('MEDIA', realMedia)}
                 <div className="tns-grid" style={{ ['--min' as string]: '280px' }}>{realMedia.length ? itemCards(realMedia, 'MEDIA') : mediaCards(media, (m) => t(m.meta))}</div>
               </>
             ) : null}
@@ -560,7 +653,7 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
               <p style={{ lineHeight: 1.8, fontSize: 14 }}>{locale === 'ar' ? 'شركة تكنولوجيا في الغردقة: تعليم، حلول ذكية، وابتكار.' : 'A technology company in Hurghada: education, smart solutions and innovation.'}</p>
             </div>
             <div><h4>{locale === 'ar' ? 'استكشف' : 'Explore'}</h4>{nav.slice(0, 4).map((n) => <a key={n.href} href={n.href}>{t(n.label)}</a>)}</div>
-            <div><h4>{locale === 'ar' ? 'اكتشف' : 'Discover'}</h4>{nav.slice(4).map((n) => <a key={n.href} href={n.href}>{t(n.label)}</a>)}<a href="#verify">{locale === 'ar' ? 'تأكّد من شهادة' : 'Check a certificate'}</a></div>
+            <div><h4>{locale === 'ar' ? 'اكتشف' : 'Discover'}</h4>{nav.slice(4).map((n) => <a key={n.href} href={n.href}>{t(n.label)}</a>)}<a href="/verify">{locale === 'ar' ? 'تأكّد من شهادة' : 'Check a certificate'}</a></div>
             <div><h4>{locale === 'ar' ? 'تواصل' : 'Connect'}</h4><a href="#contact" onClick={(e) => { e.preventDefault(); setForm({ kind: 'CONTACT', page: 'footer' }) }}>{locale === 'ar' ? 'تواصل معانا' : 'Contact us'}</a><a href="#partners">{locale === 'ar' ? 'الشراكات' : 'Partnerships'}</a><a href="/admissions/apply">{locale === 'ar' ? 'التقديم أونلاين' : 'Apply online'}</a></div>
           </div>
           {(['facebook', 'instagram', 'tiktok', 'youtube', 'linkedin'] as const).some((k) => C.contact[k]) ? (
@@ -584,10 +677,10 @@ function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[
   )
 }
 
-export default function SiteHome({ content, items = [], stats, preview, fontClass }: { content: SiteContent; items?: PublicItem[]; stats: SiteStats | null; preview: boolean; fontClass: string }) {
+export default function SiteHome({ content, items = [], stats, preview, fontClass, page = 'home', detail }: { content: SiteContent; items?: PublicItem[]; stats: SiteStats | null; preview: boolean; fontClass: string; page?: SitePage; detail?: SiteDetail }) {
   return (
     <div className={fontClass}>
-      <I18nProvider defaults={{ staff: 'ar', portal: 'ar' }}><View C={content} items={items} stats={stats} preview={preview} /></I18nProvider>
+      <I18nProvider defaults={{ staff: 'ar', portal: 'ar' }}><View C={content} items={items} stats={stats} preview={preview} page={page} detail={detail} /></I18nProvider>
     </div>
   )
 }

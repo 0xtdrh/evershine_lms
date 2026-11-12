@@ -225,6 +225,27 @@ html[dir='ltr'] .tns-chain .arr svg, html[dir='ltr'] .tns .flip svg { transform:
 .tns-btn.primary::after, .tns-btn.brand::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .45) 50%, transparent 70%); transform: translateX(-120%); transition: transform .7s ease; }
 .tns-btn.primary:hover::after, .tns-btn.brand:hover::after { transform: translateX(120%); }
 
+/* pages: the band under the header, titles with "learn more", filters, steps, media */
+.tns-band { position: relative; overflow: hidden; background: var(--dark); color: #fff; padding: 46px 0 40px; }
+.tns-band .tns-circuit { opacity: .45; }
+.tns-band h1 { margin: 10px 0 0; font-size: clamp(30px, 4.4vw, 48px); line-height: 1.25; font-weight: 700; animation: tns-up .6s cubic-bezier(.2, .7, .2, 1) both; }
+.tns-band .crumbs { font-size: 14px; color: var(--dtext); }
+.tns-band .crumbs a { color: var(--dtext); text-decoration: none; }
+.tns-band .crumbs a:hover { color: #fff; }
+.tns-head-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.tns-head-row .tns-h2 { margin-bottom: 12px; }
+.tns-more { font-weight: 700; font-size: 15px; text-decoration: none; white-space: nowrap; }
+.tns-sec.dark .tns-more { color: var(--cyan); }
+.tns-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.tns-filter button { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.tns-filter button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.dark .tns .tns-filter button.on { background: var(--cyan); border-color: var(--cyan); color: var(--on-cyan); }
+.tns-steps { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 12px; }
+.tns-steps li { display: flex; align-items: center; gap: 12px; font-size: 16px; }
+.tns-steps b { width: 38px; height: 38px; border-radius: 10px; background: var(--surface2); color: var(--link); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tns-embed { width: 100%; aspect-ratio: 16 / 9; border-radius: 18px; overflow: hidden; background: var(--dark); display: block; object-fit: cover; border: 0; }
+.tns-embed iframe { width: 100%; height: 100%; border: 0; display: block; }
+
 /* real website items (products / achievements / media) */
 .tns-item .tns-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .tns-item .tns-thumb .play { position: absolute; inset: 0; margin: auto; width: 54px; height: 54px; border-radius: 50%; background: rgba(6, 38, 61, .75); color: #fff; display: flex; align-items: center; justify-content: center; }

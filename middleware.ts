@@ -20,6 +20,7 @@ import NextAuth from 'next-auth'
 import { authConfig } from '@/lib/auth.config'
 import { legacyGuard } from '@/lib/security/legacy'
 import { canOpenSitePreview } from '@/lib/site/preview-access'
+import { isSitePath } from '@/lib/site/pages'
 
 // Instantiate a minimal Edge-compatible NextAuth instance using only authConfig.
 // providers: [] in authConfig means no provider is registered here — this instance
@@ -97,7 +98,7 @@ export default auth((req) => {
   }
 
   // ── x01: the new website preview: anyone on the owner's computer (localhost), else admins only (a real 404) ──
-  if (nextUrl.pathname === '/new-home' && !canOpenSitePreview(req.headers.get('host'), role)) {
+  if (isSitePath(nextUrl.pathname) && !canOpenSitePreview(req.headers.get('host'), role)) {
     return new Response('Not found', { status: 404 })
   }
 
