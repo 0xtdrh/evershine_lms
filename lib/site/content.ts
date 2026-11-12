@@ -53,7 +53,9 @@ export const SITE_CONTENT: SiteContent = {
     { label: b('About TechNova', 'عن TechNova'), href: '#about' },
   ],
   contact: { whatsapp: '', phone: '', email: '', address: b('El Kawthar, Hurghada', 'الكوثر، الغردقة'), mapUrl: '', facebook: '', instagram: '', tiktok: '', youtube: '', linkedin: '' },
+  // hidden until the owner decides what these tiles should say (2026-11-12)
   fields: {
+    show: false,
     title: b('What would your child like to build?', 'ابنك حابب يبني إيه؟'),
     items: [
       { icon: 'robot', title: b('Robotics', 'روبوتكس'), text: b('Robots that move, sense and decide', 'روبوتات بتتحرك وتحس وتقرر'), href: '#curriculum' },
