@@ -3282,6 +3282,25 @@ check "the manager types the Facebook spend; cost per request is worked out" "$(
 check "a branch manager cannot see ad money" "$(curl -s -b "$BMJ" "$B/api/business-growth/ad-sources?ym=$YM99" | jq_ "d['success']")" "False"
 
 echo
+echo "== 100. Courses page: tracks / courses listed on the website, page sections with settings (six phases 1-a, 2026-11-13)"
+TR100=$(M "SELECT t.id FROM Track t JOIN AcademicSubject s ON s.trackId=t.id JOIN Level l ON l.subjectId=s.id WHERE t.isActive=1 AND s.isActive=1 AND l.isActive=1 LIMIT 1")
+CO100=$(M "SELECT s.id FROM AcademicSubject s JOIN Level l ON l.subjectId=s.id WHERE s.trackId='$TR100' AND s.isActive=1 AND l.isActive=1 LIMIT 1")
+check "the admin sees tracks and courses to list" "$(api GET /api/website/courses | jq_ "(d['success'], any(i['refType']=='TRACK' for i in d['data']['items']), any(i['refType']=='COURSE' for i in d['data']['items']))")" "(True, True, True)"
+check "a track is listed with its own page and sections" "$(api PUT /api/website/courses "{\"listing\":{\"refType\":\"TRACK\",\"refId\":\"$TR100\",\"slug\":\"e2e-track\",\"show\":true,\"titleEn\":\"E2E Robot Path\",\"titleAr\":\"E2E Robot Path\",\"summaryEn\":\"From blocks to robots\",\"sections\":{\"outcomes\":{\"show\":true,\"items\":[{\"en\":\"Build a line follower\",\"ar\":\"Build a line follower\"}]},\"faq\":{\"items\":[{\"q\":{\"en\":\"E2E question?\",\"ar\":\"E2E question?\"},\"a\":{\"en\":\"Yes\",\"ar\":\"Yes\"}}]}}}}" | jq_ "d['success']")" "True"
+check "the same link name for another course is refused" "$(api PUT /api/website/courses "{\"listing\":{\"refType\":\"COURSE\",\"refId\":\"$CO100\",\"slug\":\"e2e-track\",\"show\":true}}" | jq_ "d['success']")" "False"
+api PUT /api/website/courses "{\"listing\":{\"refType\":\"COURSE\",\"refId\":\"$CO100\",\"slug\":\"e2e-course\",\"show\":true,\"titleEn\":\"E2E Inner Course\",\"titleAr\":\"E2E Inner Course\"}}" >/dev/null
+CL100=$(curl -s "$B/courses")
+check "the courses page shows the track; a course inside a track stays hidden until 'sold alone'" "$(echo "$CL100" | grep -o 'href="/courses/e2e-track"' | head -1)/$(echo "$CL100" | grep -c 'href="/courses/e2e-course"')" 'href="/courses/e2e-track"/0'
+api PUT /api/website/courses "{\"listing\":{\"refType\":\"COURSE\",\"refId\":\"$CO100\",\"slug\":\"e2e-course\",\"show\":true,\"soldAlone\":true,\"titleEn\":\"E2E Inner Course\",\"titleAr\":\"E2E Inner Course\"}}" >/dev/null
+check "…and shows once it may be sold alone" "$(curl -s "$B/courses" | grep -o 'href="/courses/e2e-course"' | head -1)" 'href="/courses/e2e-course"'
+CP100=$(curl -s "$B/courses/e2e-track")
+check "the course page shows its outcomes and questions" "$(echo "$CP100" | grep -o 'Build a line follower' | head -1)/$(echo "$CP100" | grep -o 'E2E question?' | head -1)" "Build a line follower/E2E question?"
+api PUT /api/website/courses '{"settings":{"sections":{"faq":false}}}' >/dev/null
+check "switching a section off for the company hides it (the course follows the default)" "$(curl -s "$B/courses/e2e-track" | grep -o 'class="tns-faq"' | wc -l | tr -d ' ')" "0"
+api PUT /api/website/courses '{"settings":{"sections":{"faq":true}}}' >/dev/null
+check "an unknown course shows 'not found'; an instructor cannot change listings" "$(curl -s "$B/courses/nope" | grep -o 'NEXT_HTTP_ERROR_FALLBACK;404' | head -1)/$(tapi PUT /api/website/courses '{"settings":{"sections":{"faq":false}}}' | jq_ "d['success']")" "NEXT_HTTP_ERROR_FALLBACK;404/False"
+
+echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
 [ $FAIL -eq 0 ]

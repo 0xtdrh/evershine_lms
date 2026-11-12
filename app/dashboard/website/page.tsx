@@ -17,6 +17,7 @@ import type { SiteContent } from '@/lib/site/content'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { ItemsManager } from '@/components/site/ItemsManager'
 import { CampaignsManager } from '@/components/site/CampaignsManager'
+import { CoursesManager } from '@/components/site/CoursesManager'
 import { ITEM_KINDS, KIND_TITLE, type ItemKind } from '@/lib/site/items'
 
 type Json = string | number | boolean | null | Json[] | { [k: string]: Json }
@@ -168,7 +169,7 @@ export default function WebsitePage() {
   const [section, setSection] = useState<keyof SiteContent>('contact')
   const [saving, setSaving] = useState(false)
   const [tabParam, setTab] = useUrlTab()
-  const tab = tabParam === 'CAMPAIGNS' ? 'CAMPAIGNS' : (ITEM_KINDS as readonly string[]).includes(tabParam ?? '') ? (tabParam as ItemKind) : 'texts'
+  const tab = tabParam === 'CAMPAIGNS' || tabParam === 'COURSES' ? tabParam : (ITEM_KINDS as readonly string[]).includes(tabParam ?? '') ? (tabParam as ItemKind) : 'texts'
   useEffect(() => { if (data && !draft) setDraft(withStatFields(data.content as unknown as Obj)) }, [data, draft])
   const dirty = useMemo(() => !!data && !!draft && JSON.stringify(draft) !== JSON.stringify(withStatFields(data.content as unknown as Obj)), [data, draft])
   const canEdit = can('website', 'update')
@@ -208,13 +209,13 @@ export default function WebsitePage() {
         </div>
       </div>
       <div className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1" role="tablist">
-        {(['texts', ...ITEM_KINDS, 'CAMPAIGNS'] as const).map((k) => (
+        {(['texts', 'COURSES', ...ITEM_KINDS, 'CAMPAIGNS'] as const).map((k) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${tab === k ? 'bg-white text-sky-800 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}>
-            {k === 'texts' ? L('Texts & settings', 'الكلام والإعدادات') : k === 'CAMPAIGNS' ? L('Campaigns', 'الحملات') : L(KIND_TITLE[k].en, KIND_TITLE[k].ar)}
+            {k === 'texts' ? L('Texts & settings', 'الكلام والإعدادات') : k === 'CAMPAIGNS' ? L('Campaigns', 'الحملات') : k === 'COURSES' ? L('Courses', 'الكورسات') : L(KIND_TITLE[k].en, KIND_TITLE[k].ar)}
           </button>
         ))}
       </div>
-      {tab === 'CAMPAIGNS' ? <CampaignsManager canEdit={canEdit} /> : tab !== 'texts' ? <ItemsManager key={tab} kind={tab} canEdit={canEdit} /> : <>
+      {tab === 'COURSES' ? <CoursesManager canEdit={canEdit} /> : tab === 'CAMPAIGNS' ? <CampaignsManager canEdit={canEdit} /> : tab !== 'texts' ? <ItemsManager key={tab} kind={tab} canEdit={canEdit} /> : <>
       {dirty ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{L('You have changes that are not saved yet.', 'عندك تغييرات لسه ما اتحفظتش.')}</p> : null}
       <div className="flex flex-col gap-4 lg:flex-row">
         <nav className="flex gap-1 overflow-x-auto lg:w-56 lg:flex-col lg:overflow-visible" aria-label={L('Sections', 'الأقسام')}>

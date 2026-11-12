@@ -11,12 +11,12 @@ export const SITE_LIVE = false
 /** The site's public address (for share links, the sitemap and Google). */
 export const siteUrl = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://evershine-lms-technova.vercel.app').replace(/\/+$/, '')
 
-export const PAGES = ['home', 'education', 'solutions', 'solution', 'products', 'achievements', 'achievement', 'media', 'partners', 'about', 'verify', 'campaign'] as const
+export const PAGES = ['home', 'education', 'solutions', 'solution', 'products', 'achievements', 'achievement', 'media', 'partners', 'about', 'verify', 'campaign', 'courses', 'course'] as const
 export type SitePage = (typeof PAGES)[number]
 
 export const PAGE_PATH: Record<string, string> = {
   education: '/education', solutions: '/solutions', products: '/products', achievements: '/achievements',
-  media: '/media', partners: '/partners', about: '/about', verify: '/verify',
+  media: '/media', partners: '/partners', about: '/about', verify: '/verify', courses: '/courses',
   // anchors that live inside a page
   schools: '/education#schools', curriculum: '/education#curriculum', families: '/education#families', divisions: '/about#divisions',
 }
@@ -35,9 +35,12 @@ export const PAGE_SECTIONS: Record<SitePage, string[]> = {
   about: ['about', 'numbers', 'divisions', 'why'],
   verify: ['verify'],
   campaign: ['campaign'],
+  courses: ['courses'],
+  course: ['course'],
 }
 
-export const PAGE_TITLE: Record<Exclude<SitePage, 'home' | 'solution' | 'achievement' | 'campaign'>, Bi> = {
+export const PAGE_TITLE: Record<Exclude<SitePage, 'home' | 'solution' | 'achievement' | 'campaign' | 'course'>, Bi> = {
+  courses: { en: 'Courses', ar: 'الكورسات' },
   education: { en: 'Education', ar: 'التعليم' },
   solutions: { en: 'Solutions', ar: 'الحلول' },
   products: { en: 'Products', ar: 'المنتجات' },
@@ -64,6 +67,6 @@ export const slugify = (s: string) => s.toLowerCase().replace(/&/g, ' and ').rep
 /** Paths that are part of the new website (locked while it is a preview). '/verify/<number>' stays public. */
 export function isSitePath(path: string): boolean {
   if (path === SITE_HOME) return true
-  if (['/education', '/solutions', '/products', '/achievements', '/media', '/partners', '/about', '/verify'].includes(path)) return true
-  return /^\/(solutions|achievements|c)\/[^/]+$/.test(path)
+  if (['/education', '/solutions', '/products', '/achievements', '/media', '/partners', '/about', '/verify', '/courses'].includes(path)) return true
+  return /^\/(solutions|achievements|c|courses)\/[^/]+$/.test(path)
 }

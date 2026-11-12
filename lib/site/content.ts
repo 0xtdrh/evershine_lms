@@ -44,6 +44,7 @@ const b = (en: string, ar: string): Bi => ({ en, ar })
 
 export const SITE_CONTENT: SiteContent = {
   nav: [
+    { label: b('Courses', 'الكورسات'), href: '#courses' },
     { label: b('Education', 'التعليم'), href: '#education' },
     { label: b('Solutions', 'الحلول'), href: '#solutions' },
     { label: b('Products', 'المنتجات'), href: '#products' },

@@ -5688,3 +5688,29 @@ model MarketingSpend {
 
   @@unique([ym, source])
 }
+
+/// Six phases, phase 1-a (2026-11-13): how a track or a course is sold on the website's courses page (/courses/<slug>).
+/// One row per track / course that is listed; the page's sections and their contents live in `sections` (JSON, see
+/// lib/site/courses.ts) and each one can be switched off. A course inside a track is sold alone only with soldAlone.
+model CourseListing {
+  id            String   @id @default(cuid())
+  /// TRACK / COURSE
+  refType       String   @db.VarChar(8)
+  refId         String
+  slug          String   @unique @db.VarChar(60)
+  show          Boolean  @default(false)
+  soldAlone     Boolean  @default(false)
+  sortOrder     Int      @default(0)
+  titleEn       String?  @db.VarChar(160)
+  titleAr       String?  @db.VarChar(160)
+  summaryEn     String?  @db.Text
+  summaryAr     String?  @db.Text
+  imageUrl      String?  @db.VarChar(500)
+  introVideoUrl String?  @db.VarChar(500)
+  sections      Json?
+  updatedById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([refType, refId])
+}

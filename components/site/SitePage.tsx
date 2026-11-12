@@ -11,6 +11,7 @@ import { siteStats } from '@/lib/site/stats'
 import { getSiteContent } from '@/lib/site/content-store'
 import { publicItems } from '@/lib/site/items-store'
 import { activeBanner, campaignBySlug } from '@/lib/site/campaigns-store'
+import { publicCatalog } from '@/lib/site/courses-store'
 import { redirect } from 'next/navigation'
 import { canOpenSitePreview } from '@/lib/site/preview-access'
 import { PAGE_PATH, PAGE_TITLE, SITE_HOME, SITE_LIVE, siteUrl, slugify, type SitePage as Page } from '@/lib/site/pages'
@@ -69,6 +70,12 @@ export async function SitePage({ page, slug, id, open, certificate }: { page: Pa
   if (!open && !SITE_LIVE && !canOpenSitePreview(host, session?.user?.role)) notFound()
   const [stats, content, items, banner] = await Promise.all([siteStats(), getSiteContent(), publicItems(), activeBanner()])
   let detail: SiteDetail | undefined = certificate ? { certificate } : undefined
+  let courses: Awaited<ReturnType<typeof publicCatalog>> = []
+  if (page === 'courses') courses = await publicCatalog()
+  if (page === 'course') {
+    courses = slug ? await publicCatalog({ slug }) : []
+    if (!courses.length) notFound()
+  }
   if (page === 'campaign') {
     const campaign = slug ? await campaignBySlug(slug) : null
     if (!campaign || campaign.state === 'HIDDEN') notFound()
@@ -86,5 +93,5 @@ export async function SitePage({ page, slug, id, open, certificate }: { page: Pa
     if (!item) notFound()
     detail = { item }
   }
-  return <>{page === 'home' ? <OrgJsonLd C={content} /> : null}<SiteHome content={content} items={items} stats={stats} preview={!SITE_LIVE} page={page} detail={detail} banner={page === 'campaign' ? null : banner} fontClass={siteFontClass} /></>
+  return <>{page === 'home' ? <OrgJsonLd C={content} /> : null}<SiteHome content={content} items={items} stats={stats} preview={!SITE_LIVE} page={page} detail={detail} courses={courses} banner={page === 'campaign' ? null : banner} fontClass={siteFontClass} /></>
 }
