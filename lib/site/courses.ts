@@ -79,5 +79,34 @@ export function listable(l: { refType: string; show: boolean; soldAlone: boolean
 /** A course fits a child of this age when the age is inside the range (an open end = no limit). */
 export const fitsAge = (age: number, min?: number | null, max?: number | null) => (min == null || age >= min) && (max == null || age <= max)
 
+/** Ages in words (no "7–4" flipping in Arabic): «من 4 لحد 7 سنين» / "Ages 4–7". */
+export function ageText(min: number | null | undefined, max: number | null | undefined, ar: boolean): string {
+  if (min == null && max == null) return ''
+  if (ar) return min != null && max != null ? `من ${min} لحد ${max} سنين` : min != null ? `من ${min} سنة وأكبر` : `لحد ${max} سنين`
+  return min != null && max != null ? `Ages ${min}–${max}` : min != null ? `Ages ${min}+` : `Up to ${max}`
+}
+
+/** The lowest price shown on a card ("from …"), or null when the price section is off or nothing is for sale. */
+export function fromPrice(p: { online: number | null; recorded: number | null }, priceOn: boolean): number | null {
+  if (!priceOn) return null
+  const all = [p.online, p.recorded].filter((x): x is number => typeof x === 'number' && x > 0)
+  return all.length ? Math.min(...all) : null
+}
+
+/** The age bands of the filter (from the TechNova programmes). */
+export const AGE_BANDS: { key: string; min: number; max: number | null; en: string; ar: string }[] = [
+  { key: '4-7', min: 4, max: 7, en: '4–7', ar: '4–7' },
+  { key: '8-10', min: 8, max: 10, en: '8–10', ar: '8–10' },
+  { key: '11-14', min: 11, max: 14, en: '11–14', ar: '11–14' },
+  { key: '15-17', min: 15, max: 17, en: '15–17', ar: '15–17' },
+  { key: '18', min: 18, max: null, en: 'University & adults', ar: 'جامعة وكبار' },
+]
+/** A course fits an age band when their age ranges overlap (an open end = no limit). */
+export function fitsBand(c: { minAge: number | null; maxAge: number | null }, band: { min: number; max: number | null }): boolean {
+  const lo = c.minAge ?? 0
+  const hi = c.maxAge ?? 200
+  return hi >= band.min && (band.max == null || lo <= band.max)
+}
+
 /** Default link name from an English name. */
 export const slugFrom = (name: string) => name.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 58) || 'course'

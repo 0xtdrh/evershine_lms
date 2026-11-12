@@ -52,7 +52,7 @@ type LevelRow = { id: string; name: string; order: number; numberOfSessions: num
 export interface OnlineGroup { id: string; name: string; slots: { dayOfWeek: number; time: string }[]; free: number | null; startDate: string | null }
 export interface PublicCourse {
   slug: string; refType: 'TRACK' | 'COURSE'; title: { en: string; ar: string }; summary: { en: string; ar: string }
-  imageUrl: string | null; introVideoUrl: string | null; minAge: number | null; maxAge: number | null; trackName: string | null
+  imageUrl: string | null; introVideoUrl: string | null; minAge: number | null; maxAge: number | null; trackName: string | null; color: string | null
   levels: { name: string; course: string; sessions: number; months: number }[]
   modes: { online: boolean; recorded: boolean; branch: boolean }
   price: { online: number | null; onlinePer: 'MONTH' | 'LEVEL'; recorded: number | null; recordedDays: number | null }
@@ -66,7 +66,7 @@ async function levelsOf(refType: 'TRACK' | 'COURSE', refId: string) {
   const courses = await prisma.academicSubject.findMany({
     where: refType === 'TRACK' ? { trackId: refId, isActive: true } : { id: refId },
     orderBy: [{ trackOrder: 'asc' }, { name: 'asc' }],
-    select: { id: true, name: true, allowedModes: true, trackId: true, trackOrder: true, track: { select: { name: true, minAge: true, maxAge: true, allowedModes: true } },
+    select: { id: true, name: true, allowedModes: true, trackId: true, trackOrder: true, track: { select: { name: true, minAge: true, maxAge: true, allowedModes: true, color: true } },
       levels: { where: { isActive: true }, orderBy: { order: 'asc' }, select: { id: true, name: true, order: true, numberOfSessions: true, numberOfMonths: true, pricingType: true, monthlyPrice: true, fullLevelPrice: true, allowedModes: true } } },
   })
   return courses
@@ -87,7 +87,7 @@ export async function publicCatalog(opts: { slug?: string } = {}): Promise<Publi
       const first = courses[0]
       const inTrack = refType === 'COURSE' && !!first.trackId
       if (!listable(l, inTrack)) continue
-      const track = refType === 'TRACK' ? await prisma.track.findUnique({ where: { id: l.refId }, select: { name: true, minAge: true, maxAge: true, allowedModes: true } }) : first.track
+      const track = refType === 'TRACK' ? await prisma.track.findUnique({ where: { id: l.refId }, select: { name: true, minAge: true, maxAge: true, allowedModes: true, color: true } }) : first.track
       const firstLevel = first.levels[0] as LevelRow | undefined
       const modes = firstLevel ? effectiveModes({ level: firstLevel.allowedModes, course: first.allowedModes, track: track?.allowedModes }).modes : []
       const sections = (sectionsSchema.safeParse(l.sections ?? {}).data ?? {}) as Sections
@@ -132,7 +132,7 @@ export async function publicCatalog(opts: { slug?: string } = {}): Promise<Publi
         title: { en: l.titleEn || l.titleAr || name, ar: l.titleAr || l.titleEn || name },
         summary: { en: l.summaryEn || l.summaryAr || '', ar: l.summaryAr || l.summaryEn || '' },
         imageUrl: l.imageUrl, introVideoUrl: l.introVideoUrl,
-        minAge: track?.minAge ?? null, maxAge: track?.maxAge ?? null, trackName: refType === 'COURSE' ? first.track?.name ?? null : null,
+        minAge: track?.minAge ?? null, maxAge: track?.maxAge ?? null, trackName: refType === 'COURSE' ? first.track?.name ?? null : null, color: track?.color ?? null,
         levels: courses.flatMap((c) => c.levels.map((lv) => ({ name: lv.name, course: c.name, sessions: lv.numberOfSessions, months: lv.numberOfMonths }))),
         modes: { online: modes.includes('ONLINE') && (onlineGroups.length > 0 || false), recorded: !!recorded, branch: modes.includes('BRANCH') },
         price: {

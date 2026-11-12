@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_SECTIONS, fitsAge, listable, listingSchema, sectionOn, slugFrom } from '@/lib/site/courses'
+import { AGE_BANDS, DEFAULT_SECTIONS, ageText, fitsAge, fitsBand, fromPrice, listable, listingSchema, sectionOn, slugFrom } from '@/lib/site/courses'
 import { isSitePath, pageHref } from '@/lib/site/pages'
 
 describe('six phases 1-a: course listings', () => {
@@ -29,5 +29,18 @@ describe('six phases 1-a: course listings', () => {
     expect(pageHref('#courses')).toBe('/courses')
     expect(isSitePath('/courses')).toBe(true)
     expect(isSitePath('/courses/nova-builders')).toBe(true)
+  })
+  it('courses page v2: ages in words, age bands overlap, lowest price', () => {
+    expect(ageText(4, 7, true)).toBe('من 4 لحد 7 سنين')
+    expect(ageText(18, null, true)).toBe('من 18 سنة وأكبر')
+    expect(ageText(4, 7, false)).toBe('Ages 4–7')
+    expect(ageText(null, null, true)).toBe('')
+    const b = (k: string) => AGE_BANDS.find((x) => x.key === k)!
+    expect(fitsBand({ minAge: 8, maxAge: 10 }, b('8-10'))).toBe(true)
+    expect(fitsBand({ minAge: 11, maxAge: 14 }, b('8-10'))).toBe(false)
+    expect(fitsBand({ minAge: 15, maxAge: null }, b('18'))).toBe(true)
+    expect(fitsBand({ minAge: null, maxAge: null }, b('4-7'))).toBe(true)
+    expect(fromPrice({ online: 900, recorded: 600 }, true)).toBe(600)
+    expect(fromPrice({ online: 900, recorded: null }, false)).toBeNull()
   })
 })

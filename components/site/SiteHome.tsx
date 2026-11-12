@@ -18,7 +18,7 @@ import type { PublicItem } from '@/lib/site/items-store'
 import type { CertificateCheck } from '@/lib/site/verify'
 import type { PublicCampaign } from '@/lib/site/campaigns-store'
 import type { PublicCourse } from '@/lib/site/courses-store'
-import { fitsAge } from '@/lib/site/courses'
+import { AGE_BANDS, ageText, fitsBand, fromPrice } from '@/lib/site/courses'
 import type { RequestKind } from '@/lib/site/request-rules'
 import { PAGE_PATH, PAGE_SECTIONS, PAGE_TITLE, SITE_HOME, pageHref, pageOf, slugify, type SitePage } from '@/lib/site/pages'
 import { track, useSiteTracker } from './tracker'
@@ -180,6 +180,7 @@ function View({ C, items, stats, preview, page, detail, banner, courses = [] }: 
   const [cat, setCat] = useState('ALL')
   const [modeFilter, setModeFilter] = useState<'ALL' | 'ONLINE' | 'RECORDED'>('ALL')
   const [ageFilter, setAgeFilter] = useState('')
+  const [search, setSearch] = useState('')
   const listPage = page === 'products' || page === 'achievements' || page === 'media'
   const head = (title: Bi, key: string) => (
     <div className="tns-head-row">
@@ -323,41 +324,83 @@ function View({ C, items, stats, preview, page, detail, banner, courses = [] }: 
       ) : null}
 
       {page === 'courses' ? (() => {
-        const list = courses.filter((c) => (modeFilter === 'ALL' || (modeFilter === 'ONLINE' ? c.modes.online : c.modes.recorded)) && (!ageFilter || fitsAge(Number(ageFilter), c.minAge, c.maxAge)))
-        return (
-          <section className="tns-sec">
-            <div className="tns-wrap">
-              <div className="tns-filter" role="group" aria-label={locale === 'ar' ? 'فلتر' : 'Filter'}>
-                {(['ALL', 'ONLINE', 'RECORDED'] as const).map((k) => <button key={k} type="button" className={modeFilter === k ? 'on' : ''} onClick={() => setModeFilter(k)}>{k === 'ALL' ? (locale === 'ar' ? 'الكل' : 'All') : k === 'ONLINE' ? (locale === 'ar' ? 'لايف أونلاين' : 'Live online') : (locale === 'ar' ? 'مسجل' : 'Recorded')}</button>)}
-                <label className="tns-age">{locale === 'ar' ? 'سن الطالب' : 'Age'}
-                  <select value={ageFilter} onChange={(e) => setAgeFilter(e.target.value)}><option value="">{locale === 'ar' ? 'أي سن' : 'Any'}</option>{Array.from({ length: 22 }, (_, i) => i + 4).map((a) => <option key={a} value={a}>{a}</option>)}</select>
-                </label>
-              </div>
-              {list.length === 0 ? <p className="tns-lead" style={{ marginTop: 30 }}>{locale === 'ar' ? 'مفيش كورسات بالاختيار ده دلوقتي.' : 'No courses match this right now.'}</p> : (
-                <div className="tns-grid" style={{ ['--min' as string]: '280px' }}>
-                  {list.map((c, i) => (
-                    <a key={c.slug} href={`/courses/${c.slug}`} className="tns-card tns-reveal tns-course" style={{ padding: 14, textDecoration: 'none', color: 'inherit', ['--d' as string]: `${Math.min(i, 8) * 70}ms` }}>
-                      <div className="tns-thumb">
-                        {c.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={c.imageUrl} alt="" loading="lazy" />
-                        ) : <Icon name={c.refType === 'TRACK' ? 'route' : 'cap'} size={34} />}
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
-                        <span className="tns-tag">{c.refType === 'TRACK' ? (locale === 'ar' ? 'مسار كامل' : 'Full path') : (locale === 'ar' ? 'كورس' : 'Course')}</span>
-                        {c.minAge != null || c.maxAge != null ? <span className="tns-tag en" style={{ background: 'transparent', color: 'var(--muted)' }}>{locale === 'ar' ? 'سن' : 'Ages'} <span className="tns-num">{c.minAge ?? ''}{c.maxAge != null ? `–${c.maxAge}` : '+'}</span></span> : null}
-                      </div>
-                      <h3 style={{ fontSize: 18, marginTop: 8 }}>{t(c.title)}</h3>
-                      {t(c.summary) ? <p className="clamp3" style={{ fontSize: 14 }}>{t(c.summary)}</p> : null}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                        {c.modes.online ? <span className="tns-chip" style={{ minHeight: 30, fontSize: 13 }}>{locale === 'ar' ? 'لايف أونلاين' : 'Live online'}</span> : null}
-                        {c.modes.recorded ? <span className="tns-chip" style={{ minHeight: 30, fontSize: 13 }}>{locale === 'ar' ? 'مسجل' : 'Recorded'}</span> : null}
-                      </div>
-                      <span className="more flip" style={{ display: 'inline-block', marginTop: 12 }}>{locale === 'ar' ? 'التفاصيل' : 'Details'} {arr}</span>
-                    </a>
-                  ))}
+        const days = locale === 'ar' ? ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        const band = AGE_BANDS.find((b) => b.key === ageFilter)
+        const q = search.trim().toLowerCase()
+        const list = courses.filter((c) => (modeFilter === 'ALL' || (modeFilter === 'ONLINE' ? c.modes.online : c.modes.recorded))
+          && (!band || fitsBand(c, band)) && (!q || `${c.title.en} ${c.title.ar} ${c.summary.en} ${c.summary.ar}`.toLowerCase().includes(q)))
+        const paths = list.filter((c) => c.refType === 'TRACK')
+        const singles = list.filter((c) => c.refType === 'COURSE')
+        const card = (c: PublicCourse, i: number) => {
+          const from = fromPrice(c.price, c.on.price)
+          const next = c.onlineGroups.find((g) => g.free == null || g.free > 0)
+          const months = c.levels.reduce((a, l) => a + l.months, 0)
+          return (
+            <div key={c.slug} className="tns-card tns-reveal tns-course" style={{ padding: 0, overflow: 'hidden', ['--d' as string]: `${Math.min(i, 8) * 70}ms`, ['--band' as string]: c.color || 'var(--teal)' }}>
+              <a href={`/courses/${c.slug}`} className="tns-course-img" aria-label={t(c.title)}>
+                {c.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.imageUrl} alt="" loading="lazy" />
+                ) : <span className="ph"><Icon name={c.refType === 'TRACK' ? 'route' : 'cap'} size={40} /></span>}
+                {ageText(c.minAge, c.maxAge, locale === 'ar') ? <span className="age">{ageText(c.minAge, c.maxAge, locale === 'ar')}</span> : null}
+              </a>
+              <div style={{ padding: 18 }}>
+                <span className="tns-tag">{c.refType === 'TRACK' ? (locale === 'ar' ? 'مسار كامل' : 'Full path') : (locale === 'ar' ? 'كورس' : 'Course')}{c.trackName ? ` · ${c.trackName}` : ''}</span>
+                <h3 style={{ fontSize: 19, marginTop: 10 }}><a href={`/courses/${c.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{t(c.title)}</a></h3>
+                {t(c.summary) ? <p className="clamp3" style={{ fontSize: 14 }}>{t(c.summary)}</p> : null}
+                <ul className="tns-facts">
+                  {c.levels.length ? <li><Icon name="layers" size={16} />{c.levels.length} {locale === 'ar' ? (c.levels.length === 1 ? 'مستوى' : 'مستويات') : (c.levels.length === 1 ? 'level' : 'levels')}{months ? ` · ${months} ${locale === 'ar' ? 'شهر' : 'months'}` : ''}</li> : null}
+                  {c.modes.online ? <li><Icon name="screen" size={16} />{locale === 'ar' ? 'لايف أونلاين' : 'Live online'}</li> : null}
+                  {c.modes.recorded ? <li><Icon name="play" size={14} />{locale === 'ar' ? 'مسجل، في أي وقت' : 'Recorded, any time'}</li> : null}
+                  {next ? <li><Icon name="route" size={16} />{locale === 'ar' ? 'أقرب ميعاد' : 'Next group'}: {next.slots.map((x) => `${days[x.dayOfWeek]} ${x.time}`).join(' · ')}{next.free != null ? ` · ${locale === 'ar' ? `فاضل ${next.free}` : `${next.free} seats left`}` : ''}</li> : null}
+                </ul>
+                <div className="tns-course-foot">
+                  {from != null ? <span>{locale === 'ar' ? 'يبدأ من' : 'From'} <b className="en">{from.toLocaleString('en-US')}</b> {locale === 'ar' ? 'ج.م' : 'EGP'}</span> : <span />}
+                  <a className="tns-btn brand sm" href={`/courses/${c.slug}`}>{locale === 'ar' ? 'التفاصيل' : 'Details'}</a>
                 </div>
-              )}
+              </div>
+            </div>
+          )
+        }
+        return (
+          <section className="tns-sec" style={{ paddingTop: 40 }}>
+            <div className="tns-wrap">
+              <div className="tns-picker">
+                <p className="lbl">{locale === 'ar' ? 'سن الطالب' : "Student's age"}</p>
+                <div className="tns-filter" role="group" aria-label={locale === 'ar' ? 'السن' : 'Age'}>
+                  <button type="button" className={!ageFilter ? 'on' : ''} onClick={() => setAgeFilter('')}>{locale === 'ar' ? 'كل الأعمار' : 'All ages'}</button>
+                  {AGE_BANDS.map((b) => <button key={b.key} type="button" className={ageFilter === b.key ? 'on' : ''} onClick={() => setAgeFilter(b.key)}><span className="tns-num">{locale === 'ar' ? b.ar : b.en}</span></button>)}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>
+                  <div className="tns-filter" role="group" aria-label={locale === 'ar' ? 'طريقة التعلم' : 'How'} style={{ marginTop: 0 }}>
+                    {(['ALL', 'ONLINE', 'RECORDED'] as const).map((k) => <button key={k} type="button" className={modeFilter === k ? 'on' : ''} onClick={() => setModeFilter(k)}>{k === 'ALL' ? (locale === 'ar' ? 'أي طريقة' : 'Any way') : k === 'ONLINE' ? (locale === 'ar' ? 'لايف أونلاين' : 'Live online') : (locale === 'ar' ? 'مسجل' : 'Recorded')}</button>)}
+                  </div>
+                  <label className="tns-search"><span className="sr">{locale === 'ar' ? 'دوّر' : 'Search'}</span>
+                    <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={locale === 'ar' ? 'دوّر على كورس…' : 'Search a course…'} />
+                  </label>
+                </div>
+              </div>
+
+              {list.length === 0 ? <p className="tns-lead" style={{ marginTop: 30 }}>{locale === 'ar' ? 'مفيش كورسات بالاختيار ده دلوقتي.' : 'No courses match this right now.'}</p> : null}
+              {paths.length ? <>
+                <div className="tns-head-row" style={{ marginTop: 36 }}><h2 className="tns-h2" style={{ fontSize: 26 }}>{locale === 'ar' ? 'مسارات كاملة' : 'Full paths'}</h2><span style={{ color: 'var(--muted)' }}>{locale === 'ar' ? 'رحلة من مستوى لمستوى، بنحدد ابنك يبدأ منين' : 'A journey level by level; we set where your child starts'}</span></div>
+                <div className="tns-grid" style={{ ['--min' as string]: '300px', marginTop: 16 }}>{paths.map(card)}</div>
+              </> : null}
+              {singles.length ? <>
+                <div className="tns-head-row" style={{ marginTop: 44 }}><h2 className="tns-h2" style={{ fontSize: 26 }}>{locale === 'ar' ? 'كورسات' : 'Courses'}</h2><span style={{ color: 'var(--muted)' }}>{locale === 'ar' ? 'كورس واحد في موضوع محدد' : 'One course on one subject'}</span></div>
+                <div className="tns-grid" style={{ ['--min' as string]: '300px', marginTop: 16 }}>{singles.map(card)}</div>
+              </> : null}
+
+              <div className="tns-help tns-reveal">
+                <div>
+                  <h3 style={{ margin: 0 }}>{locale === 'ar' ? 'محتار تختار إيه؟' : 'Not sure what to choose?'}</h3>
+                  <p style={{ margin: '6px 0 0' }}>{locale === 'ar' ? 'قولّنا سن ابنك وبيحب إيه، وإحنا نرشّحلك المناسب.' : "Tell us your child's age and interests and we'll suggest the right one."}</p>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  <button type="button" className="tns-btn brand" onClick={() => setForm({ kind: 'CONTACT', page: 'courses:help', topic: locale === 'ar' ? 'مساعدة في اختيار كورس' : 'Help choosing a course' })}>{locale === 'ar' ? 'ساعدني أختار' : 'Help me choose'}</button>
+                  {wa ? <a className="tns-btn ghost" href={wa} target="_blank" rel="noopener noreferrer" onClick={() => track('WHATSAPP', 'courses:help')}>{locale === 'ar' ? 'واتساب' : 'WhatsApp'}</a> : null}
+                </div>
+              </div>
             </div>
           </section>
         )
@@ -398,7 +441,7 @@ function View({ C, items, stats, preview, page, detail, banner, courses = [] }: 
                 {c.on.faq && (sx.faq?.items as { q: Bi; a: Bi }[] | undefined)?.length ? <><H>{locale === 'ar' ? 'أسئلة' : 'Questions'}</H><div className="tns-faq">{(sx.faq!.items as { q: Bi; a: Bi }[]).map((f, i) => <details key={i}><summary>{t(f.q)}</summary><p>{t(f.a)}</p></details>)}</div></> : null}
               </div>
               <aside className="tns-card" style={{ flex: '1 1 320px', minWidth: 0, position: 'sticky', top: 90 }}>
-                {c.minAge != null || c.maxAge != null ? <p style={{ margin: 0 }}>{locale === 'ar' ? 'السن' : 'Ages'}: <b className="tns-num">{c.minAge ?? ''}{c.maxAge != null ? `–${c.maxAge}` : '+'}</b></p> : null}
+                {ageText(c.minAge, c.maxAge, locale === 'ar') ? <p style={{ margin: 0, fontWeight: 700, color: 'var(--text)' }}>{ageText(c.minAge, c.maxAge, locale === 'ar')}</p> : null}
                 {c.modes.online ? (
                   <div style={{ marginTop: 14 }}>
                     <h3 style={{ margin: 0 }}>{locale === 'ar' ? 'لايف أونلاين' : 'Live online'}</h3>

@@ -319,3 +319,25 @@ html[dir='ltr'] .tns-banner:hover b { transform: translateX(4px); }
 .tns-faq details { border-bottom: 1px solid var(--line); padding: 12px 0; }
 .tns-faq summary { cursor: pointer; font-weight: 700; font-size: 16px; }
 .tns-faq p { margin: 8px 0 0; color: var(--muted); line-height: 1.8; }
+
+/* courses page v2: age tabs, search, richer cards, help strip */
+.tns-picker { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; box-shadow: var(--shadow); }
+.tns-picker .lbl { margin: 0; font-weight: 700; font-size: 15px; }
+.tns-picker .tns-filter { margin-top: 10px; }
+.tns-search { flex: 1 1 240px; display: block; }
+.tns-search .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.tns-search input { width: 100%; min-height: 42px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--text); padding: 0 16px; font: inherit; }
+.tns-search input:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
+.tns-course { border-top: 4px solid var(--band, var(--teal)); }
+.tns-course-img { position: relative; display: block; aspect-ratio: 16 / 9; background: linear-gradient(135deg, var(--brand), var(--band, var(--teal))); overflow: hidden; }
+.tns-course-img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
+.tns-course:hover .tns-course-img img { transform: scale(1.04); }
+.tns-course-img .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #d7f3f8; }
+.tns-course-img .age { position: absolute; top: 12px; inset-inline-start: 12px; background: rgba(6, 31, 51, .78); color: #fff; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; }
+.tns-facts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.tns-facts li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.tns-facts svg { color: var(--teal); flex-shrink: 0; }
+.tns-course-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+.tns-course-foot b { color: var(--text); font-size: 18px; }
+.tns-help { margin-top: 48px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: space-between; padding: 26px; border-radius: 22px; background: var(--surface2); }
+.tns-help p { color: var(--muted); }
