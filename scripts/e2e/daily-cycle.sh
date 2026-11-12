@@ -3211,6 +3211,24 @@ curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
 check "the daily job wipes IPs older than 90 days (the visit stays)" "$(M "SELECT CONCAT(COUNT(*),'/',IFNULL(MAX(ip),'wiped')) FROM SiteVisit WHERE sessionId='e2evisit96bbbb02'")" "1/wiped"
 
 echo
+echo "== 97. Website items: products, achievements, media from the system (x01 batch 5, 2026-11-12)"
+NH97=$(curl -s "$B/new-home")
+check "before any item: the example cards show in the preview" "$(echo "$NH97" | grep -c 'tns-sample' | sed 's/^[1-9][0-9]*$/yes/')" "yes"
+I97A=$(api POST /api/website/items '{"kind":"PRODUCT","category":"EDUCATIONAL","titleEn":"E2E Robot Kit","titleAr":"","metaEn":"Ages 8+","price":1500,"showPrice":true,"imageUrl":"https://example.com/kit.jpg"}')
+check "the admin adds a product (an empty Arabic title borrows the English one)" "$(echo "$I97A" | jq_ "(d['success'], d['data']['titleAr'])")" "(True, 'E2E Robot Kit')"
+api POST /api/website/items '{"kind":"PRODUCT","category":"DEVICE","titleEn":"E2E Hidden Device","titleAr":"E2E Hidden Device","show":false}' >/dev/null
+api POST /api/website/items '{"kind":"ACHIEVEMENT","category":"COMPETITION","titleEn":"E2E WRO Team","titleAr":"E2E WRO Team","metaEn":"2nd place","featured":true}' >/dev/null
+api POST /api/website/items '{"kind":"MEDIA","category":"VIDEO","titleEn":"E2E Episode","titleAr":"E2E Episode","videoUrl":"https://youtu.be/abcDEF12345"}' >/dev/null
+check "a wrong category or a script link is refused" "$(api POST /api/website/items '{"kind":"PRODUCT","category":"VIDEO","titleEn":"x","titleAr":"x"}' | jq_ "d['success']")/$(api POST /api/website/items '{"kind":"MEDIA","category":"NEWS","titleEn":"x","titleAr":"x","linkUrl":"javascript:alert(1)"}' | jq_ "d['success']")" "False/False"
+check "an instructor cannot add items" "$(tapi POST /api/website/items '{"kind":"PRODUCT","category":"OTHER","titleEn":"x","titleAr":"x"}' | jq_ "d['success']")" "False"
+NH97B=$(curl -s "$B/new-home")
+check "the website shows the real product, achievement and video, with the price" "$(echo "$NH97B" | grep -c 'E2E Robot Kit' | sed 's/^[1-9][0-9]*$/yes/')/$(echo "$NH97B" | grep -c 'E2E WRO Team' | sed 's/^[1-9][0-9]*$/yes/')/$(echo "$NH97B" | grep -c 'img.youtube.com/vi/abcDEF12345' | sed 's/^[1-9][0-9]*$/yes/')/$(echo "$NH97B" | grep -c '1,500' | sed 's/^[1-9][0-9]*$/yes/')" "yes/yes/yes/yes"
+check "…a hidden item stays off the website, and the example products / achievements / videos are gone (events keep theirs)" "$(echo "$NH97B" | grep -c 'E2E Hidden Device')/$(echo "$NH97B" | grep -o 'tns-sample' | wc -l | tr -d ' ')" "0/2"
+IDA=$(echo "$I97A" | jq_ "d['data']['id']")
+check "hiding the product takes it off the website" "$(api PATCH "/api/website/items/$IDA" '{"kind":"PRODUCT","category":"EDUCATIONAL","titleEn":"E2E Robot Kit","titleAr":"E2E Robot Kit","show":false}' | jq_ "d['data']['show']")/$(curl -s "$B/new-home" | grep -c 'E2E Robot Kit')" "False/0"
+check "deleting an item removes it" "$(api DELETE "/api/website/items/$IDA" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM SiteItem WHERE id='$IDA'")" "True/0"
+
+echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
 [ $FAIL -eq 0 ]

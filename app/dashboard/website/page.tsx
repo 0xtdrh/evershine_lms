@@ -14,6 +14,9 @@ import { notify } from '@/lib/notify'
 import { L, useI18n } from '@/lib/i18n/client'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import type { SiteContent } from '@/lib/site/content'
+import { useUrlTab } from '@/hooks/use-url-tab'
+import { ItemsManager } from '@/components/site/ItemsManager'
+import { ITEM_KINDS, KIND_TITLE, type ItemKind } from '@/lib/site/items'
 
 type Json = string | number | boolean | null | Json[] | { [k: string]: Json }
 type Obj = { [k: string]: Json }
@@ -163,6 +166,8 @@ export default function WebsitePage() {
   const [draft, setDraft] = useState<Obj | null>(null)
   const [section, setSection] = useState<keyof SiteContent>('contact')
   const [saving, setSaving] = useState(false)
+  const [tabParam, setTab] = useUrlTab()
+  const tab = (ITEM_KINDS as readonly string[]).includes(tabParam ?? '') ? (tabParam as ItemKind) : 'texts'
   useEffect(() => { if (data && !draft) setDraft(withStatFields(data.content as unknown as Obj)) }, [data, draft])
   const dirty = useMemo(() => !!data && !!draft && JSON.stringify(draft) !== JSON.stringify(withStatFields(data.content as unknown as Obj)), [data, draft])
   const canEdit = can('website', 'update')
@@ -195,12 +200,20 @@ export default function WebsitePage() {
         <div className="flex flex-wrap gap-2">
           <Link href="/dashboard/leads" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{L('Website requests', 'طلبات الموقع')}</Link>
           <a href="/new-home" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{L('Open the website', 'افتح الموقع')}</a>
-          {canEdit ? <>
+          {canEdit && tab === 'texts' ? <>
             <button type="button" disabled={saving} className="rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={() => { if (confirm(L('Go back to the original texts? Everything you changed is lost.', 'ترجع للكلام الأصلي؟ كل اللي غيّرته هيضيع.'))) void save({ reset: true }, L('Back to the original texts', 'رجع للكلام الأصلي')) }}>{L('Original texts', 'الكلام الأصلي')}</button>
             <button type="button" disabled={!dirty || saving} className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-40" onClick={() => void save({ content: draft }, L('Saved — the website shows it now', 'اتحفظ — الموقع بيعرضه دلوقتي'))}>{saving ? '…' : L('Save', 'احفظ')}</button>
           </> : null}
         </div>
       </div>
+      <div className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1" role="tablist">
+        {(['texts', ...ITEM_KINDS] as const).map((k) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${tab === k ? 'bg-white text-sky-800 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}>
+            {k === 'texts' ? L('Texts & settings', 'الكلام والإعدادات') : L(KIND_TITLE[k].en, KIND_TITLE[k].ar)}
+          </button>
+        ))}
+      </div>
+      {tab !== 'texts' ? <ItemsManager key={tab} kind={tab} canEdit={canEdit} /> : <>
       {dirty ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{L('You have changes that are not saved yet.', 'عندك تغييرات لسه ما اتحفظتش.')}</p> : null}
       <div className="flex flex-col gap-4 lg:flex-row">
         <nav className="flex gap-1 overflow-x-auto lg:w-56 lg:flex-col lg:overflow-visible" aria-label={L('Sections', 'الأقسام')}>
@@ -221,6 +234,7 @@ export default function WebsitePage() {
             : isObj(value) ? <Box k={cur.key} v={value} title={L(cur.en, cur.ar)} depth={0} onChange={(x) => setDraft({ ...draft, [section]: x })} /> : null}
         </fieldset>
       </div>
+      </>}
     </div>
   )
 }

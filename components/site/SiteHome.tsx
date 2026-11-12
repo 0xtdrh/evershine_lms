@@ -13,6 +13,8 @@ import { I18nProvider, useI18n } from '@/lib/i18n/client'
 import { visible, type Bi, type Card, type MediaCard, type SiteContent } from '@/lib/site/content'
 import { RequestForm, type FormOpen } from './RequestForm'
 import { CookieNotice } from './CookieNotice'
+import { CATEGORIES, youtubeEmbed } from '@/lib/site/items'
+import type { PublicItem } from '@/lib/site/items-store'
 import { track, useSiteTracker } from './tracker'
 import { shownStats, type SiteStats } from '@/lib/site/stats-shared'
 
@@ -131,7 +133,7 @@ function Sample({ on }: { on?: boolean }) {
   return on ? <span className="tns-sample">{locale === 'ar' ? 'مثال' : 'Example'}</span> : null
 }
 
-function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; preview: boolean }) {
+function View({ C, items, stats, preview }: { C: SiteContent; items: PublicItem[]; stats: SiteStats | null; preview: boolean }) {
   const { locale, setLocale } = useI18n()
   const t = (x: Bi) => (locale === 'ar' ? x.ar : x.en)
   const arr = locale === 'ar' ? '←' : '→'
@@ -166,9 +168,13 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
 
   const nav = visible(C.nav, preview)
   const numbers = shownStats(C.stats, stats)
-  const achievements = visible(C.achievements.items, preview)
-  const products = visible(C.products.items, preview)
-  const media = visible(C.media.items, preview)
+  const real = (k: PublicItem['kind']) => items.filter((i) => i.kind === k)
+  const realAchievements = real('ACHIEVEMENT')
+  const realProducts = real('PRODUCT')
+  const realMedia = real('MEDIA')
+  const achievements = realAchievements.length ? [] : visible(C.achievements.items, preview)
+  const products = realProducts.length ? [] : visible(C.products.items, preview)
+  const media = realMedia.length ? [] : visible(C.media.items, preview)
   const events = visible(C.events.items, preview)
   const waDigits = C.contact.whatsapp.replace(/\D/g, '').replace(/^00/, '')
   const wa = waDigits ? `https://wa.me/${waDigits.startsWith('0') ? `2${waDigits}` : waDigits}` : ''
@@ -182,6 +188,41 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
       {c.href ? <a className="more flip" href={c.href}>{locale === 'ar' ? 'ادخل القسم' : 'Explore'} {arr}</a> : null}
     </div>
   ))
+  const thumbOf = (it: PublicItem) => {
+    if (it.imageUrl) return it.imageUrl
+    const yt = youtubeEmbed(it.videoUrl)
+    return yt ? `https://img.youtube.com/vi/${yt.split('/').pop()}/hqdefault.jpg` : null
+  }
+  const itemCards = (list: PublicItem[], kind: PublicItem['kind']) => list.slice(0, kind === 'MEDIA' ? 6 : 8).map((it, i) => {
+    const img = thumbOf(it)
+    const href = it.videoUrl || it.linkUrl
+    const cat = (CATEGORIES[kind] as Record<string, Bi>)[it.category]
+    return (
+      <div key={it.id} className="tns-card tns-reveal tns-item" style={{ padding: 14, ['--d' as string]: `${Math.min(i, 8) * 70}ms` }}>
+        <div className="tns-thumb">
+          {img ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={img} alt="" loading="lazy" />
+          ) : <Icon name={kind === 'PRODUCT' ? 'layers' : kind === 'ACHIEVEMENT' ? 'trophy' : 'screen'} size={34} />}
+          {it.videoUrl ? <span className="play"><Icon name="play" size={22} /></span> : null}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+          {cat ? <span className="tns-tag">{t(cat)}</span> : null}
+          {it.date ? <span className="tns-tag en" style={{ background: 'transparent', color: 'var(--muted)' }}>{it.date}</span> : null}
+        </div>
+        <h3 style={{ fontSize: 17, marginTop: 8 }}>{t(it.title)}</h3>
+        {t(it.meta) ? <p style={{ fontSize: 14 }}>{t(it.meta)}</p> : null}
+        {t(it.text) ? <p style={{ fontSize: 14, marginTop: 6 }} className="clamp3">{t(it.text)}</p> : null}
+        {kind === 'PRODUCT' ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 12 }}>
+            {it.price != null ? <b className="en" dir="ltr">{it.price.toLocaleString('en-US')} {locale === 'ar' ? 'ج.م' : 'EGP'}</b> : <span />}
+            {it.inStock ? <button type="button" className="tns-btn ghost sm" onClick={() => setForm({ kind: 'PRODUCT', page: 'products', topic: t(it.title) })}>{locale === 'ar' ? 'اطلب المنتج' : 'Order'}</button>
+              : <span className="tns-tag" style={{ background: '#fdecec', color: '#9b1c1c' }}>{locale === 'ar' ? 'مش متاح دلوقتي' : 'Not available now'}</span>}
+          </div>
+        ) : href ? <a className="more flip" href={href} target="_blank" rel="noopener noreferrer">{it.videoUrl ? (locale === 'ar' ? 'شوف الفيديو' : 'Watch') : locale === 'ar' ? 'اقرأ أكتر' : 'Read more'} {arr}</a> : null}
+      </div>
+    )
+  })
   const mediaCards = (items: MediaCard[], label?: (m: MediaCard) => string, order?: boolean) => items.map((m, i) => (
     <div key={i} className="tns-card tns-reveal" style={{ padding: 14, ['--d' as string]: `${Math.min(i, 8) * 70}ms` }}>
       <Sample on={m.sample} />
@@ -408,13 +449,13 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
       ) : null}
 
       {/* 10 achievements & projects */}
-      {C.achievements.show !== false && achievements.length ? (
+      {C.achievements.show !== false && (achievements.length || realAchievements.length) ? (
         <section id="achievements" className="tns-sec alt">
           <div className="tns-wrap">
             <p className="tns-kick">Ideas in action</p>
             <h2 className="tns-h2">{t(C.achievements.title)}</h2>
             <p className="tns-lead">{t(C.achievements.text)}</p>
-            <div className="tns-grid" style={{ ['--min' as string]: '280px' }}>{mediaCards(achievements)}</div>
+            <div className="tns-grid" style={{ ['--min' as string]: '280px' }}>{realAchievements.length ? itemCards(realAchievements, 'ACHIEVEMENT') : mediaCards(achievements)}</div>
           </div>
         </section>
       ) : null}
@@ -440,13 +481,13 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
       ) : null}
 
       {/* 12 products */}
-      {C.products.show !== false && products.length ? (
+      {C.products.show !== false && (products.length || realProducts.length) ? (
         <section id="products" className="tns-sec alt">
           <div className="tns-wrap">
             <p className="tns-kick">Products</p>
             <h2 className="tns-h2">{t(C.products.title)}</h2>
             <p className="tns-lead">{t(C.products.text)}</p>
-            <div className="tns-grid" style={{ ['--min' as string]: '240px' }}>{mediaCards(products, (m) => t((m as MediaCard & { type: Bi }).type), true)}</div>
+            <div className="tns-grid" style={{ ['--min' as string]: '240px' }}>{realProducts.length ? itemCards(realProducts, 'PRODUCT') : mediaCards(products, (m) => t((m as MediaCard & { type: Bi }).type), true)}</div>
           </div>
         </section>
       ) : null}
@@ -468,7 +509,7 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
       ) : null}
 
       {/* 14 events + media */}
-      {(C.events.show !== false && events.length) || (C.media.show !== false && media.length) ? (
+      {(C.events.show !== false && events.length) || (C.media.show !== false && (media.length || realMedia.length)) ? (
         <section id="media" className="tns-sec alt">
           <div className="tns-wrap">
             {C.events.show !== false && events.length ? (
@@ -478,11 +519,11 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
                 <div className="tns-grid" style={{ ['--min' as string]: '280px' }}>{mediaCards(events)}</div>
               </div>
             ) : null}
-            {C.media.show !== false && media.length ? (
+            {C.media.show !== false && (media.length || realMedia.length) ? (
               <>
                 <p className="tns-kick">Media & news</p>
                 <h2 className="tns-h2">{t(C.media.title)}</h2>
-                <div className="tns-grid" style={{ ['--min' as string]: '280px' }}>{mediaCards(media, (m) => t(m.meta))}</div>
+                <div className="tns-grid" style={{ ['--min' as string]: '280px' }}>{realMedia.length ? itemCards(realMedia, 'MEDIA') : mediaCards(media, (m) => t(m.meta))}</div>
               </>
             ) : null}
           </div>
@@ -543,10 +584,10 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
   )
 }
 
-export default function SiteHome({ content, stats, preview, fontClass }: { content: SiteContent; stats: SiteStats | null; preview: boolean; fontClass: string }) {
+export default function SiteHome({ content, items = [], stats, preview, fontClass }: { content: SiteContent; items?: PublicItem[]; stats: SiteStats | null; preview: boolean; fontClass: string }) {
   return (
     <div className={fontClass}>
-      <I18nProvider defaults={{ staff: 'ar', portal: 'ar' }}><View C={content} stats={stats} preview={preview} /></I18nProvider>
+      <I18nProvider defaults={{ staff: 'ar', portal: 'ar' }}><View C={content} items={items} stats={stats} preview={preview} /></I18nProvider>
     </div>
   )
 }
