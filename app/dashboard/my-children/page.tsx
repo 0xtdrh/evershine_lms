@@ -8,6 +8,7 @@ import { ParentRatingsCard } from '@/components/portal/ParentRatingsCard'
 import { ParentReferralCard } from '@/components/portal/ParentReferralCard'
 import { UpcomingSessionsCard } from '@/components/portal/UpcomingSessionsCard'
 import { PortalIdCard } from '@/components/cards/PortalIdCard'
+import { FamilyAccountCard } from '@/components/portal/FamilyAccountCard'
 import { AnnouncementFeed } from '@/components/announcements/AnnouncementFeed'
 import { ChildExcusesCard } from '@/components/portal/ChildExcusesCard'
 import { ChildOneToOneCard } from '@/components/portal/ChildOneToOneCard'
@@ -244,6 +245,7 @@ export default function MyChildrenPage() {
       </div>
 
       <AnnouncementFeed compact />
+      <FamilyAccountCard />
       <BirthdayBanner />
       <ParentRatingsCard />
       <ParentRenewalsCard />
@@ -258,7 +260,7 @@ export default function MyChildrenPage() {
       ) : (children ?? []).length === 0 ? (
         <Card>
           <CardContent className="pt-6 text-sm text-gray-600">
-            {L('No students are linked to your account. Please contact the office to link your child.', 'مفيش طلاب مربوطين بحسابك. كلّم الإدارة علشان يربطوا ابنك بالحساب.')}
+            {L('No registered student yet. Add your children in “My family” above and choose their courses; once a course is booked the student appears here.', 'مفيش طالب متسجل لسه. ضيف ولادك في «عيلتي» فوق واختار كورساتهم؛ أول ما الكورس يتحجز الطالب هيظهر هنا.')}
           </CardContent>
         </Card>
       ) : (

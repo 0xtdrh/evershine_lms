@@ -3333,6 +3333,49 @@ JS101=$(M "SELECT studentId FROM DiscountAssignment da JOIN EnrolmentCode ec ON 
 check "the student is enrolled in the online group" "$(M "SELECT COUNT(*) FROM StudentEnrollment WHERE studentId='$JS101' AND classSectionId='$JG'")" "1"
 api PATCH /api/enrolment-codes/E2EJOIN '{"active":false}' >/dev/null
 check "a stopped batch: its codes are refused on the website" "$(PC "{\"code\":\"$JC2\",\"listing\":\"e2e-course\"}" 10.9.1.1 | jq_ "d['data']['problem']")" "OFF"
+echo "== 102. Family accounts: sign up first, children, suitable courses, staff accounts + password link (six phases 1-A, 2026-11-13)"
+PA() { curl -s -X POST -H 'Content-Type: application/json' -H "X-Forwarded-For: $2" -d "$1" $B/api/public/account; }
+FA='"firstName":"Famdad","lastName":"Accounttest","password":"famPass2026","city":"Hurghada","agree":true'
+check "a parent makes an account on the website (ready at once)" "$(PA "{\"who\":\"PARENT\",$FA,\"phone\":\"01033344455\"}" 10.8.1.1 | jq_ "(d['success'], d['data']['phone'])")/$(M "SELECT CONCAT(g.signupSource,'/',u.role,'/',u.email) FROM Guardian g JOIN User u ON u.id=g.userId WHERE g.phoneNumber='01033344455'")" "(True, '01033344455')/WEBSITE/GUARDIAN/guardian_01033344455@technova.local"
+check "the same number again (also written +20…) → 'you have an account'" "$(PA "{\"who\":\"PARENT\",$FA,\"phone\":\"01033344455\"}" 10.8.1.2 | jq_ "d['error']['code']")/$(PA "{\"who\":\"PARENT\",$FA,\"phone\":\"+201033344455\"}" 10.8.1.3 | jq_ "d['error']['code']")" "ACCOUNT_EXISTS/ACCOUNT_EXISTS"
+check "the phone as the password is refused" "$(PA "{\"who\":\"PARENT\",\"firstName\":\"Pw\",\"lastName\":\"Test\",\"password\":\"01033344466\",\"city\":\"Cairo\",\"agree\":true,\"phone\":\"01033344466\"}" 10.8.1.4 | jq_ "d['success']")" "False"
+check "a student alone under 18 is refused; 18+ is made with himself in the family" "$(PA "{\"who\":\"SELF\",$FA,\"phone\":\"01033344477\",\"dob\":\"$(( $(cairo +%Y) - 15 ))-01-01\",\"gender\":\"MALE\"}" 10.8.1.5 | jq_ "d['error']['code']")/$(PA "{\"who\":\"SELF\",$FA,\"phone\":\"01033344488\",\"dob\":\"2000-02-02\",\"gender\":\"FEMALE\"}" 10.8.1.6 | jq_ "d['success']")/$(M "SELECT CONCAT(g.selfAccount,'/',COUNT(m.id),'/',MAX(m.isSelf)) FROM Guardian g JOIN FamilyMember m ON m.guardianId=g.id WHERE g.phoneNumber='01033344488' GROUP BY g.id")" "TOO_YOUNG/True/1/1/1"
+FJ=$(mktemp); login_jar 01033344455 famPass2026 "$FJ" 10.8.2.1
+fapi() { curl -s -b "$FJ" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+check "the family signs in with its phone and sees its (empty) family" "$(fapi GET /api/guardian-portal/family | jq_ "(d['success'], len(d['data']['people']), d['data']['settings']['unsuitable'])")" "(True, 0, 'LOCK')"
+M "UPDATE Track SET minAge=8, maxAge=12 WHERE id='$TR100'"
+Y6=$(( $(cairo +%Y) - 6 ))
+FM1=$(fapi POST /api/guardian-portal/family/members "{\"firstName\":\"Littleone\",\"lastName\":\"Accounttest\",\"dob\":\"$Y6-01-15\",\"gender\":\"MALE\"}" | jq_ "d['data']['id']")
+check "the family adds a child of 6" "$(M "SELECT COUNT(*) FROM FamilyMember WHERE id='$FM1'")/$(fapi GET /api/guardian-portal/family | jq_ "[p['age'] for p in d['data']['people']]")" "1/[6]"
+FC() { fapi GET "/api/guardian-portal/family/courses?person=m:$1" | jq_ "[(c['fit'], c['bookable']) for c in d['data']['courses'] if c['slug']=='e2e-track']"; }
+check "a track for 8–12 is locked for a 6-year-old (shown with a lock)" "$(FC $FM1)" "[('TOO_YOUNG', False)]"
+check "another family cannot see this child's courses" "$(curl -s -b "$JAR" "$B/api/guardian-portal/family/courses?person=m:$FM1" | jq_ "d['success']")" "False"
+FG102=$(M "SELECT id FROM Guardian WHERE phoneNumber='01033344455'")
+check "an instructor cannot open family accounts" "$(tapi GET /api/family-accounts | jq_ "d['success']")" "False"
+check "staff see the new account (from the website, no student yet)" "$(api GET '/api/family-accounts?filter=NO_BOOKING&q=Accounttest' | jq_ "[(r['signupSource'], r['members'], r['students']) for r in d['data'] if r['id']=='$FG102']")" "[('WEBSITE', 1, 0)]"
+check "staff open the track for this child → open for him" "$(api POST /api/family-accounts/$FG102/unlocks "{\"refType\":\"TRACK\",\"refId\":\"$TR100\",\"person\":\"m:$FM1\",\"note\":\"strong kid\"}" | jq_ "d['success']")/$(FC $FM1)" "True/[('OPENED', True)]"
+FM2=$(fapi POST /api/guardian-portal/family/members "{\"firstName\":\"Tinyone\",\"lastName\":\"Accounttest\",\"dob\":\"$Y6-03-01\",\"gender\":\"FEMALE\"}" | jq_ "d['data']['id']")
+api PUT /api/family-accounts/settings '{"unsuitable":"HIDE"}' >/dev/null
+check "setting 'hide': the sister does not see the locked track; the opened one still shows for her brother" "$(FC $FM2)/$(FC $FM1)" "[]/[('OPENED', True)]"
+api PUT /api/family-accounts/settings '{"unsuitable":"LOCK"}' >/dev/null
+check "a secretary cannot change the settings" "$(secapi PUT /api/family-accounts/settings '{"unsuitable":"HIDE"}' | jq_ "d['success']")" "False"
+check "the family removes a child not registered yet" "$(fapi DELETE /api/guardian-portal/family/members/$FM2 | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM FamilyMember WHERE id='$FM2'")" "True/0"
+check "'your work today' lists new families with no student" "$(api GET /api/today | jq_ "any(t['key']=='familiesNoChild' for t in d['data']['tasks'])")" "True"
+SA102=$(secapi POST /api/family-accounts "{\"firstName\":\"Branchmom\",\"lastName\":\"Offlinetest\",\"phone\":\"01033344499\",\"city\":\"Hurghada\",\"members\":[{\"firstName\":\"Branchkid\",\"lastName\":\"Offlinetest\",\"dob\":\"2016-05-05\",\"gender\":\"MALE\"}]}")
+TOK102=$(echo "$SA102" | jq_ "d['data']['link'].split('/')[-1]")
+check "a secretary makes the account of a family at the branch, with its child, and gets a link" "$(echo "$SA102" | jq_ "(d['success'], d['data']['link'].startswith('/account/setup/'))")/$(M "SELECT CONCAT(g.signupSource,'/',COUNT(m.id)) FROM Guardian g JOIN FamilyMember m ON m.guardianId=g.id WHERE g.phoneNumber='01033344499' GROUP BY g.id")" "(True, True)/STAFF/1"
+check "the link shows the first name only; nothing opens the account before it is used" "$(curl -s $B/api/account/setup/$TOK102 | jq_ "(d['data']['firstName'], 'phone' in d['data'])")" "('Branchmom', False)"
+check "the family chooses its password from the link (the phone as password is refused)" "$(curl -s -X POST -H 'Content-Type: application/json' -d '{"password":"01033344499"}' $B/api/account/setup/$TOK102 | jq_ "d['success']")/$(curl -s -X POST -H 'Content-Type: application/json' -d '{"password":"branchPass26"}' $B/api/account/setup/$TOK102 | jq_ "d['success']")" "False/True"
+BJ=$(mktemp); login_jar 01033344499 branchPass26 "$BJ" 10.8.2.2
+check "…signs in with it and sees its child; the link cannot be used again" "$(curl -s -b "$BJ" $B/api/guardian-portal/family | jq_ "[p['firstName'] for p in d['data']['people']]")/$(curl -s -X POST -H 'Content-Type: application/json' -d '{"password":"otherPass99"}' $B/api/account/setup/$TOK102 | jq_ "d['error']['code']")" "['Branchkid']/LINK_BAD"
+rm -f "$BJ"
+OLDG=$(M "SELECT id FROM Guardian WHERE phoneNumber='01099988877' LIMIT 1")
+check "an old account (made by approving an admission) gets a password link too, and older links stop" "$(api POST /api/family-accounts/$OLDG/link | jq_ "d['data']['link'].startswith('/account/setup/')")/$(api POST /api/family-accounts/$OLDG/link >/dev/null; M "SELECT COUNT(*) FROM AccountSetupLink WHERE guardianId='$OLDG' AND usedAt IS NULL")" "True/1"
+SU102=$(curl -s -X POST -H 'Content-Type: application/json' -H "X-Forwarded-For: 10.8.3.1" -d "{\"listing\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"who\":\"PARENT\",\"parent\":{\"firstName\":\"Famdad\",\"lastName\":\"Accounttest\",\"phone\":\"01033344455\"},\"city\":\"Hurghada\",\"agree\":true,\"students\":[{\"firstName\":\"Bigone\",\"lastName\":\"Accounttest\",\"dob\":\"2016-04-04\",\"gender\":\"MALE\"}]}" $B/api/public/signup)
+AR102=$(M "SELECT id FROM AdmissionRequest WHERE firstName='Bigone' AND lastName='Accounttest' LIMIT 1")
+api POST /api/admissions/$AR102/approve "{\"campusId\":\"$ONP\",\"classSectionId\":\"$JG\",\"confirmNotDuplicate\":true}" >/dev/null
+check "a request from the same phone, once approved, lands in the SAME family account" "$(echo "$SU102" | jq_ "d['success']")/$(fapi GET /api/guardian-portal/family | jq_ "sorted([(p['firstName'], bool(p['registrationNumber'])) for p in d['data']['people']])")/$(M "SELECT COUNT(*) FROM Guardian WHERE phoneNumber='01033344455'")" "True/[('Bigone', True), ('Littleone', False)]/1"
+rm -f "$FJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

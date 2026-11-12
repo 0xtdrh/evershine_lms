@@ -31,7 +31,7 @@ import { L } from '@/lib/i18n/client'
 
 interface AuthLayoutProps {
   children: React.ReactNode
-  pageType: 'login' | 'forgot-password' | 'reset-password' | 'change-password'
+  pageType: 'login' | 'forgot-password' | 'reset-password' | 'change-password' | 'signup' | 'account-setup'
 }
 
 /** 2026-10-24: titles in the screen language (were English only). */
@@ -50,6 +50,16 @@ const PAGE = () => ({
     title:    L('Create New Password', 'اعمل باسورد جديد'),
     sub:      L('Choose a strong password to secure your account.', 'اختار باسورد قوي يحمي حسابك.'),
     back:     { href: '/login', label: L('Back to Sign In', 'رجوع للدخول') },
+  },
+  signup: {
+    title:    L('Create your family account', 'اعمل حساب العيلة'),
+    sub:      L('One account for the whole family: add your children, then choose their courses.', 'حساب واحد للعيلة كلها: ضيف ولادك وبعدين اختار كورساتهم.'),
+    back:     { href: '/login', label: L('I have an account', 'عندي حساب') },
+  },
+  'account-setup': {
+    title:    L('Choose your password', 'اختار الباسورد بتاعك'),
+    sub:      L('TechNova made your family account. Choose a password to open it.', 'TechNova عملتلك حساب العيلة. اختار باسورد علشان تفتحه.'),
+    back:     null,
   },
   'change-password': {
     title:    L('Choose Your Own Password', 'اختار الباسورد بتاعك'),

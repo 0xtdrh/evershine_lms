@@ -294,6 +294,7 @@ function View({ C, items, stats, preview, page, detail, banner, courses = [] }: 
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">{dark ? <path d="M12 4V2M12 22v-2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" /> : <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />}</svg>
             </button>
             <a href="/login" className="tns-btn ghost sm hide-sm">{locale === 'ar' ? 'دخول' : 'Sign in'}</a>
+            <a href="/signup" className="tns-btn ghost sm hide-sm">{locale === 'ar' ? 'اعمل حساب' : 'Sign up'}</a>
             <button type="button" className="tns-btn primary sm hide-sm" onClick={() => setForm({ kind: 'CONTACT', page: 'header' })}>{locale === 'ar' ? 'تواصل معانا' : 'Contact us'}</button>
             <button type="button" className="tns-icon-btn tns-burger" onClick={() => setMenu(!menu)} aria-expanded={menu} aria-label={locale === 'ar' ? 'القائمة' : 'Menu'}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d={menu ? 'M6 6l12 12M18 6L6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg>
@@ -304,6 +305,7 @@ function View({ C, items, stats, preview, page, detail, banner, courses = [] }: 
           {nav.map((n) => <a key={n.href} className="item" href={n.href} onClick={() => setMenu(false)}>{t(n.label)}</a>)}
           <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
             <a href="/login" className="tns-btn ghost sm" style={{ flex: 1 }}>{locale === 'ar' ? 'دخول' : 'Sign in'}</a>
+            <a href="/signup" className="tns-btn ghost sm" style={{ flex: 1 }}>{locale === 'ar' ? 'اعمل حساب' : 'Sign up'}</a>
             <button type="button" className="tns-btn primary sm" style={{ flex: 1 }} onClick={() => { setMenu(false); setForm({ kind: 'CONTACT', page: 'menu' }) }}>{locale === 'ar' ? 'تواصل معانا' : 'Contact us'}</button>
           </div>
         </div>

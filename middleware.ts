@@ -45,7 +45,7 @@ export default auth((req) => {
   const role = session?.user?.role as string | undefined
 
   const isProtectedRoute = nextUrl.pathname.startsWith('/dashboard')
-  const isAuthRoute      = nextUrl.pathname === '/login'
+  const isAuthRoute      = nextUrl.pathname === '/login' || nextUrl.pathname === '/signup'
 
   // ── Guard: unauthenticated user hitting a protected route ──────────────────
   if (isProtectedRoute && !isAuthenticated) {

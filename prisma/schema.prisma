@@ -902,8 +902,82 @@ model Guardian {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  /// Six phases 1-A (2026-11-13): how the family account started (WEBSITE sign-up / STAFF for an offline family / null = old flow)
+  signupSource String?  @db.VarChar(20)
+  /// the account holder is the student (18+, signed up alone)
+  selfAccount  Boolean  @default(false)
+  country      String?  @db.VarChar(60)
+  city         String?  @db.VarChar(60)
+
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   students Student[]
+  members  FamilyMember[]
+
+  @@index([userId])
+}
+
+/// Six phases 1-A: a child (or the account holder) added inside a family account BEFORE any enrolment. Gets a real Student
+/// (registration number) at the first booking (studentId). Courses shown to it follow its age (lib/accounts/suitability.ts).
+model FamilyMember {
+  id          String    @id @default(cuid())
+  guardianId  String
+  firstName   String    @db.VarChar(60)
+  lastName    String    @db.VarChar(60)
+  dateOfBirth DateTime  @db.Date
+  gender      String    @db.VarChar(10)
+  school      String?   @db.VarChar(120)
+  experience  String?   @db.VarChar(300)
+  isSelf      Boolean   @default(false)
+  studentId   String?   @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  guardian Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+
+  @@index([guardianId])
+}
+
+/// Six phases 1-A: staff open a track / course that a child does not get by its age — for a whole family (guardianId),
+/// one child not enrolled yet (memberId) or a student (studentId).
+model CourseUnlock {
+  id          String   @id @default(cuid())
+  guardianId  String?
+  memberId    String?
+  studentId   String?
+  refType     String   @db.VarChar(10)
+  refId       String   @db.VarChar(40)
+  note        String?  @db.VarChar(200)
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([guardianId])
+  @@index([memberId])
+  @@index([studentId])
+}
+
+/// Six phases 1-A: a link staff send to a family (offline / old account) to choose its own password. Only the hash is kept.
+model AccountSetupLink {
+  id          String    @id @default(cuid())
+  guardianId  String
+  tokenHash   String    @unique @db.VarChar(64)
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([guardianId])
+}
+
+/// Six phases 1-A: a 6-digit code e-mailed to confirm an account e-mail (hash only, 15 minutes, 5 tries).
+model EmailCheck {
+  id        String    @id @default(cuid())
+  userId    String
+  email     String    @db.VarChar(160)
+  codeHash  String    @db.VarChar(64)
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }

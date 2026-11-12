@@ -46,6 +46,7 @@ const inIds = (ids: string[] | null) => (ids ? { in: ids.length ? ids : ['__none
 const COUNTERS: Record<TaskKey, (c: Ctx) => Promise<number>> = {
   admissions: async (c) => prisma.admissionRequest.count({ where: { status: 'PENDING', ...(c.places.all ? {} : { OR: [{ preferredCampusId: null }, campusWhere(c.places, 'preferredCampusId')] }) } }),
   leads: async () => prisma.landingInquiry.count({ where: { status: 'NEW' } }),
+  familiesNoChild: async (c) => prisma.guardian.count({ where: { signupSource: { not: null }, students: { none: {} }, createdAt: { gte: day(addDays(c.today, -30)) } } }),
   followUps: async (c) => prisma.contactLog.count({ where: { followUpAt: { lt: day(addDays(c.today, 1)) }, followUpDoneAt: null, ...campusWhere(c.places) } }),
   proofs: async (c) => prisma.feeInvoice.count({ where: { proofStatus: 'PENDING', ...invoiceWhere(c.places) } }),
   topUps: async (c) => prisma.walletTopUp.count({ where: { status: 'PENDING', ...(await studentIn(c)) } }),

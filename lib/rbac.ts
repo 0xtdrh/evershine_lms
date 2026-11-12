@@ -78,6 +78,7 @@ export type AcademicResource =
   | 'renewals'
   | 'one_to_one'
   | 'recorded_courses'
+  | 'family_accounts'
   | 'video_protection'
   | 'holidays'
   // Phase B: wallet (create = top up, approve = approve proof top-ups and withdrawals)
@@ -220,6 +221,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     one_to_one: ['create', 'read', 'update', 'delete'],
     recorded_courses: ['create', 'read', 'update', 'delete'],
+    family_accounts: ['create', 'read', 'update', 'delete'],
     video_protection: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
@@ -296,6 +298,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     one_to_one: ['create', 'read', 'update', 'delete'],
     recorded_courses: ['create', 'read', 'update', 'delete'],
+    family_accounts: ['create', 'read', 'update', 'delete'],
     video_protection: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
@@ -373,6 +376,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     one_to_one: [],
     recorded_courses: [],
+    family_accounts: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -449,6 +453,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     one_to_one: [],
     recorded_courses: [],
+    family_accounts: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -525,6 +530,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     one_to_one: [],
     recorded_courses: [],
+    family_accounts: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -603,6 +609,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read'],
     one_to_one: ['read'],
     recorded_courses: ['read'],
+    family_accounts: ['read'],
     video_protection: [],
     holidays: ['read'],
     wallet: ['create', 'read', 'approve'],
@@ -679,6 +686,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     one_to_one: [],
     recorded_courses: [],
+    family_accounts: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -759,6 +767,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     one_to_one: ['create', 'read', 'update'],
     recorded_courses: ['create', 'read', 'update'],
+    family_accounts: ['create', 'read', 'update'],
     video_protection: [],
     holidays: ['read'],
     wallet: ['create', 'read'],
@@ -840,6 +849,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: ['read', 'update'],
     one_to_one: ['create', 'read', 'update'],
     recorded_courses: ['create', 'read', 'update'],
+    family_accounts: ['create', 'read', 'update'],
     video_protection: [],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
@@ -919,6 +929,7 @@ const PERMISSIONS: PermissionMap = {
     renewals: [],
     one_to_one: [],
     recorded_courses: [],
+    family_accounts: ['create', 'read'],
     video_protection: [],
     holidays: [],
     wallet: [],

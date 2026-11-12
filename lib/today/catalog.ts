@@ -10,7 +10,7 @@ import type { AcademicResource as Resource, Action } from '@/lib/rbac'
 
 export const TASK_KEYS = [
   // office / managers
-  'admissions', 'leads', 'followUps', 'proofs', 'topUps', 'withdrawals', 'refunds', 'paymentVoids', 'reportsNotRated', 'discounts', 'excuses',
+  'admissions', 'leads', 'familiesNoChild', 'followUps', 'proofs', 'topUps', 'withdrawals', 'refunds', 'paymentVoids', 'reportsNotRated', 'discounts', 'excuses',
   'complaintsLate', 'complaintsMine', 'absenceRequests', 'noSubstitute', 'leaves', 'missingAttendance',
   'groupsToAdvance', 'renewalsUnanswered', 'oneToOneRequests', 'oneToOneEvents', 'oneToOneNoTeacher', 'recordedEnding', 'videoSuspicious', 'waitingList', 'overdueInvoices', 'birthdays',
   // partners / learning
@@ -50,6 +50,7 @@ export const TASKS: TaskDef[] = [
   { key: 'refunds', en: 'Refund requests to approve', ar: 'طلبات استرداد مستنية موافقة', href: '/dashboard/refunds?tab=requests', urgent: true, perm: ['refunds', 'approve'] },
   { key: 'discounts', en: 'Discounts waiting for approval', ar: 'خصومات مستنية موافقة', href: '/dashboard/discounts?tab=requests', urgent: true, perm: ['discount_approvals', 'approve'] },
   { key: 'admissions', en: 'New applications to review', ar: 'طلبات تسجيل جديدة محتاجة مراجعة', href: '/dashboard/admissions', urgent: true, perm: ['admissions', 'update'], roles: [...OFFICE, 'MARKETING'] },
+  { key: 'familiesNoChild', en: 'New family accounts with no student yet (last 30 days)', ar: 'حسابات عائلات جديدة لسه مفيهاش طالب (آخر 30 يوم)', href: '/dashboard/family-accounts?tab=accounts', perm: ['family_accounts', 'read'], roles: [...OFFICE, 'MARKETING'] },
   { key: 'leads', en: 'New website leads', ar: 'عملاء جداد من الموقع', href: '/dashboard/leads', perm: ['admissions', 'read'], roles: [...OFFICE, 'MARKETING'] },
   { key: 'followUps', en: 'Parents to call today', ar: 'أولياء أمور لازم تكلّمهم النهارده', href: '/dashboard/follow-ups', urgent: true, perm: ['contact_logs', 'read'] },
   { key: 'excuses', en: 'Absence excuses to review', ar: 'أعذار غياب محتاجة مراجعة', href: '/dashboard/absence-excuses', urgent: true, perm: ['absence_excuses', 'approve'] },

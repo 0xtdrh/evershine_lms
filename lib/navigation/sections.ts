@@ -12,7 +12,7 @@ export type HubKey = (typeof HUB_KEYS)[number]
 /** Each hub and its pages, in tab order. */
 export const HUBS: { key: HubKey; en: string; ar: string; items: string[] }[] = [
   { key: 'home', en: 'Home', ar: 'الرئيسية', items: ['Dashboard', 'My Calendar', 'My Schedule', 'One-to-One Requests', 'My Substitutions', 'User Guide'] },
-  { key: 'admissions', en: 'Admissions', ar: 'التسجيل', items: ['Admissions', 'Landing Leads', 'Enrolment Codes'] },
+  { key: 'admissions', en: 'Admissions', ar: 'التسجيل', items: ['Admissions', 'Family Accounts', 'Landing Leads', 'Enrolment Codes'] },
   { key: 'students', en: 'Students', ar: 'الطلاب', items: ['Students', 'My Students', 'Waiting List', 'Follow-ups', 'Renewals', 'Absence Excuses', 'Birthdays'] },
   { key: 'groups', en: 'Groups', ar: 'الجروبات', items: ['Groups', 'One-to-One', 'Groups Schedule', 'Attendance', 'Student Attendance', 'Import Attendance', 'Holidays', 'Attendance Report'] },
   { key: 'learning', en: 'Learning', ar: 'التعليم', items: ['LMS', 'Recorded Courses', 'Protected Videos', 'Level Results', 'LMS Results', 'Passport & Stamps', 'Session Reports', 'Course Structure', 'Grading Weights'] },

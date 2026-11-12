@@ -38,6 +38,7 @@ describe('settings centre / reports centre / today (5-C)', () => {
       'app/api/admin/finance-settings/route.ts': '/dashboard/admin/finance-settings',
       'app/api/accountant/salary-slips/settings/route.ts': '/dashboard/accountant/salary-slips',
       'app/api/cards/settings/route.ts': '/dashboard/cards',
+      'app/api/family-accounts/settings/route.ts': '/dashboard/family-accounts',
       'app/api/announcements/settings/route.ts': '/dashboard/announcements',
       'app/api/treasury/settings/route.ts': '/dashboard/treasury',
       'app/api/month-close/settings/route.ts': '/dashboard/month-close',

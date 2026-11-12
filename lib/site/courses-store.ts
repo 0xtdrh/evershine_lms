@@ -51,7 +51,7 @@ export async function saveListing(userId: string, v: ListingInput) {
 type LevelRow = { id: string; name: string; order: number; numberOfSessions: number; numberOfMonths: number; pricingType: string; monthlyPrice: number | null; fullLevelPrice: number | null; allowedModes: unknown }
 export interface OnlineGroup { id: string; name: string; slots: { dayOfWeek: number; time: string }[]; free: number | null; startDate: string | null }
 export interface PublicCourse {
-  slug: string; refType: 'TRACK' | 'COURSE'; title: { en: string; ar: string }; summary: { en: string; ar: string }
+  slug: string; refType: 'TRACK' | 'COURSE'; refId: string; trackId: string | null; courseIds: string[]; title: { en: string; ar: string }; summary: { en: string; ar: string }
   imageUrl: string | null; introVideoUrl: string | null; minAge: number | null; maxAge: number | null; trackName: string | null; color: string | null
   levels: { name: string; course: string; sessions: number; months: number }[]
   modes: { online: boolean; recorded: boolean; branch: boolean }
@@ -128,7 +128,7 @@ export async function publicCatalog(opts: { slug?: string } = {}): Promise<Publi
       }
       const name = refType === 'TRACK' ? track?.name ?? first.name : first.name
       out.push({
-        slug: l.slug, refType,
+        slug: l.slug, refType, refId: l.refId, trackId: refType === 'TRACK' ? l.refId : first.trackId ?? null, courseIds: courses.map((c) => c.id),
         title: { en: l.titleEn || l.titleAr || name, ar: l.titleAr || l.titleEn || name },
         summary: { en: l.summaryEn || l.summaryAr || '', ar: l.summaryAr || l.summaryEn || '' },
         imageUrl: l.imageUrl, introVideoUrl: l.introVideoUrl,

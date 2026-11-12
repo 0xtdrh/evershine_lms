@@ -272,6 +272,10 @@ export default function LoginPage() {
           )}
         </Button>
       </form>
+      <p className="mt-5 text-center text-sm text-slate-600">
+        {L("New to TechNova?", 'أول مرة مع TechNova؟')}{' '}
+        <Link href="/signup" className="font-semibold text-blue-700 hover:underline">{L('Create a family account', 'اعمل حساب العيلة')}</Link>
+      </p>
     </AuthLayout>
   )
 }
