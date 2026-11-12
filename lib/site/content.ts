@@ -20,7 +20,8 @@ export interface MediaCard extends Shown { title: Bi; meta: Bi; kind: 'video' | 
 
 export interface SiteContent {
   nav: (Shown & { label: Bi; href: string })[]
-  contact: { whatsapp: string; phone: string; email: string; address: Bi; mapUrl: string }
+  contact: { whatsapp: string; phone: string; email: string; address: Bi; mapUrl: string; facebook: string; instagram: string; tiktok: string; youtube: string; linkedin: string }
+  fields: Shown & { title: Bi; items: Card[] }
   hero: Shown & { kicker: string; title1: Bi; title2: Bi; tagline: string; text: Bi; videoUrl: string; primary: Bi; secondary: Bi }
   audience: Card[]
   stats: StatItem[]
@@ -51,7 +52,17 @@ export const SITE_CONTENT: SiteContent = {
     { label: b('Partnerships', 'الشراكات'), href: '#partners' },
     { label: b('About TechNova', 'عن TechNova'), href: '#about' },
   ],
-  contact: { whatsapp: '', phone: '', email: '', address: b('El Kawthar, Hurghada', 'الكوثر، الغردقة'), mapUrl: '' },
+  contact: { whatsapp: '', phone: '', email: '', address: b('El Kawthar, Hurghada', 'الكوثر، الغردقة'), mapUrl: '', facebook: '', instagram: '', tiktok: '', youtube: '', linkedin: '' },
+  fields: {
+    title: b('What would your child like to build?', 'ابنك حابب يبني إيه؟'),
+    items: [
+      { icon: 'robot', title: b('Robotics', 'روبوتكس'), text: b('Robots that move, sense and decide', 'روبوتات بتتحرك وتحس وتقرر'), href: '#curriculum' },
+      { icon: 'code', title: b('Programming', 'برمجة'), text: b('From blocks to Python and C++', 'من البلوكات لحد Python و C++‎'), href: '#curriculum' },
+      { icon: 'chip', title: b('Artificial intelligence', 'ذكاء اصطناعي'), text: b('Models that learn and recognise', 'نماذج بتتعلم وتتعرف'), href: '#curriculum' },
+      { icon: 'bolt', title: b('Electronics & IoT', 'إلكترونيات وIoT'), text: b('Circuits, sensors and smart devices', 'دوائر وحساسات وأجهزة ذكية'), href: '#curriculum' },
+      { icon: 'phone', title: b('Apps & games', 'تطبيقات وألعاب'), text: b('Games, apps and websites', 'ألعاب وتطبيقات ومواقع'), href: '#curriculum' },
+    ],
+  },
   hero: {
     kicker: 'WHERE IDEAS BECOME REALITY',
     title1: b('We teach technology…', 'بنعلّم التكنولوجيا…'),

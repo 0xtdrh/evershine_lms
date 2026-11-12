@@ -36,6 +36,14 @@ const ICONS: Record<string, string> = {
   building: 'M4 21V3h10v18M14 9h6v12M8 7h2M8 11h2M8 15h2',
   play: 'M8 5v14l11-7z',
   arrow: 'M15 18l-6-6 6-6',
+  robot: 'M12 3v3M8 7h8a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3zM9.5 12h.01M14.5 12h.01M9 16h6M3 12v2M21 12v2',
+  bolt: 'M13 2L4 14h7l-1 8 9-12h-7z',
+  phone: 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2',
+  facebook: 'M15 3h-2.5A3.5 3.5 0 0 0 9 6.5V9H7v3.5h2V21h3.5v-8.5H15l.5-3.5h-3V7a1 1 0 0 1 1-1H15z',
+  instagram: 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM17.5 6.5h.01',
+  tiktok: 'M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5M14 3c.5 2.5 2.5 4.5 5 4.5',
+  youtube: 'M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zM10 9l5 3-5 3z',
+  linkedin: 'M4 9h4v11H4zM6 4.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zM11 9h3.6v1.6c.6-1 1.8-1.9 3.4-1.9 2.6 0 3 1.8 3 4V20h-4v-6c0-1.2-.2-2.2-1.5-2.2S14 12.9 14 14v6h-3z',
 }
 
 function Icon({ name, size = 22 }: { name: string; size?: number }) {
@@ -83,7 +91,20 @@ function CountUp({ value, plus }: { value: number; plus?: boolean }) {
   return <span ref={ref} className="tns-num">{n.toLocaleString('en-US')}{plus ? '+' : ''}</span>
 }
 
+function useMotionOk() {
+  const [ok, setOk] = useState(false)
+  useEffect(() => {
+    const m = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const on = () => setOk(!m.matches)
+    on()
+    m.addEventListener?.('change', on)
+    return () => m.removeEventListener?.('change', on)
+  }, [])
+  return ok
+}
+
 function Circuit() {
+  const motion = useMotionOk()
   return (
     <svg className="tns-circuit" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <g fill="none" stroke="#1a4a6e" strokeWidth="2">
@@ -94,6 +115,13 @@ function Circuit() {
         <path className="lit" d="M460 160 H560 L600 200 V300" /><path className="lit" d="M780 130 H700 L660 170" />
       </g>
       <g fill="#3cc4da"><circle cx="460" cy="160" r="5" /><circle cx="600" cy="300" r="6" /><circle cx="780" cy="130" r="5" /><circle cx="660" cy="170" r="6" /></g>
+      {motion ? (
+        <g fill="#a5f0fb">
+          <circle r="4"><animateMotion dur="3.2s" repeatCount="indefinite" path="M0 120 H220 L260 160 H460 H560 L600 200 V300" /></circle>
+          <circle r="3.5"><animateMotion dur="2.6s" begin="1s" repeatCount="indefinite" path="M1200 90 H960 L920 130 H780 H700 L660 170" /></circle>
+          <circle r="3"><animateMotion dur="4s" begin=".5s" repeatCount="indefinite" path="M600 600 V520 L640 480 H820" /></circle>
+        </g>
+      ) : null}
     </svg>
   )
 }
@@ -116,6 +144,24 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
   const router = useRouter()
   useEffect(() => setMounted(true), [])
   useReveal()
+  const [scrolled, setScrolled] = useState(false)
+  const [active, setActive] = useState('')
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    const html = document.documentElement
+    const prev = html.style.scrollBehavior
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) html.style.scrollBehavior = 'smooth'
+    const ids = C.nav.map((n) => n.href.replace('#', '')).filter(Boolean)
+    const seen = new Map<string, boolean>()
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) seen.set(e.target.id, e.isIntersecting)
+      setActive(ids.find((id) => seen.get(id)) ?? '')
+    }, { rootMargin: '-45% 0px -50% 0px' })
+    ids.forEach((id) => { const el = document.getElementById(id); if (el) io.observe(el) })
+    return () => { window.removeEventListener('scroll', onScroll); io.disconnect(); html.style.scrollBehavior = prev }
+  }, [C.nav])
   useSiteTracker(locale)
 
   const nav = visible(C.nav, preview)
@@ -129,7 +175,7 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
   const dark = mounted && resolvedTheme === 'dark'
 
   const cards = (items: Card[], d = false) => items.filter((c) => c.show !== false).map((c, i) => (
-    <div key={i} className={`tns-card tns-reveal${d ? ' d' : ''}`}>
+    <div key={i} className={`tns-card tns-reveal${d ? ' d' : ''}`} style={{ ['--d' as string]: `${Math.min(i, 8) * 70}ms` }}>
       {c.icon ? <span className="tns-ico"><Icon name={c.icon} /></span> : null}
       <h3>{t(c.title)}</h3>
       <p>{t(c.text)}</p>
@@ -137,7 +183,7 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
     </div>
   ))
   const mediaCards = (items: MediaCard[], label?: (m: MediaCard) => string, order?: boolean) => items.map((m, i) => (
-    <div key={i} className="tns-card tns-reveal" style={{ padding: 14 }}>
+    <div key={i} className="tns-card tns-reveal" style={{ padding: 14, ['--d' as string]: `${Math.min(i, 8) * 70}ms` }}>
       <Sample on={m.sample} />
       <div className="tns-thumb"><Icon name={m.kind === 'video' ? 'play' : m.kind === 'competition' ? 'trophy' : m.kind === 'product' ? 'layers' : m.kind === 'event' ? 'route' : 'screen'} size={34} /></div>
       {label ? <span className="tns-tag" style={{ marginTop: 12 }}>{label(m)}</span> : null}
@@ -152,14 +198,14 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
       {preview ? <div className="tns-preview">{locale === 'ar' ? 'نسخة تجريبية للمراجعة: مش ظاهرة للزوار. الكروت المكتوب عليها «مثال» مش هتظهر في الموقع الحقيقي.' : 'Review preview: not visible to visitors. Cards marked “Example” never appear on the real site.'}</div> : null}
 
       {/* 01 header */}
-      <header className="tns-head">
+      <header className={`tns-head${scrolled ? ' scrolled' : ''}`}>
         <div className="tns-wrap row">
           <a href="#top" className="tns-logo" aria-label="TechNova">
             <span className="tns-mark">TN</span>
             <span className="tns-word">Tech<b>Nova</b></span>
           </a>
           <nav className="tns-nav" aria-label={locale === 'ar' ? 'القائمة الرئيسية' : 'Main menu'}>
-            {nav.map((n) => <a key={n.href} href={n.href} onClick={() => track('NAV', n.label.en)}>{t(n.label)}</a>)}
+            {nav.map((n) => <a key={n.href} href={n.href} className={active && n.href === `#${active}` ? 'on' : undefined} aria-current={active && n.href === `#${active}` ? 'true' : undefined} onClick={() => track('NAV', n.label.en)}>{t(n.label)}</a>)}
           </nav>
           <div className="tns-tools">
             <button type="button" className="tns-icon-btn en" onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')} aria-label={locale === 'ar' ? 'English' : 'العربية'}>{locale === 'ar' ? 'EN' : 'ع'}</button>
@@ -222,6 +268,24 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
                   <strong>{t(a.title)}</strong>
                   <span className="t">{t(a.text)}</span>
                   {a.cta ? <span className="c">{t(a.cta)} {arr}</span> : null}
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* 02b field tiles */}
+      {C.fields.show !== false && visible(C.fields.items, preview).length ? (
+        <section className="tns-fields-sec">
+          <div className="tns-wrap">
+            <h2 className="tns-h2" style={{ fontSize: 'clamp(22px, 2.6vw, 30px)', textAlign: 'center' }}>{t(C.fields.title)}</h2>
+            <div className="tns-tiles">
+              {visible(C.fields.items, preview).map((f, i) => (
+                <a key={i} href={f.href ?? '#curriculum'} className="tns-tile tns-reveal" style={{ ['--d' as string]: `${i * 70}ms` }} onClick={() => track('CTA', `field:${f.title.en}`)}>
+                  <span className="ic"><Icon name={f.icon ?? 'code'} size={26} /></span>
+                  <strong>{t(f.title)}</strong>
+                  <span>{t(f.text)}</span>
                 </a>
               ))}
             </div>
@@ -458,6 +522,13 @@ function View({ C, stats, preview }: { C: SiteContent; stats: SiteStats | null; 
             <div><h4>{locale === 'ar' ? 'اكتشف' : 'Discover'}</h4>{nav.slice(4).map((n) => <a key={n.href} href={n.href}>{t(n.label)}</a>)}<a href="#verify">{locale === 'ar' ? 'تأكّد من شهادة' : 'Check a certificate'}</a></div>
             <div><h4>{locale === 'ar' ? 'تواصل' : 'Connect'}</h4><a href="#contact" onClick={(e) => { e.preventDefault(); setForm({ kind: 'CONTACT', page: 'footer' }) }}>{locale === 'ar' ? 'تواصل معانا' : 'Contact us'}</a><a href="#partners">{locale === 'ar' ? 'الشراكات' : 'Partnerships'}</a><a href="/admissions/apply">{locale === 'ar' ? 'التقديم أونلاين' : 'Apply online'}</a></div>
           </div>
+          {(['facebook', 'instagram', 'tiktok', 'youtube', 'linkedin'] as const).some((k) => C.contact[k]) ? (
+            <div className="tns-social" aria-label={locale === 'ar' ? 'تابعنا' : 'Follow us'}>
+              {(['facebook', 'instagram', 'tiktok', 'youtube', 'linkedin'] as const).filter((k) => C.contact[k]).map((k) => (
+                <a key={k} href={C.contact[k]} target="_blank" rel="noopener noreferrer" aria-label={k}><Icon name={k} size={20} /></a>
+              ))}
+            </div>
+          ) : null}
           <div className="bottom">
             <span className="en">© {new Date().getFullYear()} TechNova</span>
             <span><a href="/policies">{locale === 'ar' ? 'السياسات والشروط' : 'Policies & terms'}</a></span>

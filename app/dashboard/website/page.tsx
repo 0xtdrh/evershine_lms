@@ -20,6 +20,7 @@ type Obj = { [k: string]: Json }
 
 const SECTIONS: { key: keyof SiteContent; en: string; ar: string }[] = [
   { key: 'contact', en: 'Contact details', ar: 'بيانات التواصل' },
+  { key: 'fields', en: 'Field tiles', ar: 'مربعات المجالات' },
   { key: 'hero', en: 'Top of the page', ar: 'الواجهة' },
   { key: 'audience', en: 'Who are you? cards', ar: 'كروت «إنت جاي علشان»' },
   { key: 'stats', en: 'Numbers', ar: 'الأرقام' },
@@ -45,6 +46,7 @@ const FIELD: Record<string, [string, string]> = {
   videoUrl: ['Video link (mp4)', 'لينك الفيديو (mp4)'], primary: ['Main button', 'الزرار الأساسي'], secondary: ['Second button', 'الزرار التاني'],
   cta: ['Button', 'الزرار'], href: ['Link', 'اللينك'], tag: ['Tag', 'الشارة'], meta: ['Under the title', 'تحت العنوان'], type: ['Type', 'النوع'],
   name: ['Name', 'الاسم'], ages: ['Ages', 'السن'], note: ['Small note', 'ملحوظة صغيرة'], step: ['Step (English)', 'الخطوة (إنجليزي)'],
+  facebook: ['Facebook page link', 'لينك صفحة فيسبوك'], instagram: ['Instagram link', 'لينك إنستجرام'], tiktok: ['TikTok link', 'لينك تيك توك'], youtube: ['YouTube link', 'لينك يوتيوب'], linkedin: ['LinkedIn link', 'لينك لينكدإن'], fields: ['Field tiles', 'مربعات المجالات'],
   whatsapp: ['WhatsApp number', 'رقم الواتساب'], phone: ['Phone', 'التليفون'], email: ['Email', 'الإيميل'], address: ['Address', 'العنوان'], mapUrl: ['Map link', 'لينك الخريطة'],
   items: ['Items', 'العناصر'], points: ['Points', 'النقط'], programmes: ['Programmes', 'البرامج'], journey: ['Student journey', 'رحلة الطالب'], kinds: ['Partnership types', 'أنواع الشراكة'],
   places: ['Partner places shown', 'الأماكن الشريكة اللي تظهر'], steps: ['Steps', 'الخطوات'], families: ['Families card (B2C)', 'كارت العائلات'], schools: ['Schools card (B2B)', 'كارت المدارس'],
@@ -52,7 +54,7 @@ const FIELD: Record<string, [string, string]> = {
   icon: ['Icon', 'الأيقونة'], kind: ['Kind', 'النوع'], value: ['Fixed number', 'رقم ثابت'], min: ['Show only from', 'يظهر من أول'], plus: ['Add “+”', 'يضيف «+»'], source: ['Counted from', 'بيتحسب من'],
 }
 const SOURCES: [string, string, string][] = [['', 'Fixed number', 'رقم ثابت'], ['students', 'Students who learned', 'الطلاب اللي اتعلموا'], ['sessions', 'Sessions delivered', 'الحصص اللي اتعملت'], ['certificates', 'Certificates', 'الشهادات'], ['partnerPlaces', 'Partner places', 'الأماكن الشريكة'], ['branches', 'Branches', 'الفروع']]
-const ICONS = ['cap', 'home', 'hotel', 'chip', 'flask', 'wave', 'code', 'screen', 'check', 'layers', 'grow', 'eye', 'trophy', 'tools', 'route', 'shield', 'building']
+const ICONS = ['robot', 'bolt', 'phone', 'cap', 'home', 'hotel', 'chip', 'flask', 'wave', 'code', 'screen', 'check', 'layers', 'grow', 'eye', 'trophy', 'tools', 'route', 'shield', 'building']
 
 const isObj = (v: Json): v is Obj => !!v && typeof v === 'object' && !Array.isArray(v)
 const isBi = (v: Json): v is { en: string; ar: string } => isObj(v) && typeof v.en === 'string' && typeof v.ar === 'string' && Object.keys(v).every((k) => k === 'en' || k === 'ar' || k === 'step')
@@ -105,7 +107,7 @@ function Node({ k, v, onChange, depth }: { k: string; v: Json; onChange: (v: Jso
   )
   if (typeof v === 'string') return (
     <label className="block text-sm font-semibold text-slate-700">{lab(k)}
-      <input dir={/url|href|whatsapp|phone|email|kicker|tagline|step|name/i.test(k) ? 'ltr' : 'auto'} className={input} value={v} onChange={(e) => onChange(e.target.value)} />
+      <input dir={/url|href|whatsapp|phone|email|kicker|tagline|step|name|facebook|instagram|tiktok|youtube|linkedin/i.test(k) ? 'ltr' : 'auto'} className={input} value={v} onChange={(e) => onChange(e.target.value)} />
     </label>
   )
   if (Array.isArray(v)) return <List k={k} items={v} onChange={onChange} depth={depth} />
