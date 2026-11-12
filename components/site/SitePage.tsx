@@ -72,7 +72,7 @@ export async function SitePage({ page, slug, id, open, certificate }: { page: Pa
   let detail: SiteDetail | undefined = certificate ? { certificate } : undefined
   let courses: Awaited<ReturnType<typeof publicCatalog>> = []
   if (page === 'courses') courses = await publicCatalog()
-  if (page === 'course') {
+  if (page === 'course' || page === 'join') {
     courses = slug ? await publicCatalog({ slug }) : []
     if (!courses.length) notFound()
   }

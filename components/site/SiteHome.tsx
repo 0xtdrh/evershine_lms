@@ -12,6 +12,7 @@ import { useTheme } from 'next-themes'
 import { I18nProvider, useI18n } from '@/lib/i18n/client'
 import { visible, type Bi, type Card, type MediaCard, type SiteContent } from '@/lib/site/content'
 import { RequestForm, type FormOpen } from './RequestForm'
+import { SignupWizard } from './SignupWizard'
 import { CookieNotice } from './CookieNotice'
 import { CATEGORIES, youtubeEmbed } from '@/lib/site/items'
 import type { PublicItem } from '@/lib/site/items-store'
@@ -315,10 +316,11 @@ function View({ C, items, stats, preview, page, detail, banner, courses = [] }: 
             <nav className="crumbs" aria-label={locale === 'ar' ? 'مكانك' : 'Breadcrumb'}>
               <a href={SITE_HOME}>{locale === 'ar' ? 'الرئيسية' : 'Home'}</a> <span aria-hidden="true">/</span>{' '}
               {page === 'solution' ? <><a href="/solutions">{t(PAGE_TITLE.solutions)}</a> <span aria-hidden="true">/</span> </> : null}
-              {page === 'course' ? <><a href="/courses">{t(PAGE_TITLE.courses)}</a> <span aria-hidden="true">/</span> </> : null}
+              {page === 'course' || page === 'join' ? <><a href="/courses">{t(PAGE_TITLE.courses)}</a> <span aria-hidden="true">/</span> </> : null}
+              {page === 'join' && courses[0] ? <><a href={`/courses/${courses[0].slug}`}>{t(courses[0].title)}</a> <span aria-hidden="true">/</span> </> : null}
               {page === 'achievement' ? <><a href="/achievements">{t(PAGE_TITLE.achievements)}</a> <span aria-hidden="true">/</span> </> : null}
             </nav>
-            <h1>{page === 'course' && courses[0] ? t(courses[0].title) : page === 'solution' && detail?.solution ? t(detail.solution.title) : page === 'achievement' && detail?.item ? t(detail.item.title) : page === 'campaign' && detail?.campaign ? t(detail.campaign.title) : t(PAGE_TITLE[page as keyof typeof PAGE_TITLE])}</h1>
+            <h1>{page === 'join' && courses[0] ? `${locale === 'ar' ? 'التسجيل في' : 'Sign up for'} ${t(courses[0].title)}` : page === 'course' && courses[0] ? t(courses[0].title) : page === 'solution' && detail?.solution ? t(detail.solution.title) : page === 'achievement' && detail?.item ? t(detail.item.title) : page === 'campaign' && detail?.campaign ? t(detail.campaign.title) : t(PAGE_TITLE[page as keyof typeof PAGE_TITLE])}</h1>
           </div>
         </section>
       ) : null}
@@ -406,6 +408,14 @@ function View({ C, items, stats, preview, page, detail, banner, courses = [] }: 
         )
       })() : null}
 
+      {page === 'join' && courses[0] ? (
+        <section className="tns-sec"><div className="tns-wrap">
+          {courses[0].modes.online || courses[0].modes.recorded ? <SignupWizard course={courses[0]} />
+            : <div className="tns-card"><p>{locale === 'ar' ? 'التسجيل من الموقع مش مفتوح للكورس ده لسه. سجّل اهتمامك وهنكلمك.' : 'Online sign-up is not open for this course yet. Register your interest and we will call you.'}</p>
+              <button type="button" className="tns-btn brand" style={{ marginTop: 12 }} onClick={() => setForm({ kind: 'CONTACT', page: `join:${courses[0].slug}`, topic: t(courses[0].title).slice(0, 80) })}>{locale === 'ar' ? 'سجّل اهتمامك' : 'Register your interest'}</button></div>}
+        </div></section>
+      ) : null}
+
       {page === 'course' && courses[0] ? (() => {
         const c = courses[0]
         const days = locale === 'ar' ? ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -458,7 +468,8 @@ function View({ C, items, stats, preview, page, detail, banner, courses = [] }: 
                   </div>
                 ) : null}
                 {!c.modes.online && !c.modes.recorded ? <p>{locale === 'ar' ? 'المواعيد الجديدة هتنزل قريب.' : 'New dates are coming soon.'}</p> : null}
-                <button type="button" className="tns-btn brand" style={{ marginTop: 20, width: '100%' }} onClick={() => setForm({ kind: 'CONTACT', page: `course:${c.slug}`, topic: t(c.title).slice(0, 80) })}>{locale === 'ar' ? 'سجّل اهتمامك' : 'Register your interest'}</button>
+                {c.modes.online || c.modes.recorded ? <a className="tns-btn brand" style={{ marginTop: 20, width: '100%' }} href={`/join/${c.slug}`} onClick={() => track('CTA', `course:${c.slug}:join`)}>{locale === 'ar' ? 'سجّل دلوقتي' : 'Sign up now'}</a>
+                  : <button type="button" className="tns-btn brand" style={{ marginTop: 20, width: '100%' }} onClick={() => setForm({ kind: 'CONTACT', page: `course:${c.slug}`, topic: t(c.title).slice(0, 80) })}>{locale === 'ar' ? 'سجّل اهتمامك' : 'Register your interest'}</button>}
                 {wa ? <a className="tns-btn ghost" style={{ marginTop: 10, width: '100%' }} href={wa} target="_blank" rel="noopener noreferrer" onClick={() => track('WHATSAPP', `course:${c.slug}`)}>{locale === 'ar' ? 'اسأل على الواتساب' : 'Ask on WhatsApp'}</a> : null}
               </aside>
             </div>

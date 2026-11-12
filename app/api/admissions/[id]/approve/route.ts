@@ -351,6 +351,11 @@ export async function POST(
         const ref = await linkReferral({ studentId: result.id, codeOrPhone: request.referralCode, userId: session.user.id }).catch(() => null)
         if (ref && !ref.ok) console.warn('[ADMISSIONS_APPROVE] referral not linked:', ref.message)
       }
+      // Six phases 1-a: an enrolment code typed on the website becomes an approved discount (before the first invoice).
+      if (request.signupCode) {
+        const { applyCodeToStudent } = await import('@/lib/site/codes-store')
+        await applyCodeToStudent(request.signupCode, result.id, resolvedSectionId ?? null, session.user.id).catch((e) => console.warn('[ADMISSIONS_APPROVE] code not applied:', e))
+      }
       // Phase A: a full group puts the student on its waiting list instead.
       if (resolvedSectionId && (await groupSeats(resolvedSectionId)).full) {
         await waitForGroup(result.id, resolvedSectionId, session.user.id)

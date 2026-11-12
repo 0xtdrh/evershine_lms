@@ -341,3 +341,35 @@ html[dir='ltr'] .tns-banner:hover b { transform: translateX(4px); }
 .tns-course-foot b { color: var(--text); font-size: 18px; }
 .tns-help { margin-top: 48px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: space-between; padding: 26px; border-radius: 22px; background: var(--surface2); }
 .tns-help p { color: var(--muted); }
+
+/* six phases 1-a: sign-up steps (/join/<course>) */
+.tns-progress { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0 0 20px; }
+.tns-progress li { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
+.tns-progress li span { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); font-weight: 700; font-size: 12px; }
+.tns-progress li.past span { background: var(--teal); color: #fff; }
+.tns-progress li.now { border-color: var(--cyan); color: var(--text); font-weight: 700; }
+.tns-progress li.now span { background: var(--cyan); color: var(--on-cyan); }
+.tns-join-row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.tns-join-main { flex: 1 1 520px; min-width: 0; }
+.tns-join-sum { flex: 0 1 300px; position: sticky; top: 90px; }
+@media (max-width: 860px) { .tns-join-sum { position: static; flex-basis: 100%; } }
+.tns-choices { display: grid; gap: 12px; margin-top: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+.tns-choices button { text-align: start; display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 14px; border: 2px solid var(--line); background: var(--bg); color: var(--text); font: inherit; cursor: pointer; min-height: 72px; }
+.tns-choices button span { font-size: 14px; color: var(--muted); }
+.tns-choices button.on { border-color: var(--cyan); background: var(--surface2); }
+.tns-choices button:disabled { opacity: .5; cursor: not-allowed; }
+.tns-choices button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.tns-stu { border-top: 1px dashed var(--line); padding-top: 14px; margin-top: 14px; }
+.tns-stu:first-of-type { border-top: 0; padding-top: 0; }
+.tns-stu .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.tns-stu .head button { background: none; border: 0; color: var(--link); cursor: pointer; font: inherit; }
+.tns-review { display: grid; gap: 10px; margin: 16px 0; }
+.tns-review div { display: flex; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.tns-review dt { min-width: 110px; color: var(--muted); }
+.tns-review dd { margin: 0; font-weight: 600; }
+.tns-agree { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; line-height: 1.7; }
+.tns-agree input { width: 20px; height: 20px; margin-top: 4px; flex: none; }
+.tns-ok { color: #0f7a4a !important; font-weight: 600; }
+.tns-warn { color: #b4321f !important; font-weight: 600; }
+.tns-join-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; }
+@media (max-width: 600px) { .tns-progress { gap: 6px; } .tns-progress li:not(.now) { font-size: 0; gap: 0; padding: 4px; } }

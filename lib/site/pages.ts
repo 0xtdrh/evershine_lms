@@ -11,7 +11,7 @@ export const SITE_LIVE = false
 /** The site's public address (for share links, the sitemap and Google). */
 export const siteUrl = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://evershine-lms-technova.vercel.app').replace(/\/+$/, '')
 
-export const PAGES = ['home', 'education', 'solutions', 'solution', 'products', 'achievements', 'achievement', 'media', 'partners', 'about', 'verify', 'campaign', 'courses', 'course'] as const
+export const PAGES = ['home', 'education', 'solutions', 'solution', 'products', 'achievements', 'achievement', 'media', 'partners', 'about', 'verify', 'campaign', 'courses', 'course', 'join'] as const
 export type SitePage = (typeof PAGES)[number]
 
 export const PAGE_PATH: Record<string, string> = {
@@ -37,9 +37,10 @@ export const PAGE_SECTIONS: Record<SitePage, string[]> = {
   campaign: ['campaign'],
   courses: ['courses'],
   course: ['course'],
+  join: ['join'],
 }
 
-export const PAGE_TITLE: Record<Exclude<SitePage, 'home' | 'solution' | 'achievement' | 'campaign' | 'course'>, Bi> = {
+export const PAGE_TITLE: Record<Exclude<SitePage, 'home' | 'solution' | 'achievement' | 'campaign' | 'course' | 'join'>, Bi> = {
   courses: { en: 'Courses', ar: 'الكورسات' },
   education: { en: 'Education', ar: 'التعليم' },
   solutions: { en: 'Solutions', ar: 'الحلول' },
@@ -68,5 +69,5 @@ export const slugify = (s: string) => s.toLowerCase().replace(/&/g, ' and ').rep
 export function isSitePath(path: string): boolean {
   if (path === SITE_HOME) return true
   if (['/education', '/solutions', '/products', '/achievements', '/media', '/partners', '/about', '/verify', '/courses'].includes(path)) return true
-  return /^\/(solutions|achievements|c|courses)\/[^/]+$/.test(path)
+  return /^\/(solutions|achievements|c|courses|join)\/[^/]+$/.test(path)
 }

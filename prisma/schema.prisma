@@ -694,8 +694,22 @@ model AdmissionRequest {
   reviewedBy    String? // Admin User ID who approved/declined
   adminComments String? // Decline reason or admin notes
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  // Six phases 1-a (2026-11-13): a request sent from the website sign-up steps (all nullable / defaulted: additive)
+  /// the student signs up alone (18+, no guardian step)
+  selfSignup      Boolean  @default(false)
+  country         String?  @db.VarChar(60)
+  /// same value for brothers / sisters sent in one sign-up
+  signupRef       String?  @db.VarChar(30)
+  /// the course page it came from (CourseListing.slug) and the way chosen: ONLINE / RECORDED
+  signupListing   String?  @db.VarChar(60)
+  signupMode      String?  @db.VarChar(10)
+  signupCode      String?  @db.VarChar(40)
+  /// InstaPay / wallet transfer: the reference the parent typed, and the receipt photo when uploaded
+  paymentRef      String?  @db.VarChar(80)
+  paymentProofUrl String?  @db.VarChar(500)
+  visitSessionId  String?  @db.VarChar(40)
 
   @@index([status])
   @@index([createdAt])
@@ -5713,4 +5727,46 @@ model CourseListing {
   updatedAt     DateTime @updatedAt
 
   @@unique([refType, refId])
+}
+
+/// Six phases 1-a (2026-11-13): enrolment codes. One person or many (maxUses), free / percent / amount off, for any course
+/// or chosen course pages, until a date. A used code becomes a normal discount (DiscountType per code batch) when staff
+/// approve the request, so invoices and reports treat it like every other discount.
+model EnrolmentCode {
+  id             String    @id @default(cuid())
+  code           String    @unique @db.VarChar(40)
+  /// the batch label staff gave (e.g. NILE-SCHOOL), shared by codes made together
+  batch          String    @db.VarChar(40)
+  /// FREE / PERCENT / AMOUNT
+  kind           String    @db.VarChar(8)
+  value          Float     @default(0)
+  /// FIRST_CYCLE / EVERY_CYCLE / ONE_TIME (as discounts)
+  duration       String    @default("FIRST_CYCLE") @db.VarChar(12)
+  /// ANY / LISTING (scopeIds = course page slugs)
+  scope          String    @default("ANY") @db.VarChar(8)
+  scopeIds       Json?
+  /// null = no limit
+  maxUses        Int?
+  uses           Int       @default(0)
+  expiresAt      DateTime?
+  partnerId      String?
+  note           String?   @db.VarChar(200)
+  isActive       Boolean   @default(true)
+  discountTypeId String?
+  createdById    String?
+  createdAt      DateTime  @default(now())
+
+  @@index([batch])
+}
+
+/// One use of an enrolment code (who, from which sign-up).
+model EnrolmentCodeUse {
+  id                 String   @id @default(cuid())
+  codeId             String
+  admissionRequestId String?
+  phone              String   @db.VarChar(30)
+  createdAt          DateTime @default(now())
+
+  @@index([codeId])
+  @@index([phone])
 }

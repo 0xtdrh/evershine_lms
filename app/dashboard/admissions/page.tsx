@@ -69,6 +69,16 @@ interface AdmissionRequest {
   preferredShift?: string
   preferredClassSectionId?: string
   deliveryMode: string
+  // six phases 1-a: website sign-up
+  selfSignup?: boolean
+  country?: string | null
+  signupRef?: string | null
+  signupListing?: string | null
+  signupMode?: string | null
+  signupCode?: string | null
+  paymentRef?: string | null
+  referralCode?: string | null
+  adminComments?: string | null
 
   status: 'PENDING' | 'APPROVED' | 'DECLINED'
   createdAt: string
@@ -454,6 +464,7 @@ export default function AdmissionsDashboard() {
                       <TableCell>
                         <p className="font-medium">{req.firstName} {req.lastName}</p>
                         <p className="text-xs text-gray-500">{req.gender} • {req.phoneNumber}</p>
+                        {req.signupRef ? <Badge variant="outline" className="mt-1 bg-cyan-50 text-cyan-800">{L('Website sign-up', 'تسجيل من الموقع')}{req.signupMode === 'RECORDED' ? L(' · recorded', ' · مسجل') : req.signupMode === 'ONLINE' ? L(' · live online', ' · لايف أونلاين') : ''}</Badge> : null}
                       </TableCell>
                       <TableCell className="font-mono text-sm">{req.phoneNumber}</TableCell>
                       <TableCell>
@@ -558,6 +569,24 @@ export default function AdmissionsDashboard() {
                     </div>
                   </div>
                 </div>
+
+                {selectedRequest.signupRef ? (
+                  <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-4 text-sm">
+                    <h4 className="mb-2 font-semibold text-cyan-900">{L('Website sign-up', 'تسجيل من الموقع')} <span className="font-mono text-xs" dir="ltr">{selectedRequest.signupRef}</span></h4>
+                    <dl className="grid gap-1 sm:grid-cols-2">
+                      <div className="flex gap-2"><dt className="text-cyan-800">{L('Course page:', 'صفحة الكورس:')}</dt><dd className="font-medium text-slate-900">{selectedRequest.signupListing ? <a className="underline" href={`/courses/${selectedRequest.signupListing}`} target="_blank" rel="noopener noreferrer">{selectedRequest.signupListing}</a> : '—'}</dd></div>
+                      <div className="flex gap-2"><dt className="text-cyan-800">{L('Way:', 'الطريقة:')}</dt><dd className="font-medium text-slate-900">{selectedRequest.signupMode === 'RECORDED' ? L('Recorded', 'مسجل') : L('Live online', 'لايف أونلاين')}{selectedRequest.signupMode === 'ONLINE' ? (selectedRequest.preferredClassSectionId ? L(' · group chosen', ' · اختار ميعاد') : L(' · no time chosen', ' · مفيش ميعاد مناسب')) : ''}</dd></div>
+                      <div className="flex gap-2"><dt className="text-cyan-800">{L('Signed up by:', 'اللي سجّل:')}</dt><dd className="font-medium text-slate-900">{selectedRequest.selfSignup ? L('The student (18+)', 'الطالب نفسه (18+)') : L('A parent', 'ولي الأمر')}</dd></div>
+                      <div className="flex gap-2"><dt className="text-cyan-800">{L('Country:', 'الدولة:')}</dt><dd className="font-medium text-slate-900">{selectedRequest.country || '—'}</dd></div>
+                      <div className="flex gap-2"><dt className="text-cyan-800">{L('Code:', 'الكود:')}</dt><dd className="font-mono font-medium text-slate-900" dir="ltr">{selectedRequest.signupCode || '—'}</dd></div>
+                      <div className="flex gap-2"><dt className="text-cyan-800">{L('Transfer number:', 'رقم التحويل:')}</dt><dd className="font-mono font-medium text-slate-900" dir="ltr">{selectedRequest.paymentRef || '—'}</dd></div>
+                      {selectedRequest.referralCode ? <div className="flex gap-2"><dt className="text-cyan-800">{L('Referral:', 'كود الدعوة:')}</dt><dd className="font-mono font-medium text-slate-900" dir="ltr">{selectedRequest.referralCode}</dd></div> : null}
+                    </dl>
+                    {selectedRequest.adminComments ? <p className="mt-2 text-cyan-900">{selectedRequest.adminComments}</p> : null}
+                    {selectedRequest.signupMode === 'RECORDED' ? <p className="mt-2 text-xs font-semibold text-cyan-900">{L('Recorded course: after approval, enrol the student from «Recorded courses».', 'كورس مسجل: بعد الموافقة سجّل الطالب في الكورس من شاشة «الكورسات المسجلة».')}</p> : null}
+                    <p className="mt-2 text-xs text-cyan-800">{L('On approval the student joins the chosen group (or its waiting list) and the code becomes a discount on the first invoice. Check the transfer before recording the payment.', 'لما توافق الطالب بيدخل الجروب اللي اختاره (أو قايمة الانتظار) والكود بيتحول لخصم على أول فاتورة. اتأكد من التحويل قبل ما تسجّل الدفع.')}</p>
+                  </div>
+                ) : null}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Personal & Family */}
