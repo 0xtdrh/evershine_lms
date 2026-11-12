@@ -3245,6 +3245,43 @@ check "…the achievements page links to it; an unknown one shows 'not found'" "
 api DELETE "/api/website/items/$I98" >/dev/null
 
 echo
+echo "== 99. Campaign pages, Google, certificate result page, cost per new student by ad (x01 batch 7, 2026-11-12)"
+TODAY99=$(cairo +%Y-%m-%d)
+C99=$(api POST /api/website/campaigns "{\"slug\":\"e2e-winter-camp\",\"titleEn\":\"E2E Winter Camp\",\"titleAr\":\"\",\"offerEn\":\"1,200 EGP\",\"formKind\":\"CONTACT\",\"startsAt\":\"$TODAY99\",\"banner\":true,\"bannerEn\":\"E2E camp banner\",\"bannerAr\":\"E2E camp banner\"}")
+check "the admin makes a campaign page with a banner" "$(echo "$C99" | jq_ "d['success']")" "True"
+check "the same link name twice is refused; a bad link name too" "$(api POST /api/website/campaigns '{"slug":"e2e-winter-camp","titleEn":"x","titleAr":"x"}' | jq_ "d['success']")/$(api POST /api/website/campaigns '{"slug":"Bad Name!","titleEn":"x","titleAr":"x"}' | jq_ "d['success']")" "False/False"
+CP99=$(curl -s "$B/c/e2e-winter-camp")
+check "the campaign page opens with its offer" "$(echo "$CP99" | grep -o 'E2E Winter Camp' | head -1)/$(echo "$CP99" | grep -o '1,200 EGP' | head -1)" "E2E Winter Camp/1,200 EGP"
+check "…and its banner shows on top of the website pages" "$(curl -s "$B/new-home" | grep -o 'href="/c/e2e-winter-camp"' | head -1)" 'href="/c/e2e-winter-camp"'
+curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.99.1' -d '{"kind":"CONTACT","name":"E2E Camp Parent","phone":"01055500099","page":"campaign:e2e-winter-camp"}' "$B/api/public/website-request"
+check "the campaigns list counts its requests" "$(api GET /api/website/campaigns | jq_ "[(c['state'], c['requests']) for c in d['data'] if c['slug']=='e2e-winter-camp'][0]")" "('LIVE', 1)"
+CID99=$(api GET /api/website/campaigns | jq_ "[c['id'] for c in d['data'] if c['slug']=='e2e-winter-camp'][0]")
+api PATCH "/api/website/campaigns/$CID99" '{"slug":"e2e-winter-camp","titleEn":"E2E Winter Camp","titleAr":"E2E Winter Camp","startsAt":"2020-01-01","endsAt":"2020-01-10","banner":true}' >/dev/null
+check "an ended campaign sends its old link to the home page and its banner goes away" "$(curl -s -i "$B/c/e2e-winter-camp" | grep -o '/new-home' | head -1)/$(curl -s "$B/new-home" | grep -c 'href="/c/e2e-winter-camp"')" "/new-home/0"
+check "an instructor cannot make campaigns" "$(tapi POST /api/website/campaigns '{"slug":"e2e-x","titleEn":"x","titleAr":"x"}' | jq_ "d['success']")" "False"
+
+# Google
+check "robots.txt keeps the system out and points to the sitemap" "$(curl -s "$B/robots.txt" | grep -c 'Disallow: /dashboard')/$(curl -s "$B/robots.txt" | grep -o 'sitemap.xml' | head -1)" "1/sitemap.xml"
+check "sitemap.xml is built from the site (no old template domain)" "$(curl -s -o /dev/null -w '%{http_code}' "$B/sitemap.xml")/$(curl -s "$B/sitemap.xml" | grep -c 'evershineacadmey')" "200/0"
+check "a page has its title, description and share card" "$(curl -s "$B/solutions/smart-hotels-and-resorts" | grep -o 'property="og:title"' | head -1)/$(curl -s "$B/education" | grep -o 'name="description"' | head -1)" 'property="og:title"/name="description"'
+
+# certificate result page
+CN99=$(M "SELECT certificateNumber FROM Certificate WHERE status='VALID' LIMIT 1")
+if [ -n "$CN99" ]; then
+  check "a certificate result page shows the student in the new look (this computer)" "$(curl -s "$B/verify/$CN99" | grep -o 'tns-cert ok' | head -1)" "tns-cert ok"
+fi
+check "an unknown number says so" "$(curl -s "$B/verify/TN-CERT-1999-99999" | grep -o 'tns-cert bad' | head -1)" "tns-cert bad"
+check "on a real domain the old result page stays until the switch" "$(curl -s -H 'Host: technova.example' "$B/verify/TN-CERT-1999-99999" | grep -c 'tns-cert')" "0"
+
+# cost per new student by ad source
+YM99=$(cairo +%Y-%m)
+curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0) Chrome/130' -H 'X-Forwarded-For: 10.0.99.2' -d '{"t":"start","sid":"e2eads99aaaaaa01","consent":false,"path":"/new-home?utm_source=facebook","utm":{"source":"facebook"}}' "$B/api/public/site-track"
+curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.99.3' -d '{"kind":"CONTACT","name":"E2E Ad Parent","phone":"01055500098","sid":"e2eads99aaaaaa01"}' "$B/api/public/website-request"
+A99=$(api PUT /api/business-growth/ad-sources "{\"ym\":\"$YM99\",\"values\":{\"FACEBOOK\":1000}}")
+check "the manager types the Facebook spend; cost per request is worked out" "$(echo "$A99" | jq_ "[(r['spend'], r['requests'] >= 1, r['costPerRequest'] is not None) for r in d['data']['rows'] if r['source']=='FACEBOOK'][0]")" "(1000, True, True)"
+check "a branch manager cannot see ad money" "$(curl -s -b "$BMJ" "$B/api/business-growth/ad-sources?ym=$YM99" | jq_ "d['success']")" "False"
+
+echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
 [ $FAIL -eq 0 ]

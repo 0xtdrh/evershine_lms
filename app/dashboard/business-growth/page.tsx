@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { BusinessGrowth } from '@/lib/business/engine'
+import { AdSourcesCard } from '@/components/business/AdSourcesCard'
 
 type Data = BusinessGrowth & { canEditTargets: boolean }
 const BLUE = '#2a78d6', ORANGE = '#eb6834'
@@ -184,6 +185,7 @@ export default function BusinessGrowthPage() {
             <p>{L('Per new student', 'لكل طالب جديد')}: <b>{d.marketing.costPerNew == null ? L('no marketing expenses recorded', 'مفيش مصاريف تسويق متسجلة') : `${fmt(d.marketing.costPerNew, ar)} ${L('EGP', 'جنيه')}`}</b></p>
             <p className="text-xs text-slate-500">{L('Counts expense categories named marketing / ads / promo.', 'بيحسب بنود المصاريف اللي اسمها تسويق / إعلانات.')}</p>
           </CardContent></Card>
+          {d.companyMoney ? <AdSourcesCard canEdit={can('business_growth', 'update')} /> : null}
           <Card className="lg:col-span-2"><CardContent className="pt-4">
             <Table head={[L('Month', 'الشهر'), L('Admission requests', 'طلبات تسجيل'), L('Website messages', 'رسايل الموقع'), L('New students', 'طلاب جداد'), L('Referrals', 'ترشيحات'), 'NPS']}
               rows={[...d.monthRows].reverse().map((r) => [monthName(r.ym, ar), r.requests, d.companyMoney ? r.inquiries : '—', r.newStudents, r.referrals, r.nps ?? '—'])} />

@@ -5648,3 +5648,43 @@ model SiteItem {
 
   @@index([kind, show])
 }
+
+/// x01 (2026-11-12): a campaign page for one ad / offer (/c/<slug>), with an optional banner on top of the website.
+/// It opens on startsAt and closes by itself after endsAt (Cairo days).
+model SiteCampaign {
+  id          String    @id @default(cuid())
+  slug        String    @unique @db.VarChar(60)
+  titleEn     String    @db.VarChar(160)
+  titleAr     String    @db.VarChar(160)
+  textEn      String?   @db.Text
+  textAr      String?   @db.Text
+  /// the offer line (price, dates, place…)
+  offerEn     String?   @db.VarChar(200)
+  offerAr     String?   @db.VarChar(200)
+  imageUrl    String?   @db.VarChar(500)
+  videoUrl    String?   @db.VarChar(500)
+  /// the form the button opens: CONTACT / SOLUTION / SCHOOL / PARTNER / PRODUCT
+  formKind    String    @default("CONTACT") @db.VarChar(12)
+  startsAt    DateTime? @db.Date
+  endsAt      DateTime? @db.Date
+  banner      Boolean   @default(false)
+  bannerEn    String?   @db.VarChar(160)
+  bannerAr    String?   @db.VarChar(160)
+  show        Boolean   @default(true)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+/// x01 (2026-11-12): money spent on marketing in one Cairo month, per source (the same sources as website visits).
+model MarketingSpend {
+  id          String   @id @default(cuid())
+  ym          String   @db.VarChar(7)
+  source      String   @db.VarChar(16)
+  amount      Float
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([ym, source])
+}

@@ -4,10 +4,10 @@
  * to index it. The current home page (app/page.tsx) is not touched. All website pages render through SitePage.
  */
 
-import { SitePage, siteMetadata } from '@/components/site/SitePage'
+import { SitePage, siteGenerateMetadata } from '@/components/site/SitePage'
 
 export const dynamic = 'force-dynamic'
-export const metadata = siteMetadata('home')
+export const generateMetadata = () => siteGenerateMetadata('home')
 
 export default function NewHomePreview() {
   return <SitePage page="home" />

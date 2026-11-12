@@ -1,9 +1,12 @@
 /** x01 website page: one achievement / project (preview-locked until the switch). */
 
-import { SitePage, siteMetadata } from '@/components/site/SitePage'
+import { SitePage, siteGenerateMetadata } from '@/components/site/SitePage'
 
 export const dynamic = 'force-dynamic'
-export const metadata = siteMetadata('achievements')
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const p = await params
+  return siteGenerateMetadata('achievement', undefined, p.id)
+}
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

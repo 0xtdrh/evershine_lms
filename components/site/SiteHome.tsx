@@ -15,6 +15,9 @@ import { RequestForm, type FormOpen } from './RequestForm'
 import { CookieNotice } from './CookieNotice'
 import { CATEGORIES, youtubeEmbed } from '@/lib/site/items'
 import type { PublicItem } from '@/lib/site/items-store'
+import type { CertificateCheck } from '@/lib/site/verify'
+import type { PublicCampaign } from '@/lib/site/campaigns-store'
+import type { RequestKind } from '@/lib/site/request-rules'
 import { PAGE_PATH, PAGE_SECTIONS, PAGE_TITLE, SITE_HOME, pageHref, pageOf, slugify, type SitePage } from '@/lib/site/pages'
 import { track, useSiteTracker } from './tracker'
 import { shownStats, type SiteStats } from '@/lib/site/stats-shared'
@@ -134,9 +137,9 @@ function Sample({ on }: { on?: boolean }) {
   return on ? <span className="tns-sample">{locale === 'ar' ? 'مثال' : 'Example'}</span> : null
 }
 
-export interface SiteDetail { solution?: Card; item?: PublicItem }
+export interface SiteDetail { solution?: Card; item?: PublicItem; certificate?: { number: string; result: CertificateCheck | null }; campaign?: PublicCampaign }
 
-function View({ C, items, stats, preview, page, detail }: { C: SiteContent; items: PublicItem[]; stats: SiteStats | null; preview: boolean; page: SitePage; detail?: SiteDetail }) {
+function View({ C, items, stats, preview, page, detail, banner }: { C: SiteContent; items: PublicItem[]; stats: SiteStats | null; preview: boolean; page: SitePage; detail?: SiteDetail; banner?: PublicCampaign | null }) {
   const { locale, setLocale } = useI18n()
   const t = (x: Bi) => (locale === 'ar' ? x.ar : x.en)
   const arr = locale === 'ar' ? '←' : '→'
@@ -263,6 +266,12 @@ function View({ C, items, stats, preview, page, detail }: { C: SiteContent; item
     <div className="tns" dir={locale === 'ar' ? 'rtl' : 'ltr'} lang={locale}>
       {preview ? <div className="tns-preview">{locale === 'ar' ? 'نسخة تجريبية للمراجعة: مش ظاهرة للزوار. الكروت المكتوب عليها «مثال» مش هتظهر في الموقع الحقيقي.' : 'Review preview: not visible to visitors. Cards marked “Example” never appear on the real site.'}</div> : null}
 
+      {banner ? (
+        <a className="tns-banner" href={`/c/${banner.slug}`} onClick={() => track('CTA', `banner:${banner.slug}`)}>
+          <span>{t(banner.banner ?? banner.title)}</span> <b>{arr}</b>
+        </a>
+      ) : null}
+
       {/* 01 header */}
       <header className={`tns-head${scrolled ? ' scrolled' : ''}`}>
         <div className="tns-wrap row">
@@ -303,10 +312,40 @@ function View({ C, items, stats, preview, page, detail }: { C: SiteContent; item
               {page === 'solution' ? <><a href="/solutions">{t(PAGE_TITLE.solutions)}</a> <span aria-hidden="true">/</span> </> : null}
               {page === 'achievement' ? <><a href="/achievements">{t(PAGE_TITLE.achievements)}</a> <span aria-hidden="true">/</span> </> : null}
             </nav>
-            <h1>{page === 'solution' && detail?.solution ? t(detail.solution.title) : page === 'achievement' && detail?.item ? t(detail.item.title) : t(PAGE_TITLE[page as keyof typeof PAGE_TITLE])}</h1>
+            <h1>{page === 'solution' && detail?.solution ? t(detail.solution.title) : page === 'achievement' && detail?.item ? t(detail.item.title) : page === 'campaign' && detail?.campaign ? t(detail.campaign.title) : t(PAGE_TITLE[page as keyof typeof PAGE_TITLE])}</h1>
           </div>
         </section>
       ) : null}
+
+      {page === 'campaign' && detail?.campaign ? (() => {
+        const cp = detail.campaign
+        const yt = youtubeEmbed(cp.videoUrl)
+        const soon = cp.state === 'UPCOMING'
+        const fmt = (d: string) => new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'long' }).format(new Date(`${d}T12:00:00Z`))
+        return (
+          <section className="tns-sec">
+            <div className="tns-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 36, alignItems: 'flex-start' }}>
+              <div style={{ flex: '1 1 460px', minWidth: 0 }}>
+                {yt ? <div className="tns-embed"><iframe src={yt} title={t(cp.title)} loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
+                  : cp.videoUrl ? <video className="tns-embed" src={cp.videoUrl} controls playsInline preload="metadata" />
+                  : cp.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="tns-embed" src={cp.imageUrl} alt="" />
+                  ) : null}
+                {t(cp.text) ? <p className="tns-lead" style={{ marginTop: 20, whiteSpace: 'pre-line' }}>{t(cp.text)}</p> : null}
+              </div>
+              <div className="tns-card" style={{ flex: '1 1 320px', minWidth: 0, position: 'sticky', top: 90 }}>
+                {t(cp.offer) ? <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{t(cp.offer)}</p> : null}
+                {cp.startsAt || cp.endsAt ? <p style={{ marginTop: 8 }}>{cp.startsAt ? `${locale === 'ar' ? 'من' : 'From'} ${fmt(cp.startsAt)} ` : ''}{cp.endsAt ? `${locale === 'ar' ? 'لحد' : 'until'} ${fmt(cp.endsAt)}` : ''}</p> : null}
+                {soon ? <p className="tns-tag" style={{ marginTop: 14 }}>{locale === 'ar' ? 'التسجيل لسه مابدأش' : 'Registration has not opened yet'}</p> : (
+                  <button type="button" className="tns-btn brand" style={{ marginTop: 18, width: '100%' }} onClick={() => setForm({ kind: (cp.formKind as RequestKind) ?? 'CONTACT', page: `campaign:${cp.slug}`, topic: t(cp.title).slice(0, 80) })}>{locale === 'ar' ? 'سجّل اهتمامك' : 'Register your interest'}</button>
+                )}
+                {wa ? <a className="tns-btn ghost" style={{ marginTop: 10, width: '100%' }} href={wa} target="_blank" rel="noopener noreferrer" onClick={() => track('WHATSAPP', `campaign:${cp.slug}`)}>{locale === 'ar' ? 'اسأل على الواتساب' : 'Ask on WhatsApp'}</a> : null}
+              </div>
+            </div>
+          </section>
+        )
+      })() : null}
 
       {page === 'solution' && detail?.solution ? (
         <section className="tns-sec">
@@ -555,6 +594,29 @@ function View({ C, items, stats, preview, page, detail }: { C: SiteContent; item
       {on('verify') && (C.verify.show !== false) ? (
         <section id="verify" className="tns-sec" style={{ paddingBlock: 64 }}>
           <div className="tns-wrap">
+            {detail?.certificate ? (() => {
+              const r = detail.certificate.result
+              const ok = !!r?.valid
+              const date = r ? new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(r.issuedDate)) : ''
+              return (
+                <div className={`tns-cert ${ok ? 'ok' : 'bad'}`} role="status">
+                  <span className="mark" aria-hidden="true"><Icon name={ok ? 'check' : 'shield'} size={30} /></span>
+                  <div style={{ flex: '1 1 300px', minWidth: 0 }}>
+                    <p className="state">{!r ? (locale === 'ar' ? 'مفيش شهادة بالرقم ده' : 'No certificate with this number') : ok ? (locale === 'ar' ? 'شهادة سليمة ✓' : 'Valid certificate ✓') : r.status === 'REVOKED' ? (locale === 'ar' ? 'الشهادة دي اتلغت' : 'This certificate was revoked') : (locale === 'ar' ? 'الشهادة دي مش سارية' : 'This certificate is not valid')}</p>
+                    <p className="en num" dir="ltr">{detail.certificate.number}</p>
+                    {r ? (
+                      <dl>
+                        <div><dt>{locale === 'ar' ? 'اسم الطالب' : 'Student'}</dt><dd>{r.studentName}</dd></div>
+                        <div><dt>{locale === 'ar' ? 'الشهادة' : 'Certificate'}</dt><dd>{r.title}</dd></div>
+                        {r.courseName ? <div><dt>{locale === 'ar' ? 'الكورس' : 'Course'}</dt><dd>{r.courseName}</dd></div> : null}
+                        <div><dt>{locale === 'ar' ? 'تاريخ الإصدار' : 'Issued on'}</dt><dd>{date}</dd></div>
+                        {r.revokedReason ? <div><dt>{locale === 'ar' ? 'السبب' : 'Reason'}</dt><dd>{r.revokedReason}</dd></div> : null}
+                      </dl>
+                    ) : <p style={{ color: 'var(--muted)' }}>{locale === 'ar' ? 'اتأكد إن الرقم مكتوب زي ما هو على الشهادة، أو امسح الـ QR تاني.' : 'Check the number is typed exactly as on the certificate, or scan the QR again.'}</p>}
+                  </div>
+                </div>
+              )
+            })() : null}
             <div className="tns-card tns-reveal" style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'center' }}>
               <span className="tns-ico" style={{ width: 64, height: 64 }}><Icon name="shield" size={30} /></span>
               <div style={{ flex: '1 1 320px', minWidth: 0 }}>
@@ -677,10 +739,10 @@ function View({ C, items, stats, preview, page, detail }: { C: SiteContent; item
   )
 }
 
-export default function SiteHome({ content, items = [], stats, preview, fontClass, page = 'home', detail }: { content: SiteContent; items?: PublicItem[]; stats: SiteStats | null; preview: boolean; fontClass: string; page?: SitePage; detail?: SiteDetail }) {
+export default function SiteHome({ content, items = [], stats, preview, fontClass, page = 'home', detail, banner }: { content: SiteContent; items?: PublicItem[]; stats: SiteStats | null; preview: boolean; fontClass: string; page?: SitePage; detail?: SiteDetail; banner?: PublicCampaign | null }) {
   return (
     <div className={fontClass}>
-      <I18nProvider defaults={{ staff: 'ar', portal: 'ar' }}><View C={content} items={items} stats={stats} preview={preview} page={page} detail={detail} /></I18nProvider>
+      <I18nProvider defaults={{ staff: 'ar', portal: 'ar' }}><View C={content} items={items} stats={stats} preview={preview} page={page} detail={detail} banner={banner} /></I18nProvider>
     </div>
   )
 }

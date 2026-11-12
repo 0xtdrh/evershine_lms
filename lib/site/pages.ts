@@ -5,7 +5,13 @@ import type { Bi } from './content'
 /** The home page link. '/new-home' while the new site is a preview; it becomes '/' at the switch. */
 export const SITE_HOME = '/new-home'
 
-export const PAGES = ['home', 'education', 'solutions', 'solution', 'products', 'achievements', 'achievement', 'media', 'partners', 'about', 'verify'] as const
+/** false while the new site is a preview (locked, kept out of Google). The switch sets it true and SITE_HOME to '/'. */
+export const SITE_LIVE = false
+
+/** The site's public address (for share links, the sitemap and Google). */
+export const siteUrl = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://evershine-lms-technova.vercel.app').replace(/\/+$/, '')
+
+export const PAGES = ['home', 'education', 'solutions', 'solution', 'products', 'achievements', 'achievement', 'media', 'partners', 'about', 'verify', 'campaign'] as const
 export type SitePage = (typeof PAGES)[number]
 
 export const PAGE_PATH: Record<string, string> = {
@@ -28,9 +34,10 @@ export const PAGE_SECTIONS: Record<SitePage, string[]> = {
   partners: ['partners'],
   about: ['about', 'numbers', 'divisions', 'why'],
   verify: ['verify'],
+  campaign: ['campaign'],
 }
 
-export const PAGE_TITLE: Record<Exclude<SitePage, 'home' | 'solution' | 'achievement'>, Bi> = {
+export const PAGE_TITLE: Record<Exclude<SitePage, 'home' | 'solution' | 'achievement' | 'campaign'>, Bi> = {
   education: { en: 'Education', ar: 'التعليم' },
   solutions: { en: 'Solutions', ar: 'الحلول' },
   products: { en: 'Products', ar: 'المنتجات' },
@@ -58,5 +65,5 @@ export const slugify = (s: string) => s.toLowerCase().replace(/&/g, ' and ').rep
 export function isSitePath(path: string): boolean {
   if (path === SITE_HOME) return true
   if (['/education', '/solutions', '/products', '/achievements', '/media', '/partners', '/about', '/verify'].includes(path)) return true
-  return /^\/(solutions|achievements)\/[^/]+$/.test(path)
+  return /^\/(solutions|achievements|c)\/[^/]+$/.test(path)
 }

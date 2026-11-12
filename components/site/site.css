@@ -246,6 +246,19 @@ html[dir='ltr'] .tns-chain .arr svg, html[dir='ltr'] .tns .flip svg { transform:
 .tns-embed { width: 100%; aspect-ratio: 16 / 9; border-radius: 18px; overflow: hidden; background: var(--dark); display: block; object-fit: cover; border: 0; }
 .tns-embed iframe { width: 100%; height: 100%; border: 0; display: block; }
 
+/* certificate result */
+.tns-cert { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; border-radius: 20px; padding: 26px; margin-bottom: 24px; border: 2px solid; animation: tns-pop .45s cubic-bezier(.2, .7, .2, 1) both; }
+.tns-cert.ok { border-color: #1f9d55; background: color-mix(in srgb, #1f9d55 7%, var(--surface)); }
+.tns-cert.bad { border-color: #c2410c; background: color-mix(in srgb, #c2410c 7%, var(--surface)); }
+.tns-cert .mark { width: 64px; height: 64px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
+.tns-cert.ok .mark { background: #1f9d55; }
+.tns-cert.bad .mark { background: #c2410c; }
+.tns-cert .state { margin: 0; font-size: 24px; font-weight: 700; }
+.tns-cert .num { margin: 4px 0 12px; color: var(--muted); letter-spacing: 1px; }
+.tns-cert dl { margin: 0; display: grid; gap: 8px 24px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.tns-cert dt { font-size: 13px; color: var(--muted); }
+.tns-cert dd { margin: 2px 0 0; font-weight: 700; font-size: 16px; }
+
 /* real website items (products / achievements / media) */
 .tns-item .tns-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .tns-item .tns-thumb .play { position: absolute; inset: 0; margin: auto; width: 54px; height: 54px; border-radius: 50%; background: rgba(6, 38, 61, .75); color: #fff; display: flex; align-items: center; justify-content: center; }
@@ -286,3 +299,10 @@ html[dir='ltr'] .tns-chain .arr svg, html[dir='ltr'] .tns .flip svg { transform:
   .tns *, .tns *::before, .tns *::after { animation: none !important; transition: none !important; }
   .tns .tns-card:hover, .tns .tns-tile:hover { transform: none; }
 }
+
+/* campaign banner on top of the website */
+.tns-banner { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 40px; padding: 8px 16px; background: var(--cyan); color: var(--on-cyan) !important; font-weight: 700; font-size: 15px; text-decoration: none; text-align: center; }
+.tns-banner:hover { background: #5fd3e6; }
+.tns-banner b { transition: transform .2s ease; }
+.tns-banner:hover b { transform: translateX(-4px); }
+html[dir='ltr'] .tns-banner:hover b { transform: translateX(4px); }
