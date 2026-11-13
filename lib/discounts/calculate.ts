@@ -22,6 +22,8 @@ export interface DiscountCandidate {
   valueType: DiscountValueType
   value: number
   stackable: boolean
+  /** a free / prepaid code: covers the whole price, the maximum-total rule does not cut it */
+  ignoresCap?: boolean
 }
 
 export interface DiscountRules {
@@ -56,6 +58,9 @@ export function computeDiscounts(base: number, candidates: DiscountCandidate[], 
     .filter((l) => l.amount > 0)
     .sort(byAmountDesc)
   if (lines.length === 0) return { lines: [], total: 0 }
+  // a free / prepaid code wins alone and is never cut by the cap
+  const full = lines.find((l) => l.ignoresCap)
+  if (full) return { lines: [full], total: full.amount }
 
   let chosen: DiscountLine[]
   if (!rules.allowStacking) {

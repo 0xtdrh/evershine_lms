@@ -159,6 +159,7 @@ const toCandidate = (t: TypeLike, value: number, assignmentId: string | null, la
   valueType: (t.valueType === 'FIXED' ? 'FIXED' : 'PERCENT') as DiscountValueType,
   value,
   stackable: t.stackable,
+  ignoresCap: (t as { ignoresCap?: boolean }).ignoresCap === true,
 })
 
 export async function gatherCandidates(

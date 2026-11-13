@@ -13,9 +13,11 @@ import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { L, useI18n } from '@/lib/i18n/client'
 import { ageText } from '@/lib/site/courses'
+import { BookCourseDialog } from './BookCourseDialog'
 
 type Person = { key: string; memberId: string | null; studentId: string | null; firstName: string; lastName: string; dob: string | null; age: number | null; gender: string | null; isSelf: boolean; registrationNumber: string | null }
 type Family = { account: { firstName: string; email: string | null; emailVerified: boolean; selfAccount: boolean }; people: Person[]; settings: { unsuitable: string; emailCheck: boolean } }
+type MyBooking = { id: string; status: string; statusText: { en: string; ar: string }; mode: string; course: { en: string; ar: string }; who: string; level: string | null; group: { name: string; campus: string } | null; invoice: { total: number; paid: number; status: string; proofStatus: string | null } | null; holdUntil: string | null; reason: string | null }
 type Course = { slug: string; title: { en: string; ar: string }; summary: { en: string; ar: string }; imageUrl: string | null; color: string | null; minAge: number | null; maxAge: number | null; trackName: string | null; levels: number; modes: { online: boolean; recorded: boolean; branch: boolean }; price: { online: number | null; onlinePer: string; recorded: number | null }; fit: string; fitText: { en: string; ar: string }; bookable: boolean }
 
 const input = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm'
@@ -31,11 +33,24 @@ export function FamilyAccountCard() {
   const [welcome, setWelcome] = useState(false)
   const [m, setM] = useState({ firstName: '', lastName: '', dob: '', gender: '', school: '' })
   const [busy, setBusy] = useState(false)
+  const [booking, setBooking] = useState<{ person: string; slug: string } | null>(null)
+  const [wantSlug, setWantSlug] = useState<string | null>(null)
 
-  useEffect(() => { try { setWelcome(new URLSearchParams(location.search).get('welcome') === '1') } catch { /* ignore */ } }, [])
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(location.search)
+      setWelcome(sp.get('welcome') === '1')
+      setWantSlug(sp.get('book'))
+    } catch { /* ignore */ }
+  }, [])
   const people = data?.people ?? []
   const current = people.find((p) => p.key === sel) ?? people[0] ?? null
   const courses = useQuery({ queryKey: ['family-courses', current?.key], queryFn: () => fetchApi<{ courses: Course[]; unsuitable: string }>(`/api/guardian-portal/family/courses?person=${encodeURIComponent(current!.key)}`), enabled: !!current })
+  const bookings = useQuery({ queryKey: ['family-bookings'], queryFn: () => fetchApi<MyBooking[]>('/api/guardian-portal/family/bookings'), enabled: !!data })
+  // a course page sent the family here (?book=<course>): open the booking for the only child, or once one is chosen
+  useEffect(() => {
+    if (wantSlug && current && (people.length === 1 || sel)) { setBooking({ person: current.key, slug: wantSlug }); setWantSlug(null) }
+  }, [wantSlug, current, people.length, sel])
 
   if (error || isLoading || !data) return null // old accounts without a family record simply do not see the card
 
@@ -52,6 +67,10 @@ export function FamilyAccountCard() {
     } finally {
       setBusy(false)
     }
+  }
+  const cancelBooking = async (id: string) => {
+    if (!confirm(L('Cancel this booking?', 'تلغي الحجز ده؟'))) return
+    try { await fetchApi(`/api/guardian-portal/family/bookings/${id}`, { method: 'DELETE' }); void qc.invalidateQueries({ queryKey: ['family-bookings'] }); void qc.invalidateQueries({ queryKey: ['family'] }) } catch (e) { notify.error((e as Error).message) }
   }
   const remove = async (p: Person) => {
     if (!p.memberId || !confirm(L(`Remove ${p.firstName}?`, `تشيل ${p.firstName}؟`))) return
@@ -133,13 +152,44 @@ export function FamilyAccountCard() {
                   {c.price.online != null || c.price.recorded != null ? (
                     <p className="mt-1 text-sm text-slate-800"><span dir="ltr">{(c.price.online ?? c.price.recorded ?? 0).toLocaleString('en-US')}</span> {L('EGP', 'ج.م')}{c.price.online != null ? ` / ${c.price.onlinePer === 'MONTH' ? L('month', 'شهر') : L('level', 'مستوى')}` : ''}</p>
                   ) : null}
+                <div className="mt-auto pt-2">
+                    {c.bookable ? <button type="button" onClick={() => setBooking({ person: current.key, slug: c.slug })} className="w-full rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white">{L('Book', 'احجز')}</button>
+                      : c.fit !== 'ENROLLED' ? <button type="button" onClick={() => setBooking({ person: current.key, slug: c.slug })} className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-700">{L('I have a code', 'عندي كود')}</button> : null}
+                  </div>
                 </article>
               ))}
             </div>
           )}
-          <p className="mt-3 text-xs text-slate-500">{L('Booking from your account is coming next. Until then, our team will help you book — or ask us to open a locked course.', 'الحجز من حسابك جاي في التحديث الجاي. لحد كده فريقنا هيساعدك تحجز، أو اطلب نفتحلك كورس مقفول.')}</p>
+          <p className="mt-3 text-xs text-slate-500">{L('A locked course does not suit the age: ask us to open it, or use a code that opens it.', 'الكورس المقفول مش مناسب للسن: اطلب نفتحهولك، أو استخدم كود بيفتحه.')}</p>
         </div>
       ) : null}
+
+      {bookings.data?.length ? (
+        <div>
+          <h3 className="mb-2 text-base font-semibold text-slate-900">{L('My bookings', 'حجوزاتي')}</h3>
+          <ul className="space-y-2">
+            {bookings.data.map((b) => (
+              <li key={b.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold text-slate-900">{t(b.course)} · {b.who}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${b.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700' : b.status === 'HOLD' ? 'bg-amber-50 text-amber-800' : ['EXPIRED', 'CANCELLED', 'REJECTED'].includes(b.status) ? 'bg-slate-100 text-slate-600' : 'bg-blue-50 text-blue-800'}`}>{t(b.statusText)}</span>
+                </div>
+                <p className="mt-1 text-slate-600">{b.level ?? ''}{b.group ? ` · ${b.group.name} · ${b.group.campus}` : ''}</p>
+                {b.status === 'HOLD' && b.holdUntil ? <p className="mt-1 text-amber-800">{L('Pay before', 'ادفع قبل')} {new Date(b.holdUntil).toLocaleString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{b.invoice ? ` · ${b.invoice.total - b.invoice.paid} ${L('EGP', 'ج.م')}` : ''}{b.invoice?.proofStatus === 'PENDING' ? ` · ${L('receipt being checked', 'الإيصال بيتراجع')}` : ''}</p> : null}
+                {b.reason && ['EXPIRED', 'CANCELLED', 'REJECTED'].includes(b.status) ? <p className="mt-1 text-slate-500">{b.reason.includes(' · ') ? b.reason.split(' · ')[ar ? 1 : 0] : b.reason}</p> : null}
+                <div className="mt-2 flex gap-2">
+                  {b.status === 'HOLD' ? <a href="/dashboard/fees" className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-semibold text-white">{L('Pay', 'ادفع')}</a> : null}
+                  {['REVIEW', 'WAITING'].includes(b.status) || (b.status === 'HOLD' && !b.invoice?.paid) ? <button type="button" onClick={() => void cancelBooking(b.id)} className="rounded-lg border border-slate-300 px-3 py-1 text-xs">{L('Cancel', 'إلغاء')}</button> : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {booking ? <BookCourseDialog person={booking.person} slug={booking.slug} onClose={() => { setBooking(null); void qc.invalidateQueries({ queryKey: ['family-bookings'] }) }} /> : null}
+      {wantSlug && !people.length ? <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-900">{L('Add your child first, then the booking opens.', 'ضيف ابنك الأول وبعدها الحجز هيفتح.')}</p> : null}
+      {wantSlug && people.length > 1 && !sel ? <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-900">{L('Choose who you are booking for above.', 'اختار انت بتحجز لمين فوق.')}</p> : null}
 
       {data.settings.emailCheck && !data.account.emailVerified ? <EmailConfirm email={data.account.email} /> : null}
     </section>

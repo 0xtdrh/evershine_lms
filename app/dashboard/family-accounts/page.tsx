@@ -15,6 +15,7 @@ import { L, useI18n } from '@/lib/i18n/client'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { whatsappNumber } from '@/lib/students/portal-password'
+import { BookingRules, StaffBookings } from '@/components/family/StaffBookings'
 
 type Row = { id: string; firstName: string; lastName: string; phoneNumber: string; email: string | null; signupSource: string | null; selfAccount: boolean; city: string | null; createdAt: string; members: number; students: number; lastLogin: string | null }
 type Person = { key: string; memberId: string | null; studentId: string | null; firstName: string; lastName: string; age: number | null; registrationNumber: string | null }
@@ -64,11 +65,11 @@ export default function FamilyAccountsPage() {
   return (
     <div className="space-y-5 p-4 md:p-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{L('Family accounts', 'حسابات العائلات')}</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{L('Family accounts & bookings', 'حسابات العائلات والحجوزات')}</h1>
         <p className="mt-1 text-sm text-slate-600">{L('Families make an account on the website (or you make it for a family at the branch), add their children and see the courses that suit them.', 'العائلات بتعمل حساب من الموقع (أو انت تعمله لعيلة جت الفرع)، وتضيف ولادها وتشوف الكورسات المناسبة.')}</p>
       </div>
       <div className="flex gap-2 border-b border-slate-200" role="tablist">
-        {[['accounts', L('Accounts', 'الحسابات')], ...(can('family_accounts', 'create') ? [['new', L('New account', 'حساب جديد')]] : []), ...(isAdmin ? [['settings', L('Settings', 'الإعدادات')]] : [])].map(([k, label]) => (
+        {[['accounts', L('Accounts', 'الحسابات')], ['bookings', L('Bookings', 'الحجوزات')], ...(can('family_accounts', 'create') ? [['new', L('New account', 'حساب جديد')]] : []), ...(isAdmin ? [['settings', L('Settings', 'الإعدادات')]] : [])].map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={current === k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold ${current === k ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-600'}`}>{label}</button>
         ))}
       </div>
@@ -105,6 +106,7 @@ export default function FamilyAccountsPage() {
         </section>
       ) : null}
 
+      {current === 'bookings' ? <StaffBookings canUpdate={can('family_accounts', 'update')} /> : null}
       {current === 'new' ? <NewAccount onDone={() => void qc.invalidateQueries({ queryKey: ['family-accounts'] })} /> : null}
       {current === 'settings' && isAdmin ? <SettingsTab /> : null}
     </div>
@@ -240,6 +242,7 @@ function SettingsTab() {
         <label className="flex items-center gap-2"><input type="checkbox" checked={s.emailCheck} onChange={(e) => void save({ emailCheck: e.target.checked })} /> {L('Confirm the e-mail with a code', 'تأكيد الإيميل بكود')}</label>
         <p className={`mt-1 text-xs ${data.emailReady ? 'text-emerald-700' : 'text-amber-700'}`}>{data.emailReady ? L('E-mail sending is set up.', 'إرسال الإيميل متظبط.') : L('E-mail sending is not set up yet (needs the company domain + the Resend key on the host).', 'إرسال الإيميل لسه مش متظبط (محتاج دومين الشركة + مفتاح Resend على الاستضافة).')}</p>
       </div>
+      <BookingRules />
       <label className="flex items-center gap-2">{L('Password link works for', 'لينك الباسورد شغال لمدة')}<input type="number" min={1} max={30} className={`${input} w-20`} defaultValue={s.linkDays} onBlur={(e) => { const n = Number(e.target.value); if (n && n !== s.linkDays) void save({ linkDays: n }) }} /> {L('day(s)', 'يوم')}</label>
     </section>
   )

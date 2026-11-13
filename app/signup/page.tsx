@@ -50,7 +50,12 @@ export default function SignupPage() {
         return setErr(msg || (j?.error?.message ? bi(j.error.message) : null) || L('Something went wrong. Try again.', 'حصلت مشكلة. جرّب تاني.'))
       }
       const res = await signIn('credentials', { redirect: false, email: j.data.phone, password: f.password })
-      router.push(res?.ok ? '/dashboard/my-children?welcome=1' : '/login')
+      let next = '/dashboard/my-children?welcome=1'
+      try {
+        const cb = new URLSearchParams(window.location.search).get('callbackUrl')
+        if (cb && cb.startsWith('/dashboard/my-children')) next = `${cb}${cb.includes('?') ? '&' : '?'}welcome=1`
+      } catch { /* ignore */ }
+      router.push(res?.ok ? next : '/login')
     } catch {
       setErr(L('No connection. Try again.', 'مفيش اتصال. جرّب تاني.'))
     } finally {

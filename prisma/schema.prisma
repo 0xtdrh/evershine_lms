@@ -903,13 +903,13 @@ model Guardian {
   updatedAt    DateTime @updatedAt
 
   /// Six phases 1-A (2026-11-13): how the family account started (WEBSITE sign-up / STAFF for an offline family / null = old flow)
-  signupSource String?  @db.VarChar(20)
+  signupSource String? @db.VarChar(20)
   /// the account holder is the student (18+, signed up alone)
-  selfAccount  Boolean  @default(false)
-  country      String?  @db.VarChar(60)
-  city         String?  @db.VarChar(60)
+  selfAccount  Boolean @default(false)
+  country      String? @db.VarChar(60)
+  city         String? @db.VarChar(60)
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   students Student[]
   members  FamilyMember[]
 
@@ -919,18 +919,18 @@ model Guardian {
 /// Six phases 1-A: a child (or the account holder) added inside a family account BEFORE any enrolment. Gets a real Student
 /// (registration number) at the first booking (studentId). Courses shown to it follow its age (lib/accounts/suitability.ts).
 model FamilyMember {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   guardianId  String
-  firstName   String    @db.VarChar(60)
-  lastName    String    @db.VarChar(60)
-  dateOfBirth DateTime  @db.Date
-  gender      String    @db.VarChar(10)
-  school      String?   @db.VarChar(120)
-  experience  String?   @db.VarChar(300)
-  isSelf      Boolean   @default(false)
-  studentId   String?   @unique
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  firstName   String   @db.VarChar(60)
+  lastName    String   @db.VarChar(60)
+  dateOfBirth DateTime @db.Date
+  gender      String   @db.VarChar(10)
+  school      String?  @db.VarChar(120)
+  experience  String?  @db.VarChar(300)
+  isSelf      Boolean  @default(false)
+  studentId   String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   guardian Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
 
@@ -3854,6 +3854,8 @@ model DiscountType {
   validTo           DateTime?
   /// Can be combined with other discounts on the same invoice.
   stackable         Boolean   @default(true)
+  /// Six phases 1-B (2026-11-13): a free / prepaid enrolment code — not limited by the 'maximum total discount' rule
+  ignoresCap        Boolean   @default(false)
   /// a02 M3: does this discount also apply on a One-to-One? (off by default; with autoApply it applies by itself)
   appliesToOneToOne Boolean   @default(false)
   isActive          Boolean   @default(true)
@@ -5829,6 +5831,10 @@ model EnrolmentCode {
   discountTypeId String?
   createdById    String?
   createdAt      DateTime  @default(now())
+  /// Six phases 1-B (2026-11-13): the code also opens the course when it is outside the child's age
+  unlocks        Boolean   @default(false)
+  /// a track code that starts at this level (e.g. a partner school's students start at level 3)
+  startLevelId   String?   @db.VarChar(40)
 
   @@index([batch])
 }
@@ -5843,4 +5849,50 @@ model EnrolmentCodeUse {
 
   @@index([codeId])
   @@index([phone])
+}
+
+/// Six phases 1-B (2026-11-13): a family books a course from its account. AUTO places the child at once (seat held
+/// `holdUntil` until the first invoice is paid, else it expires); STAFF waits for staff (REVIEW). Statuses:
+/// REVIEW → HOLD → CONFIRMED | EXPIRED; WAITING (full group / no time fits); CANCELLED (family) / REJECTED (staff).
+model CourseBooking {
+  id             String    @id @default(cuid())
+  guardianId     String
+  memberId       String?
+  studentId      String?
+  listingSlug    String    @db.VarChar(60)
+  levelId        String?   @db.VarChar(40)
+  mode           String    @db.VarChar(10)
+  plan           String?   @db.VarChar(12)
+  campusId       String?   @db.VarChar(40)
+  classSectionId String?   @db.VarChar(40)
+  code           String?   @db.VarChar(40)
+  status         String    @db.VarChar(12)
+  holdUntil      DateTime?
+  invoiceId      String?   @db.VarChar(40)
+  waitingEntryId String?   @db.VarChar(40)
+  reason         String?   @db.VarChar(300)
+  decidedById    String?
+  decidedAt      DateTime?
+  confirmedAt    DateTime?
+  createdById    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([guardianId])
+  @@index([status])
+  @@index([studentId])
+}
+
+/// Six phases 1-B: how a booking is confirmed — AUTO (after payment) or STAFF (staff approve first), and how long a seat is
+/// held. Scopes add up, the most specific wins: GROUP > LEVEL > COURSE > TRACK > CAMPUS > COMPANY (scopeId null).
+model BookingRule {
+  id        String   @id @default(cuid())
+  scopeType String   @db.VarChar(10)
+  scopeId   String?  @db.VarChar(40)
+  confirm   String   @db.VarChar(6)
+  holdHours Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([scopeType, scopeId])
 }

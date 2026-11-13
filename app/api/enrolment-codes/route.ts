@@ -24,12 +24,20 @@ async function who(action: 'read' | 'create') {
 export async function GET() {
   const w = await who('read')
   if (w.error) return w.error
-  const [batches, listings, partners] = await Promise.all([
+  const [batches, listings, partners, tracks, courses, levels, groups] = await Promise.all([
     listBatches(),
     prisma.courseListing.findMany({ select: { slug: true, titleAr: true, titleEn: true }, orderBy: { slug: 'asc' } }),
     prisma.partner.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.track.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.academicSubject.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.level.findMany({ where: { isActive: true }, select: { id: true, name: true, order: true, subject: { select: { name: true } } }, orderBy: [{ subjectId: 'asc' }, { order: 'asc' }] }),
+    prisma.classSection.findMany({ where: { status: 'ACTIVE', isActive: true, kind: 'GROUP' }, select: { id: true, className: true, sectionName: true }, orderBy: { className: 'asc' }, take: 300 }),
   ])
-  return successResponse({ batches, listings, partners })
+  return successResponse({
+    batches, listings, partners, tracks, courses,
+    levels: levels.map((l) => ({ id: l.id, name: `${l.subject?.name ?? ''} — ${l.name}` })),
+    groups: groups.map((g) => ({ id: g.id, name: [g.className, g.sectionName].filter(Boolean).join(' ') })),
+  })
 }
 
 export async function POST(request: NextRequest) {

@@ -16,7 +16,8 @@ import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { CODE_KINDS, CODE_KIND_LABEL, codeBenefit, type CodeKind } from '@/lib/site/codes'
 
 type Batch = { batch: string; kind: string; value: number; scope: string; maxUses: number | null; expiresAt: string | null; createdAt: string; codes: number; used: number; active: number; partnerId: string | null; note: string | null }
-type Data = { batches: Batch[]; listings: { slug: string; titleAr: string | null; titleEn: string | null }[]; partners: { id: string; name: string }[] }
+type Opt = { id: string; name: string }
+type Data = { batches: Batch[]; listings: { slug: string; titleAr: string | null; titleEn: string | null }[]; partners: Opt[]; tracks: Opt[]; courses: Opt[]; levels: Opt[]; groups: Opt[] }
 type CodeRow = { code: string; uses: number; maxUses: number | null; active: boolean; usedBy: { phone: string; at: string }[] }
 
 const input = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm'
@@ -29,7 +30,7 @@ export default function EnrolmentCodesPage() {
   const { can } = useMyPermissions()
   const { data, isLoading } = useQuery({ queryKey: ['enrolment-codes'], queryFn: () => fetchApi<Data>('/api/enrolment-codes') })
   const [open, setOpen] = useState<string | null>(null)
-  const [form, setForm] = useState({ batch: '', count: 10, kind: 'PERCENT' as CodeKind, value: 20, duration: 'FIRST_CYCLE', scope: 'ANY', scopeIds: [] as string[], maxUses: '1' as string, expiresAt: '', partnerId: '', note: '' })
+  const [form, setForm] = useState({ batch: '', count: 10, kind: 'PERCENT' as CodeKind, value: 20, duration: 'FIRST_CYCLE', scope: 'ANY', scopeIds: [] as string[], maxUses: '1' as string, expiresAt: '', partnerId: '', note: '', unlocks: false, startLevelId: '' })
   const [busy, setBusy] = useState(false)
   const [made, setMade] = useState<string[] | null>(null)
   const codes = useQuery({ queryKey: ['enrolment-codes', open], queryFn: () => fetchApi<CodeRow[]>(`/api/enrolment-codes/${encodeURIComponent(open!)}`), enabled: !!open })
@@ -41,7 +42,7 @@ export default function EnrolmentCodesPage() {
         method: 'POST',
         body: JSON.stringify({
           ...form, value: form.kind === 'FREE' ? 0 : Number(form.value), count: Number(form.count),
-          maxUses: form.maxUses === '' ? null : Number(form.maxUses), expiresAt: form.expiresAt || null, partnerId: form.partnerId || null, note: form.note || null,
+          maxUses: form.maxUses === '' ? null : Number(form.maxUses), expiresAt: form.expiresAt || null, partnerId: form.partnerId || null, note: form.note || null, startLevelId: form.startLevelId || null,
         }),
       })
       setMade(res.codes)
@@ -79,9 +80,19 @@ export default function EnrolmentCodesPage() {
             <label className="text-sm">{L('Uses per code (empty = no limit)', 'مرات الاستخدام لكل كود (فاضي = مفتوح)')}<input type="number" min={1} className={input} value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: e.target.value })} /></label>
             <label className="text-sm">{L('Ends on (optional)', 'ينتهي يوم (اختياري)')}<input type="date" className={input} value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} /></label>
             <label className="text-sm">{L('Partner (optional)', 'الشريك (اختياري)')}<select className={input} value={form.partnerId} onChange={(e) => setForm({ ...form, partnerId: e.target.value })}><option value="">—</option>{data?.partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-            <label className="text-sm">{L('Works for', 'يشتغل على')}<select className={input} value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })}><option value="ANY">{L('Any course', 'أي كورس')}</option><option value="LISTING">{L('Chosen courses', 'كورسات أختارها')}</option></select></label>
+            <label className="text-sm">{L('Works for', 'يشتغل على')}<select className={input} value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value, scopeIds: [] })}><option value="ANY">{L('Any course', 'أي كورس')}</option><option value="LISTING">{L('Chosen course pages', 'صفحات كورسات أختارها')}</option><option value="TRACK">{L('Chosen tracks', 'تراكات أختارها')}</option><option value="COURSE">{L('Chosen courses', 'كورسات أختارها')}</option><option value="LEVEL">{L('Chosen levels', 'مستويات أختارها')}</option><option value="GROUP">{L('Chosen groups', 'جروبات أختارها')}</option></select></label>
+            <label className="text-sm">{L('Start the track at (optional)', 'يبدأ التراك من مستوى (اختياري)')}<select className={input} value={form.startLevelId} onChange={(e) => setForm({ ...form, startLevelId: e.target.value })}><option value="">—</option>{data?.levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
+            <label className="flex items-center gap-2 self-end text-sm"><input type="checkbox" checked={form.unlocks} onChange={(e) => setForm({ ...form, unlocks: e.target.checked })} /> {L('Also opens the course outside the age', 'كمان يفتح الكورس بره السن')}</label>
             <label className="text-sm sm:col-span-2 lg:col-span-3">{L('Note (optional)', 'ملحوظة (اختياري)')}<input className={input} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
           </div>
+          {['TRACK', 'COURSE', 'LEVEL', 'GROUP'].includes(form.scope) ? (
+            <div className="mt-3 flex max-h-48 flex-wrap gap-2 overflow-y-auto">
+              {((form.scope === 'TRACK' ? data?.tracks : form.scope === 'COURSE' ? data?.courses : form.scope === 'LEVEL' ? data?.levels : data?.groups) ?? []).map((o) => {
+                const on = form.scopeIds.includes(o.id)
+                return <button key={o.id} type="button" onClick={() => setForm({ ...form, scopeIds: on ? form.scopeIds.filter((x) => x !== o.id) : [...form.scopeIds, o.id] })} className={`rounded-full border px-3 py-1 text-sm ${on ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-slate-300 text-slate-700'}`}>{o.name}</button>
+              })}
+            </div>
+          ) : null}
           {form.scope === 'LISTING' ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {data?.listings.length ? data.listings.map((l) => {

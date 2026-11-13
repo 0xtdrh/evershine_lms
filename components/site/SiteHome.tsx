@@ -470,7 +470,7 @@ function View({ C, items, stats, preview, page, detail, banner, courses = [] }: 
                   </div>
                 ) : null}
                 {!c.modes.online && !c.modes.recorded ? <p>{locale === 'ar' ? 'المواعيد الجديدة هتنزل قريب.' : 'New dates are coming soon.'}</p> : null}
-                {c.modes.online || c.modes.recorded ? <a className="tns-btn brand" style={{ marginTop: 20, width: '100%' }} href={`/join/${c.slug}`} onClick={() => track('CTA', `course:${c.slug}:join`)}>{locale === 'ar' ? 'سجّل دلوقتي' : 'Sign up now'}</a>
+                {c.modes.online || c.modes.recorded ? <a className="tns-btn brand" style={{ marginTop: 20, width: '100%' }} href={`/dashboard/my-children?book=${encodeURIComponent(c.slug)}`} onClick={() => track('CTA', `course:${c.slug}:book`)}>{locale === 'ar' ? 'سجّل دلوقتي' : 'Sign up now'}</a>
                   : <button type="button" className="tns-btn brand" style={{ marginTop: 20, width: '100%' }} onClick={() => setForm({ kind: 'CONTACT', page: `course:${c.slug}`, topic: t(c.title).slice(0, 80) })}>{locale === 'ar' ? 'سجّل اهتمامك' : 'Register your interest'}</button>}
                 {wa ? <a className="tns-btn ghost" style={{ marginTop: 10, width: '100%' }} href={wa} target="_blank" rel="noopener noreferrer" onClick={() => track('WHATSAPP', `course:${c.slug}`)}>{locale === 'ar' ? 'اسأل على الواتساب' : 'Ask on WhatsApp'}</a> : null}
               </aside>

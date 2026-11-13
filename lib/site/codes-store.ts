@@ -4,15 +4,17 @@ import { randomInt } from 'node:crypto'
 import { prisma } from '@/lib/prisma'
 import { cairoToday } from '@/lib/dates/cairo'
 import { checkCode, makeCode, normalizeCode, type BatchInput } from './codes'
+import type { CodeTarget } from '@/lib/bookings/rules'
 
 /** Makes a batch of codes. Each batch gets ONE discount type (shown in Discounts as «كود: BATCH»). */
 export async function createBatch(userId: string, v: BatchInput) {
   const valueType = v.kind === 'AMOUNT' ? 'FIXED' : 'PERCENT'
-  const value = v.kind === 'FREE' ? 100 : v.value
+  const full = v.kind === 'FREE' || v.kind === 'PREPAID'
+  const value = full ? 100 : v.value
   const type = await prisma.discountType.create({
     data: {
-      name: `Code: ${v.batch.toUpperCase()}`.slice(0, 80), kind: 'PROMO', valueType, value, duration: v.duration,
-      autoApply: false, approvalMode: 'STAFF', scopeType: 'ALL', stackable: true, isActive: true, createdById: userId,
+      name: `${v.kind === 'PREPAID' ? 'Prepaid' : 'Code'}: ${v.batch.toUpperCase()}`.slice(0, 80), kind: 'PROMO', valueType, value, duration: v.duration,
+      autoApply: false, approvalMode: 'STAFF', scopeType: 'ALL', stackable: true, ignoresCap: full, isActive: true, createdById: userId,
       validTo: v.expiresAt ? new Date(`${v.expiresAt}T23:59:59Z`) : null,
     },
   })
@@ -24,7 +26,7 @@ export async function createBatch(userId: string, v: BatchInput) {
         data: {
           code, batch: v.batch.toUpperCase(), kind: v.kind, value, duration: v.duration, scope: v.scope, scopeIds: v.scopeIds,
           maxUses: v.maxUses, expiresAt: v.expiresAt ? new Date(`${v.expiresAt}T23:59:59Z`) : null, partnerId: v.partnerId || null,
-          note: v.note || null, discountTypeId: type.id, createdById: userId,
+          note: v.note || null, discountTypeId: type.id, createdById: userId, unlocks: v.unlocks, startLevelId: v.startLevelId || null,
         },
       })
       made.push(code)
@@ -48,11 +50,11 @@ export const batchCodes = (batch: string) => prisma.enrolmentCode.findMany({ whe
 export const setBatchActive = (batch: string, on: boolean) => prisma.enrolmentCode.updateMany({ where: { batch: batch.toUpperCase() }, data: { isActive: on } })
 
 /** Checks a code for a course page and a phone (public). */
-export async function lookupCode(raw: string, listing: string | null, phone: string | null) {
+export async function lookupCode(raw: string, listing: string | null, phone: string | null, target?: CodeTarget) {
   const code = normalizeCode(raw)
   const row = code ? await prisma.enrolmentCode.findUnique({ where: { code } }) : null
   const usedByPhone = !!(row && phone && (await prisma.enrolmentCodeUse.count({ where: { codeId: row.id, phone } })))
-  const res = checkCode(row, { listing, today: cairoToday(), usedByPhone })
+  const res = checkCode(row, { listing, today: cairoToday(), usedByPhone, target })
   return { code, row, res }
 }
 
@@ -79,8 +81,8 @@ export async function applyCodeToStudent(codeText: string | null | undefined, st
   if (exists) return exists.id
   const a = await prisma.discountAssignment.create({
     data: {
-      discountTypeId: row.discountTypeId, studentId, classSectionId, value: row.kind === 'FREE' ? 100 : row.value, status: 'ACTIVE',
-      reason: `Enrolment code ${row.code} · كود تسجيل`, requestedById: staffUserId, approvedById: staffUserId, approvedAt: new Date(),
+      discountTypeId: row.discountTypeId, studentId, classSectionId, value: row.kind === 'FREE' || row.kind === 'PREPAID' ? 100 : row.value, status: 'ACTIVE',
+      reason: `${row.kind === 'PREPAID' ? 'Prepaid code' : 'Enrolment code'} ${row.code} · ${row.kind === 'PREPAID' ? 'كود مدفوع مقدماً' : 'كود تسجيل'}`, requestedById: staffUserId, approvedById: staffUserId, approvedAt: new Date(),
     },
   })
   return a.id

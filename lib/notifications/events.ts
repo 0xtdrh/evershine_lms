@@ -74,6 +74,8 @@ export const NOTIFICATION_EVENTS = [
   { key: 'SESSION_SCORE_LOW', label: 'Low rating from the instructor', description: 'Managers: an instructor gave a student a low rating; the family does not see it until a manager releases it', audience: 'STAFF' },
   { key: 'MONTH_CLOSE', label: 'Month closed / reopened', description: 'Finance people: a financial month was closed (by hand or automatically) or reopened', audience: 'STAFF' },
   { key: 'WEBSITE_REQUEST', label: 'New website request', description: 'Website people: someone sent a form on the website (contact, solution, school, partnership, product)', audience: 'STAFF' },
+  { key: 'BOOKING_NEW', label: 'New course booking', description: 'Office: a family booked a course from its account (or a booking waits for approval)', audience: 'STAFF' },
+  { key: 'BOOKING_UPDATE', label: 'Booking update', description: 'Parent: the course booking was confirmed, is held until paid, expired or was not accepted', audience: 'PARENT' },
   { key: 'MORNING_SUMMARY', label: 'Morning summary', description: 'Managers: today\'s sessions, missing attendance, overdue invoices, items waiting', audience: 'STAFF' },
 ] as const satisfies readonly EventDef[]
 

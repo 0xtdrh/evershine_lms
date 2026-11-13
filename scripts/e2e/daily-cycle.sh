@@ -3306,7 +3306,7 @@ M "UPDATE Level SET allowedModes=NULL WHERE id='$LV101'"; M "UPDATE AcademicSubj
 api POST /api/groups "{\"campusId\":\"$ONP\",\"className\":\"E2E Join\",\"sectionName\":\"J\",\"levelId\":\"$LV101\",\"scheduleSlots\":[{\"dayOfWeek\":6,\"time\":\"17:00\"}]}" >/dev/null
 JG=$(M "SELECT id FROM ClassSection WHERE className='E2E Join' AND campusId='$ONP' LIMIT 1")
 check "an online group of the first level exists for the course" "$([ -n "$JG" ] && echo yes)" "yes"
-check "the course page button goes to the sign-up steps; the steps page opens" "$(curl -s "$B/courses/e2e-course" | grep -o 'href="/join/e2e-course"' | head -1)/$(curl -s "$B/join/e2e-course" | grep -o 'class="tns-join"' | head -1)" 'href="/join/e2e-course"/class="tns-join"'
+check "the website sign-up steps page still opens (the course button now books inside the account: section 103)" "$(curl -s "$B/join/e2e-course" | grep -o 'class="tns-join"' | head -1)" 'class="tns-join"'
 check "an unknown course has no sign-up page" "$(curl -s "$B/join/nope" | grep -o 'NEXT_HTTP_ERROR_FALLBACK;404' | head -1)" "NEXT_HTTP_ERROR_FALLBACK;404"
 CB=$(api POST /api/enrolment-codes '{"batch":"E2EJOIN","count":2,"kind":"PERCENT","value":20,"maxUses":1}')
 JC1=$(echo "$CB" | jq_ "d['data']['codes'][0]"); JC2=$(echo "$CB" | jq_ "d['data']['codes'][1]")
@@ -3376,6 +3376,44 @@ AR102=$(M "SELECT id FROM AdmissionRequest WHERE firstName='Bigone' AND lastName
 api POST /api/admissions/$AR102/approve "{\"campusId\":\"$ONP\",\"classSectionId\":\"$JG\",\"confirmNotDuplicate\":true}" >/dev/null
 check "a request from the same phone, once approved, lands in the SAME family account" "$(echo "$SU102" | jq_ "d['success']")/$(fapi GET /api/guardian-portal/family | jq_ "sorted([(p['firstName'], bool(p['registrationNumber'])) for p in d['data']['people']])")/$(M "SELECT COUNT(*) FROM Guardian WHERE phoneNumber='01033344455'")" "True/[('Bigone', True), ('Littleone', False)]/1"
 rm -f "$FJ"
+echo "== 103. Booking a course from the family account: hold until paid, expiry, staff approval, codes, waiting list (six phases 1-B, 2026-11-13)"
+FJ3=$(mktemp); login_jar 01033344455 famPass2026 "$FJ3" 10.8.4.1
+f3() { curl -s -b "$FJ3" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+check "the course page button opens booking inside the account" "$(curl -s "$B/courses/e2e-course" | grep -o 'href="/dashboard/my-children?book=e2e-course"' | head -1)" 'href="/dashboard/my-children?book=e2e-course"'
+OPT=$(f3 GET "/api/guardian-portal/family/book?person=m:$FM1&slug=e2e-course")
+check "booking options: the opened course starts at its first level and lists the online group with details" "$(echo "$OPT" | jq_ "(d['success'], d['data']['level']['id']=='$LV101', [(g['id']=='$JG', 'price' in g, 'free' in g) for g in (d['data']['online'] or []) if g['id']=='$JG'])")" "(True, True, [(True, True, True)])"
+BK1=$(f3 POST /api/guardian-portal/family/book "{\"person\":\"m:$FM1\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"agree\":true}")
+BK1ID=$(echo "$BK1" | jq_ "d['data']['id']")
+FS1=$(M "SELECT studentId FROM FamilyMember WHERE id='$FM1'")
+check "booked: the child becomes a student (TN/…), joins the group, gets the first invoice, the seat is held" "$(echo "$BK1" | jq_ "(d['data']['status'], d['data']['registrationNumber'][:3], d['data']['invoice'] is not None)")/$(M "SELECT COUNT(*) FROM StudentEnrollment WHERE studentId='$FS1' AND classSectionId='$JG' AND status='ACTIVE'")/$(M "SELECT holdUntil > UTC_TIMESTAMP() FROM CourseBooking WHERE id='$BK1ID'")" "('HOLD', 'TN/', True)/1/1"
+check "the same child cannot book the same course twice (already learning it)" "$(f3 POST /api/guardian-portal/family/book "{\"person\":\"s:$FS1\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"agree\":true}" | jq_ "d['error']['code']")" "ENROLLED"
+BI1=$(M "SELECT invoiceId FROM CourseBooking WHERE id='$BK1ID'")
+pay $BI1 $(M "SELECT CAST(totalAmount - paidAmount AS DECIMAL(10,0)) FROM FeeInvoice WHERE id='$BI1'") >/dev/null
+check "paid → the booking is confirmed (the family sees it at once)" "$(f3 GET /api/guardian-portal/family/bookings | jq_ "[b['status'] for b in d['data'] if b['id']=='$BK1ID']")" "['CONFIRMED']"
+Y9=$(( $(cairo +%Y) - 9 ))
+FM3=$(f3 POST /api/guardian-portal/family/members "{\"firstName\":\"Midone\",\"lastName\":\"Accounttest\",\"dob\":\"$Y9-02-02\",\"gender\":\"MALE\"}" | jq_ "d['data']['id']")
+BK2ID=$(f3 POST /api/guardian-portal/family/book "{\"person\":\"m:$FM3\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"agree\":true}" | jq_ "d['data']['id']")
+FS3=$(M "SELECT studentId FROM FamilyMember WHERE id='$FM3'")
+BI2=$(M "SELECT invoiceId FROM CourseBooking WHERE id='$BK2ID'")
+M "UPDATE CourseBooking SET holdUntil = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 HOUR) WHERE id='$BK2ID'"
+check "not paid in time → expired: out of the group, the unpaid invoice cancelled" "$(f3 GET /api/guardian-portal/family/bookings | jq_ "[b['status'] for b in d['data'] if b['id']=='$BK2ID']")/$(M "SELECT status FROM StudentEnrollment WHERE studentId='$FS3' AND classSectionId='$JG'")/$(M "SELECT status FROM FeeInvoice WHERE id='$BI2'")" "['EXPIRED']/WITHDRAWN/CANCELLED"
+check "booking again with 'no time fits' → waiting list; the family can cancel it" "$(f3 POST /api/guardian-portal/family/book "{\"person\":\"s:$FS3\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"agree\":true}" | jq_ "d['data']['status']")/$(M "SELECT COUNT(*) FROM WaitingListEntry WHERE studentId='$FS3' AND status='WAITING' AND classSectionId IS NULL")/$(f3 DELETE /api/guardian-portal/family/bookings/$(M "SELECT id FROM CourseBooking WHERE studentId='$FS3' AND status='WAITING' LIMIT 1") | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM WaitingListEntry WHERE studentId='$FS3' AND status='WAITING'")" "WAITING/1/True/0"
+api PUT /api/bookings/rules "{\"scopeType\":\"GROUP\",\"scopeId\":\"$JG\",\"confirm\":\"STAFF\",\"holdHours\":24}" >/dev/null
+FM4=$(f3 POST /api/guardian-portal/family/members "{\"firstName\":\"Thirdone\",\"lastName\":\"Accounttest\",\"dob\":\"$Y9-05-05\",\"gender\":\"FEMALE\"}" | jq_ "d['data']['id']")
+BK4ID=$(f3 POST /api/guardian-portal/family/book "{\"person\":\"m:$FM4\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"agree\":true}" | jq_ "d['data']['id']")
+check "a group rule 'staff approve first': the booking waits, nobody is placed yet; 'your work today' shows it" "$(M "SELECT CONCAT(status,'/',studentId IS NULL) FROM CourseBooking WHERE id='$BK4ID'")/$(api GET /api/today | jq_ "any(t['key']=='bookingsToReview' for t in d['data']['tasks'])")" "REVIEW/1/True"
+check "an instructor cannot see or decide bookings" "$(tapi GET /api/bookings | jq_ "d['success']")/$(tapi POST /api/bookings/$BK4ID '{"action":"APPROVE"}' | jq_ "d['success']")" "False/False"
+check "a branch secretary cannot decide an online booking (another place); the admin approves → placed and held for 24 hours (the group rule)" "$(secapi POST /api/bookings/$BK4ID '{"action":"APPROVE"}' | jq_ "d['error']['code']")/$(api POST /api/bookings/$BK4ID '{"action":"APPROVE"}' | jq_ "d['data']['status']")/$(M "SELECT TIMESTAMPDIFF(HOUR, UTC_TIMESTAMP(), holdUntil) BETWEEN 22 AND 24 FROM CourseBooking WHERE id='$BK4ID'")" "NOT_YOURS/HOLD/1"
+api DELETE "/api/bookings/rules?id=$(M "SELECT id FROM BookingRule WHERE scopeId='$JG'")" >/dev/null
+CB3=$(api POST /api/enrolment-codes "{\"batch\":\"E2EGRP\",\"count\":1,\"kind\":\"PREPAID\",\"scope\":\"GROUP\",\"scopeIds\":[\"$JG\"],\"unlocks\":true,\"maxUses\":3}")
+JC3=$(echo "$CB3" | jq_ "d['data']['codes'][0]")
+Y5=$(( $(cairo +%Y) - 5 ))
+FM5=$(f3 POST /api/guardian-portal/family/members "{\"firstName\":\"Babyone\",\"lastName\":\"Accounttest\",\"dob\":\"$Y5-06-06\",\"gender\":\"FEMALE\"}" | jq_ "d['data']['id']")
+check "a 5-year-old cannot book the 8–12 course… unless a code that opens it is used" "$(f3 GET "/api/guardian-portal/family/book?person=m:$FM5&slug=e2e-course" | jq_ "d['error']['code']")/$(f3 GET "/api/guardian-portal/family/book?person=m:$FM5&slug=e2e-course&code=$JC3" | jq_ "d['data']['code']['kind']")" "NOT_SUITABLE/PREPAID"
+BK5=$(f3 POST /api/guardian-portal/family/book "{\"person\":\"m:$FM5\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"code\":\"$JC3\",\"agree\":true}")
+check "a prepaid group code: the invoice is fully covered → confirmed at once; the code use is counted" "$(echo "$BK5" | jq_ "(d['data']['status'], float(d['data']['invoice']['total']) if d['data']['invoice'] else 0.0)")/$(M "SELECT uses FROM EnrolmentCode WHERE code='$JC3'")" "('CONFIRMED', 0.0)/1"
+check "staff see the bookings of the family with their state" "$(api GET /api/bookings | jq_ "sorted(set(b['status'] for b in d['data'] if b['family'] and b['family']['phoneNumber']=='01033344455'))")" "['CANCELLED', 'CONFIRMED', 'EXPIRED', 'HOLD']"
+rm -f "$FJ3"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
