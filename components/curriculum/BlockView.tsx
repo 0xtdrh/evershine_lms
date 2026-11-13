@@ -6,6 +6,7 @@
  * Media comes as a signed link made by the server; video download / right-click is switched off.
  */
 
+import { useWatchReport } from '@/components/videos/useWatchReport'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useI18n } from '@/lib/i18n/client'
@@ -84,9 +85,9 @@ export function BlockView({ block, watermark, groupId }: { block: Block; waterma
       const embed = d.url ? videoEmbedUrl(d.url as string) : null
       const ref = d.videoRef as { g?: string; s?: string } | undefined
       body = d.protected ? (
-        <ProtectedPlayer blockId={block.id} g={ref?.g} s={ref?.s} />
+        <ProtectedPlayer blockId={block.id} g={ref?.g} s={ref?.s} groupId={groupId} />
       ) : d.mediaUrl ? (
-        <video src={d.mediaUrl} controls controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={noMenu} className={`rounded-lg bg-black ${fill ? 'h-full w-full' : 'w-full max-w-3xl'}`} />
+        <TrackedVideo src={d.mediaUrl as string} blockId={block.id} groupId={groupId} onContextMenu={noMenu} className={`rounded-lg bg-black ${fill ? 'h-full w-full' : 'w-full max-w-3xl'}`} />
       ) : embed ? (
         <div className={`overflow-hidden rounded-lg ${fill ? 'h-full w-full' : 'aspect-video w-full max-w-3xl'}`}><iframe src={embed} className="h-full w-full" allow="encrypted-media; fullscreen" allowFullScreen title={title || 'video'} /></div>
       ) : <p className="text-xs text-slate-400">Video not available</p>
@@ -193,4 +194,11 @@ export function BlockView({ block, watermark, groupId }: { block: Block; waterma
       <div className="relative">{body}{watermark && !d.protected && <Watermark text={watermark} moving={FILL_TYPES.includes(block.type)} />}</div>
     </div>
   )
+}
+
+/** Six phases 2: a lesson video file — counts the minutes really watched and resumes where the student stopped. */
+function TrackedVideo({ src, blockId, groupId, className, onContextMenu }: { src: string; blockId: string; groupId?: string | null; className: string; onContextMenu: (e: React.MouseEvent) => void }) {
+  const ref = useRef<HTMLVideoElement>(null)
+  useWatchReport(ref, blockId, groupId)
+  return <video ref={ref} src={src} controls controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={onContextMenu} className={className} />
 }

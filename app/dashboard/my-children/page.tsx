@@ -1,5 +1,6 @@
 'use client'
 
+import { StudentWatchCard } from '@/components/videos/StudentWatchCard'
 import { useState, useRef } from 'react'
 import { ParentRenewalsCard } from '@/components/portal/ParentRenewalsCard'
 import { ParentWalletCard } from '@/components/portal/ParentWalletCard'
@@ -323,6 +324,7 @@ export default function MyChildrenPage() {
 
               <TabsContent value="overview" className="mt-4 space-y-4">
                 <UpcomingSessionsCard studentId={childId} />
+                <StudentWatchCard studentId={childId} />
                 {childId && <PortalIdCard studentId={childId} />}
                 {/* ── Premium Child Hero Card ─────────────────────────── */}
                 {(() => {

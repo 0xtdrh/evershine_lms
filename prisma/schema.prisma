@@ -5948,3 +5948,31 @@ model GroupPolicy {
 
   @@index([scopeType, scopeId])
 }
+
+/// Six phases 2 (2026-11-13): how much of a lesson video a student really watched — the parts seen (merged, so watching again or
+/// on two devices never counts twice), where they stopped, when. One row per student × video block × group.
+model VideoWatch {
+  id             String    @id @default(cuid())
+  studentId      String
+  blockId        String    @db.VarChar(40)
+  classSectionId String    @db.VarChar(40)
+  sessionId      String    @db.VarChar(40)
+  durationSec    Int       @default(0)
+  /// merged watched parts [[start, end], …] in seconds of the video
+  ranges         Json
+  watchedSec     Int       @default(0)
+  /// all play time, watching again included
+  playSec        Int       @default(0)
+  /// six phases 2: video seconds played faster than 1× (owner wants to know who speeds up) and the fastest speed used
+  fastSec        Int       @default(0)
+  maxSpeed       Float     @default(1)
+  lastPosition   Int       @default(0)
+  views          Int       @default(1)
+  completedAt    DateTime?
+  firstAt        DateTime  @default(now())
+  lastAt         DateTime  @default(now())
+
+  @@unique([studentId, blockId, classSectionId])
+  @@index([classSectionId, sessionId])
+  @@index([studentId, lastAt])
+}

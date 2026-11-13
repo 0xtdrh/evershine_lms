@@ -2,6 +2,7 @@
 
 /** a02 M4 batch 3 (2026-11-02): protected videos: the list, unusual watching, and the settings (devices at once, paid courses). */
 
+import { WatchSettingsCard } from '@/components/videos/WatchSettingsCard'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -85,7 +86,7 @@ function SettingsCard({ canEdit }: { canEdit: boolean }) {
 
 export default function VideosPage() {
   useI18n()
-  const { can } = useMyPermissions()
+  const { can, role } = useMyPermissions()
   const [tab, setTab] = useUrlTab()
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-4 sm:p-6">
@@ -101,7 +102,7 @@ export default function VideosPage() {
         </TabsList>
         <TabsContent value="list" className="mt-4"><Videos canEdit={can('video_protection', 'update')} /></TabsContent>
         <TabsContent value="watch" className="mt-4"><Watching /></TabsContent>
-        <TabsContent value="settings" className="mt-4"><SettingsCard canEdit={can('video_protection', 'update')} /></TabsContent>
+        <TabsContent value="settings" className="mt-4 space-y-4"><SettingsCard canEdit={can('video_protection', 'update')} /><WatchSettingsCard canEdit={role === 'SUPER_ADMIN' || role === 'ADMIN'} /></TabsContent>
       </Tabs>
     </div>
   )

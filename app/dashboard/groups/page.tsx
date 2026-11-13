@@ -1,5 +1,6 @@
 'use client'
 
+import { GroupWatchPanel } from '@/components/videos/GroupWatchPanel'
 import { GroupBookingLink } from '@/components/groups/GroupBookingLink'
 import { GroupAwaitingPanel } from '@/components/groups/GroupAwaitingPanel'
 import { GroupStartPanel } from '@/components/groups/GroupStartPanel'
@@ -810,6 +811,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
               {canEditGroups && detail.status === 'ACTIVE' && (
                 <GroupSessionModePanel groupId={detail.id} campusId={detail.campus?.id} students={detail.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => ({ id: e.student.id, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}` }))} />
               )}
+              {detail.level ? <GroupWatchPanel key={`watch-${detail.id}`} groupId={detail.id} /> : null}
               {detail.level && <GroupCurriculumPicker key={`cur-${detail.id}`} groupId={detail.id} canEdit={canEditGroups} />}
               {detail.level && (
                 <GroupPricePanel

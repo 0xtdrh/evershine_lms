@@ -3443,8 +3443,8 @@ api POST /api/partners/$PRT/join '{"action":"off"}' >/dev/null
 check "a stopped code: the link opens the normal sign-up, and signing up with it is refused" "$(curl -s -o /dev/null -w '%{redirect_url}' $B/join/p/$PCODE | grep -c partner=)/$(PA4 "{\"who\":\"PARENT\",\"firstName\":\"Latemom\",\"lastName\":\"Jointest\",\"phone\":\"01044455577\",\"password\":\"joinPass2026\",\"city\":\"Hurghada\",\"agree\":true,\"partnerCode\":\"$PCODE\"}" 10.8.6.3 | jq_ "d['error']['code']")" "0/BAD_PARTNER"
 api POST /api/partners/$PRT/join '{"action":"on"}' >/dev/null
 check "a group's booking link opens the booking of that group inside the account; an unknown group goes to the courses page" "$(curl -s -o /dev/null -w '%{redirect_url}' $B/book/$JG | grep -o "/dashboard/my-children?book=e2e-course&group=$JG")/$(curl -s -o /dev/null -w '%{redirect_url}' $B/book/nope | grep -o '/courses$')" "/dashboard/my-children?book=e2e-course&group=$JG//courses"
-LK=$(curl -s -b "$PJ" "$B/api/guardian-portal/family/book?person=m:$PM&slug=e2e-course&group=$JG")
-check "opened from the link: the group is chosen for the family" "$(echo "$LK" | jq_ "d['data']['link']['groupId']=='$JG'")" "True"
+LKR=$(curl -s -b "$PJ" "$B/api/guardian-portal/family/book?person=m:$PM&slug=e2e-course&group=$JG")
+check "opened from the link: the group is chosen for the family" "$(echo "$LKR" | jq_ "d['data']['link']['groupId']=='$JG'")" "True"
 curl -s -b "$PJ" -X POST -H 'Content-Type: application/json' -d "{\"person\":\"m:$PM\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"link\":\"$JG\",\"agree\":true}" $B/api/guardian-portal/family/book >/dev/null
 check "a booking from the link is counted for the group" "$(M "SELECT source FROM CourseBooking WHERE classSectionId='$JG' AND guardianId=(SELECT id FROM Guardian WHERE phoneNumber='01044455566') LIMIT 1")/$(api GET /api/groups/$JG/booking-link | jq_ "(d['data']['slug'], d['data']['bookings'] >= 1)")" "GROUP_LINK/('e2e-course', True)"
 check "an instructor cannot read group booking links or partner codes' families" "$(tapi GET /api/groups/$JG/booking-link | jq_ "d['success']")" "False"
@@ -3522,6 +3522,31 @@ check "one student is on the waiting list, the other moved to another group (wit
 check "families are told what happened" "$(M "SELECT COUNT(*)>=2 FROM Notification WHERE relatedId='$GC' AND title LIKE '%was cancelled%'")" "1"
 check "a cancelled group cannot be cancelled again" "$(api POST /api/groups/$GC/start '{"action":"CANCEL","reason":"again"}' | jq_ "d['error']['code']")" "CANCELLED"
 for G in $GA $GB $GC; do M "DELETE FROM GroupPolicy WHERE scopeId='$G'"; done
+echo "== 108. Watch minutes: real parts watched, no double counting, done at 90%, resume, reports (six phases 2, 2026-11-13)"
+api PUT /api/platform/settings '{"modules":{"lms":true}}' >/dev/null
+GSW=$(M "SELECT id FROM CurriculumSession WHERE editionId=(SELECT curriculumEditionId FROM ClassSection WHERE id='$LG') ORDER BY number LIMIT 1")
+api PATCH /api/groups/$LG/lessons '{"sessionNumber":1,"action":"open"}' >/dev/null
+WB=$(M "SELECT CONCAT('wblk', SUBSTRING(MD5(RAND()),1,20))")
+M "INSERT INTO CurriculumBlock (id, sessionId, \`order\`, type, audience, titleEn, titleAr, data, createdAt, updatedAt) VALUES ('$WB', '$GSW', 99, 'VIDEO', 'BOTH', 'E2E watch video', 'E2E watch video', '{\"mediaUrl\":\"https://example.com/e2e.mp4\"}', NOW(), NOW())"
+WR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); WJ=$(mktemp); login_jar "$(echo "$WR" | jq_ "d['data']['loginId']")" "$(echo "$WR" | jq_ "d['data']['password']")" "$WJ" 10.0.9.71
+ws() { curl -s -b "$WJ" -X POST -H 'Content-Type: application/json' -d "{\"blockId\":\"$WB\",\"groupId\":\"$LG\",\"ranges\":$1,\"position\":$2,\"duration\":100}" $B/api/lessons/watch; }
+check "the student's player reports 30 s watched → 30%" "$(ws '[[0,30]]' 30 | jq_ "(d['data']['watchedSec'], d['data']['percent'], d['data']['completed'])")" "(30, 30, False)"
+check "watching the same part again does not add" "$(ws '[[0,30]]' 30 | jq_ "d['data']['watchedSec']")" "30"
+check "a report claiming more than the time that passed is cut (no instant fill)" "$(ws '[[30,100]]' 100 | jq_ "d['data']['watchedSec'] < 80")" "True"
+M "UPDATE VideoWatch SET lastAt = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 5 MINUTE) WHERE blockId='$WB' AND studentId='$LK'"
+check "90% watched → the video counts as done in the lesson" "$(ws '[[0,95]]' 95 | jq_ "(d['data']['percent'] >= 90, d['data']['completed'])")/$(M "SELECT COUNT(*) FROM LessonProgress WHERE studentId='$LK' AND blockId='$WB'")" "(True, True)/1"
+check "the video resumes where the student stopped" "$(curl -s -b "$WJ" "$B/api/lessons/watch?blockId=$WB&groupId=$LG" | jq_ "d['data']['lastPosition']")" "95"
+check "staff see the student × lesson table of the group" "$(api GET /api/groups/$LG/watch | jq_ "[s['cells']['$WB']['done'] for s in d['data']['students'] if s['id']=='$LK']")" "[True]"
+check "the student / family see the watching summary" "$(curl -s -b "$WJ" $B/api/students/me/watch | jq_ "[g['watchedVideos'] >= 1 for g in d['data'] if g['groupId']=='$LG']")/$(api GET /api/students/$LK/watch | jq_ "d['success']")" "[True]/True"
+check "staff opening a lesson is not counted (only students are)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST -H 'Content-Type: application/json' -d "{\"blockId\":\"$WB\",\"groupId\":\"$LG\",\"ranges\":[[0,10]],\"position\":10}" $B/api/lessons/watch)" "204"
+check "a secretary cannot change the watch settings; the admin can" "$(secapi PUT /api/lessons/watch/settings '{"completePercent":80}' | jq_ "d['success']")/$(api PUT /api/lessons/watch/settings '{"completePercent":85}' | jq_ "d['data']['completePercent']")" "False/85"
+api PUT /api/lessons/watch/settings '{"completePercent":90}' >/dev/null
+check "'your work today' still answers with the watching task in the catalog" "$(api GET /api/today | jq_ "d['success']")" "True"
+M "UPDATE VideoWatch SET lastAt = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 MINUTE) WHERE blockId='$WB' AND studentId='$LK'"
+curl -s -b "$WJ" -X POST -H 'Content-Type: application/json' -d "{\"blockId\":\"$WB\",\"groupId\":\"$LG\",\"ranges\":[[95,100]],\"position\":100,\"duration\":100,\"fastSec\":5,\"maxSpeed\":2}" $B/api/lessons/watch >/dev/null
+check "staff see who speeds up the video (share faster than 1x, fastest speed)" "$(api GET /api/groups/$LG/watch | jq_ "[(s['fastPercent'] > 0, s['maxSpeed']) for s in d['data']['students'] if s['id']=='$LK']")" "[(True, 2)]"
+M "DELETE FROM CurriculumBlock WHERE id='$WB'"
+rm -f "$WJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

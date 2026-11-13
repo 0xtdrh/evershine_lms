@@ -6,6 +6,7 @@
  * the video, so the name stays on top; iPhone has no such full screen, so the box fills the page instead (not yet tried on a real iPhone).
  */
 
+import { useWatchReport } from './useWatchReport'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type Hls from 'hls.js'
 import { fetchApi } from '@/lib/api-client'
@@ -19,7 +20,7 @@ const deviceId = () => { let d = load('tn_video_device', ''); if (!d) { d = cryp
 const clock = (s: number) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}` : '0:00')
 const btn = 'flex h-8 min-w-8 items-center justify-center rounded-md bg-white/15 px-1.5 text-xs text-white hover:bg-white/25'
 
-export function ProtectedPlayer({ blockId, g, s, className = '' }: { blockId: string; g?: string | null; s?: string | null; className?: string }) {
+export function ProtectedPlayer({ blockId, g, s, className = '', groupId }: { blockId: string; g?: string | null; s?: string | null; className?: string; groupId?: string | null }) {
   useI18n()
   const box = useRef<HTMLDivElement>(null), video = useRef<HTMLVideoElement>(null), mark = useRef<HTMLDivElement>(null)
   const hls = useRef<Hls | null>(null), token = useRef<string | null>(null), hideT = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -30,6 +31,9 @@ export function ProtectedPlayer({ blockId, g, s, className = '' }: { blockId: st
   const [time, setTime] = useState(0), [duration, setDuration] = useState(0)
   const [muted, setMuted] = useState(false), [volume, setVolume] = useState(1), [canVolume, setCanVolume] = useState(true)
   const [speed, setSpeed] = useState('1'), [full, setFull] = useState(false), [pageFull, setPageFull] = useState(false), [bar, setBar] = useState(true)
+
+  // six phases 2: real watch minutes + resume where the student stopped
+  useWatchReport(video, blockId, groupId, state === 'ready')
 
   const showBar = useCallback(() => {
     setBar(true)

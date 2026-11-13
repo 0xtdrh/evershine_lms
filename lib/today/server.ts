@@ -48,6 +48,7 @@ const COUNTERS: Record<TaskKey, (c: Ctx) => Promise<number>> = {
   leads: async () => prisma.landingInquiry.count({ where: { status: 'NEW' } }),
   bookingsToReview: async (c) => prisma.courseBooking.count({ where: { status: { in: ['REVIEW', 'PLACEMENT'] }, ...(c.places.all ? {} : { OR: [{ campusId: null }, { campusId: { in: c.places.campusIds } }] }) } }),
   bookingsUnpaid: async (c) => prisma.courseBooking.count({ where: { status: 'HOLD', holdUntil: { lt: new Date(Date.now() + 86_400_000) }, ...(c.places.all ? {} : { OR: [{ campusId: null }, { campusId: { in: c.places.campusIds } }] }) } }),
+  recordedNotWatching: async (c) => (await (await import('@/lib/videos/watch-engine')).inactiveRecordedStudents(c.places.all ? {} : { campusId: { in: c.places.campusIds } })).length,
   groupsBelowMinimum: async (c) => prisma.classSection.count({ where: { startAlertedAt: { not: null }, startDate: null, cancelledAt: null, startConfirmedAt: null, status: 'ACTIVE', ...(c.places.all ? {} : { campusId: { in: c.places.campusIds } }) } }),
   studentsAwaitingPayment: async (c) => prisma.studentEnrollment.count({ where: { status: 'AWAITING_PAYMENT', ...(c.places.all ? {} : { classSection: { campusId: { in: c.places.campusIds } } }) } }),
   familiesNoChild: async (c) => prisma.guardian.count({ where: { signupSource: { not: null }, students: { none: {} }, createdAt: { gte: day(addDays(c.today, -30)) } } }),

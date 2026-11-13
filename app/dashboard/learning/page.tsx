@@ -5,6 +5,7 @@
  * homework, quizzes and the projects gallery (the same pages as before, inside tabs). Bilingual.
  */
 
+import { StudentWatchCard } from '@/components/videos/StudentWatchCard'
 import { JoinOnlineCard } from '@/components/online/JoinOnlineCard'
 import { UpcomingSessionsCard } from '@/components/portal/UpcomingSessionsCard'
 import { PortalIdCard } from '@/components/cards/PortalIdCard'
@@ -56,6 +57,7 @@ export default function LearningPage() {
       {!isParent && <AnnouncementFeed compact />}
       {!isParent && <JoinOnlineCard />}
       {!isParent && <UpcomingSessionsCard />}
+      {!isParent && <StudentWatchCard />}
       {!isParent && <PortalIdCard />}
       {!isParent && (hw || qz) && (
         <div className="grid gap-2 sm:grid-cols-3">
