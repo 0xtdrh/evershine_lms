@@ -14,6 +14,12 @@ export const watchSettingsSchema = z.object({
   completePercent: z.number().int().min(10).max(100).default(90),
   /** recorded-course students with no watching for this many days show in "your work today" */
   inactiveDays: z.number().int().min(1).max(60).default(7),
+  /** 2-B: a RECORDED session becomes "present — watched" by itself from watching (lib/attendance/recorded-watch.ts) */
+  autoAttendance: z.boolean().default(true),
+  /** percent of the session's videos (all of them together) that makes it "watched" */
+  attendancePercent: z.number().int().min(10).max(100).default(80),
+  /** watching more than this many days after the session no longer counts (0 = no limit) */
+  attendanceDays: z.number().int().min(0).max(120).default(14),
 })
 export type WatchSettings = z.infer<typeof watchSettingsSchema>
 export const DEFAULT_WATCH_SETTINGS: WatchSettings = watchSettingsSchema.parse({})

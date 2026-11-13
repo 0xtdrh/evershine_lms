@@ -65,6 +65,11 @@ export async function recordWatch(studentId: string, r: WatchReport) {
     const g = await prisma.classSection.findUnique({ where: { id: r.groupId }, select: { kind: true } })
     if (g?.kind === 'RECORDED') await (await import('@/lib/recorded/engine')).tryCertificate(studentId, r.groupId).catch(() => null)
   }
+  // 2-B: a RECORDED session becomes "present — watched" by itself (checked at every 5 % step, not at every report)
+  const step = (p: number) => Math.floor(p / 5)
+  if (settings.autoAttendance && step(watchedPercent(row.watchedSec, row.durationSec)) > step(old ? watchedPercent(old.watchedSec, old.durationSec) : 0)) {
+    await (await import('@/lib/attendance/recorded-watch')).autoRecordedFromWatch(studentId, r.groupId, b.sessionId)
+  }
   return { watchedSec: row.watchedSec, percent: watchedPercent(row.watchedSec, row.durationSec), completed: !!row.completedAt, lastPosition: row.lastPosition }
 }
 

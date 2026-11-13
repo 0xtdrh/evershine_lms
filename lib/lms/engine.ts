@@ -115,7 +115,8 @@ export async function groupLessons(groupId: string, opts: { studentId?: string }
   const from = day(new Date(Date.now() - 200 * DAY))
   const to = day(new Date(Date.now() + 120 * DAY))
   const occ = (await occurrencesFor({ groupIds: [g.id] }, from < today ? from : today, to))[0]?.occurrences ?? []
-  const heldCount = occ.filter((o) => o.status === 'HELD').reduce((m, o) => Math.max(m, o.sessionNumber ?? 0), 0)
+  // 2-B: a RECORDED session opens on its day even with no attendance yet (watching it is what records the attendance)
+  const heldCount = occ.filter((o) => o.status === 'HELD' || (o.mode === 'RECORDED' && (o.status === 'MISSING' || o.status === 'SCHEDULED') && o.date <= today)).reduce((m, o) => Math.max(m, o.sessionNumber ?? 0), 0)
   const startsByNo: Record<number, string> = {}
   for (const o of occ) {
     if (o.sessionNumber && (o.status === 'SCHEDULED' || o.status === 'HELD') && !startsByNo[o.sessionNumber]) {

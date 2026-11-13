@@ -9,9 +9,9 @@ import { L } from '@/lib/i18n/client'
 
 export function WatchSettingsCard({ canEdit }: { canEdit: boolean }) {
   const qc = useQueryClient()
-  const { data } = useQuery({ queryKey: ['watch-settings'], queryFn: () => fetchApi<{ completePercent: number; inactiveDays: number }>('/api/lessons/watch/settings') })
+  const { data } = useQuery({ queryKey: ['watch-settings'], queryFn: () => fetchApi<{ completePercent: number; inactiveDays: number; autoAttendance: boolean; attendancePercent: number; attendanceDays: number }>('/api/lessons/watch/settings') })
   if (!data) return null
-  const save = async (patch: Record<string, number>) => {
+  const save = async (patch: Record<string, number | boolean>) => {
     try { await fetchApi('/api/lessons/watch/settings', { method: 'PUT', body: JSON.stringify(patch) }); notify.success(L('Saved', 'اتحفظ')); void qc.invalidateQueries({ queryKey: ['watch-settings'] }) } catch (e) { notify.error((e as Error).message) }
   }
   const box = 'w-20 rounded-lg border border-slate-300 px-2 py-1'
@@ -22,6 +22,14 @@ export function WatchSettingsCard({ canEdit }: { canEdit: boolean }) {
         <input type="number" min={10} max={100} disabled={!canEdit} defaultValue={data.completePercent} className={box} onBlur={(e) => { const n = Number(e.target.value); if (n && n !== data.completePercent) void save({ completePercent: n }) }} /> %</label>
       <label className="flex flex-wrap items-center gap-2">{L('Recorded-course students with no watching for', 'طلاب الكورسات المسجلة اللي مابيتفرجوش لمدة')}
         <input type="number" min={1} max={60} disabled={!canEdit} defaultValue={data.inactiveDays} className={box} onBlur={(e) => { const n = Number(e.target.value); if (n && n !== data.inactiveDays) void save({ inactiveDays: n }) }} /> {L('day(s) show in "your work today"', 'يوم بيظهروا في «شغلك النهارده»')}</label>
+      <label className="flex flex-wrap items-center gap-2">
+        <input type="checkbox" disabled={!canEdit} defaultChecked={data.autoAttendance} onChange={(e) => void save({ autoAttendance: e.target.checked })} />
+        {L('A recorded session is marked "present — watched" by itself when the student watches', 'الحصة المسجلة بتتسجل «حاضر — اتفرج» لوحدها لما الطالب يتفرج على')}
+        <input type="number" min={10} max={100} disabled={!canEdit} defaultValue={data.attendancePercent} className={box} onBlur={(e) => { const n = Number(e.target.value); if (n && n !== data.attendancePercent) void save({ attendancePercent: n }) }} />
+        {L('% of its videos', '% من فيديوهاتها')}</label>
+      <label className="flex flex-wrap items-center gap-2">{L('…within', '…خلال')}
+        <input type="number" min={0} max={120} disabled={!canEdit} defaultValue={data.attendanceDays} className={box} onBlur={(e) => { const n = Number(e.target.value); if (Number.isFinite(n) && n !== data.attendanceDays) void save({ attendanceDays: n }) }} />
+        {L('day(s) after the session (0 = no limit)', 'يوم بعد ميعاد الحصة (0 = من غير حد)')}</label>
     </section>
   )
 }

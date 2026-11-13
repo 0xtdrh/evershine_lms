@@ -93,6 +93,9 @@ export async function GET(request: NextRequest) {
   const joins = await onlineJoinsOn(classSectionId, dateStr)
   // a02: how this session is held, and students attending it another way (e.g. online while travelling)
   const [sessionMode, studentModes] = await Promise.all([sessionModeOn(classSectionId, dateStr), studentModesOn(classSectionId, dateStr)])
+  // 2-B: how much of the recorded session each student attending it RECORDED has watched
+  const recordedIds = enrollments.filter((e) => (studentModes.get(e.studentId) ?? sessionMode) === 'RECORDED').map((e) => e.studentId)
+  const watched = await (await import('@/lib/attendance/recorded-watch')).recordedWatchOn(classSectionId, dateStr, recordedIds)
 
   // Calculate attendance statistics for this session
   let present = 0
@@ -128,6 +131,7 @@ export async function GET(request: NextRequest) {
       excuse: excuses.get(e.studentId) ? { status: excuses.get(e.studentId)!.status, reason: excuses.get(e.studentId)!.reason, kind: excuses.get(e.studentId)!.kind ?? null } : null,
       onlineJoinedAt: joins.get(e.studentId) ?? null,
       attendsAs: studentModes.get(e.studentId) ?? null,
+      recordedWatchPercent: watched.get(e.studentId) ?? null,
     })),
   })
 }

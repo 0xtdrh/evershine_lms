@@ -36,6 +36,7 @@ interface RosterRow {
   onlineJoinedAt?: string | null
   /** a02: this student attends this session another way (e.g. ONLINE while travelling) */
   attendsAs?: string | null
+  recordedWatchPercent?: number | null
   /** a02 batch 5: saved detail beside the status, and online minutes */
   todayDetail?: string | null
   todayMinutes?: number | null
@@ -551,6 +552,7 @@ export default function SectionAttendancePage() {
                         )}
                       </p>
                       {row.attendsAs === 'ONLINE' && <p className="mt-1 text-xs font-semibold text-indigo-700">💻 {L('Attends this session online', 'بيحضر الحصة دي أونلاين')}</p>}
+                      {row.recordedWatchPercent != null && <p className="mt-1 text-xs font-semibold text-violet-700">🎬 {L(`Watched ${row.recordedWatchPercent}% of the recorded session`, `اتفرج على ${row.recordedWatchPercent}% من الحصة المسجلة`)}</p>}
                       <PresenceInputs mode={row.attendsAs ?? roster?.sessionMode} present={current === 'PRESENT' || current === 'LATE'}
                         value={presence[row.studentEnrollmentId] ?? { detail: row.todayDetail ?? null, minutes: row.todayMinutes ?? null }}
                         onChange={(v) => setPresence({ ...presence, [row.studentEnrollmentId]: v })} />

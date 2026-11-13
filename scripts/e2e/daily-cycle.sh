@@ -3548,6 +3548,53 @@ check "staff see who speeds up the video (share faster than 1x, fastest speed)" 
 M "DELETE FROM CurriculumBlock WHERE id='$WB'"
 rm -f "$WJ"
 echo
+echo "== 109. Recorded session attendance from watching: 'present — watched' by itself, staff absent is corrected, settings (six phases 2-B, 2026-11-13)"
+api PUT /api/lessons/watch/settings '{"attendanceDays":0,"attendancePercent":80,"autoAttendance":true}' >/dev/null
+RHD=$(M "SELECT DATE_FORMAT(MAX(r.attendanceDate),'%Y-%m-%d') FROM EnrollmentAttendanceRecord r JOIN StudentEnrollment e ON e.id=r.studentEnrollmentId JOIN ClassSection c ON c.id=e.classSectionId WHERE e.classSectionId='$LG' AND r.attendanceDate >= COALESCE(c.currentCycleStartDate, c.startDate, '2000-01-01')")
+RN=$(M "SELECT COUNT(DISTINCT r.attendanceDate) FROM EnrollmentAttendanceRecord r JOIN StudentEnrollment e ON e.id=r.studentEnrollmentId JOIN ClassSection c ON c.id=e.classSectionId WHERE e.classSectionId='$LG' AND r.attendanceDate >= COALESCE(c.currentCycleStartDate, c.startDate, '2000-01-01') AND r.attendanceDate <= '$RHD'")
+RFROM=$(api GET /api/groups/$LG/lessons | jq_ "d['data']['range']['from']")
+RCSN=$((RFROM - 1 + RN))
+RCS=$(M "SELECT id FROM CurriculumSession WHERE editionId=(SELECT curriculumEditionId FROM ClassSection WHERE id='$LG') AND number=$RCSN")
+RHID=$(M "SELECT GROUP_CONCAT(CONCAT('''',id,'''')) FROM CurriculumBlock WHERE sessionId='$RCS' AND type='VIDEO' AND audience<>'INSTRUCTOR'")
+[ -n "$RHID" ] && M "UPDATE CurriculumBlock SET audience='INSTRUCTOR' WHERE id IN ($RHID)"
+api PATCH /api/groups/$LG/lessons "{\"sessionNumber\":$RCSN,\"action\":\"open\"}" >/dev/null
+RB=$(M "SELECT CONCAT('rblk', SUBSTRING(MD5(RAND()),1,20))")
+M "INSERT INTO CurriculumBlock (id, sessionId, \`order\`, type, audience, titleEn, titleAr, data, createdAt, updatedAt) VALUES ('$RB', '$RCS', 98, 'VIDEO', 'BOTH', 'E2E recorded session', 'E2E recorded session', '{\"mediaUrl\":\"https://example.com/e2e-rec.mp4\"}', NOW(), NOW())"
+LOE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$LO' AND classSectionId='$LG'")
+RLOST=$(M "SELECT status FROM StudentEnrollment WHERE id='$LOE'")
+M "UPDATE StudentEnrollment SET status='ACTIVE' WHERE id='$LOE'"
+M "DELETE FROM EnrollmentAttendanceRecord WHERE studentEnrollmentId='$LOE' AND attendanceDate='$RHD'"
+M "INSERT INTO StudentSessionMode (id, classSectionId, studentId, date, mode, createdAt) VALUES (CONCAT('rsm1', SUBSTRING(MD5(RAND()),1,20)), '$LG', '$LO', '$RHD', 'RECORDED', NOW()), (CONCAT('rsm2', SUBSTRING(MD5(RAND()),1,20)), '$LG', '$LK', '$RHD', 'RECORDED', NOW())"
+RLR=$(api POST /api/students/$LO/portal-password '{"target":"student"}'); RJ=$(mktemp); login_jar "$(echo "$RLR" | jq_ "d['data']['loginId']")" "$(echo "$RLR" | jq_ "d['data']['password']")" "$RJ" 10.0.9.81
+RKR=$(api POST /api/students/$LK/portal-password '{"target":"student"}'); RKJ=$(mktemp); login_jar "$(echo "$RKR" | jq_ "d['data']['loginId']")" "$(echo "$RKR" | jq_ "d['data']['password']")" "$RKJ" 10.0.9.82
+rws() { curl -s -b "$1" -X POST -H 'Content-Type: application/json' -d "{\"blockId\":\"$RB\",\"groupId\":\"$LG\",\"ranges\":$2,\"position\":$3,\"duration\":100}" $B/api/lessons/watch; }
+RREC() { M "SELECT CONCAT(status,'/',IFNULL(mode,'-'),'/',IFNULL(presenceDetail,'-')) FROM EnrollmentAttendanceRecord WHERE studentEnrollmentId='$1' AND attendanceDate='$RHD'"; }
+check "the recorded session's lesson is open for the student (session $RCSN on $RHD)" "$(rws "$RJ" '[[0,50]]' 50 | jq_ "d['data']['watchedSec']")" "50"
+check "watched 50% (below 80%) → no attendance yet" "$(RREC $LOE)" ""
+M "UPDATE VideoWatch SET lastAt = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 5 MINUTE) WHERE blockId='$RB' AND studentId='$LO'"
+rws "$RJ" '[[0,90]]' 90 >/dev/null
+check "watched 90% → present — watched (recorded), written by itself" "$(RREC $LOE)/$(M "SELECT remarks LIKE '%automatic%' FROM EnrollmentAttendanceRecord WHERE studentEnrollmentId='$LOE' AND attendanceDate='$RHD'")" "PRESENT/RECORDED/WATCHED/1"
+check "the attendance screen shows how much of the recorded session each student watched" "$(api GET "/api/enrollment-attendance/roster?classSectionId=$LG&date=$RHD" | jq_ "[e['recordedWatchPercent'] for e in d['data']['enrollments'] if e['student']['id']=='$LO']")" "[90]"
+rws "$RKJ" '[[0,50]]' 50 >/dev/null
+M "UPDATE VideoWatch SET lastAt = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 5 MINUTE) WHERE blockId='$RB' AND studentId='$LK'"
+rws "$RKJ" '[[0,85]]' 85 >/dev/null
+sess $LG "$RHD" "$(rec $LKE ABSENT)" >/dev/null
+check "staff save ABSENT for a student who already watched → corrected to present — watched" "$(RREC $LKE)" "PRESENT/RECORDED/WATCHED"
+check "no 'absent' message to his family for that save" "$(M "SELECT COUNT(*) FROM Notification WHERE message LIKE '%LessonKid was absent%$RHD%' AND createdAt > DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 MINUTE)")" "0"
+check "a secretary cannot change the automatic attendance setting" "$(secapi PUT /api/lessons/watch/settings '{"autoAttendance":false}' | jq_ "d['success']")" "False"
+api PUT /api/lessons/watch/settings '{"autoAttendance":false}' >/dev/null
+sess $LG "$RHD" "$(rec $LKE ABSENT)" >/dev/null
+check "setting off → staff ABSENT stays absent" "$(RREC $LKE)" "ABSENT/RECORDED/-"
+api PUT /api/lessons/watch/settings '{"autoAttendance":true,"attendanceDays":14}' >/dev/null
+sess $LG "$RHD" "$(rec $LKE PRESENT)" >/dev/null
+check "a branch student is never touched (only who attends RECORDED)" "$(M "DELETE FROM StudentSessionMode WHERE classSectionId='$LG' AND studentId='$LK' AND date='$RHD'"; sess $LG "$RHD" "$(rec $LKE ABSENT)" >/dev/null; RREC $LKE)" "ABSENT/BRANCH/-"
+sess $LG "$RHD" "$(rec $LKE PRESENT)" >/dev/null
+M "DELETE FROM StudentSessionMode WHERE classSectionId='$LG' AND date='$RHD'"
+M "DELETE FROM VideoWatch WHERE blockId='$RB'"; M "DELETE FROM CurriculumBlock WHERE id='$RB'"
+[ -n "$RHID" ] && M "UPDATE CurriculumBlock SET audience='BOTH' WHERE id IN ($RHID)"
+M "UPDATE StudentEnrollment SET status='$RLOST' WHERE id='$LOE'"
+rm -f "$RJ" "$RKJ"
+echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
 [ $FAIL -eq 0 ]

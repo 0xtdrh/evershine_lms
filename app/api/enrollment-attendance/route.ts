@@ -231,7 +231,13 @@ export async function POST(request: NextRequest) {
     })
 
     await refreshGroupProgress(classSectionId, session.user.id)
-    await afterAttendanceSaved({ classSectionId, date: attendanceDate, before, after: records })
+    // 2-B: a student attending this session RECORDED who already watched it is "present — watched", not absent
+    let after = records
+    if ([...extras.values()].some((x) => x.mode === 'RECORDED') && (await (await import('@/lib/attendance/recorded-watch')).autoRecordedForDate(classSectionId, attendanceDate)) > 0) {
+      const now = new Map((await prisma.enrollmentAttendanceRecord.findMany({ where: { studentEnrollmentId: { in: ids }, attendanceDate: new Date(attendanceDate) }, select: { studentEnrollmentId: true, status: true } })).map((r) => [r.studentEnrollmentId, r.status]))
+      after = records.map((r) => ({ ...r, status: (now.get(r.studentEnrollmentId) ?? r.status) as typeof r.status })) // no "absent" message for who watched
+    }
+    await afterAttendanceSaved({ classSectionId, date: attendanceDate, before, after })
     await afterAttendanceForReport(classSectionId, attendanceDate)
     return createdResponse(results, 'Attendance saved')
   }
