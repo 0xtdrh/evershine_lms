@@ -162,6 +162,8 @@ enum AcademicEnrollmentStatus {
   TRANSFERRED
   GRADUATED
   WITHDRAWN
+  /// Six phases E (2026-11-13): seat held, NOT in the group yet (attendance, lessons, live, sessions) until the invoice is paid
+  AWAITING_PAYMENT
 }
 
 enum SubjectEnrollmentStatus {
@@ -5878,6 +5880,8 @@ model CourseBooking {
   source         String?   @db.VarChar(20)
   status         String    @db.VarChar(12)
   holdUntil      DateTime?
+  /// Six phases E: reminders already sent to the family for this hold (1 = a day before, 2 = 3 hours before)
+  remindersSent  Int       @default(0)
   invoiceId      String?   @db.VarChar(40)
   waitingEntryId String?   @db.VarChar(40)
   reason         String?   @db.VarChar(300)
@@ -5903,6 +5907,32 @@ model BookingRule {
   holdHours Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([scopeType, scopeId])
+}
+
+/// Six phases E (2026-11-13): how students enter a group and when a group may start — per scope (COMPANY / CAMPUS / TRACK /
+/// COURSE / LEVEL / GROUP); for each field the most specific row that sets it wins (null = take it from above).
+model GroupPolicy {
+  id                String   @id @default(cuid())
+  scopeType         String   @db.VarChar(10)
+  scopeId           String?  @db.VarChar(40)
+  /// NOW = joins at once (seat held until paid) · AFTER_PAYMENT = seat held, joins only when paid (or the minimum part)
+  entry             String?  @db.VarChar(14)
+  /// the group starts only with at least this many students
+  minStudents       Int?
+  /// only students who paid (the minimum part) count toward the minimum
+  countPaidOnly     Boolean?
+  /// instalment groups: the least part of the invoice (percent) that counts as paid; null = any payment
+  minPartPercent    Int?
+  /// tell staff this many days before the expected start when the minimum is not reached
+  alertDays         Int?
+  /// next month (AFTER_PAYMENT): days the seat is kept after the deadline before it may be given to the waiting list
+  nextMonthKeepDays Int?
+  /// staff with the permission may start a group below the minimum (the owner switches this on / off)
+  startAnyway       Boolean?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([scopeType, scopeId])
 }

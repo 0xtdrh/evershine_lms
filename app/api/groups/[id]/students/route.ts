@@ -123,9 +123,17 @@ export async function POST(
     console.error('[GROUP_ADD_STUDENT_INVOICE]', err)
   }
 
+  // six phases E: an "after payment" group keeps the seat; the student joins when paid (or staff open it on the group page)
+  let awaitingPayment = false
+  try {
+    awaitingPayment = await (await import('@/lib/groups/entry')).holdUntilPaid(parsed.data.studentId, id)
+  } catch (err) {
+    console.error('[GROUP_ADD_STUDENT_HOLD]', err)
+  }
+
   // 2026-10-24: tell the family about holidays announced before the student joined
   const { notifyJoinerHolidays } = await import('@/lib/notifications/session-events')
   await notifyJoinerHolidays(parsed.data.studentId, id)
 
-  return createdResponse({ ...enrollment, billing }, existing ? 'Student re-added — previous history restored' : 'Student added')
+  return createdResponse({ ...enrollment, billing, awaitingPayment }, existing ? 'Student re-added — previous history restored' : 'Student added')
 }

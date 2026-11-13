@@ -10,7 +10,7 @@ import type { AcademicResource as Resource, Action } from '@/lib/rbac'
 
 export const TASK_KEYS = [
   // office / managers
-  'admissions', 'leads', 'familiesNoChild', 'bookingsToReview', 'bookingsUnpaid', 'followUps', 'proofs', 'topUps', 'withdrawals', 'refunds', 'paymentVoids', 'reportsNotRated', 'discounts', 'excuses',
+  'admissions', 'leads', 'familiesNoChild', 'studentsAwaitingPayment', 'bookingsToReview', 'bookingsUnpaid', 'followUps', 'proofs', 'topUps', 'withdrawals', 'refunds', 'paymentVoids', 'reportsNotRated', 'discounts', 'excuses',
   'complaintsLate', 'complaintsMine', 'absenceRequests', 'noSubstitute', 'leaves', 'missingAttendance',
   'groupsToAdvance', 'renewalsUnanswered', 'oneToOneRequests', 'oneToOneEvents', 'oneToOneNoTeacher', 'recordedEnding', 'videoSuspicious', 'waitingList', 'overdueInvoices', 'birthdays',
   // partners / learning
@@ -52,6 +52,7 @@ export const TASKS: TaskDef[] = [
   { key: 'admissions', en: 'New applications to review', ar: 'طلبات تسجيل جديدة محتاجة مراجعة', href: '/dashboard/admissions', urgent: true, perm: ['admissions', 'update'], roles: [...OFFICE, 'MARKETING'] },
   { key: 'bookingsToReview', en: 'Course bookings waiting for your approval or a level', ar: 'حجوزات كورسات مستنية موافقتك أو تحديد المستوى', href: '/dashboard/family-accounts?tab=bookings', urgent: true, perm: ['family_accounts', 'update'], roles: [...OFFICE, 'MARKETING'] },
   { key: 'bookingsUnpaid', en: 'Held seats that end within 24 hours unpaid (call the family)', ar: 'أماكن محجوزة هتنتهي خلال 24 ساعة ومش مدفوعة (كلّم العيلة)', href: '/dashboard/family-accounts?tab=bookings', perm: ['family_accounts', 'read'], roles: [...OFFICE, 'MARKETING'] },
+  { key: 'studentsAwaitingPayment', en: 'Students holding a seat until they pay (not in the group yet)', ar: 'طلاب مكانهم محجوز ومستنيين الدفع (لسه مش في الجروب)', href: '/dashboard/groups', perm: ['group_entry', 'read'], roles: [...OFFICE] },
   { key: 'familiesNoChild', en: 'New family accounts with no student yet (last 30 days)', ar: 'حسابات عائلات جديدة لسه مفيهاش طالب (آخر 30 يوم)', href: '/dashboard/family-accounts?tab=accounts', perm: ['family_accounts', 'read'], roles: [...OFFICE, 'MARKETING'] },
   { key: 'leads', en: 'New website leads', ar: 'عملاء جداد من الموقع', href: '/dashboard/leads', perm: ['admissions', 'read'], roles: [...OFFICE, 'MARKETING'] },
   { key: 'followUps', en: 'Parents to call today', ar: 'أولياء أمور لازم تكلّمهم النهارده', href: '/dashboard/follow-ups', urgent: true, perm: ['contact_logs', 'read'] },

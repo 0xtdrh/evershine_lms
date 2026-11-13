@@ -44,6 +44,12 @@ export async function refreshGroupAfterPayment(classSectionId: string | null | u
   } catch (err) {
     console.error('[PAYMENT_SYNC_PROGRESS]', err)
   }
+  // six phases E: a student waiting to pay joins the group once paid enough
+  try {
+    await (await import('@/lib/groups/entry')).releaseAwaiting(classSectionId)
+  } catch (err) {
+    console.error('[PAYMENT_RELEASE_AWAITING]', err)
+  }
 }
 
 /** Runs a payment transaction; returns the InvoiceChangedError instead of throwing it. */

@@ -3462,6 +3462,32 @@ check "the first booking makes the student and links the referral to the friend 
 check "the booking summary: the family that booked and staff can read it; another family and an instructor cannot" "$(curl -s -b "$IJ" $B/api/bookings/$IB/summary | jq_ "(d['success'], d['data']['who'])")/$(api GET /api/bookings/$IB/summary | jq_ "d['success']")/$(curl -s -b "$FJ5" $B/api/bookings/$IB/summary | jq_ "d['success']")/$(tapi GET /api/bookings/$IB/summary | jq_ "d['success']")" "(True, 'Friendkid Invitetest')/True/False/False"
 check "the printable summary page opens" "$(curl -s -o /dev/null -w '%{http_code}' -b "$IJ" $B/reports/booking/$IB)" "200"
 rm -f "$FJ5" "$IJ"
+echo "== 106. Joining a group only after payment, staff 'let in without payment', family reminders (six phases E, 2026-11-13)"
+check "a group rule 'only after payment' is saved; a secretary cannot change group policies" "$(api PUT /api/group-policies "{\"scopeType\":\"GROUP\",\"scopeId\":\"$JG\",\"entry\":\"AFTER_PAYMENT\"}" | jq_ "d['data']['entry']")/$(secapi PUT /api/group-policies '{"scopeType":"COMPANY","entry":"NOW"}' | jq_ "d['success']")" "AFTER_PAYMENT/False"
+FJ6=$(mktemp); login_jar 01033344455 famPass2026 "$FJ6" 10.8.8.1
+f6() { curl -s -b "$FJ6" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+SEATS0=$(api GET /api/groups/$JG | jq_ "d['data']['seats']['count']")
+FM7=$(f6 POST /api/guardian-portal/family/members "{\"firstName\":\"Paylater\",\"lastName\":\"Accounttest\",\"dob\":\"$Y9-08-08\",\"gender\":\"MALE\"}" | jq_ "d['data']['id']")
+BK7ID=$(f6 POST /api/guardian-portal/family/book "{\"person\":\"m:$FM7\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"agree\":true}" | jq_ "d['data']['id']")
+FS7=$(M "SELECT studentId FROM FamilyMember WHERE id='$FM7'")
+check "booked in an 'after payment' group: the seat is held (counts in the seats) but the child is not in the group yet" "$(M "SELECT status FROM StudentEnrollment WHERE studentId='$FS7' AND classSectionId='$JG'")/$(( $(api GET /api/groups/$JG | jq_ "d['data']['seats']['count']") - SEATS0 ))/$(api GET "/api/enrollment-attendance/roster?classSectionId=$JG&date=$(D 0)" | jq_ "any(e['student']['id']=='$FS7' for e in d['data']['enrollments'])")" "AWAITING_PAYMENT/1/False"
+check "the group page lists who waits to pay; 'your work today' too" "$(api GET /api/groups/$JG/awaiting | jq_ "(d['data']['policy']['entry'], [s['studentId']=='$FS7' for s in d['data']['students']].count(True))")/$(api GET /api/today | jq_ "any(t['key']=='studentsAwaitingPayment' for t in d['data']['tasks'])")" "('AFTER_PAYMENT', 1)/True"
+M "UPDATE CourseBooking SET holdUntil = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 2 HOUR) WHERE id='$BK7ID'"
+f6 GET /api/guardian-portal/family/bookings >/dev/null
+check "the family is reminded before the seat is let go (3-hour reminder)" "$(M "SELECT remindersSent FROM CourseBooking WHERE id='$BK7ID'")/$(M "SELECT COUNT(*)>0 FROM Notification WHERE type='BOOKING_UPDATE' AND relatedId='$BK7ID' AND title LIKE 'Last hours%'")" "2/1"
+BI7=$(M "SELECT invoiceId FROM CourseBooking WHERE id='$BK7ID'")
+pay $BI7 $(M "SELECT CAST(totalAmount - paidAmount AS DECIMAL(10,0)) FROM FeeInvoice WHERE id='$BI7'") >/dev/null
+check "paid → the child joins the group by itself (in the attendance sheet) and the booking is confirmed" "$(M "SELECT status FROM StudentEnrollment WHERE studentId='$FS7' AND classSectionId='$JG'")/$(api GET "/api/enrollment-attendance/roster?classSectionId=$JG&date=$(D 0)" | jq_ "any(e['student']['id']=='$FS7' for e in d['data']['enrollments'])")/$(f6 GET /api/guardian-portal/family/bookings | jq_ "[b['status'] for b in d['data'] if b['id']=='$BK7ID']")" "ACTIVE/True/['CONFIRMED']"
+AD=$(api POST /api/groups/$JG/students "{\"studentId\":\"$FS3\"}")
+check "staff add a student to the 'after payment' group → held until paid" "$(echo "$AD" | jq_ "d['data']['awaitingPayment']")/$(M "SELECT status FROM StudentEnrollment WHERE studentId='$FS3' AND classSectionId='$JG'")" "True/AWAITING_PAYMENT"
+check "a secretary cannot let him in without payment; the admin can" "$(secapi POST /api/groups/$JG/awaiting "{\"studentId\":\"$FS3\",\"action\":\"OPEN\"}" | jq_ "d['success']")/$(api POST /api/groups/$JG/awaiting "{\"studentId\":\"$FS3\",\"action\":\"OPEN\"}" | jq_ "d['success']")/$(M "SELECT status FROM StudentEnrollment WHERE studentId='$FS3' AND classSectionId='$JG'")" "False/True/ACTIVE"
+FM8=$(f6 POST /api/guardian-portal/family/members "{\"firstName\":\"Wontpay\",\"lastName\":\"Accounttest\",\"dob\":\"$Y9-09-09\",\"gender\":\"FEMALE\"}" | jq_ "d['data']['id']")
+BK8ID=$(f6 POST /api/guardian-portal/family/book "{\"person\":\"m:$FM8\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"agree\":true}" | jq_ "d['data']['id']")
+FS8=$(M "SELECT studentId FROM FamilyMember WHERE id='$FM8'")
+check "staff remove a waiting student → out, unpaid invoice cancelled, booking cancelled" "$(api POST /api/groups/$JG/awaiting "{\"studentId\":\"$FS8\",\"action\":\"REMOVE\"}" | jq_ "d['success']")/$(M "SELECT status FROM StudentEnrollment WHERE studentId='$FS8' AND classSectionId='$JG'")/$(M "SELECT f.status FROM FeeInvoice f JOIN CourseBooking b ON b.invoiceId=f.id WHERE b.id='$BK8ID'")/$(M "SELECT status FROM CourseBooking WHERE id='$BK8ID'")" "True/WITHDRAWN/CANCELLED/CANCELLED"
+api DELETE "/api/group-policies?id=$(M "SELECT id FROM GroupPolicy WHERE scopeId='$JG'")" >/dev/null
+check "without the rule the group is joined at once again" "$(M "SELECT COUNT(*) FROM GroupPolicy WHERE scopeId='$JG'")" "0"
+rm -f "$FJ6"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

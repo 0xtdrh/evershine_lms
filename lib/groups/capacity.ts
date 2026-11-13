@@ -24,7 +24,8 @@ export interface Seats { max: number | null; count: number; free: number | null;
 export async function groupSeats(classSectionId: string, db: Db = prisma): Promise<Seats> {
   const [g, count, waiting] = await Promise.all([
     db.classSection.findUnique({ where: { id: classSectionId }, select: { maxStudents: true, scheduleSlots: true } }),
-    db.studentEnrollment.count({ where: { classSectionId, status: 'ACTIVE' } }),
+    // six phases E: a student waiting to pay still holds the seat
+    db.studentEnrollment.count({ where: { classSectionId, status: { in: ['ACTIVE', 'AWAITING_PAYMENT'] } } }),
     db.waitingListEntry.count({ where: { classSectionId, status: 'WAITING' } }),
   ])
   // a02 batch 3: never more students than the smallest room the group uses

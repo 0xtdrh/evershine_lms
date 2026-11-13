@@ -49,6 +49,8 @@ export async function GET() {
   // 5-D: announcements published for later go out when their time comes (throttled to 2 min).
   try {
     await (await import('@/lib/announcements/engine')).deliverDue()
+    // six phases E: held seats — confirm the paid, end the late, remind families (throttled 30 s)
+    await (await import('@/lib/bookings/engine')).syncBookings().catch(() => null)
   } catch {
     /* never break the badge counts */
   }

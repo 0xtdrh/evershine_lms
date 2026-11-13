@@ -68,7 +68,7 @@ export async function GET(
         },
       },
       enrollments: {
-        where: { OR: [{ status: 'ACTIVE' }, { withdrawalReason: 'UNPAID_AUTO' }] },
+        where: { OR: [{ status: 'ACTIVE' }, { status: 'AWAITING_PAYMENT' }, { withdrawalReason: 'UNPAID_AUTO' }] },
         select: {
           id: true,
           rollNumber: true,

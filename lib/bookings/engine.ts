@@ -271,6 +271,8 @@ export async function place(bookingId: string, actorId: string, holdHours?: numb
     else await createYearEnrollmentForStudent({ studentId, academicYearId: year.id, classSectionId: groupId, rollNumber: reg.replace(/\//g, '-'), deliveryMode: b.mode === 'ONLINE' ? 'ONLINE' : 'PHYSICAL' })
     const { generateMissingCycleInvoices } = await import('@/lib/groups/generate-invoices')
     await generateMissingCycleInvoices(groupId, actorId, studentId).catch((e) => console.error('[BOOKING] first invoice', e))
+    // six phases E: an "after payment" group keeps the seat but the child joins only when paid (the booking tells the family)
+    await (await import('@/lib/groups/entry')).holdUntilPaid(studentId, groupId, { tellFamily: false }).catch((e) => console.error('[BOOKING] hold until paid', e))
   }
   const inv = await prisma.feeInvoice.findFirst({ where: { studentId, classSectionId: groupId, status: { not: 'CANCELLED' } }, orderBy: { createdAt: 'desc' }, select: { id: true, totalAmount: true, paidAmount: true, status: true } })
   // no invoice yet (the group bills later): the seat stays held without a deadline; syncBookings attaches the invoice when it exists
@@ -318,6 +320,14 @@ export async function syncBookings(force: boolean | { guardianId: string } = fal
     } else if (holdExpired(b.holdUntil, state, new Date())) {
       await release(b.id, 'EXPIRED', 'Not paid in time · مادفعش في الميعاد')
       expired++
+    } else if (b.holdUntil && !(state && state.paidAmount > 0)) {
+      // six phases E: remind the family a day and 3 hours before the seat is let go
+      const left = (new Date(b.holdUntil).getTime() - Date.now()) / 3_600_000
+      const due = left <= 3 ? 2 : left <= 24 ? 1 : 0
+      if (due > b.remindersSent) {
+        await prisma.courseBooking.update({ where: { id: b.id }, data: { remindersSent: due } })
+        await remindFamily(b.id, left)
+      }
     }
   }
   return { confirmed, expired }
@@ -328,7 +338,7 @@ async function release(bookingId: string, status: BookingStatus, reason: string,
   const b = await prisma.courseBooking.findUnique({ where: { id: bookingId } })
   if (!b) return
   if (b.studentId && b.classSectionId && b.status === 'HOLD') {
-    await prisma.studentEnrollment.updateMany({ where: { studentId: b.studentId, classSectionId: b.classSectionId, status: 'ACTIVE' }, data: { status: 'WITHDRAWN', withdrawalReason: status === 'EXPIRED' ? 'BOOKING_EXPIRED' : 'BOOKING_CANCELLED' } })
+    await prisma.studentEnrollment.updateMany({ where: { studentId: b.studentId, classSectionId: b.classSectionId, status: { in: ['ACTIVE', 'AWAITING_PAYMENT'] } }, data: { status: 'WITHDRAWN', withdrawalReason: status === 'EXPIRED' ? 'BOOKING_EXPIRED' : 'BOOKING_CANCELLED' } })
     if (b.invoiceId) await prisma.feeInvoice.updateMany({ where: { id: b.invoiceId, paidAmount: 0 }, data: { status: 'CANCELLED', notes: `Booking ${status.toLowerCase()} · الحجز ${status === 'EXPIRED' ? 'انتهى' : 'اتلغى'}` } })
     await notifySeatFreed(b.classSectionId).catch(() => null)
   }
@@ -436,6 +446,26 @@ async function tellStaff(bookingId: string, guardian: Guardian, person: FamilyPe
       titleAr: `${review ? 'حجز مستني موافقتك' : 'حجز جديد'}: ${title.ar} (${way[1]})`, messageAr: `${person.firstName} · ${guardian.firstName} ${guardian.lastName} · ${guardian.phoneNumber}`, relatedId: bookingId,
     })
   } catch (e) { console.warn('[BOOKING_NOTIFY]', e) }
+}
+
+/** "Pay before …": the seat is let go when the hold ends. */
+async function remindFamily(bookingId: string, hoursLeft: number) {
+  try {
+    const v = await bookingView(bookingId)
+    const b = await prisma.courseBooking.findUnique({ where: { id: bookingId }, select: { guardianId: true, holdUntil: true } })
+    const g = b ? await prisma.guardian.findUnique({ where: { id: b.guardianId }, select: { userId: true } }) : null
+    if (!v || !g || !b?.holdUntil) return
+    const amount = v.invoice ? v.invoice.total - v.invoice.paid : null
+    const when = new Date(b.holdUntil)
+    const en = when.toLocaleString('en-GB', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    const ar = when.toLocaleString('ar-EG-u-nu-latn', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    await notifyUsers([g.userId], 'BOOKING_UPDATE', {
+      title: `${hoursLeft <= 3 ? 'Last hours' : 'Reminder'}: pay for ${v.who}'s seat in ${v.course.en} before ${en}`,
+      message: `${amount != null ? `${amount} EGP. ` : ''}After that time the seat is given to someone else. Pay from My children → Fees.`,
+      titleAr: `${hoursLeft <= 3 ? 'آخر ساعات' : 'تذكير'}: ادفع لمكان ${v.who} في ${v.course.ar} قبل ${ar}`,
+      messageAr: `${amount != null ? `${amount} ج.م. ` : ''}بعد الميعاد ده المكان بيروح لحد تاني. ادفع من أولادي ← الفواتير.`, relatedId: bookingId,
+    })
+  } catch (e) { console.warn('[BOOKING_REMIND]', e) }
 }
 
 async function tellFamily(bookingId: string) {

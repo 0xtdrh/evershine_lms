@@ -79,6 +79,7 @@ export type AcademicResource =
   | 'one_to_one'
   | 'recorded_courses'
   | 'family_accounts'
+  | 'group_entry'
   | 'video_protection'
   | 'holidays'
   // Phase B: wallet (create = top up, approve = approve proof top-ups and withdrawals)
@@ -222,6 +223,7 @@ const PERMISSIONS: PermissionMap = {
     one_to_one: ['create', 'read', 'update', 'delete'],
     recorded_courses: ['create', 'read', 'update', 'delete'],
     family_accounts: ['create', 'read', 'update', 'delete'],
+    group_entry: ['read', 'approve'],
     video_protection: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
@@ -299,6 +301,7 @@ const PERMISSIONS: PermissionMap = {
     one_to_one: ['create', 'read', 'update', 'delete'],
     recorded_courses: ['create', 'read', 'update', 'delete'],
     family_accounts: ['create', 'read', 'update', 'delete'],
+    group_entry: ['read', 'approve'],
     video_protection: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
@@ -377,6 +380,7 @@ const PERMISSIONS: PermissionMap = {
     one_to_one: [],
     recorded_courses: [],
     family_accounts: [],
+    group_entry: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -454,6 +458,7 @@ const PERMISSIONS: PermissionMap = {
     one_to_one: [],
     recorded_courses: [],
     family_accounts: [],
+    group_entry: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -531,6 +536,7 @@ const PERMISSIONS: PermissionMap = {
     one_to_one: [],
     recorded_courses: [],
     family_accounts: [],
+    group_entry: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -610,6 +616,7 @@ const PERMISSIONS: PermissionMap = {
     one_to_one: ['read'],
     recorded_courses: ['read'],
     family_accounts: ['read'],
+    group_entry: ['read'],
     video_protection: [],
     holidays: ['read'],
     wallet: ['create', 'read', 'approve'],
@@ -687,6 +694,7 @@ const PERMISSIONS: PermissionMap = {
     one_to_one: [],
     recorded_courses: [],
     family_accounts: [],
+    group_entry: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -768,6 +776,7 @@ const PERMISSIONS: PermissionMap = {
     one_to_one: ['create', 'read', 'update'],
     recorded_courses: ['create', 'read', 'update'],
     family_accounts: ['create', 'read', 'update'],
+    group_entry: ['read'],
     video_protection: [],
     holidays: ['read'],
     wallet: ['create', 'read'],
@@ -850,6 +859,7 @@ const PERMISSIONS: PermissionMap = {
     one_to_one: ['create', 'read', 'update'],
     recorded_courses: ['create', 'read', 'update'],
     family_accounts: ['create', 'read', 'update'],
+    group_entry: ['read', 'approve'],
     video_protection: [],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
@@ -930,6 +940,7 @@ const PERMISSIONS: PermissionMap = {
     one_to_one: [],
     recorded_courses: [],
     family_accounts: ['create', 'read'],
+    group_entry: [],
     video_protection: [],
     holidays: [],
     wallet: [],
