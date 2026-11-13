@@ -3306,31 +3306,13 @@ M "UPDATE Level SET allowedModes=NULL WHERE id='$LV101'"; M "UPDATE AcademicSubj
 api POST /api/groups "{\"campusId\":\"$ONP\",\"className\":\"E2E Join\",\"sectionName\":\"J\",\"levelId\":\"$LV101\",\"scheduleSlots\":[{\"dayOfWeek\":6,\"time\":\"17:00\"}]}" >/dev/null
 JG=$(M "SELECT id FROM ClassSection WHERE className='E2E Join' AND campusId='$ONP' LIMIT 1")
 check "an online group of the first level exists for the course" "$([ -n "$JG" ] && echo yes)" "yes"
-check "the website sign-up steps page still opens (the course button now books inside the account: section 103)" "$(curl -s "$B/join/e2e-course" | grep -o 'class="tns-join"' | head -1)" 'class="tns-join"'
-check "an unknown course has no sign-up page" "$(curl -s "$B/join/nope" | grep -o 'NEXT_HTTP_ERROR_FALLBACK;404' | head -1)" "NEXT_HTTP_ERROR_FALLBACK;404"
+check "the old website sign-up steps are gone: /join/<course> sends to the course page, the old sign-up API is gone" "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$B/join/e2e-course" | grep -o '30[78] .*/courses/e2e-course' | cut -c1-3)/$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' $B/api/public/signup)" "308/404"
 CB=$(api POST /api/enrolment-codes '{"batch":"E2EJOIN","count":2,"kind":"PERCENT","value":20,"maxUses":1}')
 JC1=$(echo "$CB" | jq_ "d['data']['codes'][0]"); JC2=$(echo "$CB" | jq_ "d['data']['codes'][1]")
 check "staff make a batch of 2 codes (one discount type for the batch)" "$(echo "$CB" | jq_ "len(d['data']['codes'])")/$(M "SELECT COUNT(DISTINCT discountTypeId) FROM EnrolmentCode WHERE batch='E2EJOIN'")" "2/1"
 check "the same batch name again is refused; an instructor cannot make codes" "$(api POST /api/enrolment-codes '{"batch":"E2EJOIN","count":1,"kind":"FREE"}' | jq_ "d['success']")/$(tapi POST /api/enrolment-codes '{"batch":"E2EX","count":1,"kind":"FREE"}' | jq_ "d['success']")" "False/False"
 PC() { curl -s -X POST -H 'Content-Type: application/json' -H "X-Forwarded-For: $2" -d "$1" $B/api/public/codes; }
 check "the website checks a code: good → 20% off; unknown → not found" "$(PC "{\"code\":\"$JC1\",\"listing\":\"e2e-course\"}" 10.9.1.1 | jq_ "(d['data']['ok'], d['data']['text']['en'])")/$(PC '{"code":"NOPE-XXXX","listing":"e2e-course"}' 10.9.1.1 | jq_ "d['data']['problem']")" "(True, '20% off')/NOT_FOUND"
-SU() { curl -s -X POST -H 'Content-Type: application/json' -H "X-Forwarded-For: $2" -d "$1" $B/api/public/signup; }
-STU='{"firstName":"Joinkid","lastName":"Webtest","dob":"2016-05-01","gender":"MALE"}'
-STU2='{"firstName":"Joinsis","lastName":"Webtest","dob":"2018-02-01","gender":"FEMALE"}'
-PAR='"who":"PARENT","parent":{"firstName":"Webmom","lastName":"Webtest","phone":"01099988877"},"country":"Egypt","city":"Hurghada","agree":true'
-check "a 1-use code is not enough for two children" "$(SU "{\"listing\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",$PAR,\"students\":[$STU,$STU2],\"code\":\"$JC1\"}" 10.9.2.1 | jq_ "d['success']")" "False"
-check "signing up alone under 18 is refused" "$(SU "{\"listing\":\"e2e-course\",\"mode\":\"ONLINE\",\"who\":\"SELF\",\"selfPhone\":\"01099988866\",\"city\":\"Cairo\",\"agree\":true,\"students\":[$STU]}" 10.9.2.2 | jq_ "d['success']")" "False"
-SR=$(SU "{\"listing\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",$PAR,\"students\":[$STU],\"code\":\"$JC1\",\"paymentRef\":\"IP-7788\"}" 10.9.2.3)
-check "a parent signs up one child with the code → one admission request" "$(echo "$SR" | jq_ "(d['success'], d['data']['count'])")" "(True, 1)"
-JAR101=$(M "SELECT id FROM AdmissionRequest WHERE firstName='Joinkid' AND lastName='Webtest' ORDER BY createdAt DESC LIMIT 1")
-check "the request carries the course page, the way, the group, the code and the transfer number" "$(M "SELECT CONCAT(sourceOfInfo,'/',signupListing,'/',signupMode,'/',preferredClassSectionId='$JG','/',signupCode='$JC1','/',paymentRef,'/',status) FROM AdmissionRequest WHERE id='$JAR101'")" "WEBSITE/e2e-course/ONLINE/1/1/IP-7788/PENDING"
-check "the code is used once and cannot be used again" "$(M "SELECT uses FROM EnrolmentCode WHERE code='$JC1'")/$(PC "{\"code\":\"$JC1\",\"listing\":\"e2e-course\"}" 10.9.1.1 | jq_ "d['data']['problem']")" "1/USED_UP"
-check "staff are told about the website sign-up" "$(M "SELECT COUNT(*)>0 FROM Notification WHERE relatedId='$JAR101'")" "1"
-check "the codes list shows who used it" "$(api GET /api/enrolment-codes/E2EJOIN | jq_ "[c['usedBy'][0]['phone'] for c in d['data'] if c['code']=='$JC1']")" "['01099988877']"
-check "the codes download as Excel" "$(curl -s -o /dev/null -w '%{content_type}' -b "$JAR" "$B/api/enrolment-codes/E2EJOIN?format=xlsx" | grep -c spreadsheetml)" "1"
-check "approving the request → the student is in the chosen group and the code is an approved discount" "$(api POST /api/admissions/$JAR101/approve "{\"campusId\":\"$ONP\",\"classSectionId\":\"$JG\",\"confirmNotDuplicate\":true}" | jq_ "d['success']")/$(M "SELECT COUNT(*) FROM DiscountAssignment da JOIN EnrolmentCode ec ON ec.discountTypeId=da.discountTypeId WHERE ec.code='$JC1' AND da.status='ACTIVE' AND da.approvedAt IS NOT NULL")" "True/1"
-JS101=$(M "SELECT studentId FROM DiscountAssignment da JOIN EnrolmentCode ec ON ec.discountTypeId=da.discountTypeId WHERE ec.code='$JC1' LIMIT 1")
-check "the student is enrolled in the online group" "$(M "SELECT COUNT(*) FROM StudentEnrollment WHERE studentId='$JS101' AND classSectionId='$JG'")" "1"
 api PATCH /api/enrolment-codes/E2EJOIN '{"active":false}' >/dev/null
 check "a stopped batch: its codes are refused on the website" "$(PC "{\"code\":\"$JC2\",\"listing\":\"e2e-course\"}" 10.9.1.1 | jq_ "d['data']['problem']")" "OFF"
 echo "== 102. Family accounts: sign up first, children, suitable courses, staff accounts + password link (six phases 1-A, 2026-11-13)"
@@ -3369,9 +3351,9 @@ check "the family chooses its password from the link (the phone as password is r
 BJ=$(mktemp); login_jar 01033344499 branchPass26 "$BJ" 10.8.2.2
 check "…signs in with it and sees its child; the link cannot be used again" "$(curl -s -b "$BJ" $B/api/guardian-portal/family | jq_ "[p['firstName'] for p in d['data']['people']]")/$(curl -s -X POST -H 'Content-Type: application/json' -d '{"password":"otherPass99"}' $B/api/account/setup/$TOK102 | jq_ "d['error']['code']")" "['Branchkid']/LINK_BAD"
 rm -f "$BJ"
-OLDG=$(M "SELECT id FROM Guardian WHERE phoneNumber='01099988877' LIMIT 1")
-check "an old account (made by approving an admission) gets a password link too, and older links stop" "$(api POST /api/family-accounts/$OLDG/link | jq_ "d['data']['link'].startswith('/account/setup/')")/$(api POST /api/family-accounts/$OLDG/link >/dev/null; M "SELECT COUNT(*) FROM AccountSetupLink WHERE guardianId='$OLDG' AND usedAt IS NULL")" "True/1"
-SU102=$(curl -s -X POST -H 'Content-Type: application/json' -H "X-Forwarded-For: 10.8.3.1" -d "{\"listing\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"who\":\"PARENT\",\"parent\":{\"firstName\":\"Famdad\",\"lastName\":\"Accounttest\",\"phone\":\"01033344455\"},\"city\":\"Hurghada\",\"agree\":true,\"students\":[{\"firstName\":\"Bigone\",\"lastName\":\"Accounttest\",\"dob\":\"2016-04-04\",\"gender\":\"MALE\"}]}" $B/api/public/signup)
+OLDG=$(M "SELECT id FROM Guardian WHERE phoneNumber='01066660119' LIMIT 1")
+check "an old account (made by staff before family accounts) gets a password link too, and older links stop" "$(api POST /api/family-accounts/$OLDG/link | jq_ "d['data']['link'].startswith('/account/setup/')")/$(api POST /api/family-accounts/$OLDG/link >/dev/null; M "SELECT COUNT(*) FROM AccountSetupLink WHERE guardianId='$OLDG' AND usedAt IS NULL")" "True/1"
+SU102=$(curl -s -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.8.3.1' -d '{"firstName":"Bigone","lastName":"Accounttest","fullNameAr":"بيج ون","fatherName":"Famdad Accounttest","dateOfBirth":"2016-04-04","gender":"MALE","address":"Sheraton street, Hurghada","city":"Hurghada","phoneNumber":"01033344455","emergencyContact":"01033344456","guardianFirstName":"Famdad","guardianLastName":"Accounttest","guardianPhoneNumber":"01033344455","guardianRelationship":"Father","preferredCampusId":"","preferredShift":"","deliveryMode":"PHYSICAL","termsAccepted":true}' $B/api/admissions/apply)
 AR102=$(M "SELECT id FROM AdmissionRequest WHERE firstName='Bigone' AND lastName='Accounttest' LIMIT 1")
 api POST /api/admissions/$AR102/approve "{\"campusId\":\"$ONP\",\"classSectionId\":\"$JG\",\"confirmNotDuplicate\":true}" >/dev/null
 check "a request from the same phone, once approved, lands in the SAME family account" "$(echo "$SU102" | jq_ "d['success']")/$(fapi GET /api/guardian-portal/family | jq_ "sorted([(p['firstName'], bool(p['registrationNumber'])) for p in d['data']['people']])")/$(M "SELECT COUNT(*) FROM Guardian WHERE phoneNumber='01033344455'")" "True/[('Bigone', True), ('Littleone', False)]/1"
