@@ -63,6 +63,7 @@ export async function releaseAwaiting(groupId: string): Promise<number> {
     }
   }
   if (joined.length) {
+    await (await import('./start')).checkReady(groupId).catch(() => false)
     const g = await prisma.classSection.findUnique({ where: { id: groupId }, select: { className: true } })
     await notifyFamilies(joined, 'BOOKING_UPDATE', (s) => ({
       title: `${s.firstName} joined ${g?.className ?? 'the group'}`, message: 'Payment received: the sessions and lessons are open.',

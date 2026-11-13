@@ -80,6 +80,7 @@ export type AcademicResource =
   | 'recorded_courses'
   | 'family_accounts'
   | 'group_entry'
+  | 'group_start'
   | 'video_protection'
   | 'holidays'
   // Phase B: wallet (create = top up, approve = approve proof top-ups and withdrawals)
@@ -224,6 +225,7 @@ const PERMISSIONS: PermissionMap = {
     recorded_courses: ['create', 'read', 'update', 'delete'],
     family_accounts: ['create', 'read', 'update', 'delete'],
     group_entry: ['read', 'approve'],
+    group_start: ['read', 'update', 'approve', 'delete'],
     video_protection: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
@@ -302,6 +304,7 @@ const PERMISSIONS: PermissionMap = {
     recorded_courses: ['create', 'read', 'update', 'delete'],
     family_accounts: ['create', 'read', 'update', 'delete'],
     group_entry: ['read', 'approve'],
+    group_start: ['read', 'update', 'approve', 'delete'],
     video_protection: ['read', 'update'],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
@@ -381,6 +384,7 @@ const PERMISSIONS: PermissionMap = {
     recorded_courses: [],
     family_accounts: [],
     group_entry: [],
+    group_start: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -459,6 +463,7 @@ const PERMISSIONS: PermissionMap = {
     recorded_courses: [],
     family_accounts: [],
     group_entry: [],
+    group_start: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -537,6 +542,7 @@ const PERMISSIONS: PermissionMap = {
     recorded_courses: [],
     family_accounts: [],
     group_entry: [],
+    group_start: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -617,6 +623,7 @@ const PERMISSIONS: PermissionMap = {
     recorded_courses: ['read'],
     family_accounts: ['read'],
     group_entry: ['read'],
+    group_start: ['read'],
     video_protection: [],
     holidays: ['read'],
     wallet: ['create', 'read', 'approve'],
@@ -695,6 +702,7 @@ const PERMISSIONS: PermissionMap = {
     recorded_courses: [],
     family_accounts: [],
     group_entry: [],
+    group_start: [],
     video_protection: [],
     holidays: [],
     wallet: [],
@@ -777,6 +785,7 @@ const PERMISSIONS: PermissionMap = {
     recorded_courses: ['create', 'read', 'update'],
     family_accounts: ['create', 'read', 'update'],
     group_entry: ['read'],
+    group_start: ['read'],
     video_protection: [],
     holidays: ['read'],
     wallet: ['create', 'read'],
@@ -860,6 +869,7 @@ const PERMISSIONS: PermissionMap = {
     recorded_courses: ['create', 'read', 'update'],
     family_accounts: ['create', 'read', 'update'],
     group_entry: ['read', 'approve'],
+    group_start: ['read', 'update', 'delete'],
     video_protection: [],
     holidays: ['create', 'read', 'delete'],
     wallet: ['create', 'read', 'approve'],
@@ -941,6 +951,7 @@ const PERMISSIONS: PermissionMap = {
     recorded_courses: [],
     family_accounts: ['create', 'read'],
     group_entry: [],
+    group_start: [],
     video_protection: [],
     holidays: [],
     wallet: [],

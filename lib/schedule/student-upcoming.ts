@@ -28,7 +28,9 @@ export interface UpcomingSession {
 
 const addDays = (d: string, n: number) => new Date(new Date(`${d}T00:00:00Z`).getTime() + n * 86_400_000).toISOString().slice(0, 10)
 
-export async function studentUpcomingSessions(studentId: string, opts: { days?: number; limit?: number } = {}): Promise<{ today: string; sessions: UpcomingSession[] }> {
+export interface WaitingGroup { groupId: string; group: string; course: string | null; state: 'WAITING_COUNT' | 'READY'; expectedStartDate: string | null; firstSession: string | null }
+
+export async function studentUpcomingSessions(studentId: string, opts: { days?: number; limit?: number } = {}): Promise<{ today: string; sessions: UpcomingSession[]; waiting: WaitingGroup[] }> {
   const today = cairoToday()
   const to = addDays(today, opts.days ?? 28)
   const enrollments = await prisma.studentEnrollment.findMany({
@@ -43,7 +45,7 @@ export async function studentUpcomingSessions(studentId: string, opts: { days?: 
     },
   })
   const groups = [...new Map(enrollments.map((e) => [e.classSection.id, e.classSection])).values()]
-  if (!groups.length) return { today, sessions: [] }
+  if (!groups.length) return { today, sessions: [], waiting: [] }
   const ids = groups.map((g) => g.id)
 
   const heldRows = await prisma.$queryRaw<{ g: string; d: string }[]>`
@@ -68,7 +70,20 @@ export async function studentUpcomingSessions(studentId: string, opts: { days?: 
   for (const l of logs.filter((x) => x.status !== 'HELD')) cancelledBy.set(l.classSectionId, [...(cancelledBy.get(l.classSectionId) ?? []), { date: toDay(l.sessionDate), reason: null }])
 
   const out: UpcomingSession[] = []
+  // six phases E2: a group still waiting for its minimum shows no sessions (only "waiting · expected start"); a complete group
+  // that has not started yet shows its sessions from the first one
+  const { groupStart } = await import('@/lib/groups/start')
+  const waiting: WaitingGroup[] = []
+  const startFrom = new Map<string, string>()
   for (const g of groups) {
+    if (g.startDate) continue
+    const s = await groupStart(g.id).catch(() => null)
+    if (!s || (s.state !== 'WAITING_COUNT' && s.state !== 'READY')) continue
+    waiting.push({ groupId: g.id, group: `${g.className} ${g.sectionName}`.trim(), course: g.level?.subject?.name ?? null, state: s.state, expectedStartDate: s.expectedStartDate, firstSession: s.firstSession })
+    if (s.firstSession) startFrom.set(g.id, s.firstSession)
+  }
+  for (const g of groups) {
+    if (waiting.some((w) => w.groupId === g.id && w.state === 'WAITING_COUNT')) continue
     const held = heldBy.get(g.id) ?? []
     const startD = g.currentCycleStartDate ?? g.startDate
     const cycleStart = startD ? toDay(startD) : held.length ? [...held].sort()[0] : null
@@ -89,6 +104,7 @@ export async function studentUpcomingSessions(studentId: string, opts: { days?: 
     }, today, to, today)
     for (const o of occ) {
       if (o.date < today || o.status === 'HELD' || o.status === 'MISSING') continue
+      if (startFrom.has(g.id) && o.date < startFrom.get(g.id)!) continue
       out.push({
         groupId: g.id, group: `${g.className} ${g.sectionName}`.trim(), course: g.level?.subject?.name ?? null,
         date: o.date, time: o.time, status: o.status, sessionNumber: o.sessionNumber, totalSessions: o.totalSessions,
@@ -97,5 +113,5 @@ export async function studentUpcomingSessions(studentId: string, opts: { days?: 
     }
   }
   out.sort((a, b) => (a.date === b.date ? a.time.localeCompare(b.time) : a.date.localeCompare(b.date)))
-  return { today, sessions: out.slice(0, opts.limit ?? 8) }
+  return { today, sessions: out.slice(0, opts.limit ?? 8), waiting }
 }

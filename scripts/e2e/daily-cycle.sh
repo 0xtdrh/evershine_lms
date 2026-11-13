@@ -3488,6 +3488,40 @@ check "staff remove a waiting student → out, unpaid invoice cancelled, booking
 api DELETE "/api/group-policies?id=$(M "SELECT id FROM GroupPolicy WHERE scopeId='$JG'")" >/dev/null
 check "without the rule the group is joined at once again" "$(M "SELECT COUNT(*) FROM GroupPolicy WHERE scopeId='$JG'")" "0"
 rm -f "$FJ6"
+echo "== 107. Minimum to start, expected start, start anyway, cancel → wallet + move / waiting list (six phases E2, 2026-11-13)"
+mkstart() { api POST /api/groups "{\"campusId\":\"$ONP\",\"className\":\"$1\",\"sectionName\":\"S\",\"levelId\":\"$LV101\",\"scheduleSlots\":[{\"dayOfWeek\":6,\"time\":\"18:00\"}]}" >/dev/null; M "SELECT id FROM ClassSection WHERE className='$1' AND campusId='$ONP' LIMIT 1"; }
+GA=$(mkstart "E2E Start A"); GB=$(mkstart "E2E Start B"); GC=$(mkstart "E2E Start C")
+for G in $GA $GB $GC; do api PUT /api/group-policies "{\"scopeType\":\"GROUP\",\"scopeId\":\"$G\",\"minStudents\":2}" >/dev/null; done
+check "a group with a minimum waits for it" "$(api GET /api/groups/$GA/start | jq_ "(d['data']['state'], d['data']['count'], d['data']['min'])")" "('WAITING_COUNT', 0, 2)"
+check "staff set the expected start (shown to families)" "$(api POST /api/groups/$GA/start "{\"action\":\"EXPECTED\",\"date\":\"$(D 10)\"}" | jq_ "d['data']['expectedStartDate']")" "$(D 10)"
+check "no attendance while the group waits for its minimum" "$(api POST /api/enrollment-attendance "{\"classSectionId\":\"$GA\",\"attendanceDate\":\"$(D 0)\",\"records\":[]}" | jq_ "d['error']['code']")" "GROUP_NOT_READY"
+api POST /api/groups/$GA/students "{\"studentId\":\"$FS7\"}" >/dev/null
+check "the student sees 'waiting for the group to be complete', not sessions" "$(api GET /api/students/$FS7/upcoming-sessions | jq_ "([w['state'] for w in d['data']['waiting'] if w['groupId']=='$GA'], any(s['groupId']=='$GA' for s in d['data']['sessions']))")" "(['WAITING_COUNT'], False)"
+api POST /api/groups/$GA/students "{\"studentId\":\"$FS1\"}" >/dev/null
+check "the second student completes it → the start is confirmed and the families are told" "$(api GET /api/groups/$GA/start | jq_ "d['data']['state']")/$(M "SELECT startConfirmedAt IS NOT NULL FROM ClassSection WHERE id='$GA'")/$(M "SELECT COUNT(*)>0 FROM Notification WHERE relatedId='$GA' AND title LIKE '%starts%'")" "READY/1/1"
+check "attendance opens once complete" "$(api POST /api/enrollment-attendance "{\"classSectionId\":\"$GA\",\"attendanceDate\":\"$(D 0)\",\"records\":[]}" | jq_ "d.get('error',{}).get('code') != 'GROUP_NOT_READY'")" "True"
+api POST /api/groups/$GB/students "{\"studentId\":\"$FS7\"}" >/dev/null
+check "start anyway is refused while the policy does not allow it; a secretary may never" "$(api POST /api/groups/$GB/start '{"action":"FORCE"}' | jq_ "d['error']['code']")/$(secapi POST /api/groups/$GB/start '{"action":"FORCE"}' | jq_ "d['success']")" "NOT_ALLOWED/False"
+api PUT /api/group-policies "{\"scopeType\":\"GROUP\",\"scopeId\":\"$GB\",\"minStudents\":2,\"startAnyway\":true}" >/dev/null
+check "the owner allows it for this group → staff with the permission start it below the minimum" "$(api POST /api/groups/$GB/start '{"action":"FORCE"}' | jq_ "d['data']['state']")/$(M "SELECT startForced FROM ClassSection WHERE id='$GB'")" "READY/1"
+api POST /api/groups/$GC/start "{\"action\":\"EXPECTED\",\"date\":\"$(D 3)\"}" >/dev/null
+api PUT /api/group-policies "{\"scopeType\":\"GROUP\",\"scopeId\":\"$GC\",\"minStudents\":3}" >/dev/null
+api POST /api/groups/$GC/students "{\"studentId\":\"$FS7\"}" >/dev/null
+api POST /api/groups/$GC/students "{\"studentId\":\"$FS3\"}" >/dev/null
+curl -s -H 'Authorization: Bearer e2e-cron' $B/api/cron/daily >/dev/null
+check "close to its expected start and still short → staff are alerted ('your work today')" "$(M "SELECT startAlertedAt IS NOT NULL FROM ClassSection WHERE id='$GC'")/$(api GET /api/today | jq_ "any(t['key']=='groupsBelowMinimum' for t in d['data']['tasks'])")" "1/True"
+CI7=$(M "SELECT id FROM FeeInvoice WHERE studentId='$FS7' AND classSectionId='$GC' AND status<>'CANCELLED' LIMIT 1")
+pay $CI7 $(M "SELECT CAST(totalAmount - paidAmount AS DECIMAL(10,0)) FROM FeeInvoice WHERE id='$CI7'") >/dev/null
+PAID7=$(M "SELECT CAST(paidAmount AS DECIMAL(10,0)) FROM FeeInvoice WHERE id='$CI7'")
+W7=$(M "SELECT CAST(COALESCE(SUM(amount),0) AS DECIMAL(10,0)) FROM WalletTransaction WHERE studentId='$FS7'")
+check "a branch secretary cannot cancel a group" "$(secapi POST /api/groups/$GC/start '{"action":"CANCEL","reason":"too few"}' | jq_ "d['success']")" "False"
+CX=$(api POST /api/groups/$GC/start "{\"action\":\"CANCEL\",\"reason\":\"Not enough students\",\"choices\":[{\"studentId\":\"$FS7\",\"action\":\"WAIT\"},{\"studentId\":\"$FS3\",\"action\":\"MOVE\",\"toGroupId\":\"$GA\"}]}")
+check "cancelled: the group is closed, nobody is left in it, attendance refused" "$(echo "$CX" | jq_ "d['data']['cancelled']")/$(M "SELECT cancelledAt IS NOT NULL FROM ClassSection WHERE id='$GC'")/$(M "SELECT COUNT(*) FROM StudentEnrollment WHERE classSectionId='$GC' AND status IN ('ACTIVE','AWAITING_PAYMENT')")" "True/1/0"
+check "the money paid went back to the family wallet (approved wallet refund)" "$(M "SELECT CONCAT(method,'/',status,'/',CAST(amount AS DECIMAL(10,0))) FROM Refund WHERE invoiceId='$CI7' LIMIT 1")/$(( $(M "SELECT CAST(COALESCE(SUM(amount),0) AS DECIMAL(10,0)) FROM WalletTransaction WHERE studentId='$FS7'") - W7 ))" "WALLET/APPROVED/$PAID7/$PAID7"
+check "one student is on the waiting list, the other moved to another group (with a new invoice)" "$(M "SELECT COUNT(*) FROM WaitingListEntry WHERE studentId='$FS7' AND status='WAITING' AND levelId='$LV101'")/$(M "SELECT status FROM StudentEnrollment WHERE studentId='$FS3' AND classSectionId='$GA'")" "1/ACTIVE"
+check "families are told what happened" "$(M "SELECT COUNT(*)>=2 FROM Notification WHERE relatedId='$GC' AND title LIKE '%was cancelled%'")" "1"
+check "a cancelled group cannot be cancelled again" "$(api POST /api/groups/$GC/start '{"action":"CANCEL","reason":"again"}' | jq_ "d['error']['code']")" "CANCELLED"
+for G in $GA $GB $GC; do M "DELETE FROM GroupPolicy WHERE scopeId='$G'"; done
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

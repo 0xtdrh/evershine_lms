@@ -2,6 +2,7 @@
 
 import { GroupBookingLink } from '@/components/groups/GroupBookingLink'
 import { GroupAwaitingPanel } from '@/components/groups/GroupAwaitingPanel'
+import { GroupStartPanel } from '@/components/groups/GroupStartPanel'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useMemo, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -803,6 +804,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
               {detail.seats && (
                 <GroupCapacityPanel groupId={detail.id} levelId={detail.level?.id ?? null} seats={detail.seats} waiting={detail.waiting ?? []} canEdit={canEditGroups} />
               )}
+              {detail.status === 'ACTIVE' ? <GroupStartPanel key={`start-${detail.id}`} groupId={detail.id} levelId={detail.level?.id ?? null} students={detail.enrollments.filter((e) => e.status === 'ACTIVE' || e.status === 'AWAITING_PAYMENT').map((e) => ({ id: e.student.id, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}` }))} can={{ update: !!myPerms?.permissions?.group_start?.includes('update'), approve: !!myPerms?.permissions?.group_start?.includes('approve'), remove: !!myPerms?.permissions?.group_start?.includes('delete') }} /> : null}
               {myPerms?.permissions?.group_entry?.includes('read') ? <GroupAwaitingPanel key={`await-${detail.id}`} groupId={detail.id} canApprove={!!myPerms?.permissions?.group_entry?.includes('approve')} /> : null}
               <GroupRulesPanel groupId={detail.id} canEditRules={!!myPerms?.permissions?.agreements?.includes('update')} />
               {canEditGroups && detail.status === 'ACTIVE' && (

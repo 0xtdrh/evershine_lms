@@ -273,6 +273,7 @@ export async function place(bookingId: string, actorId: string, holdHours?: numb
     await generateMissingCycleInvoices(groupId, actorId, studentId).catch((e) => console.error('[BOOKING] first invoice', e))
     // six phases E: an "after payment" group keeps the seat but the child joins only when paid (the booking tells the family)
     await (await import('@/lib/groups/entry')).holdUntilPaid(studentId, groupId, { tellFamily: false }).catch((e) => console.error('[BOOKING] hold until paid', e))
+    await (await import('@/lib/groups/start')).checkReady(groupId).catch(() => false)
   }
   const inv = await prisma.feeInvoice.findFirst({ where: { studentId, classSectionId: groupId, status: { not: 'CANCELLED' } }, orderBy: { createdAt: 'desc' }, select: { id: true, totalAmount: true, paidAmount: true, status: true } })
   // no invoice yet (the group bills later): the seat stays held without a deadline; syncBookings attaches the invoice when it exists
@@ -419,6 +420,13 @@ export async function shape(rows: Awaited<ReturnType<typeof prisma.courseBooking
     prisma.guardian.findMany({ where: { id: { in: rows.map((r) => r.guardianId) } }, select: { id: true, firstName: true, lastName: true, phoneNumber: true } }),
     prisma.level.findMany({ where: { id: { in: rows.map((r) => r.levelId).filter(Boolean) as string[] } }, select: { id: true, name: true, subject: { select: { name: true } } } }),
   ])
+  // six phases E2: the group's start (waiting for its minimum / complete) for the family's view
+  const { groupStart } = await import('@/lib/groups/start')
+  const starts = new Map<string, { state: string; expectedStartDate: string | null; firstSession: string | null }>()
+  for (const id of [...new Set(rows.map((r) => r.classSectionId).filter(Boolean) as string[])]) {
+    const s = await groupStart(id).catch(() => null)
+    if (s) starts.set(id, { state: s.state, expectedStartDate: s.expectedStartDate, firstSession: s.firstSession })
+  }
   return rows.map((b) => {
     const l = listings.find((x) => x.slug === b.listingSlug)
     const g = groups.find((x) => x.id === b.classSectionId)
@@ -433,6 +441,7 @@ export async function shape(rows: Awaited<ReturnType<typeof prisma.courseBooking
       group: g ? { id: g.id, name: [g.className, g.sectionName].filter(Boolean).join(' '), campus: g.campus.name, slots: g.scheduleSlots } : null,
       invoice: inv ? { id: inv.id, number: inv.challanNumber, total: Number(inv.totalAmount), paid: Number(inv.paidAmount), status: inv.status, proofStatus: inv.proofStatus } : null,
       holdUntil: b.holdUntil, reason: b.reason, createdAt: b.createdAt, confirmedAt: b.confirmedAt, campusId: b.campusId,
+      start: b.classSectionId ? starts.get(b.classSectionId) ?? null : null,
     }
   })
 }

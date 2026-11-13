@@ -1,7 +1,7 @@
 import { canSeeGroup, groupWhere, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { errors, successResponse, createdResponse } from '@/lib/api-response'
+import { errorResponse, errors, successResponse, createdResponse } from '@/lib/api-response'
 import { presenceFields } from '@/lib/attendance/presence'
 import { sessionModeOn, studentModesOn } from '@/lib/delivery/session-modes'
 import { getRoomsSettings } from '@/lib/rooms/engine'
@@ -33,6 +33,9 @@ async function assertCanMarkGroup(
     select: { campusId: true, status: true, completedAt: true },
   })
   if (!group) return errors.notFound('Group')
+  // six phases E2: a group waiting for its minimum (or cancelled) takes no attendance yet
+  const blocked = await (await import('@/lib/groups/start')).attendanceBlock(classSectionId)
+  if (blocked) return errorResponse('GROUP_NOT_READY', blocked, 409)
   // A closed cycle takes no NEW sessions (corrections of its own past dates are fine).
   if (group.status === 'COMPLETED' && attendanceDate && group.completedAt && new Date(attendanceDate) > group.completedAt) {
     return errors.conflict("This group's cycle is closed. Record attendance in the group of the next cycle.")

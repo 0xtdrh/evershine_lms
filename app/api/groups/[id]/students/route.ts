@@ -131,6 +131,8 @@ export async function POST(
     console.error('[GROUP_ADD_STUDENT_HOLD]', err)
   }
 
+  try { await (await import('@/lib/groups/start')).checkReady(id) } catch (err) { console.error('[GROUP_ADD_STUDENT_READY]', err) }
+
   // 2026-10-24: tell the family about holidays announced before the student joined
   const { notifyJoinerHolidays } = await import('@/lib/notifications/session-events')
   await notifyJoinerHolidays(parsed.data.studentId, id)

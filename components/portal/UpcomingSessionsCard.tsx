@@ -27,11 +27,13 @@ export function UpcomingSessionsCard({ studentId }: { studentId?: string }) {
   const ar = useI18n().locale === 'ar'
   const { data } = useQuery({
     queryKey: ['upcoming-sessions', studentId ?? 'me'],
-    queryFn: () => fetchApi<{ today: string | null; sessions: Row[] }>(`/api/students/${studentId ?? 'me'}/upcoming-sessions`),
+    queryFn: () => fetchApi<{ today: string | null; sessions: Row[]; waiting?: { groupId: string; group: string; course: string | null; state: string; expectedStartDate: string | null; firstSession: string | null }[] }>(`/api/students/${studentId ?? 'me'}/upcoming-sessions`),
     retry: false,
   })
   const rows = data?.sessions ?? []
-  if (!rows.length) return null
+  const waiting = data?.waiting ?? []
+  if (!rows.length && !waiting.length) return null
+  const longDay = (d: string | null) => (d ? new Date(`${d}T12:00:00Z`).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { timeZone: 'Africa/Cairo', weekday: 'long', day: 'numeric', month: 'long' }) : '')
   const dayText = (d: string) => (d === data?.today ? L('Today', 'النهارده')
     : new Date(`${d}T00:00:00Z`).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'short' }))
   return (
@@ -40,6 +42,14 @@ export function UpcomingSessionsCard({ studentId }: { studentId?: string }) {
         <CardTitle className="flex items-center gap-2 text-base"><CalendarClock className="h-5 w-5 text-indigo-600" />{L('Next sessions', 'الحصص الجاية')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-1.5 text-sm">
+        {waiting.map((w) => (
+          <div key={`w-${w.groupId}`} className={`rounded-lg border px-3 py-2 ${w.state === 'READY' ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+            <p className="font-semibold text-slate-900">{w.course ? `${w.course} · ` : ''}{w.group}</p>
+            <p className="text-xs text-slate-700">{w.state === 'READY'
+              ? L(`The group is complete — the first session is ${longDay(w.firstSession)}.`, `الجروب كمل — أول حصة ${longDay(w.firstSession)}.`)
+              : L(`Waiting for the group to be complete${w.expectedStartDate ? ` · expected start ${longDay(w.expectedStartDate)}` : ''}. We will tell you the first session.`, `مستني الجروب يكمل${w.expectedStartDate ? ` · البداية المتوقعة ${longDay(w.expectedStartDate)}` : ''}. هنبلغك بأول حصة.`)}</p>
+          </div>
+        ))}
         {rows.map((r) => {
           const off = r.status === 'HOLIDAY' || r.status === 'CANCELLED'
           return (
