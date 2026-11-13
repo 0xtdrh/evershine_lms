@@ -46,7 +46,7 @@ const inIds = (ids: string[] | null) => (ids ? { in: ids.length ? ids : ['__none
 const COUNTERS: Record<TaskKey, (c: Ctx) => Promise<number>> = {
   admissions: async (c) => prisma.admissionRequest.count({ where: { status: 'PENDING', ...(c.places.all ? {} : { OR: [{ preferredCampusId: null }, campusWhere(c.places, 'preferredCampusId')] }) } }),
   leads: async () => prisma.landingInquiry.count({ where: { status: 'NEW' } }),
-  bookingsToReview: async (c) => prisma.courseBooking.count({ where: { status: 'REVIEW', ...(c.places.all ? {} : { OR: [{ campusId: null }, { campusId: { in: c.places.campusIds } }] }) } }),
+  bookingsToReview: async (c) => prisma.courseBooking.count({ where: { status: { in: ['REVIEW', 'PLACEMENT'] }, ...(c.places.all ? {} : { OR: [{ campusId: null }, { campusId: { in: c.places.campusIds } }] }) } }),
   bookingsUnpaid: async (c) => prisma.courseBooking.count({ where: { status: 'HOLD', holdUntil: { lt: new Date(Date.now() + 86_400_000) }, ...(c.places.all ? {} : { OR: [{ campusId: null }, { campusId: { in: c.places.campusIds } }] }) } }),
   familiesNoChild: async (c) => prisma.guardian.count({ where: { signupSource: { not: null }, students: { none: {} }, createdAt: { gte: day(addDays(c.today, -30)) } } }),
   followUps: async (c) => prisma.contactLog.count({ where: { followUpAt: { lt: day(addDays(c.today, 1)) }, followUpDoneAt: null, ...campusWhere(c.places) } }),

@@ -14,7 +14,7 @@ import { bookingError } from '@/lib/bookings/http'
 import { prisma } from '@/lib/prisma'
 
 async function guardianRow(id: string) {
-  return prisma.guardian.findUnique({ where: { id }, select: { id: true, userId: true, firstName: true, lastName: true, phoneNumber: true, city: true } })
+  return prisma.guardian.findUnique({ where: { id }, select: { id: true, userId: true, firstName: true, lastName: true, phoneNumber: true, city: true, partnerId: true } })
 }
 
 export async function GET(request: NextRequest) {
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   if (f.error) return f.error
   const sp = request.nextUrl.searchParams
   try {
-    return successResponse(await bookingOptions((await guardianRow(f.guardian.id))!, sp.get('person') ?? '', sp.get('slug') ?? '', sp.get('code')))
+    return successResponse(await bookingOptions((await guardianRow(f.guardian.id))!, sp.get('person') ?? '', sp.get('slug') ?? '', sp.get('code'), sp.get('group')))
   } catch (e) {
     return bookingError(e)
   }

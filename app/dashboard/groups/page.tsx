@@ -1,5 +1,6 @@
 'use client'
 
+import { GroupBookingLink } from '@/components/groups/GroupBookingLink'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useMemo, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -818,6 +819,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                   canRecord={canRecordSessions}
                 />
               )}
+              {myPerms?.permissions?.family_accounts?.includes('read') && detail.status === 'ACTIVE' ? <GroupBookingLink groupId={detail.id} groupName={detail.className} /> : null}
               <ExtraSessionsPanel groupId={detail.id} rows={detail.extraSessions ?? []} canEdit={canEditGroups} />
               <div>
                 <p className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">

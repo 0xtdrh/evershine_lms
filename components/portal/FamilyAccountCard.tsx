@@ -14,6 +14,7 @@ import { notify } from '@/lib/notify'
 import { L, useI18n } from '@/lib/i18n/client'
 import { ageText } from '@/lib/site/courses'
 import { BookCourseDialog } from './BookCourseDialog'
+import { DeviceCheck } from './DeviceCheck'
 
 type Person = { key: string; memberId: string | null; studentId: string | null; firstName: string; lastName: string; dob: string | null; age: number | null; gender: string | null; isSelf: boolean; registrationNumber: string | null }
 type Family = { account: { firstName: string; email: string | null; emailVerified: boolean; selfAccount: boolean }; people: Person[]; settings: { unsuitable: string; emailCheck: boolean } }
@@ -33,7 +34,9 @@ export function FamilyAccountCard() {
   const [welcome, setWelcome] = useState(false)
   const [m, setM] = useState({ firstName: '', lastName: '', dob: '', gender: '', school: '' })
   const [busy, setBusy] = useState(false)
-  const [booking, setBooking] = useState<{ person: string; slug: string } | null>(null)
+  const [booking, setBooking] = useState<{ person: string; slug: string; link?: string | null } | null>(null)
+  const [wantGroup, setWantGroup] = useState<string | null>(null)
+  const [testing, setTesting] = useState(false)
   const [wantSlug, setWantSlug] = useState<string | null>(null)
 
   useEffect(() => {
@@ -41,6 +44,7 @@ export function FamilyAccountCard() {
       const sp = new URLSearchParams(location.search)
       setWelcome(sp.get('welcome') === '1')
       setWantSlug(sp.get('book'))
+      setWantGroup(sp.get('group'))
     } catch { /* ignore */ }
   }, [])
   const people = data?.people ?? []
@@ -49,8 +53,8 @@ export function FamilyAccountCard() {
   const bookings = useQuery({ queryKey: ['family-bookings'], queryFn: () => fetchApi<MyBooking[]>('/api/guardian-portal/family/bookings'), enabled: !!data })
   // a course page sent the family here (?book=<course>): open the booking for the only child, or once one is chosen
   useEffect(() => {
-    if (wantSlug && current && (people.length === 1 || sel)) { setBooking({ person: current.key, slug: wantSlug }); setWantSlug(null) }
-  }, [wantSlug, current, people.length, sel])
+    if (wantSlug && current && (people.length === 1 || sel)) { setBooking({ person: current.key, slug: wantSlug, link: wantGroup }); setWantSlug(null) }
+  }, [wantSlug, wantGroup, current, people.length, sel])
 
   if (error || isLoading || !data) return null // old accounts without a family record simply do not see the card
 
@@ -179,6 +183,8 @@ export function FamilyAccountCard() {
                 {b.reason && ['EXPIRED', 'CANCELLED', 'REJECTED'].includes(b.status) ? <p className="mt-1 text-slate-500">{b.reason.includes(' · ') ? b.reason.split(' · ')[ar ? 1 : 0] : b.reason}</p> : null}
                 <div className="mt-2 flex gap-2">
                   {b.status === 'HOLD' ? <a href="/dashboard/fees" className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-semibold text-white">{L('Pay', 'ادفع')}</a> : null}
+                  <a href={`/reports/booking/${b.id}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-300 px-3 py-1 text-xs">{L('Summary (PDF)', 'الملخص (PDF)')}</a>
+                  {b.mode === 'ONLINE' && ['HOLD', 'CONFIRMED'].includes(b.status) ? <button type="button" onClick={() => setTesting(true)} className="rounded-lg border border-slate-300 px-3 py-1 text-xs">{L('Test camera & mic', 'جرّب الكاميرا والمايك')}</button> : null}
                   {['REVIEW', 'WAITING'].includes(b.status) || (b.status === 'HOLD' && !b.invoice?.paid) ? <button type="button" onClick={() => void cancelBooking(b.id)} className="rounded-lg border border-slate-300 px-3 py-1 text-xs">{L('Cancel', 'إلغاء')}</button> : null}
                 </div>
               </li>
@@ -187,7 +193,8 @@ export function FamilyAccountCard() {
         </div>
       ) : null}
 
-      {booking ? <BookCourseDialog person={booking.person} slug={booking.slug} onClose={() => { setBooking(null); void qc.invalidateQueries({ queryKey: ['family-bookings'] }) }} /> : null}
+      {testing ? <DeviceCheck onClose={() => setTesting(false)} /> : null}
+      {booking ? <BookCourseDialog person={booking.person} slug={booking.slug} link={booking.link} onClose={() => { setBooking(null); void qc.invalidateQueries({ queryKey: ['family-bookings'] }) }} /> : null}
       {wantSlug && !people.length ? <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-900">{L('Add your child first, then the booking opens.', 'ضيف ابنك الأول وبعدها الحجز هيفتح.')}</p> : null}
       {wantSlug && people.length > 1 && !sel ? <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-900">{L('Choose who you are booking for above.', 'اختار انت بتحجز لمين فوق.')}</p> : null}
 

@@ -71,3 +71,16 @@ describe('a free / prepaid code is not cut by the maximum discount', () => {
     expect(computeDiscounts(850, [sib], { allowStacking: true, maxTotalPercent: 50 }).total).toBe(425)
   })
 })
+
+import { joinCodeFor } from '@/lib/partners/join'
+describe('partner join codes + track placement', () => {
+  it('a join code starts with the partner name letters', () => {
+    let i = 0
+    expect(joinCodeFor('Nile School', () => i++ % 7)).toMatch(/^NILESC-[A-Z2-9]{3}$/)
+    expect(joinCodeFor('مدرسة النيل', () => 1)).toMatch(/^TN-/)
+  })
+  it('a booking may say the child learned before, and the link it came from', () => {
+    expect(bookSchema.safeParse({ person: 'm:a', slug: 's', mode: 'ONLINE', experience: 'BEFORE', link: 'g1', agree: true }).success).toBe(true)
+    expect(bookSchema.safeParse({ person: 'm:a', slug: 's', mode: 'ONLINE', experience: 'MAYBE', agree: true }).success).toBe(false)
+  })
+})

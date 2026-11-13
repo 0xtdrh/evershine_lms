@@ -15,7 +15,7 @@ interface Summary {
 }
 
 export function referralShareText(code: string, origin: string) {
-  return `I recommend TechNova for STEM, robotics and programming courses 🤖✨\nRegister with my referral code ${code}:\n${origin}/admissions/apply`
+  return `I recommend TechNova for STEM, robotics and programming courses 🤖✨\nRegister with my referral code ${code}:\n${origin}/signup?ref=${encodeURIComponent(code)}`
 }
 
 /** Phase D: the parent's referral code, share on WhatsApp, friends who joined, ambassador badge. */

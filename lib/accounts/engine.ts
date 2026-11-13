@@ -49,7 +49,7 @@ export async function accountByPhone(phone: string) {
 }
 
 export class AccountError extends Error {
-  constructor(public code: 'ACCOUNT_EXISTS' | 'EMAIL_USED' | 'BAD_PHONE' | 'TOO_YOUNG' | 'NOT_FOUND' | 'LINK_BAD' | 'ENROLLED', message: string) { super(message) }
+  constructor(public code: 'ACCOUNT_EXISTS' | 'EMAIL_USED' | 'BAD_PHONE' | 'BAD_PARTNER' | 'TOO_YOUNG' | 'NOT_FOUND' | 'LINK_BAD' | 'ENROLLED', message: string) { super(message) }
 }
 
 async function freeLoginEmail(email: string | null | undefined, phone: string) {
@@ -65,13 +65,15 @@ export async function createAccount(v: SignupAccountInput) {
   if (await accountByPhone(phone)) throw new AccountError('ACCOUNT_EXISTS', 'This number already has an account: sign in or reset the password · الرقم ده عليه حساب: ادخل أو غيّر الباسورد')
   if (v.who === 'SELF' && ageOn(v.dob!, cairoToday()) < 18) throw new AccountError('TOO_YOUNG', 'Signing up alone is from age 18; a parent makes the account · التسجيل لوحدك من سن 18، والأصغر ولي أمره يعمل الحساب')
   const loginEmail = await freeLoginEmail(v.email, phone)
+  const partner = v.partnerCode ? await (await import('@/lib/partners/join')).partnerByJoinCode(v.partnerCode) : null
+  if (v.partnerCode && !partner) throw new AccountError('BAD_PARTNER', 'This partner code is not active · كود الشريك ده مش شغال')
   const passwordHash = await hash(v.password, ARGON2_OPTIONS)
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.create({ data: { email: loginEmail, passwordHash, role: 'GUARDIAN', isActive: true, displayName: `${v.firstName} ${v.lastName}`, profileSource: 'WEBSITE' } })
     const guardian = await tx.guardian.create({
       data: {
         userId: user.id, firstName: v.firstName, lastName: v.lastName, phoneNumber: phone, email: v.email || null,
-        relationship: v.who === 'SELF' ? 'Self' : v.relationship || 'Guardian', signupSource: 'WEBSITE', selfAccount: v.who === 'SELF', country: v.country, city: v.city,
+        relationship: v.who === 'SELF' ? 'Self' : v.relationship || 'Guardian', signupSource: partner ? 'PARTNER' : 'WEBSITE', partnerId: partner?.id ?? null, referredBy: v.referral?.trim() || null, selfAccount: v.who === 'SELF', country: v.country, city: v.city,
       },
     })
     if (v.who === 'SELF') {
@@ -146,7 +148,7 @@ function memberData(guardianId: string, m: MemberInput) {
     school: m.school || null, experience: m.experience || null,
   }
 }
-export const guardianOfUser = (userId: string) => prisma.guardian.findUnique({ where: { userId }, select: { id: true, firstName: true, lastName: true, phoneNumber: true, email: true, country: true, city: true, selfAccount: true, signupSource: true } })
+export const guardianOfUser = (userId: string) => prisma.guardian.findUnique({ where: { userId }, select: { id: true, firstName: true, lastName: true, phoneNumber: true, email: true, country: true, city: true, selfAccount: true, signupSource: true, partnerId: true } })
 
 export async function addMember(guardianId: string, m: MemberInput) {
   if (ageOn(m.dob, cairoToday()) < 2 || ageOn(m.dob, cairoToday()) > 90) throw new AccountError('TOO_YOUNG', 'Check the date of birth · راجع تاريخ الميلاد')

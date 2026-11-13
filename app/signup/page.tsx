@@ -7,7 +7,7 @@
  */
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { AuthLayout } from '@/components/auth/AuthLayout'
@@ -31,6 +31,16 @@ export default function SignupPage() {
   const [exists, setExists] = useState(false)
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value })
 
+  const [partner, setPartner] = useState<{ code: string; name: string } | null>(null)
+  const [referral, setReferral] = useState('')
+  useEffect(() => {
+    try {
+      const r = new URLSearchParams(window.location.search).get('ref')
+      if (r) setReferral(r)
+      const code = new URLSearchParams(window.location.search).get('partner')
+      if (code) fetch(`/api/public/partner-code?code=${encodeURIComponent(code)}`).then((r) => r.json()).then((j) => { if (j?.success) setPartner({ code, name: j.data.name }) }).catch(() => null)
+    } catch { /* ignore */ }
+  }, [])
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErr(null); setExists(false)
@@ -38,7 +48,7 @@ export default function SignupPage() {
     if (!agree) return setErr(L('Please accept the terms', 'لازم توافق على الشروط'))
     setBusy(true)
     try {
-      const body = { who, firstName: f.firstName, lastName: f.lastName, phone: f.phone, email: f.email || null, password: f.password, relationship: who === 'PARENT' ? f.relationship || null : null, country: f.country, city: f.city, dob: who === 'SELF' ? f.dob : null, gender: who === 'SELF' ? f.gender || null : null, agree: true, website: f.website }
+      const body = { who, firstName: f.firstName, lastName: f.lastName, phone: f.phone, email: f.email || null, password: f.password, relationship: who === 'PARENT' ? f.relationship || null : null, country: f.country, city: f.city, dob: who === 'SELF' ? f.dob : null, gender: who === 'SELF' ? f.gender || null : null, agree: true, website: f.website, partnerCode: partner?.code ?? null, referral: referral.trim() || null }
       const r = await fetch('/api/public/account', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const j = await r.json().catch(() => null)
       if (r.status === 429) return setErr(L('Too many tries. Try again later.', 'محاولات كتير. جرّب كمان شوية.'))
@@ -74,6 +84,7 @@ export default function SignupPage() {
   return (
     <AuthLayout pageType="signup">
       <form onSubmit={submit} className="space-y-4" noValidate>
+        {partner ? <p className="rounded-2xl bg-violet-50 p-3 text-sm text-violet-900">{L(`You are signing up through ${partner.name}.`, `انت بتسجّل عن طريق ${partner.name}.`)}</p> : null}
         <div className="flex gap-2">
           {choice('PARENT', L('I am a parent', 'أنا ولي أمر'), L('For my child(ren)', 'لابني أو ولادي'))}
           {choice('SELF', L('I am the student', 'أنا الطالب'), L('Age 18 or more', 'من سن 18'))}
@@ -102,6 +113,7 @@ export default function SignupPage() {
           <div><Label htmlFor="pw">{L('Password (8+)', 'الباسورد (8 أو أكتر)')}</Label><Input id="pw" type="password" value={f.password} onChange={set('password')} autoComplete="new-password" required /></div>
           <div><Label htmlFor="pw2">{L('Again', 'تاني')}</Label><Input id="pw2" type="password" value={f.password2} onChange={set('password2')} autoComplete="new-password" required /></div>
         </div>
+        <div><Label htmlFor="ref">{L('Invite code from a friend (optional)', 'كود دعوة من صديق (اختياري)')}</Label><Input id="ref" dir="ltr" value={referral} onChange={(e) => setReferral(e.target.value)} placeholder="TN-REF-…" /></div>
         <input type="text" name="website" value={f.website} onChange={set('website')} tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
         <label className="flex items-start gap-2 text-sm text-slate-700">
           <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-1 h-4 w-4" />

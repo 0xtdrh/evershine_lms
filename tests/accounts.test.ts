@@ -50,7 +50,7 @@ describe('sign-up', () => {
   })
   it('staff accounts need no password; settings have safe defaults', () => {
     expect(staffAccountSchema.safeParse({ firstName: 'Ali', lastName: 'Omar', phone: '01112345678' }).success).toBe(true)
-    expect(accountsSettingsSchema.parse({})).toEqual({ signupOpen: true, unsuitable: 'LOCK', emailCheck: false, linkDays: 7 })
+    expect(accountsSettingsSchema.parse({})).toEqual({ signupOpen: true, unsuitable: 'LOCK', emailCheck: false, askExperience: true, linkDays: 7 })
     expect(phoneLoginEmail('01012345678')).toBe('guardian_01012345678@technova.local')
   })
 })

@@ -12,11 +12,14 @@ import { useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { fetchApi } from '@/lib/api-client'
 import { L, useI18n, dayName } from '@/lib/i18n/client'
+import { browserZone, slotInZone } from '@/lib/dates/zones'
 
 type Group = { id: string; name: string; campusId: string; campusName: string; online: boolean; slots: { dayOfWeek: number; time: string }[]; startDate: string | null; free: number | null; full: boolean; price: number; installments: boolean }
 type Options = {
   person: { key: string; firstName: string; age: number | null }
-  course: { slug: string; title: { en: string; ar: string } }
+  course: { slug: string; title: { en: string; ar: string }; refType: string }
+  askExperience: boolean
+  link: { groupId: string; online: boolean; campusId: string } | null
   level: { id: string; name: string; course: string; perMonth: boolean }
   code: { code: string; kind: string; value: number } | null
   online: Group[] | null
@@ -28,7 +31,7 @@ type Mode = 'ONLINE' | 'RECORDED' | 'BRANCH'
 
 const opt = (on: boolean) => `w-full rounded-xl border-2 p-3 text-start transition ${on ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`
 
-export function BookCourseDialog({ person, slug, onClose }: { person: string; slug: string; onClose: () => void }) {
+export function BookCourseDialog({ person, slug, link, onClose }: { person: string; slug: string; link?: string | null; onClose: () => void }) {
   const { locale } = useI18n()
   const ar = locale === 'ar'
   const t = (x: { en: string; ar: string }) => (ar ? x.ar : x.en)
@@ -42,14 +45,16 @@ export function BookCourseDialog({ person, slug, onClose }: { person: string; sl
   const [group, setGroup] = useState<string | null | 'NONE'>(null)
   const [plan, setPlan] = useState<'ONE_TIME' | 'SUBSCRIPTION' | null>(null)
   const [agree, setAgree] = useState(false)
+  const [experience, setExperience] = useState<'NEW' | 'BEFORE' | null>(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<Booking | null>(null)
 
   const load = async (withCode?: string) => {
     setErr(null)
     try {
-      const r = await fetchApi<Options>(`/api/guardian-portal/family/book?person=${encodeURIComponent(person)}&slug=${encodeURIComponent(slug)}${withCode ? `&code=${encodeURIComponent(withCode)}` : ''}`)
+      const r = await fetchApi<Options>(`/api/guardian-portal/family/book?person=${encodeURIComponent(person)}&slug=${encodeURIComponent(slug)}${withCode ? `&code=${encodeURIComponent(withCode)}` : ''}${link ? `&group=${encodeURIComponent(link)}` : ''}`)
       setO(r)
+      if (r.link) { setMode(r.link.online ? 'ONLINE' : 'BRANCH'); setCampus(r.link.online ? null : r.link.campusId); setGroup(r.link.groupId) }
       const ways = [r.online ? 'ONLINE' : null, r.branch ? 'BRANCH' : null, r.recorded?.plans.length ? 'RECORDED' : null].filter(Boolean) as Mode[]
       if (ways.length === 1) setMode(ways[0])
     } catch (e) { setErr(bi((e as Error).message)) }
@@ -57,18 +62,26 @@ export function BookCourseDialog({ person, slug, onClose }: { person: string; sl
   useEffect(() => { void load() // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [person, slug])
 
-  const when = (g: Group) => g.slots.map((s) => `${dayName(s.dayOfWeek)} ${s.time}`).join(' · ') || g.name
+  const [zone, setZone] = useState('')
+  useEffect(() => { setZone(browserZone()) }, [])
+  const todayCairo = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo' }).format(new Date())
+  /** Cairo time, plus the family's own time when it lives in another zone */
+  const when = (g: Group) => g.slots.map((s) => {
+    const mine = g.online ? slotInZone(s, zone, todayCairo) : null
+    return `${dayName(s.dayOfWeek)} ${s.time}${mine ? ` ${L('Cairo', 'القاهرة')} (${dayName(mine.dayOfWeek)} ${mine.time} ${L('your time', 'بتوقيتك')})` : ''}`
+  }).join(' · ') || g.name
   const groups: Group[] = mode === 'ONLINE' ? o?.online ?? [] : mode === 'BRANCH' ? o?.branch?.find((b) => b.id === campus)?.groups ?? [] : []
   const chosen = groups.find((g) => g.id === group) ?? null
   const price = mode === 'RECORDED' ? o?.recorded?.plans.find((p) => p.plan === plan)?.price ?? null : chosen?.price ?? null
-  const ready = !!mode && (mode === 'RECORDED' ? !!plan : mode === 'BRANCH' ? !!campus && group !== null : group !== null) && agree
+  const placing = experience === 'BEFORE'
+  const ready = !!mode && (!o?.askExperience || !!experience) && (placing ? mode !== 'BRANCH' || !!campus : mode === 'RECORDED' ? !!plan : mode === 'BRANCH' ? !!campus && group !== null : group !== null) && agree
 
   const send = async () => {
     setBusy(true); setErr(null)
     try {
       const r = await fetchApi<Booking>('/api/guardian-portal/family/book', {
         method: 'POST',
-        body: JSON.stringify({ person, slug, mode, groupId: group && group !== 'NONE' ? group : null, campusId: campus, plan, code: o?.code?.code ?? null, agree: true }),
+        body: JSON.stringify({ person, slug, mode, groupId: !placing && group && group !== 'NONE' ? group : null, campusId: campus, plan: placing ? null : plan, code: o?.code?.code ?? null, experience, link: link ?? null, agree: true }),
       })
       setDone(r)
       void qc.invalidateQueries({ queryKey: ['family'] }); void qc.invalidateQueries({ queryKey: ['family-bookings'] }); void qc.invalidateQueries({ queryKey: ['family-courses'] })
@@ -89,9 +102,10 @@ export function BookCourseDialog({ person, slug, onClose }: { person: string; sl
 
         {done ? (
           <div className="space-y-3 text-center">
-            <p className="text-xl font-bold text-emerald-700">{done.status === 'CONFIRMED' ? L('Booked and confirmed!', 'اتحجز واتأكد!') : done.status === 'HOLD' ? L('The seat is held for you', 'المكان اتحجزلك') : done.status === 'WAITING' ? L('On the waiting list', 'اتسجل في قايمة الانتظار') : L('Booking sent', 'الحجز اتبعت')}</p>
+            <p className="text-xl font-bold text-emerald-700">{done.status === 'PLACEMENT' ? L('Booking sent', 'الحجز اتبعت') : done.status === 'CONFIRMED' ? L('Booked and confirmed!', 'اتحجز واتأكد!') : done.status === 'HOLD' ? L('The seat is held for you', 'المكان اتحجزلك') : done.status === 'WAITING' ? L('On the waiting list', 'اتسجل في قايمة الانتظار') : L('Booking sent', 'الحجز اتبعت')}</p>
             <p className="text-sm text-slate-700">
               {done.status === 'HOLD' ? L(`Pay the first invoice (${done.invoice?.total ?? ''} EGP) before ${done.holdUntil ? new Date(done.holdUntil).toLocaleString('en-GB', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''} to confirm it. You can pay online, by wallet, or upload a transfer receipt.`, `ادفع أول فاتورة (${done.invoice?.total ?? ''} ج.م) قبل ${done.holdUntil ? new Date(done.holdUntil).toLocaleString('ar-EG-u-nu-latn', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''} علشان المكان يتأكد. تقدر تدفع أونلاين أو من المحفظة أو ترفع صورة تحويل.`)
+                : done.status === 'PLACEMENT' ? L('TechNova will contact you to know the level, then choose the right group; you will get a notification.', 'TechNova هتتواصل معاك تعرف المستوى وتختار الجروب المناسب، وهيوصلك إشعار.')
                 : done.status === 'REVIEW' ? L('TechNova will confirm it soon and you will get a notification.', 'TechNova هتأكده قريب وهيوصلك إشعار.')
                 : done.status === 'WAITING' ? L('We will tell you as soon as a seat is free.', 'هنبلغك أول ما يفضى مكان.')
                 : L('Lessons open according to the course plan.', 'الدروس بتفتح حسب خطة الكورس.')}
@@ -105,6 +119,15 @@ export function BookCourseDialog({ person, slug, onClose }: { person: string; sl
           err ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{err}</p> : <p className="text-sm text-slate-500">{L('Loading…', 'بيحمّل…')}</p>
         ) : (
           <div className="space-y-4">
+            {o.askExperience ? (
+              <fieldset>
+                <legend className="mb-2 text-sm font-semibold text-slate-900">{L(`Has ${o.person.firstName} learned programming / robotics before?`, `${o.person.firstName} اتعلم برمجة أو روبوتكس قبل كده؟`)}</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" className={opt(experience === 'NEW')} onClick={() => setExperience('NEW')}><b className="block text-sm">{L('No, starting now', 'لأ، أول مرة')}</b><span className="text-xs text-slate-600">{L('Starts at the first level', 'يبدأ من أول مستوى')}</span></button>
+                  <button type="button" className={opt(experience === 'BEFORE')} onClick={() => { setExperience('BEFORE'); setGroup(null) }}><b className="block text-sm">{L('Yes, before', 'أيوه، قبل كده')}</b><span className="text-xs text-slate-600">{L('TechNova sets the right level', 'TechNova تحدد المستوى المناسب')}</span></button>
+                </div>
+              </fieldset>
+            ) : null}
             <fieldset>
               <legend className="mb-2 text-sm font-semibold text-slate-900">1. {L('How?', 'إزاي؟')}</legend>
               <div className="grid gap-2">
@@ -122,9 +145,10 @@ export function BookCourseDialog({ person, slug, onClose }: { person: string; sl
               </fieldset>
             ) : null}
 
-            {(mode === 'ONLINE' || (mode === 'BRANCH' && campus)) ? (
+            {!placing && (mode === 'ONLINE' || (mode === 'BRANCH' && campus)) ? (
               <fieldset>
                 <legend className="mb-2 text-sm font-semibold text-slate-900">{mode === 'BRANCH' ? 3 : 2}. {L('Which time?', 'أنهي ميعاد؟')}</legend>
+                {mode === 'ONLINE' && zone && zone !== 'Africa/Cairo' ? <p className="mb-2 text-xs text-slate-600">{L('Times are shown in Cairo time and in your time.', 'المواعيد بتوقيت القاهرة وبتوقيتك.')}</p> : null}
                 <div className="grid gap-2">
                   {groups.map((g) => (
                     <button key={g.id} type="button" onClick={() => setGroup(g.id)} className={opt(group === g.id)}>
@@ -141,7 +165,7 @@ export function BookCourseDialog({ person, slug, onClose }: { person: string; sl
               </fieldset>
             ) : null}
 
-            {mode === 'RECORDED' ? (
+            {mode === 'RECORDED' && !placing ? (
               <fieldset>
                 <legend className="mb-2 text-sm font-semibold text-slate-900">2. {L('Which plan?', 'أنهي نظام؟')}</legend>
                 <div className="grid gap-2">{o.recorded!.plans.map((p) => (

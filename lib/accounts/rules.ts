@@ -16,6 +16,8 @@ export const accountsSettingsSchema = z.object({
   unsuitable: z.enum(['LOCK', 'HIDE']).default('LOCK'),
   /** e-mail a code to confirm the account e-mail (works once a sending domain is ready) */
   emailCheck: z.boolean().default(false),
+  /** a full track: ask "learned this before?" — yes = TechNova sets the level before placing the child */
+  askExperience: z.boolean().default(true),
   /** days a staff setup link stays valid */
   linkDays: z.number().int().min(1).max(30).default(7),
 })
@@ -46,6 +48,10 @@ export const signupAccountSchema = z
     dob: day.optional().nullable(),
     gender: z.enum(['MALE', 'FEMALE']).optional().nullable(),
     agree: z.literal(true),
+    /** a partner's join code (from its link /join/p/<code> or typed) */
+    partnerCode: z.string().trim().max(30).optional().nullable(),
+    /** a friend's invite (referral) code TN-REF-… or phone */
+    referral: z.string().trim().max(40).optional().nullable(),
     website: z.string().max(0).optional().or(z.literal('')),
   })
   .superRefine((v, ctx) => {

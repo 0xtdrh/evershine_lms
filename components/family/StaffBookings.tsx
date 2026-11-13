@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react'
+import { dayName } from '@/lib/i18n/client'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
@@ -37,7 +38,7 @@ export function StaffBookings({ canUpdate }: { canUpdate: boolean }) {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        {[['', L('All', 'الكل')], ['REVIEW', L('To approve', 'مستني موافقة')], ['HOLD', L('Held, not paid', 'محجوز ومش مدفوع')], ['WAITING', L('Waiting list', 'قايمة انتظار')], ['CONFIRMED', L('Confirmed', 'اتأكد')], ['EXPIRED', L('Expired', 'انتهى')]].map(([k, label]) => (
+        {[['', L('All', 'الكل')], ['REVIEW', L('To approve', 'مستني موافقة')], ['PLACEMENT', L('Need a level', 'محتاج تحديد مستوى')], ['HOLD', L('Held, not paid', 'محجوز ومش مدفوع')], ['WAITING', L('Waiting list', 'قايمة انتظار')], ['CONFIRMED', L('Confirmed', 'اتأكد')], ['EXPIRED', L('Expired', 'انتهى')]].map(([k, label]) => (
           <button key={k} type="button" onClick={() => setStatus(k)} aria-pressed={status === k} className={`rounded-full border px-3 py-1 text-sm ${status === k ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-slate-300 text-slate-700'}`}>{label}</button>
         ))}
       </div>
@@ -56,8 +57,10 @@ export function StaffBookings({ canUpdate }: { canUpdate: boolean }) {
                 <td className="p-2">{b.invoice ? <><span dir="ltr">{b.invoice.number}</span><span className="block text-xs text-slate-500">{b.invoice.paid} / {b.invoice.total}{b.invoice.proofStatus === 'PENDING' ? ` · ${L('receipt to check', 'إيصال للمراجعة')}` : ''}</span></> : '—'}</td>
                 <td className="p-2">{ar ? b.statusText.ar : b.statusText.en}{b.status === 'HOLD' && b.holdUntil ? <span className="block text-xs text-amber-700">{L('until', 'لحد')} {new Date(b.holdUntil).toLocaleString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span> : null}</td>
                 <td className="p-2 whitespace-nowrap">
+                  <a href={`/reports/booking/${b.id}`} target="_blank" rel="noopener noreferrer" className="me-1 text-xs text-blue-700 underline">{L('Summary', 'الملخص')}</a>
                   {canUpdate && b.status === 'REVIEW' ? <><button type="button" onClick={() => void act(b.id, 'APPROVE')} className="me-1 rounded-lg bg-emerald-600 px-2 py-1 text-xs font-semibold text-white">{L('Approve', 'وافق')}</button><button type="button" onClick={() => void act(b.id, 'REJECT')} className="rounded-lg border border-slate-300 px-2 py-1 text-xs">{L('Reject', 'ارفض')}</button></> : null}
-                  {canUpdate && ['HOLD', 'WAITING'].includes(b.status) ? <button type="button" onClick={() => void act(b.id, 'CANCEL')} className="rounded-lg border border-slate-300 px-2 py-1 text-xs">{L('Cancel', 'إلغاء')}</button> : null}
+                  {canUpdate && b.status === 'PLACEMENT' ? <PlaceForm id={b.id} recorded={b.mode === 'RECORDED'} onDone={() => void qc.invalidateQueries({ queryKey: ['staff-bookings'] })} /> : null}
+                  {canUpdate && ['HOLD', 'WAITING', 'PLACEMENT'].includes(b.status) ? <button type="button" onClick={() => void act(b.id, 'CANCEL')} className="rounded-lg border border-slate-300 px-2 py-1 text-xs">{L('Cancel', 'إلغاء')}</button> : null}
                 </td>
               </tr>
             ))}
@@ -99,6 +102,26 @@ export function BookingRules() {
         <label className="text-xs">{L('Hold (hours)', 'الحجز (ساعات)')}<input type="number" min={1} className={`${input} block w-24`} value={r.holdHours} onChange={(e) => setR({ ...r, holdHours: e.target.value })} placeholder="48" /></label>
         <button type="button" disabled={r.scopeType !== 'COMPANY' && !r.scopeId} onClick={() => void save()} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{L('Save', 'احفظ')}</button>
       </div>
+    </div>
+  )
+}
+
+/** A track booking waiting for its level: choose the level (after talking to the family / a test) and a group, then place. */
+function PlaceForm({ id, recorded, onDone }: { id: string; recorded: boolean; onDone: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [levelId, setLevelId] = useState('')
+  const [groupId, setGroupId] = useState('')
+  const { data } = useQuery({ queryKey: ['placement', id], queryFn: () => fetchApi<{ levels: Opt[]; groups: (Opt & { levelId: string; slots: unknown; full: boolean })[] }>(`/api/bookings/${id}`), enabled: open })
+  const save = async () => {
+    try { await fetchApi(`/api/bookings/${id}`, { method: 'POST', body: JSON.stringify({ action: 'PLACE', levelId, groupId: groupId || null }) }); notify.success(L('Placed', 'اتسكّن')); onDone() } catch (e) { notify.error((e as Error).message) }
+  }
+  if (!open) return <button type="button" onClick={() => setOpen(true)} className="me-1 rounded-lg bg-violet-600 px-2 py-1 text-xs font-semibold text-white">{L('Set the level', 'حدد المستوى')}</button>
+  const slots = (x: unknown) => (Array.isArray(x) ? (x as { dayOfWeek: number; time: string }[]).map((s) => `${dayName(s.dayOfWeek)} ${s.time}`).join(' · ') : '')
+  return (
+    <div className="mt-1 space-y-1 rounded-lg border border-violet-200 bg-violet-50 p-2 text-xs">
+      <select className="w-full rounded border border-slate-300 bg-white p-1" value={levelId} onChange={(e) => { setLevelId(e.target.value); setGroupId('') }}><option value="">{L('Level…', 'المستوى…')}</option>{data?.levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
+      {!recorded && levelId ? <select className="w-full rounded border border-slate-300 bg-white p-1" value={groupId} onChange={(e) => setGroupId(e.target.value)}><option value="">{L('No group yet (waiting list)', 'لسه مفيش جروب (قايمة انتظار)')}</option>{data?.groups.filter((g) => g.levelId === levelId).map((g) => <option key={g.id} value={g.id}>{g.name} {slots(g.slots)}{g.full ? ` — ${L('full', 'كامل')}` : ''}</option>)}</select> : null}
+      <div className="flex gap-1"><button type="button" disabled={!levelId} onClick={() => void save()} className="rounded bg-violet-600 px-2 py-1 font-semibold text-white disabled:opacity-50">{L('Place', 'سكّن')}</button><button type="button" onClick={() => setOpen(false)} className="rounded border border-slate-300 px-2 py-1">{L('Close', 'اقفل')}</button></div>
     </div>
   )
 }

@@ -3414,6 +3414,54 @@ BK5=$(f3 POST /api/guardian-portal/family/book "{\"person\":\"m:$FM5\",\"slug\":
 check "a prepaid group code: the invoice is fully covered → confirmed at once; the code use is counted" "$(echo "$BK5" | jq_ "(d['data']['status'], float(d['data']['invoice']['total']) if d['data']['invoice'] else 0.0)")/$(M "SELECT uses FROM EnrolmentCode WHERE code='$JC3'")" "('CONFIRMED', 0.0)/1"
 check "staff see the bookings of the family with their state" "$(api GET /api/bookings | jq_ "sorted(set(b['status'] for b in d['data'] if b['family'] and b['family']['phoneNumber']=='01033344455'))")" "['CANCELLED', 'CONFIRMED', 'EXPIRED', 'HOLD']"
 rm -f "$FJ3"
+echo "== 104. Track placement ('learned before?'), partner join code + link, group booking link (six phases 1-C, 2026-11-13)"
+FJ4=$(mktemp); login_jar 01033344455 famPass2026 "$FJ4" 10.8.5.1
+f4() { curl -s -b "$FJ4" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+Y10=$(( $(cairo +%Y) - 10 ))
+FM6=$(f4 POST /api/guardian-portal/family/members "{\"firstName\":\"Trackkid\",\"lastName\":\"Accounttest\",\"dob\":\"$Y10-03-03\",\"gender\":\"MALE\"}" | jq_ "d['data']['id']")
+check "a full track asks 'learned before?'" "$(f4 GET "/api/guardian-portal/family/book?person=m:$FM6&slug=e2e-track" | jq_ "(d['success'], d['data']['askExperience'], d['data']['course']['refType'])")" "(True, True, 'TRACK')"
+BK6=$(f4 POST /api/guardian-portal/family/book "{\"person\":\"m:$FM6\",\"slug\":\"e2e-track\",\"mode\":\"ONLINE\",\"experience\":\"BEFORE\",\"agree\":true}")
+BK6ID=$(echo "$BK6" | jq_ "d['data']['id']")
+check "'yes, before' → the booking waits for TechNova to set the level; nobody is placed yet" "$(echo "$BK6" | jq_ "d['data']['status']")/$(M "SELECT studentId IS NULL FROM CourseBooking WHERE id='$BK6ID'")/$(api GET /api/today | jq_ "any(t['key']=='bookingsToReview' for t in d['data']['tasks'])")" "PLACEMENT/1/True"
+PO=$(api GET /api/bookings/$BK6ID)
+check "staff see the track's levels and the groups that fit (online)" "$(echo "$PO" | jq_ "(len(d['data']['levels']) >= 2, any(l['id']=='$LV101' for l in d['data']['levels']), any(g['id']=='$JG' for g in d['data']['groups']))")" "(True, True, True)"
+check "a level that is not in the track is refused" "$(api POST /api/bookings/$BK6ID '{"action":"PLACE","levelId":"nope"}' | jq_ "d['error']['code']")" "NO_LEVEL"
+check "staff set the level + group → the child is placed and the seat held" "$(api POST /api/bookings/$BK6ID "{\"action\":\"PLACE\",\"levelId\":\"$LV101\",\"groupId\":\"$JG\"}" | jq_ "d['data']['status']")/$(M "SELECT COUNT(*) FROM StudentEnrollment se JOIN FamilyMember m ON m.studentId=se.studentId WHERE m.id='$FM6' AND se.classSectionId='$JG' AND se.status='ACTIVE'")" "HOLD/1"
+PCAMP=$(M "SELECT id FROM Campus WHERE kind='PARTNER' AND isActive=1 AND partnerId IS NOT NULL LIMIT 1")
+PRT=$(M "SELECT partnerId FROM Campus WHERE id='$PCAMP'")
+JN=$(api POST /api/partners/$PRT/join '{"action":"create"}')
+PCODE=$(echo "$JN" | jq_ "d['data']['joinCode']")
+check "the partner gets a join code + link" "$(echo "$JN" | jq_ "(d['success'], d['data']['path'] == '/join/p/' + d['data']['joinCode'], d['data']['joinActive'])")" "(True, True, True)"
+check "the link opens the sign-up with the partner; the sign-up page knows the partner's name" "$(curl -s -o /dev/null -w '%{redirect_url}' $B/join/p/$PCODE | grep -o "/signup?partner=$PCODE")/$(curl -s "$B/api/public/partner-code?code=$PCODE" | jq_ "d['success']")" "/signup?partner=$PCODE/True"
+PA4() { curl -s -X POST -H 'Content-Type: application/json' -H "X-Forwarded-For: $2" -d "$1" $B/api/public/account; }
+check "a family signing up with it is tied to the partner" "$(PA4 "{\"who\":\"PARENT\",\"firstName\":\"Partnermom\",\"lastName\":\"Jointest\",\"phone\":\"01044455566\",\"password\":\"joinPass2026\",\"city\":\"Hurghada\",\"agree\":true,\"partnerCode\":\"$PCODE\"}" 10.8.6.1 | jq_ "d['success']")/$(M "SELECT CONCAT(signupSource,'/',partnerId='$PRT') FROM Guardian WHERE phoneNumber='01044455566'")" "True/PARTNER/1"
+PJ=$(mktemp); login_jar 01044455566 joinPass2026 "$PJ" 10.8.6.2
+PM=$(curl -s -b "$PJ" -X POST -H 'Content-Type: application/json' -d "{\"firstName\":\"Partnerkid\",\"lastName\":\"Jointest\",\"dob\":\"$Y10-01-01\",\"gender\":\"MALE\"}" $B/api/guardian-portal/family/members | jq_ "d['data']['id']")
+check "…and its booking options include the partner's place" "$(curl -s -b "$PJ" "$B/api/guardian-portal/family/book?person=m:$PM&slug=e2e-course" | jq_ "any(b['id']=='$PCAMP' for b in (d['data']['branch'] or []))")/$(f4 GET "/api/guardian-portal/family/book?person=m:$FM6&slug=e2e-course" 2>/dev/null | jq_ "any(b['id']=='$PCAMP' for b in ((d.get('data') or {}).get('branch') or []))")" "True/False"
+check "the staff list shows partner families" "$(api GET '/api/family-accounts?filter=PARTNER' | jq_ "[r['partnerName'] is not None for r in d['data'] if r['phoneNumber']=='01044455566']")" "[True]"
+api POST /api/partners/$PRT/join '{"action":"off"}' >/dev/null
+check "a stopped code: the link opens the normal sign-up, and signing up with it is refused" "$(curl -s -o /dev/null -w '%{redirect_url}' $B/join/p/$PCODE | grep -c partner=)/$(PA4 "{\"who\":\"PARENT\",\"firstName\":\"Latemom\",\"lastName\":\"Jointest\",\"phone\":\"01044455577\",\"password\":\"joinPass2026\",\"city\":\"Hurghada\",\"agree\":true,\"partnerCode\":\"$PCODE\"}" 10.8.6.3 | jq_ "d['error']['code']")" "0/BAD_PARTNER"
+api POST /api/partners/$PRT/join '{"action":"on"}' >/dev/null
+check "a group's booking link opens the booking of that group inside the account; an unknown group goes to the courses page" "$(curl -s -o /dev/null -w '%{redirect_url}' $B/book/$JG | grep -o "/dashboard/my-children?book=e2e-course&group=$JG")/$(curl -s -o /dev/null -w '%{redirect_url}' $B/book/nope | grep -o '/courses$')" "/dashboard/my-children?book=e2e-course&group=$JG//courses"
+LK=$(curl -s -b "$PJ" "$B/api/guardian-portal/family/book?person=m:$PM&slug=e2e-course&group=$JG")
+check "opened from the link: the group is chosen for the family" "$(echo "$LK" | jq_ "d['data']['link']['groupId']=='$JG'")" "True"
+curl -s -b "$PJ" -X POST -H 'Content-Type: application/json' -d "{\"person\":\"m:$PM\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"link\":\"$JG\",\"agree\":true}" $B/api/guardian-portal/family/book >/dev/null
+check "a booking from the link is counted for the group" "$(M "SELECT source FROM CourseBooking WHERE classSectionId='$JG' AND guardianId=(SELECT id FROM Guardian WHERE phoneNumber='01044455566') LIMIT 1")/$(api GET /api/groups/$JG/booking-link | jq_ "(d['data']['slug'], d['data']['bookings'] >= 1)")" "GROUP_LINK/('e2e-course', True)"
+check "an instructor cannot read group booking links or partner codes' families" "$(tapi GET /api/groups/$JG/booking-link | jq_ "d['success']")" "False"
+rm -f "$FJ4" "$PJ"
+echo "== 105. Invite code at sign-up, booking summary (six phases 1-D, 2026-11-13)"
+FJ5=$(mktemp); login_jar 01033344455 famPass2026 "$FJ5" 10.8.7.1
+RC5=$(curl -s -b "$FJ5" $B/api/referrals/mine | jq_ "d['data']['code']")
+check "the family has an invite code; its share text points to the sign-up page" "$(echo "$RC5" | grep -c '^TN-REF-')" "1"
+PA5() { curl -s -X POST -H 'Content-Type: application/json' -H "X-Forwarded-For: $2" -d "$1" $B/api/public/account; }
+check "a friend signs up with the invite code (kept on the account)" "$(PA5 "{\"who\":\"PARENT\",\"firstName\":\"Friendmom\",\"lastName\":\"Invitetest\",\"phone\":\"01055566677\",\"password\":\"invPass2026\",\"city\":\"Hurghada\",\"agree\":true,\"referral\":\"$RC5\"}" 10.8.7.2 | jq_ "d['success']")/$(M "SELECT referredBy='$RC5' FROM Guardian WHERE phoneNumber='01055566677'")" "True/1"
+IJ=$(mktemp); login_jar 01055566677 invPass2026 "$IJ" 10.8.7.3
+IM=$(curl -s -b "$IJ" -X POST -H 'Content-Type: application/json' -d "{\"firstName\":\"Friendkid\",\"lastName\":\"Invitetest\",\"dob\":\"$Y10-04-04\",\"gender\":\"FEMALE\"}" $B/api/guardian-portal/family/members | jq_ "d['data']['id']")
+IB=$(curl -s -b "$IJ" -X POST -H 'Content-Type: application/json' -d "{\"person\":\"m:$IM\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"agree\":true}" $B/api/guardian-portal/family/book | jq_ "d['data']['id']")
+check "the first booking makes the student and links the referral to the friend who invited" "$(M "SELECT COUNT(*) FROM Referral r JOIN FamilyMember m ON m.studentId=r.referredStudentId WHERE m.id='$IM' AND r.referrerGuardianId='$FG102'")" "1"
+check "the booking summary: the family that booked and staff can read it; another family and an instructor cannot" "$(curl -s -b "$IJ" $B/api/bookings/$IB/summary | jq_ "(d['success'], d['data']['who'])")/$(api GET /api/bookings/$IB/summary | jq_ "d['success']")/$(curl -s -b "$FJ5" $B/api/bookings/$IB/summary | jq_ "d['success']")/$(tapi GET /api/bookings/$IB/summary | jq_ "d['success']")" "(True, 'Friendkid Invitetest')/True/False/False"
+check "the printable summary page opens" "$(curl -s -o /dev/null -w '%{http_code}' -b "$IJ" $B/reports/booking/$IB)" "200"
+rm -f "$FJ5" "$IJ"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

@@ -908,6 +908,10 @@ model Guardian {
   selfAccount  Boolean @default(false)
   country      String? @db.VarChar(60)
   city         String? @db.VarChar(60)
+  /// Six phases 1-C: the family came through this partner's join code / link (sees its places, groups and prices)
+  partnerId    String?  @db.VarChar(40)
+  /// Six phases 1-D: the invite (referral) code typed at sign-up; linked to the first student made from this account
+  referredBy   String?  @db.VarChar(40)
 
   user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   students Student[]
@@ -5049,6 +5053,9 @@ model Partner {
   address      String?            @db.Text
   notes        String?            @db.Text
   isActive     Boolean            @default(true)
+  /// Six phases 1-C (2026-11-13): the partner's join code + sign-up link /join/p/<code> (families who use it are tied to the partner)
+  joinCode     String?            @unique @db.VarChar(30)
+  joinActive   Boolean            @default(true)
   createdById  String?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
@@ -5866,6 +5873,8 @@ model CourseBooking {
   campusId       String?   @db.VarChar(40)
   classSectionId String?   @db.VarChar(40)
   code           String?   @db.VarChar(40)
+  /// Six phases 1-C: where the booking came from: GROUP_LINK (a group's booking link / QR), PARTNER, null = the account
+  source         String?   @db.VarChar(20)
   status         String    @db.VarChar(12)
   holdUntil      DateTime?
   invoiceId      String?   @db.VarChar(40)

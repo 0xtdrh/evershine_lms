@@ -30,7 +30,7 @@ export async function canSeeAccount(user: Who, guardianId: string) {
   return (await prisma.guardian.count({ where: { AND: [{ id: guardianId }, await placeWhere(user)] } })) > 0
 }
 
-export type AccountFilter = 'ALL' | 'WEBSITE' | 'STAFF' | 'NO_BOOKING'
+export type AccountFilter = 'ALL' | 'WEBSITE' | 'STAFF' | 'PARTNER' | 'NO_BOOKING'
 
 export async function listAccounts(user: Who, opts: { q?: string | null; filter?: AccountFilter }) {
   const q = opts.q?.trim()
@@ -39,19 +39,20 @@ export async function listAccounts(user: Who, opts: { q?: string | null; filter?
     where: {
       AND: [
         await placeWhere(user),
-        filter === 'WEBSITE' ? { signupSource: 'WEBSITE' } : filter === 'STAFF' ? { signupSource: 'STAFF' } : filter === 'NO_BOOKING' ? { students: { none: {} } } : {},
+        filter === 'WEBSITE' ? { signupSource: 'WEBSITE' } : filter === 'STAFF' ? { signupSource: 'STAFF' } : filter === 'PARTNER' ? { partnerId: { not: null } } : filter === 'NO_BOOKING' ? { students: { none: {} } } : {},
         q ? { OR: [{ firstName: { contains: q } }, { lastName: { contains: q } }, { phoneNumber: { contains: q.replace(/\s/g, '') } }, { email: { contains: q } }, { members: { some: { firstName: { contains: q } } } }] } : {},
       ],
     },
     orderBy: { createdAt: 'desc' },
     take: 150,
     select: {
-      id: true, firstName: true, lastName: true, phoneNumber: true, email: true, signupSource: true, selfAccount: true, country: true, city: true, createdAt: true,
+      id: true, firstName: true, lastName: true, phoneNumber: true, email: true, signupSource: true, selfAccount: true, country: true, city: true, createdAt: true, partnerId: true,
       user: { select: { lastLogin: true, emailVerified: true } },
       _count: { select: { members: true, students: true } },
     },
   })
-  return rows.map((r) => ({ ...r, members: r._count.members, students: r._count.students, lastLogin: r.user.lastLogin, emailVerified: r.user.emailVerified }))
+  const partners = await prisma.partner.findMany({ where: { id: { in: rows.map((r) => r.partnerId).filter(Boolean) as string[] } }, select: { id: true, name: true } })
+  return rows.map((r) => ({ ...r, partnerName: partners.find((p) => p.id === r.partnerId)?.name ?? null, members: r._count.members, students: r._count.students, lastLogin: r.user.lastLogin, emailVerified: r.user.emailVerified }))
 }
 
 export async function accountDetail(guardianId: string) {

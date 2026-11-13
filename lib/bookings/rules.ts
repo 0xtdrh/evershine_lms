@@ -8,12 +8,13 @@ import { z } from 'zod'
 
 export const BOOKING_MODES = ['ONLINE', 'RECORDED', 'BRANCH'] as const
 export type BookingMode = (typeof BOOKING_MODES)[number]
-export const BOOKING_STATUSES = ['REVIEW', 'HOLD', 'CONFIRMED', 'WAITING', 'EXPIRED', 'CANCELLED', 'REJECTED'] as const
+export const BOOKING_STATUSES = ['REVIEW', 'PLACEMENT', 'HOLD', 'CONFIRMED', 'WAITING', 'EXPIRED', 'CANCELLED', 'REJECTED'] as const
 export type BookingStatus = (typeof BOOKING_STATUSES)[number]
-export const OPEN_STATUSES: BookingStatus[] = ['REVIEW', 'HOLD', 'WAITING']
+export const OPEN_STATUSES: BookingStatus[] = ['REVIEW', 'PLACEMENT', 'HOLD', 'WAITING']
 
 export const STATUS_TEXT: Record<BookingStatus, { en: string; ar: string }> = {
   REVIEW: { en: 'Waiting for TechNova to confirm', ar: 'مستني TechNova تأكد' },
+  PLACEMENT: { en: 'Waiting for TechNova to set the level', ar: 'مستني TechNova تحدد المستوى' },
   HOLD: { en: 'Seat held — pay to confirm', ar: 'المكان محجوز — ادفع علشان يتأكد' },
   CONFIRMED: { en: 'Confirmed', ar: 'اتأكد' },
   WAITING: { en: 'On the waiting list', ar: 'في قايمة الانتظار' },
@@ -75,6 +76,10 @@ export const bookSchema = z.object({
   campusId: z.string().max(40).nullable().optional(),
   plan: z.enum(['SUBSCRIPTION', 'ONE_TIME']).nullable().optional(),
   code: z.string().trim().max(40).nullable().optional(),
+  /** a track: did the child learn this before? BEFORE = TechNova sets the level first (placement) */
+  experience: z.enum(['NEW', 'BEFORE']).nullable().optional(),
+  /** the group of the booking link / QR the family came from */
+  link: z.string().max(40).nullable().optional(),
   agree: z.literal(true),
 })
 export type BookInput = z.infer<typeof bookSchema>

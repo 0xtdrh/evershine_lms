@@ -17,7 +17,7 @@ import { useUrlTab } from '@/hooks/use-url-tab'
 import { whatsappNumber } from '@/lib/students/portal-password'
 import { BookingRules, StaffBookings } from '@/components/family/StaffBookings'
 
-type Row = { id: string; firstName: string; lastName: string; phoneNumber: string; email: string | null; signupSource: string | null; selfAccount: boolean; city: string | null; createdAt: string; members: number; students: number; lastLogin: string | null }
+type Row = { id: string; firstName: string; lastName: string; phoneNumber: string; email: string | null; signupSource: string | null; partnerName: string | null; selfAccount: boolean; city: string | null; createdAt: string; members: number; students: number; lastLogin: string | null }
 type Person = { key: string; memberId: string | null; studentId: string | null; firstName: string; lastName: string; age: number | null; registrationNumber: string | null }
 type Detail = {
   account: { id: string; firstName: string; lastName: string; phoneNumber: string; email: string | null; relationship: string; signupSource: string | null; country: string | null; city: string | null; createdAt: string; user: { lastLogin: string | null; emailVerified: boolean } }
@@ -26,12 +26,12 @@ type Detail = {
   link: { createdAt: string; expiresAt: string; usedAt: string | null } | null
   options: { tracks: { id: string; name: string; minAge: number | null; maxAge: number | null }[]; courses: { id: string; name: string }[] }
 }
-type Settings = { signupOpen: boolean; unsuitable: 'LOCK' | 'HIDE'; emailCheck: boolean; linkDays: number }
+type Settings = { signupOpen: boolean; unsuitable: 'LOCK' | 'HIDE'; emailCheck: boolean; askExperience: boolean; linkDays: number }
 
 const input = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm'
 const btn = 'rounded-lg px-3 py-2 text-sm font-semibold'
 const day = (d: string | null, ar: boolean) => (d ? new Date(d).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'short', year: 'numeric' }) : '—')
-const SOURCE: Record<string, [string, string]> = { WEBSITE: ['Website', 'الموقع'], STAFF: ['Branch', 'الفرع'] }
+const SOURCE: Record<string, [string, string]> = { WEBSITE: ['Website', 'الموقع'], STAFF: ['Branch', 'الفرع'], PARTNER: ['Partner', 'شريك'] }
 
 function LinkBox({ path, phone, name }: { path: string; phone: string; name: string }) {
   const url = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path
@@ -77,7 +77,7 @@ export default function FamilyAccountsPage() {
       {current === 'accounts' ? (
         <section className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            {[['ALL', L('All', 'الكل')], ['WEBSITE', L('From the website', 'من الموقع')], ['STAFF', L('Made at a branch', 'اتعملت في الفرع')], ['NO_BOOKING', L('No student yet', 'لسه مفيش طالب')]].map(([k, label]) => (
+            {[['ALL', L('All', 'الكل')], ['WEBSITE', L('From the website', 'من الموقع')], ['STAFF', L('Made at a branch', 'اتعملت في الفرع')], ['PARTNER', L('Through a partner', 'عن طريق شريك')], ['NO_BOOKING', L('No student yet', 'لسه مفيش طالب')]].map(([k, label]) => (
               <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={filter === k} className={`rounded-full border px-3 py-1 text-sm ${filter === k ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-slate-300 text-slate-700'}`}>{label}</button>
             ))}
             <input className={`${input} ms-auto max-w-xs`} placeholder={L('Name, phone, e-mail…', 'الاسم أو الموبايل أو الإيميل…')} value={q} onChange={(e) => setQ(e.target.value)} />
@@ -93,7 +93,7 @@ export default function FamilyAccountsPage() {
                   <tr key={r.id} className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${open === r.id ? 'bg-blue-50/50' : ''}`} onClick={() => setOpen(open === r.id ? null : r.id)}>
                     <td className="p-2 font-medium text-slate-900">{r.firstName} {r.lastName}{r.selfAccount ? <span className="ms-1 rounded bg-slate-100 px-1 text-xs text-slate-600">{L('student 18+', 'طالب 18+')}</span> : null}</td>
                     <td className="p-2" dir="ltr">{r.phoneNumber}</td>
-                    <td className="p-2">{r.signupSource ? (ar ? SOURCE[r.signupSource]?.[1] : SOURCE[r.signupSource]?.[0]) ?? r.signupSource : L('Admission', 'طلب التحاق')}</td>
+                    <td className="p-2">{r.signupSource ? (ar ? SOURCE[r.signupSource]?.[1] : SOURCE[r.signupSource]?.[0]) ?? r.signupSource : L('Admission', 'طلب التحاق')}{r.partnerName ? <span className="block text-xs text-violet-700">{r.partnerName}</span> : null}</td>
                     <td className="p-2">{r.members} / {r.students}</td>
                     <td className="p-2">{day(r.createdAt, ar)}</td>
                     <td className="p-2">{day(r.lastLogin, ar)}</td>
@@ -242,6 +242,7 @@ function SettingsTab() {
         <label className="flex items-center gap-2"><input type="checkbox" checked={s.emailCheck} onChange={(e) => void save({ emailCheck: e.target.checked })} /> {L('Confirm the e-mail with a code', 'تأكيد الإيميل بكود')}</label>
         <p className={`mt-1 text-xs ${data.emailReady ? 'text-emerald-700' : 'text-amber-700'}`}>{data.emailReady ? L('E-mail sending is set up.', 'إرسال الإيميل متظبط.') : L('E-mail sending is not set up yet (needs the company domain + the Resend key on the host).', 'إرسال الإيميل لسه مش متظبط (محتاج دومين الشركة + مفتاح Resend على الاستضافة).')}</p>
       </div>
+      <label className="flex items-center gap-2"><input type="checkbox" checked={s.askExperience} onChange={(e) => void save({ askExperience: e.target.checked })} /> {L('Full tracks: ask “learned before?” — yes = staff set the level first', 'التراك الكامل: اسأل «اتعلم قبل كده؟» — أيوه = الموظف يحدد المستوى الأول')}</label>
       <BookingRules />
       <label className="flex items-center gap-2">{L('Password link works for', 'لينك الباسورد شغال لمدة')}<input type="number" min={1} max={30} className={`${input} w-20`} defaultValue={s.linkDays} onBlur={(e) => { const n = Number(e.target.value); if (n && n !== s.linkDays) void save({ linkDays: n }) }} /> {L('day(s)', 'يوم')}</label>
     </section>

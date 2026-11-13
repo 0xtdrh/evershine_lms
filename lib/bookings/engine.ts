@@ -36,7 +36,7 @@ export class BookingError extends Error {
   constructor(public code: string, message: string, public status = 400) { super(message) }
 }
 
-type Guardian = { id: string; userId: string; firstName: string; lastName: string; phoneNumber: string; city: string | null }
+type Guardian = { id: string; userId: string; firstName: string; lastName: string; phoneNumber: string; city: string | null; partnerId?: string | null }
 
 // ── what can be booked ───────────────────────────────────────────────────────
 
@@ -55,7 +55,7 @@ async function codeFor(raw: string | null | undefined, c: PublicCourse, phone: s
 }
 
 /** Everything a family needs to choose: the starting level, the online / branch groups with details, the recorded plans. */
-export async function bookingOptions(guardian: Guardian, personKey: string, slug: string, rawCode?: string | null) {
+export async function bookingOptions(guardian: Guardian, personKey: string, slug: string, rawCode?: string | null, linkGroupId?: string | null) {
   const person = (await familyOf(guardian.id)).find((p) => p.key === personKey)
   if (!person) throw new BookingError('NOT_FOUND', 'Not in your family · مش في عيلتك', 404)
   const { courses } = await coursesFor(guardian.id, person)
@@ -75,12 +75,21 @@ export async function bookingOptions(guardian: Guardian, personKey: string, slug
   if (!canBook(fit) && !code?.row?.unlocks) throw new BookingError('NOT_SUITABLE', 'This course does not suit the age. Ask TechNova to open it · الكورس ده مش مناسب للسن. اطلب من TechNova تفتحه', 403)
 
   const levels = await courseLevels(c)
-  const level = levels.find((l) => l.id === (codeGroups[0]?.levelId ?? codeLevel ?? code?.row?.startLevelId)) ?? levels[0]
+  // a group's booking link / QR: that group (and its level), even in a partner's place
+  const linkGroup = linkGroupId ? await prisma.classSection.findFirst({ where: { id: linkGroupId, status: 'ACTIVE', isActive: true, kind: 'GROUP', levelId: { in: levels.map((l) => l.id) } }, select: { id: true, levelId: true, campusId: true } }) : null
+  const level = levels.find((l) => l.id === (linkGroup?.levelId ?? codeGroups[0]?.levelId ?? codeLevel ?? code?.row?.startLevelId)) ?? levels[0]
   if (!level) throw new BookingError('NOT_FOUND', 'This course has no level yet · الكورس ده لسه مالوش مستوى', 404)
   const modes = effectiveModes({ level: level.allowedModes, course: level.subject?.allowedModes, track: level.subject?.track?.allowedModes }).modes
 
   const groups = await prisma.classSection.findMany({
-    where: { levelId: level.id, status: 'ACTIVE', isActive: true, kind: 'GROUP', campus: { isActive: true, kind: { in: ['MAIN', 'ONLINE'] } } },
+    where: {
+      levelId: level.id, status: 'ACTIVE', isActive: true, kind: 'GROUP',
+      OR: [
+        { campus: { isActive: true, kind: { in: ['MAIN', 'ONLINE'] } } },
+        ...(guardian.partnerId ? [{ campus: { isActive: true, kind: 'PARTNER', partnerId: guardian.partnerId } }] : []),
+        ...(linkGroup ? [{ id: linkGroup.id }] : []),
+      ],
+    },
     select: { id: true, className: true, sectionName: true, scheduleSlots: true, startDate: true, priceOverride: true, installmentsAllowed: true, campus: { select: { id: true, name: true, kind: true } } },
     take: 60,
   })
@@ -93,11 +102,18 @@ export async function bookingOptions(guardian: Guardian, personKey: string, slug
       price: await cyclePrice(level, g.campus.id, g.priceOverride), installments: g.installmentsAllowed,
     }
   }))
-  const branches = await prisma.campus.findMany({ where: { isActive: true, kind: 'MAIN' }, select: { id: true, name: true }, orderBy: { name: 'asc' } })
+  const branches = await prisma.campus.findMany({
+    where: { isActive: true, OR: [{ kind: 'MAIN' }, ...(guardian.partnerId ? [{ kind: 'PARTNER', partnerId: guardian.partnerId }] : []), ...(linkGroup ? [{ id: linkGroup.campusId }] : [])], NOT: { kind: 'ONLINE' } },
+    select: { id: true, name: true }, orderBy: { name: 'asc' },
+  })
+  const settings = await (await import('@/lib/accounts/engine')).getAccountsSettings()
   const recorded = modes.includes('RECORDED') ? await prisma.recordedCourse.findFirst({ where: { levelId: level.id, isActive: true } }) : null
   return {
     person: { key: person.key, firstName: person.firstName, age: person.age },
-    course: { slug: c.slug, title: c.title, trackId: c.trackId },
+    course: { slug: c.slug, title: c.title, trackId: c.trackId, refType: c.refType },
+    /** a full track for a child who may have learned before: ask, and let TechNova set the level */
+    askExperience: c.refType === 'TRACK' && settings.askExperience && levels.length > 1 && !linkGroup && !code?.row?.startLevelId && !codeGroups.length && !codeLevel,
+    link: linkGroup ? { groupId: linkGroup.id, online: shaped.find((g) => g.id === linkGroup.id)?.online ?? false, campusId: linkGroup.campusId } : null,
     level: { id: level.id, name: level.name, course: level.subject?.name ?? '', perMonth: level.pricingType === 'MONTHLY' },
     code: code?.row ? { code: code.code, kind: code.row.kind, value: code.row.value } : null,
     online: modes.includes('ONLINE') ? shaped.filter((g) => g.online) : null,
@@ -118,19 +134,20 @@ export async function onlineCampusId() {
 }
 
 export async function book(guardian: Guardian, v: BookInput) {
-  const opts = await bookingOptions(guardian, v.person, v.slug, v.code)
+  const opts = await bookingOptions(guardian, v.person, v.slug, v.code, v.link)
   const person = (await familyOf(guardian.id)).find((p) => p.key === v.person)!
   let campusId: string | null = null
   let groupId: string | null = null
+  const placement = v.experience === 'BEFORE' && opts.askExperience
   if (v.mode === 'RECORDED') {
     if (!opts.recorded) throw new BookingError('NO_WAY', 'This course is not offered recorded · الكورس ده مش متاح مسجل')
-    if (!opts.recorded.plans.some((p) => p.plan === v.plan)) throw new BookingError('NO_PLAN', 'Choose a plan · اختار النظام')
+    if (!placement && !opts.recorded.plans.some((p) => p.plan === v.plan)) throw new BookingError('NO_PLAN', 'Choose a plan · اختار النظام')
     campusId = await onlineCampusId()
     if (!campusId) throw new BookingError('NO_WAY', 'Online learning is not set up yet · التعلم أونلاين لسه مش جاهز')
   } else {
     const list = v.mode === 'ONLINE' ? opts.online : opts.branch?.flatMap((b) => b.groups) ?? null
     if (!list) throw new BookingError('NO_WAY', v.mode === 'ONLINE' ? 'Live online is not offered for this course · اللايف أونلاين مش متاح للكورس ده' : 'Branches do not offer this course · الفروع مش بتقدم الكورس ده')
-    if (v.groupId) {
+    if (v.groupId && !placement) {
       const g = list.find((x) => x.id === v.groupId)
       if (!g) throw new BookingError('NO_GROUP', 'This group is not available · الجروب ده مش متاح')
       groupId = g.id
@@ -163,7 +180,8 @@ export async function book(guardian: Guardian, v: BookInput) {
   const row = await prisma.courseBooking.create({
     data: {
       guardianId: guardian.id, memberId: person.memberId, studentId: person.studentId, listingSlug: v.slug, levelId: opts.level.id, mode: v.mode, plan: v.plan ?? null,
-      campusId, classSectionId: groupId, code, status: rule.confirm === 'STAFF' ? 'REVIEW' : 'HOLD', createdById: guardian.userId,
+      campusId, classSectionId: groupId, code, status: placement ? 'PLACEMENT' : rule.confirm === 'STAFF' ? 'REVIEW' : 'HOLD', createdById: guardian.userId,
+      source: v.link && groupId === v.link ? 'GROUP_LINK' : guardian.partnerId ? 'PARTNER' : null,
     },
   })
   if (code) {
@@ -173,8 +191,8 @@ export async function book(guardian: Guardian, v: BookInput) {
       throw new BookingError('BAD_CODE', `${PROBLEM_TEXT.USED_UP.en} · ${PROBLEM_TEXT.USED_UP.ar}`)
     }
   }
-  await tellStaff(row.id, guardian, person, opts.course.title, v.mode, rule.confirm === 'STAFF')
-  if (rule.confirm === 'STAFF') return bookingView(row.id)
+  await tellStaff(row.id, guardian, person, opts.course.title, v.mode, rule.confirm === 'STAFF' || placement)
+  if (rule.confirm === 'STAFF' || placement) return bookingView(row.id)
   await place(row.id, guardian.userId, rule.holdHours)
   return bookingView(row.id)
 }
@@ -206,6 +224,12 @@ async function studentFor(person: FamilyPerson, guardian: Guardian, campusId: st
     await tx.familyMember.update({ where: { id: m.id }, data: { studentId: s.id } })
     return s
   })
+  // the friend's invite code typed at sign-up: linked to the first student (before the first invoice → the welcome discount applies)
+  const ref = await prisma.guardian.findUnique({ where: { id: guardian.id }, select: { referredBy: true } })
+  if (ref?.referredBy) {
+    const { linkReferral } = await import('@/lib/referrals/engine')
+    await linkReferral({ studentId: student.id, codeOrPhone: ref.referredBy, userId: guardian.userId }).catch((e) => console.warn('[BOOKING] referral', e))
+  }
   return student.id
 }
 
@@ -316,7 +340,7 @@ async function release(bookingId: string, status: BookingStatus, reason: string,
 export async function cancelByFamily(guardianId: string, bookingId: string) {
   const b = await prisma.courseBooking.findFirst({ where: { id: bookingId, guardianId } })
   if (!b) throw new BookingError('NOT_FOUND', 'Booking not found', 404)
-  if (!['REVIEW', 'HOLD', 'WAITING'].includes(b.status)) throw new BookingError('CLOSED', 'This booking cannot be cancelled here. Ask TechNova · الحجز ده مايتلغيش من هنا. كلّم TechNova', 409)
+  if (!['REVIEW', 'PLACEMENT', 'HOLD', 'WAITING'].includes(b.status)) throw new BookingError('CLOSED', 'This booking cannot be cancelled here. Ask TechNova · الحجز ده مايتلغيش من هنا. كلّم TechNova', 409)
   if (b.status === 'HOLD' && b.invoiceId && Number((await prisma.feeInvoice.findUnique({ where: { id: b.invoiceId }, select: { paidAmount: true } }))?.paidAmount ?? 0) > 0) {
     throw new BookingError('PAID', 'Something was already paid: ask TechNova (refund rules) · فيه فلوس اتدفعت: كلّم TechNova', 409)
   }
@@ -324,19 +348,44 @@ export async function cancelByFamily(guardianId: string, bookingId: string) {
 }
 
 /** Staff approve / reject a booking that waits for them (their places only). */
-export async function decide(staff: { id: string; role: string }, bookingId: string, action: 'APPROVE' | 'REJECT' | 'CANCEL', reason?: string | null) {
+/** For a booking waiting for its level: the course's levels and the groups that fit the booking's way / place. */
+export async function placementOptions(bookingId: string) {
+  const b = await prisma.courseBooking.findUnique({ where: { id: bookingId } })
+  if (!b) throw new BookingError('NOT_FOUND', 'Booking not found', 404)
+  const c = (await publicCatalog({ slug: b.listingSlug }))[0]
+  if (!c) throw new BookingError('NOT_FOUND', 'The course page is closed · صفحة الكورس مقفولة', 404)
+  const levels = await courseLevels(c)
+  const groups = b.mode === 'RECORDED' ? [] : await prisma.classSection.findMany({
+    where: { levelId: { in: levels.map((l) => l.id) }, status: 'ACTIVE', isActive: true, kind: 'GROUP', ...(b.campusId ? { campusId: b.campusId } : {}) },
+    select: { id: true, className: true, sectionName: true, levelId: true, scheduleSlots: true },
+  })
+  const recorded = b.mode === 'RECORDED' ? await prisma.recordedCourse.findMany({ where: { levelId: { in: levels.map((l) => l.id) }, isActive: true }, select: { levelId: true } }) : []
+  return {
+    levels: levels.filter((l) => b.mode !== 'RECORDED' || recorded.some((r) => r.levelId === l.id)).map((l) => ({ id: l.id, name: `${l.subject?.name ?? ''} — ${l.name}` })),
+    groups: await Promise.all(groups.map(async (g) => ({ id: g.id, name: [g.className, g.sectionName].filter(Boolean).join(' '), levelId: g.levelId, slots: g.scheduleSlots, full: (await groupSeats(g.id)).full }))),
+  }
+}
+
+export async function decide(staff: { id: string; role: string }, bookingId: string, action: 'APPROVE' | 'REJECT' | 'CANCEL' | 'PLACE', reason?: string | null, place2?: { levelId?: string | null; groupId?: string | null; plan?: string | null }) {
   const b = await prisma.courseBooking.findUnique({ where: { id: bookingId } })
   if (!b) throw new BookingError('NOT_FOUND', 'Booking not found', 404)
   if (b.campusId && !allowsCampus(await loadPlaces(staff), b.campusId)) throw new BookingError('NOT_YOURS', 'This booking is in another place · الحجز ده في مكان تاني', 403)
-  if (action === 'APPROVE') {
+  if (action === 'PLACE') {
+    if (b.status !== 'PLACEMENT') throw new BookingError('CLOSED', 'This booking is not waiting for a level · الحجز ده مش مستني مستوى', 409)
+    const opts = await placementOptions(b.id)
+    if (!place2?.levelId || !opts.levels.some((l) => l.id === place2.levelId)) throw new BookingError('NO_LEVEL', 'Choose the level · اختار المستوى')
+    if (place2.groupId && !opts.groups.some((g) => g.id === place2.groupId && g.levelId === place2.levelId)) throw new BookingError('NO_GROUP', 'Choose a group of this level · اختار جروب من المستوى ده')
+    await prisma.courseBooking.update({ where: { id: b.id }, data: { levelId: place2.levelId, classSectionId: place2.groupId || null, plan: b.mode === 'RECORDED' ? place2.plan || b.plan || 'ONE_TIME' : b.plan, status: 'REVIEW', decidedById: staff.id } })
+    await place(b.id, staff.id)
+  } else if (action === 'APPROVE') {
     if (b.status !== 'REVIEW') throw new BookingError('CLOSED', 'Already decided · اتقرر قبل كده', 409)
     await prisma.courseBooking.update({ where: { id: b.id }, data: { decidedById: staff.id } })
     await place(b.id, staff.id)
   } else if (action === 'REJECT') {
-    if (b.status !== 'REVIEW') throw new BookingError('CLOSED', 'Already decided · اتقرر قبل كده', 409)
+    if (!['REVIEW', 'PLACEMENT'].includes(b.status)) throw new BookingError('CLOSED', 'Already decided · اتقرر قبل كده', 409)
     await release(b.id, 'REJECTED', reason || 'Not accepted · ماتقبلش', staff.id)
   } else {
-    if (!['HOLD', 'WAITING', 'REVIEW'].includes(b.status)) throw new BookingError('CLOSED', 'Already closed · اتقفل قبل كده', 409)
+    if (!['HOLD', 'WAITING', 'REVIEW', 'PLACEMENT'].includes(b.status)) throw new BookingError('CLOSED', 'Already closed · اتقفل قبل كده', 409)
     await release(b.id, 'CANCELLED', reason || 'Cancelled by TechNova · TechNova لغت الحجز', staff.id)
   }
   return bookingView(b.id)

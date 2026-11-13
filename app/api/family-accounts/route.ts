@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const s = await staffSession('read')
   if (s.error) return s.error
   const sp = request.nextUrl.searchParams
-  const filter = (['ALL', 'WEBSITE', 'STAFF', 'NO_BOOKING'].includes(sp.get('filter') ?? '') ? sp.get('filter') : 'ALL') as AccountFilter
+  const filter = (['ALL', 'WEBSITE', 'STAFF', 'PARTNER', 'NO_BOOKING'].includes(sp.get('filter') ?? '') ? sp.get('filter') : 'ALL') as AccountFilter
   return successResponse(await listAccounts(s.user, { q: sp.get('q'), filter }))
 }
 
