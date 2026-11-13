@@ -20,10 +20,10 @@ export async function ensureJoinCode(partnerId: string, fresh = false) {
   if (p.joinCode && !fresh) return p.joinCode
   for (let i = 0; i < 20; i++) {
     const code = joinCodeFor(p.name)
-    try {
-      await prisma.partner.update({ where: { id: partnerId }, data: { joinCode: code, joinActive: true } })
-      return code
-    } catch { /* taken: try another */ }
+    // the column is indexed, not unique (adding a unique rule would stop the host's schema push): checked here instead
+    if (await prisma.partner.findFirst({ where: { joinCode: code }, select: { id: true } })) continue
+    await prisma.partner.update({ where: { id: partnerId }, data: { joinCode: code, joinActive: true } })
+    return code
   }
   return null
 }
@@ -32,7 +32,7 @@ export async function ensureJoinCode(partnerId: string, fresh = false) {
 export async function partnerByJoinCode(raw: string | null | undefined) {
   const code = raw ? normalizeCode(raw) : ''
   if (!code) return null
-  const p = await prisma.partner.findUnique({ where: { joinCode: code }, select: { id: true, name: true, isActive: true, joinActive: true } })
+  const p = await prisma.partner.findFirst({ where: { joinCode: code }, select: { id: true, name: true, isActive: true, joinActive: true } })
   return p && p.isActive && p.joinActive ? { id: p.id, name: p.name } : null
 }
 

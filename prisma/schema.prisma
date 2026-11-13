@@ -5054,7 +5054,7 @@ model Partner {
   notes        String?            @db.Text
   isActive     Boolean            @default(true)
   /// Six phases 1-C (2026-11-13): the partner's join code + sign-up link /join/p/<code> (families who use it are tied to the partner)
-  joinCode     String?            @unique @db.VarChar(30)
+  joinCode     String?            @db.VarChar(30)
   joinActive   Boolean            @default(true)
   createdById  String?
   createdAt    DateTime           @default(now())
@@ -5066,6 +5066,7 @@ model Partner {
   contacts     PartnerContact[]
   activities   PartnerActivity[]
 
+  @@index([joinCode])
   @@index([isActive])
 }
 
