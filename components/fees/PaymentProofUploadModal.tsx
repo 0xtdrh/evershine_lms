@@ -241,14 +241,19 @@ export function PaymentProofUploadModal({
           <div className="space-y-2">
             <Label htmlFor="proof-file">{L('Proof Document', 'الإيصال')}</Label>
             <div className="flex items-center gap-3">
-              <Input
+              {/* final test 14/11 (L02): the browser's own file button said "Choose File / No file chosen" */}
+              <input
                 id="proof-file"
                 type="file"
                 accept="image/jpeg,image/png,application/pdf"
                 onChange={handleFileChange}
                 disabled={isUploading}
-                className="flex-1"
+                className="sr-only"
               />
+              <label htmlFor="proof-file" className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/50 px-3 py-3 text-sm font-medium text-blue-800 hover:bg-blue-50 ${isUploading ? 'pointer-events-none opacity-60' : ''}`}>
+                <ImageIcon className="h-4 w-4" aria-hidden />
+                <span className="truncate">{proofFile ? proofFile.name : L('Choose the receipt photo or PDF', 'اختار صورة الإيصال أو PDF')}</span>
+              </label>
               {proofFile && (
                 <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
                   {proofFile.type === 'application/pdf' ? <FileText className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
@@ -260,18 +265,18 @@ export function PaymentProofUploadModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="proof-amount">Amount you&apos;re paying (optional)</Label>
+            <Label htmlFor="proof-amount">{L('Amount you are paying (optional)', 'المبلغ اللي دفعته (اختياري)')}</Label>
             <Input
               id="proof-amount"
               type="number"
               min="0"
               step="0.01"
-              placeholder={`Full remaining balance: ${remaining.toLocaleString()}`}
+              placeholder={L(`Full remaining balance: ${remaining.toLocaleString()}`, `الباقي كله: ${remaining.toLocaleString()}`)}
               value={proofAmount}
               onChange={(event) => setProofAmount(event.target.value)}
               disabled={isUploading}
             />
-            <p className="text-xs text-slate-500">Leave blank to pay the full remaining balance. Some groups don&apos;t allow partial payments.</p>
+            <p className="text-xs text-slate-500">{L('Leave it empty to pay the whole remaining amount. Some groups do not allow paying part.', 'سيبها فاضية لو دفعت الباقي كله. بعض الجروبات مابتقبلش دفع جزء.')}</p>
           </div>
 
           <div className="space-y-2">
@@ -297,7 +302,7 @@ export function PaymentProofUploadModal({
                   {L('Uploading...', 'بيرفع...')}
                 </>
               ) : (
-                'Submit Receipt'
+                L('Send the receipt', 'ابعت الإيصال')
               )}
             </Button>
           </div>

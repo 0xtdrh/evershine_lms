@@ -138,7 +138,7 @@ export default function TeacherPortalIndexPage() {
             <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-5 text-left sm:text-right shrink-0">
               <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.35em] text-slate-400">{L('Today', 'النهارده')}</p>
               <p className="mt-1 sm:mt-3 text-base sm:text-xl font-semibold text-white">
-                {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                {new Date().toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Africa/Cairo' })}
               </p>
             </div>
           </div>
@@ -302,28 +302,16 @@ function MyShiftsSummary() {
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                 {assignments.teacher?.name && <span>{assignments.teacher.name}</span>}
                 {assignments.teacher?.employeeId && <span>{L('Employee ID:', 'الرقم الوظيفي:')} {assignments.teacher.employeeId}</span>}
-                {assignments.academicYear && <span>{assignments.academicYear}</span>}
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {assignments.activeShifts.map((code) => (
-              <Badge
-                key={code}
-                variant="outline"
-                className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full ${SHIFT_BADGE_CLASSES[code] ?? 'bg-gray-100 text-gray-700'}`}
-              >
-                {assignments.shifts.find((s) => s.code === code)?.label ?? code}
-              </Badge>
-            ))}
-          </div>
         </div>
 
-        {/* Shift breakdown */}
+        {/* final test 14/11: shifts are switched off — one card with every group (was one card per shift: «Evening») */}
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {assignments.shifts.map((shift) => (
-            <div key={shift.code} className={`rounded-xl sm:rounded-2xl border p-3.5 sm:p-4 ${SHIFT_BADGE_CLASSES[shift.code]?.replace('text-', 'border-').split(' ')[0]} bg-white`}>
-              <p className="text-xs sm:text-sm font-bold text-slate-800">{shift.label}</p>
+          {[{ code: 'ALL', sections: assignments.shifts.flatMap((x) => x.sections) }].map((shift) => (
+            <div key={shift.code} className="rounded-xl sm:rounded-2xl border border-slate-200 p-3.5 sm:p-4 bg-white">
+              <p className="text-xs sm:text-sm font-bold text-slate-800">{L('My groups', 'جروباتي')}</p>
               <div className="mt-2 space-y-1.5">
                 {shift.sections.slice(0, 4).map((sec, i) => (
                   <div key={i} className="text-xs text-slate-600 flex items-center gap-1.5 flex-wrap">

@@ -100,6 +100,6 @@ describe('attendance roster API', () => {
     const json = await response.json()
 
     expect(json.success).toBe(false)
-    expect(json.error.message).toBe('You are not assigned to this section')
+    expect(json.error.message).toMatch(/^You are not assigned to this section/)
   })
 })

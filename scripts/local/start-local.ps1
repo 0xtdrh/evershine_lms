@@ -99,7 +99,9 @@ try {
 
   # ── 2. a backup once a day ────────────────────────────────────────────────────────────────────────────────
   $today = Get-Date -Format 'yyyy-MM-dd'
-  $bk = "D:\TechNovaBackups\local-$today.sql.gz"
+  # a second copy (e.g. -Home_ D:\tn-test for the final test) keeps its own backups and never prunes the owner's
+  $tag = if ($Home_ -eq 'D:\tn-local') { 'local' } else { Split-Path $Home_ -Leaf }
+  $bk = "D:\TechNovaBackups\$tag-$today.sql.gz"
   if (-not (Test-Path $bk)) {
     Say "daily backup -> $bk"
     New-Item -ItemType Directory -Force 'D:\TechNovaBackups' | Out-Null
@@ -107,7 +109,7 @@ try {
     & "$bin\mysqldump.exe" --no-defaults -h 127.0.0.1 -P $DbPort -u root --single-transaction --routines --default-character-set=utf8mb4 "--result-file=$tmp" $db
     $in = [IO.File]::OpenRead($tmp); $out = [IO.File]::Create($bk); $gz = New-Object IO.Compression.GZipStream($out, [IO.Compression.CompressionLevel]::Optimal)
     $in.CopyTo($gz); $gz.Close(); $out.Close(); $in.Close(); Remove-Item $tmp
-    Get-ChildItem 'D:\TechNovaBackups\local-*.sql.gz' | Sort-Object Name -Descending | Select-Object -Skip 14 | Remove-Item
+    Get-ChildItem "D:\TechNovaBackups\$tag-2*.sql.gz" | Sort-Object Name -Descending | Select-Object -Skip 14 | Remove-Item
   }
 
   # ── 3. the Super Admin password ──────────────────────────────────────────────────────────────────────────

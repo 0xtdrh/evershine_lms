@@ -19,19 +19,22 @@ import { pickGroupInstructorOffering } from './instructor'
 
 type Db = Prisma.TransactionClient | typeof prisma
 
-export interface Seats { max: number | null; count: number; free: number | null; full: boolean; waiting: number }
+/** count = seats taken (in + waiting to pay); awaiting = of those, still waiting to pay (final test 14/11: shown apart) */
+export interface Seats { max: number | null; count: number; free: number | null; full: boolean; waiting: number; awaiting?: number }
 
 export async function groupSeats(classSectionId: string, db: Db = prisma): Promise<Seats> {
-  const [g, count, waiting] = await Promise.all([
+  const [g, byStatus, waiting] = await Promise.all([
     db.classSection.findUnique({ where: { id: classSectionId }, select: { maxStudents: true, scheduleSlots: true } }),
     // six phases E: a student waiting to pay still holds the seat
-    db.studentEnrollment.count({ where: { classSectionId, status: { in: ['ACTIVE', 'AWAITING_PAYMENT'] } } }),
+    db.studentEnrollment.groupBy({ by: ['status'], where: { classSectionId, status: { in: ['ACTIVE', 'AWAITING_PAYMENT'] } }, _count: { _all: true } }),
     db.waitingListEntry.count({ where: { classSectionId, status: 'WAITING' } }),
   ])
+  const awaiting = byStatus.find((r) => r.status === 'AWAITING_PAYMENT')?._count._all ?? 0
+  const count = byStatus.reduce((n, r) => n + r._count._all, 0)
   // a02 batch 3: never more students than the smallest room the group uses
   const max = seatLimit(g?.maxStudents ?? null, g ? await groupRoomCapacities(g.scheduleSlots) : [])
   const free = max == null ? null : Math.max(0, max - count)
-  return { max, count, free, full: max != null && count >= max, waiting }
+  return { max, count, free, full: max != null && count >= max, waiting, awaiting }
 }
 
 /** Puts a student on a full group's waiting list (no duplicates). */

@@ -9,7 +9,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { notifySeatFreed } from '@/lib/groups/capacity'
-import { notifyFamilies } from '@/lib/notifications/events'
+import { forChild, notifyFamilies } from '@/lib/notifications/events'
 import { paidEnough, resolvePolicy, type Policy } from './policy'
 
 export async function policyForGroup(groupId: string): Promise<Policy & { kind: string; installmentsAllowed: boolean }> {
@@ -67,7 +67,7 @@ export async function releaseAwaiting(groupId: string): Promise<number> {
     const g = await prisma.classSection.findUnique({ where: { id: groupId }, select: { className: true } })
     await notifyFamilies(joined, 'BOOKING_UPDATE', (s) => ({
       title: `${s.firstName} joined ${g?.className ?? 'the group'}`, message: 'Payment received: the sessions and lessons are open.',
-      titleAr: `${s.firstName} دخل ${g?.className ?? 'الجروب'}`, messageAr: 'الدفع وصل: الحصص والدروس مفتوحة.', relatedId: groupId,
+      titleAr: `${s.firstName} ${forChild(s, 'دخل', 'دخلت')} ${g?.className ?? 'الجروب'}`, messageAr: 'الدفع وصل: الحصص والدروس مفتوحة.', relatedId: groupId,
     })).catch(() => 0)
   }
   return joined.length

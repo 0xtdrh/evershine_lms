@@ -34,7 +34,7 @@ async function applyToAttendance(excuse: { studentId: string; classSectionId: st
       status: 'ABSENT',
       studentEnrollment: { studentId: excuse.studentId, classSectionId: excuse.classSectionId },
     },
-    data: { status: 'EXCUSED', remarks: `Excuse: ${excuse.reason}`.slice(0, 190) },
+    data: { status: 'EXCUSED', remarks: `عذر: ${excuse.reason}`.slice(0, 190) },
   })
 }
 

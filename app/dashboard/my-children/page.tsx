@@ -314,7 +314,7 @@ export default function MyChildrenPage() {
                 <TabsTrigger value="overview">{L('Overview', 'نظرة عامة')}</TabsTrigger>
                 <TabsTrigger value="attendance">{L('Attendance', 'الحضور')}</TabsTrigger>
                 <TabsTrigger value="results">{L('Results', 'النتايج')}</TabsTrigger>
-                <TabsTrigger value="monitoring">{L('Monitoring', 'المتابعة')}</TabsTrigger>
+                {/* final test 14/11: the old template "Monitoring" tab (English daily feedback) is hidden — session reports + monthly reports replace it */}
                 <TabsTrigger value="fees">{L('Invoices', 'الفواتير')}</TabsTrigger>
                 <TabsTrigger value="excuses">{L('Absence excuse', 'اعتذار عن غياب')}</TabsTrigger>
                 <TabsTrigger value="one-to-one">One-to-One</TabsTrigger>

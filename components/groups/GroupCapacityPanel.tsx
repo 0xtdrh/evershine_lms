@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Users, Hourglass, ArrowRight } from 'lucide-react'
 import { L, dayName } from '@/lib/i18n/client'
 
-export interface Seats { max: number | null; count: number; free: number | null; full: boolean; waiting: number }
+export interface Seats { max: number | null; count: number; free: number | null; full: boolean; waiting: number; awaiting?: number }
 export interface WaitingRow { id: string; position: number; since: string; notes: string | null; student: { id: string; name: string; registrationNumber: string } }
 interface AvailableGroup { id: string; label: string; campus: { id: string; name: string }; scheduleSlots: { dayOfWeek: number; time: string }[] | null; teacher: string | null; count: number; max: number | null; free: number | null }
 
@@ -58,7 +58,7 @@ export function GroupCapacityPanel({
       <div className="flex flex-wrap items-center gap-2">
         <Users className="h-4 w-4 text-indigo-600" />
         <span className="font-medium text-slate-700">
-          {seats.count}{seats.max != null ? `/${seats.max}` : ''} {L('students', 'طالب')}
+          {seats.count - (seats.awaiting ?? 0)}{seats.max != null ? `/${seats.max}` : ''} {L('students', 'طالب')}{seats.awaiting ? ` · +${seats.awaiting} ${L('waiting to pay', 'مستني الدفع')}` : ''}
           {seats.full && <span className="ml-1.5 rounded-full border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600">{L('Full', 'مليان')}</span>}
           {seats.waiting > 0 && <span className="ml-1.5 text-amber-700">· {seats.waiting} {L('waiting', 'مستني')}</span>}
         </span>

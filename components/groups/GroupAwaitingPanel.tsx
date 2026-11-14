@@ -19,9 +19,13 @@ export function GroupAwaitingPanel({ groupId, canApprove }: { groupId: string; c
   if (!data || (data.policy.entry !== 'AFTER_PAYMENT' && !data.students.length)) return null
   const act = async (studentId: string, action: 'OPEN' | 'REMOVE') => {
     if (action === 'REMOVE' && !confirm(L('Remove this student? The unpaid invoice is cancelled and the seat is freed.', 'تشيل الطالب ده؟ الفاتورة اللي مش مدفوعة هتتلغي والمكان هيفضى.'))) return
+    const name = data.students.find((x) => x.studentId === studentId)?.name ?? ''
     try {
       await fetchApi(`/api/groups/${groupId}/awaiting`, { method: 'POST', body: JSON.stringify({ studentId, action }) })
-      notify.success(L('Done', 'تم'))
+      // final test 14/11 (E03): say what happened, not just "done"
+      notify.success(action === 'OPEN'
+        ? L(`${name} joined the group — the invoice is still open`, `${name} دخل الجروب — الفاتورة لسه مفتوحة`)
+        : L(`${name} was removed and the seat is free`, `${name} اتشال والمكان فضي`))
       void qc.invalidateQueries({ queryKey: ['group-awaiting', groupId] }); void qc.invalidateQueries({ queryKey: ['group'] }); void qc.invalidateQueries()
     } catch (e) { notify.error((e as Error).message) }
   }

@@ -95,7 +95,7 @@ export function ParentWalletCard() {
             </div>
             <label className="flex items-center gap-2 text-xs text-slate-600">
               <input type="checkbox" checked={c.visibleToStudent} onChange={(e) => visibility.mutate({ studentId: c.studentId, visible: e.target.checked })} />
-              {c.name.split(' ')[0]} {L('can see this wallet in their own portal', 'يقدر يشوف المحفظة دي في بوابته')}
+              {L(`${c.name.split(' ')[0]} can see this wallet in their own portal`, `المحفظة دي ظاهرة لـ ${c.name.split(' ')[0]} في البوابة`)}
             </label>
             {c.pendingTopUps.map((t) => <p key={t.id} className="text-xs text-amber-700">{L('Top-up of', 'شحن بمبلغ')} {money(t.amount)} {L('waiting to be checked.', 'مستني المراجعة.')}</p>)}
             <WalletLedger rows={c.transactions} max={6} />

@@ -3576,6 +3576,27 @@ M "DELETE FROM VideoWatch WHERE blockId='$RB'"; M "DELETE FROM CurriculumBlock W
 [ -n "$RHID" ] && M "UPDATE CurriculumBlock SET audience='BOTH' WHERE id IN ($RHID)"
 M "UPDATE StudentEnrollment SET status='$RLOST' WHERE id='$LOE'"
 rm -f "$RJ" "$RKJ"
+echo "== 110. Final test fixes: attendance branch check, month-full block, sign-up limit, invoice due = seat hold (2026-11-14)"
+FADJ=$(mktemp); login_jar m0admin@e2e.local E2eAdm12345 "$FADJ" 10.0.2.10
+fadapi() { curl -s -b "$FADJ" -X "$1" -H 'Content-Type: application/json' ${3:+-d "$3"} "$B$2"; }
+check "staff of one place cannot read / export another place's attendance (was open: J02)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$FADJ" "$B/api/enrollment-attendance/roster?classSectionId=$GA&date=$(D 0)")/$(curl -s -o /dev/null -w '%{http_code}' -b "$FADJ" -X POST -H 'Content-Type: application/json' -d "{\"classSectionId\":\"$GA\",\"startDate\":\"$(D -30)\",\"endDate\":\"$(D 0)\"}" $B/api/enrollment-attendance/export)/$(curl -s -o /dev/null -w '%{http_code}' -b "$FADJ" "$B/api/enrollment-attendance/roster?classSectionId=$LG&date=$(D 0)")" "403/403/200"
+check "the unused old QR attendance route is locked for everyone but the Super Admin" "$(secapi POST /api/enrollment-attendance/scan '{"studentEnrollmentId":"x","manualStatus":"PRESENT"}' | jq_ "d['success']")" "False"
+rm -f "$FADJ"
+FG=$(mkgroup "E2E Month Full" "$LV101")
+FST=$(mkstu FullKid 01066661101 '' '')
+api POST /api/groups/$FG/students "{\"studentId\":\"$FST\"}" >/dev/null
+FE=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$FST' AND classSectionId='$FG'")
+FPER=$(M "SELECT IF(pricingType='FULL_LEVEL', numberOfSessions, GREATEST(1, ROUND(numberOfSessions / GREATEST(1, numberOfMonths)))) FROM Level WHERE id='$LV101'")
+for i in $(seq 1 $FPER); do sess $FG "$(D $(( -40 + i * 2 )))" "$(rec $FE PRESENT)" >/dev/null; done
+check "a month of $FPER sessions: the next new date is refused (CYCLE_FULL)" "$(sess $FG "$(D -1)" "$(rec $FE PRESENT)" | jq_ "d['error']['code']")" "CYCLE_FULL"
+check "…a date already held can still be corrected" "$(sess $FG "$(D -38)" "$(rec $FE ABSENT)" | jq_ "d['success']")" "True"
+check "…the attendance screen says why before anyone fills it" "$(api GET "/api/enrollment-attendance/roster?classSectionId=$FG&date=$(D -1)" | jq_ "d['data']['notice']['code']")" "CYCLE_FULL"
+check "a group waiting for its minimum: the screen says so up front" "$(api PUT /api/group-policies "{\"scopeType\":\"GROUP\",\"scopeId\":\"$FG\",\"minStudents\":5}" >/dev/null; M "UPDATE ClassSection SET startDate=NULL, currentCycleStartDate=NULL, startConfirmedAt=NULL WHERE id='$FG'"; api GET "/api/enrollment-attendance/roster?classSectionId=$FG&date=$(D 0)" | jq_ "d['data']['notice']['code']")" "GROUP_NOT_READY"
+M "DELETE FROM GroupPolicy WHERE scopeId='$FG'"
+for k in 1 2 3 4 5 6; do PA5 '{"firstName":"X","lastName":"Y","phone":"012","password":"short"}' 10.0.2.20 >/dev/null; done
+check "six typing mistakes do not lock a family out of sign-up (only accounts made count)" "$(PA5 '{"who":"PARENT","firstName":"Late","lastName":"Typist","phone":"01066661102","password":"lateType2026","city":"Hurghada","agree":true}' 10.0.2.20 | jq_ "d['success']")" "True"
+HOLDB=$(M "SELECT b.id FROM CourseBooking b JOIN FeeInvoice i ON i.id=b.invoiceId WHERE b.status='HOLD' AND b.holdUntil IS NOT NULL ORDER BY b.createdAt DESC LIMIT 1")
+[ -n "$HOLDB" ] && check "a held booking's invoice is due by the seat deadline (one date for the family)" "$(M "SELECT i.dueDate <= b.holdUntil FROM CourseBooking b JOIN FeeInvoice i ON i.id=b.invoiceId WHERE b.id='$HOLDB'")" "1"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

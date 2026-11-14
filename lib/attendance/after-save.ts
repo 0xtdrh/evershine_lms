@@ -9,7 +9,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
-import { notifyFamilies, notifyUsers, branchStaffUserIds } from '@/lib/notifications/events'
+import { notifyFamilies, notifyUsers, branchStaffUserIds, forChild } from '@/lib/notifications/events'
 import { logSystemContact } from '@/lib/contacts/contact-log'
 import { excusesOn } from '@/lib/excuses/engine'
 
@@ -26,7 +26,7 @@ export async function applyExcuses<T extends { studentEnrollmentId: string; stat
     const studentOf = new Map(enr.map((e) => [e.id, e.studentId]))
     return records.map((r) => {
       const x = r.status === 'ABSENT' ? excuses.get(studentOf.get(r.studentEnrollmentId) ?? '') : undefined
-      return x?.status === 'APPROVED' ? { ...r, status: 'EXCUSED' as Status, remarks: r.remarks || `Excuse: ${x.reason}`.slice(0, 190) } : r
+      return x?.status === 'APPROVED' ? { ...r, status: 'EXCUSED' as Status, remarks: r.remarks || `عذر: ${x.reason}`.slice(0, 190) } : r
     })
   } catch (err) {
     console.error('[ATTENDANCE_APPLY_EXCUSES]', err)
@@ -55,14 +55,14 @@ export async function afterAttendanceSaved(input: {
       title: 'Absent today',
       titleAr: 'غياب النهارده',
       message: `${s.firstName} was absent from the ${label} session on ${day}. If there was a reason, you can send an excuse from the portal.`,
-      messageAr: `${s.firstName} غاب عن حصة ${label} يوم ${day}. لو فيه عذر تقدر تبعته من البوابة.`,
+      messageAr: `${s.firstName} ${forChild(s, 'غاب', 'غابت')} عن حصة ${label} يوم ${day}. لو فيه عذر تقدر تبعته من البوابة.`,
       relatedId: input.classSectionId,
     }))
     await notifyFamilies(lateIds, 'ATTENDANCE_LATE', (s) => ({
       title: 'Arrived late',
-      titleAr: 'اتأخر',
+      titleAr: forChild(s, 'اتأخر', 'اتأخرت'),
       message: `${s.firstName} arrived late to the ${label} session on ${day}.`,
-      messageAr: `${s.firstName} اتأخر عن حصة ${label} يوم ${day}.`,
+      messageAr: `${s.firstName} ${forChild(s, 'اتأخر', 'اتأخرت')} عن حصة ${label} يوم ${day}.`,
       relatedId: input.classSectionId,
     }))
 

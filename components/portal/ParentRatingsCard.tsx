@@ -16,12 +16,12 @@ interface PendingSurvey { classSectionId: string; group: string; course: string 
 interface Child { studentId: string; name: string; young: boolean; sessions: PendingSession[]; surveys: PendingSurvey[] }
 
 export const FACES = [
-  { v: 4, f: '😀', l: 'Great' },
-  { v: 3, f: '🙂', l: 'Good' },
-  { v: 2, f: '😐', l: 'OK' },
-  { v: 1, f: '🙁', l: 'Not good' },
+  { v: 4, f: '😀', l: 'Great', ar: 'ممتاز' },
+  { v: 3, f: '🙂', l: 'Good', ar: 'كويس' },
+  { v: 2, f: '😐', l: 'OK', ar: 'عادي' },
+  { v: 1, f: '🙁', l: 'Not good', ar: 'مش كويس' },
 ]
-const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' })
+const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' })
 
 function Stars({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   return (
@@ -59,11 +59,11 @@ function SurveyForm({ child, s, onDone }: { child: Child; s: PendingSurvey; onDo
       </div>
     )
   }
-  const q: [keyof typeof r, string][] = [['sessionsRating', 'How were the sessions?'], ['teacherRating', 'How is the instructor?'], ['companyRating', 'How is TechNova overall?']]
+  const q: [keyof typeof r, string][] = [['sessionsRating', L('How were the sessions?', 'الحصص كانت عاملة إزاي؟')], ['teacherRating', L('How is the instructor?', 'المدرب عامل إزاي؟')], ['companyRating', L('How is TechNova overall?', 'TechNova عمومًا عاملة إزاي؟')]]
   return (
     <div className="space-y-2 rounded-lg border border-slate-200 p-3">
       <p className="text-sm font-semibold text-slate-800">
-        {child.name.split(' ')[0]} · {s.course ?? s.group}{s.level ? ` · ${s.level}` : ''} — {s.kind === 'LEVEL' ? 'end of the level' : 'end of the month'}
+        {child.name.split(' ')[0]} · {s.course ?? s.group}{s.level ? ` · ${s.level}` : ''} — {s.kind === 'LEVEL' ? L('end of the level', 'آخر المستوى') : L('end of the month', 'آخر الشهر')}
       </p>
       {q.map(([k, label]) => (
         <div key={k} className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -73,7 +73,7 @@ function SurveyForm({ child, s, onDone }: { child: Child; s: PendingSurvey; onDo
       ))}
       {s.kind === 'LEVEL' && (
         <div className="space-y-1 text-sm">
-          <span>Would you recommend TechNova to a friend? (0 = not at all, 10 = definitely)</span>
+          <span>{L('Would you recommend TechNova to a friend? (0 = not at all, 10 = definitely)', 'ترشّح TechNova لصاحبك؟ (0 = لأ خالص، 10 = أكيد)')}</span>
           <div className="flex flex-wrap gap-1">
             {Array.from({ length: 11 }, (_, n) => (
               <button key={n} type="button" onClick={() => setRecommend(n)} className={`h-8 w-8 rounded-md border text-xs font-semibold ${recommend === n ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{n}</button>
@@ -110,7 +110,7 @@ export function ParentRatingsCard() {
           <div key={c.studentId} className="space-y-3">
             {c.sessions.map((s) => (
               <div key={`${s.classSectionId}|${s.date}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
-                <span>{L('How was', 'إيه رأيك في')} {c.name.split(' ')[0]}&apos;s session on {fmt(s.date)} ({s.group})?</span>
+                <span>{L(`How was ${c.name.split(' ')[0]}'s session on ${fmt(s.date)} (${s.group})?`, `إيه رأيك في حصة ${c.name.split(' ')[0]} يوم ${fmt(s.date)} (${s.group})؟`)}</span>
                 <SessionRatingForm questions={s.questions} mode="FACES" busy={face.isPending} onSend={(answers, comment) => face.mutate({ studentId: c.studentId, classSectionId: s.classSectionId, sessionDate: s.date, answers, comment })} />
               </div>
             ))}

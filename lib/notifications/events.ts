@@ -121,6 +121,9 @@ export async function notifyUsers(userIds: (string | null | undefined)[], key: E
   }
 }
 
+/** Final test 14/11: Arabic verbs follow the child (جنى غابت / يوسف غاب). */
+export const forChild = (s: { gender?: string | null }, boy: string, girl: string) => (s.gender === 'FEMALE' ? girl : boy)
+
 /**
  * Parents (and optionally the student) of these students. One message per
  * student (the text may mention the student). WhatsApp too when configured.
@@ -128,7 +131,7 @@ export async function notifyUsers(userIds: (string | null | undefined)[], key: E
 export async function notifyFamilies(
   studentIds: string[],
   key: EventKey,
-  build: (s: { id: string; firstName: string; lastName: string }) => NotifyContent | null,
+  build: (s: { id: string; firstName: string; lastName: string; gender?: string | null }) => NotifyContent | null,
   opts: { includeStudent?: boolean } = {}
 ): Promise<number> {
   try {
@@ -136,7 +139,7 @@ export async function notifyFamilies(
     if (!ids.length || !(await isEventOn(key))) return 0
     const students = await prisma.student.findMany({
       where: { id: { in: ids } },
-      select: { id: true, firstName: true, lastName: true, userId: true, guardians: { select: { userId: true, phoneNumber: true, isActive: true } } },
+      select: { id: true, firstName: true, lastName: true, gender: true, userId: true, guardians: { select: { userId: true, phoneNumber: true, isActive: true } } },
     })
     const rows: { userId: string; title: string; message: string; titleAr?: string; messageAr?: string | null; type: string; relatedId: string | null }[] = []
     const whatsapp: { phone: string; text: string }[] = []

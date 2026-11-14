@@ -44,6 +44,23 @@ export async function rateLimit(key: string, limit: number, windowMs: number): P
   }
 }
 
+/** Final test 14/11 (B05): looks at `key` WITHOUT counting this request (count only what succeeded with `countHit`). */
+export async function rateLimitPeek(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
+  const k = key.slice(0, 191)
+  try {
+    const recent = await prisma.rateLimitHit.findMany({ where: { key: k, createdAt: { gte: new Date(Date.now() - windowMs) } }, orderBy: { createdAt: 'asc' }, select: { createdAt: true }, take: limit })
+    return recent.length >= limit ? { ok: false, resetAt: recent[0].createdAt.getTime() + windowMs } : { ok: true, resetAt: Date.now() + windowMs }
+  } catch (err) {
+    console.error('[RATE_LIMIT_DB]', err)
+    return { ok: true, resetAt: Date.now() }
+  }
+}
+
+/** Counts one hit under `key` (after something succeeded). Never throws. */
+export async function countHit(key: string): Promise<void> {
+  try { await prisma.rateLimitHit.create({ data: { key: key.slice(0, 191) } }) } catch (err) { console.error('[RATE_LIMIT_DB]', err) }
+}
+
 /** Client IP from the proxy headers (Vercel and Hostinger both set x-forwarded-for). */
 export function requestIp(request: Request): string {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()

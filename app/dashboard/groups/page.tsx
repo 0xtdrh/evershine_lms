@@ -561,16 +561,19 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
   const addStudentMutation = useMutation({
     mutationFn: async (studentId: string) => {
       // The server also bills the student for the current cycle (idempotent).
-      await fetchApi(`/api/groups/${selectedGroupId}/students`, {
+      return fetchApi<{ awaitingPayment?: boolean; waitlisted?: boolean }>(`/api/groups/${selectedGroupId}/students`, {
         method: 'POST',
         body: JSON.stringify({ studentId }),
       })
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
       queryClient.invalidateQueries({ queryKey: ['groups'] })
       queryClient.invalidateQueries({ queryKey: ['group-financials', selectedGroupId] })
-      notify.success(L('Student added', 'الطالب اتضاف'))
+      // final test 14/11 (E01): in an "after payment" group the student only holds the seat until the invoice is paid
+      if (res?.awaitingPayment) notify.success(L('Seat held — the student joins once the invoice is paid', 'المكان اتحجز — الطالب يدخل أول ما الفاتورة تتدفع'))
+      else if (res?.waitlisted) notify.success(L('The group is full: the student is on its waiting list', 'الجروب مليان: الطالب اتحط في قايمة الانتظار'))
+      else notify.success(L('Student added', 'الطالب اتضاف'))
       setStudentQuery('')
     },
     onError: (err: unknown, studentId: string) => {
@@ -705,12 +708,12 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                 <div>
                   <p className="text-xs text-slate-400">{L('Starts', 'بيبدأ')}</p>
                   <p className={detail.startDate ? 'text-slate-800' : 'text-amber-600 font-medium'}>
-                    {detail.startDate ? formatDate(detail.startDate) : 'Not started yet'}
+                    {detail.startDate ? formatDate(detail.startDate) : L('Not started yet', 'لسه مابدأش')}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">
-                    {L('This cycle ends ≈', 'الشهر ده بيخلص ≈')}{detail.ends ? ` (session ${detail.ends.sessionsDoneInCycle}/${detail.ends.sessionsPerCycle})` : ''}
+                    {L('This cycle ends ≈', 'الشهر ده بيخلص ≈')}{detail.ends ? ` (${L('session', 'حصة')} ${detail.ends.sessionsDoneInCycle} ${L('of', 'من')} ${detail.ends.sessionsPerCycle})` : ''}
                   </p>
                   <p className={detail.ends?.cycleEnd ? 'text-slate-800' : 'text-slate-400'}>
                     {detail.ends?.cycleEnd ? formatDate(detail.ends.cycleEnd) : '—'}
@@ -718,7 +721,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">
-                    {L('Level ends ≈', 'المستوى بيخلص ≈')}{detail.ends ? ` (cycle ${detail.ends.cycleNumber}/${detail.ends.cyclesInLevel})` : ''}
+                    {L('Level ends ≈', 'المستوى بيخلص ≈')}{detail.ends ? ` (${L('month', 'شهر')} ${detail.ends.cycleNumber} ${L('of', 'من')} ${detail.ends.cyclesInLevel})` : ''}
                   </p>
                   <p className={detail.ends?.levelEnd ? 'text-slate-800' : 'text-slate-400'}>
                     {detail.ends?.levelEnd ? formatDate(detail.ends.levelEnd) : '—'}
@@ -732,9 +735,9 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                     <p className="text-xs text-slate-400">{L('Level pricing', 'سعر المستوى')}</p>
                     <p className="text-slate-800">
                       {detail.level.pricingType === 'MONTHLY'
-                        ? `${detail.level.monthlyPrice ?? '—'} / month`
-                        : `${detail.level.fullLevelPrice ?? '—'} full level`}
-                      {' · '}{detail.level.numberOfSessions} {L('sessions over', 'حصة على')} {detail.level.numberOfMonths} {L('months', 'شهور')}
+                        ? `${detail.level.monthlyPrice ?? '—'} ${L('EGP / month', 'ج.م في الشهر')}`
+                        : `${detail.level.fullLevelPrice ?? '—'} ${L('EGP for the whole level', 'ج.م للمستوى كله')}`}
+                      {' · '}{detail.level.numberOfSessions} {L('sessions over', 'حصص على')} {detail.level.numberOfMonths} {L('months', detail.level.numberOfMonths === 1 ? 'شهر' : 'شهور')}
                     </p>
                   </div>
                 )}
