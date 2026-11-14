@@ -49,11 +49,14 @@ async function overdue(campusId?: string | null) {
 }
 
 async function waitingItems(campusId?: string | null) {
+  // final test 14/11: WalletTopUp / WalletWithdrawal have no `student` relation — a branch dashboard crashed with
+  // "Unknown argument student"; filter by the branch's student ids instead.
+  const byStudentId = campusId ? { studentId: { in: (await prisma.student.findMany({ where: { campusId }, select: { id: true } })).map((x) => x.id) } } : {}
   const [topups, proofs, excuses, withdrawals] = await Promise.all([
-    prisma.walletTopUp.count({ where: { status: 'PENDING', ...studentFilter(campusId) } }),
+    prisma.walletTopUp.count({ where: { status: 'PENDING', ...byStudentId } }),
     prisma.feeInvoice.count({ where: { proofStatus: 'PENDING', ...studentFilter(campusId) } }),
     prisma.absenceExcuse.count({ where: { status: 'PENDING', ...(campusId && { classSectionId: { in: (await prisma.classSection.findMany({ where: { campusId }, select: { id: true } })).map((g) => g.id) } }) } }),
-    prisma.walletWithdrawal.count({ where: { status: 'PENDING', ...studentFilter(campusId) } }),
+    prisma.walletWithdrawal.count({ where: { status: 'PENDING', ...byStudentId } }),
   ])
   return { topups, proofs, excuses, withdrawals }
 }
