@@ -27,7 +27,7 @@ describe('canonical document record mapping', () => {
       }],
     }
 
-    expect(getCanonicalStudentClassSection(student)).toBe('Class 11 - A (Morning Shift)')
+    expect(getCanonicalStudentClassSection(student)).toBe('Class 11 - A') // shifts switched off: no shift in the label
     expect(getCanonicalStudentRollNumber(student)).toBe('A-12')
   })
 

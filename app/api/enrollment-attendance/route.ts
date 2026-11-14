@@ -1,4 +1,4 @@
-import { canSeeGroup, groupWhere, requestPlaces } from '@/lib/places/server'
+import { groupWhere, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { errorResponse, errors, successResponse, createdResponse } from '@/lib/api-response'
@@ -9,12 +9,13 @@ import { requireSession, requirePermission, campusScope } from '@/lib/academic/a
 import { markEnrollmentAttendanceSchema } from '@/lib/validation/academic'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { resolveMarkedByTeacherId } from '@/lib/academic/attendance'
-import { getTeacherByUserId, getTeacherClassSectionIds, teacherCanAccessClassSection, teacherCoversSectionOn } from '@/lib/academic/teacher-scope'
+import { getTeacherByUserId, getTeacherClassSectionIds, teacherCanAccessClassSection } from '@/lib/academic/teacher-scope'
 import type { Role } from '@prisma/client'
 import { createStudentAbsenceAssessment } from '@/lib/penalties/assessments'
 import { syncGroupProgress } from '@/lib/groups/sync-progress'
 import { applyExcuses, afterAttendanceSaved } from '@/lib/attendance/after-save'
 import { afterAttendanceForReport } from '@/lib/session-reports/engine'
+import { cycleFullRefusal, groupAttendanceAccess } from '@/lib/attendance/access'
 
 const ATTENDANCE_STATUSES = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'] as const
 
@@ -33,21 +34,20 @@ async function assertCanMarkGroup(
     select: { campusId: true, status: true, completedAt: true },
   })
   if (!group) return errors.notFound('Group')
+  // who may touch this group first (one rule for every attendance route: lib/attendance/access.ts)
+  const noAccess = await groupAttendanceAccess(session.user, classSectionId, attendanceDate, activeYearId)
+  if (noAccess) return noAccess
   // six phases E2: a group waiting for its minimum (or cancelled) takes no attendance yet
   const blocked = await (await import('@/lib/groups/start')).attendanceBlock(classSectionId)
   if (blocked) return errorResponse('GROUP_NOT_READY', blocked, 409)
   // A closed cycle takes no NEW sessions (corrections of its own past dates are fine).
   if (group.status === 'COMPLETED' && attendanceDate && group.completedAt && new Date(attendanceDate) > group.completedAt) {
-    return errors.conflict("This group's cycle is closed. Record attendance in the group of the next cycle.")
+    return errors.conflict("This group's cycle is closed. Record attendance in the group of the next cycle · الشهر ده اتقفل. سجّل الحضور في جروب الشهر الجاي")
   }
-  // M0: staff - the group's place (or a single group given to them); instructors - their own groups (checked below)
-  if (session.user.role !== 'TEACHER' && !(await canSeeGroup(session.user, classSectionId))) return errors.forbidden()
-  if (session.user.role === 'TEACHER') {
-    const teacher = await getTeacherByUserId(session.user.id)
-    if (!teacher) return errors.forbidden()
-    // a substitute may mark the session he covers (that day only); the session is then counted for him
-    const allowed = (await teacherCanAccessClassSection(teacher.id, classSectionId, activeYearId)) || (await teacherCoversSectionOn(teacher.id, classSectionId, attendanceDate))
-    if (!allowed) return errors.forbidden('You are not assigned to this section')
+  // F12: the month's sessions are all held → no new session date until the group moves to the next month
+  if (attendanceDate) {
+    const full = await cycleFullRefusal(classSectionId, attendanceDate)
+    if (full) return full
   }
   return null
 }

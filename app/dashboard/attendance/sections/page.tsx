@@ -1,5 +1,6 @@
 'use client'
 
+import { AttendanceNotice, type AttendanceNoticeData } from '@/components/attendance/AttendanceNotice'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { L } from '@/lib/i18n/client'
 import { PresenceInputs, type Presence } from '@/components/attendance/PresenceInputs'
@@ -105,7 +106,7 @@ export default function SectionAttendancePage() {
         ...(batchId && { batchId }),
         ...(shiftId && { shiftId }),
       })
-      return fetchApi<{ enrollments: RosterRow[]; stats: any; sessionMode?: string }>(`/api/enrollment-attendance/roster?${params}`)
+      return fetchApi<{ enrollments: RosterRow[]; stats: any; sessionMode?: string; notice?: AttendanceNoticeData | null }>(`/api/enrollment-attendance/roster?${params}`)
     },
     enabled: !!classSectionId,
   })
@@ -518,6 +519,7 @@ export default function SectionAttendancePage() {
               disabled={
                 saveMutation.isPending ||
                 !(roster?.enrollments?.length) ||
+                !!roster?.notice ||
                 !activeYear ||
                 activeYear.isLocked
               }
@@ -529,6 +531,8 @@ export default function SectionAttendancePage() {
           <CardContent className="space-y-2">
             {isLoading ? (
               <p className="text-sm text-gray-500">{L('Loading…', 'بيحمّل…')}</p>
+            ) : roster?.notice ? (
+              <AttendanceNotice notice={roster.notice} groupId={classSectionId} staff />
             ) : !(roster?.enrollments?.length) ? (
               <p className="text-sm text-amber-700">
                 {L('No students in this group yet. Add them from the group page.', 'مفيش طلاب في الجروب ده لسه. ضيفهم من صفحة الجروب.')}

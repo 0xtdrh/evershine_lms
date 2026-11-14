@@ -351,8 +351,62 @@ export default function FeesManagementPage() {
           </Select>
         </div>
 
+        {/* final test 14/11 (L02): on a phone each invoice is a card, with the amount and the pay button in view */}
+        <div className="space-y-3 md:hidden">
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)
+          ) : filtered.length === 0 ? (
+            <EmptyState icon={FileText} title={L('No invoices found', 'مفيش فواتير')} description={search || statusFilter ? L('Try changing the filters.', 'جرّب تغيّر الفلاتر.') : L('No invoices yet.', 'لسه مفيش فواتير.')} />
+          ) : (
+            filtered.map((fee) => {
+              const total = Number(fee.totalAmount)
+              const paid = Number(fee.paidAmount)
+              const balance = total - paid
+              const isOverdue = new Date(fee.dueDate) < new Date() && fee.status !== 'PAID'
+              const canPay = !isAdmin && fee.status !== 'PAID' && fee.status !== 'CANCELLED' && fee.proofStatus !== 'PENDING'
+              return (
+                <div key={fee.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900">{fee.student.firstName} {fee.student.lastName}</p>
+                      <p className="truncate text-xs text-slate-500">{fee.month}</p>
+                    </div>
+                    <span className={`inline-flex shrink-0 text-xs px-2 py-0.5 rounded-full font-medium border ${STATUS_STYLES[fee.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {L(fee.status.replace('_', ' '), STATUS_AR[fee.status] ?? fee.status)}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-slate-50 p-2"><p className="text-[11px] text-slate-500">{L('Total', 'الإجمالي')}</p><p className="text-sm font-semibold">{total.toLocaleString()}</p></div>
+                    <div className="rounded-lg bg-emerald-50 p-2"><p className="text-[11px] text-emerald-700">{L('Paid', 'المدفوع')}</p><p className="text-sm font-semibold text-emerald-700">{paid.toLocaleString()}</p></div>
+                    <div className={`rounded-lg p-2 ${balance > 0 ? 'bg-red-50' : 'bg-slate-50'}`}><p className={`text-[11px] ${balance > 0 ? 'text-red-600' : 'text-slate-500'}`}>{L('Left', 'الباقي')}</p><p className={`text-sm font-semibold ${balance > 0 ? 'text-red-600' : 'text-slate-400'}`}>{balance > 0 ? balance.toLocaleString() : '—'}</p></div>
+                  </div>
+                  <p className={`mt-2 text-xs ${isOverdue ? 'font-medium text-red-600' : 'text-slate-500'}`}>
+                    {L('Pay by', 'ادفع قبل')} {new Date(fee.dueDate).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { day: 'numeric', month: 'long', timeZone: 'Africa/Cairo' })}{isOverdue && ' ⚠'} · {L('EGP', 'ج.م')}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    {canPay && (
+                      <Button className="h-10 flex-1 gap-2 text-sm font-bold" onClick={() => setUploadInvoice(fee)}>
+                        <UploadCloud className="h-4 w-4" /> {L('Pay', 'ادفع')}
+                      </Button>
+                    )}
+                    {!isAdmin && fee.proofStatus === 'PENDING' && (
+                      <Button variant="outline" disabled className="h-10 flex-1 gap-2 border-amber-300 bg-amber-50 text-amber-700"><Loader2 className="h-4 w-4 animate-spin" /> {L('Receipt being checked', 'الإيصال بيتراجع')}</Button>
+                    )}
+                    {isAdmin && fee.status !== 'PAID' && fee.status !== 'CANCELLED' && (
+                      <Button variant="outline" className="h-10 flex-1 gap-2 border-green-300 text-green-700" onClick={() => setCollectInvoice(fee)}><DollarSign className="h-4 w-4" /> {L('Collect', 'تحصيل')}</Button>
+                    )}
+                    <Link href={`/dashboard/fees/${fee.id}`} className={canPay || isAdmin ? '' : 'flex-1'}>
+                      <Button variant="outline" className="h-10 w-full">{L('View', 'عرض')}</Button>
+                    </Link>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
         {/* Table */}
-        <div className="relative w-full overflow-x-auto min-h-[400px]">
+        <div className="relative hidden w-full overflow-x-auto min-h-[400px] md:block">
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
-import { getTeacherByUserId, teacherCanAccessClassSection, teacherCoversSectionOn } from '@/lib/academic/teacher-scope'
+import { attendanceNotice, groupAttendanceAccess } from '@/lib/attendance/access'
 import { getOrSyncSectionEnrollments } from '@/lib/academic/roster-helper'
 import type { Role } from '@prisma/client'
 import { excusesOn } from '@/lib/excuses/engine'
@@ -34,16 +34,9 @@ export async function GET(request: NextRequest) {
   const activeYear = await getActiveAcademicYear()
   if (!activeYear) return successResponse({ enrollments: [], date: dateStr, stats: { total: 0, present: 0, absent: 0 } })
 
-  if (session.user.role === 'TEACHER') {
-    const teacher = await getTeacherByUserId(session.user.id)
-    if (!teacher) return errors.forbidden()
-
-    // a substitute may open the group on the day he covers it
-    const allowed = (await teacherCanAccessClassSection(teacher.id, classSectionId, activeYear?.id)) || (await teacherCoversSectionOn(teacher.id, classSectionId, dateStr))
-    if (!allowed) {
-      return errors.forbidden('You are not assigned to this section')
-    }
-  }
+  // J02 (final test): staff only their places, instructors their groups / the day they cover (lib/attendance/access.ts)
+  const noAccess = await groupAttendanceAccess(session.user, classSectionId, dateStr, activeYear?.id)
+  if (noAccess) return noAccess
 
   const { targetClassSectionId, enrollments: rawEnrollments } = await getOrSyncSectionEnrollments(
     classSectionId,
@@ -106,9 +99,13 @@ export async function GET(request: NextRequest) {
     if (status === 'ABSENT') absent++
   })
 
+  // owner 14/11: tell the screen up front when attendance cannot be taken on this date (minimum / month complete)
+  const notice = await attendanceNotice(classSectionId, dateStr).catch(() => null)
+
   return successResponse({
     academicYear: activeYear,
     classSectionId,
+    notice,
     date: dateStr,
     sessionMode,
     filters: { batchId, shiftId },

@@ -24,9 +24,8 @@ export function getCanonicalStudentClassSection(student: StudentPlacementRecord)
   const classSection = enrollment?.classSection
   if (classSection?.className) {
     const section = classSection.sectionName ? ` - ${classSection.sectionName}` : ''
-    const shiftLabel = classSection.shift?.name || classSection.shift?.code
-    const shift = shiftLabel ? ` (${shiftLabel})` : ''
-    return `${classSection.className}${section}${shift}`
+    // shifts are switched off (2026-10-03): the label never shows "(Night Shift)" (final test 14/11)
+    return `${classSection.className}${section}`
   }
 
   const legacyClass = student.class?.name || '—'

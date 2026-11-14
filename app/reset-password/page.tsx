@@ -18,6 +18,22 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AuthLayout } from '@/components/auth/AuthLayout'
+import { L, useI18n } from '@/lib/i18n/client'
+
+/** Final test 14/11: the messages below are written once in English; shown in the screen language here. */
+const AR: Record<string, string> = {
+  'Password must be at least 8 characters long': 'الباسورد لازم يبقى 8 حروف على الأقل',
+  'Must contain at least one uppercase letter': 'لازم يكون فيه حرف إنجليزي كبير',
+  'Must contain at least one lowercase letter': 'لازم يكون فيه حرف إنجليزي صغير',
+  'Must contain at least one number': 'لازم يكون فيه رقم',
+  'Confirm your password': 'اكتب الباسورد تاني',
+  'Passwords do not match': 'الباسوردين مش زي بعض',
+  Weak: 'ضعيف', Fair: 'مقبول', Good: 'كويس', Strong: 'قوي', 'Very Strong': 'قوي جدًا',
+  'At least 8 characters': '8 حروف على الأقل',
+  'Mix of uppercase & lowercase': 'حروف كبيرة وصغيرة',
+  'At least one number': 'رقم واحد على الأقل',
+}
+const tr = (en?: string) => (en ? L(en, AR[en] ?? en) : '')
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const resetSchema = z
@@ -63,6 +79,7 @@ const requirements = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ResetPasswordPage() {
+  useI18n() // Arabic + language switch
   const router = useRouter()
   const [token, setToken]               = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -87,7 +104,7 @@ export default function ResetPasswordPage() {
   }, [])
 
   useEffect(() => {
-    if (!token) setServerError('Reset token missing. Please use the link sent to your email.')
+    if (!token) setServerError(L('Reset token missing. Please use the link sent to your email.', 'اللينك ناقص. افتح اللينك اللي جالك على الإيميل.'))
     else        setServerError(null)
   }, [token])
 
@@ -105,12 +122,12 @@ export default function ResetPasswordPage() {
         body:   JSON.stringify({ token, password: data.password }),
       })
       setIsSuccess(true)
-      notify.success('Password updated!', { description: 'Redirecting to login…' })
+      notify.success(L('Password updated!', 'الباسورد اتغير!'), { description: L('Redirecting to login…', 'بنرجّعك لصفحة الدخول…') })
       setTimeout(() => router.push('/login'), 1500)
     } catch (error) {
-      const message = (error as Error).message || 'Unable to reset password'
+      const message = (error as Error).message || L('Unable to reset password', 'الباسورد ماتغيرش')
       setServerError(message)
-      notify.error('Reset failed', { description: message })
+      notify.error(L('Reset failed', 'التغيير ماتمّش'), { description: message })
     } finally {
       setIsSubmitting(false)
     }
@@ -133,7 +150,7 @@ export default function ResetPasswordPage() {
             <div className="rounded-2xl border border-red-200 bg-red-50 p-3 flex items-start gap-2.5 text-sm text-red-700">
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden />
               <div>
-                <p className="font-semibold">Reset failed</p>
+                <p className="font-semibold">{L('Reset failed', 'التغيير ماتمّش')}</p>
                 <p className="text-xs mt-0.5 opacity-80">{serverError}</p>
               </div>
             </div>
@@ -158,16 +175,16 @@ export default function ResetPasswordPage() {
                 <CheckCircle className="w-7 h-7 text-emerald-600" aria-hidden />
               </div>
               <div>
-                <p className="font-bold text-emerald-900 text-lg">Password Updated!</p>
-                <p className="text-sm text-emerald-700 mt-1.5">Your new password is now active.</p>
+                <p className="font-bold text-emerald-900 text-lg">{L('Password updated!', 'الباسورد اتغير!')}</p>
+                <p className="text-sm text-emerald-700 mt-1.5">{L('Your new password is now active.', 'الباسورد الجديد شغال من دلوقتي.')}</p>
               </div>
             </div>
             <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-900">Next steps:</p>
+              <p className="text-sm font-semibold text-slate-900">{L('Next steps:', 'الخطوات:')}</p>
               <ol className="text-sm text-slate-600 space-y-2 list-decimal list-inside leading-relaxed">
-                <li>Redirecting to login page</li>
-                <li>Sign in with your new password</li>
-                <li>Access your dashboard</li>
+                <li>{L('Redirecting to the login page', 'هنرجّعك لصفحة الدخول')}</li>
+                <li>{L('Sign in with your new password', 'ادخل بالباسورد الجديد')}</li>
+                <li>{L('Open your account', 'افتح حسابك')}</li>
               </ol>
             </div>
           </motion.div>
@@ -184,13 +201,13 @@ export default function ResetPasswordPage() {
           >
             {/* New Password */}
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm font-semibold text-slate-700">New Password</Label>
+              <Label htmlFor="password" className="text-sm font-semibold text-slate-700">{L('New password', 'الباسورد الجديد')}</Label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter new strong password"
+                  placeholder={L('Enter a new strong password', 'اكتب باسورد جديد قوي')}
                   autoComplete="new-password"
                   aria-required="true"
                   aria-invalid={!!errors.password}
@@ -202,7 +219,7 @@ export default function ResetPasswordPage() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? L('Hide password', 'اخفي الباسورد') : L('Show password', 'اظهر الباسورد')}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" aria-hidden /> : <Eye className="w-4 h-4" aria-hidden />}
                 </button>
@@ -220,9 +237,9 @@ export default function ResetPasswordPage() {
                     aria-live="polite"
                   >
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Password strength</span>
+                      <span className="text-slate-500">{L('Password strength', 'قوة الباسورد')}</span>
                       <span className={`font-semibold ${currentStrength.textColor}`}>
-                        {currentStrength.label}
+                        {tr(currentStrength.label)}
                       </span>
                     </div>
                     <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden" role="progressbar" aria-valuenow={passwordStrength} aria-valuemin={0} aria-valuemax={5}>
@@ -249,7 +266,7 @@ export default function ResetPasswordPage() {
                             >
                               {passed && <Check className="w-2.5 h-2.5" />}
                             </span>
-                            {req.label}
+                            {tr(req.label)}
                           </li>
                         )
                       })}
@@ -269,7 +286,7 @@ export default function ResetPasswordPage() {
                     role="alert"
                   >
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden />
-                    {errors.password.message}
+                    {tr(errors.password.message)}
                   </motion.p>
                 )}
               </AnimatePresence>
@@ -277,13 +294,13 @@ export default function ResetPasswordPage() {
 
             {/* Confirm Password */}
             <div className="space-y-1.5">
-              <Label htmlFor="confirmPassword" className="text-sm font-semibold text-slate-700">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-sm font-semibold text-slate-700">{L('Confirm password', 'اكتب الباسورد تاني')}</Label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden />
                 <Input
                   id="confirmPassword"
                   type={showConfirm ? 'text' : 'password'}
-                  placeholder="Re-enter your password"
+                  placeholder={L('Re-enter your password', 'اكتبه تاني')}
                   autoComplete="new-password"
                   aria-required="true"
                   aria-invalid={!!errors.confirmPassword}
@@ -301,7 +318,7 @@ export default function ResetPasswordPage() {
                   type="button"
                   onClick={() => setShowConfirm(!showConfirm)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
-                  aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                  aria-label={showConfirm ? L('Hide password', 'اخفي الباسورد') : L('Show password', 'اظهر الباسورد')}
                 >
                   {showConfirm ? <EyeOff className="w-4 h-4" aria-hidden /> : <Eye className="w-4 h-4" aria-hidden />}
                 </button>
@@ -331,7 +348,7 @@ export default function ResetPasswordPage() {
                     role="alert"
                   >
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden />
-                    {errors.confirmPassword.message}
+                    {tr(errors.confirmPassword.message)}
                   </motion.p>
                 )}
               </AnimatePresence>
@@ -352,12 +369,12 @@ export default function ResetPasswordPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Updating Password…
+                  {L('Updating password…', 'بنغيّر الباسورد…')}
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
                   <ShieldCheck className="w-4 h-4" aria-hidden />
-                  Update Password
+                  {L('Update password', 'غيّر الباسورد')}
                 </span>
               )}
             </Button>
@@ -377,15 +394,15 @@ export default function ResetPasswordPage() {
                 <AlertCircle className="w-6 h-6 text-amber-600" aria-hidden />
               </div>
               <div>
-                <p className="font-semibold text-amber-900">Invalid Reset Link</p>
+                <p className="font-semibold text-amber-900">{L('Invalid reset link', 'اللينك مش صالح')}</p>
                 <p className="text-sm text-amber-700 mt-1.5 leading-relaxed">
-                  The reset link is missing or has expired. Please request a new password reset.
+                  {L('The reset link is missing or has expired. Please request a new one.', 'اللينك ناقص أو خلص. اطلب لينك جديد.')}
                 </p>
               </div>
             </div>
             <Link href="/forgot-password">
               <Button className="w-full h-11 rounded-2xl" variant="outline">
-                Request New Link
+                {L('Request a new link', 'اطلب لينك جديد')}
               </Button>
             </Link>
           </motion.div>
@@ -400,7 +417,7 @@ export default function ResetPasswordPage() {
             className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-700 transition-colors w-full py-2.5 rounded-xl hover:bg-blue-50"
           >
             <ArrowLeft className="w-4 h-4" aria-hidden />
-            Back to Sign In
+            {L('Back to sign in', 'ارجع لصفحة الدخول')}
           </Link>
         </div>
       )}

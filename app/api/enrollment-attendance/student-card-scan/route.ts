@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server'
 import { normalizeCardCode } from '@/lib/cards/rules'
 import { prisma } from '@/lib/prisma'
-import { errors, successResponse } from '@/lib/api-response'
+import { errorResponse, errors, successResponse } from '@/lib/api-response'
 import { requirePermission, requireSession } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { resolveMarkedByTeacherId } from '@/lib/academic/attendance'
-import { getTeacherByUserId, teacherCanAccessClassSection } from '@/lib/academic/teacher-scope'
+import { cycleFullRefusal, groupAttendanceAccess } from '@/lib/attendance/access'
 import type { Role } from '@prisma/client'
 
 function parseAttendanceDate(value: unknown): Date | null {
@@ -53,12 +53,13 @@ export async function POST(request: NextRequest) {
     if (!activeYear) return errors.notFound('No active academic year')
     if (activeYear.isLocked) return errors.forbidden('Academic year is locked')
 
-    if (session.user.role === 'TEACHER') {
-      const teacher = await getTeacherByUserId(session.user.id)
-      if (!teacher || !(await teacherCanAccessClassSection(teacher.id, classSectionId, activeYear.id))) {
-        return errors.forbidden('Not assigned to this class section')
-      }
-    }
+    // J02 (final test): staff only their places, instructors their groups (lib/attendance/access.ts)
+    const noAccess = await groupAttendanceAccess(session.user, classSectionId, attendanceDate.toISOString().slice(0, 10), activeYear.id)
+    if (noAccess) return noAccess
+    const blocked = await (await import('@/lib/groups/start')).attendanceBlock(classSectionId)
+    if (blocked) return errorResponse('GROUP_NOT_READY', blocked, 409)
+    const full = await cycleFullRefusal(classSectionId, attendanceDate.toISOString().slice(0, 10))
+    if (full) return full
 
     const enrollment = await prisma.studentEnrollment.findFirst({
       where: {

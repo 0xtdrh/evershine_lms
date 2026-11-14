@@ -14,13 +14,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AuthLayout } from '@/components/auth/AuthLayout'
+import { L, useI18n } from '@/lib/i18n/client'
 
 const forgotSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.string().email(), // message in the screen language below
 })
 type ForgotForm = z.infer<typeof forgotSchema>
 
 export default function ForgotPasswordPage() {
+  useI18n() // final test 14/11: Arabic + language switch
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSent, setIsSent]             = useState(false)
   const [serverError, setServerError]   = useState<string | null>(null)
@@ -40,11 +42,11 @@ export default function ForgotPasswordPage() {
         body:   JSON.stringify(data),
       })
       setIsSent(true)
-      notify.success('Reset email sent', {
-        description: 'If your email is registered, you will receive instructions shortly.',
+      notify.success(L('Reset email sent', 'اتبعت إيميل تغيير الباسورد'), {
+        description: L('If your email is registered, you will receive instructions shortly.', 'لو الإيميل متسجّل عندنا هيوصلك لينك خلال دقايق.'),
       })
     } catch (error) {
-      const message = (error as Error).message || 'Unable to submit request'
+      const message = (error as Error).message || L('Unable to submit request', 'الطلب ماتبعتش')
       setServerError(message)
       notify.error(message)
     } finally {
@@ -67,7 +69,7 @@ export default function ForgotPasswordPage() {
             <div className="rounded-2xl border border-red-200 bg-red-50 p-3 flex items-start gap-2.5 text-sm text-red-700">
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden />
               <div>
-                <p className="font-semibold">Something went wrong</p>
+                <p className="font-semibold">{L('Something went wrong', 'حصلت مشكلة')}</p>
                 <p className="text-xs mt-0.5 opacity-80">{serverError}</p>
               </div>
             </div>
@@ -94,9 +96,9 @@ export default function ForgotPasswordPage() {
                 <CheckCircle className="w-7 h-7 text-emerald-600" aria-hidden />
               </div>
               <div>
-                <p className="font-bold text-emerald-900 text-lg">Check your email</p>
+                <p className="font-bold text-emerald-900 text-lg">{L('Check your email', 'شوف الإيميل بتاعك')}</p>
                 <p className="text-sm text-emerald-700 mt-1.5 leading-relaxed">
-                  We&apos;ve sent password reset instructions to:
+                  {L('We sent password reset instructions to:', 'بعتنا لينك تغيير الباسورد على:')}
                 </p>
                 <p className="font-semibold text-slate-900 mt-2 break-all text-sm">{emailValue}</p>
               </div>
@@ -104,17 +106,17 @@ export default function ForgotPasswordPage() {
 
             {/* Next steps */}
             <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-900">Next steps:</p>
+              <p className="text-sm font-semibold text-slate-900">{L('Next steps:', 'الخطوات:')}</p>
               <ol className="text-sm text-slate-600 space-y-2 list-decimal list-inside leading-relaxed">
-                <li>Check your inbox for an email from us</li>
-                <li>Click the &quot;Reset Password&quot; link in the email</li>
-                <li>Create a new strong password</li>
-                <li>Sign in with your new password</li>
+                <li>{L('Check your inbox for an email from us', 'افتح الإيميل اللي جالك مننا')}</li>
+                <li>{L('Click the "Reset Password" link in the email', 'دوس على لينك «تغيير الباسورد»')}</li>
+                <li>{L('Create a new strong password', 'اكتب باسورد جديد قوي')}</li>
+                <li>{L('Sign in with your new password', 'ادخل بالباسورد الجديد')}</li>
               </ol>
             </div>
 
             <p className="text-xs text-slate-400 text-center">
-              Tip: Check your spam or promotional folder if you don&apos;t see the email
+              {L('Tip: check your spam folder if you do not see the email', 'لو مالقيتش الإيميل شوف فولدر الـ Spam')}
             </p>
           </motion.div>
         ) : (
@@ -131,7 +133,7 @@ export default function ForgotPasswordPage() {
           >
             {/* Email */}
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-semibold text-slate-700">Email Address</Label>
+              <Label htmlFor="email" className="text-sm font-semibold text-slate-700">{L('Email address', 'الإيميل')}</Label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden />
                 <Input
@@ -157,11 +159,11 @@ export default function ForgotPasswordPage() {
                     role="alert"
                   >
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden />
-                    {errors.email.message}
+                    {L('Please enter a valid email address', 'اكتب إيميل صحيح')}
                   </motion.p>
                 ) : (
                   <p id="email-hint" className="text-xs text-slate-400 leading-relaxed">
-                    We&apos;ll send you a link to reset your password. It expires in 1 hour for security.
+                    {L('We will send you a link to reset your password. It expires in 1 hour.', 'هنبعتلك لينك تغيّر بيه الباسورد. اللينك بيخلص بعد ساعة.')}
                   </p>
                 )}
               </AnimatePresence>
@@ -181,12 +183,12 @@ export default function ForgotPasswordPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Sending reset link…
+                  {L('Sending reset link…', 'بنبعت اللينك…')}
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
                   <Send className="w-4 h-4" aria-hidden />
-                  Send Reset Link
+                  {L('Send reset link', 'ابعت اللينك')}
                 </span>
               )}
             </Button>

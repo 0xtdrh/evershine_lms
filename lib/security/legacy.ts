@@ -20,6 +20,8 @@ const PAGES = [
 export const LEGACY_APIS = [
   '/api/academic-upgrades/daily-performance', '/api/academic-upgrades/date-sheets', '/api/academic-years/rollover', '/api/academic/bootstrap', '/api/academic/migrate',
   '/api/admin/attendance/import', '/api/admin/role-assumptions', '/api/calendar', '/api/elective-groups', '/api/exam-sessions',
+  // final test 14/11: the old template QR route marked ANY enrollment (any branch, any status) for anyone with attendance:create
+  '/api/enrollment-attendance/scan$',
   '/api/exams', '/api/grading-schemes', '/api/promotions/bulk', '/api/queries', '/api/results',
   '/api/student-portal/attendance', '/api/student-portal/electives', '/api/student-portal/enrollment',
   '/api/student-portal/roll-number-slip', '/api/student-portal/targets', '/api/subject-enrollments', '/api/subject-offerings',

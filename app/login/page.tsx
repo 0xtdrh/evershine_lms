@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AuthLayout } from '@/components/auth/AuthLayout'
-import { L } from '@/lib/i18n/client'
+import { L, useI18n } from '@/lib/i18n/client'
 import { Lock, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react'
 
 const loginSchema = z.object({
@@ -62,6 +62,7 @@ const TOO_MANY_ATTEMPTS_MESSAGE = () => L(
   'محاولات غلط كتير. علشان أمانك الدخول واقف 15 دقيقة. جرّب بعدين أو كلّم الفرع.')
 
 export default function LoginPage() {
+  useI18n() // re-render on a language switch
   const router = useRouter()
   const [isLoading, setIsLoading]       = useState(false)
   const [formError, setFormError]       = useState<string | null>(null)

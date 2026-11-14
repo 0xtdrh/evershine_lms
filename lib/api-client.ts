@@ -13,6 +13,8 @@
  * - ApiValidationError preserves the details array so callers can show inline field errors.
  */
 
+import { browserLang, localizeMessage } from './i18n/api-messages'
+
 export interface Pagination {
   page: number
   limit: number
@@ -114,7 +116,9 @@ async function baseRequest(endpoint: string, options: RequestInit = {}): Promise
       // Non-JSON error body — keep the default message
     }
 
-    throw new ApiError(errorMessage, response.status, code, fieldErrors)
+    // final test 14/11: show the server's message in the screen language ("EN · AR" pairs, common English messages)
+    const lang = browserLang()
+    throw new ApiError(localizeMessage(errorMessage, lang), response.status, code, fieldErrors.map((f) => ({ ...f, message: localizeMessage(f.message, lang) })))
   }
 
   return response.json()

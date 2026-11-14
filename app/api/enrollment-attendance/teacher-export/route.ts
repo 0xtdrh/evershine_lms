@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { errors } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
-import { getTeacherByUserId, teacherCanAccessClassSection } from '@/lib/academic/teacher-scope'
+import { groupAttendanceAccess } from '@/lib/attendance/access'
 import { getOrSyncSectionEnrollments } from '@/lib/academic/roster-helper'
 import type { Role } from '@prisma/client'
 import ExcelJS from 'exceljs'
@@ -31,12 +31,9 @@ export async function POST(request: NextRequest) {
     const activeYear = await getActiveAcademicYear()
     if (!activeYear) return errors.notFound('No active academic year')
 
-    if (session.user.role === 'TEACHER') {
-      const teacher = await getTeacherByUserId(session.user.id)
-      if (!teacher) return errors.forbidden()
-      const allowed = await teacherCanAccessClassSection(teacher.id, classSectionId, activeYear.id)
-      if (!allowed) return errors.forbidden('Not assigned to this class')
-    }
+    // J02 (final test): staff only their places, instructors their groups (lib/attendance/access.ts)
+    const noAccess = await groupAttendanceAccess(session.user, classSectionId, date, activeYear.id)
+    if (noAccess) return noAccess
 
     const classSection = await prisma.classSection.findUnique({
       where: { id: classSectionId },

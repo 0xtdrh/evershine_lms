@@ -1,5 +1,6 @@
 'use client'
 
+import { AttendanceNotice, type AttendanceNoticeData } from '@/components/attendance/AttendanceNotice'
 import { L, useI18n } from '@/lib/i18n/client'
 import { PresenceInputs, type Presence } from '@/components/attendance/PresenceInputs'
 import { useState, useEffect } from 'react'
@@ -161,7 +162,7 @@ export default function TeacherAttendancePage() {
 
   const { data: roster, isLoading, refetch } = useQuery({
     queryKey: ['enrollment-roster-teacher', classSectionId, date],
-    queryFn:  () => fetchApi<{ enrollments: RosterRow[]; sessionMode?: string }>(
+    queryFn:  () => fetchApi<{ enrollments: RosterRow[]; sessionMode?: string; notice?: AttendanceNoticeData | null }>(
       `/api/enrollment-attendance/roster?classSectionId=${classSectionId}&date=${date}`
     ),
     enabled: !!classSectionId,
@@ -274,7 +275,8 @@ export default function TeacherAttendancePage() {
     return <div className="p-8 text-center text-gray-500">{L('You do not have permission to mark attendance.', 'مش مسموح لك تسجّل الحضور.')}</div>
   }
 
-  const enrollments  = roster?.enrollments ?? []
+  // owner 14/11: a group that cannot take attendance today shows WHY, not the students
+  const enrollments  = roster?.notice ? [] : (roster?.enrollments ?? [])
   const presentCount = Object.values(statusMap).filter(s => s === 'PRESENT').length
   const absentCount  = Object.values(statusMap).filter(s => s === 'ABSENT').length
   const lateCount    = Object.values(statusMap).filter(s => s === 'LATE').length
@@ -429,6 +431,8 @@ export default function TeacherAttendancePage() {
                 <CardContent>
                   {isLoading ? (
                     <p className="text-sm text-gray-400">{L('Loading roster…', 'بيحمّل الطلبة…')}</p>
+                  ) : roster?.notice ? (
+                    <AttendanceNotice notice={roster.notice} groupId={classSectionId} staff={false} />
                   ) : enrollments.length === 0 ? (
                     <p className="text-sm text-amber-700">{L('No active enrollments in this section.', 'مفيش طلبة في الجروب ده.')}</p>
                   ) : (

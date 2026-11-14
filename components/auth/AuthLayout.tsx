@@ -25,7 +25,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Shield, ArrowLeft } from 'lucide-react'
 import { AcademyLogo } from '@/components/AcademyLogo'
-import { L } from '@/lib/i18n/client'
+import { L, LanguageSwitch, useI18n } from '@/lib/i18n/client'
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 
@@ -81,6 +81,7 @@ const fadeUp = (delay = 0) => ({
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
 export function AuthLayout({ children, pageType }: AuthLayoutProps) {
+  useI18n() // re-render on a language switch
   const cfg = PAGE()[pageType]
   const [ready, setReady] = useState(false)
 
@@ -110,7 +111,7 @@ export function AuthLayout({ children, pageType }: AuthLayoutProps) {
               <p className="text-xs text-slate-500">{L('Management System', 'نظام الإدارة')}</p>
             </div>
           </Link>
-          <ThemeToggle className="ml-auto" />
+          <div className="ms-auto flex items-center gap-2"><LanguageSwitch /><ThemeToggle /></div>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
             <Shield className="w-3.5 h-3.5" />
             {L('Secured Portal', 'بوابة آمنة')}

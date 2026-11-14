@@ -274,15 +274,39 @@ export async function place(bookingId: string, actorId: string, holdHours?: numb
     // six phases E: an "after payment" group keeps the seat but the child joins only when paid (the booking tells the family)
     await (await import('@/lib/groups/entry')).holdUntilPaid(studentId, groupId, { tellFamily: false }).catch((e) => console.error('[BOOKING] hold until paid', e))
     await (await import('@/lib/groups/start')).checkReady(groupId).catch(() => false)
+    // final test 14/11 (L02): the family already ticked "I agree to the course rules" in the booking — record it as the
+    // group-rules acceptance so the rules window does not pop up again right after booking.
+    await rulesAcceptedAtBooking(b.guardianId, studentId, groupId).catch((e) => console.error('[BOOKING] rules acceptance', e))
   }
   const inv = await prisma.feeInvoice.findFirst({ where: { studentId, classSectionId: groupId, status: { not: 'CANCELLED' } }, orderBy: { createdAt: 'desc' }, select: { id: true, totalAmount: true, paidAmount: true, status: true } })
   // no invoice yet (the group bills later): the seat stays held without a deadline; syncBookings attaches the invoice when it exists
   const paid = !!inv && invoicePaid({ totalAmount: Number(inv.totalAmount), paidAmount: Number(inv.paidAmount), status: inv.status })
+  const holdUntil = paid || !inv ? null : new Date(Date.now() + hours * 3_600_000)
   await prisma.courseBooking.update({
     where: { id: b.id },
-    data: { classSectionId: groupId, invoiceId: inv?.id ?? null, status: paid ? 'CONFIRMED' : 'HOLD', confirmedAt: paid ? new Date() : null, holdUntil: paid || !inv ? null : new Date(Date.now() + hours * 3_600_000), ...(b.status === 'REVIEW' ? { decidedAt: new Date() } : {}) },
+    data: { classSectionId: groupId, invoiceId: inv?.id ?? null, status: paid ? 'CONFIRMED' : 'HOLD', confirmedAt: paid ? new Date() : null, holdUntil, ...(b.status === 'REVIEW' ? { decidedAt: new Date() } : {}) },
   })
+  if (inv && holdUntil) await dueByHold(inv.id, holdUntil)
   await tellFamily(b.id)
+}
+
+async function rulesAcceptedAtBooking(guardianId: string | null, studentId: string, groupId: string) {
+  if (!guardianId) return
+  const g = await prisma.guardian.findUnique({ where: { id: guardianId }, select: { userId: true } })
+  const r = await (await import('@/lib/rules/group-rules-engine')).rulesForGroup(groupId)
+  if (!g?.userId || !r) return
+  await prisma.groupRulesAcceptance.upsert({
+    where: { classSectionId_studentId_userId_rulesHash: { classSectionId: groupId, studentId, userId: g.userId, rulesHash: r.hash } },
+    create: { classSectionId: groupId, studentId, userId: g.userId, rulesHash: r.hash, userAgent: 'booking' },
+    update: {},
+  })
+}
+
+/** L02 (final test 14/11): the family saw "pay before Mon 10:37 pm" (seat hold) and "due 21 Nov" (invoice) — one date: the earlier. */
+async function dueByHold(invoiceId: string, holdUntil: Date) {
+  try {
+    await prisma.feeInvoice.updateMany({ where: { id: invoiceId, dueDate: { gt: holdUntil }, status: { in: ['ISSUED', 'OVERDUE'] } }, data: { dueDate: holdUntil } })
+  } catch (e) { console.error('[BOOKING] due by hold', e) } // never breaks the booking
 }
 
 // ── keeping bookings up to date ──────────────────────────────────────────────
@@ -302,6 +326,7 @@ export async function syncBookings(force: boolean | { guardianId: string } = fal
       if (found) {
         const hours = resolveRule(await prisma.bookingRule.findMany(), { campusId: b.campusId, levelId: b.levelId, groupId: b.classSectionId }).holdHours
         await prisma.courseBooking.update({ where: { id: b.id }, data: { invoiceId: found.id, holdUntil: new Date(Date.now() + hours * 3_600_000) } })
+        await dueByHold(found.id, new Date(Date.now() + hours * 3_600_000))
         b.invoiceId = found.id
         b.holdUntil = new Date(Date.now() + hours * 3_600_000)
       }
