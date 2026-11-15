@@ -22,6 +22,11 @@ const KNOWN: Record<string, string> = {
   'This lesson is not open yet': 'الدرس ده لسه ما اتفتحش.',
   'Academic year is locked': 'الفترة دي مقفولة، مينفعش تعديل فيها.',
   'Invalid JSON': 'البيانات اللي اتبعتت مش مظبوطة.',
+  'Payment proof too large. Maximum allowed size is 4 MB.': 'الملف كبير. أقصى حجم 4 ميجا.',
+  'Invalid payment proof format. Only JPG, PNG, and PDF are accepted.': 'نوع الملف مش مقبول. ابعت صورة JPG أو PNG أو ملف PDF بس.',
+  'The proof must be uploaded through the system': 'ارفع الإيصال من هنا (مش لينك من مكان تاني).',
+  'Cannot upload proof for a paid invoice': 'الفاتورة دي مدفوعة خلاص.',
+  'Validation failed': 'البيانات فيها حاجة ناقصة أو غلط.',
 }
 
 /** "<Entity> not found" → Arabic. */

@@ -3597,6 +3597,17 @@ for k in 1 2 3 4 5 6; do PA5 '{"firstName":"X","lastName":"Y","phone":"012","pas
 check "six typing mistakes do not lock a family out of sign-up (only accounts made count)" "$(PA5 '{"who":"PARENT","firstName":"Late","lastName":"Typist","phone":"01066661102","password":"lateType2026","city":"Hurghada","agree":true}' 10.0.2.20 | jq_ "d['success']")" "True"
 HOLDB=$(M "SELECT b.id FROM CourseBooking b JOIN FeeInvoice i ON i.id=b.invoiceId WHERE b.status='HOLD' AND b.holdUntil IS NOT NULL ORDER BY b.createdAt DESC LIMIT 1")
 [ -n "$HOLDB" ] && check "a held booking's invoice is due by the seat deadline (one date for the family)" "$(M "SELECT i.dueDate <= b.holdUntil FROM CourseBooking b JOIN FeeInvoice i ON i.id=b.invoiceId WHERE b.id='$HOLDB'")" "1"
+echo "== 111. Security part of the final test: signed-out session refused, no server banner (2026-11-15)"
+SOJ=$(mktemp); login_jar m0admin@e2e.local E2eAdm12345 "$SOJ" 10.0.2.30
+SOCOPY=$(mktemp); cp "$SOJ" "$SOCOPY"
+check "signed in: the session works" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SOJ" $B/api/students?limit=1)" "200"
+SOT=$(curl -s -b "$SOJ" -c "$SOJ" $B/api/auth/csrf | jq_ "d['csrfToken']")
+curl -s -o /dev/null -b "$SOJ" -c "$SOJ" -X POST -H 'Content-Type: application/x-www-form-urlencoded' --data-urlencode "csrfToken=$SOT" --data-urlencode "callbackUrl=$B/login" $B/api/auth/signout
+check "after signing out, a copy of the old session cookie is refused (was valid for 8 h)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SOCOPY" $B/api/students?limit=1)" "401"
+SO2=$(mktemp); login_jar m0admin@e2e.local E2eAdm12345 "$SO2" 10.0.2.31
+check "…a new sign-in of the same person works (only that one session ended)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SO2" $B/api/students?limit=1)" "200"
+rm -f "$SOJ" "$SOCOPY" "$SO2"
+check "the site does not announce its server software (no X-Powered-By)" "$(curl -s -D - -o /dev/null $B/login | grep -ci '^x-powered-by')" "0"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5

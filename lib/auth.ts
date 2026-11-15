@@ -38,7 +38,7 @@ import { ensurePermissionOverrides } from '@/lib/rbac-overrides'
 import { beginPermissionContext, fillPermissionContext } from '@/lib/permission-context'
 import { isDefaultPortalPassword, resolveLoginEmail } from '@/lib/portal-login'
 import { accountKey, clearLoginFailures, clientIp, isLoginLocked, recordLoginFailure } from '@/lib/login-throttle'
-import { guardSession } from '@/lib/session-guard'
+import { guardSession, markSignedOut } from '@/lib/session-guard'
 
 /** Shown on the login page as ?code=default_password */
 class DefaultPasswordSignin extends CredentialsSignin {
@@ -63,6 +63,14 @@ export const { handlers, signIn, signOut, auth: nextAuthSession } = NextAuth({
 
   // WHY no adapter: See module-level comment. Credentials + JWT requires no
   // database adapter. Session data lives entirely in the signed JWT cookie.
+
+  // Final test 15/11 (Z09): a signed-out session cookie must stop working at once (lib/session-guard.ts).
+  events: {
+    async signOut(message) {
+      const token = 'token' in message ? message.token : null
+      await markSignedOut(String(token?.id ?? ''), typeof token?.loginAt === 'number' ? token.loginAt : undefined)
+    },
+  },
 
   providers: [
     Credentials({

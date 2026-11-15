@@ -18,17 +18,35 @@ import type { Role } from '@prisma/client'
 
 const TTL_MS = 30_000
 
-interface Live { isActive: boolean; role: Role; sessionsRevokedAt: Date | null }
+interface Live { isActive: boolean; role: Role; sessionsRevokedAt: Date | null; signedOut?: Set<number> }
+
+/**
+ * Final test 15/11 (Z09): signing out used to leave the session cookie valid until it expired (8 h) — anyone who
+ * copied it (shared computer, a stolen cookie) stayed signed in. Each sign-out now records that ONE session
+ * (user + sign-in time) and it is refused from then on. Stored in RateLimitHit (kept 24 h > 8 h session life),
+ * so no schema change. Other devices of the same person stay signed in.
+ */
+const SIGNED_OUT = 'signedout:'
+export async function markSignedOut(userId: string, loginAt: number | undefined) {
+  if (!userId || !loginAt) return
+  try {
+    await prisma.rateLimitHit.create({ data: { key: `${SIGNED_OUT}${userId}:${loginAt}`.slice(0, 191) } })
+  } catch (err) { console.error('[SESSION_GUARD_SIGNOUT]', err) }
+  forgetSessionState(userId)
+}
 const cache = new Map<string, { at: number; live: Live | null }>()
 
 async function loadLive(userId: string): Promise<Live | null | undefined> {
   const hit = cache.get(userId)
   if (hit && Date.now() - hit.at < TTL_MS) return hit.live
   try {
-    const live = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { isActive: true, role: true, sessionsRevokedAt: true },
     })
+    // its own fail-open read: a problem here must never sign anyone out
+    const outs = user ? await prisma.rateLimitHit.findMany({ where: { key: { startsWith: `${SIGNED_OUT}${userId}:` }, createdAt: { gte: new Date(Date.now() - 9 * 3_600_000) } }, select: { key: true } }).catch(() => []) : []
+    const live: Live | null = user ? { ...user, signedOut: new Set(outs.map((o) => Number(o.key.split(':').pop()))) } : null
     cache.set(userId, { at: Date.now(), live })
     if (cache.size > 5000) cache.delete(cache.keys().next().value as string)
     return live
@@ -53,6 +71,7 @@ export async function guardSession<T extends SessionLike>(session: T): Promise<T
   if (live === undefined) return session
   if (!live || !live.isActive) return null
   if (live.sessionsRevokedAt && (session.user?.loginAt ?? 0) < live.sessionsRevokedAt.getTime()) return null
+  if (session.user?.loginAt && live.signedOut?.has(session.user.loginAt)) return null
   if (session.user && live.role !== session.user.role) {
     return { ...session, user: { ...session.user, role: live.role } } as T
   }

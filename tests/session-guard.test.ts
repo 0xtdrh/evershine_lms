@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const db = vi.hoisted(() => ({ user: { findUnique: vi.fn(), update: vi.fn() } }))
+const db = vi.hoisted(() => ({ user: { findUnique: vi.fn(), update: vi.fn() }, rateLimitHit: { findMany: vi.fn(async () => [] as { key: string }[]), create: vi.fn(async () => ({})) } }))
 vi.mock('@/lib/prisma', () => ({ prisma: db }))
 
-import { forgetSessionState, guardSession } from '@/lib/session-guard'
+import { forgetSessionState, guardSession, markSignedOut } from '@/lib/session-guard'
 
 const session = (over: Record<string, unknown> = {}) => ({
   user: { id: 'u1', role: 'SECRETARY' as const, loginAt: 1_000, ...over },
@@ -16,6 +16,18 @@ beforeEach(() => {
 })
 
 describe('guardSession', () => {
+  it('final test 15/11: a session that signed out is refused, a newer sign-in of the same person is not', async () => {
+    db.user.findUnique.mockResolvedValue({ isActive: true, role: 'SECRETARY', sessionsRevokedAt: null })
+    db.rateLimitHit.findMany.mockResolvedValue([{ key: 'signedout:u1:1000' }])
+    await markSignedOut('u1', 1_000)
+    expect(db.rateLimitHit.create).toHaveBeenCalledWith({ data: { key: 'signedout:u1:1000' } })
+    expect(await guardSession(session())).toBeNull()
+    forgetSessionState('u1')
+    const later = session({ loginAt: 2_000 })
+    expect(await guardSession(later)).toBe(later)
+    db.rateLimitHit.findMany.mockResolvedValue([])
+  })
+
   it('keeps an active account unchanged', async () => {
     db.user.findUnique.mockResolvedValue({ isActive: true, role: 'SECRETARY', sessionsRevokedAt: null })
     const s = session()

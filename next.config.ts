@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import { browserProtectionHeaders } from "./lib/security/csp";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false, // final test 15/11 (Z10): do not tell visitors which server software runs the site
   // Standalone output bundles node_modules into .next/standalone,
   // required for Hostinger and other non-Vercel Node.js hosts.
   output: "standalone",
