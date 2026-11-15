@@ -24,8 +24,8 @@ export function GroupAwaitingPanel({ groupId, canApprove }: { groupId: string; c
       await fetchApi(`/api/groups/${groupId}/awaiting`, { method: 'POST', body: JSON.stringify({ studentId, action }) })
       // final test 14/11 (E03): say what happened, not just "done"
       notify.success(action === 'OPEN'
-        ? L(`${name} joined the group — the invoice is still open`, `${name} دخل الجروب — الفاتورة لسه مفتوحة`)
-        : L(`${name} was removed and the seat is free`, `${name} اتشال والمكان فضي`))
+        ? L(`${name} joined the group — the invoice is still open`, `تم إدخال ${name} للجروب — الفاتورة لسه مفتوحة`)
+        : L(`${name} was removed and the seat is free`, `تم شيل ${name} من الجروب والمكان فضي`))
       void qc.invalidateQueries({ queryKey: ['group-awaiting', groupId] }); void qc.invalidateQueries({ queryKey: ['group'] }); void qc.invalidateQueries()
     } catch (e) { notify.error((e as Error).message) }
   }

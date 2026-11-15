@@ -570,6 +570,8 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
       queryClient.invalidateQueries({ queryKey: ['group-detail', selectedGroupId] })
       queryClient.invalidateQueries({ queryKey: ['groups'] })
       queryClient.invalidateQueries({ queryKey: ['group-financials', selectedGroupId] })
+      queryClient.invalidateQueries({ queryKey: ['group-awaiting', selectedGroupId] }) // retest 15/11: the "waiting to pay" list showed (0) until reload
+      queryClient.invalidateQueries({ queryKey: ['group-start', selectedGroupId] })
       // final test 14/11 (E01): in an "after payment" group the student only holds the seat until the invoice is paid
       if (res?.awaitingPayment) notify.success(L('Seat held — the student joins once the invoice is paid', 'المكان اتحجز — الطالب يدخل أول ما الفاتورة تتدفع'))
       else if (res?.waitlisted) notify.success(L('The group is full: the student is on its waiting list', 'الجروب مليان: الطالب اتحط في قايمة الانتظار'))
