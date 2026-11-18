@@ -137,6 +137,14 @@ export function preDiscountValue(amount: number, subtotal: number, totalAmount: 
 }
 
 /** Calendar month "YYYY-MM" → [first day, first day of next month) in UTC dates. */
+/**
+ * Owner rule (final test K05): an instructor sees HIS share only, never what each student paid.
+ * Returns the groups with every student's paid amount hidden (the shares stay, they were already worked out).
+ */
+export function hideStudentMoney<G extends { students: StatementStudentShare[] }>(groups: G[]): G[] {
+  return groups.map((g) => ({ ...g, students: g.students.map((s) => ({ ...s, preDiscountPaid: 0 })) }))
+}
+
 export function monthBounds(month: string): { from: Date; to: Date } | null {
   const m = /^(\d{4})-(\d{2})$/.exec(month)
   if (!m) return null

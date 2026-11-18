@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { monthBounds, payKind, preDiscountValue, slipLinesFromStatement, statementGroup, statementTotals, type StatementGroupFacts } from '@/lib/teachers/pay-statement-calc'
+import { hideStudentMoney, monthBounds, payKind, preDiscountValue, slipLinesFromStatement, statementGroup, statementTotals, type StatementGroupFacts } from '@/lib/teachers/pay-statement-calc'
 
 const base = (over: Partial<StatementGroupFacts> = {}): StatementGroupFacts => ({
   id: 'g1', label: 'Robots 1 A', place: 'Branch', rule: { fixed: null, percent: null, perSession: 100 }, fixedCounts: false,
@@ -64,5 +64,18 @@ describe('instructor pay statement (2026-10-26)', () => {
     expect(monthBounds('2026-12')!.to.toISOString()).toBe('2027-01-01T00:00:00.000Z')
     expect(monthBounds('2026-13')).toBeNull()
     expect(payKind({ fixed: null, percent: null, perSession: null })).toBe('NONE')
+  })
+
+  it('instructor copy hides what each student paid but keeps his share (final test K05)', () => {
+    const g = statementGroup(base({ rule: { fixed: null, percent: 30, perSession: 100 }, students: [
+      { student: 'Youssef', preDiscountPaid: 850 }, { student: 'Jana', preDiscountPaid: 850 },
+    ] }))
+    const [h] = hideStudentMoney([g])
+    expect(h.students.map((s) => s.preDiscountPaid)).toEqual([0, 0])
+    expect(h.students.map((s) => s.student)).toEqual(['Youssef', 'Jana'])
+    expect(h.studentShares).toEqual([{ student: 'Youssef', share: 255 }, { student: 'Jana', share: 255 }])
+    expect(h.total).toBe(g.total)
+    // the original (finance copy) is not touched
+    expect(g.students.map((s) => s.preDiscountPaid)).toEqual([850, 850])
   })
 })

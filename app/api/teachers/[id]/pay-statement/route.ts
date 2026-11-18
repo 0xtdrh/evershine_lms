@@ -13,6 +13,7 @@ import { prisma } from '@/lib/prisma'
 import { canSeeTeacher, groupWhere, loadPlaces } from '@/lib/places/server'
 import { teacherSeesOwnSlips } from '@/lib/salaries/settings'
 import { teacherPayStatement } from '@/lib/teachers/pay-statement'
+import { hideStudentMoney } from '@/lib/teachers/pay-statement-calc'
 import { createBrandedWorkbook } from '@/lib/excel/report-generator'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -39,7 +40,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const st = await teacherPayStatement(teacher.id, month, { campusId: sp.get('campusId') || null, groupId: sp.get('groupId') || null, groupFilter })
   if (!st) return errors.badRequest('Could not build the statement')
-  if (sp.get('format') !== 'xlsx') return successResponse(st)
+  if (sp.get('format') !== 'xlsx') {
+    // Owner rule: an instructor sees HIS share only, never what a student paid (final test K05).
+    return successResponse(isFinance ? st : { ...st, groups: hideStudentMoney(st.groups) })
+  }
 
   // Excel: one row per paid thing, then the total
   const rows: Record<string, string | number>[] = []
