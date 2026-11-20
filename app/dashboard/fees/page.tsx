@@ -3,6 +3,7 @@
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchPaginatedApi, fetchApi } from '@/lib/api-client'
 import { useSession } from 'next-auth/react'
@@ -232,25 +233,23 @@ export default function FeesManagementPage() {
   if (statusFilter) params.set('status', statusFilter)
   if (proofStatusFilter) params.set('proofStatus', proofStatusFilter)
   if (filterStudentId) params.set('studentId', filterStudentId)
+  // final test 18/11: searched on the server (all invoices), not only the 20 shown on this page
+  const searchTerm = useDebouncedValue(search.trim())
+  if (searchTerm) params.set('search', searchTerm)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['fees', page, statusFilter, filterStudentId],
+    queryKey: ['fees', page, statusFilter, proofStatusFilter, filterStudentId, searchTerm],
     queryFn: () => fetchPaginatedApi<FeeInvoice>(`/api/fees?${params.toString()}`),
     staleTime: 30_000,
     enabled: canViewFees,
   })
 
+  useEffect(() => { setPage(1) }, [searchTerm])
+
   const invoices = data?.data ?? []
   const pagination = data?.pagination
 
-  // Client-side search (student name / challan)
-  const filtered = search
-    ? invoices.filter((f) =>
-        f.challanNumber.toLowerCase().includes(search.toLowerCase()) ||
-        `${f.student.firstName} ${f.student.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
-        f.student.registrationNumber.toLowerCase().includes(search.toLowerCase())
-      )
-    : invoices
+  const filtered = invoices
 
   // Route guard: teachers have no fee management workflow
   if (status === 'loading') return null

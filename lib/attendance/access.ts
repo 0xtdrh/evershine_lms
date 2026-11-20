@@ -23,9 +23,14 @@ export async function groupAttendanceAccess(user: SessionUser, classSectionId: s
   if (user.role === 'TEACHER') {
     const teacher = await getTeacherByUserId(user.id)
     if (!teacher) return errors.forbidden()
-    const ok = (await teacherCanAccessClassSection(teacher.id, classSectionId, academicYearId))
-      || (!!date && (await teacherCoversSectionOn(teacher.id, classSectionId, date)))
-    return ok ? null : errors.forbidden('You are not assigned to this section · الجروب ده مش من جروباتك')
+    if (date && (await teacherCoversSectionOn(teacher.id, classSectionId, date))) return null
+    if (!(await teacherCanAccessClassSection(teacher.id, classSectionId, academicYearId))) {
+      return errors.forbidden('You are not assigned to this section · الجروب ده مش من جروباتك')
+    }
+    // F13 (final test 15/11): the group's own instructor whose absence that day was APPROVED does not take the session —
+    // the substitute does (or it is cancelled). He could still open and save the attendance and get paid for it.
+    const away = date ? await approvedAbsenceMessage(teacher.id, classSectionId, date) : null
+    return away ? errorResponse('ABSENT_THAT_DAY', away, 403) : null
   }
   return (await canSeeGroup(user as never, classSectionId)) ? null : errors.forbidden()
 }
@@ -69,3 +74,24 @@ export async function attendanceNotice(classSectionId: string, date: string): Pr
   const full = await cycleFullMessage(classSectionId, date)
   return full ? { code: 'CYCLE_FULL', message: full } : null
 }
+
+/** F13: "EN · AR" when this instructor's absence on `date` (whole day, or this group) was approved; null otherwise. */
+export async function approvedAbsenceMessage(teacherId: string, classSectionId: string, date: string): Promise<string | null> {
+  const day = new Date(`${date.slice(0, 10)}T00:00:00Z`)
+  const absence = await prisma.teacherAbsence.findFirst({
+    where: { teacherId, status: 'APPROVED', date: day, OR: [{ scope: 'FULL_DAY' }, { classSectionId }] },
+    select: { id: true },
+  })
+  if (!absence) return null
+  const sub = await prisma.substituteAssignment.findFirst({
+    where: { classSectionId, date: day, originalTeacherId: teacherId, status: 'CONFIRMED' },
+    select: { substituteTeacher: { select: { firstName: true, lastName: true } } },
+  })
+  const d = date.slice(0, 10)
+  if (sub) {
+    const name = `${sub.substituteTeacher.firstName} ${sub.substituteTeacher.lastName}`.trim()
+    return `Your absence on ${d} was approved: ${name} takes this session and records its attendance · غيابك يوم ${d} اتوافق عليه: ${name} هو اللي بيدي الحصة دي ويسجّل حضورها`
+  }
+  return `Your absence on ${d} was approved, so you cannot record this session. Ask the office if you did teach it · غيابك يوم ${d} اتوافق عليه، فمينفعش تسجّل الحصة دي. لو انت اللي اديتها فعلًا كلّم الإدارة`
+}
+

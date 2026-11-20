@@ -209,7 +209,7 @@ export const DATASETS: DatasetDef[] = [
   },
   {
     key: 'attendance', en: 'Attendance', ar: 'الحضور', descEn: 'Attendance per student and session date.', descAr: 'الحضور لكل طالب وتاريخ حصة.',
-    canImport: false, exportPerm: ['attendance', 'read'], page: '/dashboard/attendance', filters: ['campus', 'from', 'to', 'group'],
+    canImport: false, exportPerm: ['attendance', 'read'], page: '/dashboard/attendance/sections', filters: ['campus', 'from', 'to', 'group'],
     fields: [
       { key: 'date', en: 'Date', ar: 'التاريخ', type: 'date' },
       { key: 'group', en: 'Group', ar: 'الجروب', type: 'text' },

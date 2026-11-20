@@ -94,5 +94,7 @@ export const TASKS: TaskDef[] = [
 
 /** Tasks a person may see (before counting). */
 export function tasksFor(role: string, can: (r: Resource, a: Action) => boolean): TaskDef[] {
-  return TASKS.filter((t) => (!t.roles || t.roles.includes(role)) && (!t.perm || can(t.perm[0], t.perm[1])))
+  // final test J04 (15/11): a task opens a page, so the person also needs to READ that part — with "view renewals" switched
+  // off for secretaries they still saw "parents who did not answer" (it asked for update only) and got a refusal page.
+  return TASKS.filter((t) => (!t.roles || t.roles.includes(role)) && (!t.perm || (can(t.perm[0], t.perm[1]) && (t.perm[1] === 'read' || can(t.perm[0], 'read')))))
 }

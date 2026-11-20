@@ -215,7 +215,7 @@ export default function DashboardPage() {
       { label: L('Generate Challan', 'اعمل فاتورة'), href: '/dashboard/fees/generate', icon: CreditCard, color: 'bg-green-600 hover:bg-green-700' },
     ] : []),
     ...(isTeacher || isAdminOrAbove ? [
-      { label: L('Mark Attendance', 'سجّل الحضور'), href: '/dashboard/attendance', icon: ClipboardCheck, color: 'bg-purple-600 hover:bg-purple-700' },
+      { label: L('Mark Attendance', 'سجّل الحضور'), href: '/dashboard/attendance/sections', icon: ClipboardCheck, color: 'bg-purple-600 hover:bg-purple-700' },
     ] : []),
     ...(isAdminOrAbove ? [
       { label: L('Add Teacher', 'ضيف مدرب'), href: '/dashboard/teachers/new', icon: GraduationCap, color: 'bg-orange-600 hover:bg-orange-700' },

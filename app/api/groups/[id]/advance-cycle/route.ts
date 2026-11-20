@@ -185,12 +185,23 @@ export async function POST(
       // Partners part 1: the next cycle keeps the group's own price (same level only) and its no-names class size
       ...(nextLevel.id === group.levelId && group.priceOverride !== null && { priceOverride: group.priceOverride }),
       unnamedHeadcount: group.unnamedHeadcount,
+      // final test 15–20/11: the next month kept losing the group's own settings — the size limit (a full 6-seat group
+      // became unlimited), the way it is taught (online / hybrid), its meeting link and session length
+      maxStudents: group.maxStudents,
+      deliveryMode: group.deliveryMode,
+      onlineMeetingUrl: group.onlineMeetingUrl,
+      sessionMinutes: group.sessionMinutes,
+      deliveryTemplateId: group.deliveryTemplateId,
+      ...(nextLevel.id === group.levelId && { curriculumVariantId: group.curriculumVariantId }),
       // LMS L2: the next month of the SAME level keeps reading the same curriculum version and the same way of
       // opening lessons; a new level starts fresh (pinned to its newest published version when it starts).
       ...(nextLevel.id === group.levelId && { curriculumEditionId: group.curriculumEditionId, lessonUnlockMode: group.lessonUnlockMode }),
       ...(isOneToOne && (await oneToOneCarry(group, nextLevel, carrying ? await sessionsToCarry(id) : 0))),
     },
   })
+
+  // final test 20/11: the group's own entry / minimum policy and its written rules belong to the group, not to one month
+  await carryGroupScoped(group.id, newGroup.id).catch((e) => console.error('[ADVANCE] group policy / rules not carried', e))
 
   if (currentOffering?.teacherId) {
     await prisma.subjectOffering.create({
@@ -267,3 +278,20 @@ export async function POST(
 
   return successResponse({ action: cycleLogType, newGroupId: newGroup.id })
 }
+
+/** Copies the rows made for this one group (GROUP scope): its entry / minimum policy and its written group rules. */
+async function carryGroupScoped(fromId: string, toId: string) {
+  const [policy, rules] = await Promise.all([
+    prisma.groupPolicy.findFirst({ where: { scopeType: 'GROUP', scopeId: fromId } }),
+    prisma.groupRule.findMany({ where: { scope: 'GROUP', scopeId: fromId, isActive: true }, orderBy: { sortOrder: 'asc' } }),
+  ])
+  if (policy) {
+    const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = policy
+    await prisma.groupPolicy.create({ data: { ...rest, scopeId: toId } })
+  }
+  for (const r of rules) {
+    const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = r
+    await prisma.groupRule.create({ data: { ...rest, scopeId: toId } })
+  }
+}
+

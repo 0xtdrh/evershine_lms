@@ -8,6 +8,7 @@
  */
 
 import { invoiceWhere, requestPlaces } from '@/lib/places/server'
+import { studentSearchOr } from '@/lib/students/name-search'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
   const parsed = feeQuerySchema.safeParse(Object.fromEntries(searchParams))
   if (!parsed.success) return errors.validation(parsed.error)
 
-  const { page, limit, studentId, status, proofStatus, month, academicYear } = parsed.data
+  const { page, limit, studentId, status, proofStatus, month, academicYear, search } = parsed.data
 
   let where: any = {
     ...(status && { status }),
@@ -70,6 +71,11 @@ export async function GET(request: NextRequest) {
     // Admin/Accountant role — M0: invoices of the person's places only
     if (studentId) where.studentId = studentId
     Object.assign(where, invoiceWhere(await requestPlaces(session.user)))
+  }
+
+  // final test 18/11: the search used to run in the browser on the 20 invoices of the page only
+  if (search) {
+    where = { AND: [where, { OR: [{ challanNumber: { contains: search } }, { student: { OR: studentSearchOr(search) } }] }] }
   }
 
   const activeYear = await getActiveAcademicYear()

@@ -135,6 +135,10 @@ check "invoice not over-paid" "$(M "SELECT paidAmount<=totalAmount FROM FeeInvoi
 check "warning cleared right after payment" "$(M "SELECT COUNT(*) FROM StudentEnrollment WHERE classSectionId='$GID' AND withdrawalReason='PAYMENT_OVERDUE_WARNING'")" "2"
 
 echo "== 5. advance cycle"
+# final test 20/11: the next month keeps the group's own settings, policy and written rules
+M "UPDATE ClassSection SET maxStudents=8, sessionMinutes=90, onlineMeetingUrl='https://meet.example.com/e2e-cycle' WHERE id='$GID'" >/dev/null
+api PUT /api/group-policies "{\"scopeType\":\"GROUP\",\"scopeId\":\"$GID\",\"minStudents\":1}" >/dev/null
+api POST /api/group-rules "{\"scope\":\"GROUP\",\"scopeId\":\"$GID\",\"textEn\":\"Bring your laptop charger.\",\"textAr\":\"\u0647\u0627\u062a \u0634\u0627\u062d\u0646 \u0627\u0644\u0644\u0627\u0628 \u062a\u0648\u0628.\"}" >/dev/null
 check "closing before the cycle ends is refused" "$(api POST /api/groups/$GID/advance-cycle '{"continuingStudentIds":[]}' | jq_ "d['success']")" "False"
 for i in $(seq $((HALF+1)) $PER); do sess $GID "2026-01-$((i+10))" "$(ALL)" >/dev/null; done
 PAID=$(M "SELECT CONCAT('\"',e.studentId,'\"') FROM StudentEnrollment e WHERE e.classSectionId='$GID' AND e.withdrawalReason IS NULL" | paste -sd,)
@@ -146,6 +150,8 @@ check "old group COMPLETED" "$(M "SELECT status FROM ClassSection WHERE id='$GID
 check "new group has the 2 continuing students" "$(M "SELECT COUNT(*) FROM StudentEnrollment WHERE classSectionId='$G2'")" "2"
 check "continuing students invoiced for next month" "$(M "SELECT COUNT(*) FROM FeeInvoice WHERE classSectionId='$G2'")" "2"
 check "instructor carried over" "$(api GET /api/groups/$G2 | jq_ "bool(d['data']['teacher'])")" "True"
+check "next month keeps the size limit, session length and meeting link" "$(M "SELECT CONCAT(maxStudents,'|',sessionMinutes,'|',onlineMeetingUrl) FROM ClassSection WHERE id='$G2'")" "8|90|https://meet.example.com/e2e-cycle"
+check "next month keeps the group's own policy and written rules" "$(M "SELECT CONCAT((SELECT COUNT(*) FROM GroupPolicy WHERE scopeType='GROUP' AND scopeId='$G2'),'|',(SELECT COUNT(*) FROM GroupRule WHERE scope='GROUP' AND scopeId='$G2'))")" "1|1"
 check "no new sessions on the closed group" "$(sess $GID 2027-01-01 "$(rec ${E[0]} PRESENT)" | jq_ "d['success']")" "False"
 check "the 2 who stopped appear in 'finished, didn't continue'" "$(api GET /api/waiting-list | jq_ "len([f for f in d['data']['finished'] if f['finishedGroup']['id']=='$GID'])")" "2"
 

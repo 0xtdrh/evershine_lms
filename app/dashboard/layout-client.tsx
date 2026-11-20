@@ -1,5 +1,6 @@
 'use client'
 
+import { roleName } from '@/lib/i18n/roles'
 import { useAppStore } from '@/lib/store'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { signOut, useSession } from 'next-auth/react'
@@ -93,7 +94,7 @@ import { BirthdayCelebration, useBirthdayToday } from '@/components/birthdays/Bi
 import { GroupRulesGate } from '@/components/agreements/GroupRulesGate'
 import { PolicyLinks } from '@/components/policies/PolicyLinks'
 import { AgreementsGate } from '@/components/agreements/AgreementsGate'
-import { I18nProvider, LanguageSwitch, useI18n } from '@/lib/i18n/client'
+import { I18nProvider, L, LanguageSwitch, useI18n } from '@/lib/i18n/client'
 import { SidebarNav } from '@/components/layout/SidebarNav'
 import { HubTabs } from '@/components/layout/HubTabs'
 import { ActivityPing } from '@/components/layout/ActivityPing'
@@ -375,16 +376,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const isTeacher   = role === 'TEACHER'
 
   const getRoleBadge = (r: string) => {
-    const map: Record<string, { label: string; className: string }> = {
-      SUPER_ADMIN: { label: 'Super Admin', className: 'bg-red-100 text-red-700' },
-      ADMIN: { label: 'Admin', className: 'bg-blue-100 text-blue-700' },
-      TEACHER: { label: 'Teacher', className: 'bg-green-100 text-green-700' },
-      STUDENT: { label: 'Student', className: 'bg-purple-100 text-purple-700' },
-      PARENT: { label: 'Parent', className: 'bg-orange-100 text-orange-700' },
-      ACCOUNTANT: { label: 'Account Manager', className: 'bg-teal-100 text-teal-700' },
-      GUARDIAN: { label: 'Guardian', className: 'bg-yellow-100 text-yellow-700' },
+    const color: Record<string, string> = {
+      SUPER_ADMIN: 'bg-red-100 text-red-700', ADMIN: 'bg-blue-100 text-blue-700', BRANCH_MANAGER: 'bg-indigo-100 text-indigo-700',
+      SECRETARY: 'bg-sky-100 text-sky-700', ACCOUNTANT: 'bg-teal-100 text-teal-700', TEACHER: 'bg-green-100 text-green-700',
+      STUDENT: 'bg-purple-100 text-purple-700', PARENT: 'bg-orange-100 text-orange-700', GUARDIAN: 'bg-orange-100 text-orange-700',
     }
-    return map[r] ?? { label: r, className: 'bg-gray-100 text-gray-700' }
+    // final test 18/11: names in the screen language (was BRANCH_MANAGER / SECRETARY raw, "Guardian" in English)
+    return { label: L(roleName(r, 'en'), roleName(r, 'ar')), className: color[r] ?? 'bg-gray-100 text-gray-700' }
   }
 
   const roleBadge = getRoleBadge(role)

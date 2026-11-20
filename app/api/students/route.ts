@@ -10,6 +10,7 @@
 import { PAYMENT_REASONS, seesFees, withoutFeeFields } from '@/lib/fees/hide-money'
 import { duplicateMessage, findDuplicateStudents } from '@/lib/students/duplicates-server'
 import { requestPlaces, studentWhere } from '@/lib/places/server'
+import { studentNameMatch } from '@/lib/students/name-search'
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -495,13 +496,3 @@ export async function POST(request: NextRequest) {
   )
 }
 
-/** Name fields searched for a student (2026-10-24: the Arabic and English full names were missing). */
-function studentNameMatch(term: string) {
-  return [
-    { firstName: { contains: term } },
-    { lastName: { contains: term } },
-    { fullNameAr: { contains: term } },
-    { fullNameEn: { contains: term } },
-    { fatherName: { contains: term } },
-  ]
-}

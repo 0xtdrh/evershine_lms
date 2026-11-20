@@ -67,6 +67,8 @@ export const feeQuerySchema = z.object({
   month: z.string().optional(),
   academicYear: z.string().optional(),
   campusId: z.string().min(1).optional(),
+  /** final test 18/11: invoice number, student name (Arabic / English) or registration number — searched on the server */
+  search: z.string().trim().max(80).optional(),
 })
 
 export type GenerateChallanInput = z.infer<typeof generateChallanSchema>
