@@ -48,8 +48,11 @@ export async function generateMissingCycleInvoices(
   let skipped = 0
 
   for (const e of group.enrollments) {
+    // a CANCELLED invoice (a cancelled booking, a student taken off "waiting for payment") must not count: when the same
+    // student comes back to the group in the same cycle he needs a new invoice, or he would sit in the group for free
+    // (final test C10, 20/11)
     const existing = await prisma.feeInvoice.findFirst({
-      where: { studentId: e.studentId, classSectionId, cycleNumber },
+      where: { studentId: e.studentId, classSectionId, cycleNumber, status: { not: 'CANCELLED' } },
     })
     if (existing) {
       skipped++
