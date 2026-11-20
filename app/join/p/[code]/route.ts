@@ -4,11 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { publicOrigin } from '@/lib/http/origin'
 import { partnerByJoinCode } from '@/lib/partners/join'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
   const p = await partnerByJoinCode(code).catch(() => null)
-  const url = new URL(p ? `/signup?partner=${encodeURIComponent(code.toUpperCase())}` : '/signup', request.nextUrl.origin)
+  const url = new URL(p ? `/signup?partner=${encodeURIComponent(code.toUpperCase())}` : '/signup', publicOrigin(request.headers, request.nextUrl.origin, process.env))
   return NextResponse.redirect(url, 303)
 }
