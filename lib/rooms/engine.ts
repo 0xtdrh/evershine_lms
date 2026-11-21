@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma'
 import { getSetting, setSetting } from '@/lib/settings/app-settings'
 import { cleanSlots, type Slot } from '@/lib/groups/schedule-calendar'
 import { cleanRoomsSettings, dailyOverflow, DEFAULT_ROOMS_SETTINGS, roomClash, roomUsage, type Booking, type RoomMode, type RoomsSettings } from './rules'
+import { arCount, AR_NOUN } from '@/lib/i18n/plural'
 
 const KEY = 'rooms.settings'
 export const getRoomsSettings = () => getSetting<RoomsSettings>(KEY, DEFAULT_ROOMS_SETTINGS)
@@ -92,7 +93,7 @@ export async function checkGroupSlots(g: { id: string; campusId: string; maxStud
     if (!s.roomId) return msg(`${dayName(s.dayOfWeek)} ${s.time}: choose a room (this place keeps its rooms)`, `${dayAr(s.dayOfWeek)} ${s.time}: اختار قاعة (المكان ده مسجّل قاعاته)`)
     const room = rooms.find((r) => r.id === s.roomId)
     if (!room) return msg('This room is not of this place or is stopped', 'القاعة دي مش تبع المكان ده أو موقوفة')
-    if (size > room.capacity) return msg(`${room.name} takes ${room.capacity} students; the group has ${size}`, `${room.name} تاخد ${room.capacity} طالب؛ والجروب ${size}`)
+    if (size > room.capacity) return msg(`${room.name} takes ${room.capacity} students; the group has ${size}`, `${room.name} تاخد ${arCount(room.capacity, AR_NOUN.student)}؛ والجروب ${size}`)
     const clash = roomClash({ groupId: g.id, label: '', dayOfWeek: s.dayOfWeek, time: s.time, roomId: s.roomId, minutes: g.minutes }, others, settings.sessionMinutes)
     if (clash) return msg(`${room.name} is taken by ${clash.label} on ${dayName(clash.dayOfWeek)} at ${clash.time}`, `${room.name} محجوزة لـ ${clash.label} يوم ${dayAr(clash.dayOfWeek)} الساعة ${clash.time}`)
   }

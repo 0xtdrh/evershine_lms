@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { L, useI18n } from '@/lib/i18n/client'
+import { arCount, AR_NOUN } from '@/lib/i18n/plural'
 
 type Row = { id: string; scopeType: string; scopeId: string | null; entry: string | null; minStudents: number | null; countPaidOnly: boolean | null; minPartPercent: number | null; alertDays: number | null; nextMonthKeepDays: number | null; startAnyway: boolean | null }
 type Data = { rows: Row[]; options: Record<string, { id: string; name: string }[]>; canEdit: boolean; canStartAnyway: boolean }
@@ -49,8 +50,8 @@ export default function GroupPoliciesPage() {
     r.minStudents ? L(`minimum ${r.minStudents} to start`, `أقل عدد للبداية ${r.minStudents}`) : null,
     r.countPaidOnly !== null ? (r.countPaidOnly ? L('only those who paid count', 'بيتحسب اللي دفع بس') : L('everyone counts', 'الكل بيتحسب')) : null,
     r.minPartPercent ? L(`least instalment ${r.minPartPercent}%`, `أقل دفعة ${r.minPartPercent}%`) : null,
-    r.alertDays !== null ? L(`alert ${r.alertDays} day(s) before`, `تنبيه قبلها بـ ${r.alertDays} يوم`) : null,
-    r.nextMonthKeepDays !== null ? L(`next month seat kept ${r.nextMonthKeepDays} day(s)`, `مكان الشهر الجاي محجوز ${r.nextMonthKeepDays} يوم`) : null,
+    r.alertDays !== null ? L(`alert ${r.alertDays} day(s) before`, `تنبيه قبلها بـ ${arCount(r.alertDays, AR_NOUN.day)}`) : null,
+    r.nextMonthKeepDays !== null ? L(`next month seat kept ${r.nextMonthKeepDays} day(s)`, `مكان الشهر الجاي محجوز ${arCount(r.nextMonthKeepDays, AR_NOUN.day)}`) : null,
     r.startAnyway !== null ? (r.startAnyway ? L('"start anyway" allowed', '«يبدأ برضه» مسموح') : L('"start anyway" not allowed', '«يبدأ برضه» ممنوع')) : null,
   ].filter(Boolean).join(' · ')
 

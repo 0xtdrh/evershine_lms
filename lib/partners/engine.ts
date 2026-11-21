@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma'
 import { defaultBatchId } from '@/lib/batches/default-batch'
 import { notifyUsers, usersWithPermission } from '@/lib/notifications/events'
 import { CONTRACT_FILE_FORMATS, CONTRACT_FILE_MAX_MB, contractAlertDue, contractProblem, contractState, daysLeft, placeCode } from './rules'
+import { arCount, AR_NOUN } from '@/lib/i18n/plural'
 
 type Outcome<T = unknown> = { ok: true; value: T } | { ok: false; code: 'NOT_FOUND' | 'INVALID' | 'CONFLICT'; message: string }
 const fail = (code: 'NOT_FOUND' | 'INVALID' | 'CONFLICT', message: string): Outcome<never> => ({ ok: false, code, message })
@@ -265,7 +266,7 @@ export async function partnerContractAlerts(now = new Date()) {
     watchers ??= await partnerWatchers()
     const left = daysLeft(c.endDate, now) ?? 0
     const title = due === 'ENDED' ? `Contract ended: ${c.partner.name}` : `Contract ends in ${left} day${left === 1 ? '' : 's'}: ${c.partner.name}`
-    const titleAr = due === 'ENDED' ? `العقد خلص: ${c.partner.name}` : `العقد بيخلص بعد ${left} يوم: ${c.partner.name}`
+    const titleAr = due === 'ENDED' ? `العقد خلص: ${c.partner.name}` : `العقد بيخلص بعد ${arCount(left, AR_NOUN.day)}: ${c.partner.name}`
     await notifyUsers(watchers, 'PARTNER_CONTRACT_ENDING', { title, titleAr, message: `${c.title} — ${c.endDate!.toISOString().slice(0, 10)}. Renew it or record the new contract on the partner page.`, messageAr: `${c.title} — ${c.endDate!.toISOString().slice(0, 10)}. جدّده أو سجّل العقد الجديد في صفحة الشريك.`, relatedId: c.partnerId })
     await prisma.partnerContract.update({ where: { id: c.id }, data: due === 'ENDED' ? { endedNoticeAt: now, ...(c.alertSentAt ? {} : { alertSentAt: now }) } : { alertSentAt: now } })
     if (due === 'ENDED') ended++

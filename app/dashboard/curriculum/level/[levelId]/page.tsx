@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft, Download, Loader2, MessageSquare, Plus, Trash2, Upload } from 'lucide-react'
 import { VariantsManager, type Variant } from '@/components/curriculum/VariantsManager'
+import { arCount, AR_NOUN } from '@/lib/i18n/plural'
 
 interface Edition { id: string; number: number; status: string; notes: string | null; variantId: string | null; sessionCount: number; groupCount: number; publishedAt: string | null; createdAt: string }
 interface Skill { id: string; nameEn: string; nameAr: string }
@@ -48,7 +49,7 @@ function NewEditionDialog({ data, variantId, onDone }: { data: LevelData; varian
         <Select value={from} onValueChange={setFrom}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="blank">{L(`Empty (${data.level.numberOfSessions} empty sessions)`, `فاضية (${data.level.numberOfSessions} حصة فاضية)`)}</SelectItem>
+            <SelectItem value="blank">{L(`Empty (${data.level.numberOfSessions} empty sessions)`, `فاضية (${arCount(data.level.numberOfSessions, AR_NOUN.session)} فاضية)`)}</SelectItem>
             {data.editions.map((e) => <SelectItem key={e.id} value={e.id}>{L('Copy of version', 'نسخة من النسخة')} {e.number} · {curName(e.variantId)} ({t(`cur.status.${e.status}` as 'cur.status.DRAFT')})</SelectItem>)}
           </SelectContent>
         </Select>

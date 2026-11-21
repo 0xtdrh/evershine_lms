@@ -39,6 +39,7 @@ import { CampusBatchHouseFields } from '@/components/academic/CampusBatchHouseFi
 import { isPlacementScopeReady, performanceHouseRequired } from '@/lib/academic/hierarchy'
 import { STAFF_DESIGNATIONS } from '@/lib/constants/staff-designations'
 import { DateInput } from '@/components/ui/date-input'
+import { L, useI18n } from '@/lib/i18n/client'
 
 // ── Zod schema (permissive client-side validation for edit/update form)
 // WHY: This is an UPDATE form — existing DB records may have phone/contact numbers
@@ -89,6 +90,7 @@ function toIsoString(dateStr: string): string {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function EditTeacherPage() {
+  useI18n() // re-render on a language switch
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -283,7 +285,7 @@ export default function EditTeacherPage() {
   const handleCredentialsReset = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!resetEmail) {
-      notify.error('Email is required')
+      notify.error(L('Email is required', 'الإيميل مطلوب'))
       return
     }
     if (!confirm('Are you sure you want to update login credentials for this teacher?')) return
@@ -298,7 +300,7 @@ export default function EditTeacherPage() {
           newPassword: resetPassword || undefined,
         })
       })
-      notify.success('Credentials updated successfully!')
+      notify.success(L('Credentials updated successfully!', 'بيانات الدخول اتغيّرت'))
       setResetPassword('')
       queryClient.invalidateQueries({ queryKey: ['teacher-detail', id] })
     } catch (err: any) {
@@ -312,7 +314,7 @@ export default function EditTeacherPage() {
     const file = e.target.files?.[0]
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      notify.error('Please upload a valid image file')
+      notify.error(L('Please upload a valid image file', 'ارفع صورة صالحة'))
       return
     }
     const reader = new FileReader()
@@ -349,11 +351,11 @@ export default function EditTeacherPage() {
       return
     }
     if (!assignClassId) {
-      notify.error('Select a class to assign')
+      notify.error(L('Select a class to assign', 'اختار فصل'))
       return
     }
     if (!assignYear) {
-      notify.error('Academic year is still loading — please wait a moment and try again')
+      notify.error(L('Academic year is still loading — please wait a moment and try again', 'السنة الدراسية لسه بتحمّل، استنى لحظة وجرّب تاني'))
       return
     }
     setIsAssigning(true)
@@ -369,7 +371,7 @@ export default function EditTeacherPage() {
           academicYear: assignYear,
         }),
       })
-      notify.success('Class assignment added')
+      notify.success(L('Class assignment added', 'التكليف اتضاف'))
       setAssignClassId('')
       setAssignAsIncharge(false)
       refetchAssignments()
@@ -399,7 +401,7 @@ export default function EditTeacherPage() {
         method: 'DELETE',
         body: JSON.stringify(payload),
       })
-      notify.success('Class assignment removed')
+      notify.success(L('Class assignment removed', 'التكليف اتشال'))
       refetchAssignments()
       queryClient.invalidateQueries({ queryKey: ['teacher-detail', id] })
     } catch (err: any) {
@@ -410,7 +412,7 @@ export default function EditTeacherPage() {
   const onSubmit = async (data: EditForm) => {
     // Manual required-field checks (no zodResolver — see useForm comment above)
     if (!data.campusId) {
-      notify.error('Campus is required — please select a campus before saving.')
+      notify.error(L('Campus is required — please select a campus before saving.', 'الفرع مطلوب. اختاره قبل الحفظ.'))
       return
     }
     setIsSaving(true)
@@ -426,7 +428,7 @@ export default function EditTeacherPage() {
         method: 'PATCH',
         body: JSON.stringify(payload),
       })
-      notify.success('Teacher profile updated successfully')
+      notify.success(L('Teacher profile updated successfully', 'ملف المدرب اتحدّث'))
       queryClient.invalidateQueries({ queryKey: ['teacher-detail', id] })
       queryClient.invalidateQueries({ queryKey: ['teachers'] })
       router.push('/dashboard/teachers')
@@ -439,12 +441,12 @@ export default function EditTeacherPage() {
             setError(knownField, { type: 'server', message })
           }
         })
-        notify.error('Validation failed — check the highlighted fields', {
+        notify.error(L('Validation failed — check the highlighted fields', 'في بيانات غلط، راجع الخانات الملوّنة'), {
           description: err.message,
         })
       } else {
         const message = err instanceof Error ? err.message : 'An unexpected error occurred'
-        notify.error('Failed to update teacher', { description: message })
+        notify.error(L('Failed to update teacher', 'التعديل ماحصلش'), { description: message })
       }
     } finally {
       setIsSaving(false)
@@ -486,7 +488,7 @@ export default function EditTeacherPage() {
       <div className="max-w-4xl mx-auto">
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="pt-6 text-center text-sm text-destructive">
-            Failed to load teacher profile. The record may have been deleted.
+            {L('Failed to load teacher profile. The record may have been deleted.', 'ملف المدرب ماتحمّلش. ممكن يكون اتمسح.')}
           </CardContent>
         </Card>
       </div>
@@ -503,7 +505,7 @@ export default function EditTeacherPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Edit Staff Profile</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">{L('Edit Staff Profile', 'تعديل ملف الموظف')}</h1>
           <p className="text-sm text-gray-500">
             {teacher.firstName} {teacher.lastName} — {teacher.employeeId}
           </p>
@@ -526,7 +528,7 @@ export default function EditTeacherPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <User className="w-4 h-4 text-indigo-600" />
-              Personal Details
+              {L('Personal Details', 'البيانات الشخصية')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -538,11 +540,11 @@ export default function EditTeacherPage() {
                 ) : (
                   <div className="text-center p-2">
                     <User className="w-6 h-6 mx-auto text-gray-300" />
-                    <span className="text-[9px] text-gray-400 block mt-1 uppercase tracking-wider">Photo</span>
+                    <span className="text-[9px] text-gray-400 block mt-1 uppercase tracking-wider">{L('Photo', 'الصورة')}</span>
                   </div>
                 )}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">Change</span>
+                  <span className="text-white text-xs font-bold">{L('Change', 'غيّر')}</span>
                 </div>
                 <input
                   type="file"
@@ -552,48 +554,48 @@ export default function EditTeacherPage() {
                 />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-800">Profile Photo</p>
-                <p className="text-xs text-gray-400 mt-0.5">Click to replace. JPEG, PNG accepted.</p>
+                <p className="text-sm font-semibold text-gray-800">{L('Profile Photo', 'صورة الملف')}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{L('Click to replace. JPEG, PNG accepted.', 'دوس علشان تغيّرها. JPEG أو PNG.')}</p>
                 <p className="text-[10px] text-gray-300 mt-2 font-mono">CNIC: {teacher.cnic} (immutable)</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>First Name</Label>
+                <Label>{L('First Name', 'الاسم الأول')}</Label>
                 <Input {...field('firstName')} />{fieldErr('firstName')}
               </div>
               <div className="space-y-1.5">
-                <Label>Last Name</Label>
+                <Label>{L('Last Name', 'اسم العيلة')}</Label>
                 <Input {...field('lastName')} />{fieldErr('lastName')}
               </div>
               <div className="space-y-1.5">
-                <Label>Date of Birth</Label>
+                <Label>{L('Date of Birth', 'تاريخ الميلاد')}</Label>
                 <DateInput {...field('dateOfBirth')} />{fieldErr('dateOfBirth')}
               </div>
               <div className="space-y-1.5">
-                <Label>Gender</Label>
+                <Label>{L('Gender', 'النوع')}</Label>
                 <Select
                   value={genderValue || 'MALE'}
                   onValueChange={(v) => setValue('gender', v as 'MALE' | 'FEMALE', { shouldDirty: true, shouldValidate: true })}
                 >
                   <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Select gender" />
+                    <SelectValue placeholder={L('Select gender', 'اختار النوع')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MALE">Male</SelectItem>
-                    <SelectItem value="FEMALE">Female</SelectItem>
+                    <SelectItem value="MALE">{L('Male', 'ولد')}</SelectItem>
+                    <SelectItem value="FEMALE">{L('Female', 'بنت')}</SelectItem>
                   </SelectContent>
                 </Select>
                 {fieldErr('gender')}
               </div>
               <div className="space-y-1.5">
-                <Label>Joining Date</Label>
+                <Label>{L('Joining Date', 'تاريخ التعيين')}</Label>
                 <DateInput {...field('joiningDate')} />{fieldErr('joiningDate')}
               </div>
               <div className="space-y-1.5 flex items-end gap-3">
                 <div className="flex-1">
-                  <Label>Account Status</Label>
+                  <Label>{L('Account Status', 'حالة الحساب')}</Label>
                   <div className="flex items-center gap-3 mt-2">
                     <button
                       type="button"
@@ -604,7 +606,7 @@ export default function EditTeacherPage() {
                           : 'bg-white text-gray-500 border-gray-300 hover:border-green-400'
                       }`}
                     >
-                      Active
+                      {L('Active', 'شغال')}
                     </button>
                     <button
                       type="button"
@@ -615,7 +617,7 @@ export default function EditTeacherPage() {
                           : 'bg-white text-gray-500 border-gray-300 hover:border-red-400'
                       }`}
                     >
-                      Suspend
+                      {L('Suspend', 'إيقاف')}
                     </button>
                   </div>
                 </div>
@@ -629,28 +631,28 @@ export default function EditTeacherPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Phone className="w-4 h-4 text-indigo-600" />
-              Contact &amp; Address
+              {L('Contact & Address', 'التواصل والعنوان')}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5 md:col-span-2">
-              <Label>Address</Label>
+              <Label>{L('Address', 'العنوان')}</Label>
               <Input {...field('address')} />{fieldErr('address')}
             </div>
             <div className="space-y-1.5">
-              <Label>City</Label>
+              <Label>{L('City', 'المدينة')}</Label>
               <Input {...field('city')} />{fieldErr('city')}
             </div>
             <div className="space-y-1.5">
-              <Label>Phone Number</Label>
+              <Label>{L('Phone Number', 'رقم التليفون')}</Label>
               <Input {...field('phoneNumber')} placeholder="01012345678" />{fieldErr('phoneNumber')}
             </div>
             <div className="space-y-1.5">
-              <Label>Email (Contact)</Label>
+              <Label>{L('Email (Contact)', 'الإيميل (للتواصل)')}</Label>
               <Input type="email" {...field('email')} />{fieldErr('email')}
             </div>
             <div className="space-y-1.5">
-              <Label>Emergency Contact</Label>
+              <Label>{L('Emergency Contact', 'رقم الطوارئ')}</Label>
               <Input {...field('emergencyContact')} placeholder="01012345678" />{fieldErr('emergencyContact')}
             </div>
           </CardContent>
@@ -661,26 +663,26 @@ export default function EditTeacherPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Briefcase className="w-4 h-4 text-indigo-600" />
-              Professional Details
+              {L('Professional Details', 'البيانات المهنية')}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Qualification</Label>
-              <Input {...field('qualification')} placeholder="M.Ed, B.Sc, MA..." />{fieldErr('qualification')}
+              <Label>{L('Qualification', 'المؤهل')}</Label>
+              <Input {...field('qualification')} placeholder={L('M.Ed, B.Sc, MA...', 'ماجستير، بكالوريوس...')} />{fieldErr('qualification')}
             </div>
             <div className="space-y-1.5">
-              <Label>Specialization</Label>
-              <Input {...field('specialization')} placeholder="Mathematics, Biology..." />
+              <Label>{L('Specialization', 'التخصص')}</Label>
+              <Input {...field('specialization')} placeholder={L('Mathematics, Biology...', 'رياضيات، علوم...')} />
             </div>
             <div className="space-y-1.5">
-              <Label>Designation</Label>
+              <Label>{L('Designation', 'الوظيفة')}</Label>
               <Select
                 value={designationValue || 'Teacher'}
                 onValueChange={(v) => setValue('designation', v, { shouldDirty: true, shouldValidate: true })}
               >
                 <SelectTrigger className={errors.designation ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="Select designation" />
+                  <SelectValue placeholder={L('Select designation', 'اختار الوظيفة')} />
                 </SelectTrigger>
                 <SelectContent>
                   {STAFF_DESIGNATIONS.map((d) => (
@@ -692,24 +694,24 @@ export default function EditTeacherPage() {
             </div>
             {designationValue === 'Other' && (
               <div className="space-y-1.5">
-                <Label>Custom Designation</Label>
+                <Label>{L('Custom Designation', 'وظيفة تانية')}</Label>
                 <Input
-                  placeholder="e.g. Lab Assistant, Peon, Driver..."
+                  placeholder={L('e.g. Lab Assistant, Peon, Driver...', 'مثلاً مساعد معمل، سواق...')}
                   onChange={(e) => {
                     // When Other is selected, overwrite designation with custom text on save
                     // Store in a data attribute for submission
                   }}
                   className="border-amber-300 bg-amber-50/30"
                 />
-                <p className="text-[10px] text-amber-600">This custom designation will be saved when you update the profile.</p>
+                <p className="text-[10px] text-amber-600">{L('This custom designation will be saved when you update the profile.', 'الوظيفة دي هتتحفظ مع التعديل.')}</p>
               </div>
             )}
             <div className="space-y-1.5">
-              <Label>Years of Experience</Label>
+              <Label>{L('Years of Experience', 'سنين الخبرة')}</Label>
               <Input type="number" min={0} {...field('experienceYears')} />{fieldErr('experienceYears')}
             </div>
             <div className="space-y-1.5">
-              <Label>Monthly Salary (EGP) — optional</Label>
+              <Label>{L('Monthly Salary (EGP) — optional', 'المرتب الشهري (ج.م) — اختياري')}</Label>
               <Input type="number" min={0} {...register('monthlySalary', { valueAsNumber: true })} />
             </div>
           </CardContent>
@@ -720,10 +722,10 @@ export default function EditTeacherPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold flex items-center gap-2">
               <MapPin className="w-4 h-4 text-indigo-600" />
-              Campus Placement
+              {L('Campus Placement', 'الفرع')}
             </CardTitle>
             <CardDescription className="text-xs">
-              Primary campus and batch for this teacher. Class assignments (Morning/Evening) are managed below.
+              {L('Primary campus and batch for this teacher. Class assignments (Morning/Evening) are managed below.', 'الفرع الأساسي للمدرب. التكليفات القديمة تحت.')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -758,7 +760,7 @@ export default function EditTeacherPage() {
             />
 
             <div className="space-y-1.5">
-              <Label>Coaching sessions (from class assignments)</Label>
+              <Label>{L('Coaching sessions (from class assignments)', 'الحصص (من التكليفات القديمة)')}</Label>
               <div className="flex flex-wrap gap-2 min-h-[32px] items-center">
                 {assignedShifts.length > 0 ? (
                   assignedShifts.map((s) => (
@@ -770,7 +772,7 @@ export default function EditTeacherPage() {
                     </span>
                   ))
                 ) : (
-                  <span className="text-xs text-gray-400 italic">No class assignments yet — add Morning, Evening, or Night classes below</span>
+                  <span className="text-xs text-gray-400 italic">{L('No class assignments yet — add Morning, Evening, or Night classes below', 'مفيش تكليفات قديمة. الجروبات بتتحدد من شاشة الجروبات.')}</span>
                 )}
               </div>
             </div>
@@ -783,10 +785,10 @@ export default function EditTeacherPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <GraduationCap className="w-4 h-4 text-indigo-600" />
-              Class Assignments (All Shifts)
+              {L('Class Assignments (All Shifts)', 'التكليفات القديمة')}
             </CardTitle>
             <CardDescription className="text-xs">
-              Assign this teacher to Morning, Evening, or Night coaching classes. Each shift is a separate class section.
+              {L('Assign this teacher to Morning, Evening, or Night coaching classes. Each shift is a separate class section.', 'للشاشات القديمة بس. الجروب الجديد بتحدد مدربه من شاشة الجروبات.')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -840,7 +842,7 @@ export default function EditTeacherPage() {
                           <span className="text-[10px] text-gray-400">{a.studentCount} students</span>
                         )}
                         {a.source === 'legacy' && (
-                          <span className="text-[9px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">Legacy</span>
+                          <span className="text-[9px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">{L('Legacy', 'قديم')}</span>
                         )}
                       </div>
                       <Button
@@ -855,21 +857,21 @@ export default function EditTeacherPage() {
                         )}
                       >
                         <Trash2 className="w-3.5 h-3.5 mr-1" />
-                        Remove
+                        {L('Remove', 'شيل')}
                       </Button>
                     </div>
                   )
                 })}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 italic">No classes assigned for this academic year.</p>
+              <p className="text-sm text-gray-400 italic">{L('No classes assigned for this academic year.', 'مفيش تكليفات للسنة دي.')}</p>
             )}
 
             <div className="border-t pt-4 space-y-4">
-              <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Add class assignment</p>
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">{L('Add class assignment', 'ضيف تكليف')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Session</Label>
+                  <Label className="text-xs">{L('Session', 'الفترة')}</Label>
                   <Select value={assignShift} onValueChange={(v) => { setAssignShift(v as SessionShift); setAssignClassId('') }}>
                     <SelectTrigger className="h-9">
                       <SelectValue />
@@ -884,7 +886,7 @@ export default function EditTeacherPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs">Group</Label>
+                  <Label className="text-xs">{L('Group', 'الجروب')}</Label>
                   <Select
                     value={assignClassId || undefined}
                     disabled={!placementReady || availableClasses.length === 0}
@@ -912,7 +914,7 @@ export default function EditTeacherPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Academic year</Label>
+                  <Label className="text-xs">{L('Academic year', 'السنة الدراسية')}</Label>
                   <Input
                     className="h-9 text-xs"
                     value={assignYear}
@@ -929,7 +931,7 @@ export default function EditTeacherPage() {
                     onChange={(e) => setAssignAsIncharge(e.target.checked)}
                     className="rounded border-gray-300"
                   />
-                  <span className="text-gray-700">Class teacher (incharge)</span>
+                  <span className="text-gray-700">{L('Class teacher (incharge)', 'مدرب الفصل (المسؤول)')}</span>
                 </label>
                 <Button
                   type="button"
@@ -951,7 +953,7 @@ export default function EditTeacherPage() {
           <Link href="/dashboard/teachers">
             <Button type="button" variant="outline" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
-              Cancel
+              {L('Cancel', 'إلغاء')}
             </Button>
           </Link>
           <Button
@@ -972,14 +974,14 @@ export default function EditTeacherPage() {
             <ShieldAlert className="w-5 h-5" />
           </div>
           <div>
-            <CardTitle className="text-sm font-black text-rose-900">Administrative Login Credentials Reset</CardTitle>
-            <CardDescription className="text-xs text-rose-700/80">Change or reset this teacher's active dashboard login credentials (email & password).</CardDescription>
+            <CardTitle className="text-sm font-black text-rose-900">{L('Administrative Login Credentials Reset', 'إعادة ضبط بيانات الدخول')}</CardTitle>
+            <CardDescription className="text-xs text-rose-700/80">{L('Change or reset this teacher\'s active dashboard login credentials (email & password).', 'غيّر إيميل وباسورد دخول المدرب.')}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="pt-6">
           <form onSubmit={handleCredentialsReset} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-rose-900">Dashboard Email</Label>
+              <Label className="text-xs font-bold text-rose-900">{L('Dashboard Email', 'إيميل الدخول')}</Label>
               <Input 
                 type="email" 
                 value={resetEmail} 
@@ -989,7 +991,7 @@ export default function EditTeacherPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-rose-900">New Password</Label>
+              <Label className="text-xs font-bold text-rose-900">{L('New Password', 'الباسورد الجديد')}</Label>
               <Input 
                 type="password" 
                 value={resetPassword} 
@@ -1007,12 +1009,12 @@ export default function EditTeacherPage() {
                 {isResetting ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Resetting...
+                    {L('Resetting...', 'بيتغيّر...')}
                   </>
                 ) : (
                   <>
                     <Key className="w-3.5 h-3.5" />
-                    Reset Credentials
+                    {L('Reset Credentials', 'غيّر بيانات الدخول')}
                   </>
                 )}
               </Button>

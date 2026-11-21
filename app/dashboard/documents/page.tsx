@@ -28,6 +28,7 @@ import { DOCUMENT_PALETTE, documentUsesAttendanceQr } from '@/lib/pdf/document-d
 import { getCanonicalStudentClassSection, getCanonicalStudentRollNumber, getCanonicalStudentShift, type EnrollmentRecord } from '@/lib/academic/record-formatters'
 import { getDisplayedPosition, parseResultCardConfig, toNumericMark, formatExamSessionLabel } from '@/lib/academic/result-card-config'
 import { DateInput } from '@/components/ui/date-input'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface Student {
   id: string
@@ -150,6 +151,7 @@ function getAvatarDataUrl(firstName: string, lastName: string, bgColor: string) 
 }
 
 export default function DocumentsPage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const router = useRouter()
   const isAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN' || session?.user?.role === 'BRANCH_MANAGER' || session?.user?.role === 'SECRETARY'
@@ -732,10 +734,10 @@ export default function DocumentsPage() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div className="flex-1">
             <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2 leading-tight">
-              <span>Document & Report Hub</span>
+              <span>{L('Document & Report Hub', 'مركز المستندات والتقارير')}</span>
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 animate-pulse flex-shrink-0" />
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">Issue professional student ID cards, letters, cards, result grids, and audits.</p>
+            <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">{L('Issue professional student ID cards, letters, cards, result grids, and audits.', 'اطبع كارنيهات وخطابات ونتايج وتقارير الطلاب والموظفين.')}</p>
           </div>
         </div>
       </div>
@@ -762,7 +764,7 @@ export default function DocumentsPage() {
                         : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
-                    <User className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>ID Card</span>
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('ID Card', 'كارنيه')}</span>
                   </button>
               <button
                 onClick={() => setDocType('birthday')}
@@ -772,7 +774,7 @@ export default function DocumentsPage() {
                     : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Cake className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>Birthday</span>
+                <Cake className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('Birthday', 'عيد ميلاد')}</span>
               </button>
               <button
                 onClick={() => setDocType('bonafide')}
@@ -782,7 +784,7 @@ export default function DocumentsPage() {
                     : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>Letter</span>
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('Letter', 'خطاب')}</span>
               </button>
               </>
               )}
@@ -795,7 +797,7 @@ export default function DocumentsPage() {
                     : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Award className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>Result</span>
+                <Award className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('Result', 'نتيجة')}</span>
               </button>
               )}
               {!isStudent && (
@@ -807,7 +809,7 @@ export default function DocumentsPage() {
                     : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>Perf</span>
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('Perf', 'الأداء')}</span>
               </button>
               )}
               <button
@@ -818,7 +820,7 @@ export default function DocumentsPage() {
                     : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <User className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>Profile</span>
+                <User className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('Profile', 'الملف')}</span>
               </button>
               {!isStudent && (
               <>
@@ -830,7 +832,7 @@ export default function DocumentsPage() {
                     : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Grid className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>Reports</span>
+                <Grid className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('Reports', 'التقارير')}</span>
               </button>
               <button
                 onClick={() => setDocType('exports')}
@@ -840,7 +842,7 @@ export default function DocumentsPage() {
                     : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Database className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>Export</span>
+                <Database className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('Export', 'تصدير')}</span>
               </button>
               {/* ── Teacher Document Tabs (admin only) ── */}
               <button
@@ -861,7 +863,7 @@ export default function DocumentsPage() {
                     : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>Exp. Letter</span>
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('Exp. Letter', 'خطاب خبرة')}</span>
               </button>
               <button
                 onClick={() => { setDocType('teacher_profile'); setSelectedStudent(null); setSelectedAdministrationUser(null); setSelectedTeacher(null); setTeacherSearch('') }}
@@ -871,7 +873,7 @@ export default function DocumentsPage() {
                     : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <User className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>Staff Profile</span>
+                <User className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('Staff Profile', 'ملف موظف')}</span>
               </button>
               {isSuperAdmin && <button
                 onClick={() => { setDocType('super_admin_card'); setSelectedStudent(null); setSelectedTeacher(null); setSelectedAdministrationUser(null); setAdministrationSearch('') }}
@@ -879,7 +881,7 @@ export default function DocumentsPage() {
                   docType === 'super_admin_card' ? 'bg-red-600/5 text-red-700 border-red-500 shadow-sm shadow-red-50' : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>Super Admin Card</span>
+                <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('Super Admin Card', 'كارنيه السوبر أدمن')}</span>
               </button>}
               <button
                 onClick={() => { setDocType('account_manager_card'); setSelectedStudent(null); setSelectedTeacher(null); setSelectedAdministrationUser(null); setAdministrationSearch('') }}
@@ -887,7 +889,7 @@ export default function DocumentsPage() {
                   docType === 'account_manager_card' ? 'bg-red-600/5 text-red-700 border-red-500 shadow-sm shadow-red-50' : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <CircleDollarSign className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>Account Manager</span>
+                <CircleDollarSign className="w-4 h-4 sm:w-5 sm:h-5 mb-1" /> <span>{L('Account Manager', 'مدير حساب')}</span>
               </button>
               </>
               )}
@@ -898,7 +900,7 @@ export default function DocumentsPage() {
           {docType !== 'reports' && docType !== 'exports' && !isStudent && !isStaffDoc && (
             <Card className="rounded-xl border shadow-sm bg-white overflow-hidden">
               <CardHeader className="border-b bg-gray-50/50 py-2.5 sm:py-3.5 px-3 sm:px-4">
-                <CardTitle className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-gray-400">Target Student</CardTitle>
+                <CardTitle className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-gray-400">{L('Target Student', 'الطالب')}</CardTitle>
               </CardHeader>
               <CardContent className="pt-3 sm:pt-4 space-y-2.5 sm:space-y-4">
                 {!selectedStudent ? (
@@ -910,7 +912,7 @@ export default function DocumentsPage() {
                       onScopeChange={() => setSearch('')}
                     />
                     <p className="text-[9px] sm:text-[10px] text-gray-400 leading-tight">
-                      Select branch → session → class to list, or search by name/roll.
+                      {L('Select branch → session → class to list, or search by name/roll.', 'اختار الفرع ثم الجروب، أو دوّر بالاسم.')}
                     </p>
                     <div className="relative">
                       <Search className="absolute left-3 top-2 h-4 w-4 text-gray-400" />
@@ -966,14 +968,14 @@ export default function DocumentsPage() {
                         }}
                         className="text-[9px] sm:text-[10px] font-bold text-gray-500 hover:text-indigo-600 hover:bg-indigo-50/50 flex-shrink-0 h-8 sm:h-9"
                       >
-                        Change
+                        {L('Change', 'غيّر')}
                       </Button>
                     </div>
                     {docType === 'result_card' && (
                       <div className="space-y-1.5 border-t border-indigo-100 pt-3">
-                        <p className="text-[10px] font-black text-indigo-700 uppercase tracking-wider">Exam Session Selection</p>
+                        <p className="text-[10px] font-black text-indigo-700 uppercase tracking-wider">{L('Exam Session Selection', 'اختيار الامتحان')}</p>
                         <div>
-                          <label className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">Select Term/Session</label>
+                          <label className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">{L('Select Term/Session', 'اختار الامتحان')}</label>
                           <select 
                             value={selectedExamSessionId}
                             onChange={(e) => setSelectedExamSessionId(e.target.value)}
@@ -984,7 +986,7 @@ export default function DocumentsPage() {
                               return <option key={t} value={t}>{result?.examSessionLabel || formatExamSessionLabel(t)}</option>
                             })}
                             {termSessions.length === 0 && (
-                              <option value="">No declared terms found</option>
+                              <option value="">{L('No declared terms found', 'مفيش نتايج معلنة')}</option>
                             )}
                           </select>
                         </div>
@@ -1000,7 +1002,7 @@ export default function DocumentsPage() {
           {!isStudent && isTeacherDoc && (
             <Card className="rounded-xl border shadow-sm bg-white overflow-hidden border-emerald-100">
               <CardHeader className="border-b bg-emerald-50/50 py-2.5 sm:py-3.5 px-3 sm:px-4">
-                <CardTitle className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-emerald-600">Target Staff Member</CardTitle>
+                <CardTitle className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-emerald-600">{L('Target Staff Member', 'الموظف')}</CardTitle>
               </CardHeader>
               <CardContent className="pt-3 sm:pt-4 space-y-2.5">
                 {!selectedTeacher ? (
@@ -1051,24 +1053,24 @@ export default function DocumentsPage() {
                       onClick={() => { setSelectedTeacher(null); setTeacherSearch('') }}
                       className="text-[9px] sm:text-[10px] font-bold text-gray-500 hover:text-emerald-600 hover:bg-emerald-50/50 flex-shrink-0 h-8 sm:h-9"
                     >
-                      Change
+                      {L('Change', 'غيّر')}
                     </Button>
                   </div>
                 )}
                 {/* Experience Letter fields — only shown for that doc type */}
                 {docType === 'teacher_experience' && selectedTeacher && (
                   <div className="space-y-2 border-t border-emerald-100 pt-3 mt-1">
-                    <p className="text-[9px] font-black text-emerald-700 uppercase tracking-wider">Letter Fields</p>
+                    <p className="text-[9px] font-black text-emerald-700 uppercase tracking-wider">{L('Letter Fields', 'بيانات الخطاب')}</p>
                     <div>
-                      <label className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">End Date (blank = still employed)</label>
+                      <label className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">{L('End Date (blank = still employed)', 'تاريخ الانتهاء (سيبه فاضي لو لسه شغال)')}</label>
                       <DateInput value={expEndDate} onChange={e => setExpEndDate(e.target.value)} className="text-xs h-8 bg-white" />
                     </div>
                     <div>
-                      <label className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">Principal Name</label>
+                      <label className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">{L('Principal Name', 'اسم المدير')}</label>
                       <Input value={expPrincipalName} onChange={e => setExpPrincipalName(e.target.value)} className="text-xs h-8 bg-white" placeholder="Principal name" />
                     </div>
                     <div>
-                      <label className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">Responsibilities (one per line, max 6)</label>
+                      <label className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">{L('Responsibilities (one per line, max 6)', 'المسؤوليات (واحدة في كل سطر، حتى 6)')}</label>
                       <textarea
                         value={expResponsibilities}
                         onChange={e => setExpResponsibilities(e.target.value)}
@@ -1086,7 +1088,7 @@ export default function DocumentsPage() {
           {!isStudent && isAdministrationDoc && (
             <Card className="rounded-xl border shadow-sm bg-white overflow-hidden border-red-100">
               <CardHeader className="border-b bg-red-50/50 py-2.5 sm:py-3.5 px-3 sm:px-4">
-                <CardTitle className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-red-700">Target Administration User</CardTitle>
+                <CardTitle className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-red-700">{L('Target Administration User', 'مستخدم الإدارة')}</CardTitle>
               </CardHeader>
               <CardContent className="pt-3 sm:pt-4 space-y-2.5">
                 {!selectedAdministrationUser ? (
@@ -1118,7 +1120,7 @@ export default function DocumentsPage() {
                 ) : (
                   <div className="flex items-center justify-between p-2.5 sm:p-3 bg-red-50 border border-red-100 rounded-xl gap-2">
                     <div className="min-w-0"><p className="text-xs sm:text-sm font-black text-red-900 truncate">{selectedAdministrationUser.name}</p><p className="text-[9px] text-red-700 font-bold mt-0.5">{selectedAdministrationUser.email}</p></div>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedAdministrationUser(null)} className="text-[9px] font-bold text-gray-500 hover:text-red-700 h-8">Change</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedAdministrationUser(null)} className="text-[9px] font-bold text-gray-500 hover:text-red-700 h-8">{L('Change', 'غيّر')}</Button>
                   </div>
                 )}
               </CardContent>
@@ -1129,11 +1131,11 @@ export default function DocumentsPage() {
           {docType === 'reports' && (
             <Card className="rounded-xl border shadow-sm bg-white overflow-hidden">
               <CardHeader className="border-b bg-gray-50/50 py-2.5 sm:py-3.5 px-3 sm:px-4">
-                <CardTitle className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-gray-400">Report Category</CardTitle>
+                <CardTitle className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-gray-400">{L('Report Category', 'نوع التقرير')}</CardTitle>
               </CardHeader>
               <CardContent className="pt-3 sm:pt-4 space-y-2 sm:space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase">Select Category</label>
+                  <label className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase">{L('Select Category', 'اختار النوع')}</label>
                   <Select
                     value={reportSubtype}
                     onValueChange={(val: string) => setReportSubtype(val as 'fees' | 'attendance' | 'performance')}
@@ -1142,9 +1144,9 @@ export default function DocumentsPage() {
                       <SelectValue placeholder="Select Report Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fees" className="text-xs">Fees Outstanding Deficit Report</SelectItem>
-                      <SelectItem value="attendance" className="text-xs">Campus Attendance & Presence Report</SelectItem>
-                      <SelectItem value="performance" className="text-xs">Academic Grade Distribution Report</SelectItem>
+                      <SelectItem value="fees" className="text-xs">{L('Fees Outstanding Deficit Report', 'تقرير الفلوس المتأخرة')}</SelectItem>
+                      <SelectItem value="attendance" className="text-xs">{L('Campus Attendance & Presence Report', 'تقرير الحضور')}</SelectItem>
+                      <SelectItem value="performance" className="text-xs">{L('Academic Grade Distribution Report', 'تقرير توزيع الدرجات')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1158,12 +1160,12 @@ export default function DocumentsPage() {
               <CardContent className="pt-3 sm:pt-6 space-y-2 sm:space-y-3">
 
                         <div className="flex items-center justify-between gap-2 sm:gap-3 text-[10px] sm:text-[11px] font-bold text-gray-600">
-                          <div>Output Color Mode</div>
+                          <div>{L('Output Color Mode', 'الألوان')}</div>
                           <div className="flex items-center gap-1.5 sm:gap-2">
                             <button
                               onClick={() => { setColorMode('color'); try { localStorage.setItem('document_color_mode', 'color') } catch(e){} }}
                               className={`text-[10px] sm:text-[11px] px-2 sm:px-3 py-1 rounded-lg border transition-all ${colorMode === 'color' ? 'bg-white text-gray-900 border-gray-300 shadow-sm' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
-                              Color
+                              {L('Color', 'ملوّن')}
                             </button>
                             <button
                               onClick={() => { setColorMode('bw'); try { localStorage.setItem('document_color_mode', 'bw') } catch(e){} }}
@@ -1183,8 +1185,8 @@ export default function DocumentsPage() {
                     {isGenerating ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="hidden sm:inline">Compiling PDF...</span>
-                        <span className="inline sm:hidden">Building...</span>
+                        <span className="hidden sm:inline">{L('Compiling PDF...', 'بيجهّز الـ PDF...')}</span>
+                        <span className="inline sm:hidden">{L('Building...', 'بيتجهّز...')}</span>
                       </>
                     ) : (
                       <>
@@ -1206,14 +1208,14 @@ export default function DocumentsPage() {
                     {isExporting ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="hidden sm:inline">Building Excel...</span>
-                        <span className="inline sm:hidden">Building...</span>
+                        <span className="hidden sm:inline">{L('Building Excel...', 'بيجهّز الـ Excel...')}</span>
+                        <span className="inline sm:hidden">{L('Building...', 'بيتجهّز...')}</span>
                       </>
                     ) : (
                       <>
                         <FileSpreadsheet className="w-4 h-4" />
-                        <span className="hidden sm:inline">Download as Excel (.xlsx)</span>
-                        <span className="inline sm:hidden">Download Excel</span>
+                        <span className="hidden sm:inline">{L('Download as Excel (.xlsx)', 'نزّل Excel (.xlsx)')}</span>
+                        <span className="inline sm:hidden">{L('Download Excel', 'نزّل Excel')}</span>
                       </>
                     )}
                   </Button>
@@ -1226,7 +1228,7 @@ export default function DocumentsPage() {
 
         {/* Live Document Preview Panel */}
         <div className="md:col-span-5 lg:col-span-7 space-y-3 sm:space-y-4">
-          <h3 className="text-xs sm:text-sm font-black uppercase text-gray-400 tracking-wider px-1">Live Document Canvas (A4 Aspect)</h3>
+          <h3 className="text-xs sm:text-sm font-black uppercase text-gray-400 tracking-wider px-1">{L('Live Document Canvas (A4 Aspect)', 'معاينة المستند (A4)')}</h3>
           
           <div className="bg-gray-100 p-3 sm:p-6 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-start overflow-auto max-h-[50vh] sm:max-h-[70vh] md:max-h-[80vh] w-full shadow-inner">
             {selectedStudent || docType === 'reports' || docType === 'exports' || (isTeacherDoc && selectedTeacher) || (isAdministrationDoc && selectedAdministrationUser) ? (
@@ -1238,8 +1240,8 @@ export default function DocumentsPage() {
                       <Database className="w-5 h-5 animate-pulse" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-black text-gray-900 uppercase tracking-tight">Database Master Export Center</h2>
-                      <p className="text-[10px] text-gray-500 font-medium">Download complete registry lists as sortable, styled Excel files.</p>
+                      <h2 className="text-sm font-black text-gray-900 uppercase tracking-tight">{L('Database Master Export Center', 'تصدير القوايم الكاملة')}</h2>
+                      <p className="text-[10px] text-gray-500 font-medium">{L('Download complete registry lists as sortable, styled Excel files.', 'نزّل القوايم الكاملة كملفات Excel.')}</p>
                     </div>
                   </div>
 
@@ -1252,8 +1254,8 @@ export default function DocumentsPage() {
                             <GraduationCap className="w-4 h-4" />
                           </div>
                           <div>
-                            <h4 className="text-xs font-black text-gray-800 uppercase tracking-tight">Students Master Register</h4>
-                            <p className="text-[10px] text-gray-500 leading-normal mt-0.5">Profiles, CNIC/B-Forms, classes/sections, and dues summary.</p>
+                            <h4 className="text-xs font-black text-gray-800 uppercase tracking-tight">{L('Students Master Register', 'سجل الطلاب')}</h4>
+                            <p className="text-[10px] text-gray-500 leading-normal mt-0.5">{L('Profiles, CNIC/B-Forms, classes/sections, and dues summary.', 'البيانات والجروبات وملخص المستحقات.')}</p>
                           </div>
                         </div>
                         <Button
@@ -1279,8 +1281,8 @@ export default function DocumentsPage() {
                             <Users className="w-4 h-4" />
                           </div>
                           <div>
-                            <h4 className="text-xs font-black text-gray-800 uppercase tracking-tight">Faculty Registry</h4>
-                            <p className="text-[10px] text-gray-500 leading-normal mt-0.5">Qualifications, experience, monthly salary, and course loads.</p>
+                            <h4 className="text-xs font-black text-gray-800 uppercase tracking-tight">{L('Faculty Registry', 'سجل المدربين')}</h4>
+                            <p className="text-[10px] text-gray-500 leading-normal mt-0.5">{L('Qualifications, experience, monthly salary, and course loads.', 'المؤهلات والخبرة والمرتب والجروبات.')}</p>
                           </div>
                         </div>
                         <Button
@@ -1306,8 +1308,8 @@ export default function DocumentsPage() {
                             <Briefcase className="w-4 h-4" />
                           </div>
                           <div>
-                            <h4 className="text-xs font-black text-gray-800 uppercase tracking-tight">Staff & Support Directory</h4>
-                            <p className="text-[10px] text-gray-500 leading-normal mt-0.5">Accountants, administrators directory and status log.</p>
+                            <h4 className="text-xs font-black text-gray-800 uppercase tracking-tight">{L('Staff & Support Directory', 'دليل الموظفين')}</h4>
+                            <p className="text-[10px] text-gray-500 leading-normal mt-0.5">{L('Accountants, administrators directory and status log.', 'المحاسبين والإداريين وحالة كل واحد.')}</p>
                           </div>
                         </div>
                         <Button
@@ -1333,8 +1335,8 @@ export default function DocumentsPage() {
                             <CircleDollarSign className="w-4 h-4" />
                           </div>
                           <div>
-                            <h4 className="text-xs font-black text-gray-800 uppercase tracking-tight">Master Financial Ledger</h4>
-                            <p className="text-[10px] text-gray-500 leading-normal mt-0.5">All-time fee invoices ledger, dues, paid & overdue status.</p>
+                            <h4 className="text-xs font-black text-gray-800 uppercase tracking-tight">{L('Master Financial Ledger', 'دفتر الفواتير الكامل')}</h4>
+                            <p className="text-[10px] text-gray-500 leading-normal mt-0.5">{L('All-time fee invoices ledger, dues, paid & overdue status.', 'كل الفواتير والمستحق والمدفوع والمتأخر.')}</p>
                           </div>
                         </div>
                         <Button
@@ -1355,7 +1357,7 @@ export default function DocumentsPage() {
 
                   <div className="p-3 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-[9px] leading-relaxed flex items-start gap-2">
                     <span className="font-bold">⚠️ ADVISORY:</span>
-                    <span>Contains sensitive details. Distribute responsibly and secure all backups under local IT compliance protocol.</span>
+                    <span>{L('Contains sensitive details. Distribute responsibly and secure all backups under local IT compliance protocol.', 'فيه بيانات حساسة. وزّعه بحذر وأمّن النسخ.')}</span>
                   </div>
                 </div>
               ) : (

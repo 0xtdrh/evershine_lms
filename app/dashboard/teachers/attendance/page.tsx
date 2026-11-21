@@ -49,6 +49,7 @@ import { SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
 import { DateInput } from '@/components/ui/date-input'
 import { campusLabel } from '@/lib/places/label'
 import { cairoToday } from '@/lib/dates/cairo'
+import { L, useI18n } from '@/lib/i18n/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
@@ -127,6 +128,7 @@ const STATUS_CONFIG: Record<
 }
 
 export default function BulkTeacherAttendancePage() {
+  useI18n() // re-render on a language switch
   const { data: session, status } = useSession()
   const queryClient = useQueryClient()
 
@@ -338,7 +340,7 @@ export default function BulkTeacherAttendancePage() {
     })
 
     if (payload.length === 0) {
-      notify.info('No changes to save.')
+      notify.info(L('No changes to save.', 'مفيش تغييرات تتحفظ.'))
       return
     }
 
@@ -370,7 +372,7 @@ export default function BulkTeacherAttendancePage() {
     const ws = XLSX.utils.json_to_sheet(exportData)
     XLSX.utils.book_append_sheet(wb, ws, 'Staff Attendance')
     XLSX.writeFile(wb, `Staff_Attendance_${date}_${shift}.xlsx`)
-    notify.success('Excel spreadsheet exported successfully')
+    notify.success(L('Excel spreadsheet exported successfully', 'ملف الـ Excel اتنزّل'))
   }
 
   // Guards & Layout loader
@@ -378,7 +380,7 @@ export default function BulkTeacherAttendancePage() {
   if (!isAuthorized) {
     return (
       <AccessDenied
-        title="Access Restricted"
+        title={L('Access Restricted', 'مفيش صلاحية')}
         message="Staff daily attendance management is restricted to authorized campus administrators."
       />
     )
@@ -394,10 +396,10 @@ export default function BulkTeacherAttendancePage() {
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl text-indigo-600 dark:text-indigo-400">
               <UserCheck className="w-6 h-6" />
             </div>
-            Daily Staff Attendance
+            {L('Daily Staff Attendance', 'حضور الموظفين اليومي')}
           </h1>
           <p className="text-sm text-slate-500 font-medium">
-            Campus-level HR log and penalty overrides for coaching shifts.
+            {L('Campus-level HR log and penalty overrides for coaching shifts.', 'سجل الحضور اليومي للموظفين والخصومات.')}
           </p>
         </div>
         
@@ -423,7 +425,7 @@ export default function BulkTeacherAttendancePage() {
             className="gap-2 border-slate-200 hover:bg-slate-50"
           >
             <Download className="w-4 h-4" />
-            Export Excel
+            {L('Export Excel', 'تصدير Excel')}
           </Button>
         </div>
       </div>
@@ -433,7 +435,7 @@ export default function BulkTeacherAttendancePage() {
         <CardContent className="p-4 md:p-6 grid gap-4 md:grid-cols-4">
           
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Attendance Date</Label>
+            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{L('Attendance Date', 'تاريخ الحضور')}</Label>
             <div className="relative">
               <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <DateInput
@@ -445,7 +447,7 @@ export default function BulkTeacherAttendancePage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Coaching Shift</Label>
+            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{L('Coaching Shift', 'الفترة')}</Label>
             <Select value={shift} onValueChange={(v) => setShift(v as SessionShift)}>
               <SelectTrigger className="border-slate-200 h-10">
                 <SelectValue />
@@ -460,13 +462,13 @@ export default function BulkTeacherAttendancePage() {
 
           {role === 'SUPER_ADMIN' && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Campus Division</Label>
+              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{L('Campus Division', 'الفرع')}</Label>
               <Select value={selectedCampusId} onValueChange={setSelectedCampusId}>
                 <SelectTrigger className="border-slate-200 h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All Campuses</SelectItem>
+                  <SelectItem value="ALL">{L('All Campuses', 'كل الفروع')}</SelectItem>
                   {campuses?.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {campusLabel(c)} ({c.code})
@@ -478,11 +480,11 @@ export default function BulkTeacherAttendancePage() {
           )}
 
           <div className="space-y-1.5 md:col-span-1">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Search Roster</Label>
+            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{L('Search Roster', 'بحث')}</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
-                placeholder="Search name, code, role..."
+                placeholder={L('Search name, code, role...', 'دوّر بالاسم أو الكود أو الوظيفة...')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 border-slate-200 h-10"
@@ -515,7 +517,7 @@ export default function BulkTeacherAttendancePage() {
       {/* Quick Mark controls (only if roster is not empty) */}
       {filteredTeachers.length > 0 && (
         <div className="flex flex-wrap items-center gap-2.5 px-1">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Quick Mark All Filtered:</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{L('Quick Mark All Filtered:', 'علّم كل الظاهرين:')}</span>
           {(['PRESENT', 'ABSENT', 'EXCUSED'] as AttendanceStatus[]).map((st) => {
             const cfg = STATUS_CONFIG[st]
             return (
@@ -537,7 +539,7 @@ export default function BulkTeacherAttendancePage() {
         <CardHeader className="pb-3 border-b bg-slate-50/50">
           <CardTitle className="text-base font-bold flex items-center gap-2">
             <Users className="w-4 h-4 text-indigo-600" />
-            Staff Roster
+            {L('Staff Roster', 'كشف الموظفين')}
             <span className="text-xs font-normal text-slate-500">
               ({filteredTeachers.length} showing)
             </span>
@@ -554,8 +556,8 @@ export default function BulkTeacherAttendancePage() {
           ) : filteredTeachers.length === 0 ? (
             <div className="p-16 text-center text-slate-500">
               <CalendarDays className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="font-semibold">No teachers found.</p>
-              <p className="text-xs text-slate-400 mt-1">Check selected campus, division, or search terms.</p>
+              <p className="font-semibold">{L('No teachers found.', 'مفيش موظفين.')}</p>
+              <p className="text-xs text-slate-400 mt-1">{L('Check selected campus, division, or search terms.', 'غيّر الفرع أو البحث.')}</p>
             </div>
           ) : (
             filteredTeachers.map((t) => {
@@ -661,7 +663,7 @@ export default function BulkTeacherAttendancePage() {
                     <div className="bg-slate-50/70 p-4 border-t border-b border-slate-100 grid gap-4 md:grid-cols-3 text-xs">
                       
                       <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Observed arrival time</Label>
+                        <Label className="text-[10px] font-bold text-slate-500 uppercase">{L('Observed arrival time', 'ميعاد الوصول')}</Label>
                         <input
                           type="time"
                           value={
@@ -678,12 +680,12 @@ export default function BulkTeacherAttendancePage() {
                       </div>
 
                       <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Penalty Override (EGP)</Label>
+                        <Label className="text-[10px] font-bold text-slate-500 uppercase">{L('Penalty Override (EGP)', 'تعديل الخصم (ج.م)')}</Label>
                         <Input
                           type="number"
                           min={0}
                           value={currentRecord?.penaltyAmount ?? ''}
-                          placeholder="Calculated automatically"
+                          placeholder={L('Calculated automatically', 'بيتحسب تلقائي')}
                           onChange={(e) => handleDetailChange(t.id, 'penaltyAmount', e.target.value === '' ? undefined : Number(e.target.value))}
                           className="bg-white border-slate-200 h-9 text-xs"
                         />
@@ -697,15 +699,15 @@ export default function BulkTeacherAttendancePage() {
                             onChange={(e) => handleDetailChange(t.id, 'isPenaltyApplied', !e.target.checked)}
                             className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="font-semibold text-slate-600">Waive / Remove penalty</span>
+                          <span className="font-semibold text-slate-600">{L('Waive / Remove penalty', 'إلغاء الخصم')}</span>
                         </label>
                       </div>
 
                       <div className="md:col-span-3 space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Admin remarks</Label>
+                        <Label className="text-[10px] font-bold text-slate-500 uppercase">{L('Admin remarks', 'ملاحظات الإدارة')}</Label>
                         <Input
                           value={currentRecord?.remarks ?? ''}
-                          placeholder="Add comments / reasons for status correction..."
+                          placeholder={L('Add comments / reasons for status correction...', 'اكتب سبب تعديل الحالة...')}
                           onChange={(e) => handleDetailChange(t.id, 'remarks', e.target.value)}
                           className="bg-white border-slate-200 h-9 text-xs"
                         />

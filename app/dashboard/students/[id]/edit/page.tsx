@@ -13,6 +13,7 @@ import { ArrowLeft, Save, Loader2, User, Phone, MapPin, Building2, Calendar, Dro
 import Link from 'next/link'
 import { notify } from '@/lib/notify'
 import { DateInput } from '@/components/ui/date-input'
+import { L, useI18n } from '@/lib/i18n/client'
 
 interface StudentEditSource {
   firstName: string
@@ -54,6 +55,7 @@ interface StudentEditSource {
 }
 
 export default function EditStudentPage() {
+  useI18n() // re-render on a language switch
   const router = useRouter()
   const { id } = useParams()
   const queryClient = useQueryClient()
@@ -120,7 +122,7 @@ export default function EditStudentPage() {
       body: JSON.stringify(data)
     }),
     onSuccess: (result: any) => {
-      notify.success('Student profile updated successfully')
+      notify.success(L('Student profile updated successfully', 'ملف الطالب اتحدّث'))
       // A linked parent's login number follows the edited phone; if it could not
       // be moved (e.g. number already used by another parent), say so.
       for (const warning of result?.phoneWarnings ?? []) notify.error(warning)
@@ -154,7 +156,7 @@ export default function EditStudentPage() {
     if (!file) return
 
     if (!file.type.startsWith('image/')) {
-      notify.error('Please upload a valid image file')
+      notify.error(L('Please upload a valid image file', 'ارفع صورة صالحة'))
       return
     }
 
@@ -196,15 +198,15 @@ export default function EditStudentPage() {
   const handleCredentialsReset = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!resetEmail) {
-      notify.error('Email address cannot be empty')
+      notify.error(L('Email address cannot be empty', 'الإيميل مش ممكن يبقى فاضي'))
       return
     }
     if (!resetEmail.includes('@')) {
-      notify.error('Please enter a valid email address')
+      notify.error(L('Please enter a valid email address', 'اكتب إيميل صحيح'))
       return
     }
     if (!resetPassword) {
-      notify.error('A new password is required when resetting credentials')
+      notify.error(L('A new password is required when resetting credentials', 'لازم تكتب باسورد جديد'))
       return
     }
     if (!confirm('Are you sure you want to update login credentials for this student?')) return
@@ -227,7 +229,7 @@ export default function EditStudentPage() {
           newPassword: resetPassword || undefined,
         })
       })
-      notify.success('Credentials updated successfully! The student can now log in with the new credentials.')
+      notify.success(L('Credentials updated successfully! The student can now log in with the new credentials.', 'بيانات الدخول اتغيّرت. الطالب يقدر يدخل بيها دلوقتي.'))
       setResetPassword('')
       queryClient.invalidateQueries({ queryKey: ['student', id] })
     } catch (err: any) {
@@ -252,7 +254,7 @@ export default function EditStudentPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Edit Student Profile</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">{L('Edit Student Profile', 'تعديل ملف الطالب')}</h1>
             <p className="text-sm text-gray-500">Update academic and personal information for {student.firstName}.</p>
           </div>
         </div>
@@ -273,7 +275,7 @@ export default function EditStudentPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <User className="w-5 h-5 text-blue-600" /> Personal Details
+                <User className="w-5 h-5 text-blue-600" /> {L('Personal Details', 'البيانات الشخصية')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -287,11 +289,11 @@ export default function EditStudentPage() {
                     <img src={student.profilePicture} alt="Current" className="w-full h-full object-cover" />
                   ) : (
                     <div className="text-center text-gray-400">
-                      <span className="text-xs">No Image</span>
+                      <span className="text-xs">{L('No Image', 'مفيش صورة')}</span>
                     </div>
                   )}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                    <span className="text-white text-xs font-bold text-center px-1">Update<br/>Photo</span>
+                    <span className="text-white text-xs font-bold text-center px-1">{L('Update', 'غيّر')}<br/>{L('Photo', 'الصورة')}</span>
                   </div>
                   <input 
                     type="file" 
@@ -301,86 +303,86 @@ export default function EditStudentPage() {
                   />
                 </div>
                 <div className="flex flex-col justify-center">
-                  <h3 className="font-medium text-gray-900 text-sm">Profile Picture</h3>
+                  <h3 className="font-medium text-gray-900 text-sm">{L('Profile Picture', 'صورة الطالب')}</h3>
                   <p className="text-[10px] text-gray-500 mt-1 max-w-[200px]">
-                    Updating this photo will compress it automatically for ID card compatibility.
+                    {L('Updating this photo will compress it automatically for ID card compatibility.', 'الصورة هتتصغّر لوحدها علشان تنفع للكارنيه.')}
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>First Name (English)</Label>
+                  <Label>{L('First Name (English)', 'الاسم الأول (إنجليزي)')}</Label>
                   <Input name="firstName" value={formData.firstName} onChange={handleChange} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Last Name (English)</Label>
+                  <Label>{L('Last Name (English)', 'اسم العيلة (إنجليزي)')}</Label>
                   <Input name="lastName" value={formData.lastName} onChange={handleChange} required />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Full Name (Arabic)</Label>
+                  <Label>{L('Full Name (Arabic)', 'الاسم بالكامل (عربي)')}</Label>
                   <Input name="fullNameAr" value={formData.fullNameAr} onChange={handleChange} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Full Name (English, for certificates)</Label>
+                  <Label>{L('Full Name (English, for certificates)', 'الاسم بالكامل (إنجليزي، للشهادات)')}</Label>
                   <Input name="fullNameEn" value={formData.fullNameEn} onChange={handleChange} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Father's Name</Label>
+                  <Label>{L('Father\'s Name', 'اسم الأب')}</Label>
                   <Input name="fatherName" value={formData.fatherName} onChange={handleChange} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Father's Phone</Label>
+                  <Label>{L('Father\'s Phone', 'تليفون الأب')}</Label>
                   {/* Changing it also moves a linked parent's portal login (if the parent had the old number). */}
                   <Input name="fatherPhoneNumber" value={formData.fatherPhoneNumber} onChange={handleChange} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Mother's Name</Label>
+                  <Label>{L('Mother\'s Name', 'اسم الأم')}</Label>
                   <Input name="motherName" value={formData.motherName} onChange={handleChange} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Mother's Phone</Label>
+                  <Label>{L('Mother\'s Phone', 'تليفون الأم')}</Label>
                   <Input name="motherPhoneNumber" value={formData.motherPhoneNumber} onChange={handleChange} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Date of Birth</Label>
+                  <Label>{L('Date of Birth', 'تاريخ الميلاد')}</Label>
                   <DateInput name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Gender</Label>
+                  <Label>{L('Gender', 'النوع')}</Label>
                   <Select value={formData.gender} onValueChange={(val) => handleSelectChange('gender', val)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="MALE">Male</SelectItem>
-                      <SelectItem value="FEMALE">Female</SelectItem>
+                      <SelectItem value="MALE">{L('Male', 'ولد')}</SelectItem>
+                      <SelectItem value="FEMALE">{L('Female', 'بنت')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Parent Status</Label>
+                  <Label>{L('Parent Status', 'حالة الوالدين')}</Label>
                   <Select value={formData.parentStatus} onValueChange={(val) => handleSelectChange('parentStatus', val)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="BOTH_ALIVE">Both parents present</SelectItem>
-                      <SelectItem value="FATHER_DECEASED">Father deceased</SelectItem>
-                      <SelectItem value="MOTHER_DECEASED">Mother deceased</SelectItem>
-                      <SelectItem value="BOTH_DECEASED">Both deceased</SelectItem>
-                      <SelectItem value="DIVORCED">Parents divorced</SelectItem>
+                      <SelectItem value="BOTH_ALIVE">{L('Both parents present', 'الوالدين موجودين')}</SelectItem>
+                      <SelectItem value="FATHER_DECEASED">{L('Father deceased', 'الأب متوفي')}</SelectItem>
+                      <SelectItem value="MOTHER_DECEASED">{L('Mother deceased', 'الأم متوفية')}</SelectItem>
+                      <SelectItem value="BOTH_DECEASED">{L('Both deceased', 'الوالدين متوفيين')}</SelectItem>
+                      <SelectItem value="DIVORCED">{L('Parents divorced', 'الوالدين منفصلين')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Blood Group</Label>
+                  <Label>{L('Blood Group', 'فصيلة الدم')}</Label>
                   <Select value={formData.bloodGroup} onValueChange={(val) => handleSelectChange('bloodGroup', val)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -393,20 +395,20 @@ export default function EditStudentPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>School</Label>
+                  <Label>{L('School', 'المدرسة')}</Label>
                   <Input name="schoolName" value={formData.schoolName} onChange={handleChange} />
                 </div>
                 <div className="space-y-2">
-                  <Label>School Grade</Label>
-                  <Input name="regularSchoolGrade" value={formData.regularSchoolGrade} onChange={handleChange} placeholder="e.g. الصف الرابع الابتدائي" />
+                  <Label>{L('School Grade', 'سنة الدراسة')}</Label>
+                  <Input name="regularSchoolGrade" value={formData.regularSchoolGrade} onChange={handleChange} placeholder={L('e.g. الصف الرابع الابتدائي', 'مثلاً الصف الرابع الابتدائي')} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Prior Programming Experience</Label>
+                <Label>{L('Prior Programming Experience', 'خبرة سابقة في البرمجة')}</Label>
                 <Input name="priorProgrammingExperience" value={formData.priorProgrammingExperience} onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label>Medical Notes (optional)</Label>
+                <Label>{L('Medical Notes (optional)', 'ملاحظات طبية (اختياري)')}</Label>
                 <Input name="medicalNotes" value={formData.medicalNotes} onChange={handleChange} />
               </div>
             </CardContent>
@@ -416,26 +418,26 @@ export default function EditStudentPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-blue-600" /> Academic Placement
+                <Building2 className="w-5 h-5 text-blue-600" /> {L('Academic Placement', 'التسكين')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Roll Number</Label>
+                <Label>{L('Roll Number', 'رقم الجلوس')}</Label>
                 <Input name="rollNumber" value={formData.rollNumber} onChange={handleChange} required />
               </div>
               <div className="space-y-2">
-                <Label>Section</Label>
-                <Input name="section" value={formData.section} onChange={handleChange} placeholder="e.g. A" />
+                <Label>{L('Section', 'الجروب')}</Label>
+                <Input name="section" value={formData.section} onChange={handleChange} placeholder={L('e.g. A', 'مثلاً A')} />
               </div>
               {/* Academic year: hidden (owner, 2026-09-29) */}
               <div className="hidden">
-                <Label>Academic Year</Label>
-                <Input name="academicYear" value={formData.academicYear} onChange={handleChange} placeholder="e.g. 2026-2027" />
+                <Label>{L('Academic Year', 'السنة الدراسية')}</Label>
+                <Input name="academicYear" value={formData.academicYear} onChange={handleChange} placeholder={L('e.g. 2026-2027', 'مثلاً 2026-2027')} />
               </div>
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-xs text-amber-800">
-                  <span className="font-bold">Note:</span> Changing the branch uses the Transfers tool; to change groups use “Move” on the student page.
+                  <span className="font-bold">{L('Note:', 'ملحوظة:')}</span> {L('Changing the branch uses the Transfers tool; to change groups use “Move” on the student page.', 'تغيير الفرع بيتم من أداة النقل، وتغيير الجروب من زر «نقل» في صفحة الطالب.')}
                 </p>
               </div>
             </CardContent>
@@ -445,34 +447,34 @@ export default function EditStudentPage() {
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-blue-600" /> Contact & Address
+                <MapPin className="w-5 h-5 text-blue-600" /> {L('Contact & Address', 'التواصل والعنوان')}
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <Label>{L('Email', 'الإيميل')}</Label>
                   <Input type="email" name="email" value={formData.email} onChange={handleChange} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Phone Number</Label>
+                    <Label>{L('Phone Number', 'رقم التليفون')}</Label>
                     <Input name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} required />
                   </div>
                   <div className="space-y-2">
-                    <Label>Emergency Contact</Label>
+                    <Label>{L('Emergency Contact', 'رقم الطوارئ')}</Label>
                     <Input name="emergencyContact" value={formData.emergencyContact} onChange={handleChange} required />
                   </div>
                 </div>
               </div>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Address</Label>
+                  <Label>{L('Address', 'العنوان')}</Label>
                   <Input name="address" value={formData.address} onChange={handleChange} required />
                 </div>
                 <div className="grid grid-cols-1 gap-2">
                   <div className="space-y-2">
-                    <Label>City</Label>
+                    <Label>{L('City', 'المدينة')}</Label>
                     <Input name="city" value={formData.city} onChange={handleChange} required />
                   </div>
                 </div>
@@ -489,8 +491,8 @@ export default function EditStudentPage() {
             <ShieldAlert className="w-5 h-5" />
           </div>
           <div>
-            <CardTitle className="text-sm font-black text-rose-900">Administrative Login Credentials Reset</CardTitle>
-            <CardDescription className="text-xs text-rose-700/80">Change or reset this student's active dashboard login credentials (email & password).</CardDescription>
+            <CardTitle className="text-sm font-black text-rose-900">{L('Administrative Login Credentials Reset', 'إعادة ضبط بيانات الدخول')}</CardTitle>
+            <CardDescription className="text-xs text-rose-700/80">{L('Change or reset this student\'s active dashboard login credentials (email & password).', 'غيّر إيميل وباسورد دخول الطالب.')}</CardDescription>
           </div>
         </CardHeader>
         {/* WHY: Show the current auth email explicitly so admins don't confuse
@@ -502,7 +504,7 @@ export default function EditStudentPage() {
           <div className="mx-6 mt-4 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 flex items-start gap-2">
             <span className="text-amber-600 mt-0.5 flex-shrink-0">ℹ️</span>
             <p className="text-xs text-amber-800">
-              <span className="font-bold">Current login email:</span>{' '}
+              <span className="font-bold">{L('Current login email:', 'إيميل الدخول الحالي:')}</span>{' '}
               <code className="font-mono bg-amber-100 px-1 rounded">{student.user.email}</code>
               {student.user.email !== student.email && student.email && (
                 <span className="block mt-0.5 text-amber-700">
@@ -515,7 +517,7 @@ export default function EditStudentPage() {
         <CardContent className="pt-6">
           <form onSubmit={handleCredentialsReset} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-rose-900">Dashboard Email</Label>
+              <Label className="text-xs font-bold text-rose-900">{L('Dashboard Email', 'إيميل الدخول')}</Label>
               <Input 
                 type="email" 
                 value={resetEmail} 
@@ -525,7 +527,7 @@ export default function EditStudentPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-rose-900">New Password</Label>
+              <Label className="text-xs font-bold text-rose-900">{L('New Password', 'الباسورد الجديد')}</Label>
               <Input 
                 type="password" 
                 value={resetPassword} 
@@ -543,12 +545,12 @@ export default function EditStudentPage() {
                 {isResetting ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Resetting...
+                    {L('Resetting...', 'بيتغيّر...')}
                   </>
                 ) : (
                   <>
                     <Key className="w-3.5 h-3.5" />
-                    Reset Credentials
+                    {L('Reset Credentials', 'غيّر بيانات الدخول')}
                   </>
                 )}
               </Button>

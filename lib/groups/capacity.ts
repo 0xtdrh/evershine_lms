@@ -16,6 +16,7 @@ import { seatLimit } from '@/lib/rooms/rules'
 import { groupRoomCapacities } from '@/lib/rooms/engine'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { pickGroupInstructorOffering } from './instructor'
+import { arCount, AR_NOUN } from '@/lib/i18n/plural'
 
 type Db = Prisma.TransactionClient | typeof prisma
 
@@ -85,7 +86,7 @@ export async function notifySeatFreed(classSectionId: string) {
         title: 'A seat is free',
         titleAr: 'فيه مكان فاضي',
         message: `${label}: ${seats.free ?? 'a'} seat(s) free, ${seats.waiting} student(s) waiting`,
-        messageAr: `${label}: ${seats.free ?? 'فيه'} مكان فاضي، و${seats.waiting} طالب مستنيين`,
+        messageAr: `${label}: ${seats.free ?? 'فيه'} مكان فاضي، و${arCount(seats.waiting, AR_NOUN.student)} مستنيين`,
         type: 'GROUP_SEAT_FREE',
         relatedId: classSectionId,
       })),
