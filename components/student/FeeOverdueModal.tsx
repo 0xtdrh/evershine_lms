@@ -142,7 +142,7 @@ export function FeeOverdueModal() {
           <Link href={destination} className="w-full block" onClick={handleClose}>
             <Button className="w-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold h-13 text-base shadow-lg shadow-red-200 gap-2.5 rounded-xl transition-all">
               <CreditCard className="w-5 h-5" />
-              {isGuardian ? 'View Children\'s Fees' : 'View Fee Details'}
+              {isGuardian ? L('Open the invoices', 'افتح الفواتير') : L('Open my invoices', 'افتح فواتيري')}
             </Button>
           </Link>
 
