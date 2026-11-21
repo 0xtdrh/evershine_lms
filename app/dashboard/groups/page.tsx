@@ -22,7 +22,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { notify } from '@/lib/notify'
-import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, Trash2, CheckCircle2, X, Wallet, ArrowRightLeft } from 'lucide-react'
+import { Loader2, Users, MapPin, GraduationCap, Calendar, Clock, Plus, Pencil, Trash2, CheckCircle2, X, Wallet, ArrowRightLeft, MoreHorizontal, AlertTriangle } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { nextSlotDate } from '@/lib/groups/start-rules'
+import { cairoToday } from '@/lib/dates/cairo'
+import type { GroupApplies } from '@/lib/groups/applies'
 import { TransferStudentDialog } from '@/components/groups/TransferStudentDialog'
 import { GroupCapacityPanel, type Seats, type WaitingRow } from '@/components/groups/GroupCapacityPanel'
 import { GroupPricePanel } from '@/components/groups/GroupPricePanel'
@@ -99,6 +104,8 @@ interface GroupDetail extends Omit<GroupSummary, 'campus' | 'level'> {
   renewals: { studentId: string; status: 'PENDING' | 'YES' | 'NO'; reason: string | null }[]
   feeBlocked?: string[]
   extraSessions: ExtraSessionRow[]
+  /** owner 21/11: which parts of the window fit this group (null when it could not be worked out → show all) */
+  applies?: GroupApplies | null
 }
 
 interface TeacherOption { id: string; firstName: string; lastName: string; isQualified?: boolean }
@@ -197,6 +204,19 @@ export default function GroupsPage() {
     queryFn: () => fetchApi(`/api/groups/${selectedGroupId}`),
     enabled: !!selectedGroupId,
   })
+  // owner 21/11: the window opens on Students; parts that do not fit this group are hidden (detail.applies)
+  const [detailTab, setDetailTab] = useState('students')
+  useEffect(() => { setDetailTab('students') }, [selectedGroupId])
+  const applies = detail?.applies ?? null
+  const nextSession = useMemo(() => {
+    if (!detail || detail.status !== 'ACTIVE' || !detail.scheduleSlots?.length) return null
+    const ymd = nextSlotDate(detail.scheduleSlots, cairoToday())
+    if (!ymd) return null
+    const dow = new Date(`${ymd}T00:00:00Z`).getUTCDay()
+    const time = detail.scheduleSlots.filter((s) => s.dayOfWeek === dow).map((s) => s.time).sort()[0]
+    return `${dayName(dow)} ${formatDate(`${ymd}T12:00:00Z`)}${time ? ` ${time}` : ''}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail?.id, detail?.status, detail?.scheduleSlots, locale])
 
   // ── Reference data used by the create/edit forms ─────────────────────
   const { data: campuses = [] } = useQuery<Campus[]>({ queryKey: ['campuses'], queryFn: () => fetchApi('/api/campuses') })
@@ -425,6 +445,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
   }, [selectedGroupId])
 
   // ── Manual cycle advance: pick who's continuing, creates a new group ────
+  const canAdvanceNow = !!(canEditGroups && detail?.level && detail.status === 'ACTIVE' && isLastSessionOfCycle)
   const [confirmAdvance, setConfirmAdvance] = useState(false)
   const [continuingIds, setContinuingIds] = useState<Set<string>>(new Set())
 
@@ -670,7 +691,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
 
       {/* Group detail */}
       <Dialog open={!!selectedGroupId} onOpenChange={(o) => { if (!o) setSelectedGroupId(null) }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -687,13 +708,25 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
             <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
           ) : detail ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-slate-400">{L('Branch', 'الفرع')}</p>
-                  <p className="text-slate-800">{detail.campus.name}</p>
+              {/* owner 21/11: one header with the facts that matter, three main buttons, alerts only when needed,
+                  then tabs — parts that do not fit this group are not shown at all (lib/groups/applies.ts) */}
+              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-sm space-y-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-slate-700">
+                  <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" />{detail.campus.name}</span>
+                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-slate-400" />
+                    {detail.enrollments.filter((e) => e.status === 'ACTIVE').length}{detail.maxStudents ? `/${detail.maxStudents}` : ''} {L('students', 'طالب')}
+                    {applies?.awaitingCount ? <span className="text-amber-600"> · +{applies.awaitingCount} {L('waiting to pay', 'مستني الدفع')}</span> : null}
+                  </span>
+                  {nextSession && <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-slate-400" />{L('Next session', 'الحصة الجاية')}: {nextSession}</span>}
+                  {detail.ends && detail.level && (
+                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-400" />
+                      {L('Month', 'الشهر')} {detail.ends.cycleNumber} {L('of', 'من')} {detail.ends.cyclesInLevel} · {L('session', 'الحصة')} {detail.ends.sessionsDoneInCycle} {L('of', 'من')} {detail.ends.sessionsPerCycle}
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <p className="text-xs text-slate-400">{L('Instructor', 'المدرب')}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400 shrink-0">{L('Instructor', 'المدرب')}</span>
+                  <div className="min-w-0 flex-1">
                   <Select
                     value={detail.teacher?.id ?? 'none'}
                     disabled={!canSetInstructor}
@@ -709,132 +742,77 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">{L('Starts', 'بيبدأ')}</p>
-                  <p className={detail.startDate ? 'text-slate-800' : 'text-amber-600 font-medium'}>
-                    {detail.startDate ? formatDate(detail.startDate) : L('Not started yet', 'لسه مابدأش')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">
-                    {L('This cycle ends ≈', 'الشهر ده بيخلص ≈')}{detail.ends ? ` (${L('session', 'حصة')} ${detail.ends.sessionsDoneInCycle} ${L('of', 'من')} ${detail.ends.sessionsPerCycle})` : ''}
-                  </p>
-                  <p className={detail.ends?.cycleEnd ? 'text-slate-800' : 'text-slate-400'}>
-                    {detail.ends?.cycleEnd ? formatDate(detail.ends.cycleEnd) : '—'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">
-                    {L('Level ends ≈', 'المستوى بيخلص ≈')}{detail.ends ? ` (${L('month', 'شهر')} ${detail.ends.cycleNumber} ${L('of', 'من')} ${detail.ends.cyclesInLevel})` : ''}
-                  </p>
-                  <p className={detail.ends?.levelEnd ? 'text-slate-800' : 'text-slate-400'}>
-                    {detail.ends?.levelEnd ? formatDate(detail.ends.levelEnd) : '—'}
-                  </p>
-                  {detail.ends?.basis === 'ONE_MONTH_PER_CYCLE' && (
-                    <p className="text-[11px] text-amber-600">{L('Add a weekly schedule for a better estimate', 'ضيف جدول أسبوعي علشان التقدير يبقى أدق')}</p>
-                  )}
-                </div>
-                {detail.level && (
-                  <div className="col-span-2">
-                    <p className="text-xs text-slate-400">{L('Level pricing', 'سعر المستوى')}</p>
-                    <p className="text-slate-800">
-                      {detail.level.pricingType === 'MONTHLY'
-                        ? `${detail.level.monthlyPrice ?? '—'} ${L('EGP / month', 'ج.م في الشهر')}`
-                        : `${detail.level.fullLevelPrice ?? '—'} ${L('EGP for the whole level', 'ج.م للمستوى كله')}`}
-                      {' · '}{detail.level.numberOfSessions} {L('sessions over', 'حصص على')} {detail.level.numberOfMonths} {L('months', detail.level.numberOfMonths === 1 ? 'شهر' : 'شهور')}
-                    </p>
                   </div>
-                )}
-                {detail.level?.pricingType === 'MONTHLY' && (
-                  <div className="col-span-2">
-                    <p className="text-xs text-slate-400">{L('Current billing cycle', 'الشهر الحالي')}</p>
-                    <p className="text-slate-800">{L('Month', 'شهر')} {detail.currentCycleNumber}</p>
-                  </div>
-                )}
-                {detail.scheduleSlots && detail.scheduleSlots.length > 0 && (
-                  <div className="col-span-2">
-                    <p className="text-xs text-slate-400">{L('Weekly schedule', 'الجدول الأسبوعي')}</p>
-                    <p className="text-slate-800">
-                      {detail.scheduleSlots.map((s) => `${dayName(s.dayOfWeek)} ${s.time}${s.mode && s.mode !== 'BRANCH' ? ` ${MODE_ICON[s.mode]}` : ''}`).join(', ')}
-                    </p>
-                  </div>
-                )}
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {canEditGroups && (
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={openEdit}>
-                  <Pencil className="w-3.5 h-3.5" /> {L('Edit', 'تعديل')}
+                <Button size="sm" className="gap-1.5" onClick={() => router.push(`/dashboard/attendance/sections?classSectionId=${detail.id}`)}>
+                  <Calendar className="w-3.5 h-3.5" /> {L('Attendance', 'الحضور')}
                 </Button>
-                )}
-                {!canEditGroups ? null : detail.status === 'ACTIVE' ? (
-                  <Button
-                    size="sm" variant="outline" className="gap-1.5"
-                    disabled={toggleStatusMutation.isPending}
-                    onClick={() => toggleStatusMutation.mutate('COMPLETED')}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {L('Mark completed', 'اعتبره خلص')}
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm" variant="outline" className="gap-1.5"
-                    disabled={toggleStatusMutation.isPending}
-                    onClick={() => toggleStatusMutation.mutate('ACTIVE')}
-                  >
-                    {L('Reopen', 'افتحه تاني')}
-                  </Button>
-                )}
-                {canEditGroups && detail.level && detail.status === 'ACTIVE' && isLastSessionOfCycle && (
-                  <Button
-                    size="sm" variant="outline" className="gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                    onClick={openAdvanceDialog}
-                  >
-                    {L('Advance cycle', 'رحّل للشهر الجاي')}
-                  </Button>
-                )}
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setFinancialsOpen(true)}>
                   <Wallet className="w-3.5 h-3.5" /> {L('Financials', 'الحسابات')}
                 </Button>
-                <Button
-                  size="sm" variant="outline" className="gap-1.5"
-                  onClick={() => router.push(`/dashboard/attendance/sections?classSectionId=${detail.id}`)}
-                >
-                  <Calendar className="w-3.5 h-3.5" /> {L('Attendance', 'الحضور')}
-                </Button>
-                {canDeleteGroups && (
-                <Button size="sm" variant="ghost" className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
-                  <Trash2 className="w-3.5 h-3.5" /> {L('Delete', 'امسح')}
-                </Button>
+                {canEditGroups && (
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={openEdit}>
+                    <Pencil className="w-3.5 h-3.5" /> {L('Edit', 'تعديل')}
+                  </Button>
+                )}
+                {(canEditGroups || canDeleteGroups) && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="ghost" className="gap-1.5"><MoreHorizontal className="w-4 h-4" /> {L('More', 'المزيد')}</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {canEditGroups && detail.level && detail.status === 'ACTIVE' && isLastSessionOfCycle && (
+                        <DropdownMenuItem onClick={openAdvanceDialog}>{L('Advance cycle', 'رحّل للشهر الجاي')}</DropdownMenuItem>
+                      )}
+                      {canEditGroups && (detail.status === 'ACTIVE'
+                        ? <DropdownMenuItem disabled={toggleStatusMutation.isPending} onClick={() => { if (confirm(L('Mark this group completed?', 'تعتبر الجروب ده خلص؟'))) toggleStatusMutation.mutate('COMPLETED') }}><CheckCircle2 className="w-3.5 h-3.5 me-2" />{L('Mark completed', 'اعتبره خلص')}</DropdownMenuItem>
+                        : <DropdownMenuItem disabled={toggleStatusMutation.isPending} onClick={() => toggleStatusMutation.mutate('ACTIVE')}>{L('Reopen', 'افتحه تاني')}</DropdownMenuItem>)}
+                      {canDeleteGroups && (
+                        <DropdownMenuItem className="text-red-600" onClick={() => setConfirmDelete(true)}><Trash2 className="w-3.5 h-3.5 me-2" />{L('Delete', 'امسح')}</DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
 
-              <GroupMonthsPanel key={`months-${detail.id}`} groupId={detail.id} onOpen={(id) => setSelectedGroupId(id)} onInvoices={(id) => { setSelectedGroupId(id); setFinancialsOpen(true) }} />
-              {detail.seats && (
-                <GroupCapacityPanel groupId={detail.id} levelId={detail.level?.id ?? null} seats={detail.seats} waiting={detail.waiting ?? []} canEdit={canEditGroups} />
-              )}
-              {detail.status === 'ACTIVE' ? <GroupStartPanel key={`start-${detail.id}`} groupId={detail.id} levelId={detail.level?.id ?? null} students={detail.enrollments.filter((e) => e.status === 'ACTIVE' || e.status === 'AWAITING_PAYMENT').map((e) => ({ id: e.student.id, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}` }))} can={{ update: !!myPerms?.permissions?.group_start?.includes('update'), approve: !!myPerms?.permissions?.group_start?.includes('approve'), remove: !!myPerms?.permissions?.group_start?.includes('delete') }} /> : null}
-              {myPerms?.permissions?.group_entry?.includes('read') ? <GroupAwaitingPanel key={`await-${detail.id}`} groupId={detail.id} canApprove={!!myPerms?.permissions?.group_entry?.includes('approve')} /> : null}
-              <GroupRulesPanel groupId={detail.id} canEditRules={!!myPerms?.permissions?.agreements?.includes('update')} />
-              {canEditGroups && detail.status === 'ACTIVE' && (
-                <GroupSessionModePanel groupId={detail.id} campusId={detail.campus?.id} students={detail.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => ({ id: e.student.id, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}` }))} />
-              )}
-              {detail.level ? <GroupWatchPanel key={`watch-${detail.id}`} groupId={detail.id} /> : null}
-              {detail.level && <GroupCurriculumPicker key={`cur-${detail.id}`} groupId={detail.id} canEdit={canEditGroups} />}
-              {detail.level && (
-                <GroupPricePanel
-                  key={`price-${detail.id}`}
-                  groupId={detail.id}
-                  priceOverride={detail.priceOverride === null || detail.priceOverride === undefined ? null : Number(detail.priceOverride)}
-                  effectivePrice={detail.effectivePrice ?? null}
-                  unnamedHeadcount={detail.unnamedHeadcount ?? null}
-                  canEditGroup={canEditGroups}
-                  canEditPrice={canEditPrice}
-                  canRecord={canRecordSessions}
-                />
-              )}
-              {myPerms?.permissions?.family_accounts?.includes('read') && detail.status === 'ACTIVE' ? <GroupBookingLink groupId={detail.id} groupName={detail.className} /> : null}
-              <ExtraSessionsPanel groupId={detail.id} rows={detail.extraSessions ?? []} canEdit={canEditGroups} />
+              {canAdvanceNow || (applies?.awaitingCount ?? 0) > 0 || (applies?.beforeStart && applies.minStudents) || (detail.feeBlocked?.length ?? 0) > 0 ? (
+                <div className="space-y-1.5">
+                  {canAdvanceNow && (
+                    <button type="button" onClick={openAdvanceDialog} className="flex w-full items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-start text-xs text-indigo-800">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{L('This month is done — move the group to the next month', 'الشهر ده خلص — رحّل الجروب للشهر الجاي')}
+                    </button>
+                  )}
+                  {(applies?.awaitingCount ?? 0) > 0 && (
+                    <button type="button" onClick={() => setDetailTab('students')} className="flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-start text-xs text-amber-800">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{applies?.awaitingCount} {L('booked but not paid yet — their seats are held', 'حاجزين ولسه مادفعوش — مكانهم محجوز')}
+                    </button>
+                  )}
+                  {applies?.beforeStart && applies.minStudents ? (
+                    <button type="button" onClick={() => setDetailTab('settings')} className="flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-start text-xs text-amber-800">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{L(`Not started: it starts at ${applies.minStudents} students`, `لسه مابدأش: بيبدأ لما يوصل ${applies.minStudents} طلاب`)}
+                    </button>
+                  ) : null}
+                  {(detail.feeBlocked?.length ?? 0) > 0 && (
+                    <p className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{detail.feeBlocked?.length} {L('cannot move to next month until a fee is paid', 'مش هينتقلوا للشهر الجاي لحد ما رسوم تتدفع')}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
+              <Tabs value={detailTab} onValueChange={setDetailTab}>
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="students">{L('Students', 'الطلاب')}</TabsTrigger>
+                  <TabsTrigger value="sessions">{L('Sessions', 'الحصص')}</TabsTrigger>
+                  <TabsTrigger value="money">{L('Money', 'الفلوس')}</TabsTrigger>
+                  <TabsTrigger value="settings">{L('Settings', 'الإعدادات')}</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="students" className="space-y-4 pt-3">
+                  {applies?.awaiting && myPerms?.permissions?.group_entry?.includes('read') ? <GroupAwaitingPanel key={`await-${detail.id}`} groupId={detail.id} canApprove={!!myPerms?.permissions?.group_entry?.includes('approve')} /> : null}
               <div>
                 <p className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
                   <GraduationCap className="w-4 h-4 text-indigo-600" />
@@ -887,7 +865,10 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                           {canRemoveStudents && <Button
                             size="sm" variant="ghost" className="h-6 w-6 p-0"
                             disabled={removeStudentMutation.isPending}
-                            onClick={() => removeStudentMutation.mutate(e.id)}
+                            onClick={() => {
+                              const name = e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`
+                              if (confirm(L(`Take ${name} out of this group? Attendance is kept.`, `تشيل ${name} من الجروب ده؟ الحضور بيفضل محفوظ.`))) removeStudentMutation.mutate(e.id)
+                            }}
                           >
                             <X className="w-3.5 h-3.5 text-red-500" />
                           </Button>}
@@ -919,6 +900,92 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                   </div>
                 )}
               </div>
+                </TabsContent>
+
+                <TabsContent value="sessions" className="space-y-4 pt-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="col-span-2">
+                      <p className="text-xs text-slate-400">{L('Weekly schedule', 'الجدول الأسبوعي')}</p>
+                      <p className="text-slate-800">
+                        {detail.scheduleSlots && detail.scheduleSlots.length > 0
+                          ? detail.scheduleSlots.map((s) => `${dayName(s.dayOfWeek)} ${s.time}${s.mode && s.mode !== 'BRANCH' ? ` ${MODE_ICON[s.mode]}` : ''}`).join(', ')
+                          : L('No schedule yet — add it from Edit', 'لسه مفيش مواعيد — ضيفها من «تعديل»')}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">{L('Starts', 'بيبدأ')}</p>
+                      <p className={detail.startDate ? 'text-slate-800' : 'text-amber-600 font-medium'}>{detail.startDate ? formatDate(detail.startDate) : L('Not started yet', 'لسه مابدأش')}</p>
+                    </div>
+                    {detail.ends?.cycleEnd && (
+                      <div>
+                        <p className="text-xs text-slate-400">{L('This month ends ≈', 'الشهر ده بيخلص ≈')}</p>
+                        <p className="text-slate-800">{formatDate(detail.ends.cycleEnd)}</p>
+                      </div>
+                    )}
+                    {detail.ends?.levelEnd && (
+                      <div>
+                        <p className="text-xs text-slate-400">{L('Level ends ≈', 'المستوى بيخلص ≈')}</p>
+                        <p className="text-slate-800">{formatDate(detail.ends.levelEnd)}</p>
+                        {detail.ends.basis === 'ONE_MONTH_PER_CYCLE' && <p className="text-[11px] text-amber-600">{L('Add a weekly schedule for a better estimate', 'ضيف جدول أسبوعي علشان التقدير يبقى أدق')}</p>}
+                      </div>
+                    )}
+                  </div>
+                  {applies?.months && <GroupMonthsPanel key={`months-${detail.id}`} groupId={detail.id} onOpen={(id) => setSelectedGroupId(id)} onInvoices={(id) => { setSelectedGroupId(id); setFinancialsOpen(true) }} />}
+                  <ExtraSessionsPanel groupId={detail.id} rows={detail.extraSessions ?? []} canEdit={canEditGroups} />
+                  {applies?.otherModes && canEditGroups && detail.status === 'ACTIVE' && (
+                    <GroupSessionModePanel groupId={detail.id} campusId={detail.campus?.id} students={detail.enrollments.filter((e) => e.status === 'ACTIVE').map((e) => ({ id: e.student.id, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}` }))} />
+                  )}
+                  {applies?.videos && detail.level ? <GroupWatchPanel key={`watch-${detail.id}`} groupId={detail.id} /> : null}
+                </TabsContent>
+
+                <TabsContent value="money" className="space-y-4 pt-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                {detail.level && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-slate-400">{L('Level pricing', 'سعر المستوى')}</p>
+                    <p className="text-slate-800">
+                      {detail.level.pricingType === 'MONTHLY'
+                        ? `${detail.level.monthlyPrice ?? '—'} ${L('EGP / month', 'ج.م في الشهر')}`
+                        : `${detail.level.fullLevelPrice ?? '—'} ${L('EGP for the whole level', 'ج.م للمستوى كله')}`}
+                      {' · '}{detail.level.numberOfSessions} {L('sessions over', 'حصص على')} {detail.level.numberOfMonths} {L('months', detail.level.numberOfMonths === 1 ? 'شهر' : 'شهور')}
+                    </p>
+                  </div>
+                )}
+                {detail.level?.pricingType === 'MONTHLY' && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-slate-400">{L('Current billing cycle', 'الشهر الحالي')}</p>
+                    <p className="text-slate-800">{L('Month', 'شهر')} {detail.currentCycleNumber}</p>
+                  </div>
+                )}
+                  </div>
+                  {detail.level && (
+                    <GroupPricePanel
+                      key={`price-${detail.id}`}
+                      groupId={detail.id}
+                      priceOverride={detail.priceOverride === null || detail.priceOverride === undefined ? null : Number(detail.priceOverride)}
+                      effectivePrice={detail.effectivePrice ?? null}
+                      unnamedHeadcount={detail.unnamedHeadcount ?? null}
+                      canEditGroup={canEditGroups}
+                      canEditPrice={canEditPrice}
+                      canRecord={canRecordSessions}
+                      partnerPlace={applies ? applies.partnerPlace : true}
+                    />
+                  )}
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setFinancialsOpen(true)}>
+                    <Wallet className="w-3.5 h-3.5" /> {L('Open the group financials', 'افتح حسابات الجروب')}
+                  </Button>
+                </TabsContent>
+
+                <TabsContent value="settings" className="space-y-4 pt-3">
+                  {detail.seats && (
+                    <GroupCapacityPanel groupId={detail.id} levelId={detail.level?.id ?? null} seats={detail.seats} waiting={detail.waiting ?? []} canEdit={canEditGroups} />
+                  )}
+                  {applies?.beforeStart ? <GroupStartPanel key={`start-${detail.id}`} groupId={detail.id} levelId={detail.level?.id ?? null} students={detail.enrollments.filter((e) => e.status === 'ACTIVE' || e.status === 'AWAITING_PAYMENT').map((e) => ({ id: e.student.id, name: e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}` }))} can={{ update: !!myPerms?.permissions?.group_start?.includes('update'), approve: !!myPerms?.permissions?.group_start?.includes('approve'), remove: !!myPerms?.permissions?.group_start?.includes('delete') }} /> : null}
+                  {detail.level && <GroupCurriculumPicker key={`cur-${detail.id}`} groupId={detail.id} canEdit={canEditGroups} />}
+                  <GroupRulesPanel groupId={detail.id} canEditRules={!!myPerms?.permissions?.agreements?.includes('update')} />
+                  {myPerms?.permissions?.family_accounts?.includes('read') && detail.status === 'ACTIVE' ? <GroupBookingLink groupId={detail.id} groupName={detail.className} /> : null}
+                </TabsContent>
+              </Tabs>
             </div>
           ) : null}
         </DialogContent>

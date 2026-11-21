@@ -24,8 +24,10 @@ const STATUS: Record<string, [string, string, string]> = {
   CANCELLED_TECHNOVA: ['Cancelled by TechNova', 'لغتها TechNova', 'bg-slate-100 text-slate-600'],
 }
 
-export function GroupPricePanel({ groupId, priceOverride, effectivePrice, unnamedHeadcount, canEditGroup, canEditPrice, canRecord }: {
+export function GroupPricePanel({ groupId, priceOverride, effectivePrice, unnamedHeadcount, canEditGroup, canEditPrice, canRecord, partnerPlace = true }: {
   groupId: string; priceOverride: number | null; effectivePrice: number | null; unnamedHeadcount: number | null
+  /** owner 21/11: the no-names class and "cancelled by the partner" only in a partner's place (or when already used) */
+  partnerPlace?: boolean
   canEditGroup: boolean; canEditPrice: boolean; canRecord: boolean
 }) {
   const qc = useQueryClient()
@@ -64,7 +66,9 @@ export function GroupPricePanel({ groupId, priceOverride, effectivePrice, unname
           </span>
         )}
       </div>
+      {(partnerPlace || logs.length > 0) && (
       <div className="space-y-2 border-t border-slate-100 pt-3">
+        {partnerPlace && (<>
         <div className="flex flex-wrap items-center gap-2">
           <Baby className="h-4 w-4 text-indigo-600" />
           <label className="flex items-center gap-2">
@@ -90,6 +94,7 @@ export function GroupPricePanel({ groupId, priceOverride, effectivePrice, unname
             <Button size="sm" disabled={add.isPending || (unnamedHeadcount === null && log.status === 'HELD')} onClick={() => add.mutate()}>{add.isPending && <Loader2 className="me-1 h-4 w-4 animate-spin" />}{L('Record', 'سجّل')}</Button>
           </div>
         )}
+        </>)}
         {logs.length > 0 && (
           <ul className="space-y-1 text-xs">
             {logs.slice(0, 20).map((l) => (
@@ -104,6 +109,7 @@ export function GroupPricePanel({ groupId, priceOverride, effectivePrice, unname
           </ul>
         )}
       </div>
+      )}
     </div>
   )
 }

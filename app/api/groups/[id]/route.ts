@@ -7,6 +7,7 @@
  *                            Subject Offerings flow — not duplicated here.
  */
 
+import { groupApplies } from '@/lib/groups/applies'
 import { PAYMENT_REASONS, seesFees, withoutFeeFields } from '@/lib/fees/hide-money'
 import { cyclePrice } from '@/lib/pricing/group-price'
 import { checkPermission } from '@/lib/rbac'
@@ -98,7 +99,7 @@ export async function GET(
   const { subjectOfferings: _offerings, ...groupFields } = group
 
   // Phase A: seats + this group's waiting queue, renewal answers, extra sessions.
-  const [seats, waitingRows, renewals, extraSessions] = await Promise.all([
+  const [seats, waitingRows, renewals, extraSessions, applies] = await Promise.all([
     groupSeats(id),
     prisma.waitingListEntry.findMany({
       where: { classSectionId: id, status: 'WAITING' },
@@ -107,6 +108,8 @@ export async function GET(
     }),
     prisma.renewalRequest.findMany({ where: { classSectionId: id }, select: { studentId: true, status: true, reason: true, respondedVia: true, respondedAt: true } }),
     prisma.extraSession.findMany({ where: { classSectionId: id }, orderBy: { date: 'asc' }, select: { id: true, date: true, time: true, reason: true } }),
+    // owner 21/11: which parts of the window fit this group (the rest are not shown at all)
+    groupApplies(id).catch(() => null),
   ])
 
   // Partners part 1: the price this group's next invoice will use (group → place → level)
@@ -120,6 +123,7 @@ export async function GET(
     effectivePrice: money ? effectivePrice : null,
     ...(money ? {} : { priceOverride: null, enrollments: groupFields.enrollments.map((e) => (PAYMENT_REASONS.includes(String(e.withdrawalReason)) ? { ...e, withdrawalReason: null } : e)) }),
     seats,
+    applies,
     waiting: waitingRows.map((w, i) => ({
       id: w.id,
       position: i + 1,
