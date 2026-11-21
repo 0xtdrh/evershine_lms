@@ -1,5 +1,6 @@
 'use client'
 
+import { cycleLabel } from '@/lib/i18n/labels'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -368,7 +369,7 @@ export default function FeesManagementPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900">{fee.student.firstName} {fee.student.lastName}</p>
-                      <p className="truncate text-xs text-slate-500">{fee.month}</p>
+                      <p className="truncate text-xs text-slate-500">{L(fee.month, cycleLabel(fee.month, 'ar'))}</p>
                     </div>
                     <span className={`inline-flex shrink-0 text-xs px-2 py-0.5 rounded-full font-medium border ${STATUS_STYLES[fee.status] ?? 'bg-gray-100 text-gray-600'}`}>
                       {L(fee.status.replace('_', ' '), STATUS_AR[fee.status] ?? fee.status)}
@@ -456,7 +457,7 @@ export default function FeesManagementPage() {
                           <p className="text-xs text-gray-400">{fee.student.registrationNumber} · {getCanonicalStudentClassSection({ ...fee.student, activeEnrollments: fee.student.enrollments })}</p>
                         </Link>
                       </TableCell>
-                      <TableCell className="text-sm">{fee.month}</TableCell>
+                      <TableCell className="text-sm">{L(fee.month, cycleLabel(fee.month, 'ar'))}</TableCell>
                       <TableCell className="text-sm font-medium">{L('EGP', 'ج.م')} {total.toLocaleString()}</TableCell>
                       <TableCell className="text-sm text-green-700">{L('EGP', 'ج.م')} {paid.toLocaleString()}</TableCell>
                       <TableCell className={`text-sm font-medium ${balance > 0 ? 'text-red-600' : 'text-gray-400'}`}>

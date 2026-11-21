@@ -294,13 +294,16 @@ ${L('Assign anyway? (Super Admin, it is logged)', 'تعيّنه برضه؟ (Supe
           maxStudents: createForm.maxStudents ? Number(createForm.maxStudents) : null,
         }),
       }),
-    onSuccess: () => {
+    onSuccess: (created: unknown) => {
       queryClient.invalidateQueries({ queryKey: ['groups'] })
-      notify.success(L('Group created', 'الجروب اتعمل'))
+      notify.success(L('Group created — add the instructor and the schedule', 'الجروب اتعمل — ضيف المدرب والمواعيد'))
       setCreateOpen(false)
       resetCreateForm()
+      // final test G (15/11): the new group opens at once (instructor, schedule, students) instead of closing the form
+      const id = (created as { id?: string } | null)?.id
+      if (id) setSelectedGroupId(id)
     },
-    onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to create group')),
+    onError: (err: unknown) => notify.error(apiErrorMessage(err, L('Could not create the group', 'الجروب ماتعملش'))),
   })
 
   // ── Edit group ────────────────────────────────────────────────────────
@@ -701,7 +704,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                       <SelectItem value="none">{L('Not assigned', 'مش متحدد')}</SelectItem>
                       {[...teacherOptions].sort((a, b) => (b.isQualified ? 1 : 0) - (a.isQualified ? 1 : 0)).map((t) => (
                         <SelectItem key={t.id} value={t.id}>
-                          {t.firstName} {t.lastName}{t.isQualified ? ' ✓ Qualified' : ''}
+                          {t.firstName} {t.lastName}{t.isQualified ? ` ✓ ${L('Qualified', 'مؤهّل')}` : ''}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -854,7 +857,11 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                                 {canRemoveStudents && <button
                                   type="button"
                                   disabled={removeStudentMutation.isPending}
-                                  onClick={() => removeStudentMutation.mutate(e.id)}
+                                  onClick={() => {
+                                    // final test I06 (15/11): excluding took the student out at once, with no "sure?"
+                                    const name = e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`
+                                    if (confirm(L(`Exclude ${name} from this group? Attendance is kept; adding them back reuses the same record.`, `تستبعد ${name} من الجروب ده؟ الحضور بيفضل محفوظ، ولو رجّعته بيرجع بنفس التسجيل.`))) removeStudentMutation.mutate(e.id)
+                                  }}
                                   className="text-[10px] text-rose-600 hover:text-rose-700 underline underline-offset-2 font-medium disabled:opacity-50"
                                 >
                                   {L('Exclude', 'استبعاد')}
@@ -1197,7 +1204,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
               disabled={!createForm.campusId || !createForm.className || !createForm.sectionName || createGroupMutation.isPending}
               onClick={() => createGroupMutation.mutate()}
             >
-              {createGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create group'}
+              {createGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : L('Create group', 'اعمل الجروب')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1308,7 +1315,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
           </div>
           <DialogFooter>
             <Button disabled={updateGroupMutation.isPending} onClick={() => updateGroupMutation.mutate(false)}>
-              {updateGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save changes'}
+              {updateGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : L('Save changes', 'احفظ التعديلات')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -54,7 +54,7 @@ export function GroupStartPanel({ groupId, levelId, students, can }: { groupId: 
       ) : null}
       {data.state === 'WAITING_COUNT' ? (
         <div className="mt-2 flex flex-wrap gap-2">
-          {can.approve && data.startAnywayAllowed ? <button type="button" onClick={() => { if (confirm(L('Start below the minimum?', 'تبدأ تحت الحد الأدنى؟'))) void post({ action: 'FORCE' }, L('Started — families told', 'بدأ — العائلات اتبلغت')) }} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white">{L('Start anyway', 'ابدأ برضه')}</button> : null}
+          {can.approve && data.startAnywayAllowed ? <button type="button" onClick={() => { const reason = prompt(L('Start below the minimum: why? (kept in the change log)', 'هتبدأ تحت الحد الأدنى: ليه؟ (بيتسجل في سجل التغييرات)'))?.trim(); if (reason && reason.length >= 3) void post({ action: 'FORCE', reason }, L('Started — families told', 'بدأ — العائلات اتبلغت')); else if (reason !== undefined) alert(L('Write the reason (3 letters or more).', 'اكتب السبب (3 حروف على الأقل).')) }} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white">{L('Start anyway', 'ابدأ برضه')}</button> : null}
           {can.remove ? <button type="button" onClick={() => setCancelling((x) => !x)} className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs text-red-700">{L('Cancel the group…', 'الغي الجروب…')}</button> : null}
         </div>
       ) : null}

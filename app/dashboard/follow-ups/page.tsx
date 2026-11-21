@@ -48,7 +48,7 @@ export default function FollowUpsPage() {
                 <span className="ml-1 text-xs text-slate-400">{r.student?.registrationNumber}</span>
               </p>
               <p className="text-xs text-slate-500">
-                {L('Follow-up', 'متابعة')} {new Date(r.followUpAt).toLocaleDateString('en-GB')} · {CHANNEL_LABEL[r.channel] ?? r.channel} · {REASON_LABEL[r.reason] ?? r.reason}{r.by ? ` · by ${r.by}` : ''}
+                {L('Follow-up', 'متابعة')} {new Date(r.followUpAt).toLocaleDateString('en-GB')} · {CHANNEL_LABEL[r.channel] ?? r.channel} · {REASON_LABEL[r.reason] ?? r.reason}{r.by ? ` · ${L('by', 'من')} ${r.by}` : ''}
               </p>
               <p className="mt-0.5 text-slate-700">{r.summary}</p>
               {r.guardian && <p className="text-xs text-slate-500">{r.guardian.name} · {r.guardian.phone}</p>}
@@ -76,9 +76,9 @@ export default function FollowUpsPage() {
       {error && <p className="text-sm text-rose-600">{(error as Error).message}</p>}
       {data && (
         <>
-          {section('Overdue', data.overdue, 'text-rose-700')}
-          {section('Today', data.today, 'text-indigo-700')}
-          {section('Next two weeks', data.upcoming, 'text-slate-700')}
+          {section(L('Overdue', 'متأخرة'), data.overdue, 'text-rose-700')}
+          {section(L('Today', 'النهارده'), data.today, 'text-indigo-700')}
+          {section(L('Next two weeks', 'الأسبوعين الجايين'), data.upcoming, 'text-slate-700')}
         </>
       )}
     </div>

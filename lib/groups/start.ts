@@ -11,7 +11,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { cairoToday } from '@/lib/dates/cairo'
-import { notifyFamilies, notifyUsers } from '@/lib/notifications/events'
+import { forChild, notifyFamilies, notifyUsers } from '@/lib/notifications/events'
 import { allowsCampus, loadPlaces } from '@/lib/places/server'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createYearEnrollmentForStudent } from '@/lib/academic/enrollment'
@@ -260,7 +260,7 @@ export async function nextMonthDeadlines() {
       const keepUntil = new Date(Date.now() + p.nextMonthKeepDays * 86_400_000).toISOString().slice(0, 10)
       await notifyFamilies([e.studentId], 'INVOICE_NEW', (st) => stage === 3 ? ({
         title: `${st.firstName} is paused in ${g.className} until the invoice is paid`, message: `${amount ?? ''} EGP. The seat is kept until ${fmt(keepUntil, false)}.`,
-        titleAr: `${st.firstName} واقف في ${g.className} لحد ما الفاتورة تتدفع`, messageAr: `${amount ?? ''} ج.م. المكان محجوز لحد ${fmt(keepUntil, true)}.`, relatedId: g.id,
+        titleAr: `${st.firstName} ${forChild(st, 'واقف', 'واقفة')} في ${g.className} لحد ما الفاتورة تتدفع`, messageAr: `${amount ?? ''} ج.م. المكان محجوز لحد ${fmt(keepUntil, true)}.`, relatedId: g.id,
       }) : ({
         title: `Next month of ${g.className}: pay before the first session (${fmt(first, false)})`, message: `${amount ?? ''} EGP for ${st.firstName}.`,
         titleAr: `الشهر الجاي في ${g.className}: ادفع قبل أول حصة (${fmt(first, true)})`, messageAr: `${amount ?? ''} ج.م لـ ${st.firstName}.`, relatedId: g.id,

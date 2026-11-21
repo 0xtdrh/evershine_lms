@@ -28,6 +28,8 @@ vi.mock('@/lib/prisma', () => ({
     academicYear: { findUnique: vi.fn() },
     // 2026-10-25: a substitute may open the group on the day he covers it (none here)
     substituteAssignment: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
+    // F13 (final test 20/11): the group's own instructor whose absence that day was approved is refused (none here)
+    teacherAbsence: { findFirst: vi.fn().mockResolvedValue(null) },
   },
 }))
 

@@ -3489,9 +3489,10 @@ api POST /api/groups/$GA/students "{\"studentId\":\"$FS1\"}" >/dev/null
 check "the second student completes it → the start is confirmed and the families are told" "$(api GET /api/groups/$GA/start | jq_ "d['data']['state']")/$(M "SELECT startConfirmedAt IS NOT NULL FROM ClassSection WHERE id='$GA'")/$(M "SELECT COUNT(*)>0 FROM Notification WHERE relatedId='$GA' AND title LIKE '%starts%'")" "READY/1/1"
 check "attendance opens once complete" "$(api POST /api/enrollment-attendance "{\"classSectionId\":\"$GA\",\"attendanceDate\":\"$(D 0)\",\"records\":[]}" | jq_ "d.get('error',{}).get('code') != 'GROUP_NOT_READY'")" "True"
 api POST /api/groups/$GB/students "{\"studentId\":\"$FS7\"}" >/dev/null
-check "start anyway is refused while the policy does not allow it; a secretary may never" "$(api POST /api/groups/$GB/start '{"action":"FORCE"}' | jq_ "d['error']['code']")/$(secapi POST /api/groups/$GB/start '{"action":"FORCE"}' | jq_ "d['success']")" "NOT_ALLOWED/False"
+check "start anyway is refused while the policy does not allow it; a secretary may never" "$(api POST /api/groups/$GB/start '{"action":"FORCE","reason":"e2e start below minimum"}' | jq_ "d['error']['code']")/$(secapi POST /api/groups/$GB/start '{"action":"FORCE","reason":"e2e start below minimum"}' | jq_ "d['success']")" "NOT_ALLOWED/False"
 api PUT /api/group-policies "{\"scopeType\":\"GROUP\",\"scopeId\":\"$GB\",\"minStudents\":2,\"startAnyway\":true}" >/dev/null
-check "the owner allows it for this group → staff with the permission start it below the minimum" "$(api POST /api/groups/$GB/start '{"action":"FORCE"}' | jq_ "d['data']['state']")/$(M "SELECT startForced FROM ClassSection WHERE id='$GB'")" "READY/1"
+check "the owner allows it for this group → staff with the permission start it below the minimum" "$(api POST /api/groups/$GB/start '{"action":"FORCE","reason":"e2e start below minimum"}' | jq_ "d['data']['state']")/$(M "SELECT startForced FROM ClassSection WHERE id='$GB'")/$(M "SELECT COUNT(*) FROM AuditLog WHERE action='START_ANYWAY' AND entityId='$GB'")" "READY/1/1"
+check "start anyway without a reason is refused" "$(api POST /api/groups/$GB/start '{"action":"FORCE"}' | jq_ "d['success']")" "False"
 api POST /api/groups/$GC/start "{\"action\":\"EXPECTED\",\"date\":\"$(D 3)\"}" >/dev/null
 api PUT /api/group-policies "{\"scopeType\":\"GROUP\",\"scopeId\":\"$GC\",\"minStudents\":3}" >/dev/null
 api POST /api/groups/$GC/students "{\"studentId\":\"$FS7\"}" >/dev/null

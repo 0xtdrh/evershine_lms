@@ -1,5 +1,6 @@
 'use client'
 
+import { ApiErrorView } from '@/components/ApiErrorView'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
@@ -102,7 +103,7 @@ export default function RenewalsPage() {
       </div>
 
       {isLoading && <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> {L('Loading…', 'بيحمّل…')}</p>}
-      {error && <p className="text-sm text-rose-600">{(error as Error).message}</p>}
+      <ApiErrorView error={error} />
 
       {data && (
         <Card>

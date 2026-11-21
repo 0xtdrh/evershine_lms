@@ -286,6 +286,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   })
   const platformModules = platformData?.modules
 
+  // final test J05: an old screen (or a page outside the person's rights) sent them home with no word — say why once
+  useEffect(() => {
+    const u = new URL(window.location.href)
+    if (u.searchParams.get('denied') !== 'old-screen') return
+    alert(L('That old screen is closed for your account. Use the menu to find the new one, or ask the Super Admin.', 'الشاشة القديمة دي مقفولة على حسابك. دوّر على الجديدة من القايمة، أو كلّم المدير العام.'))
+    u.searchParams.delete('denied')
+    window.history.replaceState(null, '', u.pathname + (u.search ? u.search : ''))
+  }, [])
+
   // browser tab = the page's name (it used to say "Dashboard" on every page)
   useEffect(() => {
     const item = pageItem(pathname, [...NAV_ITEMS, ...TEACHER_NAV_ITEMS])

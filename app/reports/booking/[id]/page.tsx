@@ -28,6 +28,7 @@ function View({ id }: { id: string }) {
     <div className="keep-light min-h-screen bg-gray-100 py-6 print:bg-white print:py-0" dir={dir}>
       <style>{'@media print { @page { size: A4; margin: 14mm; } body { background: #fff; } }'}</style>
       <div className="mx-auto mb-4 flex max-w-3xl justify-center gap-2 px-4 print:hidden">
+        <Button variant="outline" onClick={() => (history.length > 1 ? history.back() : (window.location.href = '/dashboard'))}>{pick('Back', 'رجوع')}</Button>
         <Button onClick={() => window.print()}><Printer className="me-2 h-4 w-4" />{pick('Print / save as PDF', 'اطبع / احفظ PDF')}</Button>
         <LanguageSwitch />
       </div>

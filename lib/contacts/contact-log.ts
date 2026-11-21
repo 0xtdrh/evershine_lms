@@ -68,8 +68,10 @@ export async function staffNames(userIds: string[]): Promise<Map<string, string>
     prisma.accountant.findMany(who),
     prisma.branchManager.findMany(who),
     prisma.marketingStaff.findMany(who),
+    prisma.guardian.findMany(who),
   ])
-  const m = new Map(users.map((u) => [u.id, u.displayName || u.email]))
+  // final test 18/11: a parent's reply showed as "guardian_0111…@technova.local" — an internal sign-in address, never a name
+  const m = new Map(users.map((u) => [u.id, u.displayName || (u.email.endsWith('.local') ? '—' : u.email)]))
   for (const p of profiles.flat()) m.set(p.userId, `${p.firstName} ${p.lastName}`.trim())
   return m
 }

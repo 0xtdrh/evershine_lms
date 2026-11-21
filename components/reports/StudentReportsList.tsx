@@ -1,5 +1,6 @@
 'use client'
 
+import { cycleLabel } from '@/lib/i18n/labels'
 import { useQuery } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,8 +19,8 @@ export function StudentReportsList({ studentId }: { studentId: string }) {
   const item = (e: Entry) => (
     <a key={`${e.kind}-${e.classSectionId}`} href={`/reports/student/${studentId}?kind=${e.kind}&group=${e.classSectionId}`} target="_blank" rel="noopener noreferrer"
       className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm hover:bg-slate-50">
-      <div><p className="font-medium text-slate-800">{e.title}</p><p className="text-xs text-slate-500">{e.subtitle}{e.date ? ` · ${new Date(`${e.date}T00:00:00Z`).toLocaleDateString('en-GB')}` : ''}</p></div>
-      <span className="text-xs font-semibold text-indigo-700">Open</span>
+      <div><p className="font-medium text-slate-800">{L(e.title, cycleLabel(e.title, 'ar').replace(/month (\d+)/gi, 'الشهر $1').replace(/level report/gi, 'تقرير المستوى'))}</p><p className="text-xs text-slate-500">{e.subtitle}{e.date ? ` · ${new Date(`${e.date}T00:00:00Z`).toLocaleDateString('en-GB')}` : ''}</p></div>
+      <span className="text-xs font-semibold text-indigo-700">{L('Open', 'افتح')}</span>
     </a>
   )
   return (
@@ -46,8 +47,8 @@ export function StudentReportsList({ studentId }: { studentId: string }) {
         )}
         {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : !data?.length ? (sessions?.length ? null : <p className="text-sm text-slate-500">{L('No reports yet.', 'لسه مفيش تقارير.')}</p>) : (
           <>
-            {level.length > 0 && <div className="space-y-2"><p className="text-xs font-semibold uppercase text-slate-500">Level reports</p>{level.map(item)}</div>}
-            {monthly.length > 0 && <div className="space-y-2"><p className="text-xs font-semibold uppercase text-slate-500">Monthly reports</p>{monthly.map(item)}</div>}
+            {level.length > 0 && <div className="space-y-2"><p className="text-xs font-semibold uppercase text-slate-500">{L('Level reports', 'تقارير المستوى')}</p>{level.map(item)}</div>}
+            {monthly.length > 0 && <div className="space-y-2"><p className="text-xs font-semibold uppercase text-slate-500">{L('Monthly reports', 'التقارير الشهرية')}</p>{monthly.map(item)}</div>}
           </>
         )}
       </CardContent>

@@ -44,7 +44,7 @@ export async function holdUntilPaid(studentId: string, groupId: string, opts: { 
     const g = await prisma.classSection.findUnique({ where: { id: groupId }, select: { className: true } })
     await notifyFamilies([studentId], 'BOOKING_UPDATE', (s) => ({
       title: `${s.firstName}: the seat in ${g?.className ?? 'the group'} is held — pay to join`, message: 'The student joins the sessions and lessons once the invoice is paid.',
-      titleAr: `${s.firstName}: المكان في ${g?.className ?? 'الجروب'} محجوز — ادفع علشان يدخل`, messageAr: 'الطالب بيدخل الحصص والدروس أول ما الفاتورة تتدفع.', relatedId: groupId,
+      titleAr: `${s.firstName}: المكان في ${g?.className ?? 'الجروب'} محجوز — ادفع علشان ${forChild(s, 'يدخل', 'تدخل')}`, messageAr: `${forChild(s, 'هيدخل', 'هتدخل')} الحصص والدروس أول ما الفاتورة تتدفع.`, relatedId: groupId,
     })).catch(() => 0)
   }
   return r.count > 0

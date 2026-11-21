@@ -1,5 +1,6 @@
 'use client'
 
+import { cycleLabel, invoiceStatusText } from '@/lib/i18n/labels'
 import { StudentWatchCard } from '@/components/videos/StudentWatchCard'
 import { useState, useRef } from 'react'
 import { ParentRenewalsCard } from '@/components/portal/ParentRenewalsCard'
@@ -42,7 +43,6 @@ import { L, useI18n } from '@/lib/i18n/client'
 
 const DAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const DAY_NAMES_AR = ['', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت', 'الأحد']
-const INVOICE_STATUS_AR: Record<string, string> = { PAID: 'مدفوعة', UNPAID: 'مش مدفوعة', PARTIAL: 'مدفوعة جزئيًا', OVERDUE: 'متأخرة', CANCELLED: 'ملغية', PENDING: 'مستنية' }
 
 type Child = {
   id: string
@@ -654,7 +654,7 @@ export default function MyChildrenPage() {
                           className="flex flex-wrap justify-between items-center border rounded p-3 gap-2"
                         >
                           <div>
-                            <p className="font-medium">{inv.month}</p>
+                            <p className="font-medium">{L(inv.month, cycleLabel(inv.month, 'ar'))}</p>
                             <p className="text-xs text-gray-500">{inv.challanNumber}</p>
                           </div>
                           <div className="text-right">
@@ -668,7 +668,7 @@ export default function MyChildrenPage() {
                                 inv.status === 'CANCELLED' ? 'secondary' : 'default'
                               }
                             >
-                              {L(inv.status, INVOICE_STATUS_AR[inv.status] ?? inv.status)}
+                              {L(invoiceStatusText(inv.status, 'en'), invoiceStatusText(inv.status, 'ar'))}
                             </Badge>
                             {Number(inv.penaltyAmount) > 0 && (
                               <p className="text-xs text-red-600">{L('Penalty', 'غرامة')}: {inv.penaltyAmount} {L('EGP', 'ج.م')}</p>

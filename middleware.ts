@@ -19,6 +19,7 @@
 import NextAuth from 'next-auth'
 import { authConfig } from '@/lib/auth.config'
 import { legacyGuard } from '@/lib/security/legacy'
+import { publicOrigin } from '@/lib/http/origin'
 import { canOpenSitePreview } from '@/lib/site/preview-access'
 import { isSitePath } from '@/lib/site/pages'
 
@@ -41,6 +42,8 @@ function getRoleHome(role?: string | null) {
 
 export default auth((req) => {
   const { nextUrl, auth: session } = req
+  // final test C14 (20/11): redirects use the address the visitor typed, not the server's bind address (0.0.0.0 behind a proxy)
+  const origin = publicOrigin(req.headers, nextUrl.origin, process.env)
   const isAuthenticated = !!session
   const role = session?.user?.role as string | undefined
 
@@ -51,7 +54,7 @@ export default auth((req) => {
   if (isProtectedRoute && !isAuthenticated) {
     // Encode the original destination so /login can redirect back after auth.
     const callbackUrl = encodeURIComponent(nextUrl.pathname + nextUrl.search)
-    const loginUrl    = new URL(`/login?callbackUrl=${callbackUrl}`, nextUrl.origin)
+    const loginUrl    = new URL(`/login?callbackUrl=${callbackUrl}`, origin)
     return Response.redirect(loginUrl)
   }
 
@@ -59,7 +62,7 @@ export default auth((req) => {
   // If they already have a valid session, send them to the dashboard.
   // This prevents a confusing blank login form for logged-in users.
   if (isAuthRoute && isAuthenticated) {
-    return Response.redirect(new URL(getRoleHome(role), nextUrl.origin))
+    return Response.redirect(new URL(getRoleHome(role), origin))
   }
 
   // ── Security part 2: an account that must use two-step sign-in sets it up first; nothing else opens until then ──
@@ -68,10 +71,10 @@ export default auth((req) => {
     if (nextUrl.pathname.startsWith('/api/')) {
       return Response.json({ success: false, error: { code: 'TWO_FACTOR_SETUP', message: 'Set up two-step sign-in first · ظبط التحقق بخطوتين الأول' } }, { status: 403 })
     }
-    if (isProtectedRoute || nextUrl.pathname === '/change-password') return Response.redirect(new URL('/setup-2fa', nextUrl.origin))
+    if (isProtectedRoute || nextUrl.pathname === '/change-password') return Response.redirect(new URL('/setup-2fa', origin))
   }
   if (nextUrl.pathname === '/setup-2fa' && !isAuthenticated) {
-    return Response.redirect(new URL('/login', nextUrl.origin))
+    return Response.redirect(new URL('/login', origin))
   }
 
   // ── Security part 3: old template screens + their APIs are for the Super Admin only (lib/security/legacy.ts) ──
@@ -79,21 +82,26 @@ export default auth((req) => {
   if (legacy === 'API_LOCKED') {
     return Response.json({ success: false, error: { code: 'LEGACY_LOCKED', message: 'This old screen is closed · الشاشة القديمة دي مقفولة' } }, { status: 403 })
   }
-  if (legacy === 'PAGE_LOCKED') return Response.redirect(new URL(getRoleHome(role), nextUrl.origin))
+  if (legacy === 'PAGE_LOCKED') {
+    // final test J05: the old screens used to send people home with no word — the home page now says why
+    const home = new URL(getRoleHome(role), origin)
+    home.searchParams.set('denied', 'old-screen')
+    return Response.redirect(home)
+  }
 
   // ── Temporary password issued by staff: must be changed first ─────────────
   const mustChangePassword = !!(session?.user as { mustChangePassword?: boolean } | undefined)?.mustChangePassword
   if (isProtectedRoute && isAuthenticated && mustChangePassword) {
-    return Response.redirect(new URL('/change-password', nextUrl.origin))
+    return Response.redirect(new URL('/change-password', origin))
   }
   if (nextUrl.pathname === '/change-password' && !isAuthenticated) {
-    return Response.redirect(new URL('/login', nextUrl.origin))
+    return Response.redirect(new URL('/login', origin))
   }
 
   if (isProtectedRoute && isAuthenticated && nextUrl.pathname === '/dashboard') {
     const roleHome = getRoleHome(role)
     if (roleHome !== '/dashboard') {
-      return Response.redirect(new URL(roleHome, nextUrl.origin))
+      return Response.redirect(new URL(roleHome, origin))
     }
   }
 

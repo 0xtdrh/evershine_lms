@@ -16,9 +16,12 @@ const WALLET_TYPE_EN: Record<string, string> = {
 /** Movement type in the screen language (2026-10-24: was English only). */
 export const walletType = (t: string) => L(WALLET_TYPE_EN[t] ?? t, WALLET_TYPE_AR[t] ?? WALLET_TYPE_EN[t] ?? t)
 /** Stored English notes ("Top-up TN-TOPUP-…", "Invoice payment TN-RCPT-…") in the screen language (2026-10-25). */
-const noteText = (n: string) => L(n, n
+export const walletNote = (n: string) => L(n, n
   .replace(/^Top-up bonus/, 'مكافأة شحن').replace(/^Top-up /, 'شحن ').replace(/^Invoice payment/, 'دفع فاتورة')
+  // final test 18/11: the student's home showed "Refund TN-RFND-…" in English
+  .replace(/^Refund /, 'استرداد ').replace(/^Group cancelled/, 'الجروب اتلغى').replace(/^Transfer from /, 'تحويل من ').replace(/^Transfer to /, 'تحويل لـ ')
   .replace(/^Referral reward:/, 'مكافأة ترشيح:').replace(/ joined /, ' اتسجل '))
+const noteText = walletNote
 /** @deprecated use walletType (kept for older imports) */
 export const WALLET_TYPE = WALLET_TYPE_EN
 

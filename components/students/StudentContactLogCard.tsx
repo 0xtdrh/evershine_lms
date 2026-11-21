@@ -1,5 +1,6 @@
 'use client'
 
+import { bi } from '@/lib/i18n/bilingual'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -31,8 +32,9 @@ interface ContactRow {
 }
 interface ContactsData { guardians: { id: string; name: string; phone: string }[]; logs: ContactRow[] }
 
-export const CHANNEL_LABEL: Record<string, string> = { CALL: '📞 Call', WHATSAPP: '💬 WhatsApp', MEETING: '🤝 Meeting', VISIT: '🏫 Visit', SYSTEM: '🤖 System' }
-export const REASON_LABEL: Record<string, string> = { PAYMENT: 'Payment', ABSENCE: 'Absence', BEHAVIOUR: 'Behaviour', LEVEL: 'Level', RENEWAL: 'Renewal', COMPLAINT: 'Complaint', OTHER: 'Other' }
+// final test 18/11: in the screen language (the follow-ups page showed Call / System / Other in English)
+export const CHANNEL_LABEL = bi({ CALL: ['📞 Call', '📞 مكالمة'], WHATSAPP: ['💬 WhatsApp', '💬 واتساب'], MEETING: ['🤝 Meeting', '🤝 مقابلة'], VISIT: ['🏫 Visit', '🏫 زيارة'], SYSTEM: ['🤖 System', '🤖 السيستم'] })
+export const REASON_LABEL = bi({ PAYMENT: ['Payment', 'الدفع'], ABSENCE: ['Absence', 'الغياب'], BEHAVIOUR: ['Behaviour', 'السلوك'], LEVEL: ['Level', 'المستوى'], RENEWAL: ['Renewal', 'التجديد'], COMPLAINT: ['Complaint', 'شكوى'], OTHER: ['Other', 'حاجة تانية'] })
 
 /** Calls, WhatsApp, meetings and visits with the student's parents, with follow-up dates (phase A). */
 export function StudentContactLogCard({ studentId }: { studentId: string }) {
@@ -92,7 +94,7 @@ export function StudentContactLogCard({ studentId }: { studentId: string }) {
         {(data?.logs ?? []).map((r) => (
           <div key={r.id} className={`rounded-lg border px-3 py-2 ${r.auto ? 'border-slate-100 bg-slate-50' : 'border-slate-200'}`}>
             <div className="flex flex-wrap items-center justify-between gap-1 text-xs text-slate-500">
-              <span>{CHANNEL_LABEL[r.channel] ?? r.channel} · {r.direction === 'IN' ? 'they contacted us' : 'we contacted them'} · {REASON_LABEL[r.reason] ?? r.reason}{r.guardian ? ` · ${r.guardian}` : ''}</span>
+              <span>{CHANNEL_LABEL[r.channel] ?? r.channel} · {r.direction === 'IN' ? L('they contacted us', 'هما اتصلوا') : L('we contacted them', 'احنا اتصلنا')} · {REASON_LABEL[r.reason] ?? r.reason}{r.guardian ? ` · ${r.guardian}` : ''}</span>
               <span>{new Date(r.createdAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}{r.by ? ` · ${r.by}` : ''}</span>
             </div>
             <p className="mt-0.5 whitespace-pre-wrap text-slate-800">{r.summary}</p>
