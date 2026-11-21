@@ -17,7 +17,7 @@ import { forgetLocks } from './guard'
 import { monthReport, type MonthReport } from './report'
 import {
   ALL_SCOPE, addMonths, autoLockDue, canLockYm, cleanSettings, currentYm, DEFAULT_MONTH_CLOSE_SETTINGS, monthName, monthRange,
-  pendingTotal, YM, type MonthCloseSettings, type Pending,
+  pendingTotal, YM, ymOf, type MonthCloseSettings, type Pending,
 } from './rules'
 
 type Who = { id: string; role: string }
@@ -145,14 +145,29 @@ export interface MonthRow {
   reopenReason: string | null
 }
 
+/** The Cairo month (YYYY-MM) of the first payment, invoice or expense; null = nothing yet. */
+async function firstActivityYm(): Promise<string | null> {
+  const [pay, inv, exp] = await Promise.all([
+    prisma.feePayment.findFirst({ orderBy: { paymentDate: 'asc' }, select: { paymentDate: true } }),
+    prisma.feeInvoice.findFirst({ orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
+    prisma.expense.findFirst({ orderBy: { date: 'asc' }, select: { date: true } }),
+  ])
+  const dates = [pay?.paymentDate, inv?.createdAt, exp?.date].filter((d): d is Date => !!d)
+  if (!dates.length) return null
+  return ymOf(new Date(Math.min(...dates.map((x) => x.getTime()))))
+}
+
 /** The last N finished months × the scopes this person may see (company first, when they have every place). */
 export async function listMonths(user: Who, months = 12): Promise<{ scopes: { campusId: string | null; name: string }[]; rows: MonthRow[] }> {
   const p = await loadPlaces(user)
   const campuses = await prisma.campus.findMany({ where: { isActive: true, ...(p.all ? {} : { id: { in: p.campusIds.length ? p.campusIds : ['__none__'] } }) }, select: { id: true, name: true }, orderBy: { name: 'asc' } })
   const scopes = [...(p.all ? [{ campusId: null, name: 'ALL' }] : []), ...campuses.map((c) => ({ campusId: c.id as string | null, name: c.name }))]
   const now = currentYm()
-  const yms = Array.from({ length: Math.min(36, Math.max(1, months)) }, (_, i) => addMonths(now, -(i + 1)))
-  const locks = await prisma.monthLock.findMany({ where: { ym: { in: yms } } })
+  const all = Array.from({ length: Math.min(36, Math.max(1, months)) }, (_, i) => addMonths(now, -(i + 1)))
+  const locks = await prisma.monthLock.findMany({ where: { ym: { in: all } } })
+  // owner K03 (18/11): months before the company's first money / invoice are not listed (they were all "open")
+  const first = await firstActivityYm()
+  const yms = all.filter((ym) => (first !== null && ym >= first) || locks.some((l) => l.ym === ym))
   const names = new Map((await prisma.user.findMany({ where: { id: { in: locks.map((l) => l.lockedById).filter((x): x is string => !!x) } }, select: { id: true, displayName: true, email: true } })).map((u) => [u.id, u.displayName || u.email]))
   const rows: MonthRow[] = []
   for (const ym of yms) {

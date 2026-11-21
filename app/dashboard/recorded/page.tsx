@@ -5,7 +5,7 @@
  * catalogue (price and days per level, lessons open or in order, exam required, certificate shown at once). `?student=<id>` opens enrolling.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi, fetchPaginatedApi } from '@/lib/api-client'
@@ -18,7 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { campusLabel } from '@/lib/places/label'
-import { PlayCircle } from 'lucide-react'
+import { PlayCircle, Search } from 'lucide-react'
+import { filterRecorded, summarizeByCourse, type RecordedFilter } from '@/lib/recorded/list-view'
 
 interface Row {
   id: string; plan: string; price: number | null; endsAt: string | null; state: 'OPEN' | 'NOT_PAID' | 'EXPIRED'; campus: { id: string; name: string }; level: string
@@ -36,9 +37,14 @@ const date = (d: string | null) => (d ? new Date(d).toLocaleDateString(L('en-GB'
 const stateText = (s: Row['state']) => ({ OPEN: L('Open', 'مفتوح'), NOT_PAID: L('Waiting for payment', 'مستني الدفع'), EXPIRED: L('Ended', 'خلص') })[s]
 const stateColor = (s: Row['state']) => (s === 'OPEN' ? 'bg-emerald-100 text-emerald-800' : s === 'EXPIRED' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')
 
-function List({ canRenew }: { canRenew: boolean }) {
+function List({ canRenew, level, setLevel }: { canRenew: boolean; level: string; setLevel: (l: string) => void }) {
   const qc = useQueryClient()
   const { data, isLoading } = useQuery({ queryKey: ['recorded'], queryFn: () => fetchApi<Row[]>('/api/recorded') })
+  // owner 17/11: a card per course on top (click = filter), then filters, search and order
+  const [f, setF] = useState<RecordedFilter>({ sort: 'ENDS' })
+  const cards = useMemo(() => summarizeByCourse(data ?? []), [data])
+  const places = useMemo(() => [...new Map((data ?? []).map((r) => [r.campus.id, r.campus])).values()], [data])
+  const shown = useMemo(() => filterRecorded(data ?? [], { ...f, level }), [data, f, level])
   const renew = useMutation({
     mutationFn: (id: string) => fetchApi(`/api/recorded/${id}/renew`, { method: 'POST', body: '{}' }),
     onSuccess: () => { notify.success(L('Renewal invoice made', 'فاتورة التجديد اتعملت')); qc.invalidateQueries({ queryKey: ['recorded'] }) }, onError: (e: Error) => notify.error(e.message),
@@ -47,7 +53,55 @@ function List({ canRenew }: { canRenew: boolean }) {
     <div className="space-y-3">
       {isLoading && <p className="text-sm text-slate-500">{L('Loading…', 'بيحمّل…')}</p>}
       {data && !data.length && <p className="py-8 text-center text-sm text-slate-500">{L('Nobody is enrolled yet.', 'لسه محدش مسجل.')}</p>}
-      {(data ?? []).map((r) => (
+      {cards.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {cards.map((c) => (
+            <button key={c.level} type="button" onClick={() => setLevel(level === c.level ? '' : c.level)}
+              className={`rounded-xl border p-3 text-start transition ${level === c.level ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-300' : 'border-slate-200 bg-white hover:border-indigo-300'}`}>
+              <p className="font-semibold text-slate-800">{c.level}</p>
+              <p className="mt-1 flex flex-wrap gap-x-3 text-xs">
+                <span className="text-emerald-700">{c.open} {L('open', 'شغال')}</span>
+                {c.waiting > 0 && <span className="text-amber-700">{c.waiting} {L('waiting to pay', 'مستني الدفع')}</span>}
+                {c.ended > 0 && <span className="text-slate-500">{c.ended} {L('ended', 'خلص')}</span>}
+              </p>
+              {c.avgPct != null && (
+                <div className="mt-2">
+                  <div className="h-1.5 rounded-full bg-slate-100"><div className="h-1.5 rounded-full bg-indigo-500" style={{ width: `${c.avgPct}%` }} /></div>
+                  <p className="mt-0.5 text-[11px] text-slate-500">{L('average progress', 'متوسط التقدم')} {c.avgPct}%</p>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+      {!!data?.length && (
+        <div className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-100 bg-slate-50/60 p-2">
+          <div className="relative min-w-[12rem] flex-1">
+            <Search className="pointer-events-none absolute start-2.5 top-2.5 h-4 w-4 text-slate-400" />
+            <Input value={f.search ?? ''} onChange={(e) => setF({ ...f, search: e.target.value })} className="h-9 ps-8" placeholder={L('Student name…', 'اسم الطالب…')} />
+          </div>
+          <select className={sel} value={f.state ?? ''} onChange={(e) => setF({ ...f, state: e.target.value as RecordedFilter['state'] })}>
+            <option value="">{L('Any state', 'كل الحالات')}</option>
+            <option value="OPEN">{stateText('OPEN')}</option><option value="NOT_PAID">{stateText('NOT_PAID')}</option><option value="EXPIRED">{stateText('EXPIRED')}</option>
+          </select>
+          {places.length > 1 && (
+            <select className={sel} value={f.campusId ?? ''} onChange={(e) => setF({ ...f, campusId: e.target.value })}>
+              <option value="">{L('Every place', 'كل الأماكن')}</option>
+              {places.map((c) => <option key={c.id} value={c.id}>{campusLabel(c)}</option>)}
+            </select>
+          )}
+          <label className="flex h-9 items-center gap-1 text-xs text-slate-600"><input type="checkbox" checked={!!f.endingSoon} onChange={(e) => setF({ ...f, endingSoon: e.target.checked })} /> {L('Ends within a week', 'بيخلص خلال أسبوع')}</label>
+          <select className={sel} value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value as RecordedFilter['sort'] })}>
+            <option value="ENDS">{L('Ends first', 'الأقرب للانتهاء')}</option>
+            <option value="PROGRESS_LOW">{L('Least progress', 'الأقل تقدم')}</option>
+            <option value="PROGRESS_HIGH">{L('Most progress', 'الأكتر تقدم')}</option>
+            <option value="NAME">{L('Name', 'الاسم')}</option>
+          </select>
+          <span className="ms-auto self-center text-xs text-slate-500">{shown.length} {L('of', 'من')} {data.length}</span>
+        </div>
+      )}
+      {!!data?.length && !shown.length && <p className="py-6 text-center text-sm text-slate-500">{L('Nobody matches these filters.', 'محدش مطابق للفلاتر دي.')}</p>}
+      {shown.map((r) => (
         <Card key={r.id}><CardContent className="flex flex-wrap items-center justify-between gap-3 pt-4 text-sm">
           <div className="min-w-0 space-y-1">
             <p className="font-semibold">{r.student ? <Link className="text-indigo-700 hover:underline" href={`/dashboard/students/${r.student.id}`}>{r.student.name}</Link> : '—'} · {r.level}</p>
@@ -118,9 +172,11 @@ function Enrol({ startStudent, onDone }: { startStudent: string | null; onDone: 
   )
 }
 
-function Courses({ canEdit }: { canEdit: boolean }) {
+function Courses({ canEdit, onOpen }: { canEdit: boolean; onOpen: (level: string) => void }) {
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['recorded-courses'], queryFn: () => fetchApi<Course[]>('/api/recorded/courses') })
+  const { data: enrolled } = useQuery({ queryKey: ['recorded'], queryFn: () => fetchApi<Row[]>('/api/recorded') })
+  const countOf = (level: string) => (enrolled ?? []).filter((r) => r.level === level && r.state !== 'EXPIRED').length
   const { data: levels } = useQuery({ queryKey: ['levels-all'], queryFn: () => fetchApi<LevelRow[]>('/api/levels') })
   const empty = { levelId: '', subscriptionPrice: '', subscriptionDays: '30', oneTimePrice: '', openMode: 'ALL', examRequired: true, autoReveal: false, videoDevices: '' }
   const [f, setF] = useState(empty)
@@ -152,7 +208,10 @@ function Courses({ canEdit }: { canEdit: boolean }) {
       )}
       {(data ?? []).map((c) => (
         <div key={c.id} className="rounded-lg border border-slate-200 p-3 text-sm">
-          <p className="font-semibold">{c.level}{!c.isActive ? ` · ${L('stopped', 'موقوف')}` : ''}</p>
+          <p className="flex items-center justify-between gap-2 font-semibold">
+            <span>{c.level}{!c.isActive ? ` · ${L('stopped', 'موقوف')}` : ''}</span>
+            <button type="button" className="text-xs font-semibold text-indigo-700 hover:underline" onClick={() => onOpen(c.level)}>{countOf(c.level)} {L('enrolled', 'مشترك')} ←</button>
+          </p>
           <p className="text-slate-600">
             {c.subscriptionPrice != null && `${L('Subscription', 'اشتراك')} ${c.subscriptionPrice.toLocaleString('en-US')} / ${c.subscriptionDays} ${L('days', 'يوم')}`}
             {c.subscriptionPrice != null && c.oneTimePrice != null && ' · '}
@@ -175,6 +234,7 @@ export default function RecordedPage() {
   const [startStudent, setStartStudent] = useState<string | null>(null)
   useEffect(() => { setStartStudent(new URLSearchParams(window.location.search).get('student')) }, [])
   const tab = urlTab ?? (startStudent ? 'enrol' : 'list')
+  const [level, setLevel] = useState('')
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-4 sm:p-6">
       <div>
@@ -187,9 +247,9 @@ export default function RecordedPage() {
           {can('recorded_courses', 'create') && <TabsTrigger value="enrol">{L('Enrol', 'تسجيل')}</TabsTrigger>}
           <TabsTrigger value="courses">{L('Courses', 'الكورسات')}</TabsTrigger>
         </TabsList>
-        <TabsContent value="list" className="mt-4"><List canRenew={can('recorded_courses', 'update')} /></TabsContent>
+        <TabsContent value="list" className="mt-4"><List canRenew={can('recorded_courses', 'update')} level={level} setLevel={setLevel} /></TabsContent>
         {can('recorded_courses', 'create') && <TabsContent value="enrol" className="mt-4"><Enrol startStudent={startStudent} onDone={() => { qc.invalidateQueries({ queryKey: ['recorded'] }); setUrlTab('list') }} /></TabsContent>}
-        <TabsContent value="courses" className="mt-4"><Courses canEdit={can('recorded_courses', 'update')} /></TabsContent>
+        <TabsContent value="courses" className="mt-4"><Courses canEdit={can('recorded_courses', 'update')} onOpen={(l) => { setLevel(l); setUrlTab('list') }} /></TabsContent>
       </Tabs>
     </div>
   )

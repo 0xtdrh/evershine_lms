@@ -21,7 +21,8 @@ import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { BudgetTab } from '@/components/treasury/BudgetTab'
 import { CashflowTab, ReconcileTab, WhereMoneyTab } from '@/components/treasury/FinanceTabs'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
-import { ACCOUNT_KIND_LABEL, MOVEMENT_KIND_LABEL, type AccountKind, type MovementKind } from '@/lib/treasury/rules'
+import { ACCOUNT_KINDS as KIND_ORDER, ACCOUNT_KIND_LABEL, MOVEMENT_KIND_LABEL, type AccountKind, type MovementKind } from '@/lib/treasury/rules'
+import { EGP_DENOMINATIONS, countDifference, denominationTotal } from '@/lib/treasury/denominations'
 import { ArrowDownLeft, ArrowUpRight, Landmark, Loader2 } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
 
@@ -59,7 +60,7 @@ export default function TreasuryPage() {
         <p className="mt-1 text-sm text-slate-500">{L('Where the money is now: every payment, expense, salary and refund is recorded on its account automatically.', 'الفلوس فين دلوقتي: كل دفعة ومصروف ومرتب واسترداد بيتسجل على حسابه لوحده.')}</p>
       </div>
       <Tabs value={tab ?? 'accounts'} onValueChange={setTab}>
-        <TabsList className="flex-wrap">
+        <TabsList className="flex w-full justify-start overflow-x-auto">
           <TabsTrigger value="accounts">{L('Balances', 'الأرصدة')}</TabsTrigger>
           <TabsTrigger value="transfers">{L('Transfers', 'التحويلات')}</TabsTrigger>
           <TabsTrigger value="counts">{L('Daily cash count', 'جرد الخزنة')}</TabsTrigger>
@@ -76,15 +77,28 @@ export default function TreasuryPage() {
           {data && !accounts.length && (
             <p className="rounded-lg border border-dashed p-4 text-sm text-slate-600">{L('No accounts yet.', 'لسه مفيش حسابات.')} {can('treasury', 'update') && <Link className="font-semibold text-indigo-700 hover:underline" href="/dashboard/admin/finance-settings#accounts">{L('Add them in Settings → Payments', 'ضيفها من الإعدادات ← الدفع')}</Link>}</p>
           )}
+          {accounts.length > 1 && (
+            <p className="text-sm text-slate-600">{L('All accounts', 'كل الحسابات')}: <b className="text-lg text-slate-900">{money(accounts.reduce((t, a) => t + a.balance, 0), ar)}</b></p>
+          )}
+          {KIND_ORDER.filter((k) => accounts.some((a) => a.kind === k)).map((k) => {
+            const part = accounts.filter((a) => a.kind === k)
+            return (
+              <div key={k} className="space-y-2">
+                <p className="text-xs font-semibold text-slate-500">{ar ? ACCOUNT_KIND_LABEL[k][1] : ACCOUNT_KIND_LABEL[k][0]} · {money(part.reduce((t, a) => t + a.balance, 0), ar)}</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {accounts.map((a) => (
+            {part.map((a) => (
               <button key={a.id} type="button" onClick={() => setSelected(selected === a.id ? null : a.id)} className={`rounded-xl border p-3 text-start transition hover:shadow-sm ${selected === a.id ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-200 bg-white'}`}>
                 <p className="text-xs text-slate-500">{ar ? ACCOUNT_KIND_LABEL[a.kind][1] : ACCOUNT_KIND_LABEL[a.kind][0]} · {a.campus ?? L('company', 'الشركة')}</p>
                 <p className="font-semibold text-slate-800">{a.name}</p>
                 <p className={`mt-1 text-2xl font-bold ${a.balance < 0 ? 'text-rose-600' : 'text-slate-900'}`}>{money(a.balance, ar)}</p>
-                <p className="text-[11px] text-slate-500">↓ {money(a.in, ar)} · ↑ {money(a.out, ar)}{a.kind === 'CASH' && <> · {a.countedToday ? L('counted today', 'اتجردت النهارده') : L('not counted today', 'ماتجردتش النهارده')}</>}</p>
+                <p className="text-[11px] text-slate-500">↓ {money(a.in, ar)} · ↑ {money(a.out, ar)}{a.kind === 'CASH' && <> · {a.countedToday ? L('counted today', 'اتجردت النهارده') : <span className="font-semibold text-amber-700">{L('not counted today', 'ماتجردتش النهارده')}</span>}</>}</p>
               </button>
             ))}
+          </div>
+              </div>
+            )
+          })}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {!!data?.unplaced.count && (
               <button type="button" onClick={() => setSelected(selected === 'unplaced' ? null : 'unplaced')} className={`rounded-xl border p-3 text-start ${selected === 'unplaced' ? 'border-amber-400 ring-2 ring-amber-100' : 'border-amber-200 bg-amber-50'}`}>
                 <p className="text-xs text-amber-700">{L('Not placed in an account', 'مش متسجلة على حساب')}</p>
@@ -216,9 +230,13 @@ function Transfers({ accounts, ar, isSuper, canCreate, canApprove, onDone, statu
 function Counts({ accounts, ar, canCreate, canApprove, onDone, status }: { accounts: Account[]; ar: boolean; canCreate: boolean; canApprove: boolean; onDone: () => void; status: (s: string) => React.ReactNode }) {
   const { data } = useQuery({ queryKey: ['treasury-counts'], queryFn: () => fetchApi<Count[]>('/api/treasury/counts') })
   const [f, setF] = useState({ accountId: '', counted: '', note: '' })
+  // owner suggestion K: count the notes by kind (the total fills itself) and see the difference before closing
+  const [byNotes, setByNotes] = useState(false)
+  const [pieces, setPieces] = useState<Record<string, string>>({})
+  const reset = () => { setF({ accountId: '', counted: '', note: '' }); setPieces({}); setByNotes(false) }
   const create = useMutation({
     mutationFn: () => fetchApi<{ status: string; difference: number }>('/api/treasury/counts', { method: 'POST', body: JSON.stringify({ ...f, counted: Number(f.counted) }) }),
-    onSuccess: (r) => { notify.success(r.difference === 0 ? L('Matches — closed', 'مظبوط — اتقفلت') : r.status === 'PENDING' ? L(`Difference ${r.difference} — sent for approval`, `فيه فرق ${r.difference} — اتبعت للموافقة`) : L('Closed', 'اتقفلت')); setF({ accountId: '', counted: '', note: '' }); onDone() },
+    onSuccess: (r) => { notify.success(r.difference === 0 ? L('Matches — closed', 'مظبوط — اتقفلت') : r.status === 'PENDING' ? L(`Difference ${r.difference} — sent for approval`, `فيه فرق ${r.difference} — اتبعت للموافقة`) : L('Closed', 'اتقفلت')); reset(); onDone() },
     onError: (e: Error) => notify.error(e.message),
   })
   const act = useMutation({
@@ -226,39 +244,101 @@ function Counts({ accounts, ar, canCreate, canApprove, onDone, status }: { accou
     onSuccess: () => { notify.success(L('Done', 'تم')); onDone() }, onError: (e: Error) => notify.error(e.message),
   })
   const box = accounts.find((a) => a.id === f.accountId)
+  const diff = box && f.counted !== '' ? countDifference(box.balance, Number(f.counted)) : null
+  const setPiece = (d: number, v: string) => {
+    const next = { ...pieces, [String(d)]: v }
+    setPieces(next)
+    setF((x) => ({ ...x, counted: String(denominationTotal(next)) }))
+  }
+  const close = () => {
+    if (diff && !f.note.trim() && !confirm(L(`There is a difference of ${diff}. Close without a note?`, `فيه فرق ${diff}. تقفل من غير ملاحظة؟`))) return
+    create.mutate()
+  }
+  const pending = (data ?? []).filter((c) => c.status === 'PENDING')
+  const history = (data ?? []).filter((c) => c.status !== 'PENDING')
+  const countRow = (c: Count) => (
+    <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
+      <div>
+        <p className="font-semibold">{c.account} · {new Date(c.date).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { timeZone: 'Africa/Cairo' })}</p>
+        <p className="text-xs text-slate-500">{L('expected', 'المفروض')} {money(c.expected, ar)} · {L('counted', 'الفعلي')} {money(c.counted, ar)} · <b className={c.difference ? 'text-rose-700' : 'text-emerald-700'}>{L('difference', 'الفرق')} {money(c.difference, ar)}</b>{c.note ? ` · ${c.note}` : ''}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        {status(c.status)}
+        {c.status === 'PENDING' && canApprove && !c.mine && <>
+          <Button size="sm" className="h-7 bg-emerald-600 text-xs hover:bg-emerald-700" onClick={() => act.mutate({ id: c.id, action: 'approve' })}>{L('Approve the difference', 'وافق على الفرق')}</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs text-rose-600" onClick={() => act.mutate({ id: c.id, action: 'reject' })}>{L('Reject', 'رفض')}</Button>
+        </>}
+      </div>
+    </div>
+  )
   return (
     <div className="space-y-4">
-      {/* a04: the printable daily cash-close sheet (totals + one page per account) */}
-      <div className="flex flex-wrap gap-2">
-        <Button asChild size="sm" variant="outline"><a href="/reports/cash-day" target="_blank" rel="noreferrer">🧾 {L("Today's cash-close sheet", 'كشف إقفال اليوم')}</a></Button>
-        {f.accountId && <Button asChild size="sm" variant="outline"><a href={`/reports/cash-day?account=${f.accountId}`} target="_blank" rel="noreferrer">{L('Sheet of this box', 'كشف الخزنة دي')}</a></Button>}
-      </div>
+      {/* every cash box: counted today or not, one click to count it */}
+      {accounts.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {accounts.map((a) => (
+            <div key={a.id} className={`rounded-xl border p-3 text-sm ${a.countedToday ? 'border-emerald-200 bg-emerald-50/50' : 'border-amber-200 bg-amber-50/60'}`}>
+              <p className="font-semibold text-slate-800">{a.name}</p>
+              <p className="text-xs text-slate-500">{a.campus ?? L('company', 'الشركة')} · {L('expected', 'المفروض')} {money(a.balance, ar)}</p>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <span className={`text-xs font-semibold ${a.countedToday ? 'text-emerald-700' : 'text-amber-700'}`}>{a.countedToday ? `✓ ${L('counted today', 'اتجردت النهارده')}` : L('not counted today', 'لسه ماتجردتش النهارده')}</span>
+                {canCreate && !a.countedToday && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setF({ accountId: a.id, counted: '', note: '' })}>{L('Count now', 'جرد دلوقتي')}</Button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {canCreate && accounts.length > 0 && (
-        <Card><CardContent className="flex flex-wrap items-end gap-2 pt-4 text-sm">
-          <label className="space-y-1"><span className="block text-xs text-slate-500">{L('Cash box', 'الخزنة')}</span>
-            <select className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={f.accountId} onChange={(e) => setF({ ...f, accountId: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
-          {box && <p className="pb-2 text-xs text-slate-500">{L('The system expects', 'المفروض يكون فيها')} <b>{money(box.balance, ar)}</b></p>}
-          <label className="space-y-1"><span className="block text-xs text-slate-500">{L('Counted now', 'العدّ الفعلي')}</span><Input type="number" className="h-9 w-32" value={f.counted} onChange={(e) => setF({ ...f, counted: e.target.value })} /></label>
-          <label className="flex-1 space-y-1"><span className="block text-xs text-slate-500">{L('Note (if there is a difference)', 'ملاحظة (لو فيه فرق)')}</span><Input className="h-9" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></label>
-          <Button disabled={!f.accountId || f.counted === '' || create.isPending} onClick={() => create.mutate()}>{L('Close the day', 'اقفل اليوم')}</Button>
+        <Card><CardContent className="space-y-3 pt-4 text-sm">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="space-y-1"><span className="block text-xs text-slate-500">{L('Cash box', 'الخزنة')}</span>
+              <select className="h-10 rounded-md border border-slate-200 bg-white px-2 text-sm" value={f.accountId} onChange={(e) => setF({ ...f, accountId: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+            {box && <p className="pb-2.5 text-xs text-slate-500">{L('The system expects', 'المفروض يكون فيها')} <b className="text-slate-800">{money(box.balance, ar)}</b></p>}
+          </div>
+          {box && (
+            <>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="space-y-1"><span className="block text-xs text-slate-500">{L('Counted now', 'العدّ الفعلي')}</span>
+                  <Input type="number" inputMode="decimal" className="h-11 w-44 text-lg font-semibold" value={f.counted} readOnly={byNotes} onChange={(e) => setF({ ...f, counted: e.target.value })} /></label>
+                {diff !== null && (
+                  <p className={`pb-2.5 text-sm font-bold ${diff === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {diff === 0 ? `✓ ${L('Matches', 'مظبوط')}` : `${L('Difference', 'الفرق')} ${diff > 0 ? '+' : ''}${money(diff, ar)}`}
+                  </p>
+                )}
+                <label className="flex items-center gap-1 pb-2.5 text-xs text-slate-600"><input type="checkbox" checked={byNotes} onChange={(e) => { setByNotes(e.target.checked); if (e.target.checked) setF((x) => ({ ...x, counted: String(denominationTotal(pieces)) })) }} /> {L('Count by notes', 'العد بالفئات')}</label>
+              </div>
+              {byNotes && (
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                  {EGP_DENOMINATIONS.map((d) => (
+                    <label key={d} className="space-y-0.5"><span className="block text-[11px] text-slate-500">{d} × </span>
+                      <Input type="number" min={0} inputMode="numeric" className="h-9" value={pieces[String(d)] ?? ''} onChange={(e) => setPiece(d, e.target.value)} /></label>
+                  ))}
+                </div>
+              )}
+              <label className="block space-y-1"><span className="block text-xs text-slate-500">{L('Note (if there is a difference)', 'ملاحظة (لو فيه فرق)')}</span><Input className="h-10 w-full" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></label>
+              <div className="flex flex-wrap gap-2">
+                <Button disabled={f.counted === '' || create.isPending} onClick={close}>{L('Close the day', 'اقفل اليوم')}</Button>
+                <Button asChild size="sm" variant="ghost"><a href={`/reports/cash-day?account=${f.accountId}`} target="_blank" rel="noreferrer">{L('Sheet of this box', 'كشف الخزنة دي')}</a></Button>
+              </div>
+            </>
+          )}
         </CardContent></Card>
       )}
+
+      <div className="flex flex-wrap gap-2">
+        <Button asChild size="sm" variant="outline"><a href="/reports/cash-day" target="_blank" rel="noreferrer">🧾 {L("Today's cash-close sheet", 'كشف إقفال اليوم')}</a></Button>
+      </div>
+
+      {pending.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-amber-800">{L('Waiting for approval', 'مستنية موافقة')} ({pending.length})</p>
+          {pending.map(countRow)}
+        </div>
+      )}
       <div className="space-y-2">
-        {(data ?? []).map((c) => (
-          <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
-            <div>
-              <p className="font-semibold">{c.account} · {new Date(c.date).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB')}</p>
-              <p className="text-xs text-slate-500">{L('expected', 'المفروض')} {money(c.expected, ar)} · {L('counted', 'الفعلي')} {money(c.counted, ar)} · <b className={c.difference ? 'text-rose-700' : 'text-emerald-700'}>{L('difference', 'الفرق')} {money(c.difference, ar)}</b>{c.note ? ` · ${c.note}` : ''}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {status(c.status)}
-              {c.status === 'PENDING' && canApprove && !c.mine && <>
-                <Button size="sm" className="h-7 bg-emerald-600 text-xs hover:bg-emerald-700" onClick={() => act.mutate({ id: c.id, action: 'approve' })}>{L('Approve the difference', 'وافق على الفرق')}</Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs text-rose-600" onClick={() => act.mutate({ id: c.id, action: 'reject' })}>{L('Reject', 'رفض')}</Button>
-              </>}
-            </div>
-          </div>
-        ))}
+        {history.length > 0 && <p className="text-sm font-semibold text-slate-600">{L('Earlier counts', 'الجرد اللي فات')}</p>}
+        {history.map(countRow)}
         {!data?.length && <p className="py-6 text-center text-sm text-slate-500">{L('No counts yet.', 'لسه مفيش جرد.')}</p>}
       </div>
     </div>

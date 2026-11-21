@@ -27,6 +27,7 @@ interface ListData {
   settings: MonthCloseSettings
   can: { close: boolean; reopen: boolean; settings: boolean }
 }
+interface ReportHead { totals: { netIncome: number; expenses: number; salaries: number; profit: number }; invoices: { count: number }; refunds: { count: number } }
 interface PendingData { total: number; items: { key: string; count: number; en: string; ar: string; href: string }[] }
 
 const scopeName = (s: { campusId: string | null; name: string }) => (s.campusId ? s.name : L('Whole company', 'الشركة كلها'))
@@ -46,29 +47,49 @@ function ClosePanel({ ym, scope, onDone }: { ym: string; scope: { campusId: stri
   const ar = useI18n().locale === 'ar'
   const q = `ym=${ym}${scope.campusId ? `&campusId=${scope.campusId}` : ''}`
   const { data, isLoading } = useQuery({ queryKey: ['month-close-pending', q], queryFn: () => fetchApi<PendingData>(`/api/month-close/pending?${q}`) })
+  // owner suggestion K03: show what will be frozen before closing
+  const { data: rep } = useQuery({ queryKey: ['month-close-report', q], queryFn: () => fetchApi<{ report: ReportHead }>(`/api/month-close/report?${q}&live=1`) })
   const close = useMutation({
     mutationFn: () => fetchApi('/api/month-close', { method: 'POST', body: JSON.stringify({ ym, campusId: scope.campusId }) }),
     onSuccess: () => { notify.success(L('Month closed — its report is saved', 'الشهر اتقفل — والتقرير بتاعه اتحفظ')); onDone() },
     onError: (e: Error) => notify.error(e.message),
   })
+  const r = rep?.report
+  const money = (n: number) => `${Math.round(n).toLocaleString('en-US')} ${L('EGP', 'ج.م')}`
+  const confirmClose = () => {
+    const extra = data && data.total > 0 ? L(` ${data.total} thing(s) are still waiting.`, ` لسه فيه ${data.total} حاجة مستنية.`) : ''
+    if (confirm(L(`Close ${monthName(ym, 'en')} for ${scopeName(scope)}? Its numbers will not change after this.${extra}`, `تقفل ${monthName(ym, 'ar')} لـ ${scopeName(scope)}؟ أرقامه مش هتتغير بعد كده.${extra}`))) close.mutate()
+  }
   return (
-    <div className="mt-2 rounded-lg border border-indigo-200 bg-indigo-50/40 p-3 text-sm">
+    <div className="mt-2 space-y-3 rounded-lg border border-indigo-200 bg-indigo-50/40 p-3 text-sm">
       <p className="font-semibold">{L('Before closing', 'قبل القفل')} — {monthName(ym, ar ? 'ar' : 'en')} · {scopeName(scope)}</p>
-      {isLoading && <Loader2 className="mt-2 h-4 w-4 animate-spin text-slate-400" />}
-      {data && data.total === 0 && <p className="mt-1 text-emerald-700">✓ {L('Nothing of this month is waiting.', 'مفيش حاجة من الشهر ده مستنية.')}</p>}
-      {data && data.total > 0 && (
-        <ul className="mt-1 space-y-1">
+      {isLoading && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+      {data && (
+        <ul className="grid gap-1 sm:grid-cols-2">
           {data.items.map((i) => (
-            <li key={i.key} className="flex items-center justify-between gap-2 text-amber-800">
-              <span>⚠ {ar ? i.ar : i.en}: <b>{i.count}</b></span>
-              <Link href={i.href} className="text-xs font-semibold text-indigo-700 underline">{L('Open', 'افتح')}</Link>
+            <li key={i.key} className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 ${i.count ? 'bg-rose-50 text-rose-800' : 'text-emerald-700'}`}>
+              <span>{i.count ? '✗' : '✓'} {ar ? i.ar : i.en}{i.count ? <b> ({i.count})</b> : null}</span>
+              {i.count > 0 && <Link href={i.href} className="text-xs font-semibold text-indigo-700 underline">{L('Open', 'افتح')}</Link>}
             </li>
           ))}
         </ul>
       )}
-      <p className="mt-2 text-xs text-slate-600">{L('After closing, nothing dated in this month can be added, changed or deleted, and the monthly report is saved as it is now. A late payment on an old invoice is still recorded — in the current month.', 'بعد القفل محدش يقدر يضيف أو يعدّل أو يمسح حاجة بتاريخ الشهر ده، والتقرير الشهري بيتحفظ زي ما هو دلوقتي. الدفعة المتأخرة على فاتورة قديمة بتتسجل عادي — في الشهر الحالي.')}</p>
-      <div className="mt-2 flex gap-2">
-        <Button size="sm" disabled={!data || close.isPending} onClick={() => close.mutate()}>
+      {r && (
+        <div className="rounded-md border border-slate-200 bg-white p-2">
+          <p className="mb-1 text-xs font-semibold text-slate-500">{L('What will be frozen', 'اللي هيتجمّد')}</p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs sm:grid-cols-3">
+            <span>{L('Income', 'الدخل')}: <b>{money(r.totals.netIncome)}</b></span>
+            <span>{L('Expenses', 'المصاريف')}: <b>{money(r.totals.expenses)}</b></span>
+            <span>{L('Salaries', 'المرتبات')}: <b>{money(r.totals.salaries)}</b></span>
+            <span>{L('Invoices made', 'فواتير اتعملت')}: <b>{r.invoices.count}</b></span>
+            <span>{L('Refunds', 'الاسترداد')}: <b>{r.refunds.count}</b></span>
+            <span className={r.totals.profit < 0 ? 'text-rose-700' : 'text-emerald-700'}>{L('Profit', 'الربح')}: <b>{money(r.totals.profit)}</b></span>
+          </div>
+        </div>
+      )}
+      <p className="text-xs text-slate-600">{L('After closing, nothing dated in this month can be added, changed or deleted, and the monthly report is saved as it is now. A late payment on an old invoice is still recorded — in the current month.', 'بعد القفل محدش يقدر يضيف أو يعدّل أو يمسح حاجة بتاريخ الشهر ده، والتقرير الشهري بيتحفظ زي ما هو دلوقتي. الدفعة المتأخرة على فاتورة قديمة بتتسجل عادي — في الشهر الحالي.')}</p>
+      <div className="flex gap-2">
+        <Button size="sm" disabled={!data || close.isPending} onClick={confirmClose}>
           {close.isPending ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <Lock className="me-1 h-4 w-4" />}
           {data && data.total > 0 ? L('Close anyway', 'اقفل برضه') : L('Close the month', 'اقفل الشهر')}
         </Button>
@@ -155,6 +176,10 @@ export default function MonthClosePage() {
             </select>
           )}
           {data && scope && (
+            <p className="text-xs text-slate-500">{L('The current month is not finished yet; it shows here once it ends.', 'الشهر الحالي لسه ماخلصش، وهيظهر هنا لما يخلص.')}</p>
+          )}
+          {data && scope && !rows.length && <p className="py-6 text-center text-sm text-slate-500">{L('No finished month with activity yet.', 'لسه مفيش شهر خلص وفيه شغل.')}</p>}
+          {data && scope && rows.length > 0 && (
             <Card><CardContent className="divide-y p-0">
               {rows.map((r) => (
                 <div key={r.ym} className="p-3">
