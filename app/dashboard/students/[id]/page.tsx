@@ -124,7 +124,7 @@ const ATTENDANCE_BADGE: Record<string, string> = {
 }
 
 const ENROLLMENT_TEXT: Record<string, [string, string]> = {
-  ACTIVE: ['Active', 'شغال'], SUSPENDED: ['Suspended', 'موقوف'], GRADUATED: ['Graduated', 'اتخرج'], WITHDRAWN: ['Left', 'ساب'], ON_LEAVE: ['On leave', 'في إجازة'],
+  ACTIVE: ['Active', 'شغال'], COMPLETED: ['Finished', 'خلص'], AWAITING_PAYMENT: ['Waiting to pay', 'مستني الدفع'], SUSPENDED: ['Suspended', 'موقوف'], GRADUATED: ['Graduated', 'اتخرج'], WITHDRAWN: ['Left', 'ساب'], ON_LEAVE: ['On leave', 'في إجازة'],
 }
 const FEE_TEXT: Record<string, [string, string]> = {
   PAID: ['Paid', 'مدفوع'], PENDING: ['Not paid', 'مش مدفوع'], PARTIALLY_PAID: ['Part paid', 'مدفوع جزء'], OVERDUE: ['Overdue', 'متأخر'],
@@ -383,7 +383,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
         {/* Right: tabs (owner 21/11: organise the screen, and show only what fits this student) */}
         <div className="lg:col-span-2 space-y-4">
           <Tabs value={tab ?? 'groups'} onValueChange={setTab}>
-            <TabsList className="flex w-full flex-wrap h-auto">
+            <TabsList className="flex w-full justify-start overflow-x-auto">
               <TabsTrigger value="groups">{L('Groups', 'الجروبات')}</TabsTrigger>
               <TabsTrigger value="money">{L('Money', 'الفلوس')}</TabsTrigger>
               <TabsTrigger value="family">{L('Family & contact', 'الأسرة والتواصل')}</TabsTrigger>
@@ -392,12 +392,24 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             </TabsList>
 
             <TabsContent value="groups" className="space-y-4 pt-3">
-              <StudentEnrollmentsPanel
-                studentId={student.id}
-                campusId={student.campus.id}
-                batchId={student.batch?.id}
-                canManage={canEditStudent}
-              />
+              <Card>
+                <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2"><GraduationCap className="w-4 h-4 text-indigo-600" />{L('Groups', 'الجروبات')}</CardTitle>
+                  {canEditStudent && <Link href="/dashboard/groups"><Button variant="ghost" size="sm" className="text-xs">{L('Open groups', 'افتح الجروبات')}</Button></Link>}
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {(student.enrollments ?? []).length === 0 ? (
+                    <p className="text-sm text-slate-500">{L('Not in any group yet. Add the student from the group window.', 'لسه مش في أي جروب. ضيفه من شاشة الجروب.')}</p>
+                  ) : (
+                    [...(student.enrollments ?? [])].sort((a, b) => (a.status === 'ACTIVE' ? 0 : 1) - (b.status === 'ACTIVE' ? 0 : 1)).map((e) => (
+                      <Link key={e.id} href={`/dashboard/groups?group=${e.classSection.id}`} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50">
+                        <span className="text-slate-800">{`${e.classSection.className} ${e.classSection.sectionName}`.trim()}<span className="text-xs text-slate-400"> · {e.classSection.campus.name}</span></span>
+                        <span className={`text-xs ${e.status === 'ACTIVE' ? 'text-emerald-600' : 'text-slate-400'}`}>{pickText(ENROLLMENT_TEXT, e.status)}</span>
+                      </Link>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
               <StudentTransferCard
                 studentId={student.id}
                 studentName={`${student.firstName} ${student.lastName}`}
@@ -566,6 +578,15 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               )}
 
               {isAdmin && <StudentTimelineCard studentId={student.id} />}
+              {/* old template section-enrollment tools (academic year, withdraw, re-enrol): admins only, at the end */}
+              {isAdmin && (
+                <StudentEnrollmentsPanel
+                  studentId={student.id}
+                  campusId={student.campus.id}
+                  batchId={student.batch?.id}
+                  canManage={canEditStudent}
+                />
+              )}
             </TabsContent>
           </Tabs>
         </div>
