@@ -47,11 +47,13 @@ export function StudentTransferCard({ studentId, studentName, groups }: { studen
     enabled: canRead,
   })
   if (!canRead) return null
+  // owner 21/11: nothing to show when the student is in no group and was never moved
+  if (groups.length === 0 && !(history?.length)) return null
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm"><ArrowRightLeft className="h-4 w-4" /> Groups &amp; moves</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-sm"><ArrowRightLeft className="h-4 w-4" /> {L('Move to another group', 'النقل لجروب تاني')}</CardTitle>
         <CardDescription>{L('Move the student to another group: the money and discounts move with them.', 'انقل الطالب لجروب تاني: الفلوس والخصومات بتتنقل معاه.')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">

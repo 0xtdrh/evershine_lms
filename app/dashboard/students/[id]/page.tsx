@@ -17,7 +17,6 @@ import { StudentEnrollmentsPanel } from '@/components/students/StudentEnrollment
 import type { StudentEnrollmentRow } from '@/components/students/StudentEnrollmentsPanel'
 import { StudentGuardianPanel } from '@/components/students/StudentGuardianPanel'
 import { StudentCertificatesPanel } from '@/components/students/StudentCertificatesPanel'
-import { StudentPromotionPanel } from '@/components/students/StudentPromotionPanel'
 import { StudentTimelineCard } from '@/components/students/StudentTimelineCard'
 import { StudentAdminToolbar } from '@/components/students/StudentAdminToolbar'
 import { StudentPortalAccessCard } from '@/components/students/StudentPortalAccessCard'
@@ -31,6 +30,9 @@ import { StudentReportsList } from '@/components/reports/StudentReportsList'
 import { StudentReferralCard } from '@/components/students/StudentReferralCard'
 import { StudentMarketingFlag } from '@/components/students/StudentMarketingFlag'
 import { L, useI18n } from '@/lib/i18n/client'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useUrlTab } from '@/hooks/use-url-tab'
+import { invoiceStatusText } from '@/lib/i18n/labels'
 
 interface StudentDetail {
   id: string
@@ -121,11 +123,25 @@ const ATTENDANCE_BADGE: Record<string, string> = {
   EXCUSED: 'text-blue-700',
 }
 
+const ENROLLMENT_TEXT: Record<string, [string, string]> = {
+  ACTIVE: ['Active', 'شغال'], SUSPENDED: ['Suspended', 'موقوف'], GRADUATED: ['Graduated', 'اتخرج'], WITHDRAWN: ['Left', 'ساب'], ON_LEAVE: ['On leave', 'في إجازة'],
+}
+const FEE_TEXT: Record<string, [string, string]> = {
+  PAID: ['Paid', 'مدفوع'], PENDING: ['Not paid', 'مش مدفوع'], PARTIALLY_PAID: ['Part paid', 'مدفوع جزء'], OVERDUE: ['Overdue', 'متأخر'],
+}
+const ATTENDANCE_TEXT: Record<string, [string, string]> = {
+  PRESENT: ['Present', 'حاضر'], ABSENT: ['Absent', 'غايب'], LATE: ['Late', 'متأخر'], EXCUSED: ['Excused', 'بعذر'],
+}
+const pickText = (m: Record<string, [string, string]>, k: string) => (m[k] ? L(m[k][0], m[k][1]) : k.replace('_', ' '))
+const shortDate = (d: string) => new Date(d).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { day: 'numeric', month: 'short', timeZone: 'Africa/Cairo' })
+const longDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }) : null)
+
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
+  if (!value || !String(value).trim()) return null // owner 21/11: an empty detail is not shown
   return (
     <div className="flex flex-col sm:flex-row sm:gap-4">
-      <dt className="text-xs font-semibold text-gray-400 uppercase tracking-wider w-36 flex-shrink-0 pt-0.5">{label}</dt>
-      <dd className="text-sm text-gray-900 font-medium">{value || <span className="text-gray-300">—</span>}</dd>
+      <dt className="text-xs font-semibold text-gray-400 tracking-wider w-36 flex-shrink-0 pt-0.5">{label}</dt>
+      <dd className="text-sm text-gray-900 font-medium">{value}</dd>
     </div>
   )
 }
@@ -171,7 +187,11 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
     ? engineAttendanceRaw
     : (engineAttendanceRaw as { data?: typeof engineAttendanceRaw })?.data ?? []
 
+  const [tab, setTab] = useUrlTab()
   const fees = feesData?.data ?? []
+  const activeGroups = (student?.enrollments ?? [])
+    .filter((e) => e.status === 'ACTIVE' && e.classSection)
+    .map((e) => ({ id: e.classSection.id, name: `${e.classSection.className} ${e.classSection.sectionName}`.trim() }))
   const attendanceRecords = attendanceData?.data ?? []
   const canGenerateStudentDocuments = isAdmin || (isStudentUser && student?.user?.id === session?.user?.id)
 
@@ -282,18 +302,18 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                 </div>
               )}
               <h2 className="text-xl font-semibold text-white">{student.firstName} {student.lastName}</h2>
-              <p className="text-sm text-indigo-100">{student.fatherName}'s son/daughter</p>
+              {student.fatherName && <p className="text-sm text-indigo-100">{student.gender === 'FEMALE' ? L('Daughter of', 'بنت') : L('Son of', 'ابن')} {student.fatherName}</p>}
 
               <div className="mt-3 flex flex-wrap gap-2 justify-center">
                 <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${ENROLLMENT_BADGE[student.enrollmentStatus]}`}>
-                  {student.enrollmentStatus.replace('_', ' ')}
+                  {pickText(ENROLLMENT_TEXT, student.enrollmentStatus)}
                 </span>
                 <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${FEE_BADGE[student.feeStatus]}`}>
-                  {student.feeStatus.replace('_', ' ')}
+                  {pickText(FEE_TEXT, student.feeStatus)}
                 </span>
               </div>
 
-              <div className="mt-4 w-full space-y-2 text-left text-sm text-indigo-100">
+              <div className="mt-4 w-full space-y-2 text-start text-sm text-indigo-100">
                 {/* old template class — groups are shown in the student's groups card; hide the empty "Class not assigned" line */}
                 {student.class && (
                   <div className="flex items-center gap-2">
@@ -353,208 +373,201 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               {(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'] as const).map((s) => (
                 <div key={s} className="text-center p-2 rounded-lg bg-gray-50">
                   <p className={`text-lg font-bold ${ATTENDANCE_BADGE[s]}`}>{attSummary[s] ?? 0}</p>
-                  <p className="text-xs text-gray-400 capitalize">{s.toLowerCase()}</p>
+                  <p className="text-xs text-gray-400">{pickText(ATTENDANCE_TEXT, s)}</p>
                 </div>
               ))}
             </CardContent>
           </Card>
         </div>
 
-        {/* Right: Details */}
+        {/* Right: tabs (owner 21/11: organise the screen, and show only what fits this student) */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Personal Info */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm text-gray-600">{L('Personal Information', 'البيانات الشخصية')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="space-y-3">
-                <InfoRow label={L('Full Name (English)', 'الاسم بالكامل (إنجليزي)')} value={`${student.firstName} ${student.lastName}`} />
-                <InfoRow label={L('Full Name (Arabic)', 'الاسم بالكامل (عربي)')} value={student.fullNameAr} />
-                <InfoRow label={L('Father\'s Name', 'اسم الأب')} value={student.fatherName} />
-                <InfoRow label={L('Date of Birth', 'تاريخ الميلاد')} value={new Date(student.dateOfBirth).toLocaleDateString('en-EG', { day: 'numeric', month: 'long', year: 'numeric' })} />
-                <InfoRow label={L('Age', 'السن')} value={`${Math.floor((Date.now() - new Date(student.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years`} />
-                <InfoRow label={L('Gender', 'النوع')} value={student.gender} />
-                <InfoRow label={L('Blood Group', 'فصيلة الدم')} value={student.bloodGroup} />
-                <InfoRow label={L('Nationality', 'الجنسية')} value={student.nationality} />
-                <InfoRow label={L('School', 'المدرسة')} value={student.schoolName} />
-                <InfoRow label={L('School Grade', 'سنة الدراسة')} value={student.regularSchoolGrade} />
-              </dl>
-            </CardContent>
-          </Card>
+          <Tabs value={tab ?? 'groups'} onValueChange={setTab}>
+            <TabsList className="flex w-full flex-wrap h-auto">
+              <TabsTrigger value="groups">{L('Groups', 'الجروبات')}</TabsTrigger>
+              <TabsTrigger value="money">{L('Money', 'الفلوس')}</TabsTrigger>
+              <TabsTrigger value="family">{L('Family & contact', 'الأسرة والتواصل')}</TabsTrigger>
+              <TabsTrigger value="learning">{L('Reports & certificates', 'التقارير والشهادات')}</TabsTrigger>
+              <TabsTrigger value="info">{L('Details', 'البيانات')}</TabsTrigger>
+            </TabsList>
 
-          {/* Contact */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm text-gray-600">{L('Contact & Address', 'التواصل والعنوان')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="space-y-3">
-                <InfoRow label={L('Phone', 'التليفون')} value={student.phoneNumber} />
-                <InfoRow label={L('Emergency', 'رقم الطوارئ')} value={student.emergencyContact} />
-                <InfoRow label={L('Email', 'الإيميل')} value={student.email} />
-                <InfoRow label={L('Address', 'العنوان')} value={student.address} />
-                <InfoRow label={L('City', 'المدينة')} value={student.city} />
-              </dl>
-            </CardContent>
-          </Card>
-
-          {/* Academic */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm text-gray-600">{L('Academic Placement (Legacy)', 'التسكين القديم')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="space-y-3">
-                <InfoRow label={L('Campus', 'الفرع')} value={student.campus.name} />
-                <InfoRow label={L('Class', 'الفصل')} value={student.class?.name} />
-                <InfoRow label={L('Section', 'الجروب')} value={student.section} />
-                <InfoRow label={L('Roll Number', 'رقم الجلوس')} value={student.rollNumber} />
-                <InfoRow label={L('Admission Date', 'تاريخ التسجيل')} value={new Date(student.admissionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} />
-                <InfoRow label={L('Adm. Number', 'رقم التسجيل')} value={student.admissionNumber} />
-              </dl>
-            </CardContent>
-          </Card>
-
-          <StudentEnrollmentsPanel
-            studentId={student.id}
-            campusId={student.campus.id}
-            batchId={student.batch?.id}
-            canManage={canEditStudent}
-          />
-
-          <StudentPromotionPanel
-            studentId={student.id}
-            studentName={`${student.firstName} ${student.lastName}`}
-            enrollments={student.enrollments ?? []}
-            canManage={canEditStudent}
-          />
-
-          <StudentGuardianPanel
-            studentId={student.id}
-            guardians={student.guardians ?? []}
-            canManage={canEditStudent}
-          />
-
-          <GuardianBirthdaysCard guardians={student.guardians ?? []} canEdit={canEditStudent} />
-
-          <StudentReportsList studentId={student.id} />
-
-          <StudentReferralCard studentId={student.id} canLink={isAdmin || role === 'BRANCH_MANAGER' || role === 'SECRETARY'} />
-
-          <StudentMarketingFlag studentId={student.id} canEdit={isAdmin || role === 'BRANCH_MANAGER'} />
-
-          {(can('account_management', 'update') || can('students', 'update')) && <StudentPortalAccessCard
-            studentId={student.id}
-            studentName={`${student.firstName} ${student.lastName}`}
-            guardians={student.guardians ?? []}
-            hasStudentAccount={!!student.user}
-          />}
-
-          <StudentDiscountsCard
-            studentId={student.id}
-            studentName={`${student.firstName} ${student.lastName}`}
-            groups={(student.enrollments ?? [])
-              .filter((e) => e.status === 'ACTIVE' && e.classSection)
-              .map((e) => ({ id: e.classSection.id, name: `${e.classSection.className} ${e.classSection.sectionName}`.trim() }))}
-          />
-
-          <StudentTransferCard
-            studentId={student.id}
-            studentName={`${student.firstName} ${student.lastName}`}
-            groups={(student.enrollments ?? [])
-              .filter((e) => e.status === 'ACTIVE' && e.classSection)
-              .map((e) => ({ id: e.classSection.id, name: `${e.classSection.className} ${e.classSection.sectionName}`.trim() }))}
-          />
-
-          <StudentContactLogCard studentId={student.id} />
-
-          <StudentWalletCard studentId={student.id} />
-          <StudentFeesCard studentId={student.id} />
-
-          <StudentCertificatesPanel studentId={student.id} />
-
-          {engineAttendance.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm text-gray-600">{L('Section Attendance (Engine)', 'حضور الجروب')}</CardTitle>
-                <Link href="/dashboard/attendance/sections">
-                  <Button variant="ghost" size="sm" className="text-xs">{L('Open roster', 'افتح كشف الحضور')}</Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="p-0 divide-y max-h-48 overflow-y-auto">
-                {engineAttendance.slice(0, 15).map((r) => (
-                  <div key={r.id} className="flex justify-between px-4 py-2 text-xs">
-                    <span>
-                      {new Date(r.attendanceDate).toLocaleDateString('en-GB')}
-                      {r.studentEnrollment?.classSection && (
-                        <span className="text-gray-400 ml-1">
-                          · {r.studentEnrollment.classSection.className}-{r.studentEnrollment.classSection.sectionName}
+            <TabsContent value="groups" className="space-y-4 pt-3">
+              <StudentEnrollmentsPanel
+                studentId={student.id}
+                campusId={student.campus.id}
+                batchId={student.batch?.id}
+                canManage={canEditStudent}
+              />
+              <StudentTransferCard
+                studentId={student.id}
+                studentName={`${student.firstName} ${student.lastName}`}
+                groups={activeGroups}
+              />
+              {engineAttendance.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm text-gray-600">{L('Latest attendance', 'آخر حضور')}</CardTitle>
+                    <Link href="/dashboard/attendance/sections">
+                      <Button variant="ghost" size="sm" className="text-xs">{L('Open roster', 'افتح كشف الحضور')}</Button>
+                    </Link>
+                  </CardHeader>
+                  <CardContent className="p-0 divide-y max-h-48 overflow-y-auto">
+                    {engineAttendance.slice(0, 15).map((r) => (
+                      <div key={r.id} className="flex justify-between px-4 py-2 text-xs">
+                        <span>
+                          {shortDate(r.attendanceDate)}
+                          {r.studentEnrollment?.classSection && (
+                            <span className="text-gray-400 ms-1">
+                              · {r.studentEnrollment.classSection.className}-{r.studentEnrollment.classSection.sectionName}
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                    <span className={ATTENDANCE_BADGE[r.status] ?? 'text-gray-600'}>{r.status}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+                        <span className={ATTENDANCE_BADGE[r.status] ?? 'text-gray-600'}>{ATTENDANCE_TEXT[r.status] ? L(ATTENDANCE_TEXT[r.status][0], ATTENDANCE_TEXT[r.status][1]) : r.status}</span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
-          {/* Recent Fees */}
-          {fees.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm text-gray-600">{L('Recent Fee Challans', 'آخر الفواتير')}</CardTitle>
-                <Link href={`/dashboard/fees?studentId=${student.id}`}>
-                  <Button variant="ghost" size="sm" className="text-xs">{L('View all', 'عرض الكل')}</Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y">
-                  {fees.map((f) => (
-                    <div key={f.id} className="flex items-center justify-between px-4 py-2.5">
-                      <div>
-                        <p className="text-sm font-medium">{f.month}</p>
-                        <p className="text-xs font-mono text-gray-400">{f.challanNumber}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{L('EGP', 'ج.م')} {Number(f.totalAmount).toLocaleString()}</p>
-                        <span className={`text-xs ${
-                          f.status === 'PAID' ? 'text-green-600' :
-                          f.status === 'OVERDUE' ? 'text-red-600' : 'text-yellow-600'
-                        }`}>{f.status}</span>
-                      </div>
+            <TabsContent value="money" className="space-y-4 pt-3">
+              <StudentWalletCard studentId={student.id} />
+              <StudentFeesCard studentId={student.id} />
+              <StudentDiscountsCard
+                studentId={student.id}
+                studentName={`${student.firstName} ${student.lastName}`}
+                groups={activeGroups}
+              />
+              {fees.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm text-gray-600">{L('Recent invoices', 'آخر الفواتير')}</CardTitle>
+                    <Link href={`/dashboard/fees?studentId=${student.id}`}>
+                      <Button variant="ghost" size="sm" className="text-xs">{L('View all', 'عرض الكل')}</Button>
+                    </Link>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="divide-y">
+                      {fees.map((f) => (
+                        <div key={f.id} className="flex items-center justify-between px-4 py-2.5">
+                          <div>
+                            <p className="text-sm font-medium">{f.month}</p>
+                            <p className="text-xs font-mono text-gray-400">{f.challanNumber}</p>
+                          </div>
+                          <div className="text-end">
+                            <p className="text-sm font-medium">{L('EGP', 'ج.م')} {Number(f.totalAmount).toLocaleString()}</p>
+                            <span className={`text-xs ${f.status === 'PAID' ? 'text-green-600' : f.status === 'OVERDUE' ? 'text-red-600' : 'text-yellow-600'}`}>{L(invoiceStatusText(f.status, 'en'), invoiceStatusText(f.status, 'ar'))}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
-          {isAdmin && <StudentTimelineCard studentId={student.id} />}
+            <TabsContent value="family" className="space-y-4 pt-3">
+              <StudentGuardianPanel
+                studentId={student.id}
+                guardians={student.guardians ?? []}
+                canManage={canEditStudent}
+              />
+              <StudentContactLogCard studentId={student.id} />
+              {(can('account_management', 'update') || can('students', 'update')) && <StudentPortalAccessCard
+                studentId={student.id}
+                studentName={`${student.firstName} ${student.lastName}`}
+                guardians={student.guardians ?? []}
+                hasStudentAccount={!!student.user}
+              />}
+              {(student.guardians?.length ?? 0) > 0 && <GuardianBirthdaysCard guardians={student.guardians ?? []} canEdit={canEditStudent} />}
+              <StudentReferralCard studentId={student.id} canLink={isAdmin || role === 'BRANCH_MANAGER' || role === 'SECRETARY'} />
+              <StudentMarketingFlag studentId={student.id} canEdit={isAdmin || role === 'BRANCH_MANAGER'} />
+            </TabsContent>
 
-          {canGenerateStudentDocuments && (
-            <Card>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-sm text-gray-900">{L('Official Documents', 'المستندات الرسمية')}</p>
-                  <p className="text-xs text-gray-500">{L('Generate and download official student records', 'اطبع ونزّل مستندات الطالب الرسمية')}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link href={`/dashboard/documents?studentId=${student.id}&doc=student_profile`}>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <UserCircle className="w-4 h-4" /> {L('Profile', 'الملف')}
-                    </Button>
-                  </Link>
-                  <Link href={`/dashboard/documents?studentId=${student.id}&doc=id_card`}>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <FileText className="w-4 h-4" /> {L('ID Card', 'الكارنيه')}
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+            <TabsContent value="learning" className="space-y-4 pt-3">
+              <StudentReportsList studentId={student.id} />
+              <StudentCertificatesPanel studentId={student.id} />
+              {canGenerateStudentDocuments && (
+                <Card>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm text-gray-900">{L('Official Documents', 'المستندات الرسمية')}</p>
+                      <p className="text-xs text-gray-500">{L('Generate and download official student records', 'اطبع ونزّل مستندات الطالب الرسمية')}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/dashboard/documents?studentId=${student.id}&doc=student_profile`}>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <UserCircle className="w-4 h-4" /> {L('Profile', 'الملف')}
+                        </Button>
+                      </Link>
+                      <Link href={`/dashboard/documents?studentId=${student.id}&doc=id_card`}>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <FileText className="w-4 h-4" /> {L('ID Card', 'الكارنيه')}
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="info" className="space-y-4 pt-3">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm text-gray-600">{L('Personal Information', 'البيانات الشخصية')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-3">
+                    <InfoRow label={L('Full Name (English)', 'الاسم بالكامل (إنجليزي)')} value={`${student.firstName} ${student.lastName}`} />
+                    <InfoRow label={L('Full Name (Arabic)', 'الاسم بالكامل (عربي)')} value={student.fullNameAr} />
+                    <InfoRow label={L('Father\'s Name', 'اسم الأب')} value={student.fatherName} />
+                    <InfoRow label={L('Date of Birth', 'تاريخ الميلاد')} value={longDate(student.dateOfBirth)} />
+                    <InfoRow label={L('Age', 'السن')} value={`${Math.floor((Date.now() - new Date(student.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} ${L('years', 'سنة')}`} />
+                    <InfoRow label={L('Gender', 'النوع')} value={student.gender === 'FEMALE' ? L('Girl', 'بنت') : student.gender === 'MALE' ? L('Boy', 'ولد') : student.gender} />
+                    <InfoRow label={L('Blood Group', 'فصيلة الدم')} value={student.bloodGroup} />
+                    <InfoRow label={L('Nationality', 'الجنسية')} value={student.nationality} />
+                    <InfoRow label={L('School', 'المدرسة')} value={student.schoolName} />
+                    <InfoRow label={L('School Grade', 'سنة الدراسة')} value={student.regularSchoolGrade} />
+                    <InfoRow label={L('Admission Date', 'تاريخ التسجيل')} value={longDate(student.admissionDate)} />
+                    <InfoRow label={L('Adm. Number', 'رقم التسجيل')} value={student.admissionNumber} />
+                  </dl>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm text-gray-600">{L('Contact & Address', 'التواصل والعنوان')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-3">
+                    <InfoRow label={L('Phone', 'التليفون')} value={student.phoneNumber} />
+                    <InfoRow label={L('Emergency', 'رقم الطوارئ')} value={student.emergencyContact} />
+                    <InfoRow label={L('Email', 'الإيميل')} value={student.email} />
+                    <InfoRow label={L('Address', 'العنوان')} value={student.address} />
+                    <InfoRow label={L('City', 'المدينة')} value={student.city} />
+                  </dl>
+                </CardContent>
+              </Card>
+
+              {/* old template placement — only for students who still have one */}
+              {student.class && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm text-gray-600">{L('Academic Placement (Legacy)', 'التسكين القديم')}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <dl className="space-y-3">
+                      <InfoRow label={L('Class', 'الفصل')} value={student.class?.name} />
+                      <InfoRow label={L('Section', 'الجروب')} value={student.section} />
+                      <InfoRow label={L('Roll Number', 'رقم الجلوس')} value={student.rollNumber} />
+                    </dl>
+                  </CardContent>
+                </Card>
+              )}
+
+              {isAdmin && <StudentTimelineCard studentId={student.id} />}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
