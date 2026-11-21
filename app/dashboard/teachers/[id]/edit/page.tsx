@@ -941,7 +941,7 @@ export default function EditTeacherPage() {
                   onClick={handleAddClassAssignment}
                 >
                   {isAssigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                  Assign Class
+                  {L('Assign Class', 'ضيف التكليف')}
                 </Button>
               </div>
             </div>
@@ -962,7 +962,7 @@ export default function EditTeacherPage() {
             className="gap-2 px-6 min-w-[160px]"
           >
             <Save className="w-4 h-4" />
-            {isSaving ? 'Saving Changes...' : 'Save Changes'}
+            {isSaving ? L('Saving…', 'بيتحفظ…') : L('Save Changes', 'احفظ التعديلات')}
           </Button>
         </div>
       </form>

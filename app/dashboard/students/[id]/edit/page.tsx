@@ -255,7 +255,7 @@ export default function EditStudentPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-gray-900">{L('Edit Student Profile', 'تعديل ملف الطالب')}</h1>
-            <p className="text-sm text-gray-500">Update academic and personal information for {student.firstName}.</p>
+            <p className="text-sm text-gray-500">{L('Update academic and personal information for', 'عدّل البيانات الدراسية والشخصية لـ')} {student.firstName}.</p>
           </div>
         </div>
         <Button 
@@ -265,7 +265,7 @@ export default function EditStudentPage() {
           disabled={updateMutation.isPending}
         >
           {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Save Changes
+          {L('Save Changes', 'احفظ التعديلات')}
         </Button>
       </div>
 

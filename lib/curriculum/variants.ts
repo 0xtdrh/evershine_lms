@@ -23,7 +23,7 @@ export async function variantForGroup(g: GroupRef): Promise<string | null> {
   if (g.curriculumVariantId === MAIN_VARIANT) return null
   const [variants, campus] = await Promise.all([
     levelVariants(g.levelId),
-    prisma.campus.findUnique({ where: { id: g.campusId }, select: { kind: true } }),
+    g.campusId ? prisma.campus.findUnique({ where: { id: g.campusId }, select: { kind: true } }) : Promise.resolve(null),
   ])
   if (!variants.length) return null
   return pickVariant(variants, { campusId: g.campusId, mode: groupMode(campus?.kind), chosen: g.curriculumVariantId })
