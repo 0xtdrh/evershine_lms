@@ -25,6 +25,7 @@ function periods() {
 }
 
 const studentFilter = (campusId?: string | null) => (campusId ? { student: { campusId } } : {})
+const campusStudentIds = async (campusId: string) => (await prisma.student.findMany({ where: { campusId }, select: { id: true } })).map((x) => x.id)
 
 /** Sessions today + sessions yesterday with no attendance (optionally only some groups). */
 export async function sessionCounts(campusId?: string | null, groupIds?: string[]) {
@@ -65,7 +66,8 @@ export async function managerMetrics(campusId?: string | null): Promise<Metric[]
   const p = periods()
   const [payments, refunds, invoices, active, newStudents, renewals, od, prepaid, sessions, waiting] = await Promise.all([
     prisma.feePayment.aggregate({ where: { status: 'COMPLETED', paymentDate: { gte: p.monthStart }, ...studentFilter(campusId) }, _sum: { amount: true } }),
-    prisma.refund.aggregate({ where: { status: 'APPROVED', approvedAt: { gte: p.monthStart }, ...studentFilter(campusId) }, _sum: { amount: true } }),
+    // Refund has no relation to Student (only studentId): a branch's refunds = refunds of its students (live test 21/11: 'Unknown argument student')
+    prisma.refund.aggregate({ where: { status: 'APPROVED', approvedAt: { gte: p.monthStart }, ...(campusId ? { studentId: { in: await campusStudentIds(campusId) } } : {}) }, _sum: { amount: true } }),
     prisma.feeInvoice.aggregate({ where: { createdAt: { gte: p.monthStart }, status: { not: 'CANCELLED' }, ...studentFilter(campusId) }, _sum: { totalAmount: true, paidAmount: true } }),
     prisma.studentEnrollment.findMany({ where: { status: 'ACTIVE', classSection: { status: 'ACTIVE', levelId: { not: null }, ...(campusId && { campusId }) } }, select: { studentId: true }, distinct: ['studentId'] }),
     prisma.student.count({ where: { createdAt: { gte: p.monthStart }, ...(campusId && { campusId }) } }),
