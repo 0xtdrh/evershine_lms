@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { PaymentProofUploadModal } from '@/components/fees/PaymentProofUploadModal'
-import { ArrowLeft, Printer, Ban, Trash2, DollarSign, Loader2, FileText, CheckCircle, AlertTriangle, UploadCloud, Eye, Download } from 'lucide-react'
+import { ArrowLeft, Printer, Ban, Trash2, DollarSign, Loader2, FileText, CheckCircle, AlertTriangle, UploadCloud, Eye, Download, MoreHorizontal } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import Link from 'next/link'
 import { notify } from '@/lib/notify'
 import { paymentDetailsRowsFromSnapshot } from '@/lib/fees/payment-details'
@@ -485,25 +486,6 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Print Slip */}
-          <Button onClick={handlePrint} variant="outline" className="text-slate-700 border-slate-300 font-bold gap-2 text-xs h-9">
-            <Printer className="w-3.5 h-3.5" />
-            {L('Print Slips', 'اطبع')}
-          </Button>
-
-          <Link href={`/dashboard/fees/${id}/download`}>
-            <Button variant="outline" className="text-slate-700 border-slate-300 font-bold gap-2 text-xs h-9">
-              <FileText className="w-3.5 h-3.5" />
-              {L('Download Views', 'تنزيل')}
-            </Button>
-          </Link>
-
-          {/* Download PDF */}
-          <Button onClick={handleDownloadPdf} disabled={isDownloadingPdf} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 text-xs h-9 shadow-sm">
-            {isDownloadingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-            {L('Download PDF', 'نزّل PDF')}
-          </Button>
-
           {/* Collect Payment (Admin Only) */}
           {isAdmin && invoice.status !== 'PAID' && invoice.status !== 'CANCELLED' && (
             <Button onClick={() => { setPayAmount(String(balance)); setShowPayModal(true) }} className="bg-green-600 hover:bg-green-700 text-white font-bold gap-2 text-xs h-9">
@@ -552,31 +534,37 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             </Button>
           )}
 
-          {/* Cancel */}
-          {isAdmin && invoice.status !== 'CANCELLED' && invoice.status !== 'PAID' && (
-            <Button 
-              variant="outline" 
-              onClick={() => { if(confirm(L('Are you sure you want to cancel this fee invoice?', 'متأكد إنك عايز تلغي الفاتورة دي؟'))) cancelMutation.mutate() }}
-              disabled={cancelMutation.isPending}
-              className="text-amber-700 hover:bg-amber-50 border-amber-300 font-bold gap-2 text-xs h-9"
-            >
-              {cancelMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
-              {L('Cancel Challan', 'إلغاء الفاتورة')}
-            </Button>
-          )}
-
-          {/* Delete (Admin only & Unpaid) */}
-          {can('fees', 'delete') && canDelete && (
-            <Button 
-              variant="outline" 
-              onClick={() => { if(confirm(L('Are you sure you want to permanently delete this unpaid fee invoice?', 'متأكد إنك عايز تمسح الفاتورة دي نهائي؟'))) deleteMutation.mutate() }}
-              disabled={deleteMutation.isPending}
-              className="text-red-600 hover:bg-red-50 border-red-300 font-bold gap-2 text-xs h-9"
-            >
-              {deleteMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-              {L('Delete Invoice', 'امسح الفاتورة')}
-            </Button>
-          )}
+          {/* owner 21/11: the main money action stays in sight; print / download / cancel / delete go in one menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="text-slate-700 border-slate-300 font-bold gap-2 text-xs h-9">
+                <MoreHorizontal className="w-3.5 h-3.5" /> {L('Print & more', 'طباعة والمزيد')}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handlePrint}><Printer className="w-3.5 h-3.5 me-2" />{L('Print', 'اطبع')}</DropdownMenuItem>
+              <DropdownMenuItem disabled={isDownloadingPdf} onClick={handleDownloadPdf}><Download className="w-3.5 h-3.5 me-2" />{L('Download PDF', 'نزّل PDF')}</DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href={`/dashboard/fees/${id}/download`}><FileText className="w-3.5 h-3.5 me-2" />{L('Other download layouts', 'أشكال تنزيل تانية')}</Link></DropdownMenuItem>
+              {isAdmin && invoice.status !== 'CANCELLED' && invoice.status !== 'PAID' && (
+                <DropdownMenuItem
+                  className="text-amber-700"
+                  disabled={cancelMutation.isPending}
+                  onClick={() => { if (confirm(L('Are you sure you want to cancel this fee invoice?', 'متأكد إنك عايز تلغي الفاتورة دي؟'))) cancelMutation.mutate() }}
+                >
+                  <Ban className="w-3.5 h-3.5 me-2" />{L('Cancel invoice', 'إلغاء الفاتورة')}
+                </DropdownMenuItem>
+              )}
+              {can('fees', 'delete') && canDelete && (
+                <DropdownMenuItem
+                  className="text-red-600"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => { if (confirm(L('Are you sure you want to permanently delete this unpaid fee invoice?', 'متأكد إنك عايز تمسح الفاتورة دي نهائي؟'))) deleteMutation.mutate() }}
+                >
+                  <Trash2 className="w-3.5 h-3.5 me-2" />{L('Delete invoice', 'امسح الفاتورة')}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

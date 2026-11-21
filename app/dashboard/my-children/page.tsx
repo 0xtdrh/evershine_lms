@@ -215,6 +215,17 @@ export default function MyChildrenPage() {
     queryFn: () => fetchApi<ChildAcademic>(`/api/guardian-portal/children/${childId}/academic`),
     enabled: !!childId && allowed,
   })
+  const { data: oneOptions } = useQuery({
+    queryKey: ['portal-one-to-one', childId],
+    queryFn: () => fetchApi<{ open: boolean; levels: unknown[]; requests: unknown[] }>(`/api/guardian-portal/one-to-one?studentId=${childId}`),
+    enabled: !!childId && allowed,
+  })
+  const { data: oneSessions } = useQuery({
+    queryKey: ['portal-one-to-one-sessions', childId],
+    queryFn: () => fetchApi<unknown[]>(`/api/guardian-portal/one-to-one/sessions?studentId=${childId}`),
+    enabled: !!childId && allowed,
+  })
+  const showOneToOne = !!((oneOptions?.open && oneOptions.levels?.length) || oneOptions?.requests?.length || oneSessions?.length)
   // 2026-10-25: the header tiles use the real attendance (the template summary stayed "—") — same cache as the attendance tab
   const { data: childAtt } = useQuery({
     queryKey: ['attendance-timeline', childId],
@@ -246,13 +257,12 @@ export default function MyChildrenPage() {
       </div>
 
       <AnnouncementFeed compact />
-      <FamilyAccountCard />
       <BirthdayBanner />
-      <ParentRatingsCard />
-      <ParentRenewalsCard />
       {(children ?? []).map((c) => <JoinOnlineCard key={c.id} studentId={c.id} />)}
-      <ParentWalletCard />
-      <ParentReferralCard />
+      <ParentRenewalsCard />
+      <ParentRatingsCard />
+      {/* with no registered child yet, "My family" is the first thing to use */}
+      {!loadingChildren && (children ?? []).length === 0 && <FamilyAccountCard />}
 
       {loadingChildren ? (
         <div className="flex items-center gap-2 text-gray-500">
@@ -309,15 +319,15 @@ export default function MyChildrenPage() {
               <Loader2 className="w-4 h-4 animate-spin" /> {L('Loading…', 'بيحمّل…')}
             </div>
           ) : academic ? (
-            <Tabs defaultValue="overview">
-              <TabsList>
+            <Tabs defaultValue="overview" key={childId}>
+              <TabsList className="flex w-full justify-start overflow-x-auto">
                 <TabsTrigger value="overview">{L('Overview', 'نظرة عامة')}</TabsTrigger>
                 <TabsTrigger value="attendance">{L('Attendance', 'الحضور')}</TabsTrigger>
-                <TabsTrigger value="results">{L('Results', 'النتايج')}</TabsTrigger>
+                <TabsTrigger value="results">{L('Results & homework', 'النتايج والواجبات')}</TabsTrigger>
                 {/* final test 14/11: the old template "Monitoring" tab (English daily feedback) is hidden — session reports + monthly reports replace it */}
                 <TabsTrigger value="fees">{L('Invoices', 'الفواتير')}</TabsTrigger>
-                <TabsTrigger value="excuses">{L('Absence excuse', 'اعتذار عن غياب')}</TabsTrigger>
-                <TabsTrigger value="one-to-one">One-to-One</TabsTrigger>
+                {academic.enrollment && <TabsTrigger value="excuses">{L('Absence excuse', 'اعتذار عن غياب')}</TabsTrigger>}
+                {showOneToOne && <TabsTrigger value="one-to-one">One-to-One</TabsTrigger>}
                 {!!recordedCourses?.length && <TabsTrigger value="recorded">{L('Recorded courses', 'الكورسات المسجلة')}</TabsTrigger>}
                 <TabsTrigger value="reports">{L('Reports', 'التقارير')}</TabsTrigger>
               </TabsList>
@@ -463,17 +473,9 @@ export default function MyChildrenPage() {
                     const declaredResults = academic.declaredResults ?? []
                     if (declaredResults.length === 0) {
                       return (
-                        <Card>
-                          <CardContent className="pt-12 pb-12">
-                            <div className="text-center">
-                              <Trophy className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                              <h4 className="text-sm font-bold text-slate-900">{L('No declared results yet', 'لسه مفيش نتايج معلنة')}</h4>
-                              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                                {L('Results for your child have not been declared yet.', 'نتايج ابنك لسه ماتعلنتش.')}
-                              </p>
-                            </div>
-                          </CardContent>
-                        </Card>
+                        <p className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                          <Trophy className="w-4 h-4 text-slate-300" />{L('No results announced yet.', 'لسه مفيش نتايج اتعلنت.')}
+                        </p>
                       )
                     }
 
@@ -726,6 +728,10 @@ export default function MyChildrenPage() {
           ) : null}
         </>
       )}
+
+      <ParentWalletCard />
+      {(children ?? []).length > 0 && <FamilyAccountCard />}
+      <ParentReferralCard />
 
       {/* Payment Upload Modal */}
       <FeePaymentDialog 

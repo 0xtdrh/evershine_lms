@@ -11,14 +11,13 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Search, ChevronLeft, ChevronRight, Users, Phone, Mail, Trash2, MapPin, FileText, UserX } from 'lucide-react'
+import { Plus, Search, ChevronLeft, ChevronRight, Users, Phone, Mail, Trash2, MapPin, FileText, UserX, MoreHorizontal } from 'lucide-react'
 import Link from 'next/link'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSession } from 'next-auth/react'
 import { AccessDenied } from '@/components/AccessDenied'
 import { notify } from '@/lib/notify'
 import { generateTeacherProfile } from '@/lib/pdf'
-import { SESSION_SHIFT_BADGE_CLASS, SESSION_SHIFT_LABELS, type SessionShift } from '@/lib/validation/shift'
 import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -308,14 +307,6 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
 
   const teacher = teacherRaw?.data ?? teacherRaw
 
-  const assignedShifts = useMemo(() => {
-    const shifts = new Set<SessionShift>()
-    teacher?.classes?.forEach((c: { class?: { shift?: SessionShift } }) => {
-      if (c.class?.shift) shifts.add(c.class.shift)
-    })
-    return Array.from(shifts)
-  }, [teacher])
-
   const handleExportPDF = async () => {
     if (!teacher) return
     setExportingPdf(true)
@@ -361,41 +352,27 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
           </div>
           {!isLoading && teacher && (
             <div className="flex gap-2 flex-shrink-0 flex-wrap">
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3 gap-1.5"
-                disabled={exportingPdf}
-                onClick={handleExportPDF}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                {exportingPdf ? 'Exporting...' : 'Export PDF'}
-              </Button>
-              <Link href={`/dashboard/teachers/${teacher.id}/attendance`}>
-                <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
-                  {L('Attendance', 'الحضور')}
-                </Button>
-              </Link>
               <Link href={`/dashboard/teachers/${teacher.id}/edit`}>
                 <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
                   {L('Edit Profile', 'عدّل الملف')}
                 </Button>
               </Link>
-              <Link href={`/dashboard/teachers/${teacher.id}/compensation`}>
+              <Link href={`/dashboard/teachers/${teacher.id}/attendance`}>
                 <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
-                  {L('Pay Rule', 'قاعدة الأجر')}
+                  {L('Attendance', 'الحضور')}
                 </Button>
               </Link>
-              <Link href={`/dashboard/teachers/${teacher.id}/work-hours`}>
-                <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
-                  {L('Working hours', 'ساعات العمل')}
-                </Button>
-              </Link>
-              <Link href={`/dashboard/teachers/${teacher.id}/capabilities`}>
-                <Button size="sm" variant="outline" className="text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold px-3">
-                  {L('Capabilities', 'المؤهلات')}
-                </Button>
-              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="ghost" className="text-xs h-8 px-2 gap-1"><MoreHorizontal className="w-4 h-4" />{L('More', 'المزيد')}</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild><Link href={`/dashboard/teachers/${teacher.id}/compensation`}>{L('Pay rule', 'قاعدة الأجر')}</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href={`/dashboard/teachers/${teacher.id}/work-hours`}>{L('Working hours', 'ساعات العمل')}</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href={`/dashboard/teachers/${teacher.id}/capabilities`}>{L('Capabilities', 'المؤهلات')}</Link></DropdownMenuItem>
+                  <DropdownMenuItem disabled={exportingPdf} onClick={handleExportPDF}><FileText className="w-3.5 h-3.5 me-2" />{exportingPdf ? L('Exporting…', 'بيتعمل…') : L('Profile PDF', 'الملف PDF')}</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </DialogHeader>
@@ -429,59 +406,26 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
                     {teacher.isActive ? L('Active', 'شغال') : L('Suspended', 'موقوف')}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 font-semibold">{teacher.designation} • {teacher.specialization || 'Generalist'}</p>
+                <p className="text-xs text-gray-500 font-semibold">{designationLabel(teacher.designation)}{teacher.specialization ? ` • ${teacher.specialization}` : ''} • {teacher.campus?.name}</p>
                 <p className="text-[10px] font-mono text-gray-400 mt-1">{L('Employee ID:', 'الرقم الوظيفي:')} {teacher.employeeId}</p>
-                {assignedShifts.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2 justify-center sm:justify-start">
-                    {assignedShifts.map((s) => (
-                      <span
-                        key={s}
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${SESSION_SHIFT_BADGE_CLASS[s]}`}
-                      >
-                        {SESSION_SHIFT_LABELS[s]}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Academic Placement */}
+            {/* owner 21/11: the instructor's real groups (the old template classes are gone from here) */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{L('Academic Assignment', 'التكليف')}</h4>
-              <div className="grid grid-cols-3 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs">
-                <div>
-                  <span className="text-gray-500 block font-medium">{L('Campus', 'الفرع')}</span>
-                  <span className="font-bold text-gray-800">{teacher.campus?.name || 'N/A'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Assigned Classes */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{L('Assigned Classes', 'الجروبات')}</h4>
+              <h4 className="text-xs font-bold text-gray-900 tracking-wider">{L('Groups', 'الجروبات')} ({teacher.groups?.length ?? 0})</h4>
               <div className="flex flex-wrap gap-1.5">
-                {teacher.classes && teacher.classes.length > 0 ? (
-                  teacher.classes.map((c: any) => (
-                    <span key={c.classId} className="inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100">
-                      {c.class?.name || 'Class'}
-                      {c.class?.shift && (
-                        <span className={`ml-1 px-1 py-0 rounded border ${SESSION_SHIFT_BADGE_CLASS[c.class.shift as SessionShift]}`}>
-                          {c.class.shift === 'EVENING' ? 'Eve' : 'Morn'}
-                        </span>
-                      )}
-                      {c.isClassTeacher ? ' 👑' : ''}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-xs text-gray-400 font-medium italic">{L('No classes assigned', 'مفيش جروبات')}</span>
-                )}
+                {teacher.groups?.length ? teacher.groups.map((g: { id: string; name: string; campus: string }) => (
+                  <Link key={g.id} href={`/dashboard/groups?group=${g.id}`} className="inline-flex items-center text-[11px] font-bold px-2.5 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100">
+                    {g.name}{g.campus && g.campus !== teacher.campus?.name ? <span className="ms-1 text-amber-600">· {g.campus}</span> : null}
+                  </Link>
+                )) : <span className="text-xs text-gray-400 font-medium">{L('No active groups', 'مفيش جروبات شغالة')}</span>}
               </div>
             </div>
 
             {/* Contact & Personal details */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{L('Contact & Personal Details', 'التواصل والبيانات الشخصية')}</h4>
+              <h4 className="text-xs font-bold text-gray-900 tracking-wider">{L('Contact & Personal Details', 'التواصل والبيانات الشخصية')}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs">
                 <div>
                   <span className="text-gray-500 block font-medium">{L('Phone Number', 'التليفون')}</span>
@@ -491,24 +435,28 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
                   <span className="text-gray-500 block font-medium">{L('Email Address', 'الإيميل')}</span>
                   <span className="font-bold text-gray-800">{teacher.email}</span>
                 </div>
-                <div>
-                  <span className="text-gray-500 block font-medium">{L('CNIC Number', 'الرقم القومي')}</span>
-                  <span className="font-bold text-gray-800">{teacher.cnic || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block font-medium">{L('Emergency Contact', 'رقم الطوارئ')}</span>
-                  <span className="font-bold text-gray-800">{teacher.emergencyContact || 'N/A'}</span>
-                </div>
+                {teacher.cnic && (
+                  <div>
+                    <span className="text-gray-500 block font-medium">{L('CNIC Number', 'الرقم القومي')}</span>
+                    <span className="font-bold text-gray-800">{teacher.cnic}</span>
+                  </div>
+                )}
+                {teacher.emergencyContact && (
+                  <div>
+                    <span className="text-gray-500 block font-medium">{L('Emergency Contact', 'رقم الطوارئ')}</span>
+                    <span className="font-bold text-gray-800">{teacher.emergencyContact}</span>
+                  </div>
+                )}
                 <div className="sm:col-span-2">
                   <span className="text-gray-500 block font-medium">{L('Address', 'العنوان')}</span>
-                  <span className="font-bold text-gray-800">{teacher.address}, {teacher.city}</span>
+                  <span className="font-bold text-gray-800">{[teacher.address, teacher.city].filter(Boolean).join('، ') || '—'}</span>
                 </div>
               </div>
             </div>
 
             {/* Professional & Salary */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{L('Professional & Financial Details', 'البيانات المهنية والمالية')}</h4>
+              <h4 className="text-xs font-bold text-gray-900 tracking-wider">{L('Professional & Financial Details', 'البيانات المهنية والمالية')}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs">
                 <div>
                   <span className="text-gray-500 block font-medium">{L('Qualification', 'المؤهل')}</span>
@@ -518,10 +466,12 @@ function TeacherDetailsDialog({ teacherId, onClose }: { teacherId: string | null
                   <span className="text-gray-500 block font-medium">{L('Experience', 'الخبرة')}</span>
                   <span className="font-bold text-gray-800">{teacher.experienceYears} {L('Years', 'سنين')}</span>
                 </div>
-                <div>
-                  <span className="text-gray-500 block font-medium">{L('Monthly Salary', 'المرتب الشهري')}</span>
-                  <span className="font-bold text-gray-800">{L('EGP', 'ج.م')} {teacher.monthlySalary?.toLocaleString() || 'N/A'}</span>
-                </div>
+                {Number(teacher.monthlySalary) > 0 && (
+                  <div>
+                    <span className="text-gray-500 block font-medium">{L('Monthly Salary', 'المرتب الشهري')}</span>
+                    <span className="font-bold text-gray-800">{L('EGP', 'ج.م')} {Number(teacher.monthlySalary).toLocaleString()}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

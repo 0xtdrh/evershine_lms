@@ -361,8 +361,8 @@ export default function FeesManagementPage() {
             filtered.map((fee) => {
               const total = Number(fee.totalAmount)
               const paid = Number(fee.paidAmount)
-              const balance = total - paid
-              const isOverdue = new Date(fee.dueDate) < new Date() && fee.status !== 'PAID'
+              const balance = fee.status === 'CANCELLED' ? 0 : total - paid // a cancelled invoice owes nothing
+              const isOverdue = new Date(fee.dueDate) < new Date() && fee.status !== 'PAID' && fee.status !== 'CANCELLED'
               const canPay = !isAdmin && fee.status !== 'PAID' && fee.status !== 'CANCELLED' && fee.proofStatus !== 'PENDING'
               return (
                 <div key={fee.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -444,8 +444,8 @@ export default function FeesManagementPage() {
                 filtered.map((fee) => {
                   const total = Number(fee.totalAmount)
                   const paid = Number(fee.paidAmount)
-                  const balance = total - paid
-                  const isOverdue = new Date(fee.dueDate) < new Date() && fee.status !== 'PAID'
+                  const balance = fee.status === 'CANCELLED' ? 0 : total - paid // a cancelled invoice owes nothing
+                  const isOverdue = new Date(fee.dueDate) < new Date() && fee.status !== 'PAID' && fee.status !== 'CANCELLED'
                   return (
                     <TableRow key={fee.id} className="hover:bg-slate-50/80 transition-colors group">
                       <TableCell className="font-mono text-xs text-slate-600">{fee.challanNumber}</TableCell>
@@ -464,7 +464,7 @@ export default function FeesManagementPage() {
                         {balance > 0 ? `${L('EGP', 'ج.م')} ${balance.toLocaleString()}` : '—'}
                       </TableCell>
                       <TableCell className={`text-xs ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                        {new Date(fee.dueDate).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(fee.dueDate).toLocaleDateString(L('en-GB', 'ar-EG-u-nu-latn'), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Africa/Cairo' })}
                         {isOverdue && ' ⚠'}
                       </TableCell>
                       <TableCell>
@@ -477,7 +477,7 @@ export default function FeesManagementPage() {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-end">
                         <div className="flex items-center justify-end gap-2">
                           {isAdmin && fee.status !== 'PAID' && fee.status !== 'CANCELLED' && (
                             <Button

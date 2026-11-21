@@ -51,7 +51,16 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     return errors.forbidden()
   }
 
-  return successResponse(teacher)
+  // owner 21/11: the window shows the instructor's real groups (Group = ClassSection), not the old template classes
+  const offerings = await prisma.subjectOffering.findMany({
+    where: { teacherId: id, classSection: { status: 'ACTIVE' } },
+    select: { classSection: { select: { id: true, className: true, sectionName: true, campus: { select: { name: true } } } } },
+  })
+  const seen = new Set<string>()
+  const groups = offerings.map((o) => o.classSection).filter((g) => (seen.has(g.id) ? false : (seen.add(g.id), true)))
+    .map((g) => ({ id: g.id, name: `${g.className} ${g.sectionName}`.trim(), campus: g.campus?.name ?? '' }))
+
+  return successResponse({ ...teacher, groups })
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
