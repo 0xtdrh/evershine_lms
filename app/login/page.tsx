@@ -15,11 +15,12 @@ import { Label } from '@/components/ui/label'
 import { AuthLayout } from '@/components/auth/AuthLayout'
 import { L, useI18n } from '@/lib/i18n/client'
 import { Lock, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react'
+import { toLatinDigits } from '@/lib/digits'
 
 const loginSchema = z.object({
   // Email, a parent's phone number, or a student's registration number (resolved server-side, lib/portal-login.ts)
   email:    z.string().trim().min(3, 'Enter your email, phone or registration number · اكتب الإيميل أو التليفون أو رقم القيد')
-    .refine((v) => v.includes('@') ? z.string().email().safeParse(v).success : /^[+\d][\d\s\-()]{6,}$/.test(v) || /^tn[\s/\-._]?\d{4}[\s/\-._]?\d{1,6}$/i.test(v) || /^[a-z]+\d{4,6}$/i.test(v), 'Enter a valid email, phone or registration number · اكتب بيانات دخول صحيحة'),
+    .refine((v) => v.includes('@') ? z.string().email().safeParse(v).success : /^[+\d][\d\s\-()]{6,}$/.test(toLatinDigits(v)) || /^tn[\s/\-._]?\d{4}[\s/\-._]?\d{1,6}$/i.test(v) || /^[a-z]+\d{4,6}$/i.test(v), 'Enter a valid email, phone or registration number · اكتب بيانات دخول صحيحة'),
   password: z.string().min(8, 'Password must be at least 8 characters · الباسورد 8 حروف على الأقل'),
 })
 type LoginForm = z.infer<typeof loginSchema>

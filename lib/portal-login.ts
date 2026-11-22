@@ -14,6 +14,9 @@
  */
 
 import { prisma } from '@/lib/prisma'
+import { toLatinDigits } from '@/lib/digits'
+
+export { toLatinDigits }
 
 /** Egyptian phone variants: 01012345678 / +201012345678 / 201012345678, spaces and dashes ignored. */
 export function phoneVariants(input: string): string[] {
@@ -28,11 +31,6 @@ export function phoneVariants(input: string): string[] {
     out.add('20' + raw.slice(1))
   }
   return [...out]
-}
-
-/** Arabic-Indic (٠-٩) and Persian (۰-۹) digits → 0-9. */
-export function toLatinDigits(s: string): string {
-  return s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
 }
 
 export function looksLikePhone(identifier: string) {
