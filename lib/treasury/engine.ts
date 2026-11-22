@@ -242,7 +242,7 @@ export async function listTransfers(user: Who) {
 // ── end-of-day cash count ───────────────────────────────────────────────────────────────────────────────────
 
 export async function createCount(user: Who, input: { accountId: string; counted: number; note?: string | null }) {
-  if (!checkPermission(user.role, 'treasury', 'create')) throw new TreasuryError('You cannot count cash')
+  if (!checkPermission(user.role, 'treasury', 'create') && !checkPermission(user.role, 'cash_count', 'create')) throw new TreasuryError('You cannot count cash')
   const acc = await assertAccount(user, input.accountId)
   if (!(input.counted >= 0)) throw new TreasuryError('Write the amount you counted')
   await syncMovements(true)
@@ -282,7 +282,20 @@ export async function listCounts(user: Who) {
   const ids = (await prisma.moneyAccount.findMany({ where: await visibleAccountWhere(user), select: { id: true, name: true } }))
   const names = new Map(ids.map((a) => [a.id, a.name]))
   const rows = await prisma.cashCount.findMany({ where: { accountId: { in: ids.map((a) => a.id) } }, orderBy: { createdAt: 'desc' }, take: 200 })
-  return rows.map((c) => ({ ...c, expected: num(c.expected), counted: num(c.counted), difference: num(c.difference), account: names.get(c.accountId) ?? '', mine: c.countedById === user.id }))
+  // J01: someone who only counts never sees what the system expected (a blind count) — only what they counted
+  const sees = checkPermission(user.role, 'treasury', 'read')
+  return rows.map((c) => ({ ...c, expected: sees ? num(c.expected) : null, counted: num(c.counted), difference: sees ? num(c.difference) : null, account: names.get(c.accountId) ?? '', mine: c.countedById === user.id }))
+}
+
+/** J01: the cash boxes this person may count, counted today or not; the balance only for people who see balances. */
+export async function countBoxes(user: Who) {
+  const boxes = await prisma.moneyAccount.findMany({ where: { AND: [await visibleAccountWhere(user), { kind: 'CASH', isActive: true }] }, select: { id: true, name: true, campusId: true }, orderBy: { name: 'asc' } })
+  const campusName = new Map((await prisma.campus.findMany({ where: { id: { in: boxes.map((b) => b.campusId).filter((x): x is string => !!x) } }, select: { id: true, name: true } })).map((c) => [c.id, c.name]))
+  const today = new Date(`${cairoToday()}T00:00:00.000Z`)
+  const done = new Set((await prisma.cashCount.findMany({ where: { accountId: { in: boxes.map((b) => b.id) }, date: today }, select: { accountId: true } })).map((c) => c.accountId))
+  const sees = checkPermission(user.role, 'treasury', 'read')
+  if (sees) await syncMovements(false)
+  return Promise.all(boxes.map(async (b) => ({ id: b.id, name: b.name, campus: b.campusId ? campusName.get(b.campusId) ?? null : null, countedToday: done.has(b.id), balance: sees ? await accountBalance(b.id) : null })))
 }
 
 // ── expense categories ──────────────────────────────────────────────────────────────────────────────────────

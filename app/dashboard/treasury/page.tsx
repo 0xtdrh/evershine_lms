@@ -30,7 +30,9 @@ interface Account { id: string; name: string; kind: AccountKind; campus: string 
 interface Overview { accounts: Account[]; unplaced: { count: number; in: number; out: number } }
 interface Movement { id: string; date: string; direction: 'IN' | 'OUT'; amount: number; kind: MovementKind; method: string | null; note: string | null; account: string | null }
 interface Transfer { id: string; number: string | null; from: string; to: string; amount: number; date: string; note: string | null; status: string; mine: boolean }
-interface Count { id: string; account: string; date: string; expected: number; counted: number; difference: number; note: string | null; status: string; mine: boolean }
+interface Count { id: string; account: string; date: string; expected: number | null; counted: number; difference: number | null; note: string | null; status: string; mine: boolean }
+/** J01: a cash box to count; balance = null for someone who only counts (a blind count) */
+interface Box { id: string; name: string; campus: string | null; countedToday: boolean; balance: number | null }
 
 const money = (n: number, ar: boolean) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${ar ? 'ج.م' : 'EGP'}`
 const STATUS: Record<string, [string, string, string]> = {
@@ -46,11 +48,23 @@ export default function TreasuryPage() {
   const [tab, setTab] = useUrlTab()
   const { can, role } = useMyPermissions()
   const seeFinance = can('financial_reports', 'read') || can('treasury', 'approve') // same rule as lib/finance/engine canSeeFinance
-  const { data, isLoading } = useQuery({ queryKey: ['treasury'], queryFn: () => fetchApi<Overview>('/api/treasury') })
+  // J01 (owner 14/11): someone with only "cash_count" (a secretary) sees the daily count of her box and nothing else
+  const countOnly = !can('treasury', 'read') && can('cash_count', 'read')
+  const { data, isLoading } = useQuery({ queryKey: ['treasury'], queryFn: () => fetchApi<Overview>('/api/treasury'), enabled: !countOnly })
   const [selected, setSelected] = useState<string | null>(null)
-  const refresh = () => ['treasury', 'treasury-moves', 'treasury-transfers', 'treasury-counts', 'today-tasks'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
+  const refresh = () => ['treasury', 'treasury-moves', 'treasury-transfers', 'treasury-counts', 'treasury-boxes', 'today-tasks'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
   const accounts = (data?.accounts ?? []).filter((a) => a.isActive)
   const status = (s: string) => { const x = STATUS[s] ?? STATUS.PENDING; return <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${x[2]}`}>{ar ? x[1] : x[0]}</span> }
+
+  if (countOnly) return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><Landmark className="h-7 w-7 text-indigo-600" /> {L('Daily cash count', 'جرد الخزنة')}</h1>
+        <p className="mt-1 text-sm text-slate-500">{L('Count the cash in your box at the end of the day and write what you counted. A difference goes to the manager.', 'اعدّ الفلوس اللي في خزنتك آخر اليوم واكتب اللي عدّيته. لو فيه فرق بيروح للمدير.')}</p>
+      </div>
+      <Counts ar={ar} canCreate={can('cash_count', 'create')} canApprove={false} onDone={refresh} status={status} />
+    </div>
+  )
 
   return (
     <div className="space-y-5">
@@ -112,7 +126,7 @@ export default function TreasuryPage() {
         </TabsContent>
 
         <TabsContent value="transfers" className="mt-4"><Transfers accounts={accounts} ar={ar} isSuper={role === 'SUPER_ADMIN'} canCreate={can('treasury', 'create')} canApprove={can('treasury', 'approve')} onDone={refresh} status={status} /></TabsContent>
-        <TabsContent value="counts" className="mt-4"><Counts accounts={accounts.filter((a) => a.kind === 'CASH')} ar={ar} canCreate={can('treasury', 'create')} canApprove={can('treasury', 'approve')} onDone={refresh} status={status} /></TabsContent>
+        <TabsContent value="counts" className="mt-4"><Counts ar={ar} canCreate={can('treasury', 'create') || can('cash_count', 'create')} canApprove={can('treasury', 'approve')} onDone={refresh} status={status} /></TabsContent>
         {seeFinance && <TabsContent value="cashflow" className="mt-4"><CashflowTab /></TabsContent>}
         {seeFinance && <TabsContent value="where" className="mt-4"><WhereMoneyTab /></TabsContent>}
         {can('treasury', 'approve') && <TabsContent value="reconcile" className="mt-4"><ReconcileTab /></TabsContent>}
@@ -227,8 +241,9 @@ function Transfers({ accounts, ar, isSuper, canCreate, canApprove, onDone, statu
   )
 }
 
-function Counts({ accounts, ar, canCreate, canApprove, onDone, status }: { accounts: Account[]; ar: boolean; canCreate: boolean; canApprove: boolean; onDone: () => void; status: (s: string) => React.ReactNode }) {
+function Counts({ ar, canCreate, canApprove, onDone, status }: { ar: boolean; canCreate: boolean; canApprove: boolean; onDone: () => void; status: (s: string) => React.ReactNode }) {
   const { data } = useQuery({ queryKey: ['treasury-counts'], queryFn: () => fetchApi<Count[]>('/api/treasury/counts') })
+  const { data: accounts = [] } = useQuery({ queryKey: ['treasury-boxes'], queryFn: () => fetchApi<Box[]>('/api/treasury/counts/boxes') })
   const [f, setF] = useState({ accountId: '', counted: '', note: '' })
   // owner suggestion K: count the notes by kind (the total fills itself) and see the difference before closing
   const [byNotes, setByNotes] = useState(false)
@@ -244,7 +259,8 @@ function Counts({ accounts, ar, canCreate, canApprove, onDone, status }: { accou
     onSuccess: () => { notify.success(L('Done', 'تم')); onDone() }, onError: (e: Error) => notify.error(e.message),
   })
   const box = accounts.find((a) => a.id === f.accountId)
-  const diff = box && f.counted !== '' ? countDifference(box.balance, Number(f.counted)) : null
+  const blind = accounts.length > 0 && accounts.every((a) => a.balance === null) // J01: counts without balances — the close sheets show balances
+  const diff = box && box.balance !== null && f.counted !== '' ? countDifference(box.balance, Number(f.counted)) : null
   const setPiece = (d: number, v: string) => {
     const next = { ...pieces, [String(d)]: v }
     setPieces(next)
@@ -260,7 +276,10 @@ function Counts({ accounts, ar, canCreate, canApprove, onDone, status }: { accou
     <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
       <div>
         <p className="font-semibold">{c.account} · {new Date(c.date).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { timeZone: 'Africa/Cairo' })}</p>
-        <p className="text-xs text-slate-500">{L('expected', 'المفروض')} {money(c.expected, ar)} · {L('counted', 'الفعلي')} {money(c.counted, ar)} · <b className={c.difference ? 'text-rose-700' : 'text-emerald-700'}>{L('difference', 'الفرق')} {money(c.difference, ar)}</b>{c.note ? ` · ${c.note}` : ''}</p>
+        <p className="text-xs text-slate-500">
+          {c.expected !== null && <>{L('expected', 'المفروض')} {money(c.expected, ar)} · </>}{L('counted', 'الفعلي')} {money(c.counted, ar)}
+          {c.difference !== null && <> · <b className={c.difference ? 'text-rose-700' : 'text-emerald-700'}>{L('difference', 'الفرق')} {money(c.difference, ar)}</b></>}{c.note ? ` · ${c.note}` : ''}
+        </p>
       </div>
       <div className="flex items-center gap-2">
         {status(c.status)}
@@ -279,7 +298,7 @@ function Counts({ accounts, ar, canCreate, canApprove, onDone, status }: { accou
           {accounts.map((a) => (
             <div key={a.id} className={`rounded-xl border p-3 text-sm ${a.countedToday ? 'border-emerald-200 bg-emerald-50/50' : 'border-amber-200 bg-amber-50/60'}`}>
               <p className="font-semibold text-slate-800">{a.name}</p>
-              <p className="text-xs text-slate-500">{a.campus ?? L('company', 'الشركة')} · {L('expected', 'المفروض')} {money(a.balance, ar)}</p>
+              <p className="text-xs text-slate-500">{a.campus ?? L('company', 'الشركة')}{a.balance !== null ? ` · ${L('expected', 'المفروض')} ${money(a.balance, ar)}` : ''}</p>
               <div className="mt-2 flex items-center justify-between gap-2">
                 <span className={`text-xs font-semibold ${a.countedToday ? 'text-emerald-700' : 'text-amber-700'}`}>{a.countedToday ? `✓ ${L('counted today', 'اتجردت النهارده')}` : L('not counted today', 'لسه ماتجردتش النهارده')}</span>
                 {canCreate && !a.countedToday && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setF({ accountId: a.id, counted: '', note: '' })}>{L('Count now', 'جرد دلوقتي')}</Button>}
@@ -294,7 +313,7 @@ function Counts({ accounts, ar, canCreate, canApprove, onDone, status }: { accou
           <div className="flex flex-wrap items-end gap-3">
             <label className="space-y-1"><span className="block text-xs text-slate-500">{L('Cash box', 'الخزنة')}</span>
               <select className="h-10 rounded-md border border-slate-200 bg-white px-2 text-sm" value={f.accountId} onChange={(e) => setF({ ...f, accountId: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
-            {box && <p className="pb-2.5 text-xs text-slate-500">{L('The system expects', 'المفروض يكون فيها')} <b className="text-slate-800">{money(box.balance, ar)}</b></p>}
+            {box && box.balance !== null && <p className="pb-2.5 text-xs text-slate-500">{L('The system expects', 'المفروض يكون فيها')} <b className="text-slate-800">{money(box.balance, ar)}</b></p>}
           </div>
           {box && (
             <>
@@ -319,16 +338,18 @@ function Counts({ accounts, ar, canCreate, canApprove, onDone, status }: { accou
               <label className="block space-y-1"><span className="block text-xs text-slate-500">{L('Note (if there is a difference)', 'ملاحظة (لو فيه فرق)')}</span><Input className="h-10 w-full" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></label>
               <div className="flex flex-wrap gap-2">
                 <Button disabled={f.counted === '' || create.isPending} onClick={close}>{L('Close the day', 'اقفل اليوم')}</Button>
-                <Button asChild size="sm" variant="ghost"><a href={`/reports/cash-day?account=${f.accountId}`} target="_blank" rel="noreferrer">{L('Sheet of this box', 'كشف الخزنة دي')}</a></Button>
+                {!blind && <Button asChild size="sm" variant="ghost"><a href={`/reports/cash-day?account=${f.accountId}`} target="_blank" rel="noreferrer">{L('Sheet of this box', 'كشف الخزنة دي')}</a></Button>}
               </div>
             </>
           )}
         </CardContent></Card>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <Button asChild size="sm" variant="outline"><a href="/reports/cash-day" target="_blank" rel="noreferrer">🧾 {L("Today's cash-close sheet", 'كشف إقفال اليوم')}</a></Button>
-      </div>
+      {!blind && (
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="sm" variant="outline"><a href="/reports/cash-day" target="_blank" rel="noreferrer">🧾 {L("Today's cash-close sheet", 'كشف إقفال اليوم')}</a></Button>
+        </div>
+      )}
 
       {pending.length > 0 && (
         <div className="space-y-2">

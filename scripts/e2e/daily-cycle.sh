@@ -1882,6 +1882,11 @@ CNT=$(secapi POST /api/treasury/counts "{\"accountId\":\"$TBOX\",\"counted\":$(p
 CID=$(echo "$CNT" | jq_ "d['data']['id']")
 check "end-of-day count by the secretary: 50 short → waits for approval" "$(echo "$CNT" | jq_ "(d['data']['status'], float(d['data']['difference']))")" "('PENDING', -50.0)"
 check "'your work today' shows the count difference to the manager" "$(api GET /api/today | jq_ "any(t['key']=='cashCountsToApprove' for t in d['data']['tasks'])")" "True"
+# J01 (owner 14/11): a secretary counts her box but sees no balances / movements / transfers
+check "J01: a secretary cannot open the balances" "$(secapi GET /api/treasury | jq_ "d['success']")" "False"
+check "J01: she gets her cash box to count, without its balance" "$(secapi GET /api/treasury/counts/boxes | jq_ "any(b['id']=='$TBOX' and b['balance'] is None for b in d['data'])")" "True"
+check "J01: her list of counts hides what the system expected" "$(secapi GET /api/treasury/counts | jq_ "[c['expected'] for c in d['data'] if c['id']=='$CID'][0]")" "None"
+check "J01: the manager still sees the expected amount" "$(api GET /api/treasury/counts | jq_ "[c['expected'] is not None for c in d['data'] if c['id']=='$CID'][0]")" "True"
 api PATCH /api/treasury/counts/$CID '{"action":"approve"}' >/dev/null
 check "approved → the difference is booked (box − 50)" "$(api GET /api/treasury | jq_ "round($B1 - [a['balance'] for a in d['data']['accounts'] if a['id']=='$TBOX'][0], 2)")" "50"
 # 2026-10-24 (owner): a branch accountant deposits the branch cash in the company bank; someone who sees every place approves
@@ -2374,7 +2379,7 @@ check "a day with no count still has a sheet: 'not counted yet'" "$(api GET "/ap
 M "INSERT INTO CashCount (id,accountId,date,expected,counted,difference,status,countedById,createdAt) VALUES ('e2e-ycount','$TBOX','$(D 0)',0,777,0,'APPROVED',(SELECT id FROM User WHERE role='SUPER_ADMIN' LIMIT 1),NOW())"
 check "the next day opens with the approved count of the day before" "$(api GET "/api/treasury/daily/$TBOX?date=$(D 1)" | jq_ "(d['data']['opening'], d['data']['openingSource'])")" "(777, 'YESTERDAY_COUNT')"
 M "DELETE FROM CashCount WHERE id='e2e-ycount'"
-check "a branch secretary sees only the branch accounts (not the company bank)" "$(secapi GET "/api/treasury/daily?date=$(D 0)" | jq_ "any(s['account']['id']=='$TBANK' for s in d['data']['sheets'])")" "False"
+check "a branch secretary does not get the daily close sheet (balances) — J01: she only counts" "$(secapi GET "/api/treasury/daily?date=$(D 0)" | jq_ "d['success']")" "False"
 check "Excel: the totals and one box's sheet download as .xlsx" "$(curl -s -b "$JAR" -o /dev/null -w '%{http_code}/%{content_type}' "$B/api/treasury/daily?date=$(D 0)&format=xlsx" | cut -c1-24)/$(curl -s -b "$JAR" "$B/api/treasury/daily/$TBOX?date=$(D 0)&format=xlsx" | head -c 2)" "200/application/vnd.open/PK"
 check "a bad day is refused; signed-out gets 401" "$(api GET "/api/treasury/daily?date=31-10-2026" | jq_ "d['success']")/$(curl -s -o /dev/null -w '%{http_code}' "$B/api/treasury/daily")" "False/401"
 echo "== 75. One-to-One: price list, booking, siblings, instructor rate, next cycle (a02 M3 batch 1, 2026-11-01)"

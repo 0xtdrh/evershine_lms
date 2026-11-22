@@ -110,6 +110,8 @@ export type AcademicResource =
   | 'data_import'
   // FIN-1: money accounts — read balances / movements, create transfers + cash counts, approve them, update = manage accounts + routes
   | 'treasury'
+  // J01 (owner 14/11): the daily cash count alone — a secretary counts her branch box without seeing balances / movements
+  | 'cash_count'
   // a03: month close — read = see closed months + the monthly report, create = close a month, approve = reopen (Super Admin)
   | 'month_close'
   | 'payment_voids'
@@ -245,6 +247,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: ['read'],
     data_import: ['create'],
     treasury: ['read', 'create', 'update', 'approve', 'export'],
+    cash_count: ['read', 'create'],
     month_close: ['read', 'create', 'approve', 'export'],
   },
   ADMIN: {
@@ -324,6 +327,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: ['read'],
     data_import: ['create'],
     treasury: ['read', 'create', 'update', 'approve', 'export'],
+    cash_count: ['read', 'create'],
     month_close: ['read', 'create', 'export'],
   },
   TEACHER: {
@@ -404,6 +408,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: [],
     data_import: [],
     treasury: [],
+    cash_count: [],
     month_close: [],
   },
   STUDENT: {
@@ -483,6 +488,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: [],
     data_import: [],
     treasury: [],
+    cash_count: [],
     month_close: [],
   },
   PARENT: {
@@ -562,6 +568,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: [],
     data_import: [],
     treasury: [],
+    cash_count: [],
     month_close: [],
   },
   ACCOUNTANT: {
@@ -643,6 +650,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: ['read'],
     data_import: [],
     treasury: ['read', 'create', 'approve', 'export'],
+    cash_count: ['read', 'create'],
     month_close: ['read', 'create', 'export'],
   },
   GUARDIAN: {
@@ -722,6 +730,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: [],
     data_import: [],
     treasury: [],
+    cash_count: [],
     month_close: [],
   },
   // ── SECRETARY ────────────────────────────────────────────────────────────
@@ -804,7 +813,8 @@ const PERMISSIONS: PermissionMap = {
     partner_finance: [],
     data_export: ['read'],
     data_import: [],
-    treasury: ['read', 'create'],
+    treasury: [], // J01: no balances / movements / transfers
+    cash_count: ['read', 'create'],
     month_close: [],
   },
   // ── BRANCH_MANAGER ───────────────────────────────────────────────────────
@@ -889,6 +899,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: ['read'],
     data_import: ['create'],
     treasury: ['read', 'create', 'approve', 'export'],
+    cash_count: ['read', 'create'],
     month_close: ['read', 'export'],
   },
   // ── MARKETING ────────────────────────────────────────────────────────────
@@ -971,6 +982,7 @@ const PERMISSIONS: PermissionMap = {
     data_export: ['read'],
     data_import: [],
     treasury: [],
+    cash_count: [],
     month_close: [],
   },
 }

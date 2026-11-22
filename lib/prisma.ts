@@ -3,6 +3,7 @@ import { withAutoAudit } from './audit/auto'
 import { withMonthGuard } from './month-close/guard'
 import { currentActorId, runWithActor } from './audit/actor'
 import { withPoolLimits } from './db-url'
+import { withCacheFlush } from './cache/flush-on-write'
 
 // WHY singleton: Next.js hot reload creates new module instances on each change.
 // Without this, development exhausts the MySQL connection pool.
@@ -44,7 +45,8 @@ function createPrismaClient(): PrismaClient {
   })
   // 2026-10-18: changes on the important tables are logged automatically (who, old value → new value)
   // a03 (2026-10-26): nothing dated in a closed month can be added / changed / deleted (lib/month-close/guard.ts)
-  const audited = withAutoAudit(withMonthGuard(base), currentActorId)
+  // load test 22/11: any real write forgets the short caches of busy screens (lib/cache/flush-on-write.ts)
+  const audited = withCacheFlush(withAutoAudit(withMonthGuard(base), currentActorId))
   // keep "who is acting" inside interactive transactions (Prisma runs the callback outside the request context).
   // Done on the client itself, because modules loaded later read globalThis.prisma directly (not the lazy proxy).
   return new Proxy(audited, {

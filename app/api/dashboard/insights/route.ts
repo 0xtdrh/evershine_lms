@@ -5,6 +5,7 @@ import { requestPlaces } from '@/lib/places/server'
 import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse } from '@/lib/api-response'
+import { cached } from '@/lib/cache/ttl'
 import { requireSession } from '@/lib/academic/api-helpers'
 import { getTeacherByUserId, getTeacherClassSectionIds } from '@/lib/academic/teacher-scope'
 import { managerMetrics, accountantMetrics, secretaryMetrics, teacherMetrics } from '@/lib/insights/insights'
@@ -16,9 +17,11 @@ export async function GET() {
   if (error || !session) return error!
   const role = session.user.role as Role
   const campusId = (onePlace(await requestPlaces(session.user), null) ?? undefined)
-  if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER') return successResponse({ role, metrics: await managerMetrics(campusId) })
-  if (role === 'ACCOUNTANT') return successResponse({ role, metrics: await accountantMetrics(campusId) })
-  if (role === 'SECRETARY') return successResponse({ role, metrics: await secretaryMetrics(campusId) })
+  // load test 22/11: the same numbers for everyone with the same role + place — kept 60 s (the card refreshes every 5 min)
+  const key = `insights:${role}:${campusId ?? 'ALL'}`
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BRANCH_MANAGER') return successResponse({ role, metrics: await cached(key, 60_000, () => managerMetrics(campusId)) })
+  if (role === 'ACCOUNTANT') return successResponse({ role, metrics: await cached(key, 60_000, () => accountantMetrics(campusId)) })
+  if (role === 'SECRETARY') return successResponse({ role, metrics: await cached(key, 60_000, () => secretaryMetrics(campusId)) })
   if (role === 'TEACHER') {
     const t = await getTeacherByUserId(session.user.id)
     if (!t) return errors.forbidden()

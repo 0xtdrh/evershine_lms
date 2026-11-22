@@ -397,7 +397,7 @@ export async function lowBalanceAlerts(): Promise<{ checked: number; alerted: nu
   if (!(await isEventOn('LOW_BALANCE'))) return { checked: 0, alerted: 0 }
   const s = await getWalletSettings()
   const days = Math.max(0, s.lowBalanceDays ?? 3)
-  const { estimateGroupEnds } = await import('@/lib/groups/end-estimates')
+  const { estimateGroupEndsMany } = await import('@/lib/groups/end-estimates')
   const groups = await prisma.classSection.findMany({
     where: { status: 'ACTIVE', isActive: true, level: { pricingType: 'MONTHLY' } },
     select: {
@@ -410,9 +410,10 @@ export async function lowBalanceAlerts(): Promise<{ checked: number; alerted: nu
   const limit = new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
   let checked = 0
   let alerted = 0
+  const allEnds = await estimateGroupEndsMany(groups.filter((g) => g.level && g.startDate))
   for (const g of groups) {
     if (!g.level || !g.startDate) continue
-    const ends = await estimateGroupEnds(g)
+    const ends = allEnds.get(g.id)!
     if (!ends.cycleEnd || ends.cycleEnd > limit) continue
     if (g.unnamedHeadcount !== null) continue // a class without names has no family wallets
     const price = await cyclePrice(g.level, g.campusId, g.priceOverride)

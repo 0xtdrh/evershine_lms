@@ -13,7 +13,7 @@ import { z } from 'zod'
 import { resolveBatchId } from '@/lib/batches/default-batch'
 import { resolveShiftId } from '@/lib/shifts/default-shift'
 import { prisma } from '@/lib/prisma'
-import { estimateGroupEnds } from '@/lib/groups/end-estimates'
+import { estimateGroupEndsMany } from '@/lib/groups/end-estimates'
 import { errors, errorResponse, successResponse, createdResponse } from '@/lib/api-response'
 import { isLevelOfferedIn } from '@/lib/delivery/catalog'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
@@ -69,7 +69,8 @@ export async function GET(request: NextRequest) {
     },
   })
 
-  const shaped = await Promise.all(groups.map(async (g) => ({
+  const ends = await estimateGroupEndsMany(groups)
+  const shaped = groups.map((g) => ({
     id: g.id,
     label: `${g.className} ${g.sectionName}`.trim(),
     campus: g.campus,
@@ -87,8 +88,8 @@ export async function GET(request: NextRequest) {
     scheduleSlots: g.scheduleSlots,
     status: g.status,
     displayStatus: computeDisplayStatus(g.status, g.startDate),
-    ends: await estimateGroupEnds(g),
-  })))
+    ends: ends.get(g.id),
+  }))
 
   return successResponse(shaped)
 }

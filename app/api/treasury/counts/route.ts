@@ -12,13 +12,13 @@ export const dynamic = 'force-dynamic'
 const schema = z.object({ accountId: z.string().min(1), counted: z.number().min(0).max(100000000), note: z.string().max(300).optional().nullable() })
 
 export async function GET() {
-  const u = await treasuryUser('read')
+  const u = await treasuryUser('read', { countOnly: true })
   if ('error' in u) return u.error
   return successResponse(await listCounts(u.user))
 }
 
 async function POST_(request: NextRequest) {
-  const u = await treasuryUser('create')
+  const u = await treasuryUser('create', { countOnly: true })
   if ('error' in u) return u.error
   const parsed = schema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return errors.validation(parsed.error)
