@@ -13,6 +13,7 @@ export interface HealthItem { id: string; label: string; href: string }
 export interface HealthCheck { key: string; en: string; ar: string; fixEn: string; fixAr: string; severity: Severity; count: number; items: HealthItem[] }
 
 const SAMPLE = 50
+const L_WEEK = 'أسبوع', L_MONTH = 'شهر'
 const sName = (s: { firstName: string; lastName: string; registrationNumber?: string | null }) => `${s.firstName} ${s.lastName}`.trim() + (s.registrationNumber ? ` (${s.registrationNumber})` : '')
 const gName = (g: { className: string; sectionName: string; campus?: { name: string } | null }) => `${g.className} ${g.sectionName}`.trim() + (g.campus ? ` — ${g.campus.name}` : '')
 
@@ -55,11 +56,19 @@ async function run(p: Places): Promise<HealthCheck[]> {
     add({ key: 'groupNoInstructor', severity: 'HIGH', en: 'Active groups without an instructor (or whose instructor was stopped)', ar: 'جروبات شغالة من غير مدرب (أو المدرب اتوقف)', fixEn: 'Open the group and choose the instructor (students do not show for any instructor until then).', fixAr: 'افتح الجروب واختار المدرب (الطلاب مش هيظهروا لأي مدرب لحد كده).' }, n, rows.map((g) => ({ id: g.id, label: gName(g), href: `/dashboard/groups?group=${g.id}` })))
   }
   {
-    const all = await prisma.classSection.findMany({ where: activeGroup, select: { ...grpSel, scheduleSlots: true, levelId: true, maxStudents: true, _count: { select: { enrollments: { where: { status: 'ACTIVE' } } } } } })
+    const all = await prisma.classSection.findMany({ where: activeGroup, select: { ...grpSel, scheduleSlots: true, levelId: true, maxStudents: true, cycleSessions: true, level: { select: { numberOfSessions: true, numberOfMonths: true, pricingType: true } }, _count: { select: { enrollments: { where: { status: 'ACTIVE' } } } } } })
     const noSchedule = all.filter((g) => !Array.isArray(g.scheduleSlots) || !(g.scheduleSlots as unknown[]).length)
     add({ key: 'groupNoSchedule', severity: 'HIGH', en: 'Active groups without a weekly schedule', ar: 'جروبات شغالة من غير جدول أسبوعي', fixEn: 'Edit the group and add its days and times (the calendar, reminders and end dates need them).', fixAr: 'عدّل الجروب وضيف أيامه ومواعيده (الجدول والتنبيهات وتاريخ النهاية محتاجينها).' }, noSchedule.length, noSchedule.slice(0, SAMPLE).map((g) => ({ id: g.id, label: gName(g), href: `/dashboard/groups?group=${g.id}` })))
     const noLevel = all.filter((g) => !g.levelId)
     add({ key: 'groupNoLevel', severity: 'HIGH', en: 'Active groups without a level', ar: 'جروبات شغالة من غير مستوى', fixEn: 'Edit the group and choose its level (prices, lessons and certificates come from it).', fixAr: 'عدّل الجروب واختار المستوى (الأسعار والدروس والشهادات بتيجي منه).' }, noLevel.length, noLevel.slice(0, SAMPLE).map((g) => ({ id: g.id, label: gName(g), href: `/dashboard/groups?group=${g.id}` })))
+    // final test N02: a group meeting twice a week (~8 a month) on a level that counts 4 sessions a month closes its month halfway
+    const mismatch = all.flatMap((g) => {
+      if (!g.level || g.level.pricingType === 'FULL_LEVEL' || g.cycleSessions || !Array.isArray(g.scheduleSlots)) return []
+      const perWeek = (g.scheduleSlots as unknown[]).length
+      const perMonth = Math.max(1, Math.round(g.level.numberOfSessions / Math.max(1, g.level.numberOfMonths)))
+      return perWeek > 0 && Math.abs(perWeek * 4.33 - perMonth) > 1.5 ? [{ g, perWeek, perMonth }] : []
+    })
+    add({ key: 'groupScheduleVsLevel', severity: 'MEDIUM', en: 'Groups whose weekly schedule does not match the level’s sessions per month', ar: 'جروبات جدولها الأسبوعي مش مطابق لحصص الشهر في المستوى', fixEn: 'Fix the level (sessions / months) or the group’s days, so the month closes when it really ends.', fixAr: 'صحّح المستوى (عدد الحصص / الشهور) أو أيام الجروب، علشان الشهر يقفل في وقته الحقيقي.' }, mismatch.length, mismatch.slice(0, SAMPLE).map(({ g, perWeek, perMonth }) => ({ id: g.id, label: `${gName(g)} · ${perWeek}/${L_WEEK} ≠ ${perMonth}/${L_MONTH}`, href: `/dashboard/groups?group=${g.id}` })))
     const over = all.filter((g) => g.maxStudents != null && g._count.enrollments > g.maxStudents)
     add({ key: 'groupOverFull', severity: 'LOW', en: 'Groups with more students than their limit', ar: 'جروبات فيها طلاب أكتر من الحد', fixEn: 'Raise the limit or move students to another group.', fixAr: 'زوّد الحد أو انقل طلاب لجروب تاني.' }, over.length, over.slice(0, SAMPLE).map((g) => ({ id: g.id, label: `${gName(g)} · ${g._count.enrollments}/${g.maxStudents}`, href: `/dashboard/groups?group=${g.id}` })))
   }

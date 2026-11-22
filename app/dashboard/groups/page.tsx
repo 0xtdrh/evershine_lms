@@ -720,7 +720,9 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                   {nextSession && <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-slate-400" />{L('Next session', 'الحصة الجاية')}: {nextSession}</span>}
                   {detail.ends && detail.level && (
                     <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-400" />
-                      {L('Month', 'الشهر')} {detail.ends.cycleNumber} {L('of', 'من')} {detail.ends.cyclesInLevel} · {L('session', 'الحصة')} {detail.ends.sessionsDoneInCycle} {L('of', 'من')} {detail.ends.sessionsPerCycle}
+                      {L('Month', 'الشهر')} {detail.ends.cycleNumber} {L('of', 'من')} {detail.ends.cyclesInLevel} · {detail.ends.sessionsDoneInCycle > detail.ends.sessionsPerCycle
+                        ? `${L('sessions done', 'خلصت')} ${detail.ends.sessionsPerCycle} + ${detail.ends.sessionsDoneInCycle - detail.ends.sessionsPerCycle} ${L('extra', 'زيادة')}`
+                        : `${L('session', 'الحصة')} ${detail.ends.sessionsDoneInCycle} ${L('of', 'من')} ${detail.ends.sessionsPerCycle}`}
                     </span>
                   )}
                 </div>
