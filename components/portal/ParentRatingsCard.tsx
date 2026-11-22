@@ -98,14 +98,21 @@ export function ParentRatingsCard() {
     onError: (e: Error) => notify.error(e.message),
   })
   const children = (data?.children ?? []).filter((c) => c.sessions.length || c.surveys.length)
+  // final test X14 (family with several children): the rating forms were stacked on top and pushed the children far down.
+  // Now one line with the count; the forms open when asked (open by itself when there is only one).
+  const waiting = children.reduce((n, c) => n + c.sessions.length + c.surveys.length, 0)
+  const [open, setOpen] = useState(false)
   if (!children.length) return null
+  const shown = open || waiting <= 1
   return (
     <Card className="border-amber-200">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base"><Star className="h-5 w-5 fill-amber-400 text-amber-400" /> {L('Your opinion', 'رأيك')}</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-base"><Star className="h-5 w-5 fill-amber-400 text-amber-400" /> {L('Your opinion', 'رأيك')}
+          {waiting > 1 && <button type="button" onClick={() => setOpen(!open)} className="ms-auto rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">{open ? L('Hide', 'اخفي') : `${waiting} ${L('waiting — rate now', 'مستنيين — قيّم دلوقتي')}`}</button>}
+        </CardTitle>
         <CardDescription>{L('A few taps help us improve. Only the management sees names.', 'كام ضغطة بتساعدنا نتحسن. الإدارة بس اللي بتشوف الأسامي.')}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      {shown && <CardContent className="space-y-3">
         {children.map((c) => (
           <div key={c.studentId} className="space-y-3">
             {c.sessions.map((s) => (
@@ -117,7 +124,7 @@ export function ParentRatingsCard() {
             {c.surveys.map((s) => <SurveyForm key={s.classSectionId} child={c} s={s} onDone={refresh} />)}
           </div>
         ))}
-      </CardContent>
+      </CardContent>}
     </Card>
   )
 }
