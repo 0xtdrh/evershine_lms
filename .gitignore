@@ -213,3 +213,6 @@ graphify-out/
 /*.sql
 /file*
 .e2e-video/
+
+# private local helper scripts (owner machine only: OTP codes, test fixes) — never commit
+scripts/local/.*
