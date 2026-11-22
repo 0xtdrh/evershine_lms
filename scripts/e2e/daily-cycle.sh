@@ -339,7 +339,9 @@ login_jar "$SLOGIN" "$SPW3" "$SJ" 10.0.0.82
 check "parent session works" "$(code_with "$PJ" /api/me/permissions)" "200"
 check "student session works" "$(code_with "$SJ" /api/me/permissions)" "200"
 # final test X05: a parent who types the phone in Arabic digits signs in too
-PJA=$(mktemp); login_jar "٠١٠٧٧٧٧٠٠٠٣" "$PW3" "$PJA" 10.0.0.83
+# (the phone is sent percent-encoded: Windows curl garbles Arabic characters typed on its command line)
+PJA=$(mktemp); TA=$(curl -s -c "$PJA" -b "$PJA" -H "X-Forwarded-For: 10.0.0.83" $B/api/auth/csrf | jq_ "d['csrfToken']")
+curl -s -o /dev/null -c "$PJA" -b "$PJA" -H "X-Forwarded-For: 10.0.0.83" -X POST $B/api/auth/callback/credentials --data-urlencode "csrfToken=$TA" --data "email=%D9%A0%D9%A1%D9%A0%D9%A7%D9%A7%D9%A7%D9%A7%D9%A0%D9%A0%D9%A0%D9%A3" --data-urlencode "password=$PW3" --data-urlencode "callbackUrl=$B/dashboard"
 check "X05: sign-in with the phone in Arabic digits works" "$(code_with "$PJA" /api/me/permissions)" "200"
 check "student cannot get an upload signature for staff folders" "$(code_with "$SJ" '/api/upload?folder=students')" "403"
 [ "$(code_with "$SJ" '/api/upload?folder=challans')" != "403" ] && ok "student may still upload payment proofs" || bad "student may still upload payment proofs"
