@@ -7,7 +7,7 @@ import { auth } from '@/lib/auth'
 import { hash } from '@node-rs/argon2'
 import { z } from 'zod'
 import { resolveBatchId } from '@/lib/batches/default-batch'
-import { groupSeats, waitForGroup } from '@/lib/groups/capacity'
+import { groupSeats, waitForGroup, withSeatLock } from '@/lib/groups/capacity'
 import { sendApprovalNotification } from '@/lib/notifications'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { createYearEnrollmentForStudent } from '@/lib/academic/enrollment'
@@ -356,25 +356,30 @@ export async function POST(
         const { applyCodeToStudent } = await import('@/lib/site/codes-store')
         await applyCodeToStudent(request.signupCode, result.id, resolvedSectionId ?? null, session.user.id).catch((e) => console.warn('[ADMISSIONS_APPROVE] code not applied:', e))
       }
-      // Phase A: a full group puts the student on its waiting list instead.
-      if (resolvedSectionId && (await groupSeats(resolvedSectionId)).full) {
-        await waitForGroup(result.id, resolvedSectionId, session.user.id)
-      } else if (activeYear && resolvedSectionId) {
-        await createYearEnrollmentForStudent({
-          studentId: result.id,
-          academicYearId: activeYear.id,
-          classSectionId: resolvedSectionId,
-          rollNumber: finalRoll,
-          deliveryMode,
-        })
-        // Same as "Add to group" (owner 2026-10-17): bill the group's current month right away (idempotent).
-        try {
-          const { generateMissingCycleInvoices } = await import('@/lib/groups/generate-invoices')
-          await generateMissingCycleInvoices(resolvedSectionId, session.user.id, result.id)
-        } catch (billErr) {
-          console.error('[ADMISSIONS_APPROVE] first invoice', billErr)
+      // final test X07 (branch registration): the room check and the enrolment run one at a time per group.
+      const placeStudent = async () => {
+        // Phase A: a full group puts the student on its waiting list instead.
+        if (resolvedSectionId && (await groupSeats(resolvedSectionId)).full) {
+          await waitForGroup(result.id, resolvedSectionId, session.user.id)
+        } else if (activeYear && resolvedSectionId) {
+          await createYearEnrollmentForStudent({
+            studentId: result.id,
+            academicYearId: activeYear.id,
+            classSectionId: resolvedSectionId,
+            rollNumber: finalRoll,
+            deliveryMode,
+          })
+          // Same as "Add to group" (owner 2026-10-17): bill the group's current month right away (idempotent).
+          try {
+            const { generateMissingCycleInvoices } = await import('@/lib/groups/generate-invoices')
+            await generateMissingCycleInvoices(resolvedSectionId, session.user.id, result.id)
+          } catch (billErr) {
+            console.error('[ADMISSIONS_APPROVE] first invoice', billErr)
+          }
         }
       }
+      if (resolvedSectionId) await withSeatLock(resolvedSectionId, placeStudent)
+      else await placeStudent()
     } catch (enrollmentErr) {
       console.error('[ADMISSIONS_APPROVE] enrollment', enrollmentErr)
     }

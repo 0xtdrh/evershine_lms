@@ -20,7 +20,7 @@ import { errors, errorResponse, createdResponse, paginatedResponse } from '@/lib
 import { createStudentSchema, studentQuerySchema } from '@/lib/validation/student'
 import { resolveBatchId } from '@/lib/batches/default-batch'
 import { lastContactByStudent } from '@/lib/contacts/contact-log'
-import { groupSeats, waitForGroup } from '@/lib/groups/capacity'
+import { groupSeats, waitForGroup, withSeatLock } from '@/lib/groups/capacity'
 import { ensureActiveYearEnrollment } from '@/lib/students/enrollment-sync'
 import { linkGuardianToStudentDirect } from '@/lib/students/guardian-link'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
@@ -437,50 +437,55 @@ export async function POST(request: NextRequest) {
   let enrollmentId: string | null = null
   let enrollmentNote: string | null = null
 
-  // Phase A: a full group puts the new student on its waiting list instead.
-  const chosenFull = data.classSectionId ? (await groupSeats(data.classSectionId)).full : false
-  if (data.classSectionId && chosenFull) {
-    try {
-      await waitForGroup(student.id, data.classSectionId, session.user.id)
-      enrollmentNote = 'The chosen group is full: the student was put on its waiting list.'
-    } catch (err) {
-      logStudentCreateFailure('enrollment', err)
-      enrollmentNote = 'The chosen group is full. Add the student to a group from the Groups or Waiting List page.'
-    }
-  } else if (data.classSectionId) {
-    try {
-      const result = await ensureActiveYearEnrollment({
-        studentId: student.id,
-        rollNumber: data.rollNumber ?? student.registrationNumber.replace(/\//g, '-'),
-        classSectionId: data.classSectionId,
-        classId: data.classId,
-        section: data.section,
-        campusId: data.campusId,
-        batchId,
-        shift: data.shift,
-        deliveryMode: data.deliveryMode,
-      })
-      enrollmentId = result?.enrollmentId ?? null
-      if (enrollmentId) {
-        // Same as "Add to group" (owner 2026-10-17): bill the group's current month right away (idempotent).
-        try {
-          const { generateMissingCycleInvoices } = await import('@/lib/groups/generate-invoices')
-          await generateMissingCycleInvoices(data.classSectionId, session.user.id, student.id)
-        } catch (billErr) {
-          logStudentCreateFailure('first-invoice', billErr)
-          enrollmentNote = 'Added to the group, but the invoice was not made: use "Generate invoices" on the group page.'
+  // final test X07 (branch registration): "is there room?" and the enrolment run one at a time per group, like Add to group.
+  const placeStudent = async () => {
+    // Phase A: a full group puts the new student on its waiting list instead.
+    const chosenFull = data.classSectionId ? (await groupSeats(data.classSectionId)).full : false
+    if (data.classSectionId && chosenFull) {
+      try {
+        await waitForGroup(student.id, data.classSectionId, session.user.id)
+        enrollmentNote = 'The chosen group is full: the student was put on its waiting list.'
+      } catch (err) {
+        logStudentCreateFailure('enrollment', err)
+        enrollmentNote = 'The chosen group is full. Add the student to a group from the Groups or Waiting List page.'
+      }
+    } else if (data.classSectionId) {
+      try {
+        const result = await ensureActiveYearEnrollment({
+          studentId: student.id,
+          rollNumber: data.rollNumber ?? student.registrationNumber.replace(/\//g, '-'),
+          classSectionId: data.classSectionId,
+          classId: data.classId,
+          section: data.section,
+          campusId: data.campusId,
+          batchId,
+          shift: data.shift,
+          deliveryMode: data.deliveryMode,
+        })
+        enrollmentId = result?.enrollmentId ?? null
+        if (enrollmentId) {
+          // Same as "Add to group" (owner 2026-10-17): bill the group's current month right away (idempotent).
+          try {
+            const { generateMissingCycleInvoices } = await import('@/lib/groups/generate-invoices')
+            await generateMissingCycleInvoices(data.classSectionId, session.user.id, student.id)
+          } catch (billErr) {
+            logStudentCreateFailure('first-invoice', billErr)
+            enrollmentNote = 'Added to the group, but the invoice was not made: use "Generate invoices" on the group page.'
+          }
         }
+        if (!enrollmentId) {
+          // No active/unlocked academic year — enrollment silently skipped
+          enrollmentNote = 'No active academic year found. Enrollment was not created.'
+        }
+      } catch (enrollmentErr: unknown) {
+        // Non-fatal: student created; admin can enroll manually from student profile
+        logStudentCreateFailure('enrollment', enrollmentErr)
+        enrollmentNote = `Enrollment skipped: ${getErrorMessage(enrollmentErr)}`
       }
-      if (!enrollmentId) {
-        // No active/unlocked academic year — enrollment silently skipped
-        enrollmentNote = 'No active academic year found. Enrollment was not created.'
-      }
-    } catch (enrollmentErr: unknown) {
-      // Non-fatal: student created; admin can enroll manually from student profile
-      logStudentCreateFailure('enrollment', enrollmentErr)
-      enrollmentNote = `Enrollment skipped: ${getErrorMessage(enrollmentErr)}`
     }
   }
+  if (data.classSectionId) await withSeatLock(data.classSectionId, placeStudent)
+  else await placeStudent()
 
   return createdResponse(
     {

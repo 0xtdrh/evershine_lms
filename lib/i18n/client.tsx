@@ -36,7 +36,7 @@ const I18nContext = createContext<Ctx>({
 export function I18nProvider({ children, defaults }: { children: React.ReactNode; defaults?: { staff: Locale; portal: Locale } }) {
   const { data: session } = useSession()
   const role = session?.user?.role ?? ''
-  const fallback: Locale = PORTAL_ROLES.includes(role) ? defaults?.portal ?? 'en' : defaults?.staff ?? 'en'
+  const fallback: Locale = PORTAL_ROLES.includes(role) ? defaults?.portal ?? 'ar' : defaults?.staff ?? 'ar'
   const [chosen, setChosen] = useState<Locale | null>(null)
   useEffect(() => { setChosen(readCookie()) }, [])
   const locale: Locale = chosen ?? fallback

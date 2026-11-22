@@ -26,3 +26,12 @@ describe('Arabic name search (final test X04)', () => {
     expect(c.some((x) => JSON.stringify(x).includes('فاطمة'))).toBe(true)
   })
 })
+
+import { containsVariants } from '@/lib/students/name-search'
+describe('containsVariants (other lists)', () => {
+  it('searches one field with every spelling', () => {
+    const r = containsVariants('firstName', 'احمد')
+    expect(r[0]).toEqual({ firstName: { contains: 'احمد' } })
+    expect(r.some((x) => x.firstName.contains === 'أحمد')).toBe(true)
+  })
+})

@@ -38,6 +38,15 @@ export function GroupRulesGate() {
     onError: (e: Error) => { notify.error(e.message); qc.invalidateQueries({ queryKey: ['group-rules-pending'] }) },
   })
 
+  // owner 22/11: a family with several kids in groups that share the SAME rules (same fingerprint) accepts them in one go.
+  // Each group still gets its own acceptance row (hash, IP, device), and only identical texts are grouped — nothing unread is accepted.
+  const same = (data ?? []).filter((p) => p.hash === current?.hash)
+  const acceptSame = useMutation({
+    mutationFn: async (list: Pending[]) => { for (const p of list) await fetchApi('/api/guardian-portal/group-rules', { method: 'POST', body: JSON.stringify({ groupId: p.groupId, studentId: p.studentId, hash: p.hash }) }) },
+    onSuccess: () => { notify.success(pick('Thank you — accepted', 'شكرًا — اتسجلت موافقتك')); qc.invalidateQueries({ queryKey: ['group-rules-pending'] }) },
+    onError: (e: Error) => { notify.error(e.message); qc.invalidateQueries({ queryKey: ['group-rules-pending'] }) },
+  })
+
   // the general agreements are accepted first (AgreementsGate)
   if (!current || (agreementsLeft ?? []).some((a) => a.blocking)) return null
   return (
@@ -65,6 +74,11 @@ export function GroupRulesGate() {
           <Button className="w-full" disabled={!ticked || accept.isPending} onClick={() => accept.mutate(current)}>
             {accept.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}{pick('Accept', 'موافق')}
           </Button>
+          {same.length > 1 && (
+            <Button variant="outline" className="w-full" disabled={!ticked || accept.isPending || acceptSame.isPending} onClick={() => acceptSame.mutate(same)}>
+              {acceptSame.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}{pick(`Accept for all ${same.length} groups with these same rules`, `موافق على كل الجروبات اللي ليها نفس القواعد (${same.length})`)}
+            </Button>
+          )}
         </div>
       </div>
     </div>

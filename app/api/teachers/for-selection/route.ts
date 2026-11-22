@@ -14,6 +14,7 @@ import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse } from '@/lib/api-response'
 import { z } from 'zod'
 import type { Role } from '@prisma/client'
+import { containsVariants } from '@/lib/students/name-search'
 
 const querySchema = z.object({
   mode: z.enum(['all', 'scoped']).default('all'),
@@ -122,8 +123,8 @@ export async function GET(request: NextRequest) {
       ...(houseId && !teacherIds && { houseId }),
       ...(search && {
         OR: [
-          { firstName: { contains: search } },
-          { lastName: { contains: search } },
+          ...containsVariants('firstName', search),
+          ...containsVariants('lastName', search),
           { employeeId: { contains: search } },
         ],
       }),

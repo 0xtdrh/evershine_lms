@@ -18,6 +18,7 @@ import type { Role } from '@prisma/client'
 import { sendTeacherWelcomeEmail } from '@/lib/email'
 import { getEmployeeIdPrefix, isTeachingDesignation } from '@/lib/constants/staff-designations'
 import { isProfileImageDataUrl, uploadProfileImageToCloudinary } from '@/lib/cloudinary'
+import { containsVariants } from '@/lib/students/name-search'
 
 const ARGON2_OPTIONS = { memoryCost: 65536, timeCost: 3, parallelism: 4, outputLen: 32 }
 
@@ -71,10 +72,10 @@ export async function GET(request: NextRequest) {
       // LIKE natively. mode: 'insensitive' is PostgreSQL-only and throws a
       // Prisma runtime error on MySQL.
       OR: [
-        { firstName: { contains: search } },
-        { lastName: { contains: search } },
+        ...containsVariants('firstName', search),
+        ...containsVariants('lastName', search),
         { employeeId: { contains: search } },
-        { specialization: { contains: search } },
+        ...containsVariants('specialization', search),
       ],
     }),
   }

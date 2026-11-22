@@ -24,7 +24,7 @@ export type ModuleSwitches = Record<ModuleKey, boolean>
 export const MODULE_DEFAULTS: ModuleSwitches = { lms: false, passport: false, gamification: false, platformFee: false, addons: false, treasury: false, agreements: true }
 
 export interface LanguageDefaults { staff: Locale; portal: Locale }
-export const LANGUAGE_DEFAULTS: LanguageDefaults = { staff: 'en', portal: 'en' }
+export const LANGUAGE_DEFAULTS: LanguageDefaults = { staff: 'ar', portal: 'ar' }
 
 export async function getModules(): Promise<ModuleSwitches> {
   return { ...MODULE_DEFAULTS, ...(await getSetting<Partial<ModuleSwitches>>('platform.modules', {})) }

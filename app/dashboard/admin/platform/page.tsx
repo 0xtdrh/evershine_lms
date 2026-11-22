@@ -27,7 +27,7 @@ export default function PlatformPage() {
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['platform-settings'], queryFn: () => fetchApi<Data>('/api/platform/settings'), enabled: allowed })
   const [modules, setModules] = useState<Record<string, boolean>>({})
-  const [language, setLanguage] = useState<Data['language']>({ staff: 'en', portal: 'en' })
+  const [language, setLanguage] = useState<Data['language']>({ staff: 'ar', portal: 'ar' })
   useEffect(() => { if (data) { setModules(data.modules); setLanguage(data.language) } }, [data])
   const save = useMutation({
     mutationFn: () => fetchApi('/api/platform/settings', { method: 'PUT', body: JSON.stringify({ modules, language }) }),

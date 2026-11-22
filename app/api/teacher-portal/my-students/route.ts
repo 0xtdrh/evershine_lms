@@ -29,6 +29,7 @@ import { getTeacherClassSectionIds } from '@/lib/academic/teacher-scope'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import { resolveClassContext } from '@/lib/teacher-access'
 import { z } from 'zod'
+import { containsVariants } from '@/lib/students/name-search'
 
 const querySchema = z.object({
   page:             z.coerce.number().int().min(1).default(1),
@@ -100,13 +101,13 @@ export async function GET(request: NextRequest) {
   // case-insensitive LIKE natively. mode: 'insensitive' is PostgreSQL-only.
   const searchOr = search
     ? [
-        { firstName:          { contains: search } },
-        { lastName:           { contains: search } },
-        { fullNameAr:         { contains: search } },
-        { fullNameEn:         { contains: search } },
+        ...containsVariants('firstName', search),
+        ...containsVariants('lastName', search),
+        ...containsVariants('fullNameAr', search),
+        ...containsVariants('fullNameEn', search),
         { registrationNumber: { contains: search } },
         { rollNumber:         { contains: search } },
-        { fatherName:         { contains: search } },
+        ...containsVariants('fatherName', search),
       ]
     : null
 

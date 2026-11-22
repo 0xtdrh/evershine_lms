@@ -36,3 +36,8 @@ export function studentSearchOr(search: string) {
     ...(s.includes(' ') ? [{ AND: s.split(/\s+/).map((w) => ({ OR: studentNameMatch(w) })) }] : []),
   ]
 }
+
+/** One field matched against every spelling of the typed text — spread it inside an OR list (final test X04, other lists). */
+export function containsVariants(field: string, term: string): Record<string, { contains: string }>[] {
+  return arabicVariants(term.trim()).map((v) => ({ [field]: { contains: v } }))
+}

@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
 import { errors, successResponse, paginatedResponse } from '@/lib/api-response'
 import type { Role } from '@prisma/client'
+import { containsVariants } from '@/lib/students/name-search'
 
 export async function GET(request: NextRequest) {
   const session = await auth()
@@ -54,41 +55,41 @@ export async function GET(request: NextRequest) {
       {
         student: {
           OR: [
-            { firstName: { contains: query } },
-            { lastName: { contains: query } },
-            { fatherName: { contains: query } },
+            ...containsVariants('firstName', query),
+            ...containsVariants('lastName', query),
+            ...containsVariants('fatherName', query),
           ],
         },
       },
       {
         teacher: {
           OR: [
-            { firstName: { contains: query } },
-            { lastName: { contains: query } },
+            ...containsVariants('firstName', query),
+            ...containsVariants('lastName', query),
           ],
         },
       },
       {
         admin: {
           OR: [
-            { firstName: { contains: query } },
-            { lastName: { contains: query } },
+            ...containsVariants('firstName', query),
+            ...containsVariants('lastName', query),
           ],
         },
       },
       {
         parent: {
           OR: [
-            { firstName: { contains: query } },
-            { lastName: { contains: query } },
+            ...containsVariants('firstName', query),
+            ...containsVariants('lastName', query),
           ],
         },
       },
       {
         guardian: {
           OR: [
-            { firstName: { contains: query } },
-            { lastName: { contains: query } },
+            ...containsVariants('firstName', query),
+            ...containsVariants('lastName', query),
             // Parents are identified by phone number (Credential Management search)
             { phoneNumber: { contains: query.replace(/[\s\-()]/g, '') } },
           ],
