@@ -112,7 +112,9 @@ function Receipt({ id }: { id: string }) {
         {r.status === 'COMPLETED' && <PaymentVoidButton paymentId={id} />}
       </div>
 
+      {/* the paper stays left-to-right in every language: it is a bilingual printed document (labels · values) */}
       <div
+        dir="ltr"
         className="mx-auto bg-white p-3 text-black shadow print:shadow-none"
         style={{ width: WIDTH[paper], fontFamily: thermal ? 'ui-monospace, Menlo, Consolas, monospace' : 'inherit', fontSize: paper === '58mm' ? '10px' : thermal ? '11px' : '13px' }}
       >
