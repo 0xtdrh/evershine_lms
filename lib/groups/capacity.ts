@@ -38,6 +38,25 @@ export async function groupSeats(classSectionId: string, db: Db = prisma): Promi
   return { max, count, free, full: max != null && count >= max, waiting, awaiting }
 }
 
+/**
+ * Final test X07 (22/11): two families took the LAST seat at the same moment and both got in (2 of 3 rounds) — the
+ * "is there room?" check and the insert were two separate steps. Anything that checks the seats and then enrols a
+ * student runs inside this lock: one at a time per group (a MySQL named lock, held on its own connection for the whole
+ * job; the job itself may use any connection). A different group never waits for this one.
+ */
+export async function withSeatLock<T>(classSectionId: string, fn: () => Promise<T>): Promise<T> {
+  const name = `tn-seat:${classSectionId}`.slice(0, 64)
+  return prisma.$transaction(async (tx) => {
+    const got = await tx.$queryRaw<{ ok: number | bigint | null }[]>`SELECT GET_LOCK(${name}, 20) AS ok`
+    if (Number(got[0]?.ok) !== 1) throw new Error('This group is busy right now, please try again · الجروب مشغول دلوقتي، جرّب تاني')
+    try {
+      return await fn()
+    } finally {
+      await tx.$queryRaw`SELECT RELEASE_LOCK(${name})`.catch(() => undefined)
+    }
+  }, { timeout: 90_000, maxWait: 30_000 })
+}
+
 /** Puts a student on a full group's waiting list (no duplicates). */
 export async function waitForGroup(studentId: string, classSectionId: string, userId: string, notes?: string | null) {
   const g = await prisma.classSection.findUnique({

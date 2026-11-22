@@ -17,7 +17,7 @@ import { cairoToday } from '@/lib/dates/cairo'
 import { publicCatalog, type PublicCourse } from '@/lib/site/courses-store'
 import { cyclePrice } from '@/lib/pricing/group-price'
 import { effectiveModes } from '@/lib/delivery/modes'
-import { groupSeats, notifySeatFreed, waitForGroup } from '@/lib/groups/capacity'
+import { groupSeats, notifySeatFreed, waitForGroup, withSeatLock } from '@/lib/groups/capacity'
 import { resolveBatchId } from '@/lib/batches/default-batch'
 import { nextRegistrationNumber } from '@/lib/ids/sequence'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
@@ -233,8 +233,15 @@ async function studentFor(person: FamilyPerson, guardian: Guardian, campusId: st
   return student.id
 }
 
-/** Places a booking: the student, the code, the group (or waiting list / recorded course), the first invoice, the hold. */
+/** Places a booking. X07: into a group → one family at a time per group (the last seat goes to one family only). */
 export async function place(bookingId: string, actorId: string, holdHours?: number) {
+  const b = await prisma.courseBooking.findUnique({ where: { id: bookingId }, select: { classSectionId: true, mode: true } })
+  if (b?.classSectionId && b.mode !== 'RECORDED') return withSeatLock(b.classSectionId, () => placeUnlocked(bookingId, actorId, holdHours))
+  return placeUnlocked(bookingId, actorId, holdHours)
+}
+
+/** Places a booking: the student, the code, the group (or waiting list / recorded course), the first invoice, the hold. */
+async function placeUnlocked(bookingId: string, actorId: string, holdHours?: number) {
   const b = await prisma.courseBooking.findUnique({ where: { id: bookingId } })
   if (!b || !['HOLD', 'REVIEW'].includes(b.status)) return
   const guardian = await prisma.guardian.findUnique({ where: { id: b.guardianId }, select: { id: true, userId: true, firstName: true, lastName: true, phoneNumber: true, city: true } })

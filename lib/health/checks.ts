@@ -49,9 +49,10 @@ async function run(p: Places): Promise<HealthCheck[]> {
 
   // groups
   {
-    const where = { ...activeGroup, subjectOfferings: { none: { teacherId: { not: null } } } }
+    // final test X11: an instructor who was stopped no longer counts — his groups are "without an instructor" too
+    const where = { ...activeGroup, subjectOfferings: { none: { teacher: { isActive: true } } } }
     const [n, rows] = await Promise.all([prisma.classSection.count({ where }), prisma.classSection.findMany({ where, select: grpSel, take: SAMPLE })])
-    add({ key: 'groupNoInstructor', severity: 'HIGH', en: 'Active groups without an instructor', ar: 'جروبات شغالة من غير مدرب', fixEn: 'Open the group and choose the instructor (students do not show for any instructor until then).', fixAr: 'افتح الجروب واختار المدرب (الطلاب مش هيظهروا لأي مدرب لحد كده).' }, n, rows.map((g) => ({ id: g.id, label: gName(g), href: `/dashboard/groups?group=${g.id}` })))
+    add({ key: 'groupNoInstructor', severity: 'HIGH', en: 'Active groups without an instructor (or whose instructor was stopped)', ar: 'جروبات شغالة من غير مدرب (أو المدرب اتوقف)', fixEn: 'Open the group and choose the instructor (students do not show for any instructor until then).', fixAr: 'افتح الجروب واختار المدرب (الطلاب مش هيظهروا لأي مدرب لحد كده).' }, n, rows.map((g) => ({ id: g.id, label: gName(g), href: `/dashboard/groups?group=${g.id}` })))
   }
   {
     const all = await prisma.classSection.findMany({ where: activeGroup, select: { ...grpSel, scheduleSlots: true, levelId: true, maxStudents: true, _count: { select: { enrollments: { where: { status: 'ACTIVE' } } } } } })

@@ -17,7 +17,8 @@ import { prisma } from '@/lib/prisma'
 
 /** Egyptian phone variants: 01012345678 / +201012345678 / 201012345678, spaces and dashes ignored. */
 export function phoneVariants(input: string): string[] {
-  const raw = input.replace(/[\s\-()]/g, '')
+  // final test X05: a parent typing Arabic digits (٠١٠٠١٢٣٤٥٦١) was refused — the sign-up form already accepts them
+  const raw = toLatinDigits(input).replace(/[\s\-()]/g, '')
   const out = new Set<string>([raw])
   if (raw.startsWith('+20')) out.add('0' + raw.slice(3))
   if (raw.startsWith('0020')) out.add('0' + raw.slice(4))
@@ -29,8 +30,13 @@ export function phoneVariants(input: string): string[] {
   return [...out]
 }
 
+/** Arabic-Indic (٠-٩) and Persian (۰-۹) digits → 0-9. */
+export function toLatinDigits(s: string): string {
+  return s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+}
+
 export function looksLikePhone(identifier: string) {
-  return !identifier.includes('@') && /^[+\d][\d\s\-()]{6,}$/.test(identifier.trim())
+  return !identifier.includes('@') && /^[+\d][\d\s\-()]{6,}$/.test(toLatinDigits(identifier).trim())
 }
 
 /** Resolves a login identifier (email, or a guardian's phone number) to a user email. */

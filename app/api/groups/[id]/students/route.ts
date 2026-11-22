@@ -16,7 +16,7 @@ import { prisma } from '@/lib/prisma'
 import { generateMissingCycleInvoices } from '@/lib/groups/generate-invoices'
 import { errors, createdResponse, errorResponse } from '@/lib/api-response'
 import { checkPermission } from '@/lib/rbac'
-import { groupSeats, queuePosition, waitForGroup } from '@/lib/groups/capacity'
+import { groupSeats, queuePosition, waitForGroup, withSeatLock } from '@/lib/groups/capacity'
 import { requireSession, requirePermission, campusScope } from '@/lib/academic/api-helpers'
 import { getActiveAcademicYear } from '@/lib/academic/engine'
 import type { Role } from '@prisma/client'
@@ -62,17 +62,19 @@ export async function POST(
   if (existing?.status === 'ACTIVE') return errors.conflict('This student is already in the group')
 
   // Capacity (phase A): a full group refuses unless "add anyway" (permission) or "wait".
+  // X07: the check and the insert run together under the group's seat lock (two families, one last seat)
+  const seatResult = await withSeatLock(id, async () => {
   const seats = await groupSeats(id)
   if (seats.full) {
     if (parsed.data.waitlist) {
       const w = await waitForGroup(parsed.data.studentId, id, session.user.id)
-      return createdResponse({ waitlisted: true, entryId: w.id, position: await queuePosition(w.id) }, 'The group is full: the student is on its waiting list')
+      return { response: createdResponse({ waitlisted: true, entryId: w.id, position: await queuePosition(w.id) }, 'The group is full: the student is on its waiting list') }
     }
     if (!parsed.data.override) {
-      return errorResponse('GROUP_FULL', `This group is full (${seats.count}/${seats.max}). Put the student on its waiting list, choose another group, or add anyway.`, 409)
+      return { response: errorResponse('GROUP_FULL', `This group is full (${seats.count}/${seats.max}). Put the student on its waiting list, choose another group, or add anyway.`, 409) }
     }
     if (!checkPermission(role, 'group_capacity', 'approve')) {
-      return errors.forbidden('Only someone with the “Group capacity” permission can add a student to a full group')
+      return { response: errors.forbidden('Only someone with the “Group capacity” permission can add a student to a full group') }
     }
   }
 
@@ -84,7 +86,7 @@ export async function POST(
     })
   } else {
     const activeYear = await getActiveAcademicYear()
-    if (!activeYear) return errors.conflict('No active academic year is set')
+    if (!activeYear) return { response: errors.conflict('No active academic year is set') }
     enrollment = await prisma.studentEnrollment.create({
       data: {
         studentId: parsed.data.studentId,
@@ -94,6 +96,10 @@ export async function POST(
       },
     })
   }
+  return { enrollment }
+  })
+  if ('response' in seatResult) return seatResult.response
+  const enrollment = seatResult.enrollment
 
   // Waiting list: a wish for this group's course (same level, or level not
   // decided yet) is now fulfilled. Must never break adding the student.

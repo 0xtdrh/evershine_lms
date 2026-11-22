@@ -177,5 +177,9 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
     })
   })
 
-  return successResponse({ id }, 'Teacher deactivated successfully')
+  // final test X11: say how many running groups were left without an instructor (they also show in Data health)
+  const orphaned = await prisma.classSection.count({ where: { status: 'ACTIVE', isActive: true, subjectOfferings: { some: { teacherId: id } } } })
+  return successResponse({ id, groupsWithoutInstructor: orphaned }, orphaned
+    ? `Teacher deactivated. ${orphaned} running group(s) now need a new instructor · المدرب اتوقف. فيه ${orphaned} جروب شغال محتاج مدرب جديد.`
+    : 'Teacher deactivated successfully')
 }

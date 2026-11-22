@@ -10,7 +10,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkPermission } from '@/lib/rbac'
-import { errors, successResponse } from '@/lib/api-response'
+import { errors, successResponse, errorResponse } from '@/lib/api-response'
 import { updateCampusSchema } from '@/lib/validation/batch'
 import type { Role } from '@prisma/client'
 
@@ -94,8 +94,17 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
     return errors.forbidden()
   }
 
-  const existing = await prisma.campus.findUnique({ where: { id }, select: { id: true } })
+  const existing = await prisma.campus.findUnique({ where: { id }, select: { id: true, name: true } })
   if (!existing) return errors.notFound('Campus')
+
+  // final test X12: closing a branch must not leave running groups and their students behind (nothing is lost: it is refused)
+  const [groups, students] = await Promise.all([
+    prisma.classSection.count({ where: { campusId: id, status: 'ACTIVE', isActive: true } }),
+    prisma.studentEnrollment.count({ where: { status: { in: ['ACTIVE', 'AWAITING_PAYMENT'] }, classSection: { campusId: id, status: 'ACTIVE', isActive: true } } }),
+  ])
+  if (groups > 0 || students > 0) {
+    return errorResponse('CAMPUS_HAS_GROUPS', `${existing.name} still has ${groups} running group(s) with ${students} student(s). Move them to another branch (or finish the groups) first. · الفرع لسه فيه ${groups} جروب شغال و${students} طالب. انقلهم لفرع تاني (أو اقفل الجروبات) الأول.`, 409)
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.campus.update({

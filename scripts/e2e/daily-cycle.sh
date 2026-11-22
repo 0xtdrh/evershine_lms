@@ -336,6 +336,11 @@ login_jar 01077770003 "$PW3" "$PJ" 10.0.0.81
 login_jar "$SLOGIN" "$SPW3" "$SJ" 10.0.0.82
 check "parent session works" "$(code_with "$PJ" /api/me/permissions)" "200"
 check "student session works" "$(code_with "$SJ" /api/me/permissions)" "200"
+# final test X05: a parent who types the phone in Arabic digits signs in too
+PJA=$(mktemp); login_jar "٠١٠٧٧٧٧٠٠٠٣" "$PW3" "$PJA" 10.0.0.83
+check "X05: sign-in with the phone in Arabic digits works" "$(code_with "$PJA" /api/me/permissions)" "200"
+# final test X12: a branch with running groups cannot be closed
+check "X12: closing a branch with running groups is refused" "$(api DELETE /api/campuses/$CAMPUS | jq_ "d['error']['code']")" "CAMPUS_HAS_GROUPS"
 check "student cannot get an upload signature for staff folders" "$(code_with "$SJ" '/api/upload?folder=students')" "403"
 [ "$(code_with "$SJ" '/api/upload?folder=challans')" != "403" ] && ok "student may still upload payment proofs" || bad "student may still upload payment proofs"
 check "unknown upload folder refused" "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$B/api/upload?folder=misc")" "400"
