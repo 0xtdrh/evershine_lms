@@ -65,6 +65,9 @@ function Portfolio({ studentId }: { studentId: string }) {
         {d.certificates.length > 0 && <section><h2 className="mb-2 border-b border-gray-400 font-bold">{L('Certificates', 'الشهادات')}</h2>{d.certificates.map((c) => <p key={c.certificateNumber}>{c.title} · <span className="font-mono">{c.certificateNumber}</span> · {day(c.issuedDate, ar)}</p>)}</section>}
         {d.experience.length > 0 && <section><h2 className="mb-2 border-b border-gray-400 font-bold">{L('Experience', 'الخبرة')}</h2>{d.experience.map((e) => <p key={e.id}><b>{ar ? ROLE[e.role]?.[1] : ROLE[e.role]?.[0]}</b>{e.titleEn ? ` · ${e.titleEn}` : ''} · {day(e.from, ar)}{e.to ? ` → ${day(e.to, ar)}` : ''}</p>)}</section>}
         {d.quotes.length > 0 && <section><h2 className="mb-2 border-b border-gray-400 font-bold">{L('What the instructors say', 'المدربين بيقولوا')}</h2>{d.quotes.slice(0, 4).map((q, i) => <p key={i} className="italic">“{q.text}”</p>)}</section>}
+        {projects.length === 0 && d.skills.length === 0 && d.certificates.length === 0 && d.experience.length === 0 && d.quotes.length === 0 && (
+          <p className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-gray-500">{L('Nothing here yet. Projects, skills, certificates and instructor notes appear as the student progresses.', 'لسه مفيش حاجة هنا. المشاريع والمهارات والشهادات وكلام المدربين بتظهر مع تقدم الطالب.')}</p>
+        )}
         <p className="text-[10px] text-gray-500">{L('Certificates can be checked with their number at', 'الشهادات تتأكد برقمها من')} {typeof window !== 'undefined' ? window.location.origin : ''}/verify</p>
       </div>
     </div>
