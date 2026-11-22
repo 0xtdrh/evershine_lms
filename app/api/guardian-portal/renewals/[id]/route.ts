@@ -40,7 +40,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     channel: 'SYSTEM',
     direction: 'IN',
     reason: 'RENEWAL',
-    summary: parsed.data.answer === 'YES' ? 'Parent confirmed in the portal: continuing next month.' : `Parent answered in the portal: not continuing (${parsed.data.reason ?? 'OTHER'})${parsed.data.note ? ` — ${parsed.data.note}` : ''}.`,
+    summary: parsed.data.answer === 'YES' ? 'Parent confirmed in the portal: continuing next month. · ولي الأمر أكد من البوابة: مكمّلين الشهر الجاي.' : `Parent answered in the portal: not continuing (${parsed.data.reason ?? 'OTHER'})${parsed.data.note ? ` — ${parsed.data.note}` : ''}. · ولي الأمر رد من البوابة: مش مكمّلين (${parsed.data.reason ?? 'OTHER'})${parsed.data.note ? ` — ${parsed.data.note}` : ''}.`,
   })
   return successResponse(r, parsed.data.answer === 'YES' ? 'Thank you! See you next month.' : 'Thank you for letting us know.')
 }

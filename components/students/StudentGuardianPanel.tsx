@@ -11,6 +11,10 @@ import { Users, Plus, Loader2, Unlink, Pencil, Check, X } from 'lucide-react'
 import { notify } from '@/lib/notify'
 import { L } from '@/lib/i18n/client'
 
+// final test X02: the relationship was a free English text box ("Father"); it is a choice now (the stored value stays English)
+const REL_OPTIONS: [string, string, string][] = [['Father', 'Father', 'أب'], ['Mother', 'Mother', 'أم'], ['Guardian', 'Other guardian', 'ولي أمر تاني'], ['Other', 'Other', 'قريب']]
+const relText = (v: string) => { const o = REL_OPTIONS.find((r) => r[0].toLowerCase() === String(v).toLowerCase()); return o ? L(o[1], o[2]) : v }
+
 interface Guardian {
   id: string
   firstName: string
@@ -124,7 +128,7 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
                 </div>
               ) : (
                 <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                  {g.relationship} · {g.phoneNumber}
+                  {relText(g.relationship)} · {g.phoneNumber}
                   {canManage && (
                     <button type="button" title={L('Change phone (also the portal login number)', 'غيّر التليفون (وده كمان رقم دخول البوابة)')}
                       className="text-gray-400 hover:text-gray-700" onClick={() => setEditing({ id: g.id, phone: g.phoneNumber })}>
@@ -176,7 +180,9 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">{L('Relationship', 'صلة القرابة')}</Label>
-                <Input className="h-9 text-sm bg-white" value={form.relationship} onChange={(e) => setForm({ ...form, relationship: e.target.value })} />
+                <select className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm" value={form.relationship} onChange={(e) => setForm({ ...form, relationship: e.target.value })}>
+                  {REL_OPTIONS.map(([v, en, ar]) => <option key={v} value={v}>{L(en, ar)}</option>)}
+                </select>
               </div>
             </div>
             <Button
@@ -185,7 +191,7 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
               disabled={!form.firstName || !form.phoneNumber || linkMutation.isPending}
               onClick={() => linkMutation.mutate()}
             >
-              {linkMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save & link guardian'}
+              {linkMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : L('Save & link guardian', 'احفظ واربط ولي الأمر')}
             </Button>
           </div>
         )}

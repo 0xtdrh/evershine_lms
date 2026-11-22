@@ -108,7 +108,7 @@ export async function createComplaint(input: {
     relatedId: created.id,
   })
   if (input.studentId && input.kind === 'COMPLAINT') {
-    await logSystemContact({ studentId: input.studentId, channel: 'SYSTEM', direction: 'IN', reason: 'COMPLAINT', summary: `Complaint ${created.number}: ${body.slice(0, 300)}` })
+    await logSystemContact({ studentId: input.studentId, channel: 'SYSTEM', direction: 'IN', reason: 'COMPLAINT', summary: `Complaint ${created.number}: ${body.slice(0, 300)} · شكوى ${created.number}: ${body.slice(0, 300)}` })
   }
   return { ok: true, id: created.id, number: created.number }
 }

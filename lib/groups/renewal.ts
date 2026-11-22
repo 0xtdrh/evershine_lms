@@ -94,7 +94,7 @@ export async function ensureRenewalRequests(classSectionId: string): Promise<num
         guardianId: s.guardians[0]?.id ?? null,
         channel: 'SYSTEM',
         reason: 'RENEWAL',
-        summary: `Renewal reminder sent in the parent portal (${label}).`,
+        summary: `Renewal reminder sent in the parent portal (${label}). · اتبعت تذكير التجديد في بوابة ولي الأمر (${label}).`,
       })
     }
     return todo.length

@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { PhoneCall, Plus, Check } from 'lucide-react'
 import { L } from '@/lib/i18n/client'
 import { DateInput } from '@/components/ui/date-input'
+import { browserLang, localizeMessage } from '@/lib/i18n/api-messages'
 
 interface ContactRow {
   id: string
@@ -97,7 +98,7 @@ export function StudentContactLogCard({ studentId }: { studentId: string }) {
               <span>{CHANNEL_LABEL[r.channel] ?? r.channel} · {r.direction === 'IN' ? L('they contacted us', 'هما اتصلوا') : L('we contacted them', 'احنا اتصلنا')} · {REASON_LABEL[r.reason] ?? r.reason}{r.guardian ? ` · ${r.guardian}` : ''}</span>
               <span>{new Date(r.createdAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}{r.by ? ` · ${r.by}` : ''}</span>
             </div>
-            <p className="mt-0.5 whitespace-pre-wrap text-slate-800">{r.summary}</p>
+            <p className="mt-0.5 whitespace-pre-wrap text-slate-800">{localizeMessage(r.summary, browserLang())}</p>
             {r.followUpAt && (
               <p className={`mt-1 flex items-center gap-2 text-xs ${r.followUpDoneAt ? 'text-emerald-700' : new Date(r.followUpAt) < new Date() ? 'font-semibold text-rose-600' : 'text-amber-700'}`}>
                 {L('Follow-up', 'متابعة')} {new Date(r.followUpAt).toLocaleDateString('en-GB')}{r.followUpDoneAt ? ' · done' : ''}

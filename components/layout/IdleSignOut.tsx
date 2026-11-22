@@ -22,7 +22,7 @@ export function IdleSignOut() {
       // another tab of the same person counts as use
       try { last.current = Math.max(last.current, Number(localStorage.getItem('tn_last_use')) || 0) } catch { /* private window */ }
       const idle = Date.now() - last.current
-      if (idle >= minutes * 60_000) void signOut({ callbackUrl: '/login?code=idle' })
+      if (idle >= minutes * 60_000) void signOut({ callbackUrl: `/login?code=idle&callbackUrl=${encodeURIComponent(window.location.pathname + window.location.search)}` }) // X10: after signing in again the person lands on the same page
       else setWarn(idle >= (minutes - 1) * 60_000)
     }, 10_000)
     return () => { EVENTS.forEach((e) => window.removeEventListener(e, touch)); clearInterval(t) }

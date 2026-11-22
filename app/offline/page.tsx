@@ -1,113 +1,71 @@
 'use client'
 
-import React, { useState } from 'react'
-import Image from 'next/image'
-import { WifiOff, Phone, MapPin, RotateCw } from 'lucide-react'
+/**
+ * "No connection" page (final test X18, 22/11): Arabic first with a language switch, TechNova look (light, brand logo),
+ * and it tries again by itself every few seconds — the person does not have to press anything once the network is back.
+ */
 
-export default function OfflinePage() {
-  const [isRefreshing, setIsRefreshing] = useState(false)
+import { useCallback, useEffect, useState } from 'react'
+import { RotateCw, WifiOff } from 'lucide-react'
+import { I18nProvider, L, LanguageSwitch, useI18n } from '@/lib/i18n/client'
 
-  const handleRefresh = () => {
-    setIsRefreshing(true)
-    if (typeof window !== 'undefined') {
-      window.location.reload()
-    }
-  }
+function Offline() {
+  useI18n()
+  const [trying, setTrying] = useState(false)
+  const [tries, setTries] = useState(0)
+
+  const retry = useCallback(async () => {
+    setTrying(true)
+    try {
+      const r = await fetch('/api/health', { cache: 'no-store' })
+      if (r.ok || r.status < 500) {
+        // back: return to where the person was (the page they asked for), else the home
+        const back = document.referrer && new URL(document.referrer).origin === window.location.origin ? document.referrer : '/dashboard'
+        window.location.href = back
+        return
+      }
+    } catch { /* still offline */ }
+    setTries((n) => n + 1)
+    setTrying(false)
+  }, [])
+
+  useEffect(() => {
+    const t = setInterval(() => { void retry() }, 6000)
+    const online = () => { void retry() }
+    window.addEventListener('online', online)
+    return () => { clearInterval(t); window.removeEventListener('online', online) }
+  }, [retry])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100 px-4 font-sans select-none antialiased selection:bg-indigo-500/20 selection:text-indigo-200">
-      <div className="max-w-md w-full text-center space-y-8 p-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl animate-fade-slide-up">
-        
-        {/* Crest/Logo Header */}
-        <div className="flex flex-col items-center space-y-3">
-          <div className="relative w-24 h-24 p-2 bg-slate-850 border border-slate-700 rounded-xl flex items-center justify-center">
-            <Image
-              src="/brand/logo-icon.svg"
-              alt="TechNova Crest"
-              width={80}
-              height={80}
-              priority
-              className="object-contain animate-float"
-            />
-          </div>
-          <div className="space-y-1">
-            <h1 className="text-xl font-black text-white tracking-tight font-heading">
-              TechNova Management
-            </h1>
-            <p className="text-indigo-400 font-bold text-xs uppercase tracking-widest">
-              Portal Offline
-            </p>
-          </div>
+    <div className="keep-light flex min-h-screen items-center justify-center bg-gradient-to-b from-indigo-50 to-white px-4">
+      <div className="w-full max-w-md space-y-6 rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl">
+        <div className="flex justify-end"><LanguageSwitch /></div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/bglogo.png" alt="TechNova" className="mx-auto h-16 w-auto" />
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-500"><WifiOff className="h-7 w-7" /></div>
+        <div className="space-y-2">
+          <h1 className="text-xl font-bold text-slate-900">{L('No connection', 'مفيش اتصال')}</h1>
+          <p className="text-sm leading-relaxed text-slate-500">{L('We could not reach the server. Your work on this page is safe on your screen; we will try again by ourselves.', 'مش قادرين نوصل للسيرفر. شغلك على الشاشة دي لسه قدامك، وهنحاول تاني لوحدنا.')}</p>
         </div>
-
-        {/* Offline Warning Card */}
-        <div className="p-6 bg-slate-900/60 border border-slate-850 rounded-xl space-y-4">
-          <div className="inline-flex items-center justify-center p-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-full animate-pulse">
-            <WifiOff className="w-6 h-6" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-base font-bold text-white">
-              Connection Interrupted
-            </h2>
-            <p className="text-xs text-slate-400 leading-relaxed font-medium">
-              We couldn't reach the server. This portal works offline, but the page you requested isn't in your local cache yet.
-            </p>
-          </div>
-        </div>
-
-        {/* Troubleshooting List */}
-        <div className="text-left space-y-3">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1">
-            Quick Checks
-          </h3>
-          <ul className="space-y-2 text-xs font-medium text-slate-300">
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-              Verify your Wi-Fi or cellular network state.
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-              Check if airplane mode is enabled on your device.
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-              Try reloading once you have restored signals.
-            </li>
-          </ul>
-        </div>
-
-        {/* Action Button */}
+        <ul className="space-y-2 text-start text-sm text-slate-600">
+          <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />{L('Check your Wi-Fi or mobile data.', 'اتأكد من الواي فاي أو النت.')}</li>
+          <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />{L('Turn airplane mode off.', 'اقفل وضع الطيران.')}</li>
+        </ul>
         <button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg border border-indigo-500 transition-all cursor-pointer"
+          type="button"
+          onClick={() => void retry()}
+          disabled={trying}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white shadow transition hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-60"
         >
-          <RotateCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          {isRefreshing ? 'Reconnecting...' : 'Try Reconnecting'}
+          <RotateCw className={`h-4 w-4 ${trying ? 'animate-spin' : ''}`} />
+          {trying ? L('Trying…', 'بنحاول…') : L('Try again now', 'حاول دلوقتي')}
         </button>
-
-        {/* Institutional Directory Info */}
-        <div className="border-t border-slate-700/50 pt-5 space-y-3 text-slate-400 text-left">
-          <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-            Address Directory
-          </h3>
-          <div className="space-y-2 text-xs font-medium">
-            <div className="flex items-start gap-2.5">
-              <MapPin className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-              <span className="text-[11px] leading-snug">
-                El Kawthar, Hurghada, Egypt
-              </span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <Phone className="w-4 h-4 text-indigo-400 shrink-0" />
-              <span className="text-[11px] font-mono">
-                TechNova · El Kawthar, Hurghada, Egypt
-              </span>
-            </div>
-          </div>
-        </div>
-
+        {tries > 0 && <p className="text-xs text-slate-400">{L(`Tried ${tries} time(s) — still offline.`, `حاولنا ${tries} مرة — لسه مفيش اتصال.`)}</p>}
       </div>
     </div>
   )
+}
+
+export default function OfflinePage() {
+  return <I18nProvider><Offline /></I18nProvider>
 }
