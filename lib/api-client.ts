@@ -69,6 +69,19 @@ function withLegacyClientHeader(options?: RequestInit): RequestInit {
   }
 }
 
+/**
+ * Final test 22/11: when the server ends a session (password changed, account stopped, signed out on another device)
+ * every request answers 401, and the dashboard stayed a BLANK page asking the session again and again. Now the first
+ * 401 inside the dashboard signs the person out cleanly and sends them to the sign-in page with a short explanation.
+ */
+let leavingExpiredSession = false
+function leaveExpiredSession(endpoint: string) {
+  if (leavingExpiredSession || typeof window === 'undefined') return
+  if (endpoint.startsWith('/api/auth') || !window.location.pathname.startsWith('/dashboard')) return
+  leavingExpiredSession = true
+  import('next-auth/react').then(({ signOut }) => signOut({ callbackUrl: '/login?expired=1' })).catch(() => { window.location.href = '/login?expired=1' })
+}
+
 async function baseRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
   const headers = {
     'Accept': 'application/json',
@@ -88,6 +101,7 @@ async function baseRequest(endpoint: string, options: RequestInit = {}): Promise
   })
 
   if (!response.ok) {
+    if (response.status === 401) leaveExpiredSession(endpoint)
     let errorMessage = `Request failed (${response.status})`
     let code = 'UNKNOWN_ERROR'
     let fieldErrors: ApiFieldError[] = []

@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AuthLayout } from '@/components/auth/AuthLayout'
 import { L, useI18n } from '@/lib/i18n/client'
+import { toLatinDigits } from '@/lib/digits'
 
 const forgotSchema = z.object({
   email: z.string().email(), // message in the screen language below
@@ -32,8 +33,11 @@ export default function ForgotPasswordPage() {
   })
 
   const emailValue = watch('email')
+  // final test X06: a parent signs in with the phone and has no real email — tell them what to do instead of "invalid email"
+  const typedPhone = !!emailValue && !emailValue.includes('@') && /^[+\d][\d\s\-()]{6,}$/.test(toLatinDigits(emailValue).trim())
 
   const onSubmit = async (data: ForgotForm) => {
+    if (typedPhone) return
     setIsSubmitting(true)
     setServerError(null)
     try {
@@ -148,8 +152,14 @@ export default function ForgotPasswordPage() {
                   className={`pl-10 ${errors.email ? 'border-red-400 ring-1 ring-red-400/30' : ''}`}
                 />
               </div>
+              {typedPhone && (
+                <p className="flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800" role="status">
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+                  {L('Parents sign in with the phone number and have no email here. Call your branch: they give you a temporary password.', 'ولي الأمر بيدخل برقم الموبايل ومالوش إيميل هنا. كلّم الفرع وهيدّوك باسورد مؤقت.')}
+                </p>
+              )}
               <AnimatePresence>
-                {errors.email ? (
+                {errors.email && !typedPhone ? (
                   <motion.p
                     id="email-error"
                     initial={{ opacity: 0, y: -4 }}

@@ -82,6 +82,7 @@ export default function LoginPage() {
       else if (sp.get('code') === 'idle') setFormError(L('You were signed out because nothing was used for a while.', 'خرجت لأن مفيش استخدام فترة.'))
       else if (sp.get('code') === '2fa_ready') notify.success(L('Two-step sign-in is on', 'التحقق بخطوتين اشتغل'), { description: L('Sign in with your password and the code from the app.', 'ادخل بالباسورد والكود اللي في التطبيق.') })
       else if (err) setFormError(L('Authentication failed. Please check your credentials.', 'الدخول ماتمّش. راجع بياناتك.'))
+      if (sp.get('expired') === '1') notify.error(L('Your session ended', 'الجلسة خلصت'), { description: L('Sign in again to continue.', 'ادخل تاني علشان تكمّل.') })
       if (sp.get('changed') === '1') notify.success(L('Password changed', 'الباسورد اتغير'), { description: L('Sign in with your new password.', 'ادخل بالباسورد الجديد.') })
     } catch {}
   }, [])

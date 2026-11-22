@@ -13,7 +13,7 @@ import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Copy, MessageCircle, Printer } from 'lucide-react'
-import { L, useI18n } from '@/lib/i18n/client'
+import { I18nProvider, L, useI18n } from '@/lib/i18n/client'
 import { PaymentVoidButton } from '@/components/payments/PaymentVoidButton'
 
 interface Receipt {
@@ -35,9 +35,14 @@ interface Receipt {
 const WIDTH: Record<string, string> = { '80mm': '72mm', '58mm': '48mm', A4: '150mm' }
 const money = (n: number) => `${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} EGP`
 
+// final test X20: this page sits outside the dashboard (no language provider) — its buttons were English for an Arabic screen
 export default function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
-  useI18n() // re-render on a language switch
   const { id } = use(params)
+  return <I18nProvider><Receipt id={id} /></I18nProvider>
+}
+
+function Receipt({ id }: { id: string }) {
+  useI18n() // re-render on a language switch
   const [autoPrint, setAutoPrint] = useState(false)
   useEffect(() => {
     try { setAutoPrint(new URLSearchParams(window.location.search).get('print') === '1') } catch {}
@@ -67,9 +72,9 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
     try { await navigator.clipboard.writeText(r.text); notify.success(L('Receipt text copied', 'نص الإيصال اتنسخ')) } catch { notify.error(L('Copy failed', 'النسخ فشل')) }
   }
   const row = (label: string, value: string, strong = false) => (
-    <div className={`flex justify-between gap-2 ${strong ? 'font-bold' : ''}`}>
-      <span>{label}</span>
-      <span className="text-right">{value}</span>
+    <div className={`flex items-start justify-between gap-2 ${strong ? 'font-bold' : ''}`}>
+      <span className="shrink-0">{label}</span>
+      <span className="min-w-0 break-words text-right">{value}</span>
     </div>
   )
 
@@ -81,7 +86,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         <Button variant="outline" onClick={() => history.length > 1 ? history.back() : (window.location.href = '/dashboard')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> {L('Back', 'رجوع')}
         </Button>
-        <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Print ({paper})</Button>
+        <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> {L('Print', 'اطبع')} ({paper})</Button>
         {r.whatsappTo ? (
           <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
             <a
@@ -143,6 +148,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         {r.status !== 'COMPLETED' && r.status !== 'VOIDED' && <div className="mt-1 text-center font-bold">STATUS: {r.status}</div>}
         <hr className="my-2 border-dashed border-black" />
         {r.company.receiptFooter && <div className="text-center">{r.company.receiptFooter}</div>}
+        <div className="mt-1 text-center text-[0.85em]">{L('Keep this receipt', 'احتفظ بالإيصال')}</div>
       </div>
     </div>
   )
