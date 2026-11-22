@@ -14,6 +14,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
+import { forgetSessionState, sessionCache } from '@/lib/session-cache'
 import type { Role } from '@prisma/client'
 
 const TTL_MS = 30_000
@@ -34,7 +35,7 @@ export async function markSignedOut(userId: string, loginAt: number | undefined)
   } catch (err) { console.error('[SESSION_GUARD_SIGNOUT]', err) }
   forgetSessionState(userId)
 }
-const cache = new Map<string, { at: number; live: Live | null }>()
+const cache = sessionCache as unknown as Map<string, { at: number; live: Live | null }>
 
 async function loadLive(userId: string): Promise<Live | null | undefined> {
   const hit = cache.get(userId)
@@ -56,10 +57,7 @@ async function loadLive(userId: string): Promise<Live | null | undefined> {
   }
 }
 
-/** Forget the cached state of a user (call after changing it in this process). */
-export function forgetSessionState(userId: string) {
-  cache.delete(userId)
-}
+export { forgetSessionState }
 
 type SessionLike = { user?: { id?: string; role?: Role; loginAt?: number } | null } | null
 

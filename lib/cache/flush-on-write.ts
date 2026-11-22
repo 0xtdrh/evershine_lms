@@ -7,6 +7,7 @@
 
 import type { PrismaClient } from '@prisma/client'
 import { forgetCached } from './ttl'
+import { forgetSessionState } from '../session-cache'
 
 const WRITES = new Set(['create', 'createMany', 'createManyAndReturn', 'update', 'updateMany', 'upsert', 'delete', 'deleteMany'])
 /** written on almost every request (sign-in checks, activity pings, logs, views) — they never change a task count */
@@ -20,6 +21,11 @@ export function withCacheFlush<T extends PrismaClient>(client: T): T {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
           const out = await query(args)
+          // A05: a change on a User row (password, account stopped, role) must show in the session guard at once
+          if (model === 'User' && WRITES.has(operation)) {
+            const id = (args as { where?: { id?: string } })?.where?.id ?? (out as { id?: string } | null)?.id
+            forgetSessionState(typeof id === 'string' ? id : undefined)
+          }
           if (WRITES.has(operation) && !NOISY.has(model)) for (const p of CACHE_PREFIXES) forgetCached(p, true)
           return out
         },

@@ -27,7 +27,16 @@ export function FeeOverdueModal() {
   const { data: session } = useSession()
   const role = session?.user?.role
   const viewerKey = session?.user?.id ? `${role}:${session.user.id}` : ''
-  const [isDismissed, setIsDismissed] = useState(false)
+  // final test 22/11: closing was kept in memory only, so every page refresh / opened link brought it back.
+  // It is remembered for this sign-in in the tab (sessionStorage): a new sign-in (a new tab session) shows it again.
+  const [isDismissed, setIsDismissedState] = useState(false)
+  const setIsDismissed = (v: boolean) => {
+    setIsDismissedState(v)
+    try { if (viewerKey && session?.user?.loginAt) { v ? sessionStorage.setItem(`tn_fee_reminder_closed:${viewerKey}:${session?.user?.loginAt ?? ''}`, '1') : sessionStorage.removeItem(`tn_fee_reminder_closed:${viewerKey}:${session?.user?.loginAt ?? ''}`) } } catch { /* private window: memory only */ }
+  }
+  useEffect(() => {
+    try { if (viewerKey && session?.user?.loginAt && sessionStorage.getItem(`tn_fee_reminder_closed:${viewerKey}:${session?.user?.loginAt ?? ''}`) === '1') setIsDismissedState(true) } catch { /* ignore */ }
+  }, [viewerKey])
   const previousViewerKey = useRef(viewerKey)
 
   const { data, refetch } = useQuery<OverdueData>({
@@ -48,7 +57,7 @@ export function FeeOverdueModal() {
   // same user logging in again) starts with a fresh reminder state.
   useEffect(() => {
     if (previousViewerKey.current !== viewerKey) {
-      setIsDismissed(false)
+      setIsDismissedState(false)
       previousViewerKey.current = viewerKey
     }
   }, [viewerKey])

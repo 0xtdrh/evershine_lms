@@ -4,8 +4,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { publicOrigin } from '@/lib/http/origin'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  return NextResponse.redirect(new URL(`/courses/${encodeURIComponent(slug)}`, request.url), 308)
+  // final test B11: request.url carries the address the server listens on (0.0.0.0 locally / behind a proxy) — use the public one
+  return NextResponse.redirect(new URL(`/courses/${encodeURIComponent(slug)}`, publicOrigin(request.headers, request.nextUrl.origin, process.env)), 308)
 }
