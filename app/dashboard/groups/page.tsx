@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { GroupWatchPanel } from '@/components/videos/GroupWatchPanel'
 import { GroupBookingLink } from '@/components/groups/GroupBookingLink'
 import { GroupAwaitingPanel } from '@/components/groups/GroupAwaitingPanel'
@@ -256,11 +257,11 @@ export default function GroupsPage() {
       queryClient.invalidateQueries({ queryKey: ['groups'] })
       notify.success(L('Instructor updated', 'المدرب اتحدّث'))
     },
-    onError: (err: unknown, v) => {
+    onError: async (err: unknown, v) => {
       // a02 batch 4: outside his hours / a clash / two branches — only a Super Admin may go ahead (logged)
-      if (err instanceof ApiError && err.code === 'TEACHER_PROBLEM' && session?.user?.role === 'SUPER_ADMIN' && typeof v === 'string' && confirm(`${err.message}
+      if (err instanceof ApiError && err.code === 'TEACHER_PROBLEM' && session?.user?.role === 'SUPER_ADMIN' && typeof v === 'string' && (await ask(`${err.message}
 
-${L('Assign anyway? (Super Admin, it is logged)', 'تعيّنه برضه؟ (Super Admin، وبيتسجّل)')}`)) {
+${L('Assign anyway? (Super Admin, it is logged)', 'تعيّنه برضه؟ (Super Admin، وبيتسجّل)')}`))) {
         assignInstructorMutation.mutate({ teacherId: v, force: true })
         return
       }
@@ -401,11 +402,11 @@ ${L('Assign anyway? (Super Admin, it is logged)', 'تعيّنه برضه؟ (Supe
       notify.success(L('Group updated', 'الجروب اتحدّث'))
       setEditOpen(false)
     },
-    onError: (err: unknown) => {
+    onError: async (err: unknown) => {
       // a02 batch 3: a room problem — only a Super Admin may go ahead anyway (it is logged)
-      if (err instanceof ApiError && (err.code === 'ROOM_PROBLEM' || err.code === 'TEACHER_PROBLEM') && session?.user?.role === 'SUPER_ADMIN' && confirm(`${err.message}
+      if (err instanceof ApiError && (err.code === 'ROOM_PROBLEM' || err.code === 'TEACHER_PROBLEM') && session?.user?.role === 'SUPER_ADMIN' && (await ask(`${err.message}
 
-${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admin، وبيتسجّل)')}`)) {
+${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admin، وبيتسجّل)')}`))) {
         updateGroupMutation.mutate(true)
         return
       }
@@ -770,7 +771,7 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                         <DropdownMenuItem onClick={openAdvanceDialog}>{L('Advance cycle', 'رحّل للشهر الجاي')}</DropdownMenuItem>
                       )}
                       {canEditGroups && (detail.status === 'ACTIVE'
-                        ? <DropdownMenuItem disabled={toggleStatusMutation.isPending} onClick={() => { if (confirm(L('Mark this group completed?', 'تعتبر الجروب ده خلص؟'))) toggleStatusMutation.mutate('COMPLETED') }}><CheckCircle2 className="w-3.5 h-3.5 me-2" />{L('Mark completed', 'اعتبره خلص')}</DropdownMenuItem>
+                        ? <DropdownMenuItem disabled={toggleStatusMutation.isPending} onClick={async () => { if ((await ask(L('Mark this group completed?', 'تعتبر الجروب ده خلص؟')))) toggleStatusMutation.mutate('COMPLETED') }}><CheckCircle2 className="w-3.5 h-3.5 me-2" />{L('Mark completed', 'اعتبره خلص')}</DropdownMenuItem>
                         : <DropdownMenuItem disabled={toggleStatusMutation.isPending} onClick={() => toggleStatusMutation.mutate('ACTIVE')}>{L('Reopen', 'افتحه تاني')}</DropdownMenuItem>)}
                       {canDeleteGroups && (
                         <DropdownMenuItem className="text-red-600" onClick={() => setConfirmDelete(true)}><Trash2 className="w-3.5 h-3.5 me-2" />{L('Delete', 'امسح')}</DropdownMenuItem>
@@ -837,10 +838,10 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                                 {canRemoveStudents && <button
                                   type="button"
                                   disabled={removeStudentMutation.isPending}
-                                  onClick={() => {
+                                  onClick={async () => {
                                     // final test I06 (15/11): excluding took the student out at once, with no "sure?"
                                     const name = e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`
-                                    if (confirm(L(`Exclude ${name} from this group? Attendance is kept; adding them back reuses the same record.`, `تستبعد ${name} من الجروب ده؟ الحضور بيفضل محفوظ، ولو رجّعته بيرجع بنفس التسجيل.`))) removeStudentMutation.mutate(e.id)
+                                    if ((await ask(L(`Exclude ${name} from this group? Attendance is kept; adding them back reuses the same record.`, `تستبعد ${name} من الجروب ده؟ الحضور بيفضل محفوظ، ولو رجّعته بيرجع بنفس التسجيل.`)))) removeStudentMutation.mutate(e.id)
                                   }}
                                   className="text-[10px] text-rose-600 hover:text-rose-700 underline underline-offset-2 font-medium disabled:opacity-50"
                                 >
@@ -867,9 +868,9 @@ ${L('Save anyway? (Super Admin, it is logged)', 'تحفظ برضه؟ (Super Admi
                           {canRemoveStudents && <Button
                             size="sm" variant="ghost" className="h-6 w-6 p-0"
                             disabled={removeStudentMutation.isPending}
-                            onClick={() => {
+                            onClick={async () => {
                               const name = e.student.fullNameEn || `${e.student.firstName} ${e.student.lastName}`
-                              if (confirm(L(`Take ${name} out of this group? Attendance is kept.`, `تشيل ${name} من الجروب ده؟ الحضور بيفضل محفوظ.`))) removeStudentMutation.mutate(e.id)
+                              if ((await ask(L(`Take ${name} out of this group? Attendance is kept.`, `تشيل ${name} من الجروب ده؟ الحضور بيفضل محفوظ.`)))) removeStudentMutation.mutate(e.id)
                             }}
                           >
                             <X className="w-3.5 h-3.5 text-red-500" />

@@ -6,6 +6,7 @@
  * secretary) the API answers 403 and nothing is shown (owner 2026-10-09: secretaries see attendance only).
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -90,7 +91,7 @@ export function GroupLessonsPanel({ groupId }: { groupId: string }) {
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50 p-2 text-xs text-sky-800">
             <span>{L(`A newer curriculum (v${data.newerEdition.number}) is published. This group still uses v${data.edition.number}.`, `فيه نسخة منهج أحدث (v${data.newerEdition.number}) اتنشرت. الجروب ده لسه على v${data.edition.number}.`)}</span>
             {data.canChangeMode && (
-              <Button size="sm" className="h-7 text-xs" disabled={act.isPending} onClick={() => { if (confirm(L(`Move this group to version ${data.newerEdition!.number}? Students' ticks move to the matching items; open/lock and notes stay.`, `تنقل الجروب للنسخة ${data.newerEdition!.number}؟ علامات «خلصت» بتنتقل، والفتح/القفل والملاحظات بيفضلوا.`))) act.mutate({ useLatest: true }) }}>
+              <Button size="sm" className="h-7 text-xs" disabled={act.isPending} onClick={async () => { if ((await ask(L(`Move this group to version ${data.newerEdition!.number}? Students' ticks move to the matching items; open/lock and notes stay.`, `تنقل الجروب للنسخة ${data.newerEdition!.number}؟ علامات «خلصت» بتنتقل، والفتح/القفل والملاحظات بيفضلوا.`)))) act.mutate({ useLatest: true }) }}>
                 {L('Move group to', 'انقل الجروب لـ')} v{data.newerEdition.number}
               </Button>
             )}

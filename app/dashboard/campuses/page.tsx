@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { L, useI18n } from '@/lib/i18n/client'
 import { codeFromName, uniqueCode } from '@/lib/ids/auto-code'
@@ -587,8 +588,8 @@ export default function CampusesPage() {
                       type="button"
                       disabled={deleteMutation.isPending}
                       className="rounded-xl border-red-200 text-red-700 hover:bg-red-100/50 hover:text-red-800 font-bold shrink-0 text-xs h-[38px]"
-                      onClick={() => {
-                        if (confirm(`Are you absolutely sure you want to deactivate ${selectedCampus.name}?`)) {
+                      onClick={async () => {
+                        if ((await ask(`Are you absolutely sure you want to deactivate ${selectedCampus.name}?`))) {
                           deleteMutation.mutate()
                         }
                       }}

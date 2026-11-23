@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi, ApiError } from '@/lib/api-client'
@@ -102,8 +103,8 @@ export default function SubstituteReconciliationPage() {
     onError: (err: unknown) => notify.error(apiErrorMessage(err, 'Failed to remove')),
   })
 
-  const confirmRemove = (row: ReconciliationRow, adj: RecordedAdjustment, label: string) => {
-    if (window.confirm(L(`Remove this ${label} (${Math.abs(adj.amount)})?`, `تشيل ${label === 'bonus' ? 'المكافأة' : 'الخصم'} (${Math.abs(adj.amount)})؟`))) {
+  const confirmRemove = async (row: ReconciliationRow, adj: RecordedAdjustment, label: string) => {
+    if ((await ask(L(`Remove this ${label} (${Math.abs(adj.amount)})?`, `تشيل ${label === 'bonus' ? 'المكافأة' : 'الخصم'} (${Math.abs(adj.amount)})؟`)))) {
       removeMutation.mutate({ classSectionId: row.classSectionId, adjustmentId: adj.id })
     }
   }

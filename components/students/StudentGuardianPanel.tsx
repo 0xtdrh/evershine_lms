@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -146,8 +147,8 @@ export function StudentGuardianPanel({ studentId, guardians, canManage = false }
                 size="sm"
                 className="text-red-600 hover:text-red-700 h-8 px-2"
                 disabled={unlinkMutation.isPending}
-                onClick={() => {
-                  if (!confirm(`Unlink ${g.firstName} ${g.lastName} from this student?`)) return
+                onClick={async () => {
+                  if (!(await ask(`Unlink ${g.firstName} ${g.lastName} from this student?`))) return
                   unlinkMutation.mutate(g.id)
                 }}
               >

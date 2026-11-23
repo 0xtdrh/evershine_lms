@@ -2,6 +2,7 @@
 
 /** LMS L1: curriculum versions of one level — create / copy / import, review & publish, sessions list, course skills. */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
@@ -175,11 +176,11 @@ export default function CurriculumLevelPage() {
               <span>{L('Version', 'النسخة')} {cur.number} <span className={`ms-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLE[cur.status]}`}>{t(`cur.status.${cur.status}` as 'cur.status.DRAFT')}</span></span>
               <span className="flex flex-wrap gap-2">
                 {can.edit && cur.status === 'DRAFT' && <Button size="sm" variant="outline" onClick={() => act.mutate('submit')} disabled={act.isPending}>{t('cur.submitReview')}</Button>}
-                {can.approve && (cur.status === 'IN_REVIEW' || cur.status === 'DRAFT') && <Button size="sm" onClick={() => { if (confirm(L('Publish this version? New groups of this level will use it.', 'تنشر النسخة دي؟ الجروبات الجديدة في المستوى ده هتستخدمها.'))) act.mutate('publish') }} disabled={act.isPending}>{t('cur.publish')}</Button>}
+                {can.approve && (cur.status === 'IN_REVIEW' || cur.status === 'DRAFT') && <Button size="sm" onClick={async () => { if ((await ask(L('Publish this version? New groups of this level will use it.', 'تنشر النسخة دي؟ الجروبات الجديدة في المستوى ده هتستخدمها.')))) act.mutate('publish') }} disabled={act.isPending}>{t('cur.publish')}</Button>}
                 {can.approve && cur.status === 'IN_REVIEW' && <Button size="sm" variant="outline" onClick={() => act.mutate('reject')} disabled={act.isPending}>{L('Back to draft', 'رجّعها مسودة')}</Button>}
-                {can.approve && cur.status === 'PUBLISHED' && <Button size="sm" variant="ghost" onClick={() => { if (confirm(L('Archive this version? Groups already using it keep reading it.', 'تأرشف النسخة دي؟ الجروبات اللي شغالة عليها هتفضل تقراها.'))) act.mutate('archive') }}>{L('Archive', 'أرشفة')}</Button>}
+                {can.approve && cur.status === 'PUBLISHED' && <Button size="sm" variant="ghost" onClick={async () => { if ((await ask(L('Archive this version? Groups already using it keep reading it.', 'تأرشف النسخة دي؟ الجروبات اللي شغالة عليها هتفضل تقراها.')))) act.mutate('archive') }}>{L('Archive', 'أرشفة')}</Button>}
                 {can.edit && <Button size="sm" variant="ghost" className="gap-1" asChild><a href={`/api/curriculum/editions/${cur.id}/export`}><Download className="h-4 w-4" /> {L('Export', 'تصدير')}</a></Button>}
-                {can.delete && cur.status === 'DRAFT' && <Button size="sm" variant="ghost" className="gap-1 text-rose-600" onClick={() => { if (confirm(L('Delete this draft and all its content?', 'تمسح المسودة دي وكل محتواها؟'))) remove.mutate() }}><Trash2 className="h-4 w-4" /></Button>}
+                {can.delete && cur.status === 'DRAFT' && <Button size="sm" variant="ghost" className="gap-1 text-rose-600" onClick={async () => { if ((await ask(L('Delete this draft and all its content?', 'تمسح المسودة دي وكل محتواها؟')))) remove.mutate() }}><Trash2 className="h-4 w-4" /></Button>}
               </span>
             </CardTitle>
             <CardDescription>

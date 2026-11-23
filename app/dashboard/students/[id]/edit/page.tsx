@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -209,7 +210,7 @@ export default function EditStudentPage() {
       notify.error(L('A new password is required when resetting credentials', 'لازم تكتب باسورد جديد'))
       return
     }
-    if (!confirm('Are you sure you want to update login credentials for this student?')) return
+    if (!(await ask('Are you sure you want to update login credentials for this student?'))) return
 
     setIsResetting(true)
     try {

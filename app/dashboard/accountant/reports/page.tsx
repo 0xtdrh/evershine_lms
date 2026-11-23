@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -387,7 +388,7 @@ function PLCard({ statement, onRecreate }: { statement: ProfitLossStatement; onR
                   size="sm"
                       onClick={async (e) => {
                     e.stopPropagation()
-                    if (!confirm(L('Delete this P&L snapshot? This action cannot be undone.', 'تمسح الكشف ده؟ مش هينفع ترجّعه.'))) return
+                    if (!(await ask(L('Delete this P&L snapshot? This action cannot be undone.', 'تمسح الكشف ده؟ مش هينفع ترجّعه.')))) return
                     try {
                       const res = await fetchApi(`/api/accountant/profit-loss/${statement.id}`, { method: 'DELETE' })
                       notify.success(L('Snapshot deleted', 'الكشف اتمسح'))
@@ -406,7 +407,7 @@ function PLCard({ statement, onRecreate }: { statement: ProfitLossStatement; onR
                   size="sm"
                   onClick={async (e) => {
                     e.stopPropagation()
-                    if (!confirm(L('Regenerate this P&L snapshot now? This will replace the existing snapshot.', 'تعمل الكشف تاني؟ هيحل محل القديم.'))) return
+                    if (!(await ask(L('Regenerate this P&L snapshot now? This will replace the existing snapshot.', 'تعمل الكشف تاني؟ هيحل محل القديم.')))) return
                     try {
                       await fetchApi(`/api/accountant/profit-loss/${statement.id}/regenerate`, { method: 'POST' })
                       notify.success(L('Snapshot regenerated', 'الكشف اتعمل تاني'))

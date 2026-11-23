@@ -2,6 +2,7 @@
 
 /** LMS L4: question bank — questions of a course (and level), with difficulty; quizzes can draw random questions from it. */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -77,7 +78,7 @@ export default function QuestionBankPage() {
                 </span>
                 <span className="flex gap-1">
                   {canEdit && <Button size="sm" variant="outline" onClick={() => setEdit({ id: r.id, q: { ...(blankQuestion(r.type)), ...(r.data as object), id: r.id, type: r.type, textEn: r.textEn, textAr: r.textAr, points: r.points, skillIds: r.skillIds ?? [] } as Q, levelId: r.levelId, difficulty: r.difficulty })}>{L('Edit', 'تعديل')}</Button>}
-                  {canDelete && <Button size="sm" variant="ghost" className="text-rose-600" onClick={() => { if (confirm(L('Remove this question from the bank? Finished tries keep their copy.', 'تشيل السؤال ده من البنك؟ المحاولات اللي خلصت بتفضل محتفظة بنسختها.'))) del.mutate(r.id) }}><Trash2 className="h-4 w-4" /></Button>}
+                  {canDelete && <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => { if ((await ask(L('Remove this question from the bank? Finished tries keep their copy.', 'تشيل السؤال ده من البنك؟ المحاولات اللي خلصت بتفضل محتفظة بنسختها.')))) del.mutate(r.id) }}><Trash2 className="h-4 w-4" /></Button>}
                 </span>
               </CardContent>
             </Card>

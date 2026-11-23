@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { isAcademicEnginePrimary } from '@/lib/academic/config'
@@ -143,7 +144,7 @@ export default function ClassesPage() {
   }
 
   const deactivateClass = async (classId: string, className: string) => {
-    if (!confirm(`Deactivate ${className}? Students will remain but the class will be hidden from active lists.`)) return
+    if (!(await ask(`Deactivate ${className}? Students will remain but the class will be hidden from active lists.`))) return
     try {
       await fetchApi(`/api/classes/${classId}`, { method: 'DELETE' })
       notify.success('Class deactivated')

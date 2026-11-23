@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
@@ -68,7 +69,7 @@ export default function TeachersPage() {
   const limit = 20
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to deactivate ${name}'s profile?`)) return
+    if (!(await ask(`Are you sure you want to deactivate ${name}'s profile?`))) return
     setDeletingTeacherId(id)
     try {
       await fetchApi(`/api/teachers/${id}`, { method: 'DELETE' })

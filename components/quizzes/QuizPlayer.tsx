@@ -6,6 +6,7 @@
  * Kid mode: one question per screen with big buttons.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -212,7 +213,7 @@ export function QuizPlayer({ groupId, blockId, studentId }: { groupId: string; b
           <span className="flex items-center gap-3 text-sm">
             {left !== null && <span className={`flex items-center gap-1 font-mono font-bold ${left < 60 ? 'text-rose-600' : 'text-slate-700'}`}><Clock className="h-4 w-4" /> {mmss(left)}</span>}
             {save.isPending && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
-            <Button size="sm" className="gap-1" disabled={save.isPending} onClick={() => { if (confirm(t('qz.confirmSubmit'))) save.mutate(true) }}><Send className="h-4 w-4" /> {t('qz.submit')}</Button>
+            <Button size="sm" className="gap-1" disabled={save.isPending} onClick={async () => { if ((await ask(t('qz.confirmSubmit')))) save.mutate(true) }}><Send className="h-4 w-4" /> {t('qz.submit')}</Button>
           </span>
         </div>
         {shown.map((q) => <QuestionCard key={q.id} q={q} n={qs.indexOf(q) + 1} total={qs.length} value={answers[q.id]} onChange={setA(q.id)} />)}

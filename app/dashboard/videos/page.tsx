@@ -2,6 +2,7 @@
 
 /** a02 M4 batch 3 (2026-11-02): protected videos: the list, unusual watching, and the settings (devices at once, paid courses). */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { WatchSettingsCard } from '@/components/videos/WatchSettingsCard'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -40,7 +41,7 @@ function Videos({ canEdit }: { canEdit: boolean }) {
             <p className="text-xs text-slate-500">{v.durationSec != null ? `${Math.floor(v.durationSec / 60)}:${String(v.durationSec % 60).padStart(2, '0')}` : ''}{v.sizeBytes ? ` · ${Math.round(v.sizeBytes / 1048576)} MB` : ''} · {L(`${v.viewings} viewings`, `${v.viewings} مشاهدة`)} · {v.uses ? L(`in ${v.uses} lesson(s)`, `في ${v.uses} درس`) : L('not in any lesson', 'مش في أي درس')}</p>
           </div>
           <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${v.status === 'READY' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{v.status === 'READY' ? L('Ready', 'جاهز') : L('Not finished', 'الرفع ما خلصش')}</span>
-          {canEdit && !v.uses && <Button size="sm" variant="outline" disabled={remove.isPending} onClick={() => { if (window.confirm(L('Remove this video for good?', 'تمسح الفيديو ده نهائيًا؟'))) remove.mutate(v.id) }}>{L('Remove', 'امسح')}</Button>}
+          {canEdit && !v.uses && <Button size="sm" variant="outline" disabled={remove.isPending} onClick={async () => { if ((await ask(L('Remove this video for good?', 'تمسح الفيديو ده نهائيًا؟')))) remove.mutate(v.id) }}>{L('Remove', 'امسح')}</Button>}
         </div>
       ))}
     </div>

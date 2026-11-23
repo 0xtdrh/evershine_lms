@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Providers } from "@/components/providers";
 import { SessionProvider } from "next-auth/react";
 import { PWARegister } from "@/components/providers/PWARegister";
+import { ConfirmHost } from "@/components/ui/confirm-dialog";
 
 export const viewport: Viewport = {
   themeColor: "#0F4C81",
@@ -150,6 +151,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {children}
             <PWARegister />
             <Toaster />
+            <ConfirmHost />
           </Providers>
         </SessionProvider>
       </body>

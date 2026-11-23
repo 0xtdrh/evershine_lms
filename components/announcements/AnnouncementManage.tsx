@@ -5,6 +5,7 @@
  * approval, one announcement's recipients (follow up who did not read), and the announcement settings.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -83,7 +84,7 @@ export function AnnouncementList({ tab, canApprove }: { tab: 'sent' | 'pending';
               {tab === 'sent' && r.isActive && (
                 <>
                   {canApprove && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => act.mutate({ id: r.id, action: r.pinned ? 'unpin' : 'pin' })}>{r.pinned ? L('Unpin', 'شيل التثبيت') : L('Pin', 'ثبّت')}</Button>}
-                  <Button size="sm" variant="ghost" className="h-7 text-xs text-rose-600" onClick={() => { if (window.confirm(L('Stop showing this announcement?', 'توقف عرض الإعلان ده؟'))) act.mutate({ id: r.id, action: 'stop' }) }}>{L('Stop', 'وقّف')}</Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-rose-600" onClick={async () => { if ((await ask(L('Stop showing this announcement?', 'توقف عرض الإعلان ده؟')))) act.mutate({ id: r.id, action: 'stop' }) }}>{L('Stop', 'وقّف')}</Button>
                 </>
               )}
             </div>

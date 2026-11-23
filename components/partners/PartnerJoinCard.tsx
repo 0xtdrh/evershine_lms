@@ -2,6 +2,7 @@
 
 /** Six phases 1-C: the partner's join code + sign-up link + QR, on/off, a new code, and how many families came from it. */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
 import { notify } from '@/lib/notify'
@@ -14,7 +15,7 @@ export function PartnerJoinCard({ partnerId, canEdit }: { partnerId: string; can
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['partner-join', partnerId], queryFn: () => fetchApi<Join>(`/api/partners/${partnerId}/join`) })
   const act = async (action: string) => {
-    if (action === 'regenerate' && !confirm(L('Make a new code? The old link and QR stop working.', 'تعمل كود جديد؟ اللينك والـ QR القدام هيبطلوا.'))) return
+    if (action === 'regenerate' && !(await ask(L('Make a new code? The old link and QR stop working.', 'تعمل كود جديد؟ اللينك والـ QR القدام هيبطلوا.')))) return
     try { await fetchApi(`/api/partners/${partnerId}/join`, { method: 'POST', body: JSON.stringify({ action }) }); void qc.invalidateQueries({ queryKey: ['partner-join', partnerId] }) } catch (e) { notify.error((e as Error).message) }
   }
   if (!data) return <p className="text-sm text-slate-500">{L('Loading…', 'بيحمّل…')}</p>

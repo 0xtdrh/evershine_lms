@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useState, use } from 'react'
 import { useRouter } from 'next/navigation'
@@ -549,7 +550,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
                 <DropdownMenuItem
                   className="text-amber-700"
                   disabled={cancelMutation.isPending}
-                  onClick={() => { if (confirm(L('Are you sure you want to cancel this fee invoice?', 'متأكد إنك عايز تلغي الفاتورة دي؟'))) cancelMutation.mutate() }}
+                  onClick={async () => { if ((await ask(L('Are you sure you want to cancel this fee invoice?', 'متأكد إنك عايز تلغي الفاتورة دي؟')))) cancelMutation.mutate() }}
                 >
                   <Ban className="w-3.5 h-3.5 me-2" />{L('Cancel invoice', 'إلغاء الفاتورة')}
                 </DropdownMenuItem>
@@ -558,7 +559,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
                 <DropdownMenuItem
                   className="text-red-600"
                   disabled={deleteMutation.isPending}
-                  onClick={() => { if (confirm(L('Are you sure you want to permanently delete this unpaid fee invoice?', 'متأكد إنك عايز تمسح الفاتورة دي نهائي؟'))) deleteMutation.mutate() }}
+                  onClick={async () => { if ((await ask(L('Are you sure you want to permanently delete this unpaid fee invoice?', 'متأكد إنك عايز تمسح الفاتورة دي نهائي؟')))) deleteMutation.mutate() }}
                 >
                   <Trash2 className="w-3.5 h-3.5 me-2" />{L('Delete invoice', 'امسح الفاتورة')}
                 </DropdownMenuItem>

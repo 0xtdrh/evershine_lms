@@ -5,6 +5,7 @@
  * contract (opened by a 2-minute link; every opening is recorded). Money terms come in M2.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -100,7 +101,7 @@ export function PartnerContracts({ p, canEdit, canDelete }: { p: PartnerDetail; 
                   <Button size="sm" variant="outline" disabled={uploading === c.id} onClick={() => { target.current = c.id; fileInput.current?.click() }}>
                     {uploading === c.id ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <Paperclip className="me-1 h-4 w-4" />}{L('Add photo / PDF', 'ضيف صورة / PDF')}
                   </Button>
-                  {canDelete && <Button size="sm" variant="ghost" className="text-rose-600" onClick={() => confirm(L('Delete this contract and its files?', 'تمسح العقد ده وملفاته؟')) && del.mutate(c.id)}><Trash2 className="h-4 w-4" /></Button>}
+                  {canDelete && <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => (await ask(L('Delete this contract and its files?', 'تمسح العقد ده وملفاته؟'))) && del.mutate(c.id)}><Trash2 className="h-4 w-4" /></Button>}
                 </span>
               )}
             </div>
@@ -110,7 +111,7 @@ export function PartnerContracts({ p, canEdit, canDelete }: { p: PartnerDetail; 
                 {c.files.map((fl) => (
                   <li key={fl.id} className="flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1 text-xs">
                     <button type="button" className="text-indigo-700 hover:underline" onClick={() => openFile(fl.id)}>{fl.originalName || `${L('File', 'ملف')}.${fl.format ?? ''}`}</button>
-                    {canEdit && <button type="button" className="text-slate-400 hover:text-rose-600" onClick={() => confirm(L('Delete this file?', 'تمسح الملف ده؟')) && delFile.mutate(fl.id)} aria-label={L('Delete', 'امسح')}><Trash2 className="h-3.5 w-3.5" /></button>}
+                    {canEdit && <button type="button" className="text-slate-400 hover:text-rose-600" onClick={async () => (await ask(L('Delete this file?', 'تمسح الملف ده؟'))) && delFile.mutate(fl.id)} aria-label={L('Delete', 'امسح')}><Trash2 className="h-3.5 w-3.5" /></button>}
                   </li>
                 ))}
               </ul>

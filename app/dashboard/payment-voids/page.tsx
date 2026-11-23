@@ -2,6 +2,7 @@
 
 /** Cancelled payments (recorded by mistake): requests to approve, history, settings. lib/payments/void.ts */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -50,7 +51,7 @@ function List({ rows, canApprove }: { rows: Row[]; canApprove: boolean }) {
           {r.status === 'PENDING' && (
             <div className="flex flex-wrap items-center gap-2">
               {canApprove && !r.mine && <Input className="h-8 max-w-xs text-xs" placeholder={L('Note (optional)', 'ملاحظة (اختياري)')} value={note[r.id] ?? ''} onChange={(e) => setNote({ ...note, [r.id]: e.target.value })} />}
-              {canApprove && !r.mine && <Button size="sm" className="bg-rose-600 hover:bg-rose-700" disabled={decide.isPending} onClick={() => { if (window.confirm(L('Cancel this payment? The invoice will be due again.', 'تلغي الدفعة دي؟ الفاتورة هترجع مستحقة.'))) decide.mutate({ id: r.id, action: 'approve' }) }}>{L('Approve: cancel the payment', 'موافقة: الغي الدفعة')}</Button>}
+              {canApprove && !r.mine && <Button size="sm" className="bg-rose-600 hover:bg-rose-700" disabled={decide.isPending} onClick={async () => { if ((await ask(L('Cancel this payment? The invoice will be due again.', 'تلغي الدفعة دي؟ الفاتورة هترجع مستحقة.')))) decide.mutate({ id: r.id, action: 'approve' }) }}>{L('Approve: cancel the payment', 'موافقة: الغي الدفعة')}</Button>}
               {canApprove && !r.mine && <Button size="sm" variant="outline" disabled={decide.isPending} onClick={() => decide.mutate({ id: r.id, action: 'reject' })}>{L('Refuse', 'رفض')}</Button>}
               {r.mine && <><span className="text-xs text-slate-500">{L('Another person must approve your request.', 'لازم حد تاني يوافق على طلبك.')}</span><Button size="sm" variant="outline" disabled={decide.isPending} onClick={() => decide.mutate({ id: r.id, action: 'reject' })}>{L('Withdraw', 'اسحب الطلب')}</Button></>}
             </div>

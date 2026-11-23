@@ -6,6 +6,7 @@
  * group, add / remove an instructor for the place.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
@@ -84,7 +85,7 @@ export function PlacePeople({ places }: { places: { id: string; name: string }[]
                 <span className="text-xs text-slate-600">· {g.instructor ? <Link className="hover:underline" href={`/dashboard/teachers/${g.instructor.id}`}>{g.instructor.name}</Link> : L('no instructor', 'من غير مدرب')}</span>
                 {g.status !== 'ACTIVE' && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">{L('Finished', 'خلص')}</span>}
                 {g.status === 'ACTIVE' && !g.started && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">{L('Not started', 'لسه مابدأش')}</span>}
-                {can('class_sections', 'delete') && <button type="button" className="ms-auto text-slate-400 hover:text-rose-600" title={L('Remove group', 'شيل الجروب')} onClick={() => confirm(L(`Remove the group ${g.name}?`, `تشيل الجروب ${g.name}؟`)) && delGroup.mutate(g.id)}><Trash2 className="h-4 w-4" /></button>}
+                {can('class_sections', 'delete') && <button type="button" className="ms-auto text-slate-400 hover:text-rose-600" title={L('Remove group', 'شيل الجروب')} onClick={async () => (await ask(L(`Remove the group ${g.name}?`, `تشيل الجروب ${g.name}؟`))) && delGroup.mutate(g.id)}><Trash2 className="h-4 w-4" /></button>}
               </li>
             ))}
             {!data.groups.length && <li className="px-3 py-3 text-xs text-slate-500">{L('No groups.', 'مفيش جروبات.')}</li>}
@@ -103,7 +104,7 @@ export function PlacePeople({ places }: { places: { id: string; name: string }[]
                 {s.groups.map((g) => (
                   <span key={g.enrollmentId} className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs">
                     <Link href={`/dashboard/groups?group=${g.id}`} className="hover:underline">{g.name}</Link>
-                    {can('class_sections', 'update') && <button type="button" className="text-slate-400 hover:text-rose-600" title={L('Take out of this group', 'شيله من الجروب ده')} onClick={() => confirm(L(`Take ${s.name} out of ${g.name}?`, `تشيل ${s.name} من ${g.name}؟`)) && outOfGroup.mutate(g.enrollmentId)}><UserMinus className="h-3.5 w-3.5" /></button>}
+                    {can('class_sections', 'update') && <button type="button" className="text-slate-400 hover:text-rose-600" title={L('Take out of this group', 'شيله من الجروب ده')} onClick={async () => (await ask(L(`Take ${s.name} out of ${g.name}?`, `تشيل ${s.name} من ${g.name}؟`))) && outOfGroup.mutate(g.enrollmentId)}><UserMinus className="h-3.5 w-3.5" /></button>}
                   </span>
                 ))}
                 {!s.groups.length && <span className="text-xs text-amber-600">{L('in no group', 'مش في جروب')}</span>}
@@ -134,7 +135,7 @@ export function PlacePeople({ places }: { places: { id: string; name: string }[]
                 <span className="text-xs text-slate-500">{t.phone ?? ''} · {L('main place', 'مكانه الأساسي')}: {t.primary.name}{t.allPlaces ? ` · ${L('every place', 'كل الأماكن')}` : ''}</span>
                 <span className="text-xs text-slate-600">· {t.groups} {L('groups here', 'جروب هنا')}</span>
                 {can('teachers', 'update') && !t.allPlaces && t.primary.id !== target && t.places.includes(target) && (
-                  <button type="button" className="ms-auto text-slate-400 hover:text-rose-600" title={L('Remove from this place', 'شيله من المكان ده')} onClick={() => confirm(L(`Remove ${t.name} from this place?`, `تشيل ${t.name} من المكان ده؟`)) && removeTeacher.mutate(t.id)}><Trash2 className="h-4 w-4" /></button>
+                  <button type="button" className="ms-auto text-slate-400 hover:text-rose-600" title={L('Remove from this place', 'شيله من المكان ده')} onClick={async () => (await ask(L(`Remove ${t.name} from this place?`, `تشيل ${t.name} من المكان ده؟`))) && removeTeacher.mutate(t.id)}><Trash2 className="h-4 w-4" /></button>
                 )}
               </li>
             ))}

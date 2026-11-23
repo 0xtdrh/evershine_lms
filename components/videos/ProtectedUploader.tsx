@@ -5,6 +5,7 @@
  * server it is ready. The engine's small files are in public/vendor/ffmpeg; its large wasm comes from the CDN at an exact version, only when uploading.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useRef, useState } from 'react'
 import { fetchApi } from '@/lib/api-client'
 import { L, useI18n } from '@/lib/i18n/client'
@@ -56,7 +57,7 @@ export function ProtectedUploader({ current, onDone }: { current?: UploadedVideo
       log = ''; await ff.exec(['-hide_banner', '-i', '/in/in.mp4'])
       const plan = uploadPlan(log)
       if (plan === 'NOT_A_VIDEO') throw new Error(L('This file is not a video.', 'الملف ده مش فيديو.'))
-      if (plan === 'CONVERT' && !window.confirm(L('This video must be converted first. A long video can take about as long as the video itself, and this tab must stay open. Continue?', 'الفيديو ده لازم يتحوّل الأول. الفيديو الطويل ممكن ياخد وقت قريب من طوله، والصفحة لازم تفضل مفتوحة. تكمل؟'))) return
+      if (plan === 'CONVERT' && !(await ask(L('This video must be converted first. A long video can take about as long as the video itself, and this tab must stay open. Continue?', 'الفيديو ده لازم يتحوّل الأول. الفيديو الطويل ممكن ياخد وقت قريب من طوله، والصفحة لازم تفضل مفتوحة. تكمل؟')))) return
       const v = await fetchApi<{ id: string; key: string; iv: string; mode: string }>('/api/videos', { method: 'POST', body: JSON.stringify({ name: file.name }) })
       started = v.id
       await ff.writeFile('k.bin', hexBytes(v.key))

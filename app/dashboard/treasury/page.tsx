@@ -6,6 +6,7 @@
  * Tabs open from links (?tab=) — today's tasks, settings / reports centres.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -266,8 +267,8 @@ function Counts({ ar, canCreate, canApprove, onDone, status }: { ar: boolean; ca
     setPieces(next)
     setF((x) => ({ ...x, counted: String(denominationTotal(next)) }))
   }
-  const close = () => {
-    if (diff && !f.note.trim() && !confirm(L(`There is a difference of ${diff}. Close without a note?`, `فيه فرق ${diff}. تقفل من غير ملاحظة؟`))) return
+  const close = async () => {
+    if (diff && !f.note.trim() && !(await ask(L(`There is a difference of ${diff}. Close without a note?`, `فيه فرق ${diff}. تقفل من غير ملاحظة؟`)))) return
     create.mutate()
   }
   const pending = (data ?? []).filter((c) => c.status === 'PENDING')

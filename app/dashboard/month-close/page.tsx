@@ -6,6 +6,7 @@
  * settings for the automatic close. Tabs open from links (?tab=settings).
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -56,9 +57,9 @@ function ClosePanel({ ym, scope, onDone }: { ym: string; scope: { campusId: stri
   })
   const r = rep?.report
   const money = (n: number) => `${Math.round(n).toLocaleString('en-US')} ${L('EGP', 'ج.م')}`
-  const confirmClose = () => {
+  const confirmClose = async () => {
     const extra = data && data.total > 0 ? L(` ${data.total} thing(s) are still waiting.`, ` لسه فيه ${data.total} حاجة مستنية.`) : ''
-    if (confirm(L(`Close ${monthName(ym, 'en')} for ${scopeName(scope)}? Its numbers will not change after this.${extra}`, `تقفل ${monthName(ym, 'ar')} لـ ${scopeName(scope)}؟ أرقامه مش هتتغير بعد كده.${extra}`))) close.mutate()
+    if ((await ask(L(`Close ${monthName(ym, 'en')} for ${scopeName(scope)}? Its numbers will not change after this.${extra}`, `تقفل ${monthName(ym, 'ar')} لـ ${scopeName(scope)}؟ أرقامه مش هتتغير بعد كده.${extra}`)))) close.mutate()
   }
   return (
     <div className="mt-2 space-y-3 rounded-lg border border-indigo-200 bg-indigo-50/40 p-3 text-sm">

@@ -2,6 +2,7 @@
 
 /** LMS L1: one curriculum session — edit texts and content blocks (draft only), preview as instructor / student, review comments. */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { SessionGateCard } from '@/components/curriculum/SessionGateCard'
 import type { SessionGate } from '@/lib/lms/gate'
 import { useEffect, useState } from 'react'
@@ -198,7 +199,7 @@ export default function CurriculumSessionPage() {
         <Button size="sm" variant={mode === 'INSTRUCTOR' ? 'default' : 'outline'} className="gap-1" onClick={() => setMode('INSTRUCTOR')}><Eye className="h-4 w-4" /> {L('Instructor view', 'عرض المدرب')}</Button>
         <Button size="sm" variant={mode === 'STUDENT' ? 'default' : 'outline'} className="gap-1" onClick={() => setMode('STUDENT')}><Eye className="h-4 w-4" /> {t('cur.preview')}</Button>
         {data.editable && <Button size="sm" variant="outline" className="gap-1" onClick={() => duplicate.mutate()} disabled={duplicate.isPending}><Copy className="h-4 w-4" /> {t('cur.duplicate')}</Button>}
-        {data.editable && <Button size="sm" variant="ghost" className="gap-1 text-rose-600" onClick={() => { if (confirm(L('Remove this session and its content? The next sessions are renumbered.', 'تشيل الحصة دي ومحتواها؟ الحصص اللي بعدها هيتغيّر ترقيمها.'))) removeSession.mutate() }}><Trash2 className="h-4 w-4" /> {L('Remove session', 'شيل الحصة')}</Button>}
+        {data.editable && <Button size="sm" variant="ghost" className="gap-1 text-rose-600" onClick={async () => { if ((await ask(L('Remove this session and its content? The next sessions are renumbered.', 'تشيل الحصة دي ومحتواها؟ الحصص اللي بعدها هيتغيّر ترقيمها.')))) removeSession.mutate() }}><Trash2 className="h-4 w-4" /> {L('Remove session', 'شيل الحصة')}</Button>}
       </div>
       {!data.editable && data.can.edit && <p className="rounded bg-slate-50 p-2 text-xs text-slate-500">{L('This version is locked. To change it, create a new version from the level page.', 'النسخة دي مقفولة. علشان تعدّلها اعمل نسخة جديدة من صفحة المستوى.')} ({t(`cur.status.${data.edition.status}` as 'cur.status.DRAFT')})</p>}
 
@@ -215,7 +216,7 @@ export default function CurriculumSessionPage() {
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0" disabled={i === 0 || reorder.isPending} onClick={() => reorder.mutate(moveInOrder(ids, b.id, 'up'))} aria-label="Up"><ArrowUp className="h-4 w-4" /></Button>
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0" disabled={i === ids.length - 1 || reorder.isPending} onClick={() => reorder.mutate(moveInOrder(ids, b.id, 'down'))} aria-label="Down"><ArrowDown className="h-4 w-4" /></Button>
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditing({ id: b.id, draft: { type: b.type as BlockType, audience: b.audience, titleEn: b.titleEn ?? '', titleAr: b.titleAr ?? '', data: b.data } })} aria-label="Edit"><Pencil className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-rose-600" onClick={() => { if (confirm(L('Remove this content?', 'تشيل المحتوى ده؟'))) delBlock.mutate(b.id) }} aria-label="Remove"><Trash2 className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-rose-600" onClick={async () => { if ((await ask(L('Remove this content?', 'تشيل المحتوى ده؟')))) delBlock.mutate(b.id) }} aria-label="Remove"><Trash2 className="h-4 w-4" /></Button>
                   </span>
                 )}
               </div>

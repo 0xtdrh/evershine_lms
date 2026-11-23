@@ -2,6 +2,7 @@
 
 /** Security part 2: two-step sign-in on / off and for which roles, idle sign-out, and each staff account's status (reset for a lost phone). Super Admin. */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -69,7 +70,7 @@ export default function SecuritySettingsPage() {
               <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${r.totpEnabledAt ? 'bg-emerald-100 text-emerald-800' : r.required ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
                 {r.totpEnabledAt ? L('On', 'شغال') : r.required ? L('Will set up at next sign-in', 'هيظبطه أول ما يدخل') : L('Off', 'مقفول')}
               </span>
-              {r.totpEnabledAt && <Button size="sm" variant="outline" disabled={reset.isPending} onClick={() => { if (window.confirm(L('Reset two-step sign-in for this account (lost phone)?', 'تلغي التحقق بخطوتين للحساب ده (موبايل ضاع)؟'))) reset.mutate(r.id) }}>{L('Reset', 'إلغاء')}</Button>}
+              {r.totpEnabledAt && <Button size="sm" variant="outline" disabled={reset.isPending} onClick={async () => { if ((await ask(L('Reset two-step sign-in for this account (lost phone)?', 'تلغي التحقق بخطوتين للحساب ده (موبايل ضاع)؟')))) reset.mutate(r.id) }}>{L('Reset', 'إلغاء')}</Button>}
             </div>
           </div>
         ))}

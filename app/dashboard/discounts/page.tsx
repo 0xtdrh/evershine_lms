@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useUrlTab } from '@/hooks/use-url-tab'
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -275,7 +276,7 @@ function Types({ canEdit }: { canEdit: boolean }) {
             {canEdit && (
               <div className="flex gap-1">
                 <Button size="icon" variant="ghost" onClick={() => setEditing(t)} aria-label={L('Edit', 'تعديل')}><Pencil className="h-4 w-4" /></Button>
-                <Button size="icon" variant="ghost" onClick={() => { if (window.confirm(`Delete "${t.name}"?`)) remove.mutate(t.id) }} aria-label={L('Delete', 'امسح')}><Trash2 className="h-4 w-4 text-red-600" /></Button>
+                <Button size="icon" variant="ghost" onClick={async () => { if ((await ask(`Delete "${t.name}"?`))) remove.mutate(t.id) }} aria-label={L('Delete', 'امسح')}><Trash2 className="h-4 w-4 text-red-600" /></Button>
               </div>
             )}
           </div>

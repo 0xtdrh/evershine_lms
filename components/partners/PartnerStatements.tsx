@@ -5,6 +5,7 @@
  * approve (frozen), record payments both ways; the rest of an approved statement moves into the next one.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -150,9 +151,9 @@ function StatementBody({ s, perms, onChange }: { s: Statement; perms: { create: 
       </div>
       <div className="flex flex-wrap gap-2">
         {draft && perms.create && <Button size="sm" variant="outline" disabled={recalc.isPending} onClick={() => recalc.mutate()}>{recalc.isPending && <Loader2 className="me-1 h-4 w-4 animate-spin" />}{L('Recalculate / save lines', 'احسب تاني / احفظ البنود')}</Button>}
-        {draft && perms.approve && <Button size="sm" disabled={approve.isPending} onClick={() => confirm(L('Approve? The numbers will be frozen.', 'تعتمد؟ الأرقام هتتقفل.')) && approve.mutate()}><CheckCircle2 className="me-1 h-4 w-4" />{L('Approve', 'اعتمد')}</Button>}
+        {draft && perms.approve && <Button size="sm" disabled={approve.isPending} onClick={async () => (await ask(L('Approve? The numbers will be frozen.', 'تعتمد؟ الأرقام هتتقفل.'))) && approve.mutate()}><CheckCircle2 className="me-1 h-4 w-4" />{L('Approve', 'اعتمد')}</Button>}
         <a href={`/reports/partner-statement/${s.id}`} target="_blank" rel="noopener"><Button size="sm" variant="outline">{L('Print / PDF', 'اطبع / PDF')}</Button></a>
-        {draft && perms.create && <Button size="sm" variant="ghost" className="text-rose-600" onClick={() => confirm(L('Delete this draft?', 'تمسح المسودة دي؟')) && del.mutate()}><Trash2 className="h-4 w-4" /></Button>}
+        {draft && perms.create && <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => (await ask(L('Delete this draft?', 'تمسح المسودة دي؟'))) && del.mutate()}><Trash2 className="h-4 w-4" /></Button>}
       </div>
       {s.payments.length > 0 && (
         <ul className="space-y-1">

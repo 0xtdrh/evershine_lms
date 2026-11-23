@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
 import { useState } from 'react'
@@ -191,7 +192,7 @@ export default function StudentsListPage() {
 
   const handleSuspend = async (student: Student) => {
     if (!canManage) return
-    if (!confirm(`Suspend ${student.firstName} ${student.lastName} (${student.registrationNumber})?`)) return
+    if (!(await ask(`Suspend ${student.firstName} ${student.lastName} (${student.registrationNumber})?`))) return
     setSuspendingId(student.id)
     try {
       await fetchApi(`/api/students/${student.id}`, { method: 'DELETE' })

@@ -5,6 +5,7 @@
  * secretaries). Star, ready phrases and a comment per student, a note for the whole group, "Send now".
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
@@ -92,7 +93,7 @@ export function SessionReportPanel({ groupId, date }: { groupId: string; date: s
           {r && edit && (
             <div className="flex gap-2">
               <Button size="sm" variant="outline" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>{save.isPending && <Loader2 className="me-1 h-4 w-4 animate-spin" />}{L('Save', 'حفظ')}</Button>
-              <Button size="sm" className="gap-1" disabled={send.isPending} onClick={() => confirm(L('Send the report to the families now?', 'تبعت التقرير لأولياء الأمور دلوقتي؟')) && send.mutate()}><Send className="h-4 w-4" /> {L('Send now', 'ابعت دلوقتي')}</Button>
+              <Button size="sm" className="gap-1" disabled={send.isPending} onClick={async () => (await ask(L('Send the report to the families now?', 'تبعت التقرير لأولياء الأمور دلوقتي؟'))) && send.mutate()}><Send className="h-4 w-4" /> {L('Send now', 'ابعت دلوقتي')}</Button>
             </div>
           )}
         </div>

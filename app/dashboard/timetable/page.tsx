@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -754,8 +755,8 @@ export default function TimetablePage() {
               <Button
                 type="button"
                 variant="destructive"
-                onClick={() => {
-                  if (confirm('Are you sure you want to delete this timetable slot?')) {
+                onClick={async () => {
+                  if ((await ask('Are you sure you want to delete this timetable slot?'))) {
                     deleteMutation.mutate()
                   }
                 }}

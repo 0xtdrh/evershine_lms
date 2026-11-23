@@ -6,6 +6,7 @@
  * /api/website/content). Website requests (forms) are on /dashboard/leads. RBAC website:read / website:update.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -149,7 +150,7 @@ function List({ k, items, onChange, depth }: { k: string; items: Json[]; onChang
           <div className="flex flex-wrap justify-end gap-1">
             <button type="button" className={btn} disabled={i === 0} onClick={() => move(i, -1)} aria-label={L('Up', 'لفوق')}>↑</button>
             <button type="button" className={btn} disabled={i === items.length - 1} onClick={() => move(i, 1)} aria-label={L('Down', 'لتحت')}>↓</button>
-            <button type="button" className={`${btn} text-rose-600`} onClick={() => { if (confirm(L('Remove this item?', 'تشيل العنصر ده؟'))) onChange(items.filter((_, j) => j !== i)) }}>{L('Remove', 'شيل')}</button>
+            <button type="button" className={`${btn} text-rose-600`} onClick={async () => { if ((await ask(L('Remove this item?', 'تشيل العنصر ده؟')))) onChange(items.filter((_, j) => j !== i)) }}>{L('Remove', 'شيل')}</button>
           </div>
           {isObj(x) && !isBi(x) ? <Box k={k} v={x} title={titleOf(x, i)} depth={depth + 1} onChange={(nv) => onChange(items.map((y, j) => (j === i ? nv : y)))} />
             : <Node k={k} v={x} depth={depth + 1} onChange={(nv) => onChange(items.map((y, j) => (j === i ? nv : y)))} />}
@@ -203,7 +204,7 @@ export default function WebsitePage() {
           <Link href="/dashboard/leads" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{L('Website requests', 'طلبات الموقع')}</Link>
           <a href="/new-home" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{L('Open the website', 'افتح الموقع')}</a>
           {canEdit && tab === 'texts' ? <>
-            <button type="button" disabled={saving} className="rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={() => { if (confirm(L('Go back to the original texts? Everything you changed is lost.', 'ترجع للكلام الأصلي؟ كل اللي غيّرته هيضيع.'))) void save({ reset: true }, L('Back to the original texts', 'رجع للكلام الأصلي')) }}>{L('Original texts', 'الكلام الأصلي')}</button>
+            <button type="button" disabled={saving} className="rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={async () => { if ((await ask(L('Go back to the original texts? Everything you changed is lost.', 'ترجع للكلام الأصلي؟ كل اللي غيّرته هيضيع.')))) void save({ reset: true }, L('Back to the original texts', 'رجع للكلام الأصلي')) }}>{L('Original texts', 'الكلام الأصلي')}</button>
             <button type="button" disabled={!dirty || saving} className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-40" onClick={() => void save({ content: draft }, L('Saved — the website shows it now', 'اتحفظ — الموقع بيعرضه دلوقتي'))}>{saving ? '…' : L('Save', 'احفظ')}</button>
           </> : null}
         </div>

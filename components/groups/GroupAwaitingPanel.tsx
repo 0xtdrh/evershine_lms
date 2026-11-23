@@ -5,6 +5,7 @@
  * lessons or live sessions yet. Staff with group_entry:approve may let one in now, or remove them (seat freed).
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Hourglass } from 'lucide-react'
 import { fetchApi } from '@/lib/api-client'
@@ -18,7 +19,7 @@ export function GroupAwaitingPanel({ groupId, canApprove }: { groupId: string; c
   const { data } = useQuery({ queryKey: ['group-awaiting', groupId], queryFn: () => fetchApi<Data>(`/api/groups/${groupId}/awaiting`), retry: false })
   if (!data || (data.policy.entry !== 'AFTER_PAYMENT' && !data.students.length)) return null
   const act = async (studentId: string, action: 'OPEN' | 'REMOVE') => {
-    if (action === 'REMOVE' && !confirm(L('Remove this student? The unpaid invoice is cancelled and the seat is freed.', 'تشيل الطالب ده؟ الفاتورة اللي مش مدفوعة هتتلغي والمكان هيفضى.'))) return
+    if (action === 'REMOVE' && !(await ask(L('Remove this student? The unpaid invoice is cancelled and the seat is freed.', 'تشيل الطالب ده؟ الفاتورة اللي مش مدفوعة هتتلغي والمكان هيفضى.')))) return
     const name = data.students.find((x) => x.studentId === studentId)?.name ?? ''
     try {
       await fetchApi(`/api/groups/${groupId}/awaiting`, { method: 'POST', body: JSON.stringify({ studentId, action }) })

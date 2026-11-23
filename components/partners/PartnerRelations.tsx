@@ -2,6 +2,7 @@
 
 /** Partners part 1-B2: people at the partner (contacts, one main) and the log of calls / meetings / visits with follow-ups. */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -50,7 +51,7 @@ export function PartnerRelations({ partnerId, canEdit }: { partnerId: string; ca
               {canEdit && (
                 <span className="ms-auto flex gap-1">
                   {!x.isPrimary && <Button size="sm" variant="ghost" onClick={() => mainC.mutate(x)}>{L('Make main', 'خليه الأساسي')}</Button>}
-                  <button type="button" className="text-slate-400 hover:text-rose-600" onClick={() => confirm(L('Remove this person?', 'تشيل الشخص ده؟')) && delC.mutate(x.id)}><Trash2 className="h-4 w-4" /></button>
+                  <button type="button" className="text-slate-400 hover:text-rose-600" onClick={async () => (await ask(L('Remove this person?', 'تشيل الشخص ده؟'))) && delC.mutate(x.id)}><Trash2 className="h-4 w-4" /></button>
                 </span>
               )}
             </li>
@@ -99,7 +100,7 @@ export function PartnerRelations({ partnerId, canEdit }: { partnerId: string; ca
                   {canEdit && (
                     <span className="ms-auto flex gap-1">
                       {x.followUpAt && !x.followUpDoneAt && <Button size="sm" variant="ghost" onClick={() => doneA.mutate(x)}><CheckCircle2 className="me-1 h-4 w-4" />{L('Done', 'خلصت')}</Button>}
-                      <button type="button" className="text-slate-400 hover:text-rose-600" onClick={() => confirm(L('Delete?', 'تمسح؟')) && delA.mutate(x.id)}><Trash2 className="h-4 w-4" /></button>
+                      <button type="button" className="text-slate-400 hover:text-rose-600" onClick={async () => (await ask(L('Delete?', 'تمسح؟'))) && delA.mutate(x.id)}><Trash2 className="h-4 w-4" /></button>
                     </span>
                   )}
                 </div>

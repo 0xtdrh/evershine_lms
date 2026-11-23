@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useEffect, useState } from 'react'
 import { signOut, useSession } from 'next-auth/react'
 import { MyDateOfBirthCard } from '@/components/birthdays/DateOfBirthCards'
@@ -454,7 +455,7 @@ export default function SettingsPage() {
     }
 
     const nextStatus = !adminUser.isActive
-    const confirmation = window.confirm(`Are you sure you want to ${nextStatus ? 'reactivate' : 'suspend'} admin access for ${adminUser.name}?`)
+    const confirmation = (await ask(`Are you sure you want to ${nextStatus ? 'reactivate' : 'suspend'} admin access for ${adminUser.name}?`))
     if (!confirmation) return
 
     try {
@@ -480,7 +481,7 @@ export default function SettingsPage() {
     }
 
     const nextStatus = !targetUser.isActive
-    const confirmation = window.confirm(`Are you sure you want to ${nextStatus ? 'reactivate' : 'suspend'} access for ${targetUser.name}?`)
+    const confirmation = (await ask(`Are you sure you want to ${nextStatus ? 'reactivate' : 'suspend'} access for ${targetUser.name}?`))
     if (!confirmation) return
 
     try {

@@ -2,6 +2,7 @@
 
 /** x01: campaign pages in the Website screen — add / edit, link to copy, state, visits and requests, banner. */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -119,7 +120,7 @@ export function CampaignsManager({ canEdit }: { canEdit: boolean }) {
                       <a className="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" href={`/c/${c.slug}`} target="_blank" rel="noopener noreferrer">{L('Open', 'افتح')}</a>
                       {canEdit ? <>
                         <button type="button" className="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" onClick={() => setDraft({ ...c, startsAt: c.startsAt ?? '', endsAt: c.endsAt ?? '' })}>{L('Edit', 'تعديل')}</button>
-                        <button type="button" className="rounded-md border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50" onClick={() => { if (confirm(L('Delete this campaign? Its link stops working.', 'تمسح الحملة دي؟ اللينك بتاعها هيبطّل يشتغل.'))) void send(`/api/website/campaigns/${c.id}`, 'DELETE') }}>{L('Delete', 'امسح')}</button>
+                        <button type="button" className="rounded-md border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50" onClick={async () => { if ((await ask(L('Delete this campaign? Its link stops working.', 'تمسح الحملة دي؟ اللينك بتاعها هيبطّل يشتغل.')))) void send(`/api/website/campaigns/${c.id}`, 'DELETE') }}>{L('Delete', 'امسح')}</button>
                       </> : null}
                     </div>
                   </td>

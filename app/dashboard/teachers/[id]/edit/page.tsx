@@ -12,6 +12,7 @@
  * the API's partial schema handles sparse updates correctly.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { TeacherPlacesCard } from '@/components/places/TeacherPlacesCard'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -288,7 +289,7 @@ export default function EditTeacherPage() {
       notify.error(L('Email is required', 'الإيميل مطلوب'))
       return
     }
-    if (!confirm('Are you sure you want to update login credentials for this teacher?')) return
+    if (!(await ask('Are you sure you want to update login credentials for this teacher?'))) return
 
     setIsResetting(true)
     try {
@@ -388,7 +389,7 @@ export default function EditTeacherPage() {
     academicYear: string,
     className: string
   ) => {
-    if (!confirm(`Remove assignment to ${className}?`)) return
+    if (!(await ask(`Remove assignment to ${className}?`))) return
     try {
       // Send the right identifier depending on the assignment source
       const payload: Record<string, string> = { academicYear }

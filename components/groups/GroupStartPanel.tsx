@@ -6,6 +6,7 @@
  * permission), cancel (money back to the wallet; each student moved, on the waiting list, or out). API /api/groups/[id]/start.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock } from 'lucide-react'
@@ -74,7 +75,7 @@ export function GroupStartPanel({ groupId, levelId, students, can }: { groupId: 
             )
           })}
           <input className="w-full rounded border border-slate-300 px-2 py-1 text-xs" placeholder={L('Reason (families see it)', 'السبب (العائلات بتشوفه)')} value={reason} onChange={(e) => setReason(e.target.value)} />
-          <button type="button" disabled={reason.trim().length < 2} onClick={() => { if (confirm(L('Cancel this group? This cannot be undone.', 'تلغي الجروب؟ مش هينفع ترجع.'))) void post({ action: 'CANCEL', reason, choices: students.map((s) => ({ studentId: s.id, action: (choices[s.id] ?? { action: 'WAIT' }).action, toGroupId: choices[s.id]?.toGroupId || null })) }, L('Group cancelled', 'الجروب اتلغى')) }} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{L('Cancel the group', 'الغي الجروب')}</button>
+          <button type="button" disabled={reason.trim().length < 2} onClick={async () => { if ((await ask(L('Cancel this group? This cannot be undone.', 'تلغي الجروب؟ مش هينفع ترجع.')))) void post({ action: 'CANCEL', reason, choices: students.map((s) => ({ studentId: s.id, action: (choices[s.id] ?? { action: 'WAIT' }).action, toGroupId: choices[s.id]?.toGroupId || null })) }, L('Group cancelled', 'الجروب اتلغى')) }} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{L('Cancel the group', 'الغي الجروب')}</button>
         </div>
       ) : null}
     </div>

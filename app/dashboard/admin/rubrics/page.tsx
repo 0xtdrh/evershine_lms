@@ -2,6 +2,7 @@
 
 /** LMS L3: rubric library — reusable grading tables (criteria × levels with points), for every course or one course. */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -120,7 +121,7 @@ export default function RubricsPage() {
               <CardContent className="flex flex-wrap gap-2">
                 {canEdit && <Button size="sm" variant="outline" onClick={() => setEdit({ ...r })}>{L('Edit', 'تعديل')}</Button>}
                 {canEdit && <Button size="sm" variant="outline" className="gap-1" onClick={() => setEdit({ ...r, id: '', nameEn: `${r.nameEn} (copy)` })}><Copy className="h-3 w-3" /> {L('Copy', 'نسخة')}</Button>}
-                {canDelete && <Button size="sm" variant="ghost" className="text-rose-600" onClick={() => { if (confirm(L('Remove this rubric from the library? Assignments that use it keep their copy.', 'تشيل الجدول ده من المكتبة؟ الواجبات اللي بتستخدمه بتفضل بنسختها.'))) del.mutate(r.id) }}><Trash2 className="h-4 w-4" /></Button>}
+                {canDelete && <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => { if ((await ask(L('Remove this rubric from the library? Assignments that use it keep their copy.', 'تشيل الجدول ده من المكتبة؟ الواجبات اللي بتستخدمه بتفضل بنسختها.')))) del.mutate(r.id) }}><Trash2 className="h-4 w-4" /></Button>}
               </CardContent>
             </Card>
           ))}

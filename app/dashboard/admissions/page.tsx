@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
@@ -307,10 +308,10 @@ export default function AdmissionsDashboard() {
       setSelectedRequest(null)
       resetAssignmentState()
     },
-    onError: (err: any) => {
+    onError: async (err: any) => {
       // Duplicate-student warning: the child may already be registered
       if (err?.code === 'DUPLICATE_SUSPECT') {
-        if (window.confirm(`${err.message}\n\n${L('Approve anyway as a NEW student?', 'توافق برضه كطالب جديد؟')}`)) approveMutation.mutate(true)
+        if ((await ask(`${err.message}\n\n${L('Approve anyway as a NEW student?', 'توافق برضه كطالب جديد؟')}`))) approveMutation.mutate(true)
         return
       }
       notify.error(err.message || 'Failed to approve admission')

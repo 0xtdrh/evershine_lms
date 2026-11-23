@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -208,12 +209,12 @@ export function StudentEnrollmentsPanel({
     setEditForm({ rollNumber: e.rollNumber, deliveryMode: e.deliveryMode as InlineEditState['deliveryMode'] })
   }
 
-  function handleWithdraw(e: StudentEnrollmentRow) {
+  async function handleWithdraw(e: StudentEnrollmentRow) {
     if (e.academicYear.isLocked) {
       notify.error(L('Cannot withdraw from a locked academic year.', 'مش هينفع السحب من سنة دراسية مقفولة.'))
       return
     }
-    if (!confirm(`Withdraw ${e.classSection.className}-${e.classSection.sectionName} enrollment?\nHistorical attendance and marks will be preserved.`)) return
+    if (!(await ask(`Withdraw ${e.classSection.className}-${e.classSection.sectionName} enrollment?\nHistorical attendance and marks will be preserved.`))) return
     withdrawMutation.mutate(e.id)
   }
 

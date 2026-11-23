@@ -5,6 +5,7 @@
  * added on the group page). They add up with the automatic rules; changing them asks the families to accept again.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -76,7 +77,7 @@ export function GroupRulesEditor({ canEdit }: { canEdit: boolean }) {
                   {canEdit && (
                     <span className="ms-2 inline-flex gap-2 text-xs">
                       <button type="button" className="text-slate-500 hover:underline" onClick={() => toggle.mutate(r)}>{r.isActive ? L('switch off', 'وقّف') : L('switch on', 'شغّل')}</button>
-                      <button type="button" className="text-slate-400 hover:text-rose-600" onClick={() => confirm(L('Delete this rule?', 'تمسح القاعدة دي؟')) && del.mutate(r.id)}><Trash2 className="inline h-3.5 w-3.5" /></button>
+                      <button type="button" className="text-slate-400 hover:text-rose-600" onClick={async () => (await ask(L('Delete this rule?', 'تمسح القاعدة دي؟'))) && del.mutate(r.id)}><Trash2 className="inline h-3.5 w-3.5" /></button>
                     </span>
                   )}
                 </li>

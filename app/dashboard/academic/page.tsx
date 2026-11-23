@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
@@ -1116,7 +1117,7 @@ export default function AcademicEnginePage() {
                           className="text-xs h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                           title="Delete Academic Year"
                           onClick={async () => {
-                            if (!confirm(`Delete ${y.name}? This action cannot be undone.`)) return
+                            if (!(await ask(`Delete ${y.name}? This action cannot be undone.`))) return
                             try {
                               await fetchApi(`/api/academic-years/${y.id}`, { method: 'DELETE' })
                               notify.success(`Academic Year ${y.name} deleted`)
@@ -1356,8 +1357,8 @@ export default function AcademicEnginePage() {
                                 <Button
                                   type="button" variant="ghost" size="sm"
                                   className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                  onClick={() => {
-                                    if (!confirm(`Delete ${s.className}-${s.sectionName}? This is irreversible if no active enrollments exist.`)) return
+                                  onClick={async () => {
+                                    if (!(await ask(`Delete ${s.className}-${s.sectionName}? This is irreversible if no active enrollments exist.`))) return
                                     deleteSection.mutate(s.id)
                                   }}
                                   disabled={deleteSection.isPending}
@@ -1546,8 +1547,8 @@ export default function AcademicEnginePage() {
                           size="sm"
                           variant="ghost"
                           className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1.5"
-                          onClick={() => {
-                            if (confirm(`Remove ${row.student.firstName} ${row.student.lastName} from this group?`)) {
+                          onClick={async () => {
+                            if ((await ask(`Remove ${row.student.firstName} ${row.student.lastName} from this group?`))) {
                               removeEnrollment.mutate(row.id)
                             }
                           }}
@@ -1702,8 +1703,8 @@ export default function AcademicEnginePage() {
                             <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
                               title="Delete offering"
                               disabled={deleteOffering.isPending}
-                              onClick={() => {
-                                if (!confirm(`Remove ${o.subject.name} offering? This will also remove any timetable slots for this offering.`)) return
+                              onClick={async () => {
+                                if (!(await ask(`Remove ${o.subject.name} offering? This will also remove any timetable slots for this offering.`))) return
                                 deleteOffering.mutate(o.id)
                               }}
                             >
@@ -1962,13 +1963,13 @@ export default function AcademicEnginePage() {
                             size="sm"
                             className="mt-2 h-8 w-full border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
                             disabled={deleteTeacherPublishedSlots.isPending}
-                            onClick={() => {
+                            onClick={async () => {
                               const teacherName = teachers.find((teacher) => teacher.id === slotForm.teacherId)
                               const label = teacherName ? `${teacherName.firstName} ${teacherName.lastName}` : 'this teacher'
-                              const confirmed = window.confirm(
+                              const confirmed = (await ask(
                                 `Remove all ${teacherPublishedSlots.length} published slot(s) for ${label}?\n\n` +
                                 'This immediately removes them from the teacher and enrolled students’ timetable views. Draft slots are not affected. You can create and publish replacement slots afterward.'
-                              )
+                              ))
                               if (!confirmed || !activeYear?.id) return
                               deleteTeacherPublishedSlots.mutate({ teacherId: slotForm.teacherId, academicYearId: activeYear.id })
                             }}
@@ -2126,8 +2127,8 @@ export default function AcademicEnginePage() {
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
                                 title="Delete slot"
                                 disabled={deleteSlot.isPending}
-                                onClick={() => {
-                                  if (!confirm('Delete this timetable slot? Published slots will be unpublished automatically.')) return
+                                onClick={async () => {
+                                  if (!(await ask('Delete this timetable slot? Published slots will be unpublished automatically.'))) return
                                   deleteSlot.mutate(sl.id)
                                 }}
                               >
@@ -2244,8 +2245,8 @@ export default function AcademicEnginePage() {
                               </Button>
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
                                 disabled={deleteRoom.isPending}
-                                onClick={() => {
-                                  if (!confirm(`Delete room "${r.name}"? Any timetable slots using this room must be reassigned first.`)) return
+                                onClick={async () => {
+                                  if (!(await ask(`Delete room "${r.name}"? Any timetable slots using this room must be reassigned first.`))) return
                                   deleteRoom.mutate(r.id)
                                 }}
                               >
@@ -2614,11 +2615,11 @@ export default function AcademicEnginePage() {
                 </Button>
                 <Button
                   disabled={migrateLegacy.isPending || !migrationStatus?.academicYear}
-                  onClick={() => {
+                  onClick={async () => {
                     if (
-                      !window.confirm(
+                      !(await ask(
                         'Migrate legacy classes and enrollments into the academic engine for the active year?'
-                      )
+                      ))
                     ) {
                       return
                     }

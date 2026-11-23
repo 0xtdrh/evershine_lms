@@ -2,6 +2,7 @@
 
 /** x01: manage website items of one kind (products / achievements / media) — add, edit, show / hide, feature, delete. */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchApi } from '@/lib/api-client'
@@ -140,7 +141,7 @@ export function ItemsManager({ kind, canEdit }: { kind: ItemKind; canEdit: boole
                     <button type="button" className="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" onClick={() => setDraft({ ...it, date: (it.date ?? '').slice(0, 10) })}>{L('Edit', 'تعديل')}</button>
                     <button type="button" className="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" onClick={() => void quick(it, { show: !it.show })}>{it.show ? L('Hide', 'اخفي') : L('Show', 'اظهر')}</button>
                     <button type="button" className="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" onClick={() => void quick(it, { featured: !it.featured })}>{it.featured ? L('Not featured', 'مش مميز') : L('Feature', 'مميز')}</button>
-                    <button type="button" className="rounded-md border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50" onClick={() => { if (confirm(L('Delete this item? This cannot be undone.', 'تمسح ده؟ مش هيرجع تاني.'))) void send(`/api/website/items/${it.id}`, 'DELETE') }}>{L('Delete', 'امسح')}</button>
+                    <button type="button" className="rounded-md border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50" onClick={async () => { if ((await ask(L('Delete this item? This cannot be undone.', 'تمسح ده؟ مش هيرجع تاني.')))) void send(`/api/website/items/${it.id}`, 'DELETE') }}>{L('Delete', 'امسح')}</button>
                   </div>
                 ) : null}
               </div>

@@ -2,6 +2,7 @@
 
 /** M1: a partner's details — edit, stop / start again, delete (only while it has no places and no contracts). */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -55,12 +56,12 @@ export function PartnerInfoForm({ p, canEdit, canDelete }: { p: PartnerDetail; c
       {canEdit && (
         <div className="flex flex-wrap gap-2">
           <Button size="sm" disabled={save.isPending} onClick={() => save.mutate(f)}>{save.isPending && <Loader2 className="me-1 h-4 w-4 animate-spin" />}{L('Save', 'احفظ')}</Button>
-          <Button size="sm" variant="outline" disabled={save.isPending} onClick={() => {
-            if (f.isActive && !confirm(L('Stop this partner? Its places stop too.', 'توقف الشريك ده؟ أماكنه هتتوقف كمان.'))) return
+          <Button size="sm" variant="outline" disabled={save.isPending} onClick={async () => {
+            if (f.isActive && !(await ask(L('Stop this partner? Its places stop too.', 'توقف الشريك ده؟ أماكنه هتتوقف كمان.')))) return
             save.mutate({ ...f, isActive: !f.isActive })
           }}>{f.isActive ? L('Stop partner', 'وقّف الشريك') : L('Start again', 'شغّله تاني')}</Button>
           {canDelete && p.places.length === 0 && p.contracts.length === 0 && (
-            <Button size="sm" variant="outline" className="text-rose-600" disabled={del.isPending} onClick={() => confirm(L('Delete this partner?', 'تمسح الشريك ده؟')) && del.mutate()}>{L('Delete', 'امسح')}</Button>
+            <Button size="sm" variant="outline" className="text-rose-600" disabled={del.isPending} onClick={async () => (await ask(L('Delete this partner?', 'تمسح الشريك ده؟'))) && del.mutate()}>{L('Delete', 'امسح')}</Button>
           )}
         </div>
       )}

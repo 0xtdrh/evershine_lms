@@ -6,6 +6,7 @@
  * Booking from here comes in batch B. APIs /api/guardian-portal/family*.
  */
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Lock, Plus, Sparkles, X } from 'lucide-react'
@@ -73,11 +74,11 @@ export function FamilyAccountCard() {
     }
   }
   const cancelBooking = async (id: string) => {
-    if (!confirm(L('Cancel this booking?', 'تلغي الحجز ده؟'))) return
+    if (!(await ask(L('Cancel this booking?', 'تلغي الحجز ده؟')))) return
     try { await fetchApi(`/api/guardian-portal/family/bookings/${id}`, { method: 'DELETE' }); void qc.invalidateQueries({ queryKey: ['family-bookings'] }); void qc.invalidateQueries({ queryKey: ['family'] }) } catch (e) { notify.error((e as Error).message) }
   }
   const remove = async (p: Person) => {
-    if (!p.memberId || !confirm(L(`Remove ${p.firstName}?`, `تشيل ${p.firstName}؟`))) return
+    if (!p.memberId || !(await ask(L(`Remove ${p.firstName}?`, `تشيل ${p.firstName}؟`)))) return
     try {
       await fetchApi(`/api/guardian-portal/family/members/${p.memberId}`, { method: 'DELETE' })
       setSel(null)

@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { useState } from 'react'
 import Link from 'next/link'
@@ -41,7 +42,7 @@ export function StudentAdminToolbar({
     : `/dashboard/promotions?studentId=${studentId}`
 
   const handleSuspend = async () => {
-    if (!confirm(`Suspend ${registrationNumber}? Login will be disabled.`)) return
+    if (!(await ask(`Suspend ${registrationNumber}? Login will be disabled.`))) return
     setBusy(true)
     try {
       await fetchApi(`/api/students/${studentId}`, { method: 'DELETE' })

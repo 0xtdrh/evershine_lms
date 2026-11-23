@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -322,8 +323,8 @@ export default function PoliciesPage() {
                               size="sm"
                               variant="outline"
                               disabled={deactivateFee.isPending}
-                              onClick={() => {
-                                if (confirm(L('Deactivate this fee policy?', 'توقّف السياسة دي؟'))) deactivateFee.mutate(p.id)
+                              onClick={async () => {
+                                if ((await ask(L('Deactivate this fee policy?', 'توقّف السياسة دي؟')))) deactivateFee.mutate(p.id)
                               }}
                             >
                               {L('Deactivate', 'وقّف')}
@@ -445,8 +446,8 @@ export default function PoliciesPage() {
                               size="sm"
                               variant="outline"
                               disabled={deactivateTeacher.isPending}
-                              onClick={() => {
-                                if (confirm(L('Deactivate this teacher policy?', 'توقّف سياسة المدربين دي؟'))) deactivateTeacher.mutate(p.id)
+                              onClick={async () => {
+                                if ((await ask(L('Deactivate this teacher policy?', 'توقّف سياسة المدربين دي؟')))) deactivateTeacher.mutate(p.id)
                               }}
                             >
                               {L('Deactivate', 'وقّف')}

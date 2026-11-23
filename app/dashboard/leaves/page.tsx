@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { FormEvent, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -326,7 +327,7 @@ export default function LeavesPage() {
                             {L('Evaluate', 'راجع')}
                           </Button>
                           <Button size="sm" variant="ghost" className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 h-auto"
-                            onClick={() => { if (confirm(L('Remove this request and notify the applicant?', 'تشيل الطلب ده وتبلّغ صاحبه؟'))) deleteMutation.mutate(r.id) }}>
+                            onClick={async () => { if ((await ask(L('Remove this request and notify the applicant?', 'تشيل الطلب ده وتبلّغ صاحبه؟')))) deleteMutation.mutate(r.id) }}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -422,8 +423,8 @@ export default function LeavesPage() {
                                 variant="ghost"
                                 className="text-rose-600 hover:text-rose-800 hover:bg-rose-50"
                                 disabled={deleteMutation.isPending}
-                                onClick={() => {
-                                  if (confirm(L('Withdraw this pending leave request?', 'تسحب طلب الإجازة ده؟'))) {
+                                onClick={async () => {
+                                  if ((await ask(L('Withdraw this pending leave request?', 'تسحب طلب الإجازة ده؟')))) {
                                     deleteMutation.mutate(r.id)
                                   }
                                 }}

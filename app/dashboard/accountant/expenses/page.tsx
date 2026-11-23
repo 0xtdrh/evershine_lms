@@ -1,5 +1,6 @@
 'use client'
 
+import { ask } from '@/components/ui/confirm-dialog'
 import { useMyPermissions } from '@/hooks/use-my-permissions'
 import { L, useI18n } from '@/lib/i18n/client'
 import { DataExchangeButtons } from '@/components/data/DataExchangeButtons'
@@ -208,8 +209,8 @@ export default function AccountantExpensesPage() {
     await updateExpenseAsync({ id: editingExpense.id, payload })
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm(L('Are you sure you want to delete this expense record?', 'متأكد إنك عايز تمسح المصروف ده؟'))) {
+  const handleDelete = async (id: string) => {
+    if ((await ask(L('Are you sure you want to delete this expense record?', 'متأكد إنك عايز تمسح المصروف ده؟')))) {
       deleteExpenseAsync(id)
     }
   }
