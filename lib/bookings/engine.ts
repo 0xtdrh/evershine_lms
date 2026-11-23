@@ -351,6 +351,15 @@ export async function syncBookings(force: boolean | { guardianId: string } = fal
       await tellFamily(b.id)
       confirmed++
     } else if (holdExpired(b.holdUntil, state, new Date())) {
+      if (await attendedGroup(b.studentId, b.classSectionId)) {
+        // owner 23/11: a child who already attends is never removed by the system — the office decides (Exclude / more time).
+        // remindersSent 3 = "the office was told"; the booking stays in "your work today" (held seats past their time).
+        if (b.remindersSent < 3) {
+          await prisma.courseBooking.update({ where: { id: b.id }, data: { remindersSent: 3 } })
+          await tellStaffUnpaidAttending(b.id)
+        }
+        continue
+      }
       await release(b.id, 'EXPIRED', 'Not paid in time · مادفعش في الميعاد')
       expired++
     } else if (b.holdUntil && !(state && state.paidAmount > 0)) {
@@ -366,18 +375,82 @@ export async function syncBookings(force: boolean | { guardianId: string } = fal
   return { confirmed, expired }
 }
 
-/** Ends a held / waiting booking: enrolment withdrawn, unpaid invoice cancelled, seat freed. */
+/** Ends a held / waiting booking: enrolment withdrawn, unpaid invoice cancelled, seat freed, code given back (nothing paid). */
 async function release(bookingId: string, status: BookingStatus, reason: string, deciderId?: string | null) {
   const b = await prisma.courseBooking.findUnique({ where: { id: bookingId } })
   if (!b) return
+  // C05 (23/11): claim the change first — two runs at the same moment (daily job + family page) act once only
+  const claimed = await prisma.courseBooking.updateMany({ where: { id: b.id, status: b.status }, data: { status, reason, holdUntil: null, decidedById: deciderId ?? undefined, decidedAt: new Date() } })
+  if (!claimed.count) return
+  const paidSomething = b.invoiceId ? Number((await prisma.feeInvoice.findUnique({ where: { id: b.invoiceId }, select: { paidAmount: true } }))?.paidAmount ?? 0) > 0 : false
   if (b.studentId && b.classSectionId && b.status === 'HOLD') {
     await prisma.studentEnrollment.updateMany({ where: { studentId: b.studentId, classSectionId: b.classSectionId, status: { in: ['ACTIVE', 'AWAITING_PAYMENT'] } }, data: { status: 'WITHDRAWN', withdrawalReason: status === 'EXPIRED' ? 'BOOKING_EXPIRED' : 'BOOKING_CANCELLED' } })
     if (b.invoiceId) await prisma.feeInvoice.updateMany({ where: { id: b.invoiceId, paidAmount: 0 }, data: { status: 'CANCELLED', notes: `Booking ${status.toLowerCase()} · الحجز ${status === 'EXPIRED' ? 'انتهى' : 'اتلغى'}` } })
     await notifySeatFreed(b.classSectionId).catch(() => null)
   }
   if (b.waitingEntryId) await prisma.waitingListEntry.updateMany({ where: { id: b.waitingEntryId, status: 'WAITING' }, data: { status: 'CANCELLED' } })
-  await prisma.courseBooking.update({ where: { id: b.id }, data: { status, reason, holdUntil: null, decidedById: deciderId ?? undefined, decidedAt: new Date() } })
+  if (b.code && !paidSomething) await giveBackCode(b).catch((e) => console.warn('[BOOKING] code not given back', e))
   await tellFamily(b.id)
+}
+
+/**
+ * C05 (owner 23/11): a booking that ends with nothing paid gives its enrolment code back — the use is removed (the family
+ * can type it again) and the discount made from it for this child is ended. Called once per booking (release claims first).
+ */
+async function giveBackCode(b: { code: string | null; guardianId: string; studentId: string | null }) {
+  if (!b.code) return
+  const row = await prisma.enrolmentCode.findUnique({ where: { code: b.code }, select: { id: true, code: true, discountTypeId: true } })
+  const g = await prisma.guardian.findUnique({ where: { id: b.guardianId }, select: { phoneNumber: true } })
+  if (!row || !g) return
+  const use = await prisma.enrolmentCodeUse.findFirst({ where: { codeId: row.id, phone: g.phoneNumber }, orderBy: { createdAt: 'desc' }, select: { id: true } })
+  if (!use) return
+  const gone = await prisma.enrolmentCodeUse.deleteMany({ where: { id: use.id } })
+  if (gone.count) await prisma.enrolmentCode.updateMany({ where: { id: row.id, uses: { gt: 0 } }, data: { uses: { decrement: 1 } } })
+  if (b.studentId && row.discountTypeId) {
+    await prisma.discountAssignment.updateMany({ where: { studentId: b.studentId, discountTypeId: row.discountTypeId, status: 'ACTIVE', reason: { contains: row.code } }, data: { status: 'ENDED' } })
+  }
+}
+
+/**
+ * C05/D08 (owner 23/11): a receipt cancelled by mistake makes the invoice due again — a booking confirmed by that invoice
+ * goes back to "held until paid" with a new deadline (same rule as a new booking), the family is told, and the staff who
+ * asked / approved hear that the seat is held again. An "after payment" group puts the child back to waiting for payment.
+ */
+export async function reopenAfterVoid(invoiceId: string, staffIds: string[], receipt: string | null) {
+  const rows = await prisma.courseBooking.findMany({ where: { invoiceId, status: 'CONFIRMED' } })
+  if (!rows.length) return 0
+  const inv = await prisma.feeInvoice.findUnique({ where: { id: invoiceId }, select: { totalAmount: true, paidAmount: true, status: true, proofStatus: true, classSection: { select: { installmentsAllowed: true } } } })
+  if (!inv) return 0
+  // still paid enough (installments / another payment): the booking stays confirmed
+  if (invoicePaid({ totalAmount: Number(inv.totalAmount), paidAmount: Number(inv.paidAmount), status: inv.status, proofStatus: inv.proofStatus }, !!inv.classSection?.installmentsAllowed)) return 0
+  const rules = await prisma.bookingRule.findMany()
+  let n = 0
+  for (const b of rows) {
+    const holdUntil = new Date(Date.now() + resolveRule(rules, { campusId: b.campusId, levelId: b.levelId, groupId: b.classSectionId }).holdHours * 3_600_000)
+    const why = `Receipt ${receipt ?? ''} was cancelled — the seat is held until the invoice is paid · الإيصال ${receipt ?? ''} اتلغى — المكان محجوز لحد ما الفاتورة تتدفع`
+    const done = await prisma.courseBooking.updateMany({ where: { id: b.id, status: 'CONFIRMED' }, data: { status: 'HOLD', confirmedAt: null, holdUntil, remindersSent: 0, reason: why } })
+    if (!done.count) continue
+    n++
+    await dueByHold(invoiceId, holdUntil)
+    if (b.studentId && b.classSectionId) await (await import('@/lib/groups/entry')).holdUntilPaid(b.studentId, b.classSectionId, { tellFamily: false }).catch((e) => console.error('[BOOKING] hold after void', e))
+    await tellFamily(b.id)
+    try {
+      const v = await bookingView(b.id)
+      const en = holdUntil.toLocaleString('en-GB', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      const ar = holdUntil.toLocaleString('ar-EG-u-nu-latn', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      await notifyUsers(staffIds, 'PAYMENT_VOID_REQUEST', {
+        title: `Booking held again: ${v?.who ?? ''} — ${v?.course.en ?? ''}`, message: `Receipt ${receipt ?? ''} was cancelled, so the seat waits for payment again until ${en}.`,
+        titleAr: `الحجز رجع محجوز: ${v?.who ?? ''} — ${v?.course.ar ?? ''}`, messageAr: `الإيصال ${receipt ?? ''} اتلغى، فالمكان مستني الدفع تاني لحد ${ar}.`, relatedId: b.id,
+      })
+    } catch (e) { console.warn('[BOOKING_NOTIFY]', e) }
+  }
+  return n
+}
+
+/** C05: the student already came to sessions of this group (present or late) — staff decide, the seat is never let go by itself. */
+async function attendedGroup(studentId: string | null, groupId: string | null) {
+  if (!studentId || !groupId) return false
+  return (await prisma.enrollmentAttendanceRecord.count({ where: { status: { in: ['PRESENT', 'LATE'] }, studentEnrollment: { studentId, classSectionId: groupId } } })) > 0
 }
 
 export async function cancelByFamily(guardianId: string, bookingId: string) {
@@ -467,7 +540,8 @@ export async function shape(rows: Awaited<ReturnType<typeof prisma.courseBooking
     const lv = levels.find((x) => x.id === b.levelId)
     return {
       id: b.id, status: b.status as BookingStatus, statusText: STATUS_TEXT[b.status as BookingStatus], mode: b.mode, plan: b.plan, code: b.code,
-      course: { slug: b.listingSlug, en: l?.titleEn || b.listingSlug, ar: l?.titleAr || l?.titleEn || b.listingSlug }, level: lv ? `${lv.subject?.name ?? ''} — ${lv.name}` : null,
+      // C05: never the link name (nova-explorer) — the course title, else the course of the level
+      course: { slug: b.listingSlug, en: l?.titleEn || lv?.subject?.name || b.listingSlug, ar: l?.titleAr || l?.titleEn || lv?.subject?.name || b.listingSlug }, level: lv ? `${lv.subject?.name ?? ''} — ${lv.name}` : null,
       who: who ? `${who.firstName} ${who.lastName}` : '—', registrationNumber: (who as { registrationNumber?: string } | undefined)?.registrationNumber ?? null,
       family: guardians.find((x) => x.id === b.guardianId) ?? null,
       group: g ? { id: g.id, name: [g.className, g.sectionName].filter(Boolean).join(' '), campus: g.campus.name, slots: g.scheduleSlots } : null,
@@ -485,6 +559,17 @@ async function tellStaff(bookingId: string, guardian: Guardian, person: FamilyPe
     await notifyUsers(staff.map((u) => u.id), 'BOOKING_NEW', {
       title: `${review ? 'Booking to approve' : 'New booking'}: ${title.en} (${way[0]})`, message: `${person.firstName} · ${guardian.firstName} ${guardian.lastName} · ${guardian.phoneNumber}`,
       titleAr: `${review ? 'حجز مستني موافقتك' : 'حجز جديد'}: ${title.ar} (${way[1]})`, messageAr: `${person.firstName} · ${guardian.firstName} ${guardian.lastName} · ${guardian.phoneNumber}`, relatedId: bookingId,
+    })
+  } catch (e) { console.warn('[BOOKING_NOTIFY]', e) }
+}
+
+async function tellStaffUnpaidAttending(bookingId: string) {
+  try {
+    const v = await bookingView(bookingId)
+    const staff = await prisma.user.findMany({ where: { isActive: true, role: { in: ['SUPER_ADMIN', 'ADMIN', 'SECRETARY', 'BRANCH_MANAGER'] } }, select: { id: true } })
+    await notifyUsers(staff.map((u) => u.id), 'BOOKING_NEW', {
+      title: `Unpaid but attending: ${v?.who ?? ''} — ${v?.course.en ?? ''}`, message: 'The seat time ended unpaid, but the student already attends. Decide: Exclude, or give more time.',
+      titleAr: `مادفعش وبيحضر: ${v?.who ?? ''} — ${v?.course.ar ?? ''}`, messageAr: 'مهلة المكان خلصت من غير دفع، بس الطالب بيحضر فعلًا. قرّر: استبعاد أو مهلة تانية.', relatedId: bookingId,
     })
   } catch (e) { console.warn('[BOOKING_NOTIFY]', e) }
 }
@@ -509,6 +594,14 @@ async function remindFamily(bookingId: string, hoursLeft: number) {
   } catch (e) { console.warn('[BOOKING_REMIND]', e) }
 }
 
+/** C05: reasons are stored "English · عربي" — each message gets its own language only. */
+export function half(text: string | null | undefined, lang: 'en' | 'ar'): string | null {
+  if (!text) return null
+  const i = text.indexOf(' · ')
+  if (i < 0) return text
+  return (lang === 'en' ? text.slice(0, i) : text.slice(i + 3)).trim() || text
+}
+
 async function tellFamily(bookingId: string) {
   try {
     const v = await bookingView(bookingId)
@@ -516,8 +609,8 @@ async function tellFamily(bookingId: string) {
     const g = b ? await prisma.guardian.findUnique({ where: { id: b.guardianId }, select: { userId: true } }) : null
     if (!v || !g) return
     await notifyUsers([g.userId], 'BOOKING_UPDATE', {
-      title: `${v.course.en} — ${v.who}: ${v.statusText.en}`, message: v.status === 'HOLD' ? 'Pay the first invoice to confirm the seat.' : v.reason ?? v.statusText.en,
-      titleAr: `${v.course.ar} — ${v.who}: ${v.statusText.ar}`, messageAr: v.status === 'HOLD' ? 'ادفع أول فاتورة علشان المكان يتأكد.' : v.reason ?? v.statusText.ar, relatedId: bookingId,
+      title: `${v.course.en} — ${v.who}: ${v.statusText.en}`, message: v.status === 'HOLD' ? 'Pay the first invoice to confirm the seat.' : half(v.reason, 'en') ?? v.statusText.en,
+      titleAr: `${v.course.ar} — ${v.who}: ${v.statusText.ar}`, messageAr: v.status === 'HOLD' ? 'ادفع أول فاتورة علشان المكان يتأكد.' : half(v.reason, 'ar') ?? v.statusText.ar, relatedId: bookingId,
     })
   } catch (e) { console.warn('[BOOKING_NOTIFY]', e) }
 }

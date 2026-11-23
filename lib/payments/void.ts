@@ -125,6 +125,10 @@ export async function approveVoid(voidId: string, user: { id: string; role: stri
   }
 
   await refreshGroupAfterPayment(classSectionId, user.id)
+  // C05/D08 (owner 23/11): a booking confirmed by this invoice is held again until paid (never breaks the cancel)
+  try {
+    await (await import('@/lib/bookings/engine')).reopenAfterVoid(v.invoiceId, [...new Set([v.requestedById, user.id])], v.receiptNumber ?? null)
+  } catch (err) { console.error('[PAYMENT_VOID_BOOKING]', err) }
   const amount = num(v.amount)
   await notifyUsers([v.requestedById], 'PAYMENT_VOID_REQUEST', { title: 'Payment cancelled', message: `Receipt ${v.receiptNumber ?? ''} was cancelled`, titleAr: 'الدفعة اتلغت', messageAr: `الإيصال ${v.receiptNumber ?? ''} اتلغى بعد الموافقة`, relatedId: v.id })
   await notifyFamilies([v.studentId], 'PAYMENT_VOIDED', (s) => ({

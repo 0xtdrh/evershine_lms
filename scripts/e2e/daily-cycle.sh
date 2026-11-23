@@ -3390,6 +3390,15 @@ check "the same child cannot book the same course twice (already learning it)" "
 BI1=$(M "SELECT invoiceId FROM CourseBooking WHERE id='$BK1ID'")
 pay $BI1 $(M "SELECT CAST(totalAmount - paidAmount AS DECIMAL(10,0)) FROM FeeInvoice WHERE id='$BI1'") >/dev/null
 check "paid → the booking is confirmed (the family sees it at once)" "$(f3 GET /api/guardian-portal/family/bookings | jq_ "[b['status'] for b in d['data'] if b['id']=='$BK1ID']")" "['CONFIRMED']"
+# C05/D08 (23/11): the first payment cancelled by mistake → the booking is held again until paid; paying again confirms it
+BP1=$(M "SELECT id FROM FeePayment WHERE invoiceId='$BI1' AND status='COMPLETED' ORDER BY createdAt DESC LIMIT 1")
+BV1=$(api POST /api/payment-voids "{\"paymentId\":\"$BP1\",\"reason\":\"C05 saved on the wrong child\"}" | jq_ "d['data']['id']")
+VAJ=$(mktemp); login_jar secadmin@e2e.local Another2026Pass "$VAJ" 10.0.8.82
+check "C05: the receipt of a confirmed booking is cancelled → the booking is held again with a new deadline, the family and the office are told" "$(vadm PATCH /api/payment-voids/$BV1 '{"action":"approve"}' | jq_ "d['data']['state']")/$(M "SELECT CONCAT(status, '/', holdUntil > UTC_TIMESTAMP(), '/', remindersSent) FROM CourseBooking WHERE id='$BK1ID'")/$(M "SELECT COUNT(*) > 0 FROM Notification WHERE relatedId='$BK1ID' AND titleAr LIKE 'الحجز رجع محجوز%'")" "APPROVED/HOLD/1/0/1"
+check "C05: the void list shows the person's name, not the e-mail" "$(api GET '/api/payment-voids?status=ALL' | jq_ "[('@' in (r['requestedBy'] or '')) for r in d['data'] if r['id']=='$BV1'][0]")" "False"
+pay $BI1 $(M "SELECT CAST(totalAmount - paidAmount AS DECIMAL(10,0)) FROM FeeInvoice WHERE id='$BI1'") >/dev/null
+check "C05: paid again → confirmed again" "$(f3 GET /api/guardian-portal/family/bookings | jq_ "[b['status'] for b in d['data'] if b['id']=='$BK1ID']")" "['CONFIRMED']"
+rm -f "$VAJ"
 Y9=$(( $(cairo +%Y) - 9 ))
 FM3=$(f3 POST /api/guardian-portal/family/members "{\"firstName\":\"Midone\",\"lastName\":\"Accounttest\",\"dob\":\"$Y9-02-02\",\"gender\":\"MALE\"}" | jq_ "d['data']['id']")
 BK2ID=$(f3 POST /api/guardian-portal/family/book "{\"person\":\"m:$FM3\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"agree\":true}" | jq_ "d['data']['id']")
@@ -3412,6 +3421,15 @@ FM5=$(f3 POST /api/guardian-portal/family/members "{\"firstName\":\"Babyone\",\"
 check "a 5-year-old cannot book the 8–12 course… unless a code that opens it is used" "$(f3 GET "/api/guardian-portal/family/book?person=m:$FM5&slug=e2e-course" | jq_ "d['error']['code']")/$(f3 GET "/api/guardian-portal/family/book?person=m:$FM5&slug=e2e-course&code=$JC3" | jq_ "d['data']['code']['kind']")" "NOT_SUITABLE/PREPAID"
 BK5=$(f3 POST /api/guardian-portal/family/book "{\"person\":\"m:$FM5\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"code\":\"$JC3\",\"agree\":true}")
 check "a prepaid group code: the invoice is fully covered → confirmed at once; the code use is counted" "$(echo "$BK5" | jq_ "(d['data']['status'], float(d['data']['invoice']['total']) if d['data']['invoice'] else 0.0)")/$(M "SELECT uses FROM EnrolmentCode WHERE code='$JC3'")" "('CONFIRMED', 0.0)/1"
+# C05 (23/11): a booking that ends with nothing paid gives the code back (use removed, discount ended); the family can use it again
+CB8=$(api POST /api/enrolment-codes '{"batch":"E2EBACK","count":1,"kind":"PERCENT","value":10,"maxUses":1}')
+JC8=$(echo "$CB8" | jq_ "d['data']['codes'][0]")
+FM8=$(f3 POST /api/guardian-portal/family/members "{\"firstName\":\"Codeback\",\"lastName\":\"Accounttest\",\"dob\":\"$Y9-03-03\",\"gender\":\"MALE\"}" | jq_ "d['data']['id']")
+BK8ID=$(f3 POST /api/guardian-portal/family/book "{\"person\":\"m:$FM8\",\"slug\":\"e2e-course\",\"mode\":\"ONLINE\",\"groupId\":\"$JG\",\"code\":\"$JC8\",\"agree\":true}" | jq_ "d['data']['id']")
+FS8=$(M "SELECT studentId FROM FamilyMember WHERE id='$FM8'")
+check "C05: booked with a one-use code → the use is counted and the discount made" "$(M "SELECT uses FROM EnrolmentCode WHERE code='$JC8'")/$(M "SELECT COUNT(*) FROM DiscountAssignment WHERE studentId='$FS8' AND status='ACTIVE' AND reason LIKE '%$JC8%'")" "1/1"
+check "C05: the family cancels before paying → the code comes back (use removed, discount ended) and can be typed again" "$(f3 DELETE /api/guardian-portal/family/bookings/$BK8ID | jq_ "d['success']")/$(M "SELECT uses FROM EnrolmentCode WHERE code='$JC8'")/$(M "SELECT COUNT(*) FROM EnrolmentCodeUse u JOIN EnrolmentCode c ON c.id=u.codeId WHERE c.code='$JC8'")/$(M "SELECT status FROM DiscountAssignment WHERE studentId='$FS8' AND reason LIKE '%$JC8%' LIMIT 1")/$(f3 GET "/api/guardian-portal/family/book?person=s:$FS8&slug=e2e-course&code=$JC8" | jq_ "d['data']['code'] is not None")" "True/0/0/ENDED/True"
+check "C05: cancelling twice does not give the code back twice" "$(f3 DELETE /api/guardian-portal/family/bookings/$BK8ID | jq_ "d['success']")/$(M "SELECT uses FROM EnrolmentCode WHERE code='$JC8'")" "False/0"
 check "staff see the bookings of the family with their state" "$(api GET /api/bookings | jq_ "sorted(set(b['status'] for b in d['data'] if b['family'] and b['family']['phoneNumber']=='01033344455'))")" "['CANCELLED', 'CONFIRMED', 'EXPIRED', 'HOLD']"
 rm -f "$FJ3"
 echo "== 104. Track placement ('learned before?'), partner join code + link, group booking link (six phases 1-C, 2026-11-13)"

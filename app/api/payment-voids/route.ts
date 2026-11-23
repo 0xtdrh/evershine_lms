@@ -14,6 +14,7 @@ import { createdResponse, errorResponse, errors, successResponse } from '@/lib/a
 import { canSeeInvoice, requestPlaces, visibleStudentIds } from '@/lib/places/server'
 import { requestVoid } from '@/lib/payments/void'
 import { withMonthLock } from '@/lib/month-close/with-lock'
+import { staffNames } from '@/lib/contacts/contact-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,10 +30,11 @@ export async function GET(request: NextRequest) {
   })
   const [students, users, pays] = await Promise.all([
     prisma.student.findMany({ where: { id: { in: rows.map((r) => r.studentId) } }, select: { id: true, firstName: true, lastName: true, registrationNumber: true } }),
-    prisma.user.findMany({ where: { id: { in: rows.flatMap((r) => [r.requestedById, r.decidedById]).filter((x): x is string => !!x) } }, select: { id: true, displayName: true, email: true } }),
+    // D08 (23/11): the person's name, never the e-mail
+    staffNames(rows.flatMap((r) => [r.requestedById, r.decidedById]).filter((x): x is string => !!x)),
     prisma.feePayment.findMany({ where: { id: { in: rows.map((r) => r.paymentId) } }, select: { id: true, paymentDate: true, paymentMethod: true, source: true, receivedBy: true, invoice: { select: { challanNumber: true, month: true } } } }),
   ])
-  const S = new Map(students.map((s) => [s.id, s])), U = new Map(users.map((u) => [u.id, u.displayName || u.email])), P = new Map(pays.map((p) => [p.id, p]))
+  const S = new Map(students.map((s) => [s.id, s])), U = users, P = new Map(pays.map((p) => [p.id, p]))
   return successResponse(rows.map((r) => ({
     ...r, amount: Number(r.amount),
     student: S.get(r.studentId) ?? null, payment: P.get(r.paymentId) ?? null,
