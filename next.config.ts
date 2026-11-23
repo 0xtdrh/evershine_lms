@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { browserProtectionHeaders } from "./lib/security/csp";
+import { browserProtectionHeaders, WORKER_CSP } from "./lib/security/csp";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false, // final test 15/11 (Z10): do not tell visitors which server software runs the site
@@ -92,9 +92,12 @@ const nextConfig: NextConfig = {
       },
       // Security part 3: HSTS + page protection (CSP, watch mode until CSP_ENFORCE=1). Pages only, not the JSON APIs.
       {
-        source: "/((?!api/).*)",
+        source: "/((?!api/|workers/).*)",
         headers: browserProtectionHeaders(),
       },
+      // Security part 3: the code-homework runners carry their own policy (eval only there, no page access)
+      { source: "/workers/js-runner.js", headers: [{ key: "Content-Security-Policy", value: WORKER_CSP.js }] },
+      { source: "/workers/py-runner.js", headers: [{ key: "Content-Security-Policy", value: WORKER_CSP.py }] },
       // LMS L5: the H5P player is shown in a (sandboxed) frame of our own lesson page
       {
         source: "/api/h5p/:path*",

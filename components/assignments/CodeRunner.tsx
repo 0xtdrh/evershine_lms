@@ -13,42 +13,9 @@ import { Button } from '@/components/ui/button'
 import { analyzeArduino, evaluateRules, TOOL_RULES, type ToolCheck } from '@/lib/assignments/tool-checks'
 import { CheckCircle2, Loader2, Play, ListChecks, XCircle } from 'lucide-react'
 
-const PYODIDE = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js'
-
-const PY_WORKER = `
-importScripts('${PYODIDE}');
-let py = null;
-self.onmessage = async (e) => {
-  const { id, code, input } = e.data;
-  let out = '';
-  try {
-    if (!py) py = await loadPyodide();
-    py.setStdout({ batched: (s) => { out += s + '\\n' } });
-    py.setStderr({ batched: (s) => { out += s + '\\n' } });
-    const lines = String(input || '').split('\\n'); let i = 0;
-    py.setStdin({ stdin: () => (i < lines.length ? lines[i++] : null) });
-    await py.runPythonAsync(code);
-    self.postMessage({ id, ok: true, out });
-  } catch (err) {
-    self.postMessage({ id, ok: false, out: out + String((err && err.message) || err).split('\\n').slice(-3).join('\\n') });
-  }
-};`
-
-const JS_WORKER = `
-self.onmessage = (e) => {
-  const { id, code, input } = e.data;
-  let out = '';
-  const lines = String(input || '').split('\\n'); let i = 0;
-  const log = (...a) => { out += a.map((x) => (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(' ') + '\\n' };
-  const con = { log, error: log, warn: log, info: log };
-  const readLine = () => (i < lines.length ? lines[i++] : '');
-  try {
-    new Function('console', 'prompt', 'readLine', 'fetch', 'XMLHttpRequest', 'importScripts', code)(con, readLine, readLine, undefined, undefined, undefined);
-    self.postMessage({ id, ok: true, out });
-  } catch (err) {
-    self.postMessage({ id, ok: false, out: out + String((err && err.message) || err) });
-  }
-};`
+// security part 3 (23/11): the runners are files under /workers with their own policy (they need eval / WebAssembly);
+// a worker made from a blob would take the page policy, which must stay without 'unsafe-eval'.
+const WORKER = { python: '/workers/py-runner.js', javascript: '/workers/js-runner.js' } as const
 
 export interface TestCase { id: string; input: string; expected: string; points: number }
 export interface TestResult { id: string; passed: boolean; output: string }
@@ -60,8 +27,7 @@ export function useCodeRunner(language: 'python' | 'javascript' | 'arduino') {
   const worker = useRef<Worker | null>(null)
   const warm = useRef(false)
   const make = () => {
-    const src = language === 'python' ? PY_WORKER : JS_WORKER
-    worker.current = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })))
+    worker.current = new Worker(WORKER[language === 'python' ? 'python' : 'javascript'])
     warm.current = false
   }
   useEffect(() => () => worker.current?.terminate(), [])

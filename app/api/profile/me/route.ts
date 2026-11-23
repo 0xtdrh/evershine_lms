@@ -62,6 +62,13 @@ export async function PATCH(request: Request) {
 
     // Handle file upload if provided
     if (profileImageFile && profileImageFile.size > 0) {
+      // security part 3 (23/11): a photo only (any file used to be accepted as "auto" and kept public)
+      if (profileImageFile.size > 4 * 1024 * 1024) {
+        return NextResponse.json({ success: false, error: 'The photo is larger than 4 MB · الصورة أكبر من 4 ميجا' }, { status: 400 })
+      }
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(profileImageFile.type)) {
+        return NextResponse.json({ success: false, error: 'Use a JPG, PNG or WEBP photo · استخدم صورة JPG أو PNG أو WEBP' }, { status: 400 })
+      }
       try {
         const buffer = Buffer.from(await profileImageFile.arrayBuffer())
 
@@ -84,7 +91,8 @@ export async function PATCH(request: Request) {
           const stream = cloudinary.uploader.upload_stream(
             {
               folder: 'technova/profile-pictures',
-              resource_type: 'auto',
+              resource_type: 'image',
+              allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
               width: 400,
               height: 400,
               crop: 'fill',

@@ -16,7 +16,8 @@ export function cspPolicy(dev = false): string {
     'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com'],
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
     'media-src': ["'self'", 'blob:', 'data:', 'https:'],
-    'connect-src': ["'self'", 'https://api.cloudinary.com', 'https://res.cloudinary.com', 'https://cdn.jsdelivr.net', ...(dev ? ['ws:', 'wss:'] : [])],
+    // fonts.*: the offline service worker (sw.js) keeps the Google fonts (security part 3, from the watch reports)
+    'connect-src': ["'self'", 'https://api.cloudinary.com', 'https://res.cloudinary.com', 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com', ...(dev ? ['ws:', 'wss:'] : [])],
     'frame-src': ["'self'", 'https:'],
     'object-src': ["'none'"],
     'base-uri': ["'self'"],
@@ -26,6 +27,16 @@ export function cspPolicy(dev = false): string {
     'report-uri': ['/api/security/csp-report'],
   }
   return Object.entries(d).map(([k, v]) => `${k} ${v.join(' ')}`).join('; ')
+}
+
+/**
+ * Security part 3 (23/11): the code-homework runners (public/workers/*.js) run students' code, so they need eval; they get
+ * their own narrow policy and the pages keep theirs without 'unsafe-eval'. A worker loaded from a file follows the
+ * policy sent with that file. The JavaScript runner may not load or send anything; Python loads Pyodide from jsDelivr.
+ */
+export const WORKER_CSP = {
+  js: "default-src 'none'; script-src 'unsafe-eval'",
+  py: "default-src 'none'; script-src 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; connect-src https://cdn.jsdelivr.net",
 }
 
 export const cspEnforced = (env: Record<string, string | undefined> = process.env) => env.CSP_ENFORCE === '1'

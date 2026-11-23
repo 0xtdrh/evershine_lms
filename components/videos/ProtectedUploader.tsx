@@ -16,8 +16,8 @@ import { Loader2, ShieldCheck, Upload } from 'lucide-react'
 const CORE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm'
 const PARALLEL = 4
 const hexBytes = (h: string) => Uint8Array.from(h.match(/../g)!.map((x) => parseInt(x, 16)))
-// loaded by the browser, not by the bundler
-const importBrowser = new Function('u', 'return import(u)') as (u: string) => Promise<{ FFmpeg: new () => FF }>
+// loaded by the browser, not by the bundler (security part 3: a plain import the bundler skips, not new Function — that needs 'unsafe-eval')
+const importBrowser = (u: string) => import(/* webpackIgnore: true */ u) as Promise<{ FFmpeg: new () => FF }>
 interface FF {
   on(e: 'log', f: (x: { message: string }) => void): void
   on(e: 'progress', f: (x: { progress: number }) => void): void

@@ -28,6 +28,14 @@ import { isSitePath } from '@/lib/site/pages'
 // is used exclusively for session decoding, not for actual login flows.
 const { auth } = NextAuth(authConfig)
 
+const BIG_BODY = 2 * 1024 * 1024
+/** routes that receive files (multipart or raw bytes) */
+const UPLOAD_ROUTES = [
+  /^\/api\/admin\/attendance\/import\//, /^\/api\/teacher-portal\/attendance\/import\//, /^\/api\/data\/[^/]+\/import$/,
+  /^\/api\/fees\/[^/]+\/proof$/, /^\/api\/guardian\/wards\/[^/]+\/fees\/[^/]+\/proof$/, /^\/api\/guardian-portal\/wallet\/topups$/,
+  /^\/api\/profile\/me$/, /^\/api\/treasury\/reconcile$/, /^\/api\/curriculum\/levels\/[^/]+\/import$/, /^\/api\/videos\/[^/]+\/piece\//, /^\/api\/admin\/backups/,
+]
+
 function getRoleHome(role?: string | null) {
   switch (role) {
     case 'TEACHER':
@@ -46,6 +54,15 @@ export default auth((req) => {
   const origin = publicOrigin(req.headers, nextUrl.origin, process.env)
   const isAuthenticated = !!session
   const role = session?.user?.role as string | undefined
+
+  // ── Security part 3 (23/11): a form / JSON request bigger than 2 MB is refused before any work. File uploads (imports,
+  // payment proofs, bank sheets, video pieces, backups, profile photo) keep the 10 MB proxy limit. ──
+  if (nextUrl.pathname.startsWith('/api/') && req.method !== 'GET' && req.method !== 'HEAD') {
+    const size = Number(req.headers.get('content-length') ?? 0)
+    if (size > BIG_BODY && !UPLOAD_ROUTES.some((r) => r.test(nextUrl.pathname))) {
+      return Response.json({ success: false, error: { code: 'TOO_LARGE', message: 'The request is too large · الطلب كبير جدًا' } }, { status: 413 })
+    }
+  }
 
   const isProtectedRoute = nextUrl.pathname.startsWith('/dashboard')
   const isAuthRoute      = nextUrl.pathname === '/login' || nextUrl.pathname === '/signup'
