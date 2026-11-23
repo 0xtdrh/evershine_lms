@@ -1035,7 +1035,7 @@ check "solved and no answer for 3 days → closed by itself" "$(M "SELECT status
 check "monthly report (managers only)" "$(api GET /api/complaints/report | jq_ "d['data']['report']['total']>=4")/$(secapi GET /api/complaints/report | jq_ "d['success']")" "True/False"
 rm -f "$WJ"
 echo "== 29. foundations: platform switches, language, agreements, marketing flag"
-check "platform settings readable by any staff (modules start OFF, agreements ON)" "$(secapi GET /api/platform/settings | jq_ "(d['data']['modules']['lms'], d['data']['modules']['agreements'], d['data']['language']['portal'])")" "(False, True, 'en')"
+check "platform settings readable by any staff (modules start OFF, agreements ON, Arabic by default)" "$(secapi GET /api/platform/settings | jq_ "(d['data']['modules']['lms'], d['data']['modules']['agreements'], d['data']['language']['portal'])")" "(False, True, 'ar')"
 check "secretary cannot change platform settings" "$(secapi PUT /api/platform/settings '{"modules":{"lms":true}}' | jq_ "d['success']")" "False"
 check "admin switches LMS on and portal language to Arabic" "$(api PUT /api/platform/settings '{"modules":{"lms":true},"language":{"staff":"en","portal":"ar"}}' | jq_ "(d['data']['modules']['lms'], d['data']['language']['portal'])")" "(True, 'ar')"
 check "agreements: 9 draft texts created switched off" "$(api GET /api/agreements | jq_ "(len(d['data']), any(a['isActive'] for a in d['data']))")" "(9, False)"
