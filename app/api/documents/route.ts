@@ -17,12 +17,13 @@ import { generateCertificateNumber } from '@/lib/certificates/generate-number'
 import QRCode from 'qrcode'
 import type { Prisma, Role } from '@prisma/client'
 import { z } from 'zod'
+import { webUrl } from '@/lib/validation/web-url'
 
 const createDocumentSchema = z.object({
   studentId: z.string().cuid(),
   type: z.enum(['BONAFIDE', 'ACHIEVEMENT', 'COMPLETION', 'BIRTHDAY', 'PERFORMANCE', 'ID_CARD', 'RESULT_CARD', 'STUDENT_PROFILE']),
   title: z.string().min(2),
-  pdfUrl: z.string().url(),
+  pdfUrl: webUrl,
   remarks: z.string().optional(),
 })
 

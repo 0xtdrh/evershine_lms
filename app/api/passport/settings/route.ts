@@ -2,6 +2,7 @@
 
 import type { Role } from '@prisma/client'
 import { z } from 'zod'
+import { webUrl } from '@/lib/validation/web-url'
 import { errors, successResponse } from '@/lib/api-response'
 import { requireSession } from '@/lib/academic/api-helpers'
 import { checkPermission } from '@/lib/rbac'
@@ -13,8 +14,8 @@ const schema = z.object({
   trackColors: z.record(z.string().regex(/^#[0-9a-fA-F]{6}$/)).default({}),
   shareDays: z.number().int().min(1).max(365).default(30),
   bookletPrice: z.number().min(0).max(100000).nullable().default(null),
-  companyStampUrl: z.string().url().nullable().default(null),
-  signatureUrl: z.string().url().nullable().default(null),
+  companyStampUrl: webUrl.nullable().default(null),
+  signatureUrl: webUrl.nullable().default(null),
   signatureName: z.string().max(80).default(''),
 })
 

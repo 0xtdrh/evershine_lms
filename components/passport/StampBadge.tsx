@@ -11,7 +11,7 @@ const esc = (s: string) => s.replace(/[<>&"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 /** The stamp as an SVG string (used on screen and for the images). */
 export function stampSvg(s: StampLook, ar: boolean, opts: { mono?: boolean } = {}): string {
-  const c = opts.mono ? '#000000' : s.color
+  const c = opts.mono ? '#000000' : (/^#[0-9a-fA-F]{3,8}$/.test(s.color) ? s.color : '#4f46e5') // security part 1: only a colour code goes inside the drawing
   const name = esc((ar ? s.nameAr : s.nameEn) || s.nameEn).slice(0, 40)
   const label = s.label ? esc(String(s.label)).slice(0, 34) : ''
   const date = s.date ? new Date(s.date).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''

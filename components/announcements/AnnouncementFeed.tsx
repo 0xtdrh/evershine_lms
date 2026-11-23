@@ -12,6 +12,7 @@ import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { L, useI18n } from '@/lib/i18n/client'
 import { CheckCircle2, Loader2, Megaphone, Paperclip, Pin } from 'lucide-react'
+import { safeHref } from '@/lib/validation/web-url'
 
 export interface FeedItem {
   id: string; title: string; titleAr: string | null; body: string; contentAr: string | null
@@ -59,7 +60,7 @@ export function AnnouncementFeed({ compact }: { compact?: boolean }) {
             </div>
             <p className="mt-1.5 whitespace-pre-wrap text-sm text-slate-700">{text}</p>
             {a.attachmentUrl && (
-              <a href={a.attachmentUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-indigo-700 hover:underline">
+              <a href={safeHref(a.attachmentUrl)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-indigo-700 hover:underline">
                 <Paperclip className="h-4 w-4" />{a.attachmentName || L('Attachment', 'مرفق')}
               </a>
             )}

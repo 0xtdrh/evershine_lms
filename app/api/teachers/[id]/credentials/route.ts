@@ -6,6 +6,7 @@
 
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
+import { webUrl } from '@/lib/validation/web-url'
 import { prisma } from '@/lib/prisma'
 import { errors, successResponse, createdResponse } from '@/lib/api-response'
 import { requireSession, requirePermission } from '@/lib/academic/api-helpers'
@@ -16,7 +17,7 @@ const bodySchema = z.object({
   title: z.string().min(1).max(200),
   institution: z.string().max(200).optional(),
   dateObtained: z.string().optional(),
-  fileUrl: z.string().url().optional(),
+  fileUrl: webUrl.optional(),
 })
 
 export async function GET(

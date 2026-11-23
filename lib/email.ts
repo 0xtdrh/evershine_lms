@@ -19,6 +19,9 @@ interface SendEmailParams {
   html: string
 }
 
+// security part 1: names and emails typed by people are escaped before they go inside the email HTML
+const escHtml = (v: string) => String(v).replace(/[<>&"']/g, (c) => `&#${c.charCodeAt(0)};`)
+
 export async function sendEmail({ to, subject, html }: SendEmailParams) {
   const client = getResend()
   if (!client) {
@@ -71,13 +74,13 @@ export async function sendTeacherWelcomeEmail(email: string, password: string, n
     subject: 'Welcome to TechNova - Your Teacher Credentials',
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-        <h2 style="color: #1e3a8a;">Welcome to TechNova, ${name}!</h2>
+        <h2 style="color: #1e3a8a;">Welcome to TechNova, ${escHtml(name)}!</h2>
         <p>Your official teacher account has been successfully created by the administrator.</p>
         <p style="margin-bottom: 20px;">Use the following credentials to access the portal:</p>
         <div style="background: #f8fafc; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #f1f5f9;">
           <p style="margin: 0 0 8px 0;"><strong>Portal Login URL:</strong> <a href="${loginUrl}">${loginUrl}</a></p>
-          <p style="margin: 0 0 8px 0;"><strong>Username / Email:</strong> <code>${email}</code></p>
-          <p style="margin: 0;"><strong>Temporary Password:</strong> <code>${password}</code></p>
+          <p style="margin: 0 0 8px 0;"><strong>Username / Email:</strong> <code>${escHtml(email)}</code></p>
+          <p style="margin: 0;"><strong>Temporary Password:</strong> <code>${escHtml(password)}</code></p>
         </div>
         <p style="color: #475569; font-size: 0.9em;">We recommend changing your password under dashboard settings immediately upon login.</p>
         <p style="margin-top: 30px; font-weight: bold; color: #1e3a8a;">TechNova Administration</p>

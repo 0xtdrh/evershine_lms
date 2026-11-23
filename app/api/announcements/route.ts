@@ -9,6 +9,7 @@
 
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
+import { webUrl } from '@/lib/validation/web-url'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkPermission, normalizeRole } from '@/lib/rbac'
@@ -27,7 +28,7 @@ const createSchema = z.object({
   audiences: z.array(z.enum(AUDIENCES)).min(1),
   scopeType: z.enum(SCOPES),
   scopeIds: z.array(z.string().min(1)).max(2000).default([]),
-  attachmentUrl: z.string().url().max(500).optional().nullable(),
+  attachmentUrl: webUrl.optional().nullable(),
   attachmentName: z.string().max(200).optional().nullable(),
   pinned: z.boolean().optional(),
   requireAck: z.boolean().optional(),

@@ -3,6 +3,7 @@
  */
 
 import { z } from 'zod'
+import { webUrl } from '@/lib/validation/web-url'
 import { ExpenseCategory } from '@prisma/client'
 
 // ─── Create ───────────────────────────────────────────────────────────────────
@@ -20,7 +21,7 @@ export const createExpenseSchema = z.object({
   categoryId: z.string().max(40).optional().nullable(),
   /** ISO date string "YYYY-MM-DD" */
   date:       z.string().date('Date must be in YYYY-MM-DD format'),
-  receiptUrl: z.string().url('Receipt URL must be a valid URL').optional(),
+  receiptUrl: webUrl.optional(),
   notes:      z.string().max(500).optional(),
   /** Required if the accountant has 'All Campuses' access */
   campusId:   z.string().cuid('Campus ID is invalid').optional(),

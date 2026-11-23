@@ -13,6 +13,7 @@ import { teacherWhere } from '@/lib/places/rules'
 import { canSeeTeacher, requestPlaces } from '@/lib/places/server'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
+import { webUrl } from '@/lib/validation/web-url'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { errors, createdResponse, paginatedResponse } from '@/lib/api-response'
@@ -31,7 +32,7 @@ const createTeacherDocSchema = z.object({
   title: z.string().min(2, 'Title is required').trim(),
   // WHY: pdfUrl is a placeholder in dev; Cloudinary URL in production.
   // Non-blocking: if upload fails the PDF was still delivered to the admin.
-  pdfUrl: z.string().default('https://example.com/documents/placeholder.pdf'),
+  pdfUrl: webUrl.default('https://example.com/documents/placeholder.pdf'),
   remarks: z.string().trim().optional(),
 })
 

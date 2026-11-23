@@ -3,6 +3,7 @@
  */
 
 import { z } from 'zod'
+import { webUrl } from '@/lib/validation/web-url'
 import { sessionShiftSchema } from './shift'
 
 export const createCampusSchema = z.object({
@@ -18,7 +19,7 @@ export const createCampusSchema = z.object({
 
 export const updateCampusSchema = createCampusSchema.partial().extend({
   // Branch profile (phase A) — optional, empty = cleared
-  mapUrl: z.preprocess((v) => (v === '' ? null : v), z.string().url().max(500).nullable().optional()),
+  mapUrl: z.preprocess((v) => (v === '' ? null : v), webUrl.nullable().optional()),
   whatsapp: z.preprocess((v) => (v === '' ? null : v), z.string().regex(/^\+?[\d\s\-]{8,20}$/, 'Invalid WhatsApp number').nullable().optional()),
   workingHours: z.preprocess((v) => (v === '' ? null : v), z.string().max(1000).nullable().optional()),
   roomsCount: z.number().int().min(0).max(500).nullable().optional(),

@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft, Building2, Loader2, MapPin, Phone, MessageCircle, Clock, Users, Pencil } from 'lucide-react'
 import { L, useI18n } from '@/lib/i18n/client'
+import { safeHref } from '@/lib/validation/web-url'
 
 interface Profile {
   campus: {
@@ -109,7 +110,7 @@ export default function CampusProfilePage({ params }: { params: Promise<{ id: st
         <CardContent className="text-sm">
           {!editing ? (
             <div className="grid gap-2 md:grid-cols-2">
-              <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 text-slate-400" /> {c.address}{c.mapUrl && <a href={c.mapUrl} target="_blank" rel="noreferrer" className="ml-1 text-indigo-600 underline">{L('map', 'الخريطة')}</a>}</p>
+              <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 text-slate-400" /> {c.address}{c.mapUrl && <a href={safeHref(c.mapUrl)} target="_blank" rel="noreferrer" className="ml-1 text-indigo-600 underline">{L('map', 'الخريطة')}</a>}</p>
               <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-slate-400" /> {c.phone} · {c.email}</p>
               <p className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-slate-400" /> {c.whatsapp ?? '—'}</p>
               <p className="flex items-start gap-2"><Clock className="mt-0.5 h-4 w-4 text-slate-400" /> <span className="whitespace-pre-wrap">{c.workingHours ?? '—'}</span></p>
