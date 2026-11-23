@@ -52,8 +52,8 @@ async function main() {
   const invB = await p.feeInvoice.findFirst({ where: { studentId: kidB.id }, select: { id: true } })
   const payB = await p.feePayment.findFirst({ where: { invoice: { studentId: kidB.id } }, select: { id: true } })
   const certB = await p.certificate.findFirst({ where: { studentId: kidB.id }, select: { id: true } }).catch(() => null)
-  const repB = await p.sessionReport.findFirst({ where: { studentId: kidB.id }, select: { id: true } }).catch(() => null)
-  const cmpB = await p.complaint.findFirst({ where: { NOT: { createdById: userA.id } }, select: { id: true } }).catch(() => null)
+  const repB = await p.sessionReport.findFirst({ where: { students: { some: { studentId: kidB.id } } }, select: { id: true } }).catch(() => null)
+  const cmpB = await p.complaint.findFirst({ where: { NOT: { complainantId: userA.id } }, select: { id: true } }).catch(() => null)
   const topB = await p.walletTopUp.findFirst({ where: { studentId: kidB.id }, select: { id: true } }).catch(() => null)
   // a group the instructor does NOT teach
   const otherGroup = await p.classSection.findFirst({ where: { status: 'ACTIVE', subjectOfferings: { none: { teacherId: teacher.id } } }, select: { id: true } })
