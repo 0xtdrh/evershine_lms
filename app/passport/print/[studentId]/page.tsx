@@ -12,6 +12,7 @@ import QRCode from 'qrcode'
 import { fetchApi } from '@/lib/api-client'
 import { I18nProvider, L, LanguageSwitch, useI18n } from '@/lib/i18n/client'
 import { StampBadge } from '@/components/passport/StampBadge'
+import { DataPage, IssuedBy, PassportCover, type BookFields, type Look } from '@/components/passport/PassportBook'
 import { Button } from '@/components/ui/button'
 import { Printer } from 'lucide-react'
 
@@ -23,6 +24,8 @@ interface Data {
   certificates: { title: string; number: string | null; issuedAt: string }[]
   transcript: { course: string; level: string; finalScore: number | null; passed: boolean | null; date: string }[]
   companyStamp: string | null; signature: string | null; signatureName: string
+  // S49
+  book: BookFields | null; look: Look; edition: { edition: number }
 }
 
 const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -75,7 +78,7 @@ function PrintView({ studentId }: { studentId: string }) {
   )
   return (
     <div className="keep-light min-h-screen bg-gray-100 py-6 print:bg-white print:py-0" dir={dir}>
-      <style>{`@media print { @page { size: ${page}; margin: ${kind === 'BOOKLET' ? '6mm' : '12mm'}; } body { background: #fff; } .pg { box-shadow: none !important; margin: 0 !important; break-after: page; } }`}</style>
+      <style>{`@media print { @page { size: ${page}; margin: ${kind === 'BOOKLET' ? '6mm' : '12mm'}; } body { background: #fff; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .pg { box-shadow: none !important; margin: 0 !important; break-after: page; } }`}</style>
       <div className="mx-auto mb-4 flex max-w-3xl flex-wrap items-center justify-center gap-2 px-4 print:hidden">
         <Button onClick={print} disabled={busy}><Printer className="me-2 h-4 w-4" /> {L('Print (counted)', 'اطبع (بتتسجل)')}</Button>
         <LanguageSwitch />
@@ -84,14 +87,15 @@ function PrintView({ studentId }: { studentId: string }) {
 
       {kind === 'BOOKLET' && (
         <>
-          <div className="pg mx-auto mb-4 flex h-[148mm] w-[105mm] flex-col items-center justify-center gap-3 p-4 text-center text-white shadow" style={{ background: d.cover }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/bglogo.png" alt="TechNova" className="h-14 w-auto rounded bg-white/90 p-1" />
-            <p className="text-lg font-bold tracking-[0.3em]">{L('PASSPORT', 'جواز سفر')}</p>
-            <p className="font-mono text-sm">{d.passport.number}</p>
-            {copyLine && <p className="text-[10px]">{copyLine}</p>}
+          {/* S49: the same cover and data page as the screen */}
+          <div className="pg mx-auto mb-4 flex h-[148mm] w-[105mm] flex-col items-center justify-center bg-white shadow">
+            <PassportCover look={d.look} ar={ar} number={d.passport.number} edition={d.edition.edition} young={false} className="max-w-[100mm]" />
+            {copyLine && <p className="mt-1 text-[9px] text-gray-500">{copyLine}</p>}
           </div>
-          <div className="pg mx-auto mb-4 h-[148mm] w-[105mm] bg-white p-4 text-black shadow">{identity}<p className="mt-4 text-center text-[10px] text-gray-500">TechNova · STEM · Robotics · Programming</p></div>
+          <div className="pg mx-auto mb-4 flex h-[148mm] w-[105mm] flex-col justify-center bg-white p-2 text-black shadow">
+            <DataPage look={d.look} ar={ar} name={d.student.name} nameAr={d.student.nameAr} number={d.passport.number} edition={d.edition.edition} reg={d.student.reg} joinedAt={d.student.joinedAt} photo={d.student.photo} qr={qr || undefined} book={d.book} />
+            <p className="mt-3 text-center text-[10px] text-gray-500">TechNova · STEM · Robotics · Programming</p>
+          </div>
           {chunk(d.stamps, 6).map((list, i) => (
             <div key={i} className="pg mx-auto mb-4 h-[148mm] w-[105mm] bg-white p-3 text-black shadow">
               <p className="mb-2 text-center text-[10px] uppercase tracking-widest text-gray-500">{L('Stamps', 'الأختام')} · {i + 1}</p>
@@ -118,7 +122,7 @@ function PrintView({ studentId }: { studentId: string }) {
             <img src="/brand/bglogo.png" alt="TechNova" className="h-10 w-auto" />
             <div className="text-end"><p className="font-bold">{L('TECHNOVA PASSPORT', 'جواز سفر TechNova')}</p>{copyLine && <p className="text-xs">{copyLine}</p>}</div>
           </div>
-          {identity}
+          <div className="mx-auto max-w-xl"><DataPage look={d.look} ar={ar} name={d.student.name} nameAr={d.student.nameAr} number={d.passport.number} edition={d.edition.edition} reg={d.student.reg} joinedAt={d.student.joinedAt} photo={d.student.photo} qr={qr || undefined} book={d.book} /></div>
           <h3 className="border-b border-gray-400 font-bold">{L('Stamps', 'الأختام')}</h3>
           {d.stamps.length ? stampsGrid(d.stamps, 120) : <p className="text-sm text-gray-500">—</p>}
           <h3 className="border-b border-gray-400 font-bold">{L('Certificates', 'الشهادات')}</h3>
@@ -140,15 +144,8 @@ function PrintView({ studentId }: { studentId: string }) {
           </table>
           <h3 className="border-b border-gray-400 font-bold">{L('Certificates', 'الشهادات')}</h3>
           {d.certificates.length ? d.certificates.map((c, i) => <p key={i}>{c.title} · <span className="font-mono">{c.number}</span> · {day(c.issuedAt, ar)}</p>) : <p className="text-gray-500">—</p>}
-          <div className="flex items-end justify-between pt-8">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {d.companyStamp ? <img src={d.companyStamp} alt="stamp" className="h-28 w-28 object-contain opacity-90" /> : <div className="h-28 w-28" />}
-            <div className="text-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {d.signature && <img src={d.signature} alt="signature" className="mx-auto h-16 object-contain" />}
-              <p className="border-t border-black pt-1 text-xs">{d.signatureName || L('Signature', 'الإمضاء')}</p>
-            </div>
-          </div>
+          {/* S49: the seal the owner chose (drawn / his stamp / none) + his signature */}
+          <div className="flex justify-end pt-8"><IssuedBy look={{ ...d.look, signatureName: d.look.signatureName || L('Signature', 'الإمضاء') }} ar={ar} /></div>
           <p className="text-[10px] text-gray-500">{L('Certificates can be checked at', 'الشهادات تتأكد من')} {typeof window !== 'undefined' ? window.location.origin : ''}/verify</p>
         </div>
       )}

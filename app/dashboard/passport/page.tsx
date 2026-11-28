@@ -16,6 +16,7 @@ import { notify } from '@/lib/notify'
 import { L, useI18n } from '@/lib/i18n/client'
 import { Watermark } from '@/components/curriculum/Watermark'
 import { StampBadge, stampPng } from '@/components/passport/StampBadge'
+import { BookStats, DataPage, PAPER, PassportCover, TripsPage, VisasPage, type BookFields, type Look, type Trip, type Visa } from '@/components/passport/PassportBook'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -41,6 +42,10 @@ interface Passport {
   next: { id: string; nameEn: string; nameAr: string; icon: string; have: number; need: number } | null
   classmates: { id: string; name: string }[]
   giverNames: Record<string, string>
+  // S49
+  book: (BookFields & { trips: Trip[]; visas: Visa[]; young: boolean }) | null
+  look: Look
+  edition: { edition: number; onThisBook: number; perBook: number; justRenewed: boolean }
 }
 
 const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -85,6 +90,11 @@ export default function PassportPage() {
   })
   // owner 28/11: tap a stamp → its story in a sheet
   const [open, setOpen] = useState<Stamp | null>(null)
+  // S49: the cover opens once per visit; inside pages
+  const [opened, setOpened] = useState(false)
+  const [opening, setOpening] = useState(false)
+  const [page, setPage] = useState<'stamps' | 'trips' | 'visas'>('stamps')
+  useEffect(() => { try { setOpened(!!studentId && sessionStorage.getItem(`tn_pass_open_${studentId}`) === '1') } catch { setOpened(true) } }, [studentId])
 
   const shareImage = async (s: Stamp) => {
     try {
@@ -102,6 +112,9 @@ export default function PassportPage() {
   if (isLoading || !p) return <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
   const family = p.viewer === 'STUDENT' || p.viewer === 'PARENT'
   const firstName = p.student.name.split(' ')[0]
+  const oldCount = (p.edition.edition - 1) * p.edition.perBook
+  const oldStamps = p.stamps.slice(0, oldCount)
+  const bookStamps = p.stamps.slice(oldCount)
   const base = typeof window !== 'undefined' ? window.location.origin : ''
 
   return (
@@ -114,36 +127,36 @@ export default function PassportPage() {
         )}
       </div>
 
-      {/* identity page */}
-      <div className="relative overflow-hidden rounded-3xl p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${p.cover}, #0f172a)` }}>
-        {/* P04 (28/11): one line for the name and the number on a phone; the photo shows from tablets up */}
-        <div className="flex items-center gap-4">
-          {p.student.photo
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={p.student.photo} alt="" className="hidden h-28 w-24 rounded-xl border-2 border-white/70 object-cover sm:block" />
-            : <div className="hidden h-28 w-24 items-center justify-center rounded-xl border-2 border-white/50 text-4xl sm:flex">👤</div>}
-          <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/70">{L('Passport', 'جواز سفر')} · TechNova</p>
-            <p className="text-xl font-bold">{p.student.name}</p>
-            {p.student.nameAr && <p className="text-lg" dir="rtl">{p.student.nameAr}</p>}
-            <p className="whitespace-nowrap font-mono text-sm" dir="ltr">{p.passport.number}</p>
-            <p className="text-xs text-white/80">{p.student.reg} · {p.student.campus} · {L('joined', 'انضم')} {day(p.student.joinedAt, ar)}</p>
-          </div>
-          {qr && (
-            <div className="rounded-xl bg-white p-2 text-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qr} alt="QR" className="h-16 w-16 sm:h-24 sm:w-24" />
-              <p className="text-[10px] text-slate-600">{L('Student card', 'كارت الطالب')}</p>
-            </div>
+      {/* owner 28/11 (S49): the real passport — the cover opens like a book (once per visit), then the data page */}
+      {!opened ? (
+        <PassportCover look={p.look} ar={ar} number={p.passport.number} edition={p.edition.edition} young={!!p.book?.young} color={p.cover} opening={opening}
+          onOpen={() => { setOpening(true); setTimeout(() => { setOpened(true); setOpening(false); try { sessionStorage.setItem(`tn_pass_open_${studentId}`, '1') } catch { /* private mode */ } }, 650) }} />
+      ) : (
+        <div className="mx-auto max-w-2xl space-y-3 animate-in fade-in zoom-in-95 duration-500">
+          {p.edition.justRenewed && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center text-sm font-semibold text-amber-900">🎉 {L(`A new passport! The old one is full — this is passport no. ${p.edition.edition}.`, `جواز جديد! القديم اتملى — ده الجواز رقم ${p.edition.edition}.`)}</div>
           )}
+          <DataPage look={p.look} ar={ar} name={p.student.name} nameAr={p.student.nameAr} number={p.passport.number} edition={p.edition.edition} reg={p.student.reg}
+            joinedAt={p.student.joinedAt} photo={p.student.photo} qr={qr || undefined} book={p.book} />
+          <BookStats book={p.book} stamps={p.stamps.length} />
+          <button type="button" className="mx-auto block text-xs text-slate-500 hover:underline" onClick={() => { setOpened(false); try { sessionStorage.removeItem(`tn_pass_open_${studentId}`) } catch { /* private mode */ } }}>📕 {L('Close the passport', 'اقفل الجواز')}</button>
         </div>
+      )}
+
+      {/* the inside pages: stamps / my trips / visas */}
+      <div className="flex gap-1 rounded-xl bg-slate-100 p-1 text-sm" role="tablist">
+        {([['stamps', L('Stamps', 'الأختام'), '🛂'], ['trips', L('My trips', 'رحلاتي'), '✈️'], ['visas', L('Visas', 'التأشيرات'), '🌍']] as const).map(([k, label, icon]) => (
+          <button key={k} type="button" role="tab" aria-selected={page === k} onClick={() => setPage(k)} className={`min-h-10 flex-1 rounded-lg px-2 font-medium transition ${page === k ? 'bg-white text-slate-900 shadow' : 'text-slate-500'}`}>{icon} {label}</button>
+        ))}
       </div>
+      {page === 'trips' && <Card><CardContent className="pt-5"><TripsPage trips={p.book?.trips ?? []} ar={ar} /></CardContent></Card>}
+      {page === 'visas' && <VisasPage visas={p.book?.visas ?? []} ar={ar} name={ar && p.student.nameAr ? p.student.nameAr : p.student.name} />}
 
       {/* stamps */}
-      <Card>
+      {page === 'stamps' && <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between text-base">
-            <span>{L('Stamps', 'الأختام')}</span>
+            <span>{L('Stamps', 'الأختام')}{p.edition.edition > 1 ? ` · ${L(`passport ${p.edition.edition}`, `الجواز ${p.edition.edition}`)}` : ''}</span>
             <span className="text-sm font-medium text-indigo-700">{L(`${p.stamps.length} of ${p.total}`, `${p.stamps.length} من ${p.total}`)}</span>
           </CardTitle>
           {/* owner 28/11: the stamp closest to being earned */}
@@ -157,8 +170,8 @@ export default function PassportPage() {
         </CardHeader>
         <CardContent>
           {!p.stamps.length && !p.locked.length ? <p className="text-sm text-slate-500">{L('No stamps yet — the first one comes soon!', 'لسه مفيش أختام — أول ختم جاي قريب!')}</p> : (
-            <div className="relative grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-              {p.stamps.map((s) => (
+            <div className={`relative grid gap-3 ${p.book?.young ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-3 sm:grid-cols-4 lg:grid-cols-6'}`} style={PAPER}>
+              {bookStamps.map((s) => (
                 <button key={s.id} type="button" onClick={() => setOpen(s)} className="flex flex-col items-center gap-1 rounded-xl p-1 text-center transition active:scale-95" aria-label={ar ? s.nameAr : s.nameEn}>
                   <StampBadge stamp={{ ...s, date: s.awardedAt }} ar={ar} fluid isNew={s.isNew} />
                   {s.isNew && <span className="rounded-full bg-amber-100 px-2 text-[10px] font-bold text-amber-800">{L('New', 'جديد')}</span>}
@@ -180,8 +193,15 @@ export default function PassportPage() {
               {family && session?.user?.name && <Watermark text={session.user.name} moving />}
             </div>
           )}
+          {/* renewal: the stamps of the full (old) passports stay here */}
+          {oldStamps.length > 0 && (
+            <details className="mt-4 rounded-xl border border-slate-200 p-3">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-700">📚 {L(`Old passports (${oldStamps.length} stamps)`, `الجوازات القديمة (${oldStamps.length} ختم)`)}</summary>
+              <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">{oldStamps.map((s) => <button key={s.id} type="button" onClick={() => setOpen(s)}><StampBadge stamp={{ ...s, date: s.awardedAt }} ar={ar} fluid /></button>)}</div>
+            </details>
+          )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* owner 28/11: a stamp's story (bottom sheet on a phone) */}
       {open && (

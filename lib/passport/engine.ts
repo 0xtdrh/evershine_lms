@@ -30,6 +30,8 @@ import {
 } from './rules'
 import { cairoToday } from '@/lib/dates/cairo'
 import { staffNames } from '@/lib/contacts/contact-log'
+import { DEFAULT_FIELDS, DEFAULT_SEASONS, normalizeFields, learningHours, passportEdition, placeLabel, type FieldKey, type FieldShow, type Season } from './book'
+import { ageOn } from '@/lib/profile/rules'
 
 type User = { id: string; role: string; campusId?: string | null }
 export interface Outcome<T = undefined> { ok: boolean; code?: string; message?: string; value?: T }
@@ -46,10 +48,28 @@ export interface PassportSettings {
   companyStampUrl: string | null
   signatureUrl: string | null
   signatureName: string
+  // owner 28/11 (S49): the new passport
+  coverTitleEn: string
+  coverTitleAr: string
+  sealMode: 'DRAWN' | 'IMAGE' | 'NONE'
+  sealTop: string
+  sealBottom: string
+  fields: Record<FieldKey, FieldShow>
+  seasons: Season[]
+  stampsPerBook: number
+  sessionMinutes: number
+  youngUntil: number
 }
 const KEY = 'passport.settings'
-export const PASSPORT_DEFAULTS: PassportSettings = { trackRequired: {}, trackColors: {}, shareDays: 30, bookletPrice: null, companyStampUrl: null, signatureUrl: null, signatureName: '' }
-export const getPassportSettings = async (): Promise<PassportSettings> => ({ ...PASSPORT_DEFAULTS, ...(await getSetting<Partial<PassportSettings>>(KEY, {})) })
+export const PASSPORT_DEFAULTS: PassportSettings = {
+  trackRequired: {}, trackColors: {}, shareDays: 30, bookletPrice: null, companyStampUrl: null, signatureUrl: null, signatureName: '',
+  coverTitleEn: 'TechNova Passport', coverTitleAr: 'جواز سفر TechNova', sealMode: 'DRAWN', sealTop: 'TECHNOVA · HURGHADA', sealBottom: 'تكنوفا · الغردقة',
+  fields: DEFAULT_FIELDS, seasons: DEFAULT_SEASONS, stampsPerBook: 24, sessionMinutes: 60, youngUntil: 8,
+}
+export const getPassportSettings = async (): Promise<PassportSettings> => {
+  const v = { ...PASSPORT_DEFAULTS, ...(await getSetting<Partial<PassportSettings>>(KEY, {})) }
+  return { ...v, fields: normalizeFields(v.fields), seasons: Array.isArray(v.seasons) ? v.seasons : DEFAULT_SEASONS }
+}
 export const savePassportSettings = (v: PassportSettings, userId: string) => setSetting(KEY, v, userId)
 
 // ───────────────────────── stamps library ─────────────────────────
@@ -314,9 +334,108 @@ export async function scanEventStamp(user: User, stampId: string, code: string):
   return { ok: true, value: { student: `${st.firstName} ${st.lastName}`.trim(), already } }
 }
 
+// ───────────────────────── the passport book (owner 28/11, S49) ─────────────────────────
+
+export interface BookData {
+  age: number | null
+  placeEn: string; placeAr: string
+  school: string | null
+  firstSession: Date | null
+  hours: number
+  projects: number
+  certificates: number
+  tracks: string[]
+  /** «My trips»: every level finished (DONE) and the ones running now (FLYING) */
+  trips: { id: string; course: string; level: string; track: string | null; color: string; status: 'DONE' | 'FLYING'; from: Date; to: Date | null }[]
+  /** a visa page for every track the child entered */
+  visas: { trackId: string; name: string; color: string; since: Date; graduated: boolean }[]
+  young: boolean
+}
+
+/** Everything the data page, «My trips» and the visas need. Never money, never phone numbers. */
+export async function bookData(studentId: string, settings: PassportSettings): Promise<BookData | null> {
+  const st = await prisma.student.findUnique({ where: { id: studentId }, select: { dateOfBirth: true, schoolName: true, campus: { select: { name: true, kind: true } } } })
+  if (!st) return null
+  const [enrollments, results, projects, certs, grads, first] = await Promise.all([
+    prisma.studentEnrollment.findMany({
+      where: { studentId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true, status: true, createdAt: true, deliveryMode: true,
+        classSection: { select: { status: true, sessionMinutes: true, deliveryMode: true, campus: { select: { name: true, kind: true } }, level: { select: { id: true, name: true, subject: { select: { name: true, trackId: true, track: { select: { name: true, color: true } } } } } } } },
+        _count: { select: { attendanceRecords: { where: { status: { in: ['PRESENT', 'LATE'] } } } } },
+      },
+    }),
+    prisma.studentLevelResult.findMany({ where: { passed: true, studentEnrollment: { studentId } }, orderBy: { updatedAt: 'asc' }, select: { updatedAt: true, studentEnrollment: { select: { id: true, createdAt: true } } } }),
+    prisma.assignmentSubmission.count({ where: { studentId, galleryStatus: 'APPROVED' } }),
+    prisma.certificate.count({ where: { studentId, status: 'VALID', isRevealed: true } }),
+    prisma.certificate.findMany({ where: { studentId, status: 'VALID', remarks: { startsWith: 'TRACK_GRADUATION:' } }, select: { remarks: true } }),
+    prisma.enrollmentAttendanceRecord.findFirst({ where: { studentEnrollment: { studentId }, status: { in: ['PRESENT', 'LATE'] } }, orderBy: { attendanceDate: 'asc' }, select: { attendanceDate: true } }),
+  ])
+  const colorOf = (trackId: string | null | undefined, own: string | null | undefined) => (trackId && settings.trackColors[trackId]) || own || '#1E7FA0'
+  const hours = learningHours(enrollments.flatMap((e) => Array.from({ length: e._count.attendanceRecords }, () => ({ minutes: e.classSection.sessionMinutes }))), settings.sessionMinutes)
+  // place = the running group's place (a partner school shows as partner, online groups as online), else the student's branch
+  const live = [...enrollments].reverse().find((e) => e.status === 'ACTIVE' && e.classSection.status === 'ACTIVE')
+  const pl = live ? { name: live.classSection.campus?.name ?? '', kind: live.classSection.campus?.kind ?? null, online: live.deliveryMode === 'ONLINE' || live.classSection.deliveryMode === 'ONLINE' } : st.campus ? { name: st.campus.name, kind: st.campus.kind, online: false } : null
+  const passedAt = new Map(results.map((r) => [r.studentEnrollment.id, r.updatedAt]))
+  const trips: BookData['trips'] = []
+  const seenLevels = new Set<string>()
+  for (const e of enrollments) {
+    const l = e.classSection.level
+    if (!l) continue
+    const done = passedAt.get(e.id)
+    const flying = !done && e.status === 'ACTIVE' && e.classSection.status === 'ACTIVE'
+    if (!done && !flying) continue
+    const key = `${l.id}|${done ? 'D' : 'F'}`
+    if (seenLevels.has(key)) continue
+    seenLevels.add(key)
+    trips.push({ id: e.id, course: l.subject?.name ?? '', level: l.name, track: l.subject?.track?.name ?? null, color: colorOf(l.subject?.trackId, l.subject?.track?.color), status: done ? 'DONE' : 'FLYING', from: e.createdAt, to: done ?? null })
+  }
+  const gradIds = new Set(grads.map((g) => (g.remarks ?? '').slice('TRACK_GRADUATION:'.length)))
+  const visas = new Map<string, BookData['visas'][number]>()
+  for (const e of enrollments) {
+    const sub = e.classSection.level?.subject
+    if (!sub?.trackId || visas.has(sub.trackId)) continue
+    visas.set(sub.trackId, { trackId: sub.trackId, name: sub.track?.name ?? '', color: colorOf(sub.trackId, sub.track?.color), since: e.createdAt, graduated: gradIds.has(sub.trackId) })
+  }
+  const age = st.dateOfBirth ? ageOn(st.dateOfBirth, new Date()) : null
+  return {
+    age: age != null && age > 0 && age < 40 ? age : null,
+    placeEn: placeLabel(pl, false), placeAr: placeLabel(pl, true),
+    school: st.schoolName?.trim() || null,
+    firstSession: first?.attendanceDate ?? null,
+    hours, projects, certificates: certs,
+    tracks: [...visas.values()].filter((v) => v.graduated).map((v) => v.name),
+    trips: trips.reverse(), visas: [...visas.values()],
+    young: age != null && age > 0 && age <= settings.youngUntil,
+  }
+}
+
+/** Keeps only the fields switched on for this surface (passport or share link). */
+export function pickFields(b: BookData, fields: Record<FieldKey, FieldShow>, where: 'passport' | 'share') {
+  const on = (k: FieldKey) => fields[k][where]
+  return {
+    age: on('age') ? b.age : null,
+    placeEn: on('place') ? b.placeEn : '', placeAr: on('place') ? b.placeAr : '',
+    school: on('school') ? b.school : null,
+    firstSession: on('firstSession') ? b.firstSession : null,
+    hours: on('hours') ? b.hours : null,
+    projects: on('projects') ? b.projects : null,
+    certificates: on('certificates') ? b.certificates : null,
+    tracks: on('tracks') ? b.tracks : null,
+    showJoined: on('joined'), showReg: on('reg'), showPhoto: on('photo'),
+  }
+}
+
 // ───────────────────────── views ─────────────────────────
 
 type Viewer = 'STUDENT' | 'PARENT' | 'TEACHER' | 'STAFF'
+
+/** The cover / seal / signature settings every passport surface needs (no secrets in here). */
+export const lookOf = (s: PassportSettings) => ({
+  titleEn: s.coverTitleEn, titleAr: s.coverTitleAr, sealMode: s.sealMode, sealTop: s.sealTop, sealBottom: s.sealBottom,
+  sealImage: s.sealMode === 'IMAGE' ? s.companyStampUrl : null, signature: s.signatureUrl, signatureName: s.signatureName,
+})
 
 /** The passport as one viewer may see it (families: no money, no phone; grades for family + staff only). */
 export async function passportView(user: User, studentId: string) {
@@ -350,7 +469,12 @@ export async function passportView(user: User, studentId: string) {
   const next = f ? nextStamp(locked.filter((x) => x.kind === 'AUTO'), f) : null
   const givers = await staffNames(stamps.map((x) => x.awardedById).filter((x): x is string => !!x))
   const classmates = canManage ? await classmatesFor(user, studentId) : []
+  const book = await bookData(studentId, settings)
+  const shown = book ? pickFields(book, settings.fields, 'passport') : null
   return {
+    book: book && shown ? { ...shown, trips: book.trips, visas: book.visas, young: book.young } : null,
+    look: lookOf(settings),
+    edition: passportEdition(stamps.length, settings.stampsPerBook),
     locked, secretLeft, total: open.length + available.filter((x) => x.secret && takenIds.has(x.id)).length,
     next: next ? { id: next.id, nameEn: next.nameEn, nameAr: next.nameAr, icon: next.icon, have: next.have, need: next.need } : null,
     classmates,
@@ -359,7 +483,7 @@ export async function passportView(user: User, studentId: string) {
     passport: { number: passport.number, issuedAt: passport.issuedAt },
     student: {
       id: studentId, name: `${student.firstName} ${student.lastName}`.trim(), nameAr: student.fullNameAr, reg: student.registrationNumber,
-      photo: student.profilePicture, joinedAt: student.admissionDate, campus: student.campus?.name ?? '', cardCode: student.idCardQRCode,
+      photo: shown && !shown.showPhoto ? null : student.profilePicture, joinedAt: student.admissionDate, campus: student.campus?.name ?? '', cardCode: student.idCardQRCode,
     },
     cover: (trackId && settings.trackColors[trackId]) || '#1e3a8a',
     stamps: stamps.map((s) => ({
@@ -459,10 +583,15 @@ export async function publicShare(token: string) {
       if (measured.length) skills.push({ course: x.name, scores: measured.map((k) => ({ nameEn: k.nameEn, nameAr: k.nameAr, percent: k.percent })) })
     }
   }
+  // owner 28/11 (S49): only the data fields switched on for the share link
+  const settings = await getPassportSettings()
+  const book = await bookData(s.studentId, settings)
+  const shown = book ? pickFields(book, settings.fields, 'share') : null
   return {
     skills,
-    number: passport.number, name: `${student.firstName} ${student.lastName}`.trim(), campus: student.campus?.name ?? '', joinedAt: student.admissionDate,
-    photo: s.showPhoto ? student.profilePicture : null, expiresAt: s.expiresAt,
+    book: shown, look: lookOf(settings), visas: book?.visas ?? [], edition: passportEdition(stamps.length, settings.stampsPerBook),
+    number: passport.number, name: `${student.firstName} ${student.lastName}`.trim(), campus: shown?.placeAr || student.campus?.name || '', joinedAt: shown && !shown.showJoined ? null : student.admissionDate,
+    photo: s.showPhoto && settings.fields.photo.share ? student.profilePicture : null, expiresAt: s.expiresAt,
     stamps: stamps.map((x) => ({ nameEn: x.stamp.nameEn, nameAr: x.stamp.nameAr || x.stamp.nameEn, icon: x.stamp.icon, shape: x.stamp.shape, color: x.color || x.stamp.color, label: x.label, awardedAt: x.awardedAt })),
     certificates: certs.map((c) => ({ title: c.title, number: c.certificateNumber, issuedAt: c.issuedDate })),
     projects: s.showProjects ? titles.map((t) => ({ titleEn: t.titleEn || 'Project', titleAr: t.titleAr || t.titleEn || 'مشروع' })) : null,

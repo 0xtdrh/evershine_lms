@@ -6,9 +6,11 @@ import { use, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { I18nProvider, L, LanguageSwitch, useI18n } from '@/lib/i18n/client'
 import { StampBadge } from '@/components/passport/StampBadge'
+import { BookStats, DataPage, VisasPage, type BookFields, type Look, type Visa } from '@/components/passport/PassportBook'
 
 interface Shared {
-  number: string; name: string; campus: string; joinedAt: string; photo: string | null; expiresAt: string
+  number: string; name: string; campus: string; joinedAt: string | null; photo: string | null; expiresAt: string
+  book: BookFields | null; look: Look; visas: Visa[]; edition: { edition: number }
   stamps: { nameEn: string; nameAr: string; icon: string; shape: string; color: string; label: string | null; awardedAt: string }[]
   certificates: { title: string; number: string; issuedAt: string }[]
   projects: { titleEn: string; titleAr: string }[] | null
@@ -38,16 +40,10 @@ function SharedView({ token }: { token: string }) {
           <p className="rounded-xl bg-white p-6 text-center text-slate-600">{L('This link has ended or was stopped.', 'اللينك ده خلص أو اتوقف.')}</p>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-4 rounded-3xl bg-gradient-to-br from-indigo-800 to-slate-900 p-5 text-white">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {data.photo && <img src={data.photo} alt="" className="h-24 w-20 rounded-xl border-2 border-white/70 object-cover" />}
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.3em] text-white/70">{L('TechNova passport', 'جواز سفر TechNova')}</p>
-                <p className="text-xl font-bold">{data.name}</p>
-                <p className="font-mono text-sm">{data.number}</p>
-                <p className="text-xs text-white/80">{data.campus} · {L('joined', 'انضم')} {day(data.joinedAt, ar)}</p>
-              </div>
-            </div>
+            {/* S49: the same data page as the passport, with only the fields the owner allows in share links */}
+            <DataPage look={data.look} ar={ar} name={data.name} nameAr={null} number={data.number} edition={data.edition.edition} reg={null} joinedAt={data.joinedAt} photo={data.photo} book={data.book ? { ...data.book, showPhoto: !!data.photo } : null} />
+            <BookStats book={data.book} stamps={data.stamps.length} />
+            {data.visas.length > 0 && <VisasPage visas={data.visas} ar={ar} name={data.name} />}
             <div className="rounded-2xl bg-white p-4">
               <p className="mb-3 font-semibold text-slate-800">{L('Stamps', 'الأختام')} ({data.stamps.length})</p>
               {/* P04 (28/11): a grid that follows the screen, so stamps never overlap on a phone */}
