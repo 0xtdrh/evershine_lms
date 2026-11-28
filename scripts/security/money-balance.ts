@@ -38,10 +38,13 @@ async function main() {
   await rule('nothing paid above the invoice total (net of refunds)', `
     SELECT challanNumber, totalAmount, paidAmount, refundedAmount FROM FeeInvoice WHERE paidAmount - totalAmount >= 0.01`)
 
-  // 3. total = subtotal - discount (+ late fee / penalty)
-  await rule('invoice total = subtotal − discount + late fee + penalty', `
+  // 3. a family is never asked for more than the invoice lines (subtotal − discount + late fee + penalty). The total may
+  //    legitimately be LOWER: a transfer to another group cuts the unused part, a seat let go cuts it to what was used.
+  await rule('invoice total never above subtotal − discount + late fee + penalty', `
     SELECT challanNumber, subtotal, discount, lateFee, penaltyAmount, totalAmount FROM FeeInvoice
-    WHERE ABS((subtotal - discount + lateFee + penaltyAmount) - totalAmount) >= 0.01`)
+    WHERE totalAmount - (subtotal - discount + lateFee + penaltyAmount) >= 0.01`)
+  await rule('invoice total and discount are never negative', `
+    SELECT challanNumber, totalAmount, discount FROM FeeInvoice WHERE totalAmount < 0 OR discount < 0 OR paidAmount < 0 OR refundedAmount < 0`)
 
   // 4. the discount on the invoice = its discount lines
   await rule('invoice discount = sum of its discount lines (when it has lines)', `
