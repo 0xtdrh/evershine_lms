@@ -19,6 +19,7 @@ import { refreshGroupAfterPayment } from '@/lib/fees/guarded-payment'
 import { notifyFamilies, notifyUsers } from '@/lib/notifications/events'
 import { securityAlert } from '@/lib/security/alerts'
 import { canDecide, cleanVoidSettings, DEFAULT_VOID_SETTINGS, invoiceAfterVoid, studentAfterVoid, VOID_PROBLEM_TEXT, voidProblem, type VoidSettings } from './void-rules'
+import { retryTx } from '@/lib/db/retry' // money deep check 28/11: a conflict at the same moment runs again instead of a 500
 
 const KEY = 'payments.void'
 export const getVoidSettings = async () => cleanVoidSettings(await getSetting<Partial<VoidSettings>>(KEY, DEFAULT_VOID_SETTINGS))
@@ -87,7 +88,7 @@ export async function approveVoid(voidId: string, user: { id: string; role: stri
 
   let classSectionId: string | null = null
   try {
-    await prisma.$transaction(async (tx) => {
+    await retryTx(async (tx) => {
       // the age was checked when the request was made, not again at approval
       const { p, problem } = await problemOf(v.paymentId, tx, { ignoreAge: true })
       if (!p) throw new VoidRefused('Payment not found')

@@ -106,6 +106,18 @@ async function run(p: Places): Promise<HealthCheck[]> {
   }
   {
     const n = await prisma.moneyMovement.count({ where: { accountId: null, ...(p.all ? {} : { campusId: { in: p.campusIds.length ? p.campusIds : ['__none__'] } }) } })
+    // S2 (owner 28/11): the money rules ("ميزان الفلوس") — company-wide, so only for people who see every place.
+    // A broken rule should never happen: the person is asked to tell the developer with the rows shown.
+    if (p.all) {
+      const { runMoneyRules } = await import('./money-rules')
+      const results = await runMoneyRules(prisma)
+      const broken = results.filter((r) => r.bad !== 0).length
+      add({ key: 'moneyBalance', severity: 'HIGH', en: `Money check: rules broken (of ${results.length})`, ar: `ميزان الفلوس: قواعد مش سليمة (من ${results.length})`, fixEn: 'Each broken rule is listed on its own above.', fixAr: 'كل قاعدة مش سليمة متفصّلة لوحدها.' }, broken, [])
+      for (const r of results) {
+        if (r.bad === 0) continue
+        add({ key: `money:${r.key}`, severity: 'HIGH', en: `Money check: ${r.en}`, ar: `ميزان الفلوس: ${r.ar}`, fixEn: r.bad < 0 ? `The check could not run (${r.error ?? ''}). Tell the developer.` : 'This should never happen. Do not fix it by hand: send these rows to the developer.', fixAr: r.bad < 0 ? 'الفحص ماشتغلش. بلّغ المطوّر.' : 'ده مفروض مايحصلش أبدًا. ماتصلّحهوش بإيدك: ابعت الصفوف دي للمطوّر.' }, Math.max(r.bad, 1), r.sample.map((s, i) => ({ id: `${r.key}-${i}`, label: Object.values(s).slice(0, 4).map(String).join(' · '), href: '/dashboard/data-health' })))
+      }
+    }
     add({ key: 'moneyNotPlaced', severity: 'LOW', en: 'Money movements not placed in a cash box / account', ar: 'حركات فلوس مش متسجلة على خزنة / حساب', fixEn: 'Link each payment method to its account in Settings → Payments.', fixAr: 'اربط كل طريقة دفع بحسابها من الإعدادات ← الدفع.' }, n, n ? [{ id: 'routes', label: `${n}`, href: '/dashboard/admin/finance-settings#accounts' }] : [])
   }
   return out

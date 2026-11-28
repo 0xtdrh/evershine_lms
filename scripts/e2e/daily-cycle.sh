@@ -883,7 +883,7 @@ check "prepaid money shown (sum of wallets)" "$(api GET /api/wallet/summary | jq
 B3=$(bal $W3); HALF=$(python -c "print(int(float('$B3')/2)+1)")
 for k in 1 2 3; do (api POST /api/wallet/withdrawals "{\"studentId\":\"$W3\",\"amount\":$HALF,\"payoutMethod\":\"Cash\",\"reason\":\"race test\"}" > /d/tn-e2e-wd$k.txt &); done; sleep 8
 for id in $(M "SELECT id FROM WalletWithdrawal WHERE studentId='$W3' AND status='PENDING' AND reason='race test'"); do (api PATCH /api/wallet/withdrawals/$id '{"action":"approve"}' > /dev/null &); done; sleep 10
-check "money: withdrawals of more than half the wallet approved at the same moment → only one goes through, never below zero" "$(M "SELECT COUNT(*) FROM WalletWithdrawal WHERE studentId='$W3' AND status='APPROVED' AND reason='race test'")/$(M "SELECT SUM(amount) >= 0 FROM WalletTransaction WHERE studentId='$W3'")" "1/1"
+check "money (S20): three requests of more than half the wallet at the same moment → only one request is even accepted, one approved, never below zero" "$(M "SELECT COUNT(*) FROM WalletWithdrawal WHERE studentId='$W3' AND reason='race test'")/$(M "SELECT COUNT(*) FROM WalletWithdrawal WHERE studentId='$W3' AND status='APPROVED' AND reason='race test'")/$(M "SELECT SUM(amount) >= 0 FROM WalletTransaction WHERE studentId='$W3'")" "1/1/1"
 for id in $(M "SELECT id FROM WalletWithdrawal WHERE studentId='$W3' AND status='PENDING' AND reason='race test'"); do api PATCH /api/wallet/withdrawals/$id '{"action":"reject","reason":"race test"}' >/dev/null; done
 B1=$(bal $W1)
 for k in 1 2 3; do (api POST /api/students/$W1/wallet/transfer "{\"toStudentId\":\"$W2\",\"amount\":$B1}" > /d/tn-e2e-tr$k.txt &); done; sleep 8

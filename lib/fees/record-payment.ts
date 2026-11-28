@@ -22,6 +22,7 @@ import { isActivePaymentMethod } from '@/lib/fees/payment-settings'
 import { errorResponse, errors } from '@/lib/api-response'
 import { createApprovedTopUp } from '@/lib/wallet/numbers'
 import { afterPaymentRecorded } from '@/lib/fees/receipt'
+import { retryTx } from '@/lib/db/retry' // money deep check 28/11: a conflict at the same moment runs again instead of a 500
 
 export type PaymentSource = 'STAFF' | 'PROOF' | 'ONLINE' | 'WALLET'
 
@@ -110,7 +111,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<RecordPa
   const invoiceStatus: InvoiceStatus = newPaid >= total ? 'PAID' : 'PARTIALLY_PAID'
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await retryTx(async (tx) => {
       // Receipt number: retry if two payments take the same number at once.
       let payment: Awaited<ReturnType<typeof tx.feePayment.create>> | null = null
       for (let attempt = 0; !payment; attempt++) {

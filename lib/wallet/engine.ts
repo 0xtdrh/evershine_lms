@@ -23,6 +23,7 @@ import { payFromWallet, walletBalance } from '@/lib/refunds/engine'
 import { logSystemContact } from '@/lib/contacts/contact-log'
 import { createApprovedTopUp, nextWithdrawalNumber } from './numbers'
 import { cairoToday } from '@/lib/dates/cairo'
+import { retryTx } from '@/lib/db/retry' // money deep check 28/11: a conflict at the same moment runs again instead of a 500
 
 type Db = Prisma.TransactionClient | typeof prisma
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -208,7 +209,7 @@ export async function staffTopUp(input: { studentId: string; amount: number; met
   if (amount + 0.001 < min) return { ok: false, status: 400, message: `The minimum top-up for this student is ${min} EGP` }
   const student = await prisma.student.findUnique({ where: { id: input.studentId }, select: { id: true } })
   if (!student) return { ok: false, status: 404, message: 'Student not found' }
-  const row = await prisma.$transaction((tx) => createApprovedTopUp(tx, { studentId: input.studentId, amount, method: input.method, source: 'STAFF', transactionId: input.transactionId, remarks: input.remarks, userId: input.userId }))
+  const row = await retryTx((tx) => createApprovedTopUp(tx, { studentId: input.studentId, amount, method: input.method, source: 'STAFF', transactionId: input.transactionId, remarks: input.remarks, userId: input.userId }))
   const after = await afterTopUp(input.studentId, row.id, amount, input.userId, { promo: true })
   return { ok: true, topUpId: row.id, topUpNumber: row.topUpNumber, ...after }
 }
@@ -232,7 +233,7 @@ export async function approveTopUp(topUpId: string, userId: string): Promise<Wal
   if (t.status !== 'PENDING') return { ok: false, status: 409, message: 'This top-up was already handled' }
   let number: string | null = null
   try {
-    await prisma.$transaction(async (tx) => {
+    await retryTx(async (tx) => {
       const claimed = await tx.walletTopUp.updateMany({ where: { id: topUpId, status: 'PENDING' }, data: { status: 'APPROVING' } })
       if (claimed.count !== 1) throw new Error('HANDLED')
       for (let attempt = 0; ; attempt++) {
@@ -268,7 +269,7 @@ export async function rejectTopUp(topUpId: string, userId: string, reason?: stri
 
 /** Paymob callback for a wallet top-up (kind TOPUP), already verified. */
 export async function onlineTopUpPaid(online: { id: string; studentId: string; amount: Prisma.Decimal; fee: Prisma.Decimal; createdById: string }, txnId: string) {
-  const row = await prisma.$transaction((tx) =>
+  const row = await retryTx((tx) =>
     createApprovedTopUp(tx, { studentId: online.studentId, amount: Number(online.amount), fee: Number(online.fee), method: 'Online (Paymob)', source: 'ONLINE', transactionId: txnId, userId: online.createdById })
   )
   await prisma.onlinePayment.update({ where: { id: online.id }, data: { status: 'PAID', providerTxnId: txnId, topUpId: row.id } })
@@ -287,7 +288,7 @@ export async function transferBetweenSiblings(input: { fromId: string; toId: str
   if (!(amount > 0)) return { ok: false, status: 400, message: 'The amount must be more than zero' }
   if (!(await siblingsOf(input.fromId)).includes(input.toId)) return { ok: false, status: 400, message: 'Transfers are only between brothers and sisters (same parent)' }
   try {
-    await prisma.$transaction(async (tx) => {
+    await retryTx(async (tx) => {
       const bal = await walletBalance(input.fromId, tx)
       if (bal + 0.001 < amount) throw new Error(`NOT_ENOUGH:${bal}`)
       await tx.walletTransaction.create({ data: { studentId: input.fromId, amount: -amount, type: 'TRANSFER_OUT', otherStudentId: input.toId, note: 'Transfer to a sibling', createdById: input.userId } })
@@ -306,14 +307,20 @@ export async function requestWithdrawal(input: { studentId: string; amount: numb
   const amount = round2(input.amount)
   if (!(amount > 0)) return { ok: false, status: 400, message: 'The amount must be more than zero' }
   if (!(await withdrawalAllowed(input.studentId))) return { ok: false, status: 403, message: 'Withdrawing from the wallet is not allowed for this student (wallet rules)' }
-  const bal = await walletBalance(input.studentId)
-  const pending = await prisma.walletWithdrawal.aggregate({ where: { studentId: input.studentId, status: 'PENDING' }, _sum: { amount: true } })
-  const free = round2(bal - Number(pending._sum.amount ?? 0))
-  if (amount > free + 0.001) return { ok: false, status: 400, message: `The most that can be withdrawn is ${free} EGP` }
   const fee = withdrawFee(amount, input.payoutMethod, await getWalletSettings())
-  const row = await prisma.walletWithdrawal.create({
-    data: { studentId: input.studentId, amount, fee, payoutMethod: input.payoutMethod, reason: input.reason ?? null, requestedVia: input.via, requestedById: input.userId },
+  // S20 (28/11): two requests sent at the same moment are checked one after the other (the wallet rows are locked
+  // while the balance and the waiting requests are read), so together they can never ask for more than the wallet has.
+  const made = await retryTx(async (tx) => {
+    const bal = await walletBalance(input.studentId, tx)
+    const pending = await tx.walletWithdrawal.aggregate({ where: { studentId: input.studentId, status: 'PENDING' }, _sum: { amount: true } })
+    const free = round2(bal - Number(pending._sum.amount ?? 0))
+    if (amount > free + 0.001) return { free }
+    return { row: await tx.walletWithdrawal.create({
+      data: { studentId: input.studentId, amount, fee, payoutMethod: input.payoutMethod, reason: input.reason ?? null, requestedVia: input.via, requestedById: input.userId },
+    }) }
   })
+  if (!('row' in made) || !made.row) return { ok: false, status: 400, message: `The most that can be withdrawn is ${made.free} EGP` }
+  const row = made.row
   await notifyApprovers('Wallet withdrawal request', `${amount} EGP to be paid back by ${input.payoutMethod} (fee ${fee})`, row.id, { title: 'طلب سحب من المحفظة', message: `${amount} ج.م ترجع بـ ${input.payoutMethod} (رسوم ${fee})` })
   return { ok: true, withdrawalId: row.id, fee }
 }
@@ -329,7 +336,7 @@ export async function decideWithdrawal(id: string, userId: string, approve: bool
   }
   let number: string | null = null
   try {
-    await prisma.$transaction(async (tx) => {
+    await retryTx(async (tx) => {
       const bal = await walletBalance(w.studentId, tx)
       if (bal + 0.001 < Number(w.amount)) throw new Error(`NOT_ENOUGH:${bal}`)
       for (let attempt = 0; ; attempt++) {

@@ -25,6 +25,7 @@ import { groupContext, type GroupContext } from '@/lib/discounts/engine'
 import { sessionsPerCycle } from '@/lib/groups/cycle-rules'
 import { PaymentRefusedError, recordPayment } from '@/lib/fees/record-payment'
 import { notifySeatFreed } from '@/lib/groups/capacity'
+import { retryTx } from '@/lib/db/retry' // money deep check 28/11: a conflict at the same moment runs again instead of a 500
 
 type Db = Prisma.TransactionClient | typeof prisma
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -232,7 +233,7 @@ export async function nextRefundNumber(db: Db, opts: { resync?: boolean } = {}) 
 
 export async function approveRefund(refundId: string, userId: string): Promise<RefundOutcome> {
   try {
-    const out = await prisma.$transaction(async (tx) => {
+    const out = await retryTx(async (tx) => {
       const r = await tx.refund.findUnique({ where: { id: refundId } })
       if (!r) throw new RefundError(404, 'Refund not found')
       if (r.status !== 'PENDING') throw new RefundError(409, 'This refund was already handled')
