@@ -114,6 +114,11 @@ export async function syncMovements(force = false): Promise<number> {
       // undone sources: deleted expenses, salaries no longer paid
       await prisma.$executeRawUnsafe(`DELETE m FROM MoneyMovement m JOIN Expense e ON e.id = m.expenseId WHERE e.isDeleted = 1`)
       await prisma.$executeRawUnsafe(`DELETE m FROM MoneyMovement m JOIN SalarySlip s ON s.id = m.salarySlipId WHERE NOT (s.status = 'PAID' AND s.approvalStatus IN ('APPROVED','LEGACY'))`)
+      // money check 28/11 (found by the e2e money rules): an expense / salary EDITED after it reached the cash box left the
+      // old amount there. The movement follows its source — unless it was already matched with the bank statement
+      // (then the money rule shows the difference for a person to look at, nothing changes by itself).
+      await prisma.$executeRawUnsafe(`UPDATE MoneyMovement m JOIN Expense e ON e.id = m.expenseId SET m.amount = e.amount, m.date = e.date, m.campusId = e.campusId WHERE m.reconciledAt IS NULL AND e.isDeleted = 0 AND (ABS(m.amount - e.amount) >= 0.01 OR m.date <> e.date OR NOT (m.campusId <=> e.campusId))`)
+      await prisma.$executeRawUnsafe(`UPDATE MoneyMovement m JOIN SalarySlip s ON s.id = m.salarySlipId SET m.amount = s.netSalary WHERE m.reconciledAt IS NULL AND ABS(m.amount - s.netSalary) >= 0.01`)
 
       // place movements that had no account yet, now that a route may exist
       if (r.length) {

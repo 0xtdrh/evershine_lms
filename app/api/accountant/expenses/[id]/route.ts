@@ -124,6 +124,10 @@ async function PATCH_(
       }
     }
 
+    // money check 28/11: the cash box follows the edited expense at once (amount / date / branch), unless the bank
+    // statement was already matched to it (then the money rule in Data Health shows the difference)
+    await tx.moneyMovement.updateMany({ where: { expenseId: id, reconciledAt: null }, data: { amount: e.amount, date: e.date, campusId: e.campusId } })
+
     await tx.auditLog.create({
       data: {
         userId: session.user.id,

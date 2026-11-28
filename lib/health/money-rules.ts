@@ -59,6 +59,8 @@ export const MONEY_RULES: MoneyRule[] = [
     sql: "SELECT c.code, c.uses, COUNT(u.id) AS recorded FROM EnrolmentCode c LEFT JOIN EnrolmentCodeUse u ON u.codeId=c.id GROUP BY c.id HAVING c.uses <> recorded" },
   { key: "expense_movement", en: "an expense is in the cash box at most once, with its amount (OUT)", ar: "المصروف في الخزنة مرة واحدة بنفس المبلغ (خارج)",
     sql: "SELECT e.id, e.title, e.amount, COUNT(m.id) n, MAX(m.amount) moved, MAX(m.direction) dir FROM Expense e JOIN MoneyMovement m ON m.expenseId=e.id GROUP BY e.id HAVING n > 1 OR ABS(moved - e.amount) >= 0.01 OR dir <> 'OUT'" },
+  { key: "salary_movement", en: "a paid salary is in the cash box at most once, with its net amount (OUT)", ar: "المرتب المدفوع في الخزنة مرة واحدة بصافي المبلغ (خارج)",
+    sql: "SELECT s.employeeName, s.month, s.netSalary, COUNT(m.id) n, MAX(m.amount) moved FROM SalarySlip s JOIN MoneyMovement m ON m.salarySlipId=s.id GROUP BY s.id HAVING n > 1 OR ABS(moved - s.netSalary) >= 0.01 OR MAX(m.direction) <> 'OUT'" },
   { key: "refund_movement", en: "a cash refund is in the cash box at most once, with its amount (OUT); wallet refunds never", ar: "الاسترداد الكاش في الخزنة مرة واحدة بنفس المبلغ، واسترداد المحفظة مايدخلش الخزنة",
     sql: "SELECT r.refundNumber, r.method, r.amount, COUNT(m.id) n, MAX(m.amount) moved FROM Refund r JOIN MoneyMovement m ON m.refundId=r.id GROUP BY r.id HAVING n > 1 OR r.method <> 'CASH' OR ABS(moved - r.amount) >= 0.01" },
   { key: "transfer_movements", en: "an approved transfer between accounts = one OUT and one IN of the same amount", ar: "تحويل بين الحسابات = حركة خارجة وحركة داخلة بنفس المبلغ",
