@@ -45,6 +45,8 @@ export async function GET() {
         sectionName: true,
         shift: { select: { code: true, name: true } },
         batch: { select: { name: true } },
+        // final test F01 (28/11): the attendance screen picks today's group by itself
+        scheduleSlots: true,
       },
       orderBy: [{ grade: 'asc' }, { sectionName: 'asc' }],
     })

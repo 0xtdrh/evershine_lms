@@ -29,7 +29,7 @@ type AttStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
 interface RosterRow {
   studentEnrollmentId: string
   rollNumber: string
-  student: { firstName: string; lastName: string }
+  student: { firstName: string; lastName: string; registrationNumber?: string | null }
   todayStatus: AttStatus | null
   excuse?: { status: string; reason: string; kind?: string | null } | null
   onlineJoinedAt?: string | null
@@ -48,6 +48,7 @@ interface TeacherClassRecord {
   classSectionId?: string | null
   legacyClassId?: string | null
   coveringDates?: string[] | null
+  scheduleSlots?: { dayOfWeek: number; time: string }[] | null
 }
 
 interface TeacherSectionRecord {
@@ -56,6 +57,7 @@ interface TeacherSectionRecord {
   sectionName: string
   /** days this teacher covers the group as a substitute (null = own group) */
   coveringDates?: string[] | null
+  scheduleSlots?: { dayOfWeek: number; time: string }[] | null
 }
 
 /* ─── Status config ─────────────────────────────────────────────── */
@@ -150,6 +152,7 @@ export default function TeacherAttendancePage() {
         classSectionId: section.id,
         legacyClassId: null,
         coveringDates: section.coveringDates ?? null,
+        scheduleSlots: section.scheduleSlots ?? null,
       }))
     },
     enabled:  !!session?.user,
@@ -159,6 +162,23 @@ export default function TeacherAttendancePage() {
   const teacherClasses = Array.isArray(teacherClassesRaw)
     ? teacherClassesRaw
     : (teacherClassesRaw as any)?.data ?? []
+
+  // final test F01 (28/11): the group is chosen by itself — the group covered today, else the one with a session today
+  // (the next one first), else the only group. The instructor can still change it.
+  useEffect(() => {
+    if (classSectionId || !teacherClasses.length) return
+    const today = cairoToday()
+    const dow = new Date(`${today}T12:00:00Z`).getUTCDay()
+    const now = new Date().toLocaleTimeString('en-GB', { timeZone: 'Africa/Cairo', hour: '2-digit', minute: '2-digit' })
+    const valueOf = (c: TeacherClassRecord) => c.classSectionId ?? c.legacyClassId ?? c.id
+    const list = teacherClasses as TeacherClassRecord[]
+    const covering = list.find((c) => c.coveringDates?.includes(today))
+    const todays = list
+      .flatMap((c) => (c.scheduleSlots ?? []).filter((sl) => sl.dayOfWeek === dow).map((sl) => ({ c, time: sl.time })))
+      .sort((a, b) => (a.time >= now ? 0 : 1) - (b.time >= now ? 0 : 1) || a.time.localeCompare(b.time))
+    const pickOne = covering ?? todays[0]?.c ?? (list.length === 1 ? list[0] : null)
+    if (pickOne) setClassSectionId(valueOf(pickOne))
+  }, [teacherClasses, classSectionId])
 
   const { data: roster, isLoading, refetch } = useQuery({
     queryKey: ['enrollment-roster-teacher', classSectionId, date],
@@ -193,7 +213,10 @@ export default function TeacherAttendancePage() {
         })),
       }),
     }),
-    onSuccess: () => { notify.success(L('Attendance saved successfully', 'الحضور اتحفظ')); refetch(); qc.invalidateQueries({ queryKey: ['group-lessons', classSectionId] }); qc.invalidateQueries({ queryKey: ['session-report', classSectionId] }) },
+    onSuccess: () => {
+      const a = Object.values(statusMap).filter((x) => x === 'ABSENT').length, l = Object.values(statusMap).filter((x) => x === 'LATE').length
+      notify.success(L('Attendance saved', 'الحضور اتحفظ'), { description: a + l ? L(`${a} absent, ${l} late — their families are told.`, `${a} غياب و${l} تأخير — أولياء أمورهم هيتبلّغوا.`) : L('Everyone present.', 'الكل حاضر.') })
+      refetch(); qc.invalidateQueries({ queryKey: ['group-lessons', classSectionId] }); qc.invalidateQueries({ queryKey: ['session-report', classSectionId] }) },
     onError:   (e: Error) => notify.error(e.message),
   })
 
@@ -296,15 +319,15 @@ export default function TeacherAttendancePage() {
       </div>
 
       {/* Guide Banner (2026-10-25: short, bilingual) */}
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-        <p className="font-semibold mb-2 flex items-center gap-1.5"><Info className="w-4 h-4" /> {L('How to mark attendance', 'إزاي تسجّل الحضور')}</p>
+      <details className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+        <summary className="cursor-pointer font-semibold flex items-center gap-1.5"><Info className="w-4 h-4" /> {L('How to mark attendance', 'إزاي تسجّل الحضور')}</summary>
         <ol className="list-decimal ps-4 space-y-0.5 text-xs">
           <li>{L('Choose the group and the date.', 'اختار الجروب والتاريخ.')}</li>
           <li>{L('For each student tap Present / Absent / Late / Excused (an approved excuse is filled in for you).', 'لكل طالب دوس حاضر / غايب / متأخر / بعذر (العذر المقبول بيتعلّم لوحده).')}</li>
           <li>{L('Press Save. Or show the QR code: students who scan it are marked present.', 'دوس «احفظ». أو اعرض كود QR: اللي يعمله scan بيتسجل حاضر.')}</li>
         </ol>
         <p className="mt-2 text-xs">{L('Covering for another instructor? The group appears here on the day you cover it.', 'بتغطي مكان مدرب تاني؟ الجروب بيظهر هنا يوم الحصة اللي بتغطيها.')}</p>
-      </div>
+      </details>
 
       {/* Section + Date selector */}
       <Card>
@@ -339,9 +362,6 @@ export default function TeacherAttendancePage() {
         </CardContent>
       </Card>
 
-      {classSectionId && <OnlineLinkField groupId={classSectionId} date={date} />}
-      {classSectionId && <GroupLessonsPanel groupId={classSectionId} />}
-      {classSectionId && <SessionReportPanel groupId={classSectionId} date={date} />}
 
       {classSectionId && (
         <>
@@ -442,13 +462,13 @@ export default function TeacherAttendancePage() {
                         return (
                           <div
                             key={row.studentEnrollmentId}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 hover:bg-gray-50 transition-colors"
+                            className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
                           >
                             <div>
                               <p className="font-medium text-sm">
                                 {row.student.firstName} {row.student.lastName}
                               </p>
-                              <p className="text-xs text-gray-500">{L('No.', 'رقم')} {row.rollNumber}</p>
+                              {row.student.registrationNumber && <p className="text-xs text-gray-500" dir="ltr">{row.student.registrationNumber}</p>}
                               {row.attendsAs === 'ONLINE' && <p className="mt-1 text-xs font-semibold text-indigo-700">💻 {L('Attends this session online', 'بيحضر الحصة دي أونلاين')}</p>}
                               {row.recordedWatchPercent != null && <p className="mt-1 text-xs font-semibold text-violet-700">🎬 {L(`Watched ${row.recordedWatchPercent}% of the recorded session`, `اتفرج على ${row.recordedWatchPercent}% من الحصة المسجلة`)}</p>}
                               <PresenceInputs mode={row.attendsAs ?? roster?.sessionMode} present={current === 'PRESENT' || current === 'LATE'}
@@ -461,20 +481,22 @@ export default function TeacherAttendancePage() {
                                 </p>
                               )}
                             </div>
-                            <div className="flex gap-1.5">
+                            {/* F01 (28/11): four big buttons, each with its word (thumb-sized); the row keeps its height */}
+                            <div className="grid grid-cols-4 gap-1.5 sm:flex">
                               {(Object.keys(STATUS_CONFIG) as AttStatus[]).map(st => {
                                 const cfg = STATUS_CONFIG[st]
                                 const isActive = current === st
                                 return (
                                   <button
                                     key={st}
+                                    type="button"
+                                    aria-pressed={isActive}
                                     onClick={() => setStatusMap(m => ({ ...m, [row.studentEnrollmentId]: st }))}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md border text-xs font-medium transition-all ${isActive ? cfg.active : cfg.idle}`}
+                                    className={`flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg border px-2 py-1.5 text-xs font-semibold transition-colors duration-150 sm:min-h-0 sm:flex-row sm:gap-1 sm:px-2.5 sm:py-1 ${isActive ? cfg.active : cfg.idle}`}
                                     title={cfg.label}
                                   >
                                     {cfg.icon}
-                                    <span className="hidden sm:inline">{cfg.label}</span>
-                                    <span className="sm:hidden">{cfg.label[0]}</span>
+                                    <span>{cfg.label}</span>
                                   </button>
                                 )
                               })}
@@ -489,14 +511,14 @@ export default function TeacherAttendancePage() {
 
               {/* Action row */}
               {enrollments.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="sticky bottom-20 z-20 flex flex-wrap gap-2 rounded-xl border bg-white/95 p-2 shadow-lg backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
                   <Button
                     onClick={() => saveMutation.mutate()}
                     disabled={saveMutation.isPending}
-                    className="gap-2 bg-blue-600 hover:bg-blue-700"
+                    className="min-h-11 flex-1 gap-2 bg-blue-600 hover:bg-blue-700 sm:flex-none"
                   >
                     {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    {L('Save attendance', 'احفظ الحضور')}
+                    {L('Save attendance', 'احفظ الحضور')} <span className="text-xs font-normal opacity-90">({L(`${presentCount} present`, `${presentCount} حاضر`)})</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -630,6 +652,12 @@ export default function TeacherAttendancePage() {
           )}
         </>
       )}
+
+      {/* F01 (28/11): the lesson, report and online-link panels come AFTER the student list — they load a moment later
+          and used to push the list down under the instructor's finger (the next tap landed on another student) */}
+      {classSectionId && <OnlineLinkField groupId={classSectionId} date={date} />}
+      {classSectionId && <GroupLessonsPanel groupId={classSectionId} />}
+      {classSectionId && <SessionReportPanel groupId={classSectionId} date={date} />}
 
       <QRScannerModal
         open={cardScannerOpen}
