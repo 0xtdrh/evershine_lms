@@ -307,6 +307,13 @@ class RefundError extends Error {
 
 // ── wallet ──────────────────────────────────────────────────────────────────
 export async function walletBalance(studentId: string, db: Db = prisma): Promise<number> {
+  if (db !== prisma) {
+    // Money check 28/11: inside a transaction that is about to take money out, the balance is read with a LOCK on this
+    // wallet's rows (latest committed rows, not the transaction's old snapshot). Two withdrawals / wallet payments /
+    // transfers of the same wallet at the same moment now wait for each other, so the wallet can never go below zero.
+    const rows = await (db as Prisma.TransactionClient).$queryRaw<{ s: unknown }[]>`SELECT COALESCE(SUM(amount), 0) AS s FROM WalletTransaction WHERE studentId = ${studentId} FOR UPDATE`
+    return round2(Number(rows[0]?.s ?? 0))
+  }
   const agg = await db.walletTransaction.aggregate({ where: { studentId }, _sum: { amount: true } })
   return round2(Number(agg._sum.amount ?? 0))
 }

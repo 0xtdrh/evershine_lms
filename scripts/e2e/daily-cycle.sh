@@ -551,6 +551,11 @@ R=$(api POST /api/refunds "{\"invoiceId\":\"$FIRSTPAID\",\"amount\":100,\"method
 check "a manager's own refund is approved at once (cash back by InstaPay)" "$(echo "$R" | jq_ "d['data']['status']")" "APPROVED"
 check "cash refund does not touch the wallet" "$(api GET /api/students/$S1/wallet | jq_ "d['data']['balance']")" "0"
 check "cash refund needs how the money goes back" "$(api POST /api/refunds "{\"invoiceId\":\"$FIRSTPAID\",\"amount\":10,\"method\":\"CASH\"}" | jq_ "d['success']")" "False"
+# MONEY CHECK 28/11: one refund approved by two people at the same moment is counted once
+RR=$(accapi POST /api/refunds "{\"invoiceId\":\"$FIRSTPAID\",\"amount\":10,\"method\":\"WALLET\",\"reason\":\"race test\"}" | jq_ "d['data']['id']")
+RB=$(M "SELECT CAST(refundedAmount AS DECIMAL(10,2)) FROM FeeInvoice WHERE id='$FIRSTPAID'")
+(api PATCH /api/refunds/$RR '{"action":"approve"}' > /d/tn-e2e-rr1.txt &); (api PATCH /api/refunds/$RR '{"action":"approve"}' > /d/tn-e2e-rr2.txt &); sleep 8
+check "money: the same refund approved twice at the same moment → counted once (refunded +10, one wallet credit)" "$(M "SELECT CAST(refundedAmount - $RB AS DECIMAL(10,2)) FROM FeeInvoice WHERE id='$FIRSTPAID'")/$(M "SELECT COUNT(*) FROM WalletTransaction WHERE refundId='$RR'")" "10.00/1"
 check "refund rules kept by the test-data wipe (settings)" "$(grep -c "'RefundRule'" lib/setup/wipe-test-data.ts)" "1"
 rm -f "$ACJ"
 echo "== 20. online payment (Paymob webhook, signed with a test key)"
@@ -872,6 +877,15 @@ check "account statement: closing = balance" "$(api GET /api/students/$W2/wallet
 rm -f "$WJ"
 # 10) prepaid total + low-balance alert (cron)
 check "prepaid money shown (sum of wallets)" "$(api GET /api/wallet/summary | jq_ "d['data']['prepaidTotal'] >= 1500")" "True"
+# MONEY CHECK 28/11: the same wallet emptied twice at the same moment never goes below zero
+B3=$(bal $W3); HALF=$(python -c "print(int(float('$B3')/2)+1)")
+for k in 1 2 3; do (api POST /api/wallet/withdrawals "{\"studentId\":\"$W3\",\"amount\":$HALF,\"payoutMethod\":\"Cash\",\"reason\":\"race test\"}" > /d/tn-e2e-wd$k.txt &); done; sleep 8
+for id in $(M "SELECT id FROM WalletWithdrawal WHERE studentId='$W3' AND status='PENDING' AND reason='race test'"); do (api PATCH /api/wallet/withdrawals/$id '{"action":"approve"}' > /dev/null &); done; sleep 10
+check "money: withdrawals of more than half the wallet approved at the same moment → only one goes through, never below zero" "$(M "SELECT COUNT(*) FROM WalletWithdrawal WHERE studentId='$W3' AND status='APPROVED' AND reason='race test'")/$(M "SELECT SUM(amount) >= 0 FROM WalletTransaction WHERE studentId='$W3'")" "1/1"
+for id in $(M "SELECT id FROM WalletWithdrawal WHERE studentId='$W3' AND status='PENDING' AND reason='race test'"); do api PATCH /api/wallet/withdrawals/$id '{"action":"reject","reason":"race test"}' >/dev/null; done
+B1=$(bal $W1)
+for k in 1 2 3; do (api POST /api/students/$W1/wallet/transfer "{\"toStudentId\":\"$W2\",\"amount\":$B1}" > /d/tn-e2e-tr$k.txt &); done; sleep 8
+check "money: three transfers of the whole wallet at the same moment → one goes through, the wallet ends at 0 (not below)" "$(M "SELECT CAST(SUM(amount) AS DECIMAL(10,2)) FROM WalletTransaction WHERE studentId='$W1'")" "0.00"
 M "UPDATE ClassSection SET scheduleSlots='$EVERYDAY' WHERE id='$WB'"
 W4=$(mkstu WalletLow 01066660094 Sara 01066660095); api POST /api/groups/$WB/students "{\"studentId\":\"$W4\"}" >/dev/null
 W4E=$(M "SELECT id FROM StudentEnrollment WHERE studentId='$W4' AND classSectionId='$WB'")
@@ -3647,6 +3661,10 @@ SO2=$(mktemp); login_jar m0admin@e2e.local E2eAdm12345 "$SO2" 10.0.2.31
 check "…a new sign-in of the same person works (only that one session ended)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$SO2" $B/api/students?limit=1)" "200"
 rm -f "$SOJ" "$SOCOPY" "$SO2"
 check "the site does not announce its server software (no X-Powered-By)" "$(curl -s -D - -o /dev/null $B/login | grep -ci '^x-powered-by')" "0"
+echo "== 112. MONEY CHECK (28/11): the books balance after everything above (scripts/security/money-balance.ts)"
+MB=$(DATABASE_URL="$URL" npx tsx scripts/security/money-balance.ts 2>&1)
+echo "$MB" | grep -vE "^OK " | sed 's/^/   /'
+check "money balance: every rule holds on the whole e2e database" "$(echo "$MB" | tail -1)" "$(echo "$MB" | tail -1 | sed -E 's/[0-9]+ with problems/0 with problems/')"
 echo
 echo "RESULT: $PASS passed, $FAIL failed"
 grep -E "⨯|Error:" /d/tn-e2e-app.log | grep -v webpackBuildWorker | head -5
