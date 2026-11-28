@@ -17,7 +17,7 @@ export const accountantCreateInvoiceSchema = z.object({
     .array(
       z.object({
         description: z.string().min(2).max(200),
-        amount:      z.number().positive().multipleOf(0.01),
+        amount:      z.number().positive().max(10_000_000).multipleOf(0.01),
       })
     )
     .min(1, 'At least one fee item is required'),
@@ -41,7 +41,7 @@ export type UpdateInvoiceStatusInput = z.infer<typeof updateInvoiceStatusSchema>
 // ─── Record manual payment ────────────────────────────────────────────────────
 
 export const recordPaymentSchema = z.object({
-  amount:        z.number().positive('Amount must be greater than zero'),
+  amount:        z.number().positive('Amount must be greater than zero').max(10_000_000),
   paymentMethod: z.string().trim().min(1, 'Choose a payment method').max(50), // checked against Settings > Payments
   transactionId: z.string().max(100).optional(),
   remarks:       z.string().max(500).optional(),
@@ -57,7 +57,7 @@ export const proofActionSchema = z.object({
   action:     z.enum(['APPROVE', 'REJECT']),
   remarks:    z.string().max(500).optional(),
   /** Optional: exact amount student paid (for partial approval). Defaults to full remaining balance. */
-  paidAmount: z.number().positive('Paid amount must be greater than zero').optional(),
+  paidAmount: z.number().positive('Paid amount must be greater than zero').max(10_000_000).optional(),
 })
 
 export type ProofActionInput = z.infer<typeof proofActionSchema>

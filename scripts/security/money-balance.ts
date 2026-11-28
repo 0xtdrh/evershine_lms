@@ -33,7 +33,7 @@ async function main() {
   await rule('PAID invoice is really paid / an unpaid one is not marked PAID', `
     SELECT challanNumber, status, totalAmount, paidAmount FROM FeeInvoice
     WHERE (status='PAID' AND paidAmount + 0.01 < totalAmount AND totalAmount > 0)
-       OR (status IN ('ISSUED','OVERDUE','PARTIAL') AND paidAmount >= totalAmount AND totalAmount > 0)`)
+       OR (status IN ('ISSUED','OVERDUE','PARTIALLY_PAID') AND paidAmount >= totalAmount AND totalAmount > 0)`)
 
   await rule('nothing paid above the invoice total (net of refunds)', `
     SELECT challanNumber, totalAmount, paidAmount, refundedAmount FROM FeeInvoice WHERE paidAmount - totalAmount >= 0.01`)

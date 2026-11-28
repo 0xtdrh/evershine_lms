@@ -13,6 +13,7 @@ const feeItemSchema = z.object({
   amount: z
     .number({ invalid_type_error: 'Amount must be a number' })
     .positive('Amount must be positive')
+    .max(10_000_000, 'Amount is too large')
     .refine((val) => Math.round(val * 100) / 100 === val, 'Amount cannot have more than 2 decimal places'),
 })
 
@@ -51,7 +52,7 @@ export const updateChallanSchema = z.object({
 
 export const recordPaymentSchema = z.object({
   invoiceId: z.string().min(1, 'Invalid invoice ID'),
-  amount: z.number().positive('Payment amount must be positive'),
+  amount: z.number().positive('Payment amount must be positive').max(10_000_000),
   paymentMethod: z.string().trim().min(1, 'Choose a payment method').max(50), // checked against Settings > Payments
   transactionId: z.string().optional(),
   paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').optional(),

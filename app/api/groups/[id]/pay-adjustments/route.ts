@@ -21,7 +21,7 @@ import { getActiveAcademicYear } from '@/lib/academic/engine'
 import type { Role } from '@prisma/client'
 
 const bodySchema = z.object({
-  amount: z.number().refine((n) => n !== 0, 'Amount cannot be zero'),
+  amount: z.number().min(-1_000_000).max(1_000_000).refine((n) => n !== 0, 'Amount cannot be zero'),
   reason: z.string().min(3, 'Give a short reason'),
   cycleNumber: z.number().int().min(1).optional().nullable(),
   teacherId: z.string().min(1).optional(),

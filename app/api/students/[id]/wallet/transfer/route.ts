@@ -19,7 +19,7 @@ async function POST_(request: NextRequest, { params }: { params: Promise<{ id: s
   const { id } = await params
   let body: unknown
   try { body = await request.json() } catch { return errors.badRequest('Invalid JSON') }
-  const parsed = z.object({ toStudentId: z.string().min(1), amount: z.number().positive() }).safeParse(body)
+  const parsed = z.object({ toStudentId: z.string().min(1), amount: z.number().positive().max(10_000_000) }).safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
   const s = await prisma.student.findUnique({ where: { id }, select: { campusId: true } })
   if (!s) return errors.notFound('Student')

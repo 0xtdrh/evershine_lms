@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 /**
  * POST /api/auth/forgot-password
  * Public endpoint for requesting a password reset email.
@@ -48,7 +49,8 @@ export async function POST(request: NextRequest) {
       await prisma.user.update({
         where: { id: user.id },
         data: {
-          resetToken: token,
+          // security deep check (28/11): only a fingerprint of the link is kept — a copy of the database cannot reset passwords
+          resetToken: createHash('sha256').update(token).digest('hex'),
           resetTokenExpiry: expiry,
         },
       })

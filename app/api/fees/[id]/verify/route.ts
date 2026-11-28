@@ -13,7 +13,7 @@ const verifyProofSchema = z.object({
   action: z.enum(['APPROVE', 'REJECT']),
   remarks: z.string().max(500).optional(),
   /** Optional: exact amount student paid (for partial approval). Defaults to full remaining balance. */
-  paidAmount: z.number().positive('Paid amount must be greater than zero').optional(),
+  paidAmount: z.number().positive('Paid amount must be greater than zero').max(10_000_000).optional(),
 })
 
 async function POST_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

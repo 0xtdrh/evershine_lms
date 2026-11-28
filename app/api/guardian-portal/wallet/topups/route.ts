@@ -31,7 +31,7 @@ async function POST_(request: NextRequest) {
   if (contentType.includes('application/json')) {
     let body: unknown
     try { body = await request.json() } catch { return errors.badRequest('Invalid JSON') }
-    const parsed = z.object({ studentId: z.string().min(1), amount: z.number().positive(), mode: z.literal('ONLINE') }).safeParse(body)
+    const parsed = z.object({ studentId: z.string().min(1), amount: z.number().positive().max(10_000_000), mode: z.literal('ONLINE') }).safeParse(body)
     if (!parsed.success) return errors.validation(parsed.error)
     const child = children.find((c) => c.id === parsed.data.studentId)
     if (!child) return errors.forbidden()

@@ -14,7 +14,7 @@ async function POST_(request: NextRequest) {
   if (!['PARENT', 'GUARDIAN'].includes(session.user.role)) return errors.forbidden()
   let body: unknown
   try { body = await request.json() } catch { return errors.badRequest('Invalid JSON') }
-  const parsed = z.object({ fromId: z.string().min(1), toId: z.string().min(1), amount: z.number().positive() }).safeParse(body)
+  const parsed = z.object({ fromId: z.string().min(1), toId: z.string().min(1), amount: z.number().positive().max(10_000_000) }).safeParse(body)
   if (!parsed.success) return errors.validation(parsed.error)
   const mine = new Set((await getChildrenForGuardianUser(session.user.id)).map((c) => c.id))
   if (!mine.has(parsed.data.fromId!) || !mine.has(parsed.data.toId!)) return errors.forbidden()

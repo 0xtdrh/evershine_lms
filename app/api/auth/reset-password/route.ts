@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 /**
  * POST /api/auth/reset-password
  * Public endpoint for updating a user's password using a reset token.
@@ -35,7 +36,8 @@ export async function POST(request: NextRequest) {
   try {
     const user = await prisma.user.findFirst({
       where: {
-        resetToken: token,
+        // the link carries the token; the database keeps only its fingerprint (security deep check 28/11)
+        resetToken: createHash('sha256').update(token).digest('hex'),
         resetTokenExpiry: { gt: new Date() },
       },
     })

@@ -359,6 +359,8 @@ rm -f "$PJ" "$SJ"
 FP=""; for i in $(seq 1 11); do FP=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.0.90' -d '{"email":"nobody@example.com"}' $B/api/auth/forgot-password); done
 check "forgot-password limited (11th request from one device)" "$FP" "429"
 check "a different device can still ask for a reset" "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.0.91' -d '{"email":"nobody@example.com"}' $B/api/auth/forgot-password)" "200"
+curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -H 'X-Forwarded-For: 10.0.0.92' -d "{\"email\":\"$SA_EMAIL\"}" $B/api/auth/forgot-password
+check "security 28/11: the reset link is kept only as a fingerprint (64 hex), never the link itself; a made-up link is refused" "$(M "SELECT resetToken REGEXP '^[0-9a-f]{64}$' FROM User WHERE email='$SA_EMAIL'")/$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"token":"00000000-0000-0000-0000-000000000000","password":"Whatever2026Pass"}' $B/api/auth/reset-password)" "1/400"
 VC=""; for i in $(seq 1 61); do VC=$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-For: 10.0.0.92' "$B/api/verify?id=TN-CERT-2026-0000$i"); done
 check "certificate verification limited (61st lookup in 10 min)" "$VC" "429"
 check "dangerous run-migration endpoint removed" "$(curl -s -o /dev/null -w '%{http_code}' "$B/api/admin/run-migration?secret=x")" "404"
@@ -552,10 +554,10 @@ check "a manager's own refund is approved at once (cash back by InstaPay)" "$(ec
 check "cash refund does not touch the wallet" "$(api GET /api/students/$S1/wallet | jq_ "d['data']['balance']")" "0"
 check "cash refund needs how the money goes back" "$(api POST /api/refunds "{\"invoiceId\":\"$FIRSTPAID\",\"amount\":10,\"method\":\"CASH\"}" | jq_ "d['success']")" "False"
 # MONEY CHECK 28/11: one refund approved by two people at the same moment is counted once
-RR=$(accapi POST /api/refunds "{\"invoiceId\":\"$FIRSTPAID\",\"amount\":10,\"method\":\"WALLET\",\"reason\":\"race test\"}" | jq_ "d['data']['id']")
+RRQ=$(accapi POST /api/refunds "{\"invoiceId\":\"$FIRSTPAID\",\"amount\":1,\"method\":\"WALLET\",\"reason\":\"race test\"}"); RR=$(echo "$RRQ" | jq_ "d['data']['refundId'] if d.get('success') else ''"); [ -z "$RR" ] && echo "   refund request answer: $(echo "$RRQ" | cut -c1-200)"
 RB=$(M "SELECT CAST(refundedAmount AS DECIMAL(10,2)) FROM FeeInvoice WHERE id='$FIRSTPAID'")
 (api PATCH /api/refunds/$RR '{"action":"approve"}' > /d/tn-e2e-rr1.txt &); (api PATCH /api/refunds/$RR '{"action":"approve"}' > /d/tn-e2e-rr2.txt &); sleep 8
-check "money: the same refund approved twice at the same moment → counted once (refunded +10, one wallet credit)" "$(M "SELECT CAST(refundedAmount - $RB AS DECIMAL(10,2)) FROM FeeInvoice WHERE id='$FIRSTPAID'")/$(M "SELECT COUNT(*) FROM WalletTransaction WHERE refundId='$RR'")" "10.00/1"
+check "money: the same refund approved twice at the same moment → counted once (refunded +1, one wallet credit)" "$(M "SELECT CAST(refundedAmount - $RB AS DECIMAL(10,2)) FROM FeeInvoice WHERE id='$FIRSTPAID'")/$(M "SELECT COUNT(*) FROM WalletTransaction WHERE refundId='$RR'")" "1.00/1"
 check "refund rules kept by the test-data wipe (settings)" "$(grep -c "'RefundRule'" lib/setup/wipe-test-data.ts)" "1"
 rm -f "$ACJ"
 echo "== 20. online payment (Paymob webhook, signed with a test key)"

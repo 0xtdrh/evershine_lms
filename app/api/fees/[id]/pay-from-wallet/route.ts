@@ -15,7 +15,7 @@ import { paymentErrorResponse } from '@/lib/fees/record-payment'
 import { payFromWallet } from '@/lib/refunds/engine'
 import { withMonthLock } from '@/lib/month-close/with-lock'
 
-const bodySchema = z.object({ amount: z.number().positive().optional() })
+const bodySchema = z.object({ amount: z.number().positive().max(10_000_000).optional() })
 
 async function POST_(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()

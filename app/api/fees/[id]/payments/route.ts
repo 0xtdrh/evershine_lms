@@ -14,7 +14,7 @@ import { paymentErrorResponse, recordPayment } from '@/lib/fees/record-payment'
 import { withMonthLock } from '@/lib/month-close/with-lock'
 
 const paymentSchema = z.object({
-  amount: z.number().positive('Amount must be positive'),
+  amount: z.number().positive('Amount must be positive').max(10_000_000),
   paymentMethod: z.string().trim().min(1, 'Choose a payment method').max(50),
   transactionId: z.string().optional(),
   remarks: z.string().optional(),

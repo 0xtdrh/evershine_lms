@@ -125,8 +125,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const json = await request.json()
-    const parsed = FeedbackPayloadSchema.parse(json)
+    // security part B (28/11): a wrong body answers 400, it used to crash with 500
+    const json = await request.json().catch(() => null)
+    const check = FeedbackPayloadSchema.safeParse(json)
+    if (!check.success) return NextResponse.json({ error: 'Invalid feedback' }, { status: 400 })
+    const parsed = check.data
 
     const student = await prisma.student.findUnique({
       where: { userId: session.user.id },

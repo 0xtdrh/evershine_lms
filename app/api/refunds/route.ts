@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic'
 
 const bodySchema = z.object({
   invoiceId: z.string().min(1),
-  amount: z.number().positive(),
+  amount: z.number().positive().max(10_000_000),
   method: z.enum(['CASH', 'WALLET']),
   payoutMethod: z.string().trim().max(50).optional().nullable(),
   reason: z.string().trim().max(500).optional().nullable(),

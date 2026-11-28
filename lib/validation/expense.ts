@@ -15,6 +15,7 @@ export const createExpenseSchema = z.object({
   amount:      z
     .number({ required_error: 'Amount is required' })
     .positive('Amount must be greater than zero')
+    .max(10_000_000, 'Amount is too large')
     .multipleOf(0.01, 'Amount can have at most 2 decimal places'),
   category:   z.nativeEnum(ExpenseCategory).optional(),
   /** FIN-1: editable category (ExpenseCategoryDef id); the old enum is filled from it */

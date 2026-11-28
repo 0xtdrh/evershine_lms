@@ -14,7 +14,7 @@ const uploadProofSchema = z.object({
     .url('Invalid image URL')
     .refine((u) => isOwnCloudinaryUrl(u), 'The proof must be uploaded through the system'),
   proofRemarks: z.string().max(500).optional(),
-  amount: z.number().positive().optional(),
+  amount: z.number().positive().max(10_000_000).optional(),
 })
 
 const MAX_PROOF_SIZE = 4 * 1024 * 1024

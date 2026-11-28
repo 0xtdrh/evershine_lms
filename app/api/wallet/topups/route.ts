@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 
 const bodySchema = z.object({
   studentId: z.string().min(1),
-  amount: z.number().positive(),
+  amount: z.number().positive().max(10_000_000),
   method: z.string().min(1).max(50),
   transactionId: z.string().trim().max(100).optional().nullable(),
   remarks: z.string().trim().max(500).optional().nullable(),
