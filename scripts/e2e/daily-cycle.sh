@@ -1825,6 +1825,7 @@ check "export Excel: a real file, logged" "$(curl -s -b "$JAR" -o "$DX/e.xlsx" -
 check "export rows = every student (Super Admin sees all places)" "$(api GET "/api/data/students/export?format=json" | jq_ "d['data']['count']")" "$(M "SELECT COUNT(*) FROM Student")"
 BJ=$(mktemp); login_jar m0secb@e2e.local E2eSecB12345 "$BJ" 10.0.1.93 >/dev/null
 check "another branch's secretary exports only her place's students" "$(curl -s -b "$BJ" "$B/api/data/students/export?format=json" | jq_ "d['data']['count']")" "$(M "SELECT COUNT(*) FROM Student WHERE campusId='$PB'")"
+check "owner 23/11: a secretary cannot export payments or invoices to Excel (accountant / manager / admin can)" "$(curl -s -o /dev/null -w '%{http_code}' -b "$BJ" "$B/api/data/payments/export?format=json")/$(curl -s -o /dev/null -w '%{http_code}' -b "$BJ" "$B/api/data/invoices/export?format=json")/$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$B/api/data/payments/export?format=json")" "403/403/200"
 rm -f "$BJ"
 check "printable PDF page opens" "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$B/reports/data/invoices?lang=ar")" "200"
 curl -s -b "$JAR" -o "$DX/c.xlsx" "$B/api/data/courseStructure/template?lang=en"
@@ -2046,6 +2047,7 @@ check "after 30+ minutes away the next ping is a new visit" "$(M "SELECT visits 
 check "sign-ins are counted, and the usage report shows the person" "$(M "SELECT COUNT(*) FROM UserActivityDay WHERE logins > 0 AND day='$TODAYC'" | python -c "import sys;print(int(sys.stdin.read())>0)")/$(api GET "/api/usage?role=STAFF" | jq_ "any(p['userId']=='$ME' and p['visits']>=2 for p in d['data']['people'])")" "True/True"
 DH=$(api GET /api/data-health)
 check "data health: every check runs, and 'groups without a schedule' matches the database" "$(echo "$DH" | jq_ "len(d['data']['checks'])>=10")/$(echo "$DH" | jq_ "[c['count'] for c in d['data']['checks'] if c['key']=='groupNoSchedule'][0]")" "True/$(M "SELECT COUNT(*) FROM ClassSection WHERE status='ACTIVE' AND isActive=1 AND (scheduleSlots IS NULL OR JSON_LENGTH(scheduleSlots)=0)")"
+check "data health: 'places with no approver but the Super Admin' runs and lists only places nobody else can approve in" "$(echo "$DH" | jq_ "[type(c['count']).__name__ for c in d['data']['checks'] if c['key']=='placeNoApprover']")" "['int']"
 echo "== 59. ID cards: print data, public check (valid / not valid), lost card → new code, settings, track colour, instructor in every place"
 CARDS=$(api GET "/api/cards?kind=STUDENT&groupId=$LG")
 KCODE=$(echo "$CARDS" | jq_ "[c['code'] for c in d['data'] if c['id']=='$LK'][0]")

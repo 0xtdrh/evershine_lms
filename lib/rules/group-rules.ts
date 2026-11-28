@@ -5,6 +5,9 @@
  * The parent accepts the exact list: `rulesFingerprint` changes when any rule changes, so the parent is asked again.
  */
 
+// owner 23/11: «6 طلاب» not «6 طالب» (pure helper, so this file stays pure; families accept the rules again once)
+import { AR_NOUN, arCount } from '../i18n/plural'
+
 export interface RuleItem { source: 'AUTO' | 'GLOBAL' | 'CAMPUS' | 'LEVEL' | 'GROUP'; en: string; ar: string }
 
 export interface GroupRuleInput {
@@ -48,7 +51,7 @@ export function buildGroupRules(i: GroupRuleInput): RuleItem[] {
     )
     add('A student who has not paid by the middle of the month may be excluded from the group.', 'الطالب اللي مادفعش لحد نص الشهر ممكن يتشال من الجروب.')
   }
-  if (g.maxStudents) add(`At most ${g.maxStudents} students in the group; when it is full, new students go on the waiting list.`, `أقصى عدد في الجروب ${g.maxStudents} طالب، ولو اتملى الطلاب الجداد بيدخلوا قايمة الانتظار.`)
+  if (g.maxStudents) add(`At most ${g.maxStudents} students in the group; when it is full, new students go on the waiting list.`, `أقصى عدد في الجروب ${arCount(g.maxStudents, AR_NOUN.student)}، ولو اتملى الطلاب الجداد بيدخلوا قايمة الانتظار.`)
   add(
     'An absence counts as a used session.',
     'الغياب بيتحسب من الحصص.',

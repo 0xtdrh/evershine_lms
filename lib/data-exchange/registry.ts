@@ -175,7 +175,7 @@ export const DATASETS: DatasetDef[] = [
   },
   {
     key: 'invoices', en: 'Invoices', ar: 'الفواتير', descEn: 'Invoices with paid, remaining and status.', descAr: 'الفواتير بالمدفوع والباقي والحالة.',
-    canImport: false, exportPerm: ['fees', 'read'], page: '/dashboard/fees', filters: ['campus', 'from', 'to', 'status'],
+    canImport: false, exportPerm: ['fees', 'update'], page: '/dashboard/fees', /* owner 23/11: money exports = accountant / manager / admin (fees:update), not the secretary */ filters: ['campus', 'from', 'to', 'status'],
     fields: [
       { key: 'number', en: 'Invoice no.', ar: 'رقم الفاتورة', type: 'text' },
       { key: 'student', en: 'Student', ar: 'الطالب', type: 'text' },
@@ -194,7 +194,7 @@ export const DATASETS: DatasetDef[] = [
   },
   {
     key: 'payments', en: 'Payments', ar: 'المدفوعات', descEn: 'Every payment with its receipt number and source.', descAr: 'كل دفعة برقم الإيصال ومصدرها.',
-    canImport: false, exportPerm: ['fees', 'read'], page: '/dashboard/accountant/fees', filters: ['campus', 'from', 'to'],
+    canImport: false, exportPerm: ['fees', 'update'], page: '/dashboard/accountant/fees', /* owner 23/11: not the secretary */ filters: ['campus', 'from', 'to'],
     fields: [
       { key: 'receipt', en: 'Receipt no.', ar: 'رقم الإيصال', type: 'text' },
       { key: 'date', en: 'Date', ar: 'التاريخ', type: 'date' },

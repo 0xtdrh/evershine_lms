@@ -18,7 +18,7 @@ import { prisma } from '@/lib/prisma'
 import { getSetting, setSetting } from '@/lib/settings/app-settings'
 import { getDiscountRules } from '@/lib/discounts/engine'
 import { logSystemContact } from '@/lib/contacts/contact-log'
-import { isEventOn } from '@/lib/notifications/events'
+import { forChild, isEventOn } from '@/lib/notifications/events'
 import { sessionsPerCycle } from './cycle-rules'
 import { resolveCycleStart } from './cycle-start'
 
@@ -70,7 +70,7 @@ export async function ensureRenewalRequests(classSectionId: string): Promise<num
     const label = `${group?.className ?? ''} ${group?.sectionName ?? ''}`.trim()
     const students = await prisma.student.findMany({
       where: { id: { in: todo } },
-      select: { id: true, firstName: true, guardians: { select: { id: true, userId: true } } },
+      select: { id: true, firstName: true, gender: true, guardians: { select: { id: true, userId: true } } },
     })
     const notes = students.flatMap((s) =>
       s.guardians.map((g) => ({
@@ -78,7 +78,7 @@ export async function ensureRenewalRequests(classSectionId: string): Promise<num
         title: 'Continuing next month?',
         titleAr: 'مكمّلين الشهر الجاي؟',
         message: `${s.firstName}'s month in ${label} ends soon. Please confirm if ${s.firstName} is continuing.`,
-        messageAr: `شهر ${s.firstName} في ${label} قرّب يخلص. أكّد لو ${s.firstName} هيكمّل.`,
+        messageAr: `شهر ${s.firstName} في ${label} قرّب يخلص. أكّد لو ${s.firstName} ${forChild(s, 'هيكمّل', 'هتكمّل')}.`,
         type: 'RENEWAL_REQUEST',
         relatedId: s.id,
       }))

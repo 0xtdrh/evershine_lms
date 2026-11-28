@@ -90,6 +90,21 @@ async function run(p: Places): Promise<HealthCheck[]> {
     add({ key: 'teacherNoPay', severity: 'MEDIUM', en: 'Instructors teaching groups with no pay rule', ar: 'مدربين بيدرّسوا جروبات من غير قاعدة أجر', fixEn: 'Set the instructor’s pay (fixed, % or per session) — or a pay rule on each group.', fixAr: 'حدد أجر المدرب (ثابت أو نسبة أو بالحصة) — أو قاعدة أجر على كل جروب.' }, n, rows.map((t) => ({ id: t.id, label: `${t.firstName} ${t.lastName}`.trim(), href: `/dashboard/teachers/${t.id}/compensation` })))
   }
   {
+    // owner 23/11 (final test C05): a place where only the Super Admin can approve a cancelled payment / a refund
+    // (the Online place had nobody else). The owner names the person; this warns until someone is set.
+    const campuses = await prisma.campus.findMany({ where: { isActive: true }, select: { id: true, name: true } })
+    const approvers = await prisma.user.findMany({ where: { isActive: true, role: { in: ['ADMIN', 'BRANCH_MANAGER'] } }, select: { id: true, role: true } })
+    let all = false
+    const covered = new Set<string>()
+    for (const u of approvers) {
+      const pl = await loadPlaces(u)
+      if (pl.all) { all = true; break }
+      for (const c of pl.campusIds) covered.add(c)
+    }
+    const bare = all ? [] : campuses.filter((c) => !covered.has(c.id) && (p.all || p.campusIds.includes(c.id)))
+    add({ key: 'placeNoApprover', severity: 'MEDIUM', en: 'Places where only the Super Admin can approve cancelled payments and refunds', ar: 'أماكن مفيهاش حد غير السوبر أدمن يوافق على إلغاء الدفعات والاسترداد', fixEn: 'Give this place to an admin or branch manager (Accounts → the person → places).', fixAr: 'ادّي المكان ده لأدمن أو مدير فرع (إدارة الحسابات ← الشخص ← الأماكن).' }, bare.length, bare.slice(0, SAMPLE).map((c) => ({ id: c.id, label: c.name, href: `/dashboard/campuses/${c.id}` })))
+  }
+  {
     const n = await prisma.moneyMovement.count({ where: { accountId: null, ...(p.all ? {} : { campusId: { in: p.campusIds.length ? p.campusIds : ['__none__'] } }) } })
     add({ key: 'moneyNotPlaced', severity: 'LOW', en: 'Money movements not placed in a cash box / account', ar: 'حركات فلوس مش متسجلة على خزنة / حساب', fixEn: 'Link each payment method to its account in Settings → Payments.', fixAr: 'اربط كل طريقة دفع بحسابها من الإعدادات ← الدفع.' }, n, n ? [{ id: 'routes', label: `${n}`, href: '/dashboard/admin/finance-settings#accounts' }] : [])
   }
