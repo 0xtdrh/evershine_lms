@@ -8,6 +8,7 @@
 import { StudentWatchCard } from '@/components/videos/StudentWatchCard'
 import { JoinOnlineCard } from '@/components/online/JoinOnlineCard'
 import { UpcomingSessionsCard } from '@/components/portal/UpcomingSessionsCard'
+import { RecentStampsCard } from '@/components/passport/RecentStampsCard'
 import { PortalIdCard } from '@/components/cards/PortalIdCard'
 import { AnnouncementFeed } from '@/components/announcements/AnnouncementFeed'
 import { useEffect, useState } from 'react'
@@ -57,6 +58,7 @@ export default function LearningPage() {
       {!isParent && <AnnouncementFeed compact />}
       {!isParent && <JoinOnlineCard />}
       {!isParent && <UpcomingSessionsCard />}
+      {!isParent && <RecentStampsCard showNames={false} />}
       {!isParent && <StudentWatchCard />}
       {!isParent && <PortalIdCard />}
       {!isParent && (hw || qz) && (

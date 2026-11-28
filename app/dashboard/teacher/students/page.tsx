@@ -300,6 +300,10 @@ function StudentDetailDialog({ student, open, onClose, onRequestAction }: Studen
 
         <DialogFooter className="mt-4 flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={onClose} className="flex-1">{L('Close', 'اقفل')}</Button>
+          {/* owner 28/11 (S33): the instructor reaches the student's passport (give a stamp) from his list */}
+          <Button asChild variant="outline" className="flex-1 gap-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50">
+            <a href={`/dashboard/passport?s=${student.id}`}>🛂 {L('Passport', 'الجواز')}</a>
+          </Button>
           <Button
             variant="outline"
             className="flex-1 gap-2 text-amber-700 border-amber-200 hover:bg-amber-50"

@@ -7,6 +7,7 @@ import { ParentRenewalsCard } from '@/components/portal/ParentRenewalsCard'
 import { ParentWalletCard } from '@/components/portal/ParentWalletCard'
 import { JoinOnlineCard } from '@/components/online/JoinOnlineCard'
 import { ParentRatingsCard } from '@/components/portal/ParentRatingsCard'
+import { RecentStampsCard } from '@/components/passport/RecentStampsCard'
 import { ParentReferralCard } from '@/components/portal/ParentReferralCard'
 import { UpcomingSessionsCard } from '@/components/portal/UpcomingSessionsCard'
 import { PortalIdCard } from '@/components/cards/PortalIdCard'
@@ -261,6 +262,7 @@ export default function MyChildrenPage() {
       {(children ?? []).map((c) => <JoinOnlineCard key={c.id} studentId={c.id} />)}
       <ParentRenewalsCard />
       <ParentRatingsCard />
+      <RecentStampsCard />
       {/* with no registered child yet, "My family" is the first thing to use */}
       {!loadingChildren && (children ?? []).length === 0 && <FamilyAccountCard />}
 

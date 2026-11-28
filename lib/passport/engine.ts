@@ -26,9 +26,10 @@ import { groupAssignments } from '@/lib/assignments/engine'
 import { homeworkStats } from '@/lib/lms/analytics-calc'
 import { normalizeCardCode } from '@/lib/cards/rules'
 import {
-  BUILTIN_STAMPS, autoAwards, canGive, eventOpen, longestStreak, passportPrefix, shareExpiry, tracksGraduated, type Facts,
+  BUILTIN_STAMPS, autoAwards, canGive, eventOpen, longestStreak, nextStamp, passportPrefix, shareExpiry, tracksGraduated, type Facts,
 } from './rules'
 import { cairoToday } from '@/lib/dates/cairo'
+import { staffNames } from '@/lib/contacts/contact-log'
 
 type User = { id: string; role: string; campusId?: string | null }
 export interface Outcome<T = undefined> { ok: boolean; code?: string; message?: string; value?: T }
@@ -205,6 +206,10 @@ async function graduationCertificate(studentId: string, trackId: string, trackNa
   })
 }
 
+/** owner 28/11: the facts of the last check (the passport page shows «the next stamp» from them; 2 minutes). */
+const lastFacts = new Map<string, { at: number; facts: Facts }>()
+const factsOf = (studentId: string) => { const x = lastFacts.get(studentId); return x && Date.now() - x.at < 120_000 ? x.facts : null }
+
 /** Checks every automatic stamp for one student; returns how many new stamps were given. */
 export async function evaluateStamps(studentId: string): Promise<number> {
   await ensureBuiltinStamps()
@@ -213,6 +218,7 @@ export async function evaluateStamps(studentId: string): Promise<number> {
   const settings = await getPassportSettings()
   const facts = await collectFacts(studentId, settings)
   if (!facts) return 0
+  lastFacts.set(studentId, { at: Date.now(), facts })
   const stamps = await prisma.passportStamp.findMany({ where: { kind: 'AUTO', active: true } })
   const have = new Set((await prisma.studentStamp.findMany({ where: { studentId }, select: { stampId: true, refKey: true } })).map((x) => `${x.stampId}|${x.refKey}`))
   const fresh: { name: string; label?: string }[] = []
@@ -269,9 +275,9 @@ export async function canManageStudent(user: User, studentId: string): Promise<b
 /** MANUAL stamp to some students (the role must be one of the stamp's givers). */
 export async function giveStamp(user: User, stampId: string, studentIds: string[], note: string | null): Promise<Outcome<{ given: number }>> {
   const s = await prisma.passportStamp.findUnique({ where: { id: stampId } })
-  if (!s || !s.active) return fail('NOT_FOUND', 'Stamp not found')
-  if (s.kind !== 'MANUAL') return fail('INVALID', 'This stamp is not given by hand')
-  if (!canGive(s.givers, user.role)) return fail('FORBIDDEN', 'Your role cannot give this stamp')
+  if (!s || !s.active) return fail('NOT_FOUND', 'Stamp not found · الختم مش موجود')
+  if (s.kind !== 'MANUAL') return fail('INVALID', 'This stamp is not given by hand · الختم ده مابيتدّاش بالإيد')
+  if (!canGive(s.givers, user.role)) return fail('FORBIDDEN', 'Your role cannot give this stamp · دورك مايدّيش الختم ده')
   let given = 0
   for (const id of [...new Set(studentIds)].slice(0, 200)) {
     if (!(await canManageStudent(user, id))) continue
@@ -289,15 +295,15 @@ export async function giveStamp(user: User, stampId: string, studentIds: string[
 /** EVENT stamp by scanning the student card (TN-QR / old ESA-QR) on the event day. */
 export async function scanEventStamp(user: User, stampId: string, code: string): Promise<Outcome<{ student: string; already: boolean }>> {
   const s = await prisma.passportStamp.findUnique({ where: { id: stampId } })
-  if (!s || !s.active) return fail('NOT_FOUND', 'Stamp not found')
-  if (s.kind !== 'EVENT') return fail('INVALID', 'This is not an event stamp')
-  if (!canGive(s.givers, user.role)) return fail('FORBIDDEN', 'Your role cannot give this stamp')
-  if (!eventOpen(s, new Date())) return fail('CLOSED', 'This event stamp is not open today')
+  if (!s || !s.active) return fail('NOT_FOUND', 'Stamp not found · الختم مش موجود')
+  if (s.kind !== 'EVENT') return fail('INVALID', 'This is not an event stamp · ده مش ختم فعالية')
+  if (!canGive(s.givers, user.role)) return fail('FORBIDDEN', 'Your role cannot give this stamp · دورك مايدّيش الختم ده')
+  if (!eventOpen(s, new Date())) return fail('CLOSED', 'This event stamp is not open today · ختم الفعالية ده مش مفتوح النهارده')
   const clean = normalizeCardCode(code)
-  if (!/^(tn|esa)-qr-/i.test(clean)) return fail('INVALID', 'This is not a student card')
+  if (!/^(tn|esa)-qr-/i.test(clean)) return fail('INVALID', 'This is not a student card · ده مش كارنيه طالب')
   const st = await prisma.student.findFirst({ where: { idCardQRCode: clean, isActive: true }, select: { id: true, firstName: true, lastName: true, campusId: true } })
-  if (!st) return fail('NOT_FOUND', 'Student card not found')
-  if (user.role !== 'TEACHER' && !(await canSeeStudent(user, st.id))) return fail('FORBIDDEN', 'This student is from another place')
+  if (!st) return fail('NOT_FOUND', 'Student card not found · الكارنيه ده مش متسجل')
+  if (user.role !== 'TEACHER' && !(await canSeeStudent(user, st.id))) return fail('FORBIDDEN', 'This student is from another place · الطالب ده من مكان تاني')
   await ensurePassport(st.id)
   const refKey = s.repeatable ? (s.eventFrom ?? new Date()).toISOString().slice(0, 10) : ''
   let already = false
@@ -321,7 +327,7 @@ export async function passportView(user: User, studentId: string) {
     prisma.studentPassport.findUnique({ where: { studentId } }),
     prisma.student.findUnique({ where: { id: studentId }, select: { firstName: true, lastName: true, fullNameAr: true, registrationNumber: true, profilePicture: true, admissionDate: true, idCardQRCode: true, campus: { select: { name: true } }, enrollments: { where: { status: 'ACTIVE' }, select: { classSection: { select: { level: { select: { subject: { select: { trackId: true } } } } } } }, take: 1 } } }),
     prisma.studentStamp.findMany({ where: { studentId }, orderBy: { awardedAt: 'asc' }, include: { stamp: true } }),
-    prisma.passportStamp.findMany({ where: { active: true, secret: false }, orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }),
+    prisma.passportStamp.findMany({ where: { active: true }, orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }),
     prisma.certificate.findMany({ where: { studentId, status: 'VALID' }, orderBy: { issuedDate: 'asc' }, select: { id: true, title: true, certificateNumber: true, issuedDate: true, isRevealed: true } }),
     prisma.assignmentSubmission.findMany({ where: { studentId, galleryStatus: 'APPROVED' }, orderBy: { galleryAt: 'desc' }, take: 12, select: { id: true, blockId: true, galleryAt: true } }),
     getPassportSettings(),
@@ -335,7 +341,20 @@ export async function passportView(user: User, studentId: string) {
   const shares = viewer === 'PARENT' ? await prisma.passportShare.findMany({ where: { studentId, createdById: user.id, revokedAt: null, expiresAt: { gt: new Date() } }, orderBy: { createdAt: 'desc' } }) : []
   const prints = viewer === 'STAFF' || viewer === 'TEACHER' ? await prisma.passportPrint.findMany({ where: { studentId }, orderBy: { createdAt: 'desc' }, take: 20 }) : []
   const canManage = !family && (await canManageStudent(user, studentId))
+  // owner 28/11: what is still to win (secret ones only as a count), the closest one, who gave each stamp, classmates for giving to many
+  const takenIds = new Set(stamps.map((x) => x.stampId))
+  const open = available.filter((x) => !x.secret)
+  const locked = open.filter((x) => !takenIds.has(x.id)).map((x) => ({ id: x.id, nameEn: x.nameEn, nameAr: x.nameAr || x.nameEn, icon: x.icon, shape: x.shape, color: x.color, kind: x.kind, rule: x.rule, threshold: x.threshold }))
+  const secretLeft = available.filter((x) => x.secret && !takenIds.has(x.id)).length
+  const f = factsOf(studentId)
+  const next = f ? nextStamp(locked.filter((x) => x.kind === 'AUTO'), f) : null
+  const givers = await staffNames(stamps.map((x) => x.awardedById).filter((x): x is string => !!x))
+  const classmates = canManage ? await classmatesFor(user, studentId) : []
   return {
+    locked, secretLeft, total: open.length + available.filter((x) => x.secret && takenIds.has(x.id)).length,
+    next: next ? { id: next.id, nameEn: next.nameEn, nameAr: next.nameAr, icon: next.icon, have: next.have, need: next.need } : null,
+    classmates,
+    giverNames: Object.fromEntries(stamps.filter((x) => x.awardedById).map((x) => [x.id, givers.get(x.awardedById!) ?? ''])),
     viewer, canManage, canPrint: canManage && viewer === 'STAFF',
     passport: { number: passport.number, issuedAt: passport.issuedAt },
     student: {
@@ -354,6 +373,42 @@ export async function passportView(user: User, studentId: string) {
     prints: prints.map((p) => ({ kind: p.kind, copyNo: p.copyNo, price: p.price, at: p.createdAt })),
     shareDays: settings.shareDays, bookletPrice: settings.bookletPrice,
   }
+}
+
+/** owner 28/11: students of the same running group(s) this person may manage (to give one stamp to many). */
+async function classmatesFor(user: User, studentId: string) {
+  const groups = await prisma.studentEnrollment.findMany({ where: { studentId, status: 'ACTIVE' }, select: { classSectionId: true } })
+  if (!groups.length) return []
+  const rows = await prisma.studentEnrollment.findMany({
+    where: { classSectionId: { in: groups.map((g) => g.classSectionId) }, status: 'ACTIVE' },
+    select: { studentId: true, student: { select: { firstName: true, lastName: true } } }, take: 60,
+  })
+  const out: { id: string; name: string }[] = []
+  for (const r of rows) {
+    if (out.some((x) => x.id === r.studentId)) continue
+    if (r.studentId !== studentId && !(await canManageStudent(user, r.studentId))) continue
+    out.push({ id: r.studentId, name: `${r.student.firstName} ${r.student.lastName}`.trim() })
+  }
+  return out
+}
+
+async function myStudentIds(user: User): Promise<string[]> {
+  if (user.role === 'STUDENT') return (await prisma.student.findMany({ where: { userId: user.id }, select: { id: true } })).map((x) => x.id)
+  if (user.role === 'PARENT' || user.role === 'GUARDIAN') return (await prisma.student.findMany({ where: { OR: [{ guardians: { some: { userId: user.id } } }, { parents: { some: { userId: user.id } } }] }, select: { id: true } })).map((x) => x.id)
+  return []
+}
+
+/** owner 28/11: stamps of the last 7 days for the person's own children (parent) or self (student) — home-page card. */
+export async function recentFamilyStamps(user: User) {
+  const ids = await myStudentIds(user)
+  if (!ids.length) return []
+  const rows = await prisma.studentStamp.findMany({
+    where: { studentId: { in: ids }, awardedAt: { gte: new Date(Date.now() - 7 * DAY) } },
+    orderBy: { awardedAt: 'desc' }, take: 12,
+    include: { stamp: { select: { nameEn: true, nameAr: true, icon: true } } },
+  })
+  const names = new Map((await prisma.student.findMany({ where: { id: { in: [...new Set(rows.map((r) => r.studentId))] } }, select: { id: true, firstName: true } })).map((x) => [x.id, x.firstName]))
+  return rows.map((r) => ({ id: r.id, studentId: r.studentId, student: names.get(r.studentId) ?? '', nameEn: r.stamp.nameEn, nameAr: r.stamp.nameAr || r.stamp.nameEn, icon: r.stamp.icon, awardedAt: r.awardedAt }))
 }
 
 // ───────────────────────── share links (parent only) ─────────────────────────

@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { BookMarked, Copy, Loader2, Printer, Share2, Trash2 } from 'lucide-react'
+import { BookMarked, Copy, Loader2, Lock, Printer, Share2, Trash2, X } from 'lucide-react'
 
 interface Stamp { id: string; stampId: string; nameEn: string; nameAr: string; icon: string; shape: string; color: string; label: string | null; awardedAt: string; source: string; note: string | null; isNew: boolean }
 interface Passport {
@@ -35,6 +35,12 @@ interface Passport {
   shares: { id: string; token: string; expiresAt: string; showProjects: boolean; showPhoto: boolean; views: number }[]
   prints: { kind: string; copyNo: number; price: number | null; at: string }[]
   shareDays: number; bookletPrice: number | null
+  // owner 28/11
+  locked: { id: string; nameEn: string; nameAr: string; icon: string; shape: string; color: string; kind: string }[]
+  secretLeft: number; total: number
+  next: { id: string; nameEn: string; nameAr: string; icon: string; have: number; need: number } | null
+  classmates: { id: string; name: string }[]
+  giverNames: Record<string, string>
 }
 
 const day = (d: string, ar: boolean) => new Date(d).toLocaleDateString(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -53,6 +59,10 @@ export default function PassportPage() {
   const [qr, setQr] = useState('')
   useEffect(() => { if (p?.student.cardCode) QRCode.toDataURL(p.student.cardCode, { margin: 1, width: 220 }).then(setQr).catch(() => setQr('')) }, [p?.student.cardCode])
   const refresh = () => qc.invalidateQueries({ queryKey: ['passport', studentId] })
+  // owner 28/11: a new stamp lands with a short buzz on phones (once per page open)
+  useEffect(() => {
+    if (p?.stamps.some((s) => s.isNew)) { try { navigator.vibrate?.([30, 50, 80]) } catch { /* not supported */ } }
+  }, [p?.passport.number]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // parent: share links
   const [showProjects, setShowProjects] = useState(false)
@@ -66,10 +76,15 @@ export default function PassportPage() {
   // staff: give a stamp
   const [giveId, setGiveId] = useState('')
   const [note, setNote] = useState('')
+  // owner 28/11: one stamp to many students of the same group (this student is ticked first)
+  const [giveTo, setGiveTo] = useState<string[]>([])
+  useEffect(() => { setGiveTo(studentId ? [studentId] : []) }, [studentId])
   const give = useMutation({
-    mutationFn: () => fetchApi<{ given: number }>('/api/passport/stamps/give', { method: 'POST', body: JSON.stringify({ stampId: giveId, studentIds: [studentId], note: note || null }) }),
-    onSuccess: (r) => { notify.success(r.given ? L('Stamp given', 'الختم اتحط') : L('Already has this stamp', 'معاه الختم ده')); setNote(''); refresh() }, onError: (e: Error) => notify.error(e.message),
+    mutationFn: () => fetchApi<{ given: number }>('/api/passport/stamps/give', { method: 'POST', body: JSON.stringify({ stampId: giveId, studentIds: giveTo.length ? giveTo : [studentId], note: note || null }) }),
+    onSuccess: (r) => { notify.success(r.given ? L(`Stamp given to ${r.given}`, `الختم اتحط لـ ${r.given}`) : L('They already have this stamp', 'معاهم الختم ده')); setNote(''); refresh() }, onError: (e: Error) => notify.error(e.message),
   })
+  // owner 28/11: tap a stamp → its story in a sheet
+  const [open, setOpen] = useState<Stamp | null>(null)
 
   const shareImage = async (s: Stamp) => {
     try {
@@ -86,12 +101,13 @@ export default function PassportPage() {
   if (error) return <p className="text-sm text-rose-600">{(error as Error).message}</p>
   if (isLoading || !p) return <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
   const family = p.viewer === 'STUDENT' || p.viewer === 'PARENT'
+  const firstName = p.student.name.split(' ')[0]
   const base = typeof window !== 'undefined' ? window.location.origin : ''
 
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><BookMarked className="h-7 w-7 text-indigo-600" /> {L('TechNova passport', 'جواز سفر TechNova')}</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><BookMarked className="h-7 w-7 text-indigo-600" /> {p.viewer === 'STUDENT' ? L('My TechNova passport', 'جوازي في TechNova') : L(`${firstName}'s passport`, `جواز ${firstName}`)}</h1>
         <Link href={`/dashboard/profile${staffStudent ? `?s=${studentId}` : ''}`} className="text-sm text-indigo-700 hover:underline">👤 {L('Profile', 'البروفايل')} →</Link>
         {!staffStudent && (mine?.length ?? 0) > 1 && (
           <Select value={studentId} onValueChange={setPick}><SelectTrigger className="h-9 w-56"><SelectValue /></SelectTrigger><SelectContent>{mine!.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select>
@@ -100,47 +116,86 @@ export default function PassportPage() {
 
       {/* identity page */}
       <div className="relative overflow-hidden rounded-3xl p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${p.cover}, #0f172a)` }}>
-        <div className="flex flex-wrap items-center gap-5">
+        {/* P04 (28/11): one line for the name and the number on a phone; the photo shows from tablets up */}
+        <div className="flex items-center gap-4">
           {p.student.photo
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={p.student.photo} alt="" className="h-28 w-24 rounded-xl border-2 border-white/70 object-cover" />
-            : <div className="flex h-28 w-24 items-center justify-center rounded-xl border-2 border-white/50 text-4xl">👤</div>}
+            ? <img src={p.student.photo} alt="" className="hidden h-28 w-24 rounded-xl border-2 border-white/70 object-cover sm:block" />
+            : <div className="hidden h-28 w-24 items-center justify-center rounded-xl border-2 border-white/50 text-4xl sm:flex">👤</div>}
           <div className="min-w-0 flex-1 space-y-1">
             <p className="text-xs uppercase tracking-[0.3em] text-white/70">{L('Passport', 'جواز سفر')} · TechNova</p>
             <p className="text-xl font-bold">{p.student.name}</p>
             {p.student.nameAr && <p className="text-lg" dir="rtl">{p.student.nameAr}</p>}
-            <p className="font-mono text-sm">{p.passport.number}</p>
+            <p className="whitespace-nowrap font-mono text-sm" dir="ltr">{p.passport.number}</p>
             <p className="text-xs text-white/80">{p.student.reg} · {p.student.campus} · {L('joined', 'انضم')} {day(p.student.joinedAt, ar)}</p>
           </div>
           {qr && (
             <div className="rounded-xl bg-white p-2 text-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qr} alt="QR" className="h-24 w-24" />
+              <img src={qr} alt="QR" className="h-16 w-16 sm:h-24 sm:w-24" />
               <p className="text-[10px] text-slate-600">{L('Student card', 'كارت الطالب')}</p>
             </div>
           )}
         </div>
-        {family && session?.user?.name && <Watermark text={session.user.name} moving />}
       </div>
 
       {/* stamps */}
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">{L('Stamps', 'الأختام')} ({p.stamps.length})</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center justify-between text-base">
+            <span>{L('Stamps', 'الأختام')}</span>
+            <span className="text-sm font-medium text-indigo-700">{L(`${p.stamps.length} of ${p.total}`, `${p.stamps.length} من ${p.total}`)}</span>
+          </CardTitle>
+          {/* owner 28/11: the stamp closest to being earned */}
+          {p.next && (
+            <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+              <p className="text-sm font-semibold text-indigo-900">{p.next.icon} {L('Next stamp', 'الختم الجاي')}: {ar ? p.next.nameAr : p.next.nameEn}</p>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white"><div className="h-2 rounded-full bg-indigo-500 transition-all duration-700" style={{ width: `${Math.round((p.next.have / p.next.need) * 100)}%` }} /></div>
+              <p className="mt-1 text-xs text-indigo-700">{L(`${p.next.need - p.next.have} to go (${p.next.have} of ${p.next.need})`, `فاضل ${p.next.need - p.next.have} (${p.next.have} من ${p.next.need})`)}</p>
+            </div>
+          )}
+        </CardHeader>
         <CardContent>
-          {!p.stamps.length ? <p className="text-sm text-slate-500">{L('No stamps yet — the first one comes soon!', 'لسه مفيش أختام — أول ختم جاي قريب!')}</p> : (
-            <div className="relative grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {!p.stamps.length && !p.locked.length ? <p className="text-sm text-slate-500">{L('No stamps yet — the first one comes soon!', 'لسه مفيش أختام — أول ختم جاي قريب!')}</p> : (
+            <div className="relative grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
               {p.stamps.map((s) => (
-                <div key={s.id} className="flex flex-col items-center gap-1 text-center">
-                  <StampBadge stamp={{ ...s, date: s.awardedAt }} ar={ar} size={130} isNew={s.isNew} />
-                  {s.note && <p className="text-[11px] text-slate-500">{s.note}</p>}
-                  {family && <button type="button" onClick={() => shareImage(s)} className="inline-flex items-center gap-1 text-[11px] text-indigo-700 hover:underline"><Share2 className="h-3 w-3" /> {L('Share', 'شارك')}</button>}
+                <button key={s.id} type="button" onClick={() => setOpen(s)} className="flex flex-col items-center gap-1 rounded-xl p-1 text-center transition active:scale-95" aria-label={ar ? s.nameAr : s.nameEn}>
+                  <StampBadge stamp={{ ...s, date: s.awardedAt }} ar={ar} fluid isNew={s.isNew} />
+                  {s.isNew && <span className="rounded-full bg-amber-100 px-2 text-[10px] font-bold text-amber-800">{L('New', 'جديد')}</span>}
+                </button>
+              ))}
+              {/* owner 28/11: what is still to win — faded with a lock; secret ones only as «?» */}
+              {p.locked.slice(0, 6).map((s) => (
+                <div key={s.id} className="relative flex flex-col items-center gap-1 p-1 text-center" title={ar ? s.nameAr : s.nameEn}>
+                  <StampBadge stamp={{ ...s, label: null, date: null }} ar={ar} fluid faded />
+                  <Lock className="absolute top-1/3 h-5 w-5 text-slate-500" aria-hidden />
                 </div>
+              ))}
+              {p.locked.length > 6 && (
+                <div className="col-span-full text-center text-xs font-semibold text-indigo-700">{L(`+ ${p.locked.length - 6} more stamps waiting for you`, `+ ${p.locked.length - 6} ختم كمان مستنيك`)}</div>
+              )}
+              {Array.from({ length: Math.min(p.secretLeft, 3) }).map((_, i) => (
+                <div key={`secret-${i}`} className="flex aspect-square items-center justify-center rounded-full border-2 border-dashed border-slate-300 text-2xl font-bold text-slate-400" title={L('Secret stamp', 'ختم سرّي')}>?</div>
               ))}
               {family && session?.user?.name && <Watermark text={session.user.name} moving />}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* owner 28/11: a stamp's story (bottom sheet on a phone) */}
+      {open && (
+        <div className="fixed inset-0 z-[150] flex items-end justify-center bg-slate-900/50 sm:items-center" onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(null) }}>
+          <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-t-2xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-in slide-in-from-bottom-6 duration-200 sm:rounded-2xl">
+            <div className="flex justify-end"><button type="button" onClick={() => setOpen(null)} className="rounded-full p-1 text-slate-500 hover:bg-slate-100" aria-label={L('Close', 'اقفل')}><X className="h-5 w-5" /></button></div>
+            <div className="mx-auto w-40"><StampBadge stamp={{ ...open, date: open.awardedAt }} ar={ar} fluid /></div>
+            <p className="mt-3 text-center text-lg font-bold text-slate-900">{open.icon} {ar ? open.nameAr : open.nameEn}{open.label ? ` · ${open.label}` : ''}</p>
+            <p className="text-center text-sm text-slate-500">{day(open.awardedAt, ar)} · {open.source === 'AUTO' ? L('earned by itself', 'اتكسب لوحده') : open.source === 'EVENT' ? L('at an event', 'في فعالية') : L('given by hand', 'اتدّى بالإيد')}{p.giverNames[open.id] ? ` · ${p.giverNames[open.id]}` : ''}</p>
+            {open.note && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">“{open.note}”</p>}
+            {family && <Button className="mt-4 min-h-11 w-full gap-2" onClick={() => shareImage(open)}><Share2 className="h-4 w-4" /> {L('Share the stamp', 'شارك الختم')}</Button>}
+          </div>
+        </div>
+      )}
 
       {/* certificates + projects */}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -201,8 +256,21 @@ export default function PassportPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={giveId} onValueChange={setGiveId}><SelectTrigger className="h-9 w-64"><SelectValue placeholder={L('Give a stamp', 'حط ختم')} /></SelectTrigger><SelectContent>{p.manualStamps.map((s) => <SelectItem key={s.id} value={s.id}>{s.icon} {ar ? s.nameAr || s.nameEn : s.nameEn}</SelectItem>)}</SelectContent></Select>
                 <Input className="h-9 w-64" placeholder={L('Note (optional)', 'ملاحظة (اختياري)')} value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} />
-                <Button size="sm" disabled={!giveId || give.isPending} onClick={() => give.mutate()}>{L('Give', 'حط')}</Button>
+                <Button size="sm" disabled={!giveId || give.isPending} onClick={() => give.mutate()}>{L('Give', 'حط')}{giveTo.length > 1 ? ` (${giveTo.length})` : ''}</Button>
               </div>
+            )}
+            {p.manualStamps.length > 0 && p.classmates.length > 1 && (
+              <details className="rounded-lg border border-slate-200 p-2">
+                <summary className="cursor-pointer text-xs font-semibold text-slate-700">{L('Give it to more students of the group', 'حطه لطلاب تانيين في الجروب')} ({giveTo.length})</summary>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" className="rounded-full border px-2 py-1 text-xs" onClick={() => setGiveTo(giveTo.length === p.classmates.length ? [studentId] : p.classmates.map((c) => c.id))}>{giveTo.length === p.classmates.length ? L('Only this student', 'الطالب ده بس') : L('Whole group', 'كل الجروب')}</button>
+                  {p.classmates.map((c) => (
+                    <label key={c.id} className="flex items-center gap-1 rounded-full border px-2 py-1 text-xs">
+                      <input type="checkbox" checked={giveTo.includes(c.id)} onChange={(e) => setGiveTo(e.target.checked ? [...giveTo, c.id] : giveTo.filter((x) => x !== c.id))} /> {c.name}
+                    </label>
+                  ))}
+                </div>
+              </details>
             )}
             {p.canPrint && (
               <div className="flex flex-wrap items-center gap-2">

@@ -94,3 +94,17 @@ describe('newer automatic conditions (owner 28/11)', () => {
     expect(give('LEVELS_COUNT', 3, { levelsPassed: [1, 2, 3].map((i) => ({ levelId: `l${i}`, label: '', trackId: null, at: new Date() })) })).toBe(1)
   })
 })
+
+import { nextStamp, stampProgress } from '@/lib/passport/rules'
+describe('the next stamp (owner 28/11)', () => {
+  const f = { joinedAt: new Date('2026-01-01'), levelsPassed: [], tracksGraduated: [], sessions: 7, perfectMonths: [], stars: 1, galleryProjects: 0, homeworkMonths: [], quizzesAbove90: 0, bestSkillPercent: null, referrals: 0, earlyRenewals: 0, hasActiveGroup: true, bestStreak: 4, homeworkHandedIn: 9 }
+  it('progress is capped and only for counting rules', () => {
+    expect(stampProgress({ rule: 'SESSIONS', threshold: 10 }, f as never)).toEqual({ have: 7, need: 10 })
+    expect(stampProgress({ rule: 'SESSIONS', threshold: 5 }, f as never)).toEqual({ have: 5, need: 5 })
+    expect(stampProgress({ rule: 'WELCOME', threshold: null }, f as never)).toBeNull()
+  })
+  it('picks the stamp closest to being earned, never one already reached', () => {
+    const list = [{ id: 'a', rule: 'SESSIONS', threshold: 10 }, { id: 'b', rule: 'HOMEWORK_COUNT', threshold: 10 }, { id: 'c', rule: 'STREAK', threshold: 10 }, { id: 'd', rule: 'SESSIONS', threshold: 5 }]
+    expect(nextStamp(list, f as never)?.id).toBe('b')
+  })
+})

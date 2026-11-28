@@ -151,6 +151,32 @@ export function autoAwards(stamp: { rule: string | null; threshold: number | nul
   }
 }
 
+/**
+ * owner 28/11 «the next stamp»: how far a student is on an automatic stamp that counts something (null = not a count).
+ * `have` is capped at `need` so the bar never passes 100%.
+ */
+export function stampProgress(stamp: { rule: string | null; threshold: number | null }, f: Facts): { have: number; need: number } | null {
+  const need = Math.max(1, stamp.threshold ?? 0)
+  const value: Record<string, number | undefined> = {
+    SESSIONS: f.sessions, STARS: f.stars, GALLERY: f.galleryProjects, QUIZ_MASTER: f.quizzesAbove90, STREAK: f.bestStreak,
+    LEVELS_COUNT: f.levelsPassed.length, HOMEWORK_COUNT: f.homeworkHandedIn, PERFECT_QUIZ: f.quizzesPerfect, CERTIFICATES: f.certificates,
+    RECORDED_DONE: f.recordedFinished, EVENTS: f.eventStamps, REFERRALS: f.referrals, COLLECTOR: f.stampsTaken,
+  }
+  if (!stamp.rule || !(stamp.rule in value) || !stamp.threshold) return null
+  return { have: Math.min(need, Math.max(0, value[stamp.rule] ?? 0)), need }
+}
+
+/** The stamp closest to being earned (highest share done, not finished). */
+export function nextStamp<T extends { rule: string | null; threshold: number | null }>(locked: T[], f: Facts): (T & { have: number; need: number }) | null {
+  let best: (T & { have: number; need: number }) | null = null
+  for (const s of locked) {
+    const pr = stampProgress(s, f)
+    if (!pr || pr.have >= pr.need) continue
+    if (!best || pr.have / pr.need > best.have / best.need) best = { ...s, ...pr }
+  }
+  return best
+}
+
 /** Longest run of sessions in a row without an absence (statuses in date order; EXCUSED breaks nothing, ABSENT breaks it). */
 export function longestStreak(statuses: string[]): number {
   let best = 0, run = 0

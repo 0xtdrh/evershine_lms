@@ -37,6 +37,9 @@ function PrintView({ studentId }: { studentId: string }) {
   const [copy, setCopy] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   useEffect(() => { if (d?.student.cardCode) QRCode.toDataURL(d.student.cardCode, { margin: 0, width: 200 }).then(setQr).catch(() => undefined) }, [d?.student.cardCode])
+  // owner 28/11 (S44): every stamps page of the paper booklet has a small QR to the student's digital card / passport
+  const [linkQr, setLinkQr] = useState('')
+  useEffect(() => { if (d?.student.cardCode) QRCode.toDataURL(`${window.location.origin}/card/${encodeURIComponent(d.student.cardCode)}`, { margin: 0, width: 120 }).then(setLinkQr).catch(() => undefined) }, [d?.student.cardCode])
   const print = async () => {
     setBusy(true)
     try {
@@ -92,7 +95,13 @@ function PrintView({ studentId }: { studentId: string }) {
           {chunk(d.stamps, 6).map((list, i) => (
             <div key={i} className="pg mx-auto mb-4 h-[148mm] w-[105mm] bg-white p-3 text-black shadow">
               <p className="mb-2 text-center text-[10px] uppercase tracking-widest text-gray-500">{L('Stamps', 'الأختام')} · {i + 1}</p>
-              {stampsGrid(list, 110)}
+              {stampsGrid(list, 96)}
+              {/* S44: room for the real rubber stamp + the QR to the digital passport */}
+              <div className="mt-2 flex items-end justify-between gap-2">
+                <div className="flex gap-2">{Array.from({ length: 2 }, (_, k) => <div key={k} className="flex h-[24mm] w-[24mm] items-center justify-center rounded-full border border-dashed border-gray-300 text-[8px] text-gray-400">{L('stamp here', 'مكان الختم')}</div>)}</div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {linkQr && <div className="text-center"><img src={linkQr} alt="QR" className="h-12 w-12" /><p className="text-[7px] text-gray-500">{L('Digital passport', 'الجواز الرقمي')}</p></div>}
+              </div>
             </div>
           ))}
           <div className="pg mx-auto mb-4 h-[148mm] w-[105mm] bg-white p-3 text-black shadow">

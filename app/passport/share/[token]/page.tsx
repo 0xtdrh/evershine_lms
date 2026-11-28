@@ -2,7 +2,7 @@
 
 /** P1: public passport page of a parent's share link (identity, stamps, certificates; projects / photo if chosen). */
 
-import { use } from 'react'
+import { use, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { I18nProvider, L, LanguageSwitch, useI18n } from '@/lib/i18n/client'
 import { StampBadge } from '@/components/passport/StampBadge'
@@ -24,6 +24,8 @@ function SharedView({ token }: { token: string }) {
     queryFn: async () => { const r = await fetch(`/api/passport/public/${token}`); const j = await r.json(); if (!r.ok) throw new Error(j?.error?.message || 'Not found'); return j.data as Shared },
     retry: false,
   })
+  // S36 (28/11): the tab title in the page's language
+  useEffect(() => { if (data) document.title = ar ? `جواز ${data.name} · TechNova` : `${data.name}'s passport · TechNova` }, [data, ar])
   return (
     <div className="keep-light min-h-screen bg-slate-100 px-4 py-6" dir={dir}>
       <div className="mx-auto max-w-3xl space-y-4">
@@ -48,7 +50,8 @@ function SharedView({ token }: { token: string }) {
             </div>
             <div className="rounded-2xl bg-white p-4">
               <p className="mb-3 font-semibold text-slate-800">{L('Stamps', 'الأختام')} ({data.stamps.length})</p>
-              <div className="flex flex-wrap justify-center gap-3">{data.stamps.map((s, i) => <StampBadge key={i} stamp={{ ...s, date: s.awardedAt }} ar={ar} size={120} />)}</div>
+              {/* P04 (28/11): a grid that follows the screen, so stamps never overlap on a phone */}
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">{data.stamps.map((s, i) => <StampBadge key={i} stamp={{ ...s, date: s.awardedAt }} ar={ar} fluid />)}</div>
             </div>
             {data.certificates.length > 0 && (
               <div className="space-y-1 rounded-2xl bg-white p-4 text-sm">

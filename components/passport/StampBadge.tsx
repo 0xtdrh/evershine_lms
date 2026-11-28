@@ -28,11 +28,17 @@ ${date ? `<text x="100" y="${label ? 157 : 150}" font-size="10" fill="${c}" text
 <text x="100" y="${s.shape === 'HEX' ? 176 : 180}" font-size="8" letter-spacing="2" fill="${c}" text-anchor="middle" font-family="Arial, sans-serif">TECHNOVA</text></svg>`
 }
 
-export function StampBadge({ stamp, ar, size = 120, isNew = false }: { stamp: StampLook; ar: boolean; size?: number; isNew?: boolean }) {
+/**
+ * final test P04 (28/11): `fluid` fills its grid cell (the drawing scales), so stamps never overlap on a phone.
+ * The drawing's own 200 px size is replaced by 100% when shown on screen (the PNG / SVG files keep their size).
+ */
+export function StampBadge({ stamp, ar, size = 120, isNew = false, fluid = false, faded = false }: { stamp: StampLook; ar: boolean; size?: number; isNew?: boolean; fluid?: boolean; faded?: boolean }) {
+  const svg = stampSvg(stamp, ar).replace('width="200" height="200"', 'width="100%" height="100%"')
   return (
-    <div className={isNew ? 'animate-[stampIn_0.9s_ease-out]' : ''} style={{ width: size, height: size, transform: 'rotate(-6deg)' }}
+    <div className={`${isNew ? 'animate-[stampIn_0.9s_ease-out]' : ''} ${faded ? 'opacity-30 grayscale' : ''}`}
+      style={{ width: fluid ? '100%' : size, height: fluid ? 'auto' : size, aspectRatio: '1 / 1', maxWidth: '100%', transform: 'rotate(-6deg)' }}
       // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: stampSvg(stamp, ar) }} />
+      dangerouslySetInnerHTML={{ __html: svg }} />
   )
 }
 

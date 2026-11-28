@@ -36,6 +36,15 @@ interface Tree { tree: { id: string; name: string; courses: { id: string; name: 
 
 const GIVERS = ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'TEACHER']
 const KIND_LABEL = (k: string) => (k === 'AUTO' ? L('Automatic', 'تلقائي') : k === 'MANUAL' ? L('By hand', 'يدوي') : L('Event (scan)', 'فعالية (scan)'))
+/** owner 28/11 (S43): season templates (dates are month-day of this year; the admin moves them for Ramadan etc.) */
+const SEASONS = [
+  { en: 'Ramadan', ar: 'رمضان', icon: '🌙', color: '#7c3aed', from: '03-01', to: '03-31' },
+  { en: 'Summer camp', ar: 'كامب الصيف', icon: '☀️', color: '#ea580c', from: '07-01', to: '08-31' },
+  { en: 'Eid', ar: 'العيد', icon: '🎉', color: '#db2777', from: '03-30', to: '04-03' },
+  { en: 'Big competition', ar: 'المسابقة الكبيرة', icon: '🏆', color: '#ca8a04', from: '05-01', to: '05-31' },
+  { en: 'Back to school', ar: 'أول الدراسة', icon: '🎒', color: '#0891b2', from: '09-15', to: '10-15' },
+]
+
 const blank = (): Partial<Stamp> => ({ nameEn: '', nameAr: '', kind: 'MANUAL', shape: 'ROUND', color: '#4f46e5', icon: '⭐', givers: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'TEACHER'], repeatable: false, secret: false, active: true })
 
 function StampEditor({ value, onDone }: { value: Partial<Stamp>; onDone: () => void }) {
@@ -54,6 +63,15 @@ function StampEditor({ value, onDone }: { value: Partial<Stamp>; onDone: () => v
   return (
     <div className="grid gap-4 text-sm sm:grid-cols-[1fr_auto]">
       <div className="space-y-2">
+        {/* owner 28/11 (S43): ready season stamps — an event stamp open between two dates; change anything after */}
+        {!s.id && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-2 text-xs">
+            <span className="font-semibold text-slate-600">{L('Season templates:', 'قوالب موسمية:')}</span>
+            {SEASONS.map((t) => (
+              <button key={t.en} type="button" className="rounded-full border border-slate-300 bg-white px-2 py-1 hover:bg-indigo-50" onClick={() => { const y = new Date().getFullYear(); set({ kind: 'EVENT', nameEn: t.en, nameAr: t.ar, icon: t.icon, color: t.color, shape: 'ROUND', repeatable: true, eventFrom: `${y}-${t.from}`, eventTo: `${y}-${t.to}`, givers: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'SECRETARY', 'TEACHER'] }) }}>{t.icon} {L(t.en, t.ar)}</button>
+            ))}
+          </div>
+        )}
         <div className="grid gap-2 sm:grid-cols-2">
           <Input placeholder={L('Name (English)', 'الاسم (إنجليزي)')} value={s.nameEn ?? ''} onChange={(e) => set({ nameEn: e.target.value })} />
           <Input dir="rtl" placeholder="الاسم (عربي)" value={s.nameAr ?? ''} onChange={(e) => set({ nameAr: e.target.value })} />
