@@ -26,7 +26,7 @@ import { groupAssignments } from '@/lib/assignments/engine'
 import { homeworkStats } from '@/lib/lms/analytics-calc'
 import { normalizeCardCode } from '@/lib/cards/rules'
 import {
-  BUILTIN_STAMPS, autoAwards, canGive, eventOpen, passportPrefix, shareExpiry, tracksGraduated, type Facts,
+  BUILTIN_STAMPS, autoAwards, canGive, eventOpen, longestStreak, passportPrefix, shareExpiry, tracksGraduated, type Facts,
 } from './rules'
 import { cairoToday } from '@/lib/dates/cairo'
 
@@ -164,6 +164,30 @@ async function collectFacts(studentId: string, settings: PassportSettings): Prom
     sessions, perfectMonths, stars, galleryProjects: gallery, homeworkMonths,
     quizzesAbove90: [...best.values()].filter((p) => p >= 90).length,
     bestSkillPercent, referrals, earlyRenewals, hasActiveGroup: active > 0,
+    ...(await extraFacts(studentId, attempts)),
+  }
+}
+
+/** owner 28/11: facts for the newer automatic conditions (streak, homework, perfect quizzes, certificates, recorded, events, collector). */
+async function extraFacts(studentId: string, attempts: { blockId: string; score: unknown; maxScore: unknown }[]) {
+  const [marks, handedIn, certs, recorded, events, taken] = await Promise.all([
+    prisma.enrollmentAttendanceRecord.findMany({ where: { studentEnrollment: { studentId } }, select: { status: true, attendanceDate: true }, orderBy: { attendanceDate: 'asc' }, take: 2000 }),
+    prisma.assignmentSubmission.count({ where: { studentId, submittedAt: { not: null } } }),
+    prisma.certificate.count({ where: { studentId, status: 'VALID' } }),
+    prisma.certificate.count({ where: { studentId, status: 'VALID', remarks: { startsWith: 'RECORDED:' } } }),
+    prisma.studentStamp.count({ where: { studentId, source: 'EVENT' } }),
+    prisma.studentStamp.count({ where: { studentId, stamp: { rule: { not: 'COLLECTOR' } } } }),
+  ])
+  const best = new Map<string, number>()
+  for (const a of attempts) { const pc = pctOf(a.score as never, a.maxScore as never); if (pc != null) best.set(a.blockId, Math.max(best.get(a.blockId) ?? 0, pc)) }
+  return {
+    bestStreak: longestStreak(marks.map((m) => m.status)),
+    homeworkHandedIn: handedIn,
+    quizzesPerfect: [...best.values()].filter((x) => x >= 100).length,
+    certificates: certs,
+    recordedFinished: recorded,
+    eventStamps: events,
+    stampsTaken: taken,
   }
 }
 

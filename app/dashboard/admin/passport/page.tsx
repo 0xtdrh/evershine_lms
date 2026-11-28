@@ -16,7 +16,7 @@ import { notify } from '@/lib/notify'
 import { L, useI18n } from '@/lib/i18n/client'
 import { AccessDenied } from '@/components/AccessDenied'
 import QRScannerModal from '@/components/QRScannerModal'
-import { StampBadge, stampPng } from '@/components/passport/StampBadge'
+import { StampBadge, stampPng, stampSvg } from '@/components/passport/StampBadge'
 import { AUTO_RULES, STAMP_SHAPES } from '@/lib/passport/rules'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -240,6 +240,13 @@ export default function PassportAdminPage() {
     const url = await stampPng({ ...s, nameAr: s.nameAr || s.nameEn, date: null }, ar, { size: 2000, mono: true })
     const a = document.createElement('a'); a.href = url; a.download = `stamp-${s.code ?? s.id}.png`; a.click()
   }
+  // owner 28/11: stamp makers prefer a sharp vector file (SVG) for engraving a real rubber stamp
+  const downloadSvg = (s: Stamp) => {
+    const svg = stampSvg({ ...s, nameAr: s.nameAr || s.nameEn, date: null }, ar, { mono: true }).replace('width="200" height="200"', 'width="60mm" height="60mm"')
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+    const a = document.createElement('a'); a.href = url; a.download = `stamp-${s.code ?? s.id}.svg`; a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
   const kinds = ['AUTO', 'MANUAL', 'EVENT']
   return (
     <div className="space-y-4" dir={dir}>
@@ -266,6 +273,7 @@ export default function PassportAdminPage() {
                         {canEdit && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEdit(s)}>{L('Edit', 'تعديل')}</Button>}
                         {s.kind === 'EVENT' && s.active && <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => setScan(s)}><ScanLine className="h-3 w-3" /> {L('Scan', 'Scan')}</Button>}
                         <Button size="sm" variant="ghost" className="h-7 px-2" title={L('High-resolution file for a rubber stamp', 'ملف عالي الجودة للختم المطاط')} onClick={() => download(s)}><Download className="h-3 w-3" /></Button>
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" title={L('Vector file (SVG) for the stamp maker', 'ملف SVG لمحل الأختام')} onClick={() => downloadSvg(s)}>SVG</Button>
                       </div>
                     </div>
                   ))}

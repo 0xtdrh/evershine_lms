@@ -72,3 +72,25 @@ describe('givers, events, schema, built-ins', () => {
     for (const s of BUILTIN_STAMPS) expect(stampSchema.safeParse({ ...s, givers: s.givers ?? [] }).success).toBe(true)
   })
 })
+
+import { autoAwards as aa28, longestStreak } from '@/lib/passport/rules'
+describe('newer automatic conditions (owner 28/11)', () => {
+  const base = { joinedAt: new Date('2026-01-01'), levelsPassed: [], tracksGraduated: [], sessions: 0, perfectMonths: [], stars: 0, galleryProjects: 0, homeworkMonths: [], quizzesAbove90: 0, bestSkillPercent: null, referrals: 0, earlyRenewals: 0, hasActiveGroup: true }
+  const give = (rule: string, threshold: number, extra: object) => aa28({ rule, threshold, repeatable: false }, { ...base, ...extra } as never, new Date()).length
+  it('longest run without an absence (excused keeps it going)', () => {
+    expect(longestStreak(['PRESENT', 'LATE', 'EXCUSED', 'PRESENT', 'ABSENT', 'PRESENT'])).toBe(3)
+    expect(longestStreak([])).toBe(0)
+  })
+  it('each condition gives the stamp only from its number', () => {
+    expect(give('STREAK', 10, { bestStreak: 9 })).toBe(0)
+    expect(give('STREAK', 10, { bestStreak: 10 })).toBe(1)
+    expect(give('HOMEWORK_COUNT', 10, { homeworkHandedIn: 10 })).toBe(1)
+    expect(give('PERFECT_QUIZ', 1, { quizzesPerfect: 1 })).toBe(1)
+    expect(give('CERTIFICATES', 2, { certificates: 1 })).toBe(0)
+    expect(give('RECORDED_DONE', 1, { recordedFinished: 1 })).toBe(1)
+    expect(give('EVENTS', 3, { eventStamps: 3 })).toBe(1)
+    expect(give('REFERRALS', 3, { referrals: 2 })).toBe(0)
+    expect(give('COLLECTOR', 10, { stampsTaken: 10 })).toBe(1)
+    expect(give('LEVELS_COUNT', 3, { levelsPassed: [1, 2, 3].map((i) => ({ levelId: `l${i}`, label: '', trackId: null, at: new Date() })) })).toBe(1)
+  })
+})

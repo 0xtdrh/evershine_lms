@@ -30,6 +30,16 @@ export const AUTO_RULES: Record<string, { en: string; ar: string; threshold: boo
   AMBASSADOR: { en: 'Brought a friend who registered', ar: 'جاب صاحبه يسجّل', threshold: false },
   EARLY_RENEWAL: { en: 'Renewed before the month ended', ar: 'جدّد قبل الشهر ما يخلص', threshold: false },
   ALUMNI: { en: 'TechNova graduate (finished a track, no running group)', ar: 'خريج TechNova (خلّص Track ومالوش جروب شغال)', threshold: false },
+  // owner 28/11: more automatic conditions (each can make many stamps with different numbers)
+  STREAK: { en: 'N sessions in a row with no absence', ar: 'N حصة ورا بعض من غير غياب', threshold: true },
+  LEVELS_COUNT: { en: 'Finished N levels', ar: 'خلّص N مستوى', threshold: true },
+  HOMEWORK_COUNT: { en: 'Handed in N homework', ar: 'سلّم N واجب', threshold: true },
+  PERFECT_QUIZ: { en: '100% in N quizzes', ar: '100% في N كويز', threshold: true },
+  CERTIFICATES: { en: 'Got N certificates', ar: 'خد N شهادة', threshold: true },
+  RECORDED_DONE: { en: 'Finished N recorded courses', ar: 'خلّص N كورس مسجّل', threshold: true },
+  EVENTS: { en: 'Took part in N events (event stamps)', ar: 'شارك في N فعالية (أختام فعاليات)', threshold: true },
+  REFERRALS: { en: 'Brought N friends who registered', ar: 'جاب N صحاب سجّلوا', threshold: true },
+  COLLECTOR: { en: 'Collected N stamps', ar: 'جمع N ختم', threshold: true },
 }
 
 export interface BuiltinStamp {
@@ -57,6 +67,14 @@ export const BUILTIN_STAMPS: BuiltinStamp[] = [
   { code: 'ANNIVERSARY', nameEn: 'Year at TechNova', nameAr: 'سنة في TechNova', kind: 'AUTO', rule: 'ANNIVERSARY', shape: 'ROUND', color: '#e11d48', icon: '🎂', repeatable: true },
   { code: 'AMBASSADOR', nameEn: 'Ambassador', nameAr: 'سفير', kind: 'AUTO', rule: 'AMBASSADOR', shape: 'ROUND', color: '#0d9488', icon: '🤝' },
   { code: 'EARLY_RENEWAL', nameEn: 'Renewed early', nameAr: 'جدّد بدري', kind: 'AUTO', rule: 'EARLY_RENEWAL', shape: 'SQUARE', color: '#0284c7', icon: '🔁' },
+  // owner 28/11: ready-made stamps for the newer automatic conditions (the admin can edit the numbers or switch them off)
+  { code: 'STREAK_10', nameEn: '10 sessions in a row', nameAr: '10 حصص ورا بعض', kind: 'AUTO', rule: 'STREAK', threshold: 10, shape: 'ROUND', color: '#16a34a', icon: '🔥' },
+  { code: 'LEVELS_3', nameEn: 'Three levels done', nameAr: 'خلّص 3 مستويات', kind: 'AUTO', rule: 'LEVELS_COUNT', threshold: 3, shape: 'HEX', color: '#7c3aed', icon: '🧗' },
+  { code: 'HOMEWORK_10', nameEn: '10 homework handed in', nameAr: 'سلّم 10 واجبات', kind: 'AUTO', rule: 'HOMEWORK_COUNT', threshold: 10, shape: 'SQUARE', color: '#0d9488', icon: '📝' },
+  { code: 'PERFECT_QUIZ', nameEn: 'Perfect quiz', nameAr: 'كويز 100%', kind: 'AUTO', rule: 'PERFECT_QUIZ', threshold: 1, shape: 'ROUND', color: '#ca8a04', icon: '💯' },
+  { code: 'EVENTS_3', nameEn: 'Three events', nameAr: 'شارك في 3 فعاليات', kind: 'AUTO', rule: 'EVENTS', threshold: 3, shape: 'HEX', color: '#dc2626', icon: '🎪' },
+  { code: 'REFERRALS_3', nameEn: 'Brought three friends', nameAr: 'جاب 3 صحاب', kind: 'AUTO', rule: 'REFERRALS', threshold: 3, shape: 'ROUND', color: '#0891b2', icon: '🤝' },
+  { code: 'COLLECTOR_10', nameEn: 'Stamp collector', nameAr: 'جامع الأختام', kind: 'AUTO', rule: 'COLLECTOR', threshold: 10, shape: 'HEX', color: '#9333ea', icon: '🏅' },
   { code: 'FIRST_ROBOT', nameEn: 'First robot that moved', nameAr: 'أول روبوت اتحرك', kind: 'MANUAL', shape: 'ROUND', color: '#475569', icon: '🛠️', givers: STAFF },
   { code: 'FIRST_CODE', nameEn: 'First code that ran', nameAr: 'أول كود اشتغل', kind: 'MANUAL', shape: 'ROUND', color: '#334155', icon: '💻', givers: STAFF },
   { code: 'HELPER', nameEn: 'Helped classmates', nameAr: 'ساعد زمايله', kind: 'MANUAL', shape: 'SQUARE', color: '#059669', icon: '🙋', givers: STAFF, repeatable: true },
@@ -83,6 +101,15 @@ export interface Facts {
   referrals: number
   earlyRenewals: number
   hasActiveGroup: boolean
+  // owner 28/11 (optional so older callers / tests keep working)
+  bestStreak?: number
+  homeworkHandedIn?: number
+  quizzesPerfect?: number
+  certificates?: number
+  recordedFinished?: number
+  eventStamps?: number
+  /** stamps already taken, not counting COLLECTOR stamps themselves */
+  stampsTaken?: number
 }
 
 export interface Award { refKey: string; label?: string; color?: string }
@@ -111,8 +138,27 @@ export function autoAwards(stamp: { rule: string | null; threshold: number | nul
     case 'AMBASSADOR': return once(f.referrals > 0)
     case 'EARLY_RENEWAL': return once(f.earlyRenewals > 0)
     case 'ALUMNI': return once(f.tracksGraduated.length > 0 && !f.hasActiveGroup)
+    case 'STREAK': return once(n > 0 && (f.bestStreak ?? 0) >= n)
+    case 'LEVELS_COUNT': return once(n > 0 && f.levelsPassed.length >= n)
+    case 'HOMEWORK_COUNT': return once(n > 0 && (f.homeworkHandedIn ?? 0) >= n)
+    case 'PERFECT_QUIZ': return once((f.quizzesPerfect ?? 0) >= Math.max(1, n))
+    case 'CERTIFICATES': return once((f.certificates ?? 0) >= Math.max(1, n))
+    case 'RECORDED_DONE': return once((f.recordedFinished ?? 0) >= Math.max(1, n))
+    case 'EVENTS': return once((f.eventStamps ?? 0) >= Math.max(1, n))
+    case 'REFERRALS': return once(n > 0 && f.referrals >= n)
+    case 'COLLECTOR': return once(n > 0 && (f.stampsTaken ?? 0) >= n)
     default: return []
   }
+}
+
+/** Longest run of sessions in a row without an absence (statuses in date order; EXCUSED breaks nothing, ABSENT breaks it). */
+export function longestStreak(statuses: string[]): number {
+  let best = 0, run = 0
+  for (const st of statuses) {
+    if (st === 'PRESENT' || st === 'LATE') { run++; best = Math.max(best, run) }
+    else if (st === 'ABSENT') run = 0
+  }
+  return best
 }
 
 export function fullYears(from: Date, to: Date): number {
